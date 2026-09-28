@@ -1,7 +1,7 @@
 {
-  "name": "MC Plan",
-  "short_name": "MC Plan",
-  "description": "MC Plan mit den Bereichen Planlaufmanagement und Baubetriebsplanung.",
+  "name": "KaPlan",
+  "short_name": "KaPlan",
+  "description": "KaPlan mit den Bereichen Planlaufmanagement und Baubetriebsplanung.",
   "lang": "de",
   "dir": "ltr",
   "start_url": "./",
@@ -32,12 +32,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
     }
   ]
 }
