@@ -9,11 +9,9 @@ export function Start() {
     <div className="start">
       <div className="start-inner">
         <header className="start-kopf">
-          <div className="start-kopf-text">
-            <h1>
-              <KaPlanLogo variante="Startseite" height={52} />
-            </h1>
-          </div>
+          <h1 className="start-marke">
+            <KaPlanLogo variante="Startseite" width="100%" />
+          </h1>
           <div className="start-logo">
             <MailaenderLogo height={34} />
           </div>
