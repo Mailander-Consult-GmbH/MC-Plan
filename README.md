@@ -117,8 +117,9 @@ ohne Netzverbindung – die Daten liegen ohnehin lokal im Browser.
 Enthalten sind `manifest.webmanifest`, App-Symbole aus `public/logos/Logo.png` (192/512 px, maskable und Apple-Touch-Icon)
 sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
 gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
-bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien kommen direkt aus
-dem Zwischenspeicher. Der Service Worker ist nur im Produktionsbuild aktiv, in der Entwicklung
+bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (gehashte Namen unter
+`assets/`) kommen direkt aus dem Zwischenspeicher. Logos und Symbole werden wie Seitenaufrufe zuerst
+aus dem Netz geladen – ein unter gleichem Namen ausgetauschtes Logo erscheint also sofort. Der Service Worker ist nur im Produktionsbuild aktiv, in der Entwicklung
 stört er also nicht.
 
 Die Oberfläche ist durchgehend responsiv: Ab etwa 860 px klappt die Seitenleiste in ein Menü, auf
