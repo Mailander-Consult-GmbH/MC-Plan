@@ -1,6 +1,6 @@
 /** Startbildschirm: Auswahl des Bereichs. */
 import { Icon } from '../shared/icons';
-import { AppIcon, MailaenderLogo } from '../shared/logos';
+import { KaPlanLogo, MailaenderLogo } from '../shared/logos';
 import { BEREICHE } from './bereiche';
 import { zumBereich } from './router';
 
@@ -9,15 +9,17 @@ export function Start() {
     <div className="start">
       <div className="start-inner">
         <header className="start-kopf">
-          <AppIcon size={42} />
           <div className="start-kopf-text">
-            <h1>MC Plan</h1>
-            <p>Bitte einen Bereich wählen.</p>
+            <h1>
+              <KaPlanLogo variante="Startseite" height={52} />
+            </h1>
           </div>
           <div className="start-logo">
             <MailaenderLogo height={34} />
           </div>
         </header>
+
+        <p className="start-hinweis">Bitte einen Bereich wählen.</p>
 
         <div className="start-kacheln">
           {BEREICHE.map((b) => (

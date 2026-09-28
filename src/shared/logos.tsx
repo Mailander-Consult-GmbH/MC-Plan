@@ -3,53 +3,44 @@ import { useState } from 'react';
 /**
  * Bildmarken der Anwendung.
  *
- * Das App-Zeichen ist als SVG hinterlegt und bleibt damit in jeder Größe
- * scharf. Die Wortmarke Mailänder Consult stammt aus der Originaldatei
- * `public/mailaender-consult.svg` und wird nur über die Höhe skaliert.
+ * Die Logos von KaPlan liegen als PNG unter `public/logos/` (je Bereich eines,
+ * dazu das Logo der Startseite und das Symbol `Logo.png`). Die Wortmarke
+ * Mailänder Consult stammt aus der Originaldatei `public/mailaender-consult.svg`
+ * und wird nur über die Höhe skaliert.
  */
 
 /** Hausfarbe nach dem Logo Mailänder Consult. */
 export const MARKE_BLAU = '#24456e';
 
-/** App-Zeichen: zwei Blätter mit Prozesslinie – in der Seitenleiste. */
-export function AppIcon({ size = 30 }: { size?: number }) {
+/** Logos von KaPlan unter `public/logos/`. */
+export type KaPlanLogo = 'Startseite' | 'Planlaufmanagement' | 'Baubetriebsplanung';
+
+const KAPLAN_TEXT: Record<KaPlanLogo, string> = {
+  Startseite: 'KaPlan',
+  Planlaufmanagement: 'KaPlan – Planlaufmanagement',
+  Baubetriebsplanung: 'KaPlan – Baubetriebsplanung',
+};
+
+/**
+ * Logo von KaPlan: auf dem Startbildschirm ohne Zusatz, in den Bereichen mit
+ * dem Namen des Bereichs. Skaliert wird über die Breite oder die Höhe, das
+ * Seitenverhältnis bleibt unverändert.
+ */
+export function KaPlanLogo({
+  variante,
+  width,
+  height,
+}: {
+  variante: KaPlanLogo;
+  width?: number | string;
+  height?: number;
+}) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      fill="none"
-      aria-hidden="true"
-      style={{ display: 'block', flex: 'none' }}
-    >
-      <rect width="64" height="64" rx="15" fill={MARKE_BLAU} />
-      {/* hinteres Blatt */}
-      <path
-        d="M15 17h9M15 17v30h30v-7"
-        stroke="#ffffff"
-        strokeOpacity="0.45"
-        strokeWidth="3.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* vorderes Blatt mit umgeschlagener Ecke */}
-      <path d="M21 10h16l12 12v31H21z" stroke="#ffffff" strokeWidth="4" strokeLinejoin="round" />
-      <path d="M36.6 10.4V22.4h12" stroke="#ffffff" strokeWidth="3.6" strokeLinejoin="round" />
-      {/* Prozesslinie */}
-      <path
-        d="M29 26v12h11"
-        stroke="#ffffff"
-        strokeOpacity="0.62"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <g fill="#ffffff" fillOpacity="0.62">
-        <circle cx="29" cy="26" r="4.2" />
-        <circle cx="29" cy="38" r="4.2" />
-        <circle cx="40" cy="38" r="4.2" />
-      </g>
-    </svg>
+    <img
+      src={`${import.meta.env.BASE_URL}logos/Logo_${variante}.png`}
+      alt={KAPLAN_TEXT[variante]}
+      style={{ display: 'block', width: width ?? 'auto', height: height ?? 'auto', maxWidth: '100%' }}
+    />
   );
 }
 

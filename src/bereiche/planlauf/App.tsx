@@ -16,7 +16,7 @@ import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../shared/ui';
 import { EIGENE_ROLLE, STANDARD_BEARBEITER } from './domain/types';
 import { Icon } from '../../shared/icons';
-import { AppIcon, MailaenderLogo } from '../../shared/logos';
+import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import type { IconName } from '../../shared/icons';
 
@@ -54,11 +54,7 @@ export function App() {
     <div className="app">
       <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
         <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'dashboard' })} title="Zur Übersicht">
-          <AppIcon size={42} />
-          <div className="sidebar-brand-text">
-            <strong>MC Plan</strong>
-            <span>Planlaufmanagement</span>
-          </div>
+          <KaPlanLogo variante="Planlaufmanagement" width="100%" />
         </button>
 
         <NavItem
@@ -337,6 +333,6 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
     case 'planlauf':
       return { titel: laufName ?? 'Planlauf', sub: projektName };
     default:
-      return { titel: 'MC Plan' };
+      return { titel: 'KaPlan' };
   }
 }

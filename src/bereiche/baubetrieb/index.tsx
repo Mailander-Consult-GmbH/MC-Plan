@@ -5,7 +5,7 @@
  */
 import { useEffect } from 'react';
 import { Card, EmptyState } from '../../shared/ui';
-import { AppIcon, MailaenderLogo } from '../../shared/logos';
+import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { useRoute } from './lib/router';
 import { StoreProvider, useStore } from './store/store';
@@ -37,11 +37,7 @@ function Platzhalter() {
           onClick={() => navigate({ view: 'start' })}
           title="Zur Übersicht"
         >
-          <AppIcon size={42} />
-          <div className="sidebar-brand-text">
-            <strong>MC Plan</strong>
-            <span>Baubetriebsplanung</span>
-          </div>
+          <KaPlanLogo variante="Baubetriebsplanung" width="100%" />
         </button>
 
         <div className="sidebar-footer">
