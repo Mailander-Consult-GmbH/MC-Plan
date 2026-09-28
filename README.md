@@ -1,6 +1,6 @@
-# MC Plan
+# KaPlan
 
-MC Plan gliedert sich in zwei getrennte Bereiche, zwischen denen der Startbildschirm wählt:
+KaPlan gliedert sich in zwei getrennte Bereiche, zwischen denen der Startbildschirm wählt:
 
 * **Planlaufmanagement** – Verwaltungssoftware für Planläufe: Projekte,
   Planpakete/Pläne/Planverzeichnisse und die Prozessketten, die diese durchlaufen – mit
@@ -22,9 +22,23 @@ Daten lokal im Browser liegen, arbeitet allerdings jeder Arbeitsplatz auf einem 
 gemeinsamer Datenbestand setzt den nächsten Schritt – die Anbindung einer Datenbank – voraus. Das Datenmodell ist bereits so geschnitten, dass es später ohne Änderungen an
 der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
 
-## Logo austauschen
+## Logos
 
-Die Wortmarke in der Kopfzeile stammt aus der Datei `public/mailaender-consult.svg`. Die derzeit
+Die Logos von KaPlan liegen unter `public/logos/`:
+
+| Datei | Verwendung |
+| --- | --- |
+| `Logo_Startseite.png` | Startbildschirm (Bereichsauswahl), oben links |
+| `Logo_Planlaufmanagement.png` | Kopf der Menüleiste im Planlaufmanagement |
+| `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
+| `Logo.png` | Symbol; daraus sind Favicons und App-Symbole unter `public/icons/` erzeugt |
+
+Zum Austauschen genügt es, die Datei unter gleichem Namen zu ersetzen; die Logos werden nur über
+die Breite bzw. Höhe skaliert. Nach einem neuen Symbol müssen die Dateien in `public/icons/`
+(`favicon-32/64`, `icon-192/512`, `icon-maskable-512`, `apple-touch-icon`) neu erzeugt und der
+Cache-Name in `public/sw.js` hochgezählt werden.
+
+Die Wortmarke Mailänder Consult in der Kopfzeile stammt aus der Datei `public/mailaender-consult.svg`. Die derzeit
 hinterlegte Fassung ist mit der Systemschrift nachgezeichnet. Um das Original zu verwenden, genügt
 es, diese Datei durch die Originaldatei zu **ersetzen** – gleicher Name, gleicher Ort; eine
 PNG-Datei funktioniert ebenso (`public/mailaender-consult.png`, dann in
@@ -100,7 +114,7 @@ ohne Netzverbindung – die Daten liegen ohnehin lokal im Browser.
 * **Android (Chrome):** Menü → *App installieren*
 * **Desktop (Chrome/Edge):** Installationssymbol in der Adressleiste
 
-Enthalten sind `manifest.webmanifest`, App-Symbole (192/512 px, maskable und Apple-Touch-Icon)
+Enthalten sind `manifest.webmanifest`, App-Symbole aus `public/logos/Logo.png` (192/512 px, maskable und Apple-Touch-Icon)
 sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
 gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien kommen direkt aus
@@ -364,7 +378,7 @@ Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie d
 Hinweise für die Arbeit am Code – was nach jeder Änderung nachzuziehen ist, wie gebaut und
 veröffentlicht wird und welche Randbedingungen gelten – stehen in [`CLAUDE.md`](CLAUDE.md).
 
-MC Plan besteht aus zwei getrennten Bereichen. Jeder Bereich bringt seinen eigenen Datenbestand,
+KaPlan besteht aus zwei getrennten Bereichen. Jeder Bereich bringt seinen eigenen Datenbestand,
 seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen eigenen Router mit;
 die beiden greifen nicht aufeinander zu. Die Shell wählt anhand der ersten Wegmarke der Adresse
 aus, welcher Bereich geladen wird, und hängt ihn erst beim Betreten ein.
@@ -381,7 +395,7 @@ src/
   shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
     ui.tsx       Karten, Felder, Dialoge, Segmented Controls …
     icons.tsx    Strichsymbole
-    logos.tsx    App-Symbol und Wortmarke
+    logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen
     dates.ts     Fristen- und Datumsrechnung
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit

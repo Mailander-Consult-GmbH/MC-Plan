@@ -1,6 +1,6 @@
-# MC Plan – Hinweise für die Arbeit am Code
+# KaPlan – Hinweise für die Arbeit am Code
 
-MC Plan ist eine React-19-/TypeScript-/Vite-Anwendung **ohne Server**; alle Daten liegen im
+KaPlan ist eine React-19-/TypeScript-/Vite-Anwendung **ohne Server**; alle Daten liegen im
 `localStorage` des Browsers. Installierbar als PWA, veröffentlicht über GitHub Pages. Sie besteht
 aus zwei getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`) und
 **Baubetriebsplanung** (`src/bereiche/baubetrieb/`, noch Platzhalter). Überblick über Aufbau und
