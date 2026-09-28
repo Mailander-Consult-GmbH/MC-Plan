@@ -3,11 +3,13 @@
  *
  * Die Anwendung arbeitet vollständig lokal, daher genügt ein schlanker Cache:
  * - Navigationen: zuerst Netz, bei fehlender Verbindung die zwischengespeicherte Startseite.
- * - Programmdateien (gehashte Dateinamen unter assets/) und Symbole: zuerst Cache.
+ * - Programmdateien (gehashte Dateinamen unter assets/): zuerst Cache.
+ * - Logos, Symbole und Manifest: zuerst Netz, damit ausgetauschte Dateien gleichen
+ *   Namens sofort erscheinen; offline aus dem Cache.
  */
 // Die Fassung hochzählen, sobald sich Symbole oder die Hülle ändern – beim
 // Aktivieren werden alle älteren Caches gelöscht.
-const CACHE = 'mc-plan-v4';
+const CACHE = 'mc-plan-v5';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/favicon-64.png'];
 
 self.addEventListener('install', (event) => {
@@ -58,17 +60,37 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Statische Dateien: aus dem Cache, sonst laden und ablegen
+  // Programmdateien unter assets/ tragen einen Prüfwert im Namen und ändern
+  // sich nie – sie kommen zuerst aus dem Cache.
+  if (url.pathname.includes('/assets/')) {
+    event.respondWith(
+      caches.match(request).then((treffer) => {
+        if (treffer) return treffer;
+        return fetch(request).then((antwort) => {
+          ablegen(request, antwort);
+          return antwort;
+        });
+      }),
+    );
+    return;
+  }
+
+  // Übrige Dateien (Logos, Symbole, Manifest) behalten ihren Namen, wenn sie
+  // ausgetauscht werden: zuerst aus dem Netz, offline aus dem Cache.
   event.respondWith(
-    caches.match(request).then((treffer) => {
-      if (treffer) return treffer;
-      return fetch(request).then((antwort) => {
-        if (antwort.ok && antwort.type === 'basic') {
-          const kopie = antwort.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, kopie));
-        }
+    fetch(request)
+      .then((antwort) => {
+        ablegen(request, antwort);
         return antwort;
-      });
-    }),
+      })
+      .catch(() => caches.match(request).then((treffer) => treffer ?? Response.error())),
   );
 });
+
+/** Legt eine gültige Antwort im Cache ab. */
+function ablegen(request, antwort) {
+  if (antwort.ok && antwort.type === 'basic') {
+    const kopie = antwort.clone();
+    caches.open(CACHE).then((cache) => cache.put(request, kopie));
+  }
+}
