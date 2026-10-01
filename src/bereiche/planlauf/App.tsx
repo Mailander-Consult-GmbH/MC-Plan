@@ -237,7 +237,7 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
         <Field
           label="Name"
           full
-          hint={`In markierten Projekten sind Sie automatisch unter „Rollen & Funktionen“ als ${EIGENE_ROLLE} geführt.`}
+          hint={`In markierten Projekten füllen Sie automatisch die Funktion ${EIGENE_ROLLE} aus – sie wird deshalb unter „Funktion“ nicht eigens geführt.`}
         >
           <TextInput value={name} onChange={setName} placeholder="Vor- und Nachname" />
         </Field>

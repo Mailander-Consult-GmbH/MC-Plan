@@ -3,10 +3,12 @@
  *
  * Je Gewerk gibt es eine eigene Seite; „Übergreifend“ führt die Funktionen,
  * die für alle Gewerke gelten und nur einmal besetzt werden. Neue Projekte
- * übernehmen diese Funktionen; besetzt werden sie im Projekt unter „Rollen & Funktionen“.
+ * übernehmen diese Funktionen; besetzt werden sie im Projekt unter „Funktion“.
+ * Die eigene Funktion Planlaufmanagement ist fest vorgegeben und erscheint
+ * hier nicht – sie füllt stets die angemeldete Person aus.
  */
 import { useState } from 'react';
-import { UEBERGREIFEND, kuerzelAus, type StandardRolle } from '../domain/types';
+import { EIGENE_ROLLE, UEBERGREIFEND, istEigeneFunktion, kuerzelAus, type StandardRolle } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import {
@@ -42,7 +44,9 @@ export function Funktionen() {
   ].sort((a, b) => a.localeCompare(b, 'de'));
 
   const uebergreifend = seite === UEBERGREIFEND;
-  const funktionen = data.standardRollen.filter((r) => (uebergreifend ? r.gewerk === null : r.gewerk === seite));
+  const funktionen = data.standardRollen
+    .filter((r) => !istEigeneFunktion(r))
+    .filter((r) => (uebergreifend ? r.gewerk === null : r.gewerk === seite));
 
   // Funktionen, die es in anderen Gewerken schon gibt, hier aber noch nicht
   const ergaenzbar = uebergreifend
@@ -269,6 +273,10 @@ function FunktionsDialog({
   const speichern = () => {
     if (!form.name.trim()) {
       toast('Bitte eine Bezeichnung angeben.');
+      return;
+    }
+    if (istEigeneFunktion({ name: form.name, gewerk: form.gewerk })) {
+      toast(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person.`);
       return;
     }
     const werte = {

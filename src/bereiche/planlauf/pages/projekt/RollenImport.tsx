@@ -7,7 +7,7 @@
  * besetzt anschließend die Funktion.
  */
 import { useRef, useState } from 'react';
-import { UEBERGREIFEND, kuerzelAus, type Contact, type ID, type Project, type Zuordnung } from '../../domain/types';
+import { EIGENE_ROLLE, UEBERGREIFEND, istEigeneFunktion, kuerzelAus, type Contact, type ID, type Project, type Zuordnung } from '../../domain/types';
 import { spaltenZuordnen, tabelleLesen } from '../../../../shared/xlsxLesen';
 import {
   ROLLEN_KOPFZEILE as KOPFZEILE,
@@ -92,8 +92,15 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       const ergebnis: Zeile[] = zeilen.map((zeile) => {
         const gewerkRoh = wert(zeile, 'gewerk');
         const gewerk = !gewerkRoh || gleich(gewerkRoh, UEBERGREIFEND) ? null : gewerkRoh;
-        const funktion = wert(zeile, 'funktion');
         const hinweise: string[] = [];
+        // Das Planlaufmanagement füllt stets die angemeldete Person aus; die
+        // Person der Zeile wird deshalb ohne diese Funktion übernommen.
+        const funktionRoh = wert(zeile, 'funktion');
+        const eigeneFunktion = Boolean(funktionRoh) && istEigeneFunktion({ name: funktionRoh, gewerk });
+        const funktion = eigeneFunktion ? '' : funktionRoh;
+        if (eigeneFunktion) {
+          hinweise.push(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person – die Person wird ohne Funktion hinterlegt`);
+        }
 
         let neuesGewerk = false;
         if (gewerk && !data.gewerke.some((g) => gleich(g, gewerk))) {
@@ -112,7 +119,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
               hinweise.push(`Funktion „${funktion}${gewerk ? ` ${gewerk}` : ''}“ wird angelegt`);
             }
           }
-        } else {
+        } else if (!eigeneFunktion) {
           hinweise.push('ohne Funktion – die Person wird nur im Projekt hinterlegt');
         }
 
@@ -248,7 +255,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
 
   return (
     <Modal
-      titel="Rollen & Funktionen aus Excel einlesen"
+      titel="Funktionen aus Excel einlesen"
       sub="Je Zeile eine Funktion mit ihrer Besetzung; .xlsx oder .csv"
       wide
       onClose={onClose}

@@ -81,7 +81,7 @@ export function planVorlageLaden(): void {
 }
 
 /* ------------------------------------------------------------------ */
-/* Rollen & Funktionen samt Besetzung                                  */
+/* Funktion samt Besetzung (Reiter „Funktion“)                        */
 /* ------------------------------------------------------------------ */
 
 export const ROLLEN_KOPFZEILE = [
@@ -127,7 +127,7 @@ export const ROLLEN_BEISPIELE: string[][] = [
 
 export const ROLLEN_HINWEISE: [string, string][] = [
   ['Gewerk', 'Gewerk der Funktion; „Übergreifend“ für gewerkübergreifende Funktionen. Unbekannte Gewerke werden angelegt'],
-  ['Funktion', 'Bezeichnung der Funktion, z.B. Fachplaner – ist sie im Projekt nicht vorhanden, wird sie angelegt'],
+  ['Funktion', 'Bezeichnung der Funktion, z.B. Fachplaner – ist sie im Projekt nicht vorhanden, wird sie angelegt. Planlaufmanagement übernimmt stets die angemeldete Person und wird nicht besetzt'],
   ['Kürzel', 'nur für neu angelegte Funktionen; leer = aus der Bezeichnung gebildet'],
   ['Name', 'Nachname der Person – einzige Pflichtangabe der Besetzung'],
   ['Straße · Nr. · PLZ · Ort', 'werden zur Anschrift zusammengefasst'],
@@ -135,7 +135,7 @@ export const ROLLEN_HINWEISE: [string, string][] = [
 
 export function rollenVorlageLaden(): void {
   dateiLaden(
-    xlsxErzeugen([{ name: 'Rollen & Funktionen', zeilen: [ROLLEN_KOPFZEILE, ...ROLLEN_BEISPIELE] }]),
-    'Vorlage-Rollen-und-Funktionen.xlsx',
+    xlsxErzeugen([{ name: 'Funktion', zeilen: [ROLLEN_KOPFZEILE, ...ROLLEN_BEISPIELE] }]),
+    'Vorlage-Funktion.xlsx',
   );
 }

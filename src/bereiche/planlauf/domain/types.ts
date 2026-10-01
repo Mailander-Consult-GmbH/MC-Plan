@@ -54,6 +54,16 @@ export const STANDARD_BEARBEITER = 'Max Mustermann';
 /** Die eigene Rolle in allen Projekten (Kürzel: PLM). */
 export const EIGENE_ROLLE = 'Planlaufmanagement';
 
+/**
+ * Die eigene Funktion: übergreifend und mit der Bezeichnung des
+ * Planlaufmanagements. Sie füllt stets die angemeldete Person mit ihrem
+ * Profil aus – sie wird daher nicht unter „Funktion“ geführt und nicht
+ * bearbeitet.
+ */
+export function istEigeneFunktion(funktion: { name: string; gewerk: string | null }): boolean {
+  return funktion.gewerk === null && funktion.name.trim().toLowerCase() === EIGENE_ROLLE.toLowerCase();
+}
+
 /** Erster Schritt der mitgelieferten Workflows: der Plan geht beim PLM ein. */
 export const SCHRITT_EINGANG = 'Eingang PLM';
 
@@ -111,7 +121,7 @@ export const EMAIL_ANLASS_LABEL: Record<EmailAnlass, string> = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Rollen & Funktionen                                                 */
+/* Funktionen                                                          */
 /* ------------------------------------------------------------------ */
 
 /**

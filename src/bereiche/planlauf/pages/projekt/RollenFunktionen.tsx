@@ -1,15 +1,20 @@
 /**
- * Rollen & Funktionen eines Projekts – nach Gewerken gegliedert.
+ * Reiter „Funktion“ eines Projekts – nach Gewerken gegliedert.
  *
  * Im Vordergrund steht die Funktion, nicht die Person: Je Gewerk führt das
  * Projekt seine Funktionen, und zu jeder Funktion wird die Person mit ihren
  * Adressdaten hinterlegt. Die Gliederung entspricht dem projektübergreifenden
  * Reiter „Funktionen“.
+ *
+ * Die eigene Funktion Planlaufmanagement erscheint hier nicht: Sie füllt stets
+ * die angemeldete Person mit ihrem Profil aus (siehe istEigeneFunktion).
  */
 import { useState } from 'react';
 import {
+  EIGENE_ROLLE,
   UEBERGREIFEND,
   funktionsName,
+  istEigeneFunktion,
   kuerzelAus,
   type Contact,
   type ID,
@@ -39,7 +44,7 @@ import { Icon } from '../../../../shared/icons';
 const FARBEN = ['#24456e', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
 
 export function RollenFunktionen({ project }: { project: Project }) {
-  const { data, deleteRole } = useStore();
+  const { data, deleteRole, deleteContact } = useStore();
   const toast = useToast();
   const [seite, setSeite] = useState<string>(UEBERGREIFEND);
   const [suche, setSuche] = useState('');
@@ -49,10 +54,13 @@ export function RollenFunktionen({ project }: { project: Project }) {
   const [gewerkLoeschen, setGewerkLoeschen] = useState<string | null>(null);
   const [importOffen, setImportOffen] = useState(false);
   const [loeschen, setLoeschen] = useState<Role | null>(null);
+  const [personLoeschen, setPersonLoeschen] = useState<Contact | null>(null);
   const [person, setPerson] = useState<Contact | null>(null);
   const [neuePerson, setNeuePerson] = useState(false);
 
-  const rollen = data.roles.filter((r) => r.projectId === project.id);
+  // Die eigene Funktion füllt immer die angemeldete Person aus – sie wird hier
+  // weder angezeigt noch zur Auswahl angeboten.
+  const rollen = data.roles.filter((r) => r.projectId === project.id && !istEigeneFunktion(r));
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
 
   /** Gewerke aus den Stammdaten, ergänzt um die im Projekt vorkommenden. */
@@ -75,8 +83,11 @@ export function RollenFunktionen({ project }: { project: Project }) {
     .sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
   const besetzt = sichtbar.filter((r) => besetztVon(r)).length;
-  // Personen, die (noch) keine Funktion ausfüllen – etwa aus einem Import
-  const ohneFunktion = kontakte.filter((c) => c.zuordnungen.length === 0);
+  // Personen, die (noch) keine der hier geführten Funktionen ausfüllen – etwa
+  // aus einem Import. Die angemeldete Person selbst gehört nicht dazu.
+  const ohneFunktion = kontakte.filter(
+    (c) => !c.eigen && !c.zuordnungen.some((z) => rollen.some((r) => r.id === z.roleId)),
+  );
 
   return (
     <div className="stack">
@@ -114,7 +125,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
           titel={uebergreifend ? 'Übergreifende Funktionen' : `Funktionen ${seite}`}
           sub={`${sichtbar.length} Funktionen · ${besetzt} besetzt · ${
             uebergreifend
-              ? 'gelten für alle Gewerke und werden einmal besetzt'
+              ? 'gelten für alle Gewerke und werden einmal besetzt; das Planlaufmanagement übernimmt stets die angemeldete Person'
               : 'je Funktion genau eine Person'
           }`}
         />
@@ -250,8 +261,20 @@ export function RollenFunktionen({ project }: { project: Project }) {
                     <td className="small muted col-optional">{c.firma || '–'}</td>
                     <td className="small">{c.email || '–'}</td>
                     <td className="actions">
-                      <button type="button" className="btn-icon" aria-label="Person bearbeiten">
+                      <button type="button" className="btn-icon" aria-label="Person bearbeiten" title="Person bearbeiten">
                         <Icon name="bearbeiten" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        aria-label="Person löschen"
+                        title="Person löschen"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPersonLoeschen(c);
+                        }}
+                      >
+                        <Icon name="loeschen" size={15} />
                       </button>
                     </td>
                   </tr>
@@ -340,6 +363,18 @@ export function RollenFunktionen({ project }: { project: Project }) {
             toast('Funktion gelöscht.');
           }}
           onClose={() => setLoeschen(null)}
+        />
+      ) : null}
+
+      {personLoeschen ? (
+        <ConfirmDialog
+          titel="Person löschen?"
+          text={`${personLoeschen.vorname} ${personLoeschen.nachname} wird aus diesem Projekt entfernt. Prozessschritte, denen die Person von Hand zugewiesen ist, sind danach unbesetzt.`}
+          onConfirm={() => {
+            deleteContact(personLoeschen.id);
+            toast('Person gelöscht.');
+          }}
+          onClose={() => setPersonLoeschen(null)}
         />
       ) : null}
     </div>
@@ -620,6 +655,10 @@ function FunktionsDialog({
   const speichern = () => {
     if (!form.name.trim()) {
       toast('Bitte eine Bezeichnung angeben.');
+      return;
+    }
+    if (istEigeneFunktion({ name: form.name, gewerk: form.gewerk })) {
+      toast(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person.`);
       return;
     }
     const werte = {

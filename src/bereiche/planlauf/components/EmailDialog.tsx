@@ -126,7 +126,7 @@ export function EmailDialog({
       <div className="stack" style={{ gap: 14 }}>
         {!kontakt ? (
           <Callout ton="warn" icon="!">
-            Für den Schritt ist keine Person aus „Rollen & Funktionen“ hinterlegt – bitte Empfänger von Hand
+            Für den Schritt ist keine Person unter „Funktion“ hinterlegt – bitte Empfänger von Hand
             eintragen.
           </Callout>
         ) : null}

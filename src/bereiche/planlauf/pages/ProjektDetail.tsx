@@ -12,7 +12,7 @@ const TABS: { id: ProjektTab; label: string }[] = [
   { id: 'uebersicht', label: 'Übersicht' },
   { id: 'plaene', label: 'Planliste' },
   { id: 'pakete', label: 'Planpakete' },
-  { id: 'rollen', label: 'Rollen & Funktionen' },
+  { id: 'rollen', label: 'Funktion' },
   { id: 'ketten', label: 'Workflows' },
   { id: 'einstellungen', label: 'Einstellungen' },
 ];

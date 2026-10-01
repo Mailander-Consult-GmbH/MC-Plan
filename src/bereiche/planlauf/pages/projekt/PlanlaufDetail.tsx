@@ -980,7 +980,7 @@ function SchrittDialog({
             form.contactManuell
               ? 'Von Hand gewählt – eine andere Besetzung der Funktion wirkt hier nicht.'
               : automatisch
-                ? `Laut Rollen & Funktionen: ${automatisch}`
+                ? `Laut Reiter „Funktion“: ${automatisch}`
                 : 'Diese Funktion ist im Projekt nicht besetzt – die Person wird übernommen, sobald sie eingetragen ist.'
           }
         >

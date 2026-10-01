@@ -57,7 +57,7 @@ export function Vorlagen() {
         <>
           <p className="muted small" style={{ maxWidth: 720 }}>
             Die Vorlagen enthalten die erwarteten Spalten und einige Beispielzeilen. Eingelesen werden sie im
-            Projekt unter <strong>Planliste</strong> bzw. <strong>Rollen &amp; Funktionen</strong> über
+            Projekt unter <strong>Planliste</strong> bzw. <strong>Funktion</strong> über
             <em> Excel-Import</em>.
           </p>
 
@@ -71,7 +71,7 @@ export function Vorlagen() {
           />
 
           <ListenKarte
-            titel="Rollen & Funktionen"
+            titel="Funktion"
             sub="Funktionen eines Projekts samt Besetzung"
             spalten={ROLLEN_KOPFZEILE}
             hinweise={ROLLEN_HINWEISE}

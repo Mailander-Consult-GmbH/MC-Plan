@@ -484,7 +484,7 @@ export function templateDauer(template: ProcessTemplate): number {
 /**
  * Gewerke, die in einem Projekt zur Auswahl stehen: die gepflegten Stammdaten
  * und zusätzlich jedes Gewerk, für das das Projekt eine Funktion führt. So
- * passen Planliste, Planläufe und „Rollen & Funktionen“ immer zusammen.
+ * passen Planliste, Planläufe und der Reiter „Funktion“ immer zusammen.
  */
 export function gewerkeFuerProjekt(
   data: Pick<AppData, 'gewerke' | 'roles'>,
