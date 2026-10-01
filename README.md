@@ -141,8 +141,11 @@ Fachspezialist (FS), Bauvorlageberechtiger (BVB), Bau AN, Bauüberwachung (BÜW)
 Prüfer (PSV), Prüfstatiker, Vermessungs-, Erdungs-, Schweißtechnischer, Korrosionsschutz-,
 Gleisgeometrie- und Geotechnischer Prüfer.
 
-Funktionen auf der Seite **Übergreifend** (Planlaufmanagement, Projektleitung) werden im Projekt
-einmal besetzt; alle übrigen gehören zu einem oder mehreren Gewerken und werden je Gewerk mit einer
+Das **Planlaufmanagement** füllt stets die angemeldete Person mit ihrem Profil (*Angemeldet als*)
+aus. Es steht deshalb weder hier noch im Projekt unter **Funktion** zur Bearbeitung, bleibt aber in
+den Workflows als Verantwortlicher wählbar.
+
+Übergreifende Funktionen (z.B. Projektleitung) werden im Projekt einmal besetzt; alle übrigen gehören zu einem oder mehreren Gewerken und werden je Gewerk mit einer
 eigenen Person belegt – es gibt also z.B. einen Fachplaner je Gewerk. Beim Start eines Planlaufs
 setzt die Anwendung die Verantwortlichen **nach dem Gewerk des Plans** ein: Zwei Pläne nach
 demselben Workflow, aber mit unterschiedlichem Gewerk, erhalten unterschiedliche Verantwortliche.
@@ -150,7 +153,7 @@ demselben Workflow, aber mit unterschiedlichem Gewerk, erhalten unterschiedliche
 Gewerke zur Auswahl: EEA, KIB, LST, OLA, OSE, TK, VA – weitere lassen sich über das **+** an den
 Gewerk-Reitern anlegen; sie gelten dann überall.
 
-### Rollen & Funktionen (im Projekt)
+### Funktion (im Projekt)
 Im Vordergrund steht die **Funktion, nicht die Person**: Die Seite ist – wie der projektübergreifende
 Reiter *Funktionen* – nach **Gewerken** gegliedert (je Gewerk eine Seite, dazu „Übergreifend“). Je
 Funktion steht in der Zeile, wer sie ausfüllt; ein Klick öffnet die Besetzung, in der eine im Projekt
@@ -167,7 +170,8 @@ Reiter *Funktionen* im Hauptmenü, und jedes Gewerk des Projekts steht in **Plan
 eintragen** oder mit *Person hinzufügen* die **Person erfassen und die Funktion gleich dabei
 zuweisen** – die Zuweisung kann offen bleiben und später nachgeholt werden. Personen ohne Funktion –
 aus einem Import, nach einem Wechsel oder bewusst ohne Zuordnung – stehen in einer eigenen Liste
-darunter; ein Klick weist ihnen eine Funktion zu.
+darunter; ein Klick weist ihnen eine Funktion zu, das Papierkorb-Symbol rechts löscht sie aus dem
+Projekt. Das Planlaufmanagement erscheint auf dieser Seite nicht – es ist immer die angemeldete Person.
 
 **Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · Telefon ·
 Email · Straße · Nr. · PLZ · Ort · Notiz*. Gewerke und Funktionen, die es noch nicht gibt, werden
@@ -254,7 +258,7 @@ Die **Suche** über Nummer, Titel und Schritt steht oben in der Kartenzeile nebe
 daneben erscheint bei gesetzten Filtern *Filter zurücksetzen*.
 
 ### Zuständigkeiten
-Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht unter **Rollen & Funktionen** des Projekts.
+Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht unter **Funktion** des Projekts (das Planlaufmanagement übernimmt stets die angemeldete Person).
 Gemeint ist stets die Funktion des Gewerks des Plans – ersatzweise die übergreifende gleichen
 Namens. Darum bietet die Auswahl beim Anpassen eines Schritts nur die Funktionen dieses Gewerks und
 die übergreifenden an, jede einmal. Die
@@ -361,8 +365,8 @@ Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in de
 Seitenleiste (mit vorangestellter Projektnummer); ohne Markierung werden alle angezeigt. Die
 Übersicht zeigt Kennzahlen, die eigenen **To-Dos** (laufende Schritte des Planlaufmanagements) und
 die laufenden Planläufe nach Projekt gegliedert. In einem markierten Projekt ist die angemeldete
-Person automatisch unter **Rollen & Funktionen** als **Planlaufmanagement** geführt und damit für dessen Schritte
-zuständig.
+Person automatisch das **Planlaufmanagement** und ist damit für dessen Schritte zuständig; unter
+**Funktion** wird es deshalb nicht eigens geführt.
 
 ### Angemeldet als
 Unten links in der Seitenleiste stehen der eigene Name (bis zur Anmeldung je Person „Max
