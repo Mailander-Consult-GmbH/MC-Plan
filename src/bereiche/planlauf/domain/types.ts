@@ -223,7 +223,7 @@ export const DOCUMENT_KIND_LABEL: Record<DocumentKind, string> = {
 export const NUMMER_LABEL: Record<DocumentKind, string> = {
   plan: 'Plancodierung',
   paket: 'Name Planpaket',
-  verzeichnis: 'Name PlanVZ',
+  verzeichnis: 'Codierung',
 };
 
 /** Bezeichnung des Indexfelds je Art. */

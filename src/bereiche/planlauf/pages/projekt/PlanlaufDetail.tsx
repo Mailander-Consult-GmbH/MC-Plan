@@ -180,7 +180,7 @@ export function PlanlaufDetail({
     <div className="stack">
       <div className="row-between wrap">
         <button type="button" className="btn btn-ghost" onClick={onZurueck}>
-          <Icon name="zurueck" size={14} /> Übersicht
+          <Icon name="zurueck" size={14} /> Planläufe
         </button>
         <div className="row">
           {run.status === 'laufend' ? (
@@ -778,12 +778,12 @@ function AbbruchDialog({
           </Field>
         ) : (
           <Callout icon="i">
-            Der Lauf bleibt ausgegraut in der Projektansicht mit dem Grund sichtbar. In den übergeordneten
-            Ansichten (Übersicht, Fristen) erscheint er nicht mehr.
+            Der Lauf bleibt im Reiter „Planläufe“ ausgegraut sichtbar, sein Grund steht hier am Planlauf. In den
+            übergeordneten Ansichten (Übersicht, Fristen) erscheint er nicht mehr.
           </Callout>
         )}
 
-        <Field label="Grund des Abbruchs" hint="wird in der Projektübersicht und im Export angezeigt">
+        <Field label="Grund des Abbruchs" hint="steht am Planlauf und in der Langfassung des Exports">
           <TextArea
             value={grund}
             onChange={setGrund}

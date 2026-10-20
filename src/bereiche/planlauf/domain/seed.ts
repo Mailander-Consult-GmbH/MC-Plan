@@ -352,7 +352,7 @@ export function seedData(): AppData {
       // Einzelpläne mit eigenem Planlauf
       { id: 'doc-2', projectId: 'prj-1', kind: 'plan', parentId: null, paketId: 'doc-p1', nummer: 'NK-LST-SP-102', titel: 'Signallageplan Bereich Nord', index: 'B', gewerk: 'LST', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -12), datum: null, bemerkung: '' },
       { id: 'doc-3', projectId: 'prj-1', kind: 'plan', parentId: null, paketId: null, nummer: 'NK-OLA-FL-210', titel: 'Fahrleitungsplan km 12,4 – 13,8', index: '', gewerk: 'OLA', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, 14), datum: null, bemerkung: '' },
-      { id: 'doc-4', projectId: 'prj-1', kind: 'verzeichnis', parentId: null, paketId: null, nummer: 'NK-VA-PV-001', titel: 'Planverzeichnis Verkehrsanlagen', index: '02', gewerk: 'VA', planungsphase: 'Entwurfsplanung', eingangSoll: addDays(heute, 30), datum: null, bemerkung: 'noch kein Planlauf gestartet' },
+      { id: 'doc-4', projectId: 'prj-1', kind: 'verzeichnis', parentId: null, paketId: null, nummer: 'NK-VA-PV-001', titel: 'Planverzeichnis Verkehrsanlagen', index: '02', gewerk: 'VA', planungsphase: 'Entwurfsplanung', eingangSoll: addDays(heute, 30), datum: null, bemerkung: 'Eingang angekündigt' },
     ],
     templates: STANDARD_TEMPLATES,
     runs: [],
@@ -444,6 +444,8 @@ export function seedData(): AppData {
     laufAus(STANDARD_TEMPLATES[1], 'run-1', 'doc-1', 'KIB', addDays(heute, -45), 5),
     laufAus(STANDARD_TEMPLATES[2], 'run-2', 'doc-2', 'LST', addDays(heute, -18), 3),
     laufAus(STANDARD_TEMPLATES[0], 'run-3', 'doc-3', 'OLA', addDays(heute, -4), 1),
+    // Planläufe starten immer mit dem Eintrag – dieser wartet noch auf den Eingang
+    laufAus(STANDARD_TEMPLATES[0], 'run-4', 'doc-4', 'VA', heute, 0),
   ];
 
   data.runs = data.runs.map((run) => {

@@ -1,13 +1,15 @@
-/** Projektübersicht: Kennzahlen, Fristenlage und letzte Aktivitäten. */
+/** Reiter „Planläufe“ eines Projekts: Kennzahlen und die Liste der Planläufe. */
 import { useState } from 'react';
 import {
   aktuellerSchritt,
   ampelFuerSchritt,
   eigenstaendigeLaeufe,
-  laufUeberfuehrt,
   fortschritt,
   offeneFristen,
 } from '../../domain/engine';
+import { massgeblicheLaeufe } from '../../domain/uebersicht';
+import { ExportDialog } from './ExportDialog';
+import { Icon } from '../../../../shared/icons';
 import { istEingangPLM, type Contact, type DocumentKind, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
@@ -42,6 +44,7 @@ export function Uebersicht({
   const [gewerkFilter, setGewerkFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [personFilter, setPersonFilter] = useState('');
+  const [exportOffen, setExportOffen] = useState(false);
   const dokumente = data.documents.filter((d) => d.projectId === project.id);
   // Ohne die Läufe von Plänen, die in einem Planverzeichnis mitlaufen
   const laeufe = eigenstaendigeLaeufe(data.documents, data.runs).filter(
@@ -50,17 +53,9 @@ export function Uebersicht({
   const aktiv = laeufe.filter((r) => r.status === 'laufend');
   const abgeschlossen = laeufe.filter((r) => r.status === 'abgeschlossen');
 
-  // Je Eintrag der maßgebliche Lauf – der laufende, sonst der abgeschlossene.
-  // Abgebrochene Läufe kommen vollständig dazu: auch der Vorgänger eines neuen
-  // Index bleibt so sichtbar und steht in der Liste gesammelt am Ende.
-  const rang = (r: (typeof laeufe)[number]) => (r.status === 'laufend' ? 0 : 1);
-  // Aufgeteilte bzw. wieder gebündelte Läufe sind kein Abbruch und entfallen hier
-  const verworfen = laeufe.filter((r) => r.status === 'abgebrochen' && !laufUeberfuehrt(r));
-  const aktuell = laeufe
-    .filter((r) => r.status !== 'abgebrochen')
-    .sort((a, b) => rang(a) - rang(b))
-    .filter((r, i, alle) => alle.findIndex((x) => x.documentId === r.documentId) === i);
-  const massgeblich = [...aktuell, ...verworfen];
+  // Je Eintrag der maßgebliche Lauf – der laufende, sonst der abgeschlossene;
+  // abgebrochene Läufe stehen gesammelt am Ende (dieselbe Auswahl wie im Export).
+  const massgeblich = massgeblicheLaeufe(data, project.id);
   /**
    * Status eines Laufs als Filterwert – laufende nach ihrer Ampel, solange der
    * Eingang beim Planlaufmanagement aussteht dagegen „angekündigt“.
@@ -127,7 +122,7 @@ export function Uebersicht({
     <div className="stack">
       <Card>
         <div className="kennzahlen">
-          <Stat wert={anzahl('paket')} label="Planpakete" onClick={() => gotoTab('pakete')} />
+          <Stat wert={anzahl('paket')} label="Planpakete" onClick={() => gotoTab('plaene')} />
           <Stat wert={anzahl('verzeichnis')} label="Planverzeichnisse" onClick={() => gotoTab('plaene')} />
           <Stat wert={anzahl('plan')} label="Pläne" onClick={() => gotoTab('plaene')} />
           <Stat wert={faellig} label="Fällige Schritte" ton={faellig ? 'orange' : ''} />
@@ -168,6 +163,9 @@ export function Uebersicht({
                   Filter zurücksetzen
                 </button>
               ) : null}
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setExportOffen(true)}>
+                <Icon name="export" size={13} /> Export
+              </button>
             </span>
           }
         />
@@ -211,6 +209,15 @@ export function Uebersicht({
           />
         )}
       </Card>
+
+      {exportOffen ? (
+        <ExportDialog
+          project={project}
+          // Bei gesetztem Filter sind die Einträge vorgewählt, die die Liste zeigt
+          vorauswahl={filterAktiv ? new Set(gefiltert.map((r) => r.id)) : undefined}
+          onClose={() => setExportOffen(false)}
+        />
+      ) : null}
     </div>
   );
 }

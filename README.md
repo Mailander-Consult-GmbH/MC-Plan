@@ -164,8 +164,8 @@ haben.
 Über das **+** an den Gewerk-Reitern entsteht ein weiteres Gewerk, über *Gewerk löschen* am Ende der
 Seite verschwindet das gerade geöffnete wieder – der Dialog nennt vorher, welche Funktionen und Besetzungen damit
 entfallen. Gewerke gelten projektübergreifend: angelegt oder gelöscht wird überall, also auch im
-Reiter *Funktionen* im Hauptmenü, und jedes Gewerk des Projekts steht in **Planliste** und
-**Planpaketen** zur Auswahl – darüber findet ein Planlauf die Verantwortlichen seines Gewerks.
+Reiter *Funktionen* im Hauptmenü, und jedes Gewerk des Projekts steht in der **Planliste** für Pläne,
+Planverzeichnisse und Planpakete zur Auswahl – darüber findet ein Planlauf die Verantwortlichen seines Gewerks.
 Über *Neue Funktion* entsteht eine weitere Funktion im gewählten Gewerk. Beide Wege führen zum Ziel: **Funktion anlegen und dort die Person
 eintragen** oder mit *Person hinzufügen* die **Person erfassen und die Funktion gleich dabei
 zuweisen** – die Zuweisung kann offen bleiben und später nachgeholt werden. Personen ohne Funktion –
@@ -178,29 +178,45 @@ Email · Straße · Nr. · PLZ · Ort · Notiz*. Gewerke und Funktionen, die es 
 beim Import angelegt; „Übergreifend“ steht für Funktionen ohne Gewerkbezug. Die Vorschau nennt je
 Zeile, was angelegt wird und wen eine Besetzung ersetzt.
 
-### Pläne & Planläufe
-Planbestand aus Plänen, Planpaketen und Planverzeichnissen. Je Eintrag
+### Planliste
+Planbestand aus Plänen, Planpaketen und Planverzeichnissen im Reiter **Planliste**. Je Eintrag
 werden Plancodierung, Titel, Index (standardmäßig leer), Gewerk (EEA, KIB, LST, OLA, OSE, TK, VA oder
 freie Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
 der Soll-Termin für den Eingang und eine Bemerkung geführt.
 
-Pläne lassen sich einem **Planpaket oder Planverzeichnis unterordnen**. Planpakete sind ein reines
-Ordnungsmerkmal ohne eigenen Planlauf. Wie die Pläne eines **Planverzeichnisses** laufen, legt das
-Verzeichnis fest (siehe nächster Abschnitt). In der Planliste stehen die Pläne eingerückt unter
-ihrem Verzeichnis und lassen sich am Pfeil zwischen Nummer und Symbol zuklappen.
+Pläne lassen sich einem **Planpaket oder Planverzeichnis unterordnen**. Wie die Pläne eines
+**Planverzeichnisses** laufen, legt das Verzeichnis fest (siehe nächster Abschnitt). In der
+Planliste stehen die Pläne eingerückt unter ihrem Verzeichnis und lassen sich am Pfeil zwischen
+Nummer und Symbol zuklappen.
 
-**Zu jedem Eintrag mit eigenem Lauf gehört genau ein laufender Planlauf.** Er entsteht zusammen mit dem Eintrag:
-Im selben Dialog werden der Workflow gewählt und seine Schritte für diesen Lauf angepasst. Die Liste
-zeigt Stammdaten und Ablauf nebeneinander – aktueller Schritt, Verantwortlicher, Frist und
-Fortschritt – und lässt sich über die Spaltenüberschriften sortieren. Ein Klick auf die Zeile öffnet
-den Planlauf.
+**Planpakete** sind ein reines Ordnungsmerkmal ohne eigenen Planlauf – und gliedern die Planliste:
+Je Paket steht eine Kopfzeile mit der Zahl seiner Einträge, darunter seine Planverzeichnisse und
+Pläne; Einträge ohne Paket folgen – sobald Pakete angezeigt werden – unter **Ohne Planpaket**. Der
+Pfeil an der Kopfzeile klappt das Paket zu, ein Klick auf die Zeile öffnet es zum Bearbeiten.
+Angelegt werden Pakete über **Neues Planpaket** oder direkt beim Anlegen eines Eintrags. Im Dialog
+des Pakets lassen sich unter **Inhalt** Planverzeichnisse und Pläne ohne Verzeichnis hinzufügen und
+wieder entfernen – das gilt sofort; Pläne eines Verzeichnisses folgen dem Paket ihres Verzeichnisses.
+Wird ein Paket gelöscht, bleiben seine Einträge mit ihren Planläufen erhalten. Die Suche erfasst
+auch Name, Kurzzeichen und Gewerk des Pakets. Frühere Adressen der eigenen Seite *Planpakete*
+führen auf die Planliste.
+
+**Zu jedem Eintrag mit eigenem Lauf gehört genau ein laufender Planlauf – er startet immer
+automatisch.** Er entsteht zusammen mit dem Eintrag: Im selben Dialog werden der Workflow gewählt und
+seine Schritte für diesen Lauf angepasst. Ein Planverzeichnis, das beim Anlegen eines Plans über
+*+ Neues Planverzeichnis anlegen …* entsteht, fragt Codierung und Titel ab; sein Planlauf startet
+mit dem Speichern des Plans (**Anlegen und Planlauf starten**) nach dem Workflow im Dialog, und der
+Plan läuft darin mit. Wird der Plan nicht gespeichert oder ein anderes Verzeichnis gewählt, entfällt
+das angelegte Verzeichnis wieder. Ebenso startet ein vorhandenes gebündeltes Verzeichnis, das noch
+nie einen Planlauf hatte, ihn mit dem ersten Plan, der darin gespeichert wird. Die Planliste führt die Stammdaten – Art, Bezeichnung, Gewerk, Planverzeichnis und Eingang Soll – und
+lässt sich über die Spaltenüberschriften sortieren; den Stand der Abläufe zeigt der Reiter
+**Planläufe**. Ein Klick auf die Zeile öffnet den Eintrag.
 
 Die Feldbezeichnungen richten sich nach der Art: **Plancodierung** beim Plan, **Name Planpaket**
-bzw. **Name PlanVZ** beim Paket und Verzeichnis, wo statt *Index* die **Ausgabe** geführt wird.
+beim Paket und **Codierung** beim Verzeichnis, wo statt *Index* die **Ausgabe** geführt wird.
 
 **Farbige Bezeichnungen:** Steht in einem Planlauf noch der Schritt **Eingang PLM** aus, ist der
 Plan angekündigt, aber noch nicht eingegangen – seine Bezeichnung steht in Planliste und
-Projektübersicht **gelb**, in der Übersicht trägt er den Status **Angekündigt** (nach ihm lässt sich
+Planlaufliste **gelb**, in der Planlaufliste trägt er den Status **Angekündigt** (nach ihm lässt sich
 auch filtern und sortieren), in der Planliste das Kennzeichen *Angekündigt*. Ist der Eingang
 überfällig, lautet der Status **Überfällig**; die Bezeichnung bleibt gelb. Abgeschlossene
 Planläufe stehen in **Grün**, abgebrochene grau.
@@ -231,22 +247,36 @@ gelten nicht als Abbruch. Die Nachträge stehen im Dialog des Verzeichnisses bzw
 Planliste, in der Karte **Pläne dieses Verzeichnisses** des Planlaufs und in der Planlaufliste
 des Projekts.
 
-**Excel-Import:** Planlisten lassen sich als `.xlsx` oder `.csv` einlesen. Erwartete Spalten:
-*Art · Plancodierung/Name Planpaket / Name Plan VZ · Index/Ausgabe · Titel · Gewerk ·
-Planungsphase · Planpaket · Planverzeichnis · Eingang Soll · Datum Ausgabe · Workflow · Bemerkung*.
-Ist in *Workflow* ein hinterlegter Workflow benannt, startet der Planlauf gleich beim Import.
-Genannte, aber noch nicht vorhandene Planpakete und Planverzeichnisse entstehen beim Import.
+Wird ein gebündeltes Verzeichnis gelöscht, bleiben seine Pläne als Einzelpläne im Paket des
+Verzeichnisses erhalten; wer bisher mitlief, führt den Stand des Verzeichnislaufs in einem eigenen
+Planlauf weiter.
 
-### Planlaufliste im Projekt
-Je Eintrag steht in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist. Die Liste
-ist nach Planpaketen gegliedert; Planverzeichnisse lassen sich am Pfeil vor Symbol und Titel
+**Excel-Import:** Planlisten lassen sich als `.xlsx` oder `.csv` einlesen. Erwartete Spalten:
+*Art · Plancodierung / Name · Index/Ausgabe · Titel · Gewerk · Planungsphase · Planpaket ·
+Planverzeichnis · Eingang Soll · Datum Ausgabe · Workflow · Bemerkung* (frühere Schreibweisen wie
+*Name PlanVZ* werden weiter erkannt). Genannte, aber noch nicht vorhandene Planpakete und
+Planverzeichnisse entstehen beim Import; ein neues Verzeichnis übernimmt das früheste *Eingang Soll*
+seiner Pläne. Verweise auf Pakete und Verzeichnisse gelten über Codierung bzw. Kurzzeichen oder
+Titel, auch auf Einträge derselben Datei. **Jeder Eintrag mit eigenem Planlauf startet ihn beim
+Import** – auch Zeilen ohne Codierung, ein dabei neu angelegtes Planverzeichnis und ein vorhandenes
+gebündeltes Verzeichnis, das noch nie einen Lauf hatte: nach dem in *Workflow* genannten Workflow,
+sonst nach dem im Dialog unter *Workflow für Einträge ohne Angabe* gewählten. Die Vorschau nennt je
+Zeile den Workflow bzw. *läuft im Verzeichnis mit* und weist auf Bezeichnungen hin, die in der Datei
+mehrfach vorkommen.
+
+### Planläufe im Projekt
+Der erste Reiter eines Projekts, **Planläufe**, zeigt Kennzahlen und die Planlaufliste. Je Eintrag
+steht in der Spalte **Aktueller Stand** der zuletzt abgeschlossene Prozessschritt vor dem offenen –
+auch nach dem Wiederöffnen eines früheren Schritts –, darunter in Grau sein Erledigungsdatum, und in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist.
+Die Liste ist nach Planpaketen gegliedert; Planverzeichnisse lassen sich am Pfeil vor Symbol und Titel
 aufklappen (zunächst zugeklappt). Darunter stehen die Pläne – mitlaufend mit **Herauslösen …**,
 herausgelöst mit eigenem Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als
 zusammenfassende Zeile mit **Bündeln …**. Abgebrochene Läufe stehen gesammelt am Ende unter einer
 eigenen, zunächst zugeklappten Zeile **Abgebrochen**.
 
-Die Übersicht lässt sich über die Spaltenüberschriften **sortieren** – nach Bezeichnung, Gewerk,
-Soll-Termin des nächsten Schritts, Zuständigkeit, Fortschritt oder Status (überfällige zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf. Sortiert wird
+Die Planlaufliste lässt sich über die Spaltenüberschriften **sortieren** – nach Bezeichnung, Gewerk,
+Datum des aktuellen Stands, Soll-Termin des nächsten Schritts, Zuständigkeit, Fortschritt oder Status
+(überfällige zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf. Sortiert wird
 innerhalb der Planpakete, die Paketzeilen folgen derselben Spalte.
 
 Die **Kopfzeile der Tabellen bleibt beim Scrollen stehen**, sodass die Spaltenbezeichnungen auch in
@@ -330,7 +360,7 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
 * Ein Lauf kann mit Begründung **abgebrochen** werden – wahlweise **ersatzlos** oder mit **neuem
   Index bzw. neuer Ausgabe**. Im zweiten Fall erhält der Eintrag den angegebenen Index, und der
   Planlauf beginnt mit denselben Schritten von vorn.
-* Ein abgebrochener Lauf ist **nicht mehr zu bearbeiten**: In der Projektübersicht steht seine Zeile
+* Ein abgebrochener Lauf ist **nicht mehr zu bearbeiten**: In der Planlaufliste steht seine Zeile
   gesammelt am Ende unter **Abgebrochen**, ausgegraut, ohne aktuellen Schritt, Fortschritt und
   Schaltflächen – stattdessen mit seinem eigenen Index und in Grau „Abgebrochen am …“ mit dem
   Zusatz *ersatzlos abgebrochen* bzw. *ersetzt durch Index C*. Er lässt
@@ -351,14 +381,29 @@ Schritt, Frist und Empfänger ersetzt. Von dort lässt sich die Nachricht in **O
 Zwischenablage kopieren; der Zeitpunkt wird am Schritt vermerkt.
 
 ### Export je Projekt
-Über **Export** in den Projekteinstellungen lassen sich Planpakete, Pläne und Planverzeichnisse
-auswählen und in zwei Umfängen ausgeben:
+Über **Export** im Reiter **Planläufe** (oder in den Projekteinstellungen) lassen sich die Planläufe
+eines Projekts ausgeben. Die Auswahl der Einträge ist wie die Planlaufliste gegliedert – je
+Planpaket, *Ohne Planpaket* und *Abgebrochen* mit eigenem Haken. Gewählt wird je Planlauf, sodass
+ein abgebrochener Vorgänger und der laufende Lauf eines Eintrags getrennt bleiben; ein Verzeichnis
+wählt die Pläne unter sich mit, ein mitlaufender Plan sein Verzeichnis. Ist im Reiter *Planläufe*
+ein Filter gesetzt, sind die gezeigten Einträge vorgewählt. Zwei Umfänge:
 
-* **Kurzfassung** – je Eintrag der aktuelle Stand, der nächste Schritt und die Verantwortlichen.
-* **Langfassung** – zusätzlich alle bereits durchlaufenen und alle ausstehenden Schritte.
+* **Kurzfassung** – genau die Angaben der Planlaufliste: Aktueller Stand, Nächster Schritt,
+  Zuständig, Fortschritt und Status.
+* **Langfassung** – je Planlauf zusätzlich alle bereits durchlaufenen und alle ausstehenden
+  Schritte mit Verantwortlichen.
 
 Beides jeweils als **Excel** (.xlsx, ohne zusätzliche Programmbibliothek erzeugt) und als **PDF**
-über den Druckdialog des Browsers („Als PDF sichern“).
+über den Druckdialog des Browsers („Als PDF sichern“). Das PDF der Kurzfassung sieht aus wie die
+Planlaufliste im Programm – ohne Schaltflächen für E-Mail, Erledigt oder Auf-/Zuklappen. In Excel
+steht jede Angabe in einer eigenen Spalte: Planpaket, Planverzeichnis, Art, Codierung, Index /
+Ausgabe, Titel, Gewerk, Aktueller Stand und sein Datum, Nächster Schritt mit Soll-Termin und Frist,
+Zuständige Funktion, Person, Fortschritt und Status – wie in der Liste auch je Planpaket und je
+Verzeichnis mit Plänen einzeln eine Zeile mit deren zusammengefasstem Fortschritt und Status; die
+Langfassung hat je Prozessschritt eine Zeile. In beiden Umfängen sind **nur die Planpakete
+Überschriften** (dazu wie in der Liste *Ohne Planpaket* und *Abgebrochen*); Planverzeichnisse folgen
+der Logik der Planlaufliste – ein gebündeltes Verzeichnis ist ein Planlauf mit mitlaufenden Plänen,
+ein Verzeichnis mit Plänen einzeln fasst diese nur zusammen.
 
 ### Übersicht und Markierung von Projekten
 Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
@@ -374,7 +419,8 @@ Mustermann“), die Nachfrage nach E-Mails und der **Farbmodus für eine Rot-Gr�
 stellt Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot dar und erhöht die Kontraste.
 
 ### Projekteinstellungen
-Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie der **Export**. Die
+Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie – wie im Reiter
+*Planläufe* – der **Export**. Die
 **E-Mail-Texte** (Betreff und Text, mit Übersicht der Platzhalter) werden projektübergreifend unter
 **Vorlagen** in der Seitenleiste gepflegt; dort liegen auch die Excel-Vorlagen für die Importe.
 
@@ -417,6 +463,7 @@ src/
         engine.ts    Verlauf durch die Kette, Fristenrechnung, Ampelstatus, To-Dos
         abschluss.ts Statuswechsel eines Schritts samt Nachweis
         email.ts     Platzhalter und Aufbereitung der Vorlagen
+        uebersicht.ts  Gliederung und Zeilenwerte der Planlaufliste – auch für den Export
         export.ts    Kurz- und Langfassung für Excel und PDF
         importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen
         seed.ts      Standard-Prozessketten und Demodaten
@@ -425,7 +472,7 @@ src/
         store.tsx    Zentraler Zustand, alle Schreibzugriffe
       lib/router.ts  Hash-Adressen unterhalb von #/planlauf
       pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen, Projektreiter)
-      components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe, BuendelnDialog …)
+      components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe, PaketDialog, BuendelnDialog …)
     baubetrieb/  Bereich „Baubetriebsplanung“ – angelegt, noch ohne Inhalt
 ```
 

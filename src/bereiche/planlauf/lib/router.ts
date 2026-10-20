@@ -6,7 +6,8 @@
 import { useEffect, useState } from 'react';
 import type { ID } from '../domain/types';
 
-export type ProjektTab = 'uebersicht' | 'plaene' | 'pakete' | 'rollen' | 'ketten' | 'einstellungen';
+/** Reiter im Projekt; „uebersicht“ ist der Reiter „Planläufe“. */
+export type ProjektTab = 'uebersicht' | 'plaene' | 'rollen' | 'ketten' | 'einstellungen';
 
 export type Route =
   | { view: 'dashboard' }
@@ -18,10 +19,13 @@ export type Route =
   | { view: 'projekt'; projectId: ID; tab: ProjektTab }
   | { view: 'planlauf'; projectId: ID; runId: ID };
 
-const TABS: ProjektTab[] = ['uebersicht', 'plaene', 'pakete', 'rollen', 'ketten', 'einstellungen'];
+const TABS: ProjektTab[] = ['uebersicht', 'plaene', 'rollen', 'ketten', 'einstellungen'];
 
-/** Frühere Adressen bleiben gültig: „adressbuch“ führt auf „rollen“. */
-const ALTE_TABS: Record<string, ProjektTab> = { adressbuch: 'rollen' };
+/**
+ * Frühere Adressen bleiben gültig: „adressbuch“ führt auf „rollen“, die
+ * frühere Seite „pakete“ auf die Planliste, in der die Planpakete jetzt stehen.
+ */
+const ALTE_TABS: Record<string, ProjektTab> = { adressbuch: 'rollen', pakete: 'plaene' };
 
 /** Präfix aller Adressen dieses Bereichs. */
 export const PREFIX = 'planlauf';

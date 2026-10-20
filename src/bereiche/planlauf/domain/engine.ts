@@ -312,6 +312,56 @@ export function kontaktFuerRolleUndGewerk(
   return kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === rolle.id))?.id ?? null;
 }
 
+/** Name eines Planlaufs: Codierung bzw. Titel des Eintrags, dazu Index bzw. Ausgabe. */
+export function planlaufName(eintrag: { kind: DocumentKind; nummer: string; titel: string; index: string }): string {
+  return `Planlauf ${eintrag.nummer || eintrag.titel}${
+    eintrag.index ? ` ${INDEX_LABEL[eintrag.kind]} ${eintrag.index}` : ''
+  }`;
+}
+
+/**
+ * Neuer Planlauf eines Eintrags nach einem Workflow: die Schritte der Vorlage,
+ * die Zuständigen nach der Besetzung der Funktionen für das Gewerk des Eintrags.
+ * Planläufe starten immer mit dem Eintrag – beim Anlegen wie beim Import.
+ */
+export function planlaufAusWorkflow(
+  vorlage: ProcessTemplate,
+  eintrag: {
+    projectId: ID;
+    documentId: ID;
+    kind: DocumentKind;
+    nummer: string;
+    titel: string;
+    index: string;
+    gewerk: string;
+  },
+  kontakte: Contact[],
+  rollen: Role[],
+  start: ISODate,
+  newId: () => string,
+): Omit<PlanRun, 'id'> {
+  return {
+    projectId: eintrag.projectId,
+    documentId: eintrag.documentId,
+    templateId: vorlage.id,
+    templateName: vorlage.name,
+    name: planlaufName(eintrag),
+    index: eintrag.index,
+    start,
+    status: 'laufend',
+    abbruchGrund: null,
+    abbruchDatum: null,
+    abbruchArt: null,
+    abbruchNeuerIndex: null,
+    steps: stepsAusTemplate(
+      vorlage,
+      (roleName) => kontaktFuerRolleUndGewerk(kontakte, rollen, roleName, eintrag.gewerk),
+      newId,
+    ),
+    bemerkung: '',
+  };
+}
+
 /**
  * Eigenständig geführte Planläufe.
  *

@@ -1,9 +1,10 @@
 /**
  * Druckausgabe: Erzeugt ein eigenständiges HTML-Dokument und öffnet den
  * Druckdialog des Browsers. Dort lässt sich „Als PDF sichern“ wählen – so
- * entsteht die PDF-Fassung ohne zusätzliche Programmbibliothek.
+ * entsteht die PDF-Fassung ohne zusätzliche Programmbibliothek. Eigene
+ * Stilangaben ergänzen die Grundgestaltung.
  */
-export function druckeHtml(titel: string, inhalt: string): void {
+export function druckeHtml(titel: string, inhalt: string, zusatzStil = ''): void {
   const rahmen = document.createElement('iframe');
   rahmen.setAttribute('aria-hidden', 'true');
   rahmen.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
@@ -36,6 +37,7 @@ export function druckeHtml(titel: string, inhalt: string): void {
   .erledigt { color: #248a3d; }
   .grau { color: #6e6e73; }
   .fuss { margin-top: 6mm; color: #8e8e93; font-size: 8pt; }
+${zusatzStil}
 </style></head><body>${inhalt}</body></html>`);
   dokument.close();
 

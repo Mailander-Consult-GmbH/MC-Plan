@@ -115,7 +115,7 @@ export function Einstellungen({ project }: { project: Project }) {
       <Card>
         <CardHeader
           titel="Export"
-          sub="Planbestand als Excel-Datei oder PDF ausgeben"
+          sub="Planläufe als Excel-Datei oder PDF ausgeben"
           actions={
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setExportOffen(true)}>
               <Icon name="export" size={13} /> Export
@@ -124,7 +124,7 @@ export function Einstellungen({ project }: { project: Project }) {
         />
         <div className="card-pad">
           <p className="small muted">
-            Auswahl der Pläne, Planpakete und Planverzeichnisse, wahlweise als Kurz- oder Langfassung.
+            Auswahl der Einträge nach Planpaketen gegliedert, wahlweise als Kurz- oder Langfassung – auch über „Export“ im Reiter „Planläufe“.
           </p>
         </div>
       </Card>
