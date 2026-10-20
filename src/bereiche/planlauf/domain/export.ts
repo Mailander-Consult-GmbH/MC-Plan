@@ -17,7 +17,7 @@
 import { formatDate, relativeLabel, today } from '../../../shared/dates';
 import { iconSvg } from '../../../shared/icons';
 import { html } from '../../../shared/print';
-import type { Zelle } from '../../../shared/xlsx';
+import type { Blatt, Stil, Zelle } from '../../../shared/xlsx';
 import { AMPEL_LABEL, abbruchHinweis, ampelFuerSchritt, fortschritt, pfad } from './engine';
 import {
   DOCUMENT_KIND_LABEL,
@@ -33,6 +33,7 @@ import {
   type PlanDocument,
   type PlanRun,
   type Project,
+  type RunStatus,
   type RunStep,
 } from './types';
 import {
@@ -319,85 +320,125 @@ const gruppenTitel = (g: BerichtGruppe) =>
 
 /* ------------------------------ Excel ----------------------------- */
 
+/** Gestaltung der Excel-Kurzfassung – Hausfarbe, Grün für Abgeschlossenes, Grau für Abgebrochenes. */
+const EXCEL = {
+  titel: { fett: true, groesse: 14, farbe: '24456E' },
+  stand: { kursiv: true, groesse: 10 },
+  kopf: { fett: true, farbe: 'FFFFFF', fuellung: '24456E', rahmen: true, zentriert: true },
+  laufend: { rahmen: true },
+  abgeschlossen: { rahmen: true, fuellung: 'E8F5E9' },
+  abgebrochen: { rahmen: true, fuellung: 'EDEDED', farbe: '595959' },
+  gruppeAbgeschlossen: { fett: true, farbe: '2E7D32', fuellung: 'E8F5E9' },
+  gruppeAbgebrochen: { fett: true, farbe: '595959', fuellung: 'EDEDED' },
+  faellig: { rahmen: true, fuellung: 'F28C28' },
+  ueberfaellig: { rahmen: true, fuellung: 'D93025', farbe: 'FFFFFF', fett: true },
+} satisfies Record<string, Stil>;
+
 const KURZ_KOPF = [
   'Planpaket',
-  'Planverzeichnis',
-  'Art',
-  'Plancodierung / Codierung',
-  'Index / Ausgabe',
+  'Plancode',
+  'Index/Ausgabe',
   'Titel',
   'Gewerk',
   'Aktueller Stand',
-  'Abgeschlossen am',
+  'Datum',
   'Nächster Schritt',
-  'Soll-Termin',
   'Frist',
-  'Zuständige Funktion',
-  'Person',
-  'Fortschritt (%)',
-  'Status',
 ];
 
 /**
- * Kurzfassung als Tabelle: je Zeile der Übersicht eine Zeile, jede Angabe in
- * eigener Spalte – auch die Zeilen der Planpakete und der Verzeichnisse mit
- * Plänen einzeln, die nur Fortschritt und Status zusammenfassen.
+ * Kurzfassung als Excel-Blatt: in A1 das Projekt, in A2 der Stand, darunter je
+ * Zeile der Übersicht eine Zeile. Laufende Planläufe stehen zuerst, danach
+ * gesondert die abgeschlossenen (grün) und die abgebrochenen (grau) – jeweils
+ * in der Reihenfolge der Übersicht. Datum und Frist sind echte Excel-Daten; die
+ * Frist ist bei fälligen Schritten orange, bei überfälligen rot hinterlegt.
+ * Verzeichnisklammern laufen selbst nicht und fehlen – ihre Pläne stehen mit
+ * eigenem Lauf in der Liste.
  */
-export function kurzZeilen(data: AppData, project: Project, auswahl?: Set<ID>): Zelle[][] {
+export function kurzBlatt(data: AppData, project: Project, auswahl?: Set<ID>): Blatt {
+  const vorlauf = project.settings.erinnerungVorlaufTage;
   const bericht = berichtBilden(data, project, auswahl);
-  const ausgabe: Zelle[][] = [KURZ_KOPF];
+  const bloecke: Record<RunStatus, Zelle[][]> = { laufend: [], abgeschlossen: [], abgebrochen: [] };
+
   for (const gruppe of bericht.gruppen) {
-    // Wie in der Liste: das Planpaket mit seinem zusammengefassten Stand
-    if (gruppe.art === 'paket' && gruppe.paket) {
-      const p = gruppe.paket;
-      const status = gruppe.stand ? standAnzeige(gruppe.stand) : null;
-      ausgabe.push([
-        p.titel,
-        '',
-        DOCUMENT_KIND_LABEL.paket,
-        p.nummer,
-        '',
-        p.titel,
-        p.gewerk,
-        '',
-        '',
-        `${gruppe.laeufe} ${gruppe.laeufe === 1 ? 'laufender Eintrag' : 'laufende Einträge'}`,
-        '',
-        '',
-        '',
-        '',
-        gruppe.stand?.pct ?? 0,
-        status?.text ?? '',
-      ]);
-    }
     for (const zeile of gruppe.zeilen) {
-      const w = zeilenWerte(data, project, zeile);
-      const verzeichnis = verzeichnisVon(data, zeile);
-      const paket = gruppe.art === 'paket' ? gruppe.paket : paketDerZeile(data, zeile);
-      ausgabe.push([
-        paket ? paket.titel : '',
-        verzeichnis ? verzeichnis.nummer || verzeichnis.titel : '',
-        zeile.art === 'klammer' ? `${DOCUMENT_KIND_LABEL.verzeichnis} (Pläne einzeln)` : DOCUMENT_KIND_LABEL[w.art],
-        w.nummer,
-        w.index,
-        w.titel,
-        w.gewerk,
-        w.stand?.name ?? '',
-        w.stand?.datum ?? '',
-        w.naechster?.name ?? w.hinweis,
-        w.naechster?.soll ?? '',
-        w.naechster?.frist ?? '',
-        w.zustaendig?.funktion ?? '',
-        w.zustaendig?.person ?? '',
-        w.pct ?? '',
-        w.status?.text ?? (zeile.art === 'mitlaufend' ? 'läuft mit' : ''),
+      if (zeile.art === 'klammer') continue;
+      const run = zeile.art === 'lauf' ? zeile.eintrag.run : zeile.verzeichnisLauf;
+      const doc = zeile.art === 'lauf' ? zeile.eintrag.doc : zeile.plan;
+      const grund: Stil = EXCEL[run.status];
+      const zelle = (wert: string | null | undefined, stil: Stil = grund, datum = false): Zelle => ({ wert, stil, datum });
+
+      let stand = '';
+      let datum: string | null = null;
+      let naechster = '';
+      let frist = zelle('');
+      if (zeile.art === 'mitlaufend') {
+        const verzeichnis = verzeichnisVon(data, zeile);
+        stand = `läuft im Planlauf von ${verzeichnis?.nummer || verzeichnis?.titel || 'Planverzeichnis'} mit`;
+      } else if (run.status === 'abgebrochen') {
+        stand = RUN_STATUS_LABEL.abgebrochen;
+        datum = run.abbruchDatum;
+        naechster = abbruchHinweis(run, doc?.kind ?? 'plan');
+      } else {
+        const fertig = letzterAbgeschlossenerSchritt(run);
+        stand = fertig?.name ?? '';
+        datum = fertig?.istDatum ?? null;
+        const step = zeile.eintrag.step;
+        if (run.status === 'laufend' && step) {
+          const ampel = ampelFuerSchritt(step, vorlauf);
+          naechster = step.name;
+          frist = zelle(step.sollDatum, ampel === 'ueberfaellig' ? EXCEL.ueberfaellig : ampel === 'faellig' ? EXCEL.faellig : grund, true);
+        }
+      }
+      // Ein abgebrochener Lauf trägt seinen eigenen Index
+      const index = zeile.art === 'lauf' && run.status === 'abgebrochen' ? run.index : (doc?.index ?? '');
+
+      bloecke[run.status].push([
+        zelle(paketDerZeile(data, zeile)?.titel ?? 'ohne Planpaket'),
+        zelle(doc?.nummer),
+        zelle(index),
+        zelle(doc?.titel ?? run.name),
+        zelle(doc?.gewerk),
+        zelle(stand),
+        zelle(datum, grund, true),
+        zelle(naechster),
+        frist,
       ]);
     }
   }
-  return ausgabe;
+
+  const letzte = String.fromCharCode(64 + KURZ_KOPF.length);
+  const zeilen: Zelle[][] = [
+    [{ wert: `Projekt: ${project.name}`, stil: EXCEL.titel }],
+    [{ wert: `Stand: ${formatDate(today())}`, stil: EXCEL.stand }],
+    [],
+    KURZ_KOPF.map((titel) => ({ wert: titel, stil: EXCEL.kopf })),
+    ...bloecke.laufend,
+  ];
+  const zusammenfassen = [`A1:${letzte}1`, `A2:${letzte}2`];
+  /** Gesonderter Abschnitt mit Überschrift über die ganze Breite. */
+  const abschnitt = (status: 'abgeschlossen' | 'abgebrochen', stil: Stil) => {
+    const inhalt = bloecke[status];
+    if (inhalt.length === 0) return;
+    zeilen.push(KURZ_KOPF.map((_, i) => ({ wert: i === 0 ? `${RUN_STATUS_LABEL[status]} (${inhalt.length})` : '', stil })));
+    zusammenfassen.push(`A${zeilen.length}:${letzte}${zeilen.length}`);
+    zeilen.push(...inhalt);
+  };
+  abschnitt('abgeschlossen', EXCEL.gruppeAbgeschlossen);
+  abschnitt('abgebrochen', EXCEL.gruppeAbgebrochen);
+
+  return {
+    name: UMFANG_LABEL.kurz,
+    zeilen,
+    kopfzeileFett: false,
+    spaltenbreiten: [28, 28, 14, 44, 10, 36, 12, 36, 12],
+    zusammenfassen,
+    fixierteZeilen: 4,
+    querformat: true,
+  };
 }
 
-/** Planpaket einer Zeile aus der Gruppe „Abgebrochen“ – dort ist das Paket keine Überschrift. */
+/** Planpaket einer Zeile – bei Plänen eines Verzeichnisses das Paket des Verzeichnisses. */
 function paketDerZeile(data: AppData, zeile: BerichtZeile): PlanDocument | undefined {
   const doc = zeile.art === 'lauf' ? zeile.eintrag.doc : zeile.art === 'mitlaufend' ? zeile.plan : zeile.verzeichnis;
   if (!doc) return undefined;
