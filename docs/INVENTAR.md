@@ -114,7 +114,8 @@ abgefragt (`src/bereiche/planlauf/components/SchrittStatus.tsx`).
   Planverzeichnisse und Planläufe, der Warnung, dass der jetzige Bestand
   ersetzt wird, „Aktuellen Stand sichern“ und, wenn die Namen abweichen, dem
   Haken „„Angemeldet als“ aus der Sicherung übernehmen“ (vorgewählt, solange
-  der Name `STANDARD_BEARBEITER` ist). „Einspielen“ ersetzt den Bestand über
+  der Name `STANDARD_BEARBEITER` ist); ohne gesetzten Haken bleiben Name,
+  Farbmodus und E-Mail-Nachfrage der Person am Rechner. „Einspielen“ ersetzt den Bestand über
   `ersetzeDaten` und wechselt zur Übersicht. **Zurücksetzen**: verwirft den
   Bestand und lädt die Demodaten (`zuruecksetzen` in
   `src/bereiche/planlauf/store/store.tsx`).
@@ -250,9 +251,9 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | „Die Datei ist keine gültige JSON-Datei.“ | Die gewählte Datei lässt sich nicht als JSON lesen (`sicherungLesen`). |
 | „Die Datei ist keine Sicherung von KaPlan.“ | Das JSON enthält keine Liste `projects`. |
 | „Die Sicherung stammt aus einer neueren Fassung von KaPlan. Bitte die Seite neu laden (Strg+Umschalt+R) und erneut einspielen.“ | `version` der Sicherung ist größer als `DATEN_VERSION` – die geladene Programmfassung ist älter als die, die gesichert hat. |
-| „Die Sicherung ist unvollständig.“ | Eine Sicherung der aktuellen Fassung, der eine der Listen (Projekte, Funktionen, Kontakte, Einträge, Workflows, Planläufe …) fehlt. |
+| „Die Sicherung ist unvollständig.“ | Einer Sicherung der aktuellen Fassung fehlt eine der Listen (Projekte, Funktionen, Kontakte, Einträge, Workflows, Planläufe …) oder der Name unter „Angemeldet als“. |
 | „Die Sicherung konnte nicht gelesen werden.“ | Das Anheben auf die aktuelle Fassung schlug fehl. |
-| „Sicherung eingespielt – … Projekt(e), … Planläufe.“ | Kein Fehler: Der Bestand wurde ersetzt. |
+| „Sicherung eingespielt – ….“ | Kein Fehler: Der Bestand wurde ersetzt; die Meldung nennt die Zahl der Projekte und Planläufe. |
 
 ### Laufzeit und Technik
 
