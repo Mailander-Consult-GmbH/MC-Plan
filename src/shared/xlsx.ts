@@ -4,14 +4,47 @@
  * Erzeugt eine gültige Arbeitsmappe (OOXML) als ZIP-Datei. Die Einträge werden
  * unkomprimiert abgelegt ("stored"), was der ZIP-Spezifikation entspricht und
  * von Excel, LibreOffice und Numbers gelesen wird.
+ *
+ * Zellen können schlichte Werte sein oder formatiert (Schrift, Füllung,
+ * Rahmen, Datum). Ein Blatt kann Zellen zusammenfassen, Spaltenbreiten
+ * vorgeben, obere Zeilen fixieren und quer auf Seitenbreite gedruckt werden.
  */
 
-export type Zelle = string | number | null | undefined;
+/** Gestaltung einer Zelle; Farben als Hexwert RRGGBB. */
+export interface Stil {
+  fett?: boolean;
+  kursiv?: boolean;
+  /** Schriftgröße in Punkt (Vorgabe 11). */
+  groesse?: number;
+  farbe?: string;
+  fuellung?: string;
+  /** Dünner Rahmen rundum. */
+  rahmen?: boolean;
+  zentriert?: boolean;
+}
+
+export interface FormatierteZelle {
+  wert: string | number | null | undefined;
+  /** Der Wert ist ein Datum JJJJ-MM-TT – er wird als Excel-Datum (TT.MM.JJJJ) abgelegt. */
+  datum?: boolean;
+  stil?: Stil;
+}
+
+export type Zelle = string | number | null | undefined | FormatierteZelle;
 
 export interface Blatt {
   name: string;
-  /** Erste Zeile wird als Kopfzeile fett gesetzt. */
   zeilen: Zelle[][];
+  /** Erste Zeile fett als Kopfzeile setzen (Vorgabe); bei eigener Gestaltung abschalten. */
+  kopfzeileFett?: boolean;
+  /** Spaltenbreiten in Zeichen; sonst nach dem Inhalt. */
+  spaltenbreiten?: number[];
+  /** Zusammengefasste Zellbereiche, z.B. „A1:I1“. */
+  zusammenfassen?: string[];
+  /** Anzahl der oberen Zeilen, die beim Scrollen stehen bleiben. */
+  fixierteZeilen?: number;
+  /** Druck im Querformat, auf Seitenbreite eingepasst (A4). */
+  querformat?: boolean;
 }
 
 /* ----------------------------- ZIP ------------------------------- */
@@ -151,13 +184,102 @@ function blattName(name: string, index: number): string {
   return sauber || `Tabelle${index + 1}`;
 }
 
-function blattXml(blatt: Blatt): string {
+const istFormatiert = (z: Zelle): z is FormatierteZelle => typeof z === 'object' && z !== null;
+
+/** Excel zählt Tage ab dem 30.12.1899. */
+function excelDatum(iso: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86400000 + 25569;
+}
+
+/**
+ * Sammelt die Zellformate einer Arbeitsmappe. Format 0 ist die schlichte
+ * Zelle, Format 1 die fette Kopfzeile; jedes weitere entsteht beim ersten
+ * Gebrauch.
+ */
+class Formate {
+  private schriften = ['<font><sz val="11"/><name val="Calibri"/></font>', '<font><b/><sz val="11"/><name val="Calibri"/></font>'];
+  private fuellungen = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'];
+  private rahmen = [
+    '<border><left/><right/><top/><bottom/><diagonal/></border>',
+    '<border><left style="thin"><color auto="1"/></left><right style="thin"><color auto="1"/></right><top style="thin"><color auto="1"/></top><bottom style="thin"><color auto="1"/></bottom><diagonal/></border>',
+  ];
+  private formate = [
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>',
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>',
+  ];
+
+  private index(liste: string[], eintrag: string): number {
+    const i = liste.indexOf(eintrag);
+    if (i >= 0) return i;
+    liste.push(eintrag);
+    return liste.length - 1;
+  }
+
+  /** Index des Zellformats für Stil und Datum. */
+  von(stil: Stil = {}, datum = false): number {
+    const farbe = (hex: string) => `FF${hex.replace('#', '').toUpperCase()}`;
+    const schrift = this.index(
+      this.schriften,
+      `<font>${stil.fett ? '<b/>' : ''}${stil.kursiv ? '<i/>' : ''}<sz val="${stil.groesse ?? 11}"/>${
+        stil.farbe ? `<color rgb="${farbe(stil.farbe)}"/>` : ''
+      }<name val="Calibri"/></font>`,
+    );
+    const fuellung = stil.fuellung
+      ? this.index(
+          this.fuellungen,
+          `<fill><patternFill patternType="solid"><fgColor rgb="${farbe(stil.fuellung)}"/><bgColor indexed="64"/></patternFill></fill>`,
+        )
+      : 0;
+    const rahmen = stil.rahmen ? 1 : 0;
+    const ausrichtung = stil.zentriert
+      ? '<alignment horizontal="center" vertical="center"/>'
+      : datum
+        ? '<alignment horizontal="left"/>'
+        : '';
+    return this.index(
+      this.formate,
+      `<xf numFmtId="${datum ? 164 : 0}" fontId="${schrift}" fillId="${fuellung}" borderId="${rahmen}" xfId="0"${
+        datum ? ' applyNumberFormat="1"' : ''
+      } applyFont="1" applyFill="1" applyBorder="1"${ausrichtung ? ` applyAlignment="1">${ausrichtung}</xf>` : '/>'}`,
+    );
+  }
+
+  xml(): string {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="dd\\.mm\\.yyyy"/></numFmts>
+<fonts count="${this.schriften.length}">${this.schriften.join('')}</fonts>
+<fills count="${this.fuellungen.length}">${this.fuellungen.join('')}</fills>
+<borders count="${this.rahmen.length}">${this.rahmen.join('')}</borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="${this.formate.length}">${this.formate.join('')}</cellXfs>
+</styleSheet>`;
+  }
+}
+
+/** Anzeigetext einer Zelle – Grundlage der Spaltenbreite. */
+function text(zelle: Zelle): string {
+  const wert = istFormatiert(zelle) ? zelle.wert : zelle;
+  return istFormatiert(zelle) && zelle.datum ? '00.00.0000' : String(wert ?? '');
+}
+
+function blattXml(blatt: Blatt, formate: Formate): string {
+  const kopfFett = blatt.kopfzeileFett ?? true;
   const zeilen = blatt.zeilen
     .map((zeile, r) => {
       const zellen = zeile
-        .map((wert, c) => {
+        .map((zelle, c) => {
           const ref = `${spalte(c)}${r + 1}`;
-          const stil = r === 0 ? ' s="1"' : '';
+          let wert = istFormatiert(zelle) ? zelle.wert : zelle;
+          let format = r === 0 && kopfFett ? 1 : 0;
+          if (istFormatiert(zelle)) {
+            const datum = zelle.datum && typeof wert === 'string' ? excelDatum(wert) : null;
+            if (datum !== null) wert = datum;
+            format = formate.von(zelle.stil, datum !== null);
+          }
+          const stil = format ? ` s="${format}"` : '';
           if (wert === null || wert === undefined || wert === '') return `<c r="${ref}"${stil}/>`;
           if (typeof wert === 'number' && Number.isFinite(wert)) {
             return `<c r="${ref}"${stil}><v>${wert}</v></c>`;
@@ -169,20 +291,39 @@ function blattXml(blatt: Blatt): string {
     })
     .join('');
 
-  const spaltenzahl = Math.max(...blatt.zeilen.map((z) => z.length), 1);
+  const spaltenzahl = Math.max(...blatt.zeilen.map((z) => z.length), blatt.spaltenbreiten?.length ?? 0, 1);
   const breiten = Array.from({ length: spaltenzahl }, (_, c) => {
-    const laenge = Math.max(...blatt.zeilen.map((z) => String(z[c] ?? '').length), 10);
-    return `<col min="${c + 1}" max="${c + 1}" width="${Math.min(60, laenge + 3)}" customWidth="1"/>`;
+    const vorgabe = blatt.spaltenbreiten?.[c];
+    const laenge = vorgabe ?? Math.min(60, Math.max(...blatt.zeilen.map((z) => text(z[c]).length), 10) + 3);
+    return `<col min="${c + 1}" max="${c + 1}" width="${laenge}" customWidth="1"/>`;
   }).join('');
+
+  const fixiert = blatt.fixierteZeilen
+    ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${blatt.fixierteZeilen}" topLeftCell="A${
+        blatt.fixierteZeilen + 1
+      }" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+    : '';
+  const zusammen = blatt.zusammenfassen?.length
+    ? `<mergeCells count="${blatt.zusammenfassen.length}">${blatt.zusammenfassen
+        .map((ref) => `<mergeCell ref="${ref}"/>`)
+        .join('')}</mergeCells>`
+    : '';
+
+  const druck = blatt.querformat
+    ? '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>'
+    : '';
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<cols>${breiten}</cols><sheetData>${zeilen}</sheetData></worksheet>`;
+${blatt.querformat ? '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' : ''}${fixiert}<cols>${breiten}</cols><sheetData>${zeilen}</sheetData>${zusammen}${druck}</worksheet>`;
 }
 
 /** Erzeugt eine Arbeitsmappe mit einem Blatt je Eintrag. */
 export function xlsxErzeugen(blaetter: Blatt[]): Blob {
   const namen = blaetter.map((b, i) => blattName(b.name, i));
+  // Erst die Blätter, dabei entstehen die Zellformate
+  const formate = new Formate();
+  const blattDateien = blaetter.map((b, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, inhalt: blattXml(b, formate) }));
 
   const dateien = [
     {
@@ -218,18 +359,8 @@ ${blaetter.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.op
 <Relationship Id="rId${blaetter.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`,
     },
-    {
-      name: 'xl/styles.xml',
-      inhalt: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
-<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
-<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
-<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
-</styleSheet>`,
-    },
-    ...blaetter.map((b, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, inhalt: blattXml(b) })),
+    { name: 'xl/styles.xml', inhalt: formate.xml() },
+    ...blattDateien,
   ];
 
   return schreibeZip(dateien);

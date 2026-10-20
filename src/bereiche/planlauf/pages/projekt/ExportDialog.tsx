@@ -2,7 +2,8 @@
  * Export der Planläufe eines Projekts als Excel-Arbeitsmappe oder PDF (über
  * den Druckdialog).
  *
- * Kurzfassung: genau die Angaben der Übersicht im Reiter „Planläufe“.
+ * Kurzfassung: als PDF genau die Angaben der Übersicht im Reiter „Planläufe“,
+ * in Excel ein formatiertes Blatt nach Planpaket, Plancode, Stand und Frist.
  * Langfassung: zusätzlich alle durchlaufenen und ausstehenden Schritte.
  * Die Auswahl der Einträge ist wie die Übersicht nach Planpaketen gegliedert;
  * gewählt wird je Planlauf bzw. mitlaufendem Plan. Ein Verzeichnis wählt die
@@ -15,7 +16,7 @@ import {
   berichtBilden,
   exportDateiname,
   exportHtml,
-  kurzZeilen,
+  kurzBlatt,
   langZeilen,
   zeilenSchluessel,
   type BerichtGruppe,
@@ -93,8 +94,11 @@ export function ExportDialog({
       toast('Bitte mindestens einen Eintrag auswählen.');
       return;
     }
-    const zeilen = umfang === 'kurz' ? kurzZeilen(data, project, auswahl) : langZeilen(data, project, auswahl);
-    const blob = xlsxErzeugen([{ name: UMFANG_LABEL[umfang], zeilen }]);
+    const blatt =
+      umfang === 'kurz'
+        ? kurzBlatt(data, project, auswahl)
+        : { name: UMFANG_LABEL.lang, zeilen: langZeilen(data, project, auswahl) };
+    const blob = xlsxErzeugen([blatt]);
     dateiLaden(blob, `${exportDateiname(project, umfang)}.xlsx`);
     toast('Excel-Datei wurde erzeugt.');
     onClose();
@@ -172,7 +176,7 @@ export function ExportDialog({
           />
           <span className="hint">
             {umfang === 'kurz'
-              ? 'Genau die Angaben des Reiters „Planläufe“: Aktueller Stand, Nächster Schritt, Zuständig, Fortschritt und Status. Als PDF wie im Programm, in Excel jede Angabe in einer eigenen Spalte.'
+              ? 'Als PDF genau die Angaben des Reiters „Planläufe“ wie im Programm: Aktueller Stand, Nächster Schritt, Zuständig, Fortschritt und Status. In Excel die Spalten Planpaket, Plancode, Index/Ausgabe, Titel, Gewerk, Aktueller Stand, Datum, Nächster Schritt und Frist; abgeschlossene Planläufe grün und abgebrochene grau gesondert am Ende.'
               : 'Je Planlauf alle bereits durchlaufenen und alle ausstehenden Schritte mit Verantwortlichen – gegliedert nach Planpaketen.'}
           </span>
         </Field>
