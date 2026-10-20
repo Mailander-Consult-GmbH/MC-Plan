@@ -116,7 +116,10 @@ export function sicherungLesen(text: string): AppData {
       'Die Sicherung stammt aus einer neueren Fassung von KaPlan. Bitte die Seite neu laden (Strg+Umschalt+R) und erneut einspielen.',
     );
   }
-  if (daten.version === DATEN_VERSION && LISTEN.some((liste) => !Array.isArray(daten[liste]))) {
+  if (
+    daten.version === DATEN_VERSION &&
+    (LISTEN.some((liste) => !Array.isArray(daten[liste])) || typeof daten.bearbeiter?.name !== 'string')
+  ) {
     throw new Error('Die Sicherung ist unvollständig.');
   }
   try {

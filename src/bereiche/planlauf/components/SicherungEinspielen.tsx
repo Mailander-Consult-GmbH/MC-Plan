@@ -78,16 +78,23 @@ export function SicherungEinspielenDialog({
   // Ohne eingerichteten Namen liegt es nahe, den aus der Sicherung zu nehmen
   const [nameUebernehmen, setNameUebernehmen] = useState(data.bearbeiter.name === STANDARD_BEARBEITER);
 
+  const anzahl = (n: number, eins: string, mehr: string) => `${n} ${n === 1 ? eins : mehr}`;
+  const fremderName = sicherung.daten.bearbeiter.name !== data.bearbeiter.name;
+
   const einspielen = () => {
     const { daten } = sicherung;
-    ersetzeDaten(nameUebernehmen ? daten : { ...daten, bearbeiter: data.bearbeiter });
-    toast(`Sicherung eingespielt – ${daten.projects.length} Projekt(e), ${daten.runs.length} Planläufe.`);
+    // „Angemeldet als“ samt Farbmodus kommt nur auf ausdrücklichen Wunsch aus der Sicherung
+    ersetzeDaten(fremderName && nameUebernehmen ? daten : { ...daten, bearbeiter: data.bearbeiter });
+    toast(
+      `Sicherung eingespielt – ${anzahl(daten.projects.length, 'Projekt', 'Projekte')}, ${anzahl(
+        daten.runs.length,
+        'Planlauf',
+        'Planläufe',
+      )}.`,
+    );
     onClose();
     onEingespielt();
   };
-
-  const anzahl = (n: number, eins: string, mehr: string) => `${n} ${n === 1 ? eins : mehr}`;
-  const fremderName = sicherung.daten.bearbeiter.name !== data.bearbeiter.name;
 
   return (
     <Modal
