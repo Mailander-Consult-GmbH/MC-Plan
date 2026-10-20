@@ -783,7 +783,7 @@ function AbbruchDialog({
           </Callout>
         )}
 
-        <Field label="Grund des Abbruchs" hint="wird in der Projektübersicht und im Export angezeigt">
+        <Field label="Grund des Abbruchs" hint="wird im Reiter „Planläufe“ und im Export angezeigt">
           <TextArea
             value={grund}
             onChange={setGrund}

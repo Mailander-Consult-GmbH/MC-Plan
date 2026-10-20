@@ -135,7 +135,7 @@ export function ExportDialog({ project, onClose }: { project: Project; onClose: 
           />
           <span className="hint">
             {umfang === 'kurz'
-              ? 'Genau die Angaben der Übersicht „Planläufe“: Aktueller Stand, Nächster Schritt, Zuständig, Fortschritt und Status. Als PDF wie im Programm, in Excel jede Angabe in einer eigenen Spalte.'
+              ? 'Genau die Angaben des Reiters „Planläufe“: Aktueller Stand, Nächster Schritt, Zuständig, Fortschritt und Status. Als PDF wie im Programm, in Excel jede Angabe in einer eigenen Spalte.'
               : 'Je Planlauf alle bereits durchlaufenen und alle ausstehenden Schritte mit Verantwortlichen – gegliedert nach Planpaketen.'}
           </span>
         </Field>
