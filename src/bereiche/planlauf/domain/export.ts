@@ -279,7 +279,7 @@ function zeilenWerte(data: AppData, project: Project, zeile: BerichtZeile): Zeil
   const stand = letzterAbgeschlossenerSchritt(run);
   const kind = doc?.kind ?? 'plan';
   // Ein abgebrochener Lauf trägt seinen eigenen Index – der Eintrag steht längst auf dem Nachfolger
-  const index = (abgebrochen ? run.index || doc?.index : doc?.index) ?? '';
+  const index = (abgebrochen ? run.index : doc?.index) ?? '';
   const abbruch = abgebrochen
     ? {
         wann: `Abgebrochen${run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}`,

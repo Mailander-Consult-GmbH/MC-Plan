@@ -365,7 +365,7 @@ export function PlanlaufListe({
     // Die Pläne eines Verzeichnisses hängen an der eigenen Schaltfläche und
     // sind zunächst zugeklappt.
     const aufgeklappt = doc ? offeneVerzeichnisse.includes(doc.id) : false;
-    const anzeigeIndex = abgebrochen ? run.index || doc?.index : doc?.index;
+    const anzeigeIndex = abgebrochen ? run.index : doc?.index;
     // Position von Symbol und Titel; der Pfeil liegt 29 px davor und braucht
     // darum auch ohne Planpakete etwas Vorlauf.
     // Pläne mit eigenem Lauf unter ihrem Verzeichnis rücken eine Stufe weiter ein.

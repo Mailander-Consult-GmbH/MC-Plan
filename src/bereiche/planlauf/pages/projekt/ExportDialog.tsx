@@ -236,7 +236,7 @@ export function ExportDialog({
                       const ids = zeile.ebene === 0 ? [id, ...schluesselVon(unterzeilen(gruppe.zeilen, zi))] : [id];
                       const mit = zeile.art === 'mitlaufend' ? [zeile.verzeichnisLauf.id] : [];
                       const run = zeile.art === 'lauf' ? zeile.eintrag.run : undefined;
-                      const index = run?.status === 'abgebrochen' ? run.index || doc?.index : doc?.index;
+                      const index = run?.status === 'abgebrochen' ? run.index : doc?.index;
                       return (
                         <label key={zi} className="list-row clickable" style={{ cursor: 'pointer', paddingLeft: 20 + einzug }}>
                           {haken(ids, mit)}

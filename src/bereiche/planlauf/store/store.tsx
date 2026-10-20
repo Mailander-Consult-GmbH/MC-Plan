@@ -15,6 +15,7 @@ import {
 import { seedData } from '../domain/seed';
 import { ladeDaten, speichereDaten } from './storage';
 import { today } from '../../../shared/dates';
+import { hatEigenenPlanlauf } from '../domain/types';
 import type {
   AbbruchArt,
   AppData,
@@ -261,6 +262,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 (x) =>
                   x.kind === 'plan' &&
                   x.parentId === id &&
+                  !hatEigenenPlanlauf(x, data.documents) &&
                   !data.runs.some((r) => r.documentId === x.id && r.status !== 'abgebrochen'),
               )
               .map((plan) => ({

@@ -819,7 +819,9 @@ function PlanDialog({
 
     const ohneKontakt = markiert.filter((s) => !s.contactId).length;
     const gestartet = verzeichnisOhneLauf
-      ? `Planlauf des Verzeichnisses „${verzeichnisOhneLauf.nummer || verzeichnisOhneLauf.titel}“ gestartet – der Plan läuft darin mit`
+      ? `Planlauf des Verzeichnisses „${verzeichnisOhneLauf.nummer || verzeichnisOhneLauf.titel}“ gestartet – ${
+          werte.eigenerLauf ? 'der Plan behält seinen eigenen Planlauf' : 'der Plan läuft darin mit'
+        }`
       : 'Eintrag angelegt und Planlauf gestartet';
     toast(ohneKontakt > 0 ? `${gestartet} – ${ohneKontakt} Schritt(e) noch ohne Person.` : `${gestartet}.`);
     schliessen(werte.parentId);
@@ -834,7 +836,7 @@ function PlanDialog({
         titel={doc ? `${DOCUMENT_KIND_LABEL[doc.kind]} bearbeiten` : 'Neuer Eintrag'}
         sub={
           doc
-            ? doc.nummer + (braucheLauf ? ' · Planlauf noch nicht gestartet' : '')
+            ? doc.nummer + (braucheLauf && !vorhandenerLauf ? ' · Planlauf noch nicht gestartet' : '')
             : 'Stammdaten und Workflow – der Planlauf startet mit dem Eintrag'
         }
         wide={braucheLauf}
@@ -1117,7 +1119,12 @@ function PlanDialog({
           titel="Eintrag löschen?"
           text={
             doc.kind === 'verzeichnis' && planIds.length > 0
-              ? `„${doc.titel}“ wird mit seinem Planlauf gelöscht. Seine Pläne bleiben als Einzelpläne im Planpaket des Verzeichnisses erhalten; wer bisher mitlief, führt den Stand des Verzeichnislaufs in einem eigenen Planlauf weiter.`
+              ? `„${doc.titel}“ wird mit seinem Planlauf gelöscht. Seine Pläne bleiben als Einzelpläne im Planpaket des Verzeichnisses erhalten${
+                  data.runs.some((r) => r.documentId === doc.id && r.status !== 'abgebrochen') &&
+                  data.documents.some((d) => d.parentId === doc.id && !hatEigenenPlanlauf(d, data.documents))
+                    ? '; wer bisher mitlief, führt den Stand des Verzeichnislaufs in einem eigenen Planlauf weiter.'
+                    : '.'
+                }`
               : `„${doc.titel}“ wird mit seinem Planlauf gelöscht.`
           }
           onConfirm={() => {
