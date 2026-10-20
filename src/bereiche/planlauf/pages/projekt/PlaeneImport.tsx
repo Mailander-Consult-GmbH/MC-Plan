@@ -2,16 +2,20 @@
  * Einlesen von Plänen, Planpaketen und Planverzeichnissen aus einer Excel-Datei
  * (.xlsx) oder Textliste (.csv).
  *
- * Übergeordnete Einträge werden über die Spalte „Übergeordnet“ zugeordnet
- * (Plancodierung bzw. Name des Pakets oder Verzeichnisses). Für jeden
- * übergeordneten Eintrag kann anschließend ein Planlauf gestartet werden.
+ * Übergeordnete Einträge werden über die Spalten „Planpaket“ und
+ * „Planverzeichnis“ zugeordnet. Jeder Eintrag mit eigenem Planlauf startet
+ * ihn beim Import – nach dem in der Datei genannten Workflow, sonst nach dem
+ * im Dialog gewählten. Pläne eines gebündelten Verzeichnisses laufen in dessen
+ * Lauf mit; ein beim Import neu angelegtes Verzeichnis startet seinen Lauf ebenso.
  */
 import { useRef, useState } from 'react';
 import {
   DOCUMENT_KIND_LABEL,
   hatEigenenPlanlauf,
+  verzeichnisGebuendelt,
   type DocumentKind,
   type PlanDocument,
+  type ProcessTemplate,
   type Project,
 } from '../../domain/types';
 import { datumLesen, spaltenZuordnen, tabelleLesen } from '../../../../shared/xlsxLesen';
@@ -20,11 +24,11 @@ import {
   PLAN_SPALTEN as SPALTEN,
   planVorlageLaden,
 } from '../../domain/importVorlagen';
-import { kontaktFuerRolleUndGewerk, stepsAusTemplate } from '../../domain/engine';
+import { planlaufAusWorkflow } from '../../domain/engine';
 import { formatDate, today } from '../../../../shared/dates';
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
-import { Callout, Modal } from '../../../../shared/ui';
+import { Callout, Field, Modal, Select } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 
 /** Erkennt die Art aus der Spaltenangabe. */
@@ -40,8 +44,9 @@ interface Zeile {
   parentNummer: string;
   /** Name des Planpakets; leer = keinem Paket zugeordnet. */
   paketName: string;
-  /** Name des Workflows aus der Liste; leer = kein Planlauf starten. */
+  /** Name des Workflows aus der Liste; leer = der im Dialog gewählte Workflow. */
   workflow: string;
+  /** In der Liste genannter, hinterlegter Workflow; null = der im Dialog gewählte. */
   workflowId: string | null;
   hinweis: string;
 }
@@ -61,6 +66,27 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
 
   const vorlage = planVorlageLaden;
+
+  /** Workflow für Einträge, deren Zeile keinen (hinterlegten) Workflow nennt. */
+  const [standardId, setStandardId] = useState(vorlagen[0]?.id ?? '');
+  const standard = vorlagen.find((t) => t.id === standardId);
+  /** Der Workflow, nach dem der Planlauf einer Zeile startet. */
+  const workflowVon = (z: Pick<Zeile, 'workflowId'>): ProcessTemplate | undefined =>
+    vorlagen.find((t) => t.id === z.workflowId) ?? standard;
+
+  /**
+   * Läuft der Eintrag einer Zeile selbst? Pakete nie; Pläne eines Verzeichnisses
+   * nur, wenn ein vorhandenes Verzeichnis seine Pläne einzeln führt – ein neu
+   * angelegtes Verzeichnis läuft gebündelt, seine Pläne laufen darin mit.
+   */
+  const laufArt = (z: Pick<Zeile, 'doc' | 'parentNummer'>): 'kein' | 'mit' | 'eigen' => {
+    if (z.doc.kind === 'paket') return 'kein';
+    if (z.doc.kind === 'verzeichnis' || !z.parentNummer) return 'eigen';
+    const eltern = vorhandene.find(
+      (d) => d.kind === 'verzeichnis' && (d.nummer === z.parentNummer || d.titel === z.parentNummer),
+    );
+    return eltern && !verzeichnisGebuendelt(eltern) ? 'eigen' : 'mit';
+  };
 
   /** Ist das Paket bzw. Verzeichnis im Projekt oder in der Liste selbst enthalten? */
   const paketBekannt = (name: string) =>
@@ -113,7 +139,9 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
         const vorlage = workflow
           ? vorlagen.find((t) => t.name.trim().toLowerCase() === workflow.toLowerCase())
           : undefined;
-        if (workflow && !vorlage) hinweise.push(`Workflow „${workflow}“ ist nicht hinterlegt`);
+        if (workflow && !vorlage) {
+          hinweise.push(`Workflow „${workflow}“ ist nicht hinterlegt – es gilt der im Dialog gewählte`);
+        }
 
         return {
           doc: {
@@ -154,9 +182,36 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
     }
 
     let ergaenzt = 0;
+    let laeufe = 0;
+    /** Startet den Planlauf eines neuen Eintrags nach dem Workflow seiner Zeile. */
+    const laufStarten = (
+      documentId: string,
+      eintrag: { kind: DocumentKind; nummer: string; titel: string; index: string; gewerk: string },
+      workflow: ProcessTemplate | undefined,
+    ) => {
+      if (!workflow) return;
+      addRun(
+        planlaufAusWorkflow(
+          workflow,
+          { ...eintrag, projectId: project.id, documentId },
+          kontakte,
+          rollen,
+          today(),
+          () => newId('rs'),
+        ),
+      );
+      laeufe += 1;
+    };
     /** Legt ein in der Liste genanntes, aber noch unbekanntes Paket bzw.
-     *  Verzeichnis an, damit die Zuordnung nicht verloren geht. */
-    const findenOderAnlegen = (name: string, kind: 'paket' | 'verzeichnis', gewerk: string): string => {
+     *  Verzeichnis an, damit die Zuordnung nicht verloren geht. Ein neues
+     *  Verzeichnis läuft gebündelt und startet seinen Planlauf sofort – nach
+     *  dem Workflow der Zeile, die es nennt. */
+    const findenOderAnlegen = (
+      name: string,
+      kind: 'paket' | 'verzeichnis',
+      gewerk: string,
+      workflow: ProcessTemplate | undefined,
+    ): string => {
       const vorhandenerEintrag =
         neueIds.get(name) ??
         vorhandene.find((d) => d.kind === kind && (d.nummer === name || d.titel === name))?.id;
@@ -177,49 +232,26 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
       });
       neueIds.set(name, id);
       ergaenzt += 1;
+      if (kind === 'verzeichnis') laufStarten(id, { kind, nummer: name, titel: name, index: '', gewerk }, workflow);
       return id;
     };
 
-    let laeufe = 0;
     for (const z of reihenfolge) {
       const eigeneId = z.doc.nummer ? neueIds.get(z.doc.nummer) : undefined;
       if (!eigeneId) continue;
 
       // Zuordnungen nachziehen; fehlende Pakete und Verzeichnisse entstehen dabei
       const parentId = z.parentNummer
-        ? findenOderAnlegen(z.parentNummer, 'verzeichnis', z.doc.gewerk)
+        ? findenOderAnlegen(z.parentNummer, 'verzeichnis', z.doc.gewerk, workflowVon(z))
         : null;
-      const paketId = z.paketName ? findenOderAnlegen(z.paketName, 'paket', z.doc.gewerk) : null;
+      const paketId = z.paketName ? findenOderAnlegen(z.paketName, 'paket', z.doc.gewerk, undefined) : null;
       if (parentId || paketId) updateDocument(eigeneId, { parentId, paketId });
 
-      // Planlauf starten, sofern ein Workflow benannt ist und der Eintrag einen eigenen Lauf hat
-      const vorlage = vorlagen.find((t) => t.id === z.workflowId);
-      // Ein im Import neu angelegtes Verzeichnis ist gebündelt; ein vorhandenes
-      // kann seine Pläne einzeln führen – dann erhält auch dieser Plan einen Lauf.
-      if (!vorlage || !hatEigenenPlanlauf({ kind: z.doc.kind, parentId }, data.documents)) continue;
-
-      const steps = stepsAusTemplate(
-        vorlage,
-        (roleName) => kontaktFuerRolleUndGewerk(kontakte, rollen, roleName, z.doc.gewerk),
-        () => newId('rs'),
-      );
-      addRun({
-        projectId: project.id,
-        documentId: eigeneId,
-        templateId: vorlage.id,
-        templateName: vorlage.name,
-        name: `Planlauf ${z.doc.nummer || z.doc.titel}${z.doc.index ? ` ${z.doc.index}` : ''}`,
-        index: z.doc.index,
-        start: today(),
-        status: 'laufend',
-        abbruchGrund: null,
-        abbruchDatum: null,
-        abbruchArt: null,
-        abbruchNeuerIndex: null,
-        steps,
-        bemerkung: '',
-      });
-      laeufe += 1;
+      // Jeder Eintrag mit eigenem Planlauf startet ihn sofort. Ein im Import neu
+      // angelegtes Verzeichnis ist gebündelt; ein vorhandenes kann seine Pläne
+      // einzeln führen – dann erhält auch dieser Plan einen Lauf.
+      if (!hatEigenenPlanlauf({ kind: z.doc.kind, parentId }, data.documents)) continue;
+      laufStarten(eigeneId, z.doc, workflowVon(z));
     }
 
     const teile = [`${vorschau.length} Einträge übernommen`];
@@ -246,7 +278,12 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
-          <button type="button" className="btn btn-primary" onClick={uebernehmen} disabled={vorschau.length === 0}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={uebernehmen}
+            disabled={vorschau.length === 0 || !standard}
+          >
             {vorschau.length > 0 ? `${vorschau.length} Einträge übernehmen` : 'Übernehmen'}
           </button>
         </>
@@ -300,11 +337,22 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
           </Callout>
         ) : null}
 
+        <Field
+          label="Workflow für Einträge ohne Angabe"
+          hint="Jeder Plan und jedes Planverzeichnis mit eigenem Planlauf startet ihn beim Import – nach dem Workflow aus der Spalte „Workflow“, sonst nach diesem."
+        >
+          <Select
+            value={standardId}
+            onChange={setStandardId}
+            options={vorlagen.map((t) => ({ value: t.id, label: `${t.name} (${t.steps.length} Schritte)` }))}
+          />
+        </Field>
+
         {vorschau.length === 0 && !fehler ? (
           <Callout icon="i">
             Erwartete Spalten: <strong>{KOPFZEILE.join(' · ')}</strong>. In <em>Art</em> steht Plan, Planpaket
-            oder Planverzeichnis. Ist in <em>Workflow</em> ein hinterlegter Workflow benannt, wird der Planlauf
-            beim Import gleich gestartet. <em>Planpaket</em> ordnet den Eintrag einem Paket zu (reines
+            oder Planverzeichnis. Der Planlauf startet beim Import immer – nach dem in <em>Workflow</em>
+            genannten Workflow, sonst nach dem oben gewählten. <em>Planpaket</em> ordnet den Eintrag einem Paket zu (reines
             Ordnungsmerkmal), <em>Planverzeichnis</em> ordnet einen Plan einem Verzeichnis unter – solche Pläne
             laufen im Planlauf des Verzeichnisses mit und erhalten keinen eigenen. Noch nicht angelegte Pakete
             und Verzeichnisse entstehen beim Import automatisch. Über <em>Vorlage</em> erhalten Sie eine Datei
@@ -345,7 +393,14 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
                       <td className="small muted">{z.doc.gewerk || '–'}</td>
                       <td className="small">{z.doc.eingangSoll ? formatDate(z.doc.eingangSoll) : '–'}</td>
                       <td className="small muted">
-                        {z.workflow || '–'}
+                        {laufArt(z) === 'kein'
+                          ? '–'
+                          : laufArt(z) === 'mit'
+                            ? 'läuft im Verzeichnis mit'
+                            : (workflowVon(z)?.name ?? '–')}
+                        {laufArt(z) === 'eigen' && !vorlagen.some((t) => t.id === z.workflowId) ? (
+                          <span className="tertiary small"> (gewählter Workflow)</span>
+                        ) : null}
                         {z.parentNummer ? (
                           <div className="tertiary small">untergeordnet: {z.parentNummer}</div>
                         ) : null}

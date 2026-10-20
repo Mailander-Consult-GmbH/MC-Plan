@@ -34,6 +34,12 @@ const paths: Record<string, string> = {
 
 export type IconName = keyof typeof paths;
 
+/** Symbol als SVG-Text – für Ausgaben außerhalb der Oberfläche, etwa die PDF-Fassung. */
+export function iconSvg(name: IconName | string, size = 16, strokeWidth = 1.6): string {
+  const d = paths[name] ?? paths.plan;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+
 export function Icon({
   name,
   size = 16,

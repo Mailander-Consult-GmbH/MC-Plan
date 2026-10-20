@@ -39,6 +39,7 @@ export const PLAN_SPALTEN: Record<string, string[]> = {
     'Name Planpaket',
     'Name PlanVZ',
     'Name Plan VZ',
+    'Codierung',
     'Nummer',
     'Name',
   ],
@@ -64,13 +65,13 @@ export const PLAN_BEISPIELE: string[][] = [
 /** Erläuterung der Spalten – auf der Seite „Vorlagen“ und im Import. */
 export const PLAN_HINWEISE: [string, string][] = [
   ['Art', 'Plan, Planverzeichnis oder Planpaket'],
-  ['Plancodierung / Name', 'Plancodierung des Plans bzw. Name des Verzeichnisses oder Pakets'],
+  ['Plancodierung / Name', 'Plancodierung des Plans, Codierung des Planverzeichnisses bzw. Name des Pakets'],
   ['Index/Ausgabe', 'Index des Plans bzw. Ausgabe des Planverzeichnisses'],
   ['Planpaket', 'Name des Pakets – ist es noch nicht angelegt, entsteht es beim Import'],
   ['Planverzeichnis', 'Name oder Codierung des Verzeichnisses, in dem der Plan mitläuft; fehlt es, wird es angelegt'],
   ['Eingang Soll', 'Soll-Termin des ersten Prozessschritts'],
   ['Datum Ausgabe', 'nur bei Planverzeichnissen'],
-  ['Workflow', 'Name eines hinterlegten Workflows – dann startet der Planlauf gleich mit'],
+  ['Workflow', 'Name eines hinterlegten Workflows; leer = der beim Import gewählte. Der Planlauf startet beim Import immer'],
 ];
 
 export function planVorlageLaden(): void {

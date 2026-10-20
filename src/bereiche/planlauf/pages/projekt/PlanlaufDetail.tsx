@@ -180,7 +180,7 @@ export function PlanlaufDetail({
     <div className="stack">
       <div className="row-between wrap">
         <button type="button" className="btn btn-ghost" onClick={onZurueck}>
-          <Icon name="zurueck" size={14} /> Übersicht
+          <Icon name="zurueck" size={14} /> Planläufe
         </button>
         <div className="row">
           {run.status === 'laufend' ? (

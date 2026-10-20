@@ -430,6 +430,12 @@ a:hover { text-decoration: underline; }
 /* Nullwerte treten zurück, damit die belegten Zahlen hervorstechen */
 .table td.zahl.leer { color: var(--text-tertiary); font-weight: 500; }
 
+/* Planläufe: acht Spalten – etwas schmalere Zellen, Spaltenköpfe dürfen umbrechen,
+   damit die Schaltflächen rechts auch auf Laptopbreite sichtbar bleiben. */
+.table.planlauf-tabelle th { white-space: normal; padding-left: 10px; padding-right: 10px; }
+.table.planlauf-tabelle td { padding-left: 10px; padding-right: 10px; }
+.table.planlauf-tabelle .progress { min-width: 44px; }
+
 .table .right { text-align: right; }
 .table .actions { text-align: right; white-space: nowrap; }
 

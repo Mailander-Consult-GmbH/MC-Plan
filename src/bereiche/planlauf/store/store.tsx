@@ -247,9 +247,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...d,
           // Pläne eines gelöschten Verzeichnisses werden zu Einzelplänen –
           // sonst verlören Pläne mit eigenem Lauf ihren Platz in den Listen.
+          // Einträge eines gelöschten Planpakets sind keinem Paket mehr zugeordnet.
           documents: d.documents
             .filter((x) => x.id !== id)
-            .map((x) => (x.parentId === id ? { ...x, parentId: null, eigenerLauf: undefined } : x)),
+            .map((x) => (x.parentId === id ? { ...x, parentId: null, eigenerLauf: undefined } : x))
+            .map((x) => (x.paketId === id ? { ...x, paketId: null } : x)),
           runs: d.runs.filter((r) => r.documentId !== id),
         })),
 
