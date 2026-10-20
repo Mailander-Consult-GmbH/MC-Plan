@@ -388,8 +388,9 @@ ein abgebrochener Vorgänger und der laufende Lauf eines Eintrags getrennt bleib
 wählt die Pläne unter sich mit, ein mitlaufender Plan sein Verzeichnis. Ist im Reiter *Planläufe*
 ein Filter gesetzt, sind die gezeigten Einträge vorgewählt. Zwei Umfänge:
 
-* **Kurzfassung** – genau die Angaben der Planlaufliste: Aktueller Stand, Nächster Schritt,
-  Zuständig, Fortschritt und Status.
+* **Kurzfassung** – als PDF genau die Angaben der Planlaufliste: Aktueller Stand, Nächster
+  Schritt, Zuständig, Fortschritt und Status; in Excel nach Planpaket, Plancode, Stand und Frist
+  (siehe unten).
 * **Langfassung** – je Planlauf zusätzlich alle bereits durchlaufenen und alle ausstehenden
   Schritte mit Verantwortlichen.
 
