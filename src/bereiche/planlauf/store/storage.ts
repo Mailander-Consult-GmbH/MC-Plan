@@ -72,9 +72,57 @@ export function ladeDaten(): AppData {
     if (!roh) return durchrechnen(seedData());
     const daten = JSON.parse(roh) as AppData;
     if (!daten || !Array.isArray(daten.projects)) return durchrechnen(seedData());
-    return durchrechnen(zustaendigkeitenNachziehen(eigenerKontakt(stammdatenAktualisieren(migriere(daten)))));
+    return aufbereiten(daten);
   } catch {
     return durchrechnen(seedData());
+  }
+}
+
+/** Hebt einen gelesenen Bestand auf die aktuelle Fassung – beim Laden wie beim Einspielen einer Sicherung. */
+function aufbereiten(daten: AppData): AppData {
+  return durchrechnen(zustaendigkeitenNachziehen(eigenerKontakt(stammdatenAktualisieren(migriere(daten)))));
+}
+
+/** Listen, die ein Bestand der aktuellen Fassung immer führt. */
+const LISTEN = [
+  'gewerke',
+  'standardRollen',
+  'emailVorlagen',
+  'projects',
+  'roles',
+  'contacts',
+  'documents',
+  'templates',
+  'runs',
+] as const satisfies readonly (keyof AppData)[];
+
+/**
+ * Liest eine Sicherung (die JSON-Datei aus „Sicherung“) und hebt sie wie beim
+ * Laden auf die aktuelle Fassung. Ist die Datei keine verwendbare Sicherung,
+ * entsteht ein Fehler mit einer Meldung für die Oberfläche.
+ */
+export function sicherungLesen(text: string): AppData {
+  let daten: Partial<AppData> | null;
+  try {
+    daten = JSON.parse(text) as Partial<AppData> | null;
+  } catch {
+    throw new Error('Die Datei ist keine gültige JSON-Datei.');
+  }
+  if (!daten || typeof daten !== 'object' || !Array.isArray(daten.projects)) {
+    throw new Error('Die Datei ist keine Sicherung von KaPlan.');
+  }
+  if (typeof daten.version === 'number' && daten.version > DATEN_VERSION) {
+    throw new Error(
+      'Die Sicherung stammt aus einer neueren Fassung von KaPlan. Bitte die Seite neu laden (Strg+Umschalt+R) und erneut einspielen.',
+    );
+  }
+  if (daten.version === DATEN_VERSION && LISTEN.some((liste) => !Array.isArray(daten[liste]))) {
+    throw new Error('Die Sicherung ist unvollständig.');
+  }
+  try {
+    return aufbereiten(daten as AppData);
+  } catch {
+    throw new Error('Die Sicherung konnte nicht gelesen werden.');
   }
 }
 

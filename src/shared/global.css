@@ -164,6 +164,10 @@ a:hover { text-decoration: underline; }
 .nav-badge.alert { background: var(--red); color: #fff; }
 
 .sidebar-footer { margin-top: auto; padding: 12px 10px 2px; font-size: 11px; color: var(--text-tertiary); }
+/* Sicherung und Einspielen nebeneinander, Zurücksetzen darunter über die ganze Breite */
+.sicherung-knoepfe { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 8px 0; }
+.sicherung-knoepfe .btn { justify-content: center; padding-left: 6px; padding-right: 6px; }
+.sicherung-knoepfe .btn:last-child { grid-column: 1 / -1; }
 
 .main { display: flex; flex-direction: column; overflow: hidden; }
 
