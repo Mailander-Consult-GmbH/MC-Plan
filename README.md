@@ -191,20 +191,23 @@ Nummer und Symbol zuklappen.
 
 **Planpakete** sind ein reines Ordnungsmerkmal ohne eigenen Planlauf – und gliedern die Planliste:
 Je Paket steht eine Kopfzeile mit der Zahl seiner Einträge, darunter seine Planverzeichnisse und
-Pläne; Einträge ohne Paket folgen unter **Ohne Planpaket**. Der Pfeil an der Kopfzeile klappt das
-Paket zu, ein Klick auf die Zeile öffnet es zum Bearbeiten. Angelegt werden Pakete über **Neues
-Planpaket** oder direkt beim Anlegen eines Eintrags. Im Dialog des Pakets lassen sich unter
-**Inhalt** Planverzeichnisse und Pläne ohne Verzeichnis hinzufügen und wieder entfernen; Pläne eines
-Verzeichnisses folgen dem Paket ihres Verzeichnisses. Wird ein Paket gelöscht, bleiben seine
-Einträge mit ihren Planläufen erhalten. Die Suche erfasst auch den Namen des Pakets. Frühere
-Adressen der eigenen Seite *Planpakete* führen auf die Planliste.
+Pläne; Einträge ohne Paket folgen – sobald Pakete angezeigt werden – unter **Ohne Planpaket**. Der
+Pfeil an der Kopfzeile klappt das Paket zu, ein Klick auf die Zeile öffnet es zum Bearbeiten.
+Angelegt werden Pakete über **Neues Planpaket** oder direkt beim Anlegen eines Eintrags. Im Dialog
+des Pakets lassen sich unter **Inhalt** Planverzeichnisse und Pläne ohne Verzeichnis hinzufügen und
+wieder entfernen – das gilt sofort; Pläne eines Verzeichnisses folgen dem Paket ihres Verzeichnisses.
+Wird ein Paket gelöscht, bleiben seine Einträge mit ihren Planläufen erhalten. Die Suche erfasst
+auch Name, Kurzzeichen und Gewerk des Pakets. Frühere Adressen der eigenen Seite *Planpakete*
+führen auf die Planliste.
 
 **Zu jedem Eintrag mit eigenem Lauf gehört genau ein laufender Planlauf – er startet immer
 automatisch.** Er entsteht zusammen mit dem Eintrag: Im selben Dialog werden der Workflow gewählt und
-seine Schritte für diesen Lauf angepasst. Auch ein Planverzeichnis, das beim Anlegen eines Plans
-über *+ Neues Planverzeichnis anlegen …* entsteht, fragt Codierung, Titel und Workflow ab und
-startet seinen Lauf sofort (**Anlegen und Planlauf starten**); der Plan läuft darin mit. Die
-Planliste führt die Stammdaten – Art, Bezeichnung, Gewerk, Planverzeichnis und Eingang Soll – und
+seine Schritte für diesen Lauf angepasst. Ein Planverzeichnis, das beim Anlegen eines Plans über
+*+ Neues Planverzeichnis anlegen …* entsteht, fragt Codierung und Titel ab; sein Planlauf startet
+mit dem Speichern des Plans (**Anlegen und Planlauf starten**) nach dem Workflow im Dialog, und der
+Plan läuft darin mit. Wird der Plan nicht gespeichert oder ein anderes Verzeichnis gewählt, entfällt
+das angelegte Verzeichnis wieder. Ebenso startet ein vorhandenes gebündeltes Verzeichnis, das noch
+nie einen Planlauf hatte, ihn mit dem ersten Plan, der darin gespeichert wird. Die Planliste führt die Stammdaten – Art, Bezeichnung, Gewerk, Planverzeichnis und Eingang Soll – und
 lässt sich über die Spaltenüberschriften sortieren; den Stand der Abläufe zeigt der Reiter
 **Planläufe**. Ein Klick auf die Zeile öffnet den Eintrag.
 
@@ -244,19 +247,27 @@ gelten nicht als Abbruch. Die Nachträge stehen im Dialog des Verzeichnisses bzw
 Planliste, in der Karte **Pläne dieses Verzeichnisses** des Planlaufs und in der Planlaufliste
 des Projekts.
 
+Wird ein gebündeltes Verzeichnis gelöscht, bleiben seine Pläne als Einzelpläne im Paket des
+Verzeichnisses erhalten; wer bisher mitlief, führt den Stand des Verzeichnislaufs in einem eigenen
+Planlauf weiter.
+
 **Excel-Import:** Planlisten lassen sich als `.xlsx` oder `.csv` einlesen. Erwartete Spalten:
 *Art · Plancodierung / Name · Index/Ausgabe · Titel · Gewerk · Planungsphase · Planpaket ·
 Planverzeichnis · Eingang Soll · Datum Ausgabe · Workflow · Bemerkung* (frühere Schreibweisen wie
 *Name PlanVZ* werden weiter erkannt). Genannte, aber noch nicht vorhandene Planpakete und
-Planverzeichnisse entstehen beim Import. **Jeder Eintrag mit eigenem Planlauf startet ihn beim
-Import** – auch ein dabei neu angelegtes Planverzeichnis: nach dem in *Workflow* genannten
-Workflow, sonst nach dem im Dialog unter *Workflow für Einträge ohne Angabe* gewählten. Die
-Vorschau nennt je Zeile den Workflow bzw. *läuft im Verzeichnis mit*.
+Planverzeichnisse entstehen beim Import; ein neues Verzeichnis übernimmt das früheste *Eingang Soll*
+seiner Pläne. Verweise auf Pakete und Verzeichnisse gelten über Codierung bzw. Kurzzeichen oder
+Titel, auch auf Einträge derselben Datei. **Jeder Eintrag mit eigenem Planlauf startet ihn beim
+Import** – auch Zeilen ohne Codierung, ein dabei neu angelegtes Planverzeichnis und ein vorhandenes
+gebündeltes Verzeichnis, das noch nie einen Lauf hatte: nach dem in *Workflow* genannten Workflow,
+sonst nach dem im Dialog unter *Workflow für Einträge ohne Angabe* gewählten. Die Vorschau nennt je
+Zeile den Workflow bzw. *läuft im Verzeichnis mit* und weist auf Bezeichnungen hin, die in der Datei
+mehrfach vorkommen.
 
 ### Planläufe im Projekt
 Der erste Reiter eines Projekts, **Planläufe**, zeigt Kennzahlen und die Planlaufliste. Je Eintrag
-steht in der Spalte **Aktueller Stand** der zuletzt abgeschlossene Prozessschritt, darunter in Grau
-sein Erledigungsdatum, und in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist.
+steht in der Spalte **Aktueller Stand** der zuletzt abgeschlossene Prozessschritt vor dem offenen –
+auch nach dem Wiederöffnen eines früheren Schritts –, darunter in Grau sein Erledigungsdatum, und in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist.
 Die Liste ist nach Planpaketen gegliedert; Planverzeichnisse lassen sich am Pfeil vor Symbol und Titel
 aufklappen (zunächst zugeklappt). Darunter stehen die Pläne – mitlaufend mit **Herauslösen …**,
 herausgelöst mit eigenem Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als
@@ -372,8 +383,10 @@ Zwischenablage kopieren; der Zeitpunkt wird am Schritt vermerkt.
 ### Export je Projekt
 Über **Export** im Reiter **Planläufe** (oder in den Projekteinstellungen) lassen sich die Planläufe
 eines Projekts ausgeben. Die Auswahl der Einträge ist wie die Planlaufliste gegliedert – je
-Planpaket, *Ohne Planpaket* und *Abgebrochen* mit eigenem Haken; ein Verzeichnis mit Plänen einzeln
-wählt die Pläne unter sich. Zwei Umfänge:
+Planpaket, *Ohne Planpaket* und *Abgebrochen* mit eigenem Haken. Gewählt wird je Planlauf, sodass
+ein abgebrochener Vorgänger und der laufende Lauf eines Eintrags getrennt bleiben; ein Verzeichnis
+wählt die Pläne unter sich mit, ein mitlaufender Plan sein Verzeichnis. Ist im Reiter *Planläufe*
+ein Filter gesetzt, sind die gezeigten Einträge vorgewählt. Zwei Umfänge:
 
 * **Kurzfassung** – genau die Angaben der Planlaufliste: Aktueller Stand, Nächster Schritt,
   Zuständig, Fortschritt und Status.
@@ -385,10 +398,12 @@ Beides jeweils als **Excel** (.xlsx, ohne zusätzliche Programmbibliothek erzeug
 Planlaufliste im Programm – ohne Schaltflächen für E-Mail, Erledigt oder Auf-/Zuklappen. In Excel
 steht jede Angabe in einer eigenen Spalte: Planpaket, Planverzeichnis, Art, Codierung, Index /
 Ausgabe, Titel, Gewerk, Aktueller Stand und sein Datum, Nächster Schritt mit Soll-Termin und Frist,
-Zuständige Funktion, Person, Fortschritt und Status; die Langfassung hat je Prozessschritt eine
-Zeile. In beiden Umfängen sind **nur die Planpakete Überschriften**; Planverzeichnisse folgen der
-Logik der Planlaufliste – ein gebündeltes Verzeichnis ist ein Planlauf mit mitlaufenden Plänen, ein
-Verzeichnis mit Plänen einzeln fasst diese nur zusammen.
+Zuständige Funktion, Person, Fortschritt und Status – wie in der Liste auch je Planpaket und je
+Verzeichnis mit Plänen einzeln eine Zeile mit deren zusammengefasstem Fortschritt und Status; die
+Langfassung hat je Prozessschritt eine Zeile. In beiden Umfängen sind **nur die Planpakete
+Überschriften** (dazu wie in der Liste *Ohne Planpaket* und *Abgebrochen*); Planverzeichnisse folgen
+der Logik der Planlaufliste – ein gebündeltes Verzeichnis ist ein Planlauf mit mitlaufenden Plänen,
+ein Verzeichnis mit Plänen einzeln fasst diese nur zusammen.
 
 ### Übersicht und Markierung von Projekten
 Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
