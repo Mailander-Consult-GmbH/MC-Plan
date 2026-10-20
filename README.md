@@ -395,15 +395,25 @@ ein Filter gesetzt, sind die gezeigten Einträge vorgewählt. Zwei Umfänge:
 
 Beides jeweils als **Excel** (.xlsx, ohne zusätzliche Programmbibliothek erzeugt) und als **PDF**
 über den Druckdialog des Browsers („Als PDF sichern“). Das PDF der Kurzfassung sieht aus wie die
-Planlaufliste im Programm – ohne Schaltflächen für E-Mail, Erledigt oder Auf-/Zuklappen. In Excel
-steht jede Angabe in einer eigenen Spalte: Planpaket, Planverzeichnis, Art, Codierung, Index /
-Ausgabe, Titel, Gewerk, Aktueller Stand und sein Datum, Nächster Schritt mit Soll-Termin und Frist,
-Zuständige Funktion, Person, Fortschritt und Status – wie in der Liste auch je Planpaket und je
-Verzeichnis mit Plänen einzeln eine Zeile mit deren zusammengefasstem Fortschritt und Status; die
-Langfassung hat je Prozessschritt eine Zeile. In beiden Umfängen sind **nur die Planpakete
-Überschriften** (dazu wie in der Liste *Ohne Planpaket* und *Abgebrochen*); Planverzeichnisse folgen
-der Logik der Planlaufliste – ein gebündeltes Verzeichnis ist ein Planlauf mit mitlaufenden Plänen,
-ein Verzeichnis mit Plänen einzeln fasst diese nur zusammen.
+Planlaufliste im Programm – ohne Schaltflächen für E-Mail, Erledigt oder Auf-/Zuklappen.
+
+Die **Kurzfassung in Excel** nennt in A1 das Projekt („Projekt: …“) und in A2 den Stand („Stand:
+TT.MM.JJJJ“). Darunter steht je Zeile der Planlaufliste eine Zeile mit den Spalten *Planpaket*
+(„ohne Planpaket“, wenn keines) · *Plancode* · *Index/Ausgabe* · *Titel* · *Gewerk* · *Aktueller
+Stand* · *Datum* · *Nächster Schritt* · *Frist*. Laufende Planläufe stehen zuerst; abgeschlossene
+folgen gesondert unter **Abgeschlossen (n)** grün hinterlegt, abgebrochene unter **Abgebrochen (n)**
+grau – jeweils in der Reihenfolge der Liste. Datum und Frist sind echte Excel-Daten; eine fällige
+Frist ist orange, eine überfällige rot hinterlegt. Ein mitlaufender Plan nennt in *Aktueller Stand*
+das Verzeichnis, in dessen Planlauf er mitläuft; ein abgebrochener Lauf trägt sein Abbruchdatum und
+den Zusatz *ersatzlos* bzw. *ersetzt durch Index …*. Die Kopfzeilen bleiben beim Scrollen stehen,
+gedruckt wird quer auf Seitenbreite. Die Langfassung in Excel hat je Prozessschritt eine Zeile mit
+Planpaket, Planverzeichnis, Art, Codierung, Index, Titel und Gewerk in eigenen Spalten.
+
+Im PDF beider Umfänge und in der Excel-Langfassung sind **nur die Planpakete Überschriften** (dazu
+wie in der Liste *Ohne Planpaket* und *Abgebrochen*); Planverzeichnisse folgen der Logik der
+Planlaufliste – ein gebündeltes Verzeichnis ist ein Planlauf mit mitlaufenden Plänen, ein
+Verzeichnis mit Plänen einzeln fasst diese nur zusammen und hat keine eigene Zeile mit
+Schrittangaben.
 
 ### Übersicht und Markierung von Projekten
 Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
@@ -449,7 +459,7 @@ src/
     logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen
     dates.ts     Fristen- und Datumsrechnung
-    xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit
+    xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit (mit Zellformaten)
     xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers
