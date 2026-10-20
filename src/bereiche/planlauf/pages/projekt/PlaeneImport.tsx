@@ -82,19 +82,17 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
   const laufArt = (z: Pick<Zeile, 'doc' | 'parentNummer'>): 'kein' | 'mit' | 'eigen' => {
     if (z.doc.kind === 'paket') return 'kein';
     if (z.doc.kind === 'verzeichnis' || !z.parentNummer) return 'eigen';
-    const eltern = vorhandene.find(
-      (d) => d.kind === 'verzeichnis' && (d.nummer === z.parentNummer || d.titel === z.parentNummer),
-    );
+    const eltern = vorhandenesVerzeichnis(z.parentNummer);
     return eltern && !verzeichnisGebuendelt(eltern) ? 'eigen' : 'mit';
   };
 
-  /** Ist das Paket bzw. Verzeichnis im Projekt oder in der Liste selbst enthalten? */
-  const paketBekannt = (name: string) =>
-    vorhandene.some((d) => d.kind === 'paket' && (d.titel === name || d.nummer === name)) ||
-    vorschau.some((z) => z.doc.kind === 'paket' && (z.doc.titel === name || z.doc.nummer === name));
-  const verzeichnisBekannt = (name: string) =>
-    vorhandene.some((d) => d.kind === 'verzeichnis' && (d.nummer === name || d.titel === name)) ||
-    vorschau.some((z) => z.doc.kind === 'verzeichnis' && (z.doc.nummer === name || z.doc.titel === name));
+  /** Trägt ein Eintrag den Namen – als Codierung bzw. Kurzzeichen oder als Titel? */
+  const heisst = (e: { nummer: string; titel: string }, name: string) => e.nummer === name || e.titel === name;
+  /** Vorhandenes Planverzeichnis des Projekts, das eine Zeile nennt. */
+  const vorhandenesVerzeichnis = (name: string) =>
+    vorhandene.find((d) => d.kind === 'verzeichnis' && heisst(d, name));
+  /** Hatte der Eintrag schon einen Planlauf? Ein abgebrochener startet nicht von selbst neu. */
+  const hatLauf = (docId: string) => data.runs.some((r) => r.documentId === docId);
 
   const lies = async (f: File) => {
     setFehler('');
@@ -119,6 +117,16 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
       const wert = (zeile: string[], feld: string) =>
         spalten[feld] !== undefined ? (zeile[spalten[feld]] ?? '').trim() : '';
 
+      // Pakete und Verzeichnisse dürfen in derselben Datei stehen, die sie nennt
+      const inDatei = zeilen.map((zeile) => ({
+        kind: artLesen(wert(zeile, 'art')),
+        nummer: wert(zeile, 'nummer'),
+        titel: wert(zeile, 'titel'),
+      }));
+      const bekannt = (kind: DocumentKind, name: string) =>
+        vorhandene.some((d) => d.kind === kind && heisst(d, name)) ||
+        inDatei.some((e) => e.kind === kind && heisst(e, name));
+
       const ergebnis: Zeile[] = zeilen.map((zeile) => {
         const art = artLesen(wert(zeile, 'art'));
         const nummer = wert(zeile, 'nummer');
@@ -130,10 +138,18 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
         if (vorhandene.some((d) => d.nummer && d.nummer === nummer)) {
           hinweise.push('Eintrag mit dieser Bezeichnung ist bereits vorhanden');
         }
+        if (nummer && inDatei.filter((e) => e.nummer === nummer).length > 1) {
+          hinweise.push('Bezeichnung kommt in der Datei mehrfach vor');
+        }
         if (parentNummer && art !== 'plan') hinweise.push('nur Pläne können einem Planverzeichnis zugeordnet werden');
-        if (paketName && !paketBekannt(paketName)) hinweise.push(`Planpaket „${paketName}“ wird angelegt`);
-        if (art === 'plan' && parentNummer && !verzeichnisBekannt(parentNummer)) {
-          hinweise.push(`Planverzeichnis „${parentNummer}“ wird angelegt`);
+        if (paketName && !bekannt('paket', paketName)) hinweise.push(`Planpaket „${paketName}“ wird angelegt`);
+        if (art === 'plan' && parentNummer) {
+          const eltern = vorhandenesVerzeichnis(parentNummer);
+          if (!bekannt('verzeichnis', parentNummer)) {
+            hinweise.push(`Planverzeichnis „${parentNummer}“ wird angelegt`);
+          } else if (eltern && verzeichnisGebuendelt(eltern) && !hatLauf(eltern.id)) {
+            hinweise.push(`Planverzeichnis „${parentNummer}“ startet seinen Planlauf`);
+          }
         }
 
         const vorlage = workflow
@@ -172,24 +188,37 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
 
   const uebernehmen = () => {
     // Erst die übergeordneten Einträge, damit die Zuordnung greifen kann
-    const neueIds = new Map<string, string>();
     const reihenfolge = [...vorschau].sort((a, b) => (a.parentNummer ? 1 : 0) - (b.parentNummer ? 1 : 0));
+    /** Neu angelegter Eintrag je Zeile – die Codierung kann fehlen oder doppelt sein. */
+    const ids = new Map<Zeile, string>();
+    /** In diesem Import angelegte Einträge – auffindbar über Codierung und Titel. */
+    const neue: { id: string; kind: DocumentKind; nummer: string; titel: string }[] = [];
 
     for (const z of reihenfolge) {
       const id = addDocument({ ...z.doc, parentId: null, paketId: null });
-      if (z.doc.nummer) neueIds.set(z.doc.nummer, id);
-      if (z.doc.kind === 'paket' && z.doc.titel) neueIds.set(z.doc.titel, id);
+      ids.set(z, id);
+      neue.push({ id, kind: z.doc.kind, nummer: z.doc.nummer, titel: z.doc.titel });
+    }
+
+    // Ein fehlendes Verzeichnis übernimmt das früheste Eingang Soll der Pläne,
+    // die es nennen – sein Planlauf trägt deren Eingang.
+    const eingangVon = new Map<string, string>();
+    for (const z of vorschau) {
+      if (!z.parentNummer || !z.doc.eingangSoll) continue;
+      const bisher = eingangVon.get(z.parentNummer);
+      if (!bisher || z.doc.eingangSoll < bisher) eingangVon.set(z.parentNummer, z.doc.eingangSoll);
     }
 
     let ergaenzt = 0;
-    let laeufe = 0;
-    /** Startet den Planlauf eines neuen Eintrags nach dem Workflow seiner Zeile. */
+    const gestartet = new Set<string>();
+    /** Startet den Planlauf eines Eintrags nach dem Workflow seiner Zeile – je Eintrag einmal. */
     const laufStarten = (
       documentId: string,
       eintrag: { kind: DocumentKind; nummer: string; titel: string; index: string; gewerk: string },
       workflow: ProcessTemplate | undefined,
     ) => {
-      if (!workflow) return;
+      if (!workflow || gestartet.has(documentId)) return;
+      gestartet.add(documentId);
       addRun(
         planlaufAusWorkflow(
           workflow,
@@ -200,7 +229,6 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
           () => newId('rs'),
         ),
       );
-      laeufe += 1;
     };
     /** Legt ein in der Liste genanntes, aber noch unbekanntes Paket bzw.
      *  Verzeichnis an, damit die Zuordnung nicht verloren geht. Ein neues
@@ -213,10 +241,10 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
       workflow: ProcessTemplate | undefined,
     ): string => {
       const vorhandenerEintrag =
-        neueIds.get(name) ??
-        vorhandene.find((d) => d.kind === kind && (d.nummer === name || d.titel === name))?.id;
+        neue.find((n) => n.kind === kind && heisst(n, name))?.id ??
+        vorhandene.find((d) => d.kind === kind && heisst(d, name))?.id;
       if (vorhandenerEintrag) return vorhandenerEintrag;
-      const id = addDocument({
+      const neu = {
         projectId: project.id,
         kind,
         parentId: null,
@@ -226,19 +254,19 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
         index: '',
         gewerk,
         planungsphase: '',
-        eingangSoll: null,
+        eingangSoll: kind === 'verzeichnis' ? (eingangVon.get(name) ?? null) : null,
         datum: null,
         bemerkung: 'beim Import angelegt',
-      });
-      neueIds.set(name, id);
+      };
+      const id = addDocument(neu);
+      neue.push({ id, kind, nummer: neu.nummer, titel: name });
       ergaenzt += 1;
-      if (kind === 'verzeichnis') laufStarten(id, { kind, nummer: name, titel: name, index: '', gewerk }, workflow);
+      if (kind === 'verzeichnis') laufStarten(id, neu, workflow);
       return id;
     };
 
     for (const z of reihenfolge) {
-      const eigeneId = z.doc.nummer ? neueIds.get(z.doc.nummer) : undefined;
-      if (!eigeneId) continue;
+      const eigeneId = ids.get(z)!;
 
       // Zuordnungen nachziehen; fehlende Pakete und Verzeichnisse entstehen dabei
       const parentId = z.parentNummer
@@ -246,6 +274,13 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
         : null;
       const paketId = z.paketName ? findenOderAnlegen(z.paketName, 'paket', z.doc.gewerk, undefined) : null;
       if (parentId || paketId) updateDocument(eigeneId, { parentId, paketId });
+
+      // Ein vorhandenes gebündeltes Verzeichnis ohne Planlauf startet ihn jetzt –
+      // sonst liefe der Plan nirgends mit.
+      const eltern = vorhandene.find((d) => d.id === parentId);
+      if (eltern && verzeichnisGebuendelt(eltern) && !hatLauf(eltern.id)) {
+        laufStarten(eltern.id, eltern, workflowVon(z));
+      }
 
       // Jeder Eintrag mit eigenem Planlauf startet ihn sofort. Ein im Import neu
       // angelegtes Verzeichnis ist gebündelt; ein vorhandenes kann seine Pläne
@@ -256,7 +291,7 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
 
     const teile = [`${vorschau.length} Einträge übernommen`];
     if (ergaenzt > 0) teile.push(`${ergaenzt} Paket(e)/Verzeichnis(se) ergänzt`);
-    if (laeufe > 0) teile.push(`${laeufe} Planläufe gestartet`);
+    if (gestartet.size > 0) teile.push(`${gestartet.size} Planläufe gestartet`);
     toast(`${teile.join(', ')}.`);
     onClose();
   };

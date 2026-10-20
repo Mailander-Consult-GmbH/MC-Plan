@@ -48,7 +48,9 @@ export function PaketDialog({
         .filter((d) => d.paketId === paket.id)
         .sort((a, b) => a.nummer.localeCompare(b.nummer, 'de', { numeric: true }))
     : [];
-  const ohnePaket = zuordenbar.filter((d) => !d.paketId);
+  // Ohne Paket zählt auch ein Verweis auf ein inzwischen gelöschtes Paket
+  const pakete = new Set(data.documents.filter((d) => d.kind === 'paket').map((d) => d.id));
+  const ohnePaket = zuordenbar.filter((d) => !d.paketId || !pakete.has(d.paketId));
 
   const zuweisen = (docId: string, paketId: string | null) => {
     updateDocument(docId, { paketId });
@@ -138,8 +140,8 @@ export function PaketDialog({
               <div className="row-between" style={{ marginBottom: 6 }}>
                 <h3>Inhalt</h3>
                 <span className="small tertiary">
-                  {inhalt.length} {inhalt.length === 1 ? 'Eintrag' : 'Einträge'} · Pläne eines Verzeichnisses folgen
-                  ihrem Verzeichnis
+                  {inhalt.length} {inhalt.length === 1 ? 'Eintrag' : 'Einträge'} · gilt sofort · Pläne eines
+                  Verzeichnisses folgen ihrem Verzeichnis
                 </span>
               </div>
               <div className="card">

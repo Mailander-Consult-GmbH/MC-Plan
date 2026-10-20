@@ -210,7 +210,14 @@ export function Uebersicht({
         )}
       </Card>
 
-      {exportOffen ? <ExportDialog project={project} onClose={() => setExportOffen(false)} /> : null}
+      {exportOffen ? (
+        <ExportDialog
+          project={project}
+          // Bei gesetztem Filter sind die Einträge vorgewählt, die die Liste zeigt
+          vorauswahl={filterAktiv ? new Set(gefiltert.map((r) => r.id)) : undefined}
+          onClose={() => setExportOffen(false)}
+        />
+      ) : null}
     </div>
   );
 }

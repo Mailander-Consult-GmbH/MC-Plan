@@ -41,6 +41,7 @@ import {
   knotenBilden,
   letzterAbgeschlossenerSchritt,
   massgeblicheLaeufe,
+  mitlaufendePlaene,
   paketStand,
   standAnzeige,
   statusAnzeige,
@@ -88,23 +89,35 @@ export interface Bericht {
   mitPaketen: boolean;
 }
 
-/** Dokument, über das eine Zeile ausgewählt wird. */
-export function zeilenDokument(zeile: BerichtZeile): ID | undefined {
-  if (zeile.art === 'lauf') return zeile.eintrag.doc?.id ?? zeile.eintrag.run.documentId;
+/**
+ * Schlüssel, über den eine Zeile ausgewählt wird: bei Planläufen der Lauf –
+ * ein Eintrag kann neben seinem laufenden auch einen abgebrochenen Lauf haben –,
+ * bei mitlaufenden Plänen der Plan. Verzeichnisklammern sind nicht auswählbar.
+ */
+export function zeilenSchluessel(zeile: BerichtZeile): ID | undefined {
+  if (zeile.art === 'lauf') return zeile.eintrag.run.id;
   if (zeile.art === 'mitlaufend') return zeile.plan.id;
   return undefined;
 }
 
 /**
  * Baut den Bericht eines Projekts. Ohne Auswahl enthält er alles, was die
- * Übersicht zeigt; mit Auswahl nur die gewählten Pläne und Planverzeichnisse.
+ * Übersicht zeigt; mit Auswahl (Schlüssel nach zeilenSchluessel) nur die
+ * gewählten Planläufe und mitlaufenden Pläne. Ein gewählter mitlaufender Plan
+ * bringt den Lauf seines Verzeichnisses mit – ohne ihn stünde er nirgends.
  */
 export function berichtBilden(data: AppData, project: Project, auswahl?: Set<ID>): Bericht {
   const vorlauf = project.settings.erinnerungVorlaufTage;
   const documents = data.documents;
   const alleLaeufe = massgeblicheLaeufe(data, project.id);
-  const gewaehlt = (id: ID | undefined) => !auswahl || (id !== undefined && auswahl.has(id));
-  const eintraege = eintraegeVon(documents, alleLaeufe).filter((e) => gewaehlt(e.doc?.id ?? e.run.documentId));
+  const gewaehlt = (id: ID) => !auswahl || auswahl.has(id);
+  const eintraege = eintraegeVon(documents, alleLaeufe).filter(
+    (e) =>
+      gewaehlt(e.run.id) ||
+      (e.run.status !== 'abgebrochen' &&
+        e.doc?.kind === 'verzeichnis' &&
+        mitlaufendePlaene(documents, e.doc.id).some((p) => gewaehlt(p.id))),
+  );
   const gliederung = gliederungBilden(documents, eintraege);
   const laufende = eintraege.filter((e) => e.run.status !== 'abgebrochen');
   const basis = eigeneLaeufeDesProjekts(data, project.id);
@@ -325,21 +338,46 @@ const KURZ_KOPF = [
   'Status',
 ];
 
-/** Kurzfassung als Tabelle: je Zeile der Übersicht eine Zeile, jede Angabe in eigener Spalte. */
+/**
+ * Kurzfassung als Tabelle: je Zeile der Übersicht eine Zeile, jede Angabe in
+ * eigener Spalte – auch die Zeilen der Planpakete und der Verzeichnisse mit
+ * Plänen einzeln, die nur Fortschritt und Status zusammenfassen.
+ */
 export function kurzZeilen(data: AppData, project: Project, auswahl?: Set<ID>): Zelle[][] {
   const bericht = berichtBilden(data, project, auswahl);
   const ausgabe: Zelle[][] = [KURZ_KOPF];
   for (const gruppe of bericht.gruppen) {
+    // Wie in der Liste: das Planpaket mit seinem zusammengefassten Stand
+    if (gruppe.art === 'paket' && gruppe.paket) {
+      const p = gruppe.paket;
+      const status = gruppe.stand ? standAnzeige(gruppe.stand) : null;
+      ausgabe.push([
+        p.titel,
+        '',
+        DOCUMENT_KIND_LABEL.paket,
+        p.nummer,
+        '',
+        p.titel,
+        p.gewerk,
+        '',
+        '',
+        `${gruppe.laeufe} ${gruppe.laeufe === 1 ? 'laufender Eintrag' : 'laufende Einträge'}`,
+        '',
+        '',
+        '',
+        '',
+        gruppe.stand?.pct ?? 0,
+        status?.text ?? '',
+      ]);
+    }
     for (const zeile of gruppe.zeilen) {
-      // Eine Verzeichnisklammer ist keine eigene Zeile – ihre Pläne nennen sie in „Planverzeichnis“.
-      if (zeile.art === 'klammer') continue;
       const w = zeilenWerte(data, project, zeile);
       const verzeichnis = verzeichnisVon(data, zeile);
       const paket = gruppe.art === 'paket' ? gruppe.paket : paketDerZeile(data, zeile);
       ausgabe.push([
         paket ? paket.titel : '',
         verzeichnis ? verzeichnis.nummer || verzeichnis.titel : '',
-        DOCUMENT_KIND_LABEL[w.art],
+        zeile.art === 'klammer' ? `${DOCUMENT_KIND_LABEL.verzeichnis} (Pläne einzeln)` : DOCUMENT_KIND_LABEL[w.art],
         w.nummer,
         w.index,
         w.titel,
@@ -501,11 +539,12 @@ function balken(pct: number | null): string {
   return `<span class="fortschritt"><span class="balken"><div style="width:${pct}%"></div></span><span class="klein grau">${pct}%</span></span>`;
 }
 
-function bezeichnung(w: ZeilenWerte): string {
+/** Erste Spalte: Symbol, Nummer und Titel – mitlaufende Pläne wie in der Liste nicht fett. */
+function bezeichnung(w: ZeilenWerte, fett = true): string {
   const nr = [w.nummer, w.indexText].filter(Boolean).join(' · ');
   return `<span class="zelle"><span class="symbol">${iconSvg(w.art, 13)}</span><span>${
     nr ? `<span class="nr">${html(nr)}</span>` : ''
-  }<div><span class="titel">${html(w.titel)}</span>${w.zusatz ? `<span class="klein grau"> · ${html(w.zusatz)}</span>` : ''}</div></span></span>`;
+  }<div><span class="${fett ? 'titel' : 'klein'}">${html(w.titel)}</span>${w.zusatz ? `<span class="klein grau"> · ${html(w.zusatz)}</span>` : ''}</div></span></span>`;
 }
 
 /** Kurzfassung als HTML-Tabelle – wie die Tabelle im Reiter „Planläufe“. */
@@ -534,7 +573,7 @@ function kurzHtml(data: AppData, project: Project, bericht: Bericht): string {
         .map((zeile) => {
           const w = zeilenWerte(data, project, zeile);
           const klassen = [zeile.ebene > 0 && zeile.art === 'mitlaufend' ? 'unter' : '', w.farbe].filter(Boolean).join(' ');
-          const erste = `<td style="${AUSRICHTUNG(zeile.ebene, imPaket)}">${bezeichnung(w)}</td>`;
+          const erste = `<td style="${AUSRICHTUNG(zeile.ebene, imPaket)}">${bezeichnung(w, zeile.art !== 'mitlaufend')}</td>`;
           const gewerk = `<td class="klein mittel">${html(w.gewerk || '–')}</td>`;
           if (zeile.art === 'mitlaufend') {
             return `<tr class="${klassen}">${erste}${gewerk}<td class="klein grau" colspan="3">${html(w.hinweis)}</td><td></td><td></td></tr>`;

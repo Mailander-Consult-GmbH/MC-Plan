@@ -15,7 +15,6 @@ import {
   lfdNummern,
   funktionenFuerGewerk,
   kontaktFuerRolleUndGewerk,
-  planlaufAusWorkflow,
   planlaufName,
   stepsAusTemplate,
 } from '../../domain/engine';
@@ -32,7 +31,6 @@ import {
   type DocumentKind,
   type ID,
   type PlanDocument,
-  type ProcessTemplate,
   type ProcessTemplateStep,
   type Project,
 } from '../../domain/types';
@@ -165,6 +163,9 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     .map((paket) => ({ paket, oben: obereEbene.filter((d) => paketIdVon(d) === paket.id) }))
     .filter((g) => g.oben.length > 0 || ohneEinschraenkung || paketTrifft(g.paket));
   const ohnePaket = obereEbene.filter((d) => !paketIdVon(d));
+  /** Angezeigte Einträge einer Gruppe – samt der eingerückten Pläne ihrer Verzeichnisse. */
+  const zeilenZahl = (oben: PlanDocument[]) => oben.reduce((n, d) => n + 1 + kinderVon(d.id).length, 0);
+  const eintraegeText = (n: number) => `${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`;
 
   const sortieren = (feld: SortFeld) => {
     if (feld === sortFeld) setAbsteigend((a) => !a);
@@ -369,12 +370,17 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
       </Fragment>
     ));
 
-  /** Kopfzeile eines Planpakets: auf- und zuklappen, bearbeiten. */
-  const paketZeile = (paket: PlanDocument, anzahlEintraege: number) => {
+  /**
+   * Kopfzeile eines Planpakets: auf- und zuklappen, bearbeiten. Die Spalte
+   * „Planverzeichnis“ behält eine eigene Zelle, damit die Zeile auf schmalen
+   * Bildschirmen, wo sie ausgeblendet ist, nicht verrutscht.
+   */
+  const paketZeile = (paket: PlanDocument, oben: PlanDocument[]) => {
     const offen = !zugeklappt.includes(paket.id);
+    const leer = !alle.some((d) => paketIdVon(d) === paket.id);
     return (
       <tr key={paket.id} className="paket-zeile clickable" onClick={() => setPaketDialog({ paket })}>
-        <td colSpan={6}>
+        <td colSpan={4}>
           <span className="row" style={{ gap: 9 }}>
             <button
               type="button"
@@ -398,16 +404,15 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                 <strong>{paket.titel}</strong>
                 <span className="small tertiary">
                   {' '}
-                  · Planpaket ·{' '}
-                  {anzahlEintraege === 0
-                    ? 'noch nichts zugeordnet'
-                    : `${anzahlEintraege} ${anzahlEintraege === 1 ? 'Eintrag' : 'Einträge'}`}
+                  · Planpaket · {leer ? 'noch nichts zugeordnet' : eintraegeText(zeilenZahl(oben))}
                   {paket.gewerk ? ` · ${paket.gewerk}` : ''}
                 </span>
               </div>
             </span>
           </span>
         </td>
+        <td className="col-optional" />
+        <td />
         <td className="actions">
           <button
             type="button"
@@ -443,7 +448,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
           />
           <Search value={suche} onChange={setSuche} placeholder="Nummer, Titel, Gewerk, Paket …" />
         </div>
-        <div className="row">
+        <div className="row wrap">
           <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
             <Icon name="importieren" size={14} /> Excel-Import
           </button>
@@ -493,14 +498,14 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
               <tbody>
                 {paketGruppen.map(({ paket, oben }) => (
                   <Fragment key={paket.id}>
-                    {paketZeile(paket, alle.filter((d) => paketIdVon(d) === paket.id).length)}
+                    {paketZeile(paket, oben)}
                     {!zugeklappt.includes(paket.id) ? gruppenZeilen(oben, true) : null}
                   </Fragment>
                 ))}
 
                 {ohnePaket.length > 0 && paketGruppen.length > 0 ? (
                   <tr className="paket-zeile ohne-paket">
-                    <td colSpan={7}>
+                    <td colSpan={4}>
                       <button
                         type="button"
                         className={`gruppe-btn ${!zugeklappt.includes(OHNE_PAKET) ? 'offen' : ''}`}
@@ -510,10 +515,12 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                           <Icon name="chevron" size={13} />
                         </span>
                         <span className="small muted">
-                          Ohne Planpaket · {ohnePaket.length} {ohnePaket.length === 1 ? 'Eintrag' : 'Einträge'}
+                          Ohne Planpaket · {eintraegeText(zeilenZahl(ohnePaket))}
                         </span>
                       </button>
                     </td>
+                    <td className="col-optional" />
+                    <td colSpan={2} />
                   </tr>
                 ) : null}
                 {paketGruppen.length === 0 || !zugeklappt.includes(OHNE_PAKET)
@@ -608,7 +615,18 @@ function PlanDialog({
     (eltern ? verzeichnisGebuendelt(eltern) : true);
   // Ein Verzeichnis mit einzeln laufenden Plänen ordnet nur – ohne eigenen Lauf.
   const verzeichnisEinzeln = form.kind === 'verzeichnis' && form.planlaufModus === 'einzeln';
-  const braucheLauf = !vorhandenerLauf && !laeuftMit && !verzeichnisEinzeln;
+  /**
+   * Gebündeltes Verzeichnis des Plans, das noch nie einen Planlauf hatte – etwa
+   * eben aus der Auswahl angelegt. Sein Lauf startet mit dem Speichern des Plans.
+   * Ein abgebrochener Verzeichnislauf startet dagegen nicht von selbst neu.
+   */
+  const verzeichnisOhneLauf =
+    form.kind === 'plan' && eltern && verzeichnisGebuendelt(eltern) && !data.runs.some((r) => r.documentId === eltern.id)
+      ? eltern
+      : undefined;
+  const braucheLauf = Boolean(verzeichnisOhneLauf) || (!vorhandenerLauf && !laeuftMit && !verzeichnisEinzeln);
+  /** Eintrag, für den der Planlauf startet: der Eintrag selbst oder das Verzeichnis des Plans. */
+  const laufZiel = verzeichnisOhneLauf ?? form;
 
   // Die Wahl gebündelt/einzeln ist frei, solange weder das Verzeichnis noch
   // seine Pläne einen Lauf haben. Danach geht es nur noch Richtung „einzeln“.
@@ -637,12 +655,21 @@ function PlanDialog({
 
   /** Anlage eines Planverzeichnisses bzw. Planpakets direkt aus der Auswahl. */
   const [schnell, setSchnell] = useState<'verzeichnis' | 'paket' | null>(null);
+  /** Aus der Auswahl angelegtes Planverzeichnis – entfällt wieder, wenn der Plan es nicht nutzt. */
+  const [neuesVerzeichnis, setNeuesVerzeichnis] = useState<ID | null>(null);
+
+  /** Schließt den Dialog; ein angelegtes, aber nicht genutztes Verzeichnis wird verworfen. */
+  const schliessen = (genutzt?: ID | null) => {
+    if (neuesVerzeichnis && neuesVerzeichnis !== genutzt) deleteDocument(neuesVerzeichnis);
+    onClose();
+  };
 
   /**
-   * Ein Planverzeichnis entsteht gebündelt und startet seinen Planlauf sofort –
-   * der Plan, für den es angelegt wird, läuft darin mit.
+   * Ein Planverzeichnis entsteht gebündelt und dem Plan übergeordnet. Seinen
+   * Planlauf startet es mit dem Speichern des Plans – nach dem Workflow im
+   * Dialog; der Plan läuft darin mit.
    */
-  const schnellAnlegen = (art: 'verzeichnis' | 'paket', titel: string, nummer: string, workflowId: string) => {
+  const schnellAnlegen = (art: 'verzeichnis' | 'paket', titel: string, nummer: string) => {
     const neu = {
       projectId: project.id,
       kind: art,
@@ -663,14 +690,11 @@ function PlanDialog({
       toast('Planpaket angelegt.');
       return;
     }
+    // Ein zuvor angelegtes, ungenutztes Verzeichnis ersetzt das neue
+    if (neuesVerzeichnis) deleteDocument(neuesVerzeichnis);
+    setNeuesVerzeichnis(id);
     set('parentId', id);
-    const workflow = vorlagen.find((t) => t.id === workflowId);
-    if (!workflow) {
-      toast('Planverzeichnis angelegt – ohne Workflow konnte kein Planlauf starten.');
-      return;
-    }
-    addRun(planlaufAusWorkflow(workflow, { ...neu, documentId: id }, kontakte, rollen, today(), () => newId('rs')));
-    toast(`Planverzeichnis angelegt und Planlauf nach „${workflow.name}“ gestartet.`);
+    toast('Planverzeichnis angelegt – sein Planlauf startet mit dem Speichern.');
   };
 
   /** Bearbeitbare Kopie der Vorlagenschritte. */
@@ -703,7 +727,7 @@ function PlanDialog({
    * das Gewerk des Eintrags, sonst die gewerkübergreifende Zuordnung.
    */
   const kontaktFuerRolle = (roleName: string): ID | null =>
-    kontaktFuerRolleUndGewerk(kontakte, rollen, roleName, form.gewerk);
+    kontaktFuerRolleUndGewerk(kontakte, rollen, roleName, laufZiel.gewerk);
 
   const speichern = () => {
     if (!form.titel.trim()) {
@@ -741,7 +765,7 @@ function PlanDialog({
               : 'Eintrag angelegt.',
         );
       }
-      onClose();
+      schliessen(werte.parentId);
       return;
     }
 
@@ -752,6 +776,10 @@ function PlanDialog({
 
     const documentId = doc ? doc.id : addDocument({ ...werte, projectId: project.id });
     if (doc) updateDocument(doc.id, werte);
+    // Startet der Lauf des Verzeichnisses, trägt er den Eingang des Plans, solange das Verzeichnis keinen hat
+    if (verzeichnisOhneLauf && !verzeichnisOhneLauf.eingangSoll && werte.eingangSoll) {
+      updateDocument(verzeichnisOhneLauf.id, { eingangSoll: werte.eingangSoll });
+    }
 
     const template = vorlagen.find((t) => t.id === templateId);
     const runSteps = stepsAusTemplate(
@@ -774,11 +802,11 @@ function PlanDialog({
 
     const runId = addRun({
       projectId: project.id,
-      documentId,
+      documentId: verzeichnisOhneLauf ? verzeichnisOhneLauf.id : documentId,
       templateId: template?.id ?? null,
       templateName: template?.name ?? 'Individuelle Kette',
-      name: planlaufName(form),
-      index: form.index,
+      name: planlaufName(laufZiel),
+      index: laufZiel.index,
       start,
       status: 'laufend',
       abbruchGrund: null,
@@ -790,12 +818,11 @@ function PlanDialog({
     });
 
     const ohneKontakt = markiert.filter((s) => !s.contactId).length;
-    toast(
-      ohneKontakt > 0
-        ? `Eintrag angelegt und Planlauf gestartet – ${ohneKontakt} Schritt(e) noch ohne Person.`
-        : 'Eintrag angelegt und Planlauf gestartet.',
-    );
-    onClose();
+    const gestartet = verzeichnisOhneLauf
+      ? `Planlauf des Verzeichnisses „${verzeichnisOhneLauf.nummer || verzeichnisOhneLauf.titel}“ gestartet – der Plan läuft darin mit`
+      : 'Eintrag angelegt und Planlauf gestartet';
+    toast(ohneKontakt > 0 ? `${gestartet} – ${ohneKontakt} Schritt(e) noch ohne Person.` : `${gestartet}.`);
+    schliessen(werte.parentId);
     onLaufGestartet(runId);
   };
 
@@ -811,7 +838,7 @@ function PlanDialog({
             : 'Stammdaten und Workflow – der Planlauf startet mit dem Eintrag'
         }
         wide={braucheLauf}
-        onClose={onClose}
+        onClose={() => schliessen()}
         footer={
           <>
             {doc ? (
@@ -820,7 +847,7 @@ function PlanDialog({
               </button>
             ) : null}
             <span className="spacer" />
-            <button type="button" className="btn" onClick={onClose}>
+            <button type="button" className="btn" onClick={() => schliessen()}>
               Abbrechen
             </button>
             <button type="button" className="btn btn-primary" onClick={speichern}>
@@ -978,6 +1005,13 @@ function PlanDialog({
           {braucheLauf ? (
             <>
               <div className="divider" />
+              {verzeichnisOhneLauf ? (
+                <Callout icon="i">
+                  Das Planverzeichnis „{verzeichnisOhneLauf.nummer || verzeichnisOhneLauf.titel}“ hat noch keinen
+                  Planlauf. Er startet mit dem Speichern nach diesem Workflow; der Plan läuft darin mit
+                  {eigenerAktiverLauf ? ' bzw. behält seinen eigenen Lauf' : ''}.
+                </Callout>
+              ) : null}
               <div className="form-grid">
                 <Field label="Workflow" full hint={vorlagen.find((t) => t.id === templateId)?.beschreibung}>
                   <Select
@@ -1003,7 +1037,7 @@ function PlanDialog({
                   Schritte lassen sich hier hinzufügen, ändern oder entfernen. Die Workflow selbst bleibt davon
                   unberührt.
                 </p>
-                <SchrittListe steps={steps} setSteps={setSteps} rollen={funktionenFuerGewerk(rollen, form.gewerk)} />
+                <SchrittListe steps={steps} setSteps={setSteps} rollen={funktionenFuerGewerk(rollen, laufZiel.gewerk)} />
               </div>
             </>
           ) : verzeichnisEinzeln ? (
@@ -1037,9 +1071,8 @@ function PlanDialog({
       {schnell ? (
         <SchnellDialog
           art={schnell}
-          vorlagen={vorlagen}
           onClose={() => setSchnell(null)}
-          onAnlegen={(titel, nummer, workflowId) => schnellAnlegen(schnell, titel, nummer, workflowId)}
+          onAnlegen={(titel, nummer) => schnellAnlegen(schnell, titel, nummer)}
         />
       ) : null}
 
@@ -1052,7 +1085,7 @@ function PlanDialog({
             const runId = planHerausloesen(doc.id);
             if (!runId) return;
             toast('Plan herausgelöst – er läuft jetzt einzeln weiter.');
-            onClose();
+            schliessen();
             onLaufGestartet(runId);
           }}
           onClose={() => setNachtrag(null)}
@@ -1060,7 +1093,7 @@ function PlanDialog({
       ) : null}
 
       {nachtrag === 'buendeln' && doc ? (
-        <BuendelnDialog verzeichnis={doc} onClose={() => setNachtrag(null)} onGebuendelt={() => onClose()} />
+        <BuendelnDialog verzeichnis={doc} onClose={() => setNachtrag(null)} onGebuendelt={() => schliessen()} />
       ) : null}
 
       {nachtrag === 'aufteilen' && doc && buendelLauf ? (
@@ -1073,7 +1106,7 @@ function PlanDialog({
             toast(
               anzahl === 1 ? 'Ein Plan läuft jetzt einzeln weiter.' : `${anzahl} Pläne laufen jetzt einzeln weiter.`,
             );
-            onClose();
+            schliessen();
           }}
           onClose={() => setNachtrag(null)}
         />
@@ -1082,11 +1115,15 @@ function PlanDialog({
       {loeschen && doc ? (
         <ConfirmDialog
           titel="Eintrag löschen?"
-          text={`„${doc.titel}“ wird mit seinem Planlauf gelöscht. Zugeordnete Pläne bleiben erhalten.`}
+          text={
+            doc.kind === 'verzeichnis' && planIds.length > 0
+              ? `„${doc.titel}“ wird mit seinem Planlauf gelöscht. Seine Pläne bleiben als Einzelpläne im Planpaket des Verzeichnisses erhalten; wer bisher mitlief, führt den Stand des Verzeichnislaufs in einem eigenen Planlauf weiter.`
+              : `„${doc.titel}“ wird mit seinem Planlauf gelöscht.`
+          }
           onConfirm={() => {
             deleteDocument(doc.id);
             toast('Eintrag gelöscht.');
-            onClose();
+            schliessen();
           }}
           onClose={() => setLoeschen(false)}
         />
@@ -1097,24 +1134,21 @@ function PlanDialog({
 
 /**
  * Kleiner Dialog, um aus der Auswahl heraus ein Planverzeichnis oder ein
- * Planpaket anzulegen, ohne den Eintrag zu verlassen. Ein Planverzeichnis
- * startet dabei sofort seinen Planlauf nach dem gewählten Workflow.
+ * Planpaket anzulegen, ohne den Eintrag zu verlassen. Den Planlauf eines
+ * Planverzeichnisses startet der Plandialog beim Speichern.
  */
 function SchnellDialog({
   art,
-  vorlagen,
   onClose,
   onAnlegen,
 }: {
   art: 'verzeichnis' | 'paket';
-  vorlagen: ProcessTemplate[];
   onClose: () => void;
-  onAnlegen: (titel: string, nummer: string, workflowId: string) => void;
+  onAnlegen: (titel: string, nummer: string) => void;
 }) {
   const toast = useToast();
   const [titel, setTitel] = useState('');
   const [nummer, setNummer] = useState('');
-  const [workflowId, setWorkflowId] = useState(vorlagen[0]?.id ?? '');
   const verzeichnis = art === 'verzeichnis';
 
   const speichern = () => {
@@ -1123,7 +1157,7 @@ function SchnellDialog({
       return;
     }
     // Ohne Titel trägt das Verzeichnis seine Codierung auch als Titel
-    onAnlegen(titel.trim() || nummer.trim(), nummer.trim(), workflowId);
+    onAnlegen(titel.trim() || nummer.trim(), nummer.trim());
     onClose();
   };
 
@@ -1132,7 +1166,7 @@ function SchnellDialog({
       titel={verzeichnis ? 'Neues Planverzeichnis' : 'Neues Planpaket'}
       sub={
         verzeichnis
-          ? 'Wird angelegt, dem Plan übergeordnet und startet seinen Planlauf – der Plan läuft darin mit.'
+          ? 'Wird angelegt und dem Plan übergeordnet – sein Planlauf startet mit dem Speichern des Plans.'
           : 'Wird angelegt und dem Eintrag zugeordnet.'
       }
       onClose={onClose}
@@ -1142,7 +1176,7 @@ function SchnellDialog({
             Abbrechen
           </button>
           <button type="button" className="btn btn-primary" onClick={speichern}>
-            {verzeichnis ? 'Anlegen und Planlauf starten' : 'Anlegen'}
+            Anlegen
           </button>
         </>
       }
@@ -1165,13 +1199,6 @@ function SchnellDialog({
                 onChange={setTitel}
                 placeholder="Planverzeichnis Überbau"
                 onKeyDown={(e) => e.key === 'Enter' && speichern()}
-              />
-            </Field>
-            <Field label="Workflow" full hint={vorlagen.find((t) => t.id === workflowId)?.beschreibung}>
-              <Select
-                value={workflowId}
-                onChange={setWorkflowId}
-                options={vorlagen.map((t) => ({ value: t.id, label: `${t.name} (${t.steps.length} Schritte)` }))}
               />
             </Field>
           </>

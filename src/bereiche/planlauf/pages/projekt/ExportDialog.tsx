@@ -4,7 +4,9 @@
  *
  * Kurzfassung: genau die Angaben der Übersicht im Reiter „Planläufe“.
  * Langfassung: zusätzlich alle durchlaufenen und ausstehenden Schritte.
- * Die Auswahl der Einträge ist wie die Übersicht nach Planpaketen gegliedert.
+ * Die Auswahl der Einträge ist wie die Übersicht nach Planpaketen gegliedert;
+ * gewählt wird je Planlauf bzw. mitlaufendem Plan. Ein Verzeichnis wählt die
+ * Pläne unter sich mit, ein mitlaufender Plan sein Verzeichnis.
  */
 import { useState } from 'react';
 import {
@@ -15,7 +17,7 @@ import {
   exportHtml,
   kurzZeilen,
   langZeilen,
-  zeilenDokument,
+  zeilenSchluessel,
   type BerichtGruppe,
   type BerichtZeile,
   type ExportUmfang,
@@ -29,35 +31,65 @@ import { Callout, Field, Modal, Segmented } from '../../../../shared/ui';
 import { DocKindIcon } from '../../components/common';
 import { Icon } from '../../../../shared/icons';
 
-/** Auswählbare Dokumente einer Zeilenfolge (Klammern selbst sind nicht auswählbar). */
-const dokumenteVon = (zeilen: BerichtZeile[]): ID[] =>
-  [...new Set(zeilen.map(zeilenDokument).filter((id): id is ID => Boolean(id)))];
+/** Auswählbare Schlüssel einer Zeilenfolge (Klammern selbst sind nicht auswählbar). */
+const schluesselVon = (zeilen: BerichtZeile[]): ID[] =>
+  [...new Set(zeilen.map(zeilenSchluessel).filter((id): id is ID => Boolean(id)))];
 
-export function ExportDialog({ project, onClose }: { project: Project; onClose: () => void }) {
+/** Die Zeilen unter einer Zeile der obersten Ebene – bis zur nächsten. */
+function unterzeilen(zeilen: BerichtZeile[], index: number): BerichtZeile[] {
+  const kinder: BerichtZeile[] = [];
+  for (const z of zeilen.slice(index + 1)) {
+    if (z.ebene === 0) break;
+    kinder.push(z);
+  }
+  return kinder;
+}
+
+export function ExportDialog({
+  project,
+  vorauswahl,
+  onClose,
+}: {
+  project: Project;
+  /** Planläufe, die die Liste gerade zeigt (gesetzter Filter) – sonst ist alles gewählt. */
+  vorauswahl?: Set<ID>;
+  onClose: () => void;
+}) {
   const { data } = useStore();
   const toast = useToast();
 
   // Die Auswahl zeigt alles, was die Übersicht zeigt – in derselben Gliederung.
   const bericht = berichtBilden(data, project);
-  const alleIds = dokumenteVon(bericht.gruppen.flatMap((g) => g.zeilen));
+  const alleZeilen = bericht.gruppen.flatMap((g) => g.zeilen);
+  const alleIds = schluesselVon(alleZeilen);
 
   const [umfang, setUmfang] = useState<ExportUmfang>('kurz');
-  const [auswahl, setAuswahl] = useState<Set<ID>>(() => new Set(alleIds));
+  const [auswahl, setAuswahl] = useState<Set<ID>>(() => {
+    if (!vorauswahl) return new Set(alleIds);
+    // Wie in der Liste: ein gezeigtes Verzeichnis zeigt auch seine mitlaufenden Pläne
+    const laufId = (z: BerichtZeile) =>
+      z.art === 'lauf' ? z.eintrag.run.id : z.art === 'mitlaufend' ? z.verzeichnisLauf.id : '';
+    return new Set(schluesselVon(alleZeilen.filter((z) => vorauswahl.has(laufId(z)))));
+  });
 
   const gewaehlt = alleIds.filter((id) => auswahl.has(id)).length;
+  // Gesperrt wird nach dem Ergebnis, nicht nach der Zahl der Haken
+  const leer = berichtBilden(data, project, auswahl).gruppen.every((g) => g.zeilen.length === 0);
 
-  const umschalten = (ids: ID[]) =>
+  const umschalten = (ids: ID[], mit: ID[] = []) =>
     setAuswahl((alt) => {
       const neu = new Set(alt);
       const alleDrin = ids.every((id) => neu.has(id));
       ids.forEach((id) => (alleDrin ? neu.delete(id) : neu.add(id)));
+      // Wer einen mitlaufenden Plan wählt, wählt den Lauf seines Verzeichnisses mit
+      if (!alleDrin) mit.forEach((id) => neu.add(id));
       return neu;
     });
 
   const alleUmschalten = () => setAuswahl(gewaehlt === alleIds.length ? new Set() : new Set(alleIds));
 
   const alsExcel = () => {
-    if (gewaehlt === 0) {
+    if (leer) {
       toast('Bitte mindestens einen Eintrag auswählen.');
       return;
     }
@@ -69,7 +101,7 @@ export function ExportDialog({ project, onClose }: { project: Project; onClose: 
   };
 
   const alsPdf = () => {
-    if (gewaehlt === 0) {
+    if (leer) {
       toast('Bitte mindestens einen Eintrag auswählen.');
       return;
     }
@@ -77,24 +109,29 @@ export function ExportDialog({ project, onClose }: { project: Project; onClose: 
     toast('Druckdialog geöffnet – dort „Als PDF sichern“ wählen.');
   };
 
-  /** Kleiner Haken für eine Gruppe von Dokumenten – gesetzt, wenn alle gewählt sind. */
-  const Haken = ({ ids }: { ids: ID[] }) => (
+  /**
+   * Haken für eine Gruppe von Einträgen – gesetzt, wenn alle gewählt sind. Als
+   * Funktion aufgerufen, nicht als Komponente: so bleibt das Element beim
+   * Umschalten bestehen und behält den Fokus.
+   */
+  const haken = (ids: ID[], mit: ID[] = []) => (
     <input
       type="checkbox"
       checked={ids.length > 0 && ids.every((id) => auswahl.has(id))}
       ref={(el) => {
         if (el) el.indeterminate = ids.some((id) => auswahl.has(id)) && !ids.every((id) => auswahl.has(id));
       }}
-      onChange={() => umschalten(ids)}
+      onChange={() => umschalten(ids, mit)}
       style={{ width: 15, height: 15, accentColor: 'var(--accent)' }}
     />
   );
 
-  const eintragText = (doc: PlanDocument | undefined, name: string) => (
+  /** Nummer, Index und Titel – ein abgebrochener Lauf mit seinem eigenen Index. */
+  const eintragText = (doc: PlanDocument | undefined, name: string, index = doc?.index) => (
     <span style={{ flex: 1, minWidth: 0 }}>
       <span className="num">
         {doc?.nummer}
-        {doc?.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
+        {doc && index ? ` · ${INDEX_LABEL[doc.kind]} ${index}` : ''}
       </span>{' '}
       <strong>{doc?.titel ?? name}</strong>
     </span>
@@ -114,10 +151,10 @@ export function ExportDialog({ project, onClose }: { project: Project; onClose: 
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
-          <button type="button" className="btn btn-outline" onClick={alsPdf} disabled={gewaehlt === 0}>
+          <button type="button" className="btn btn-outline" onClick={alsPdf} disabled={leer}>
             <Icon name="export" size={14} /> PDF
           </button>
-          <button type="button" className="btn btn-primary" onClick={alsExcel} disabled={gewaehlt === 0}>
+          <button type="button" className="btn btn-primary" onClick={alsExcel} disabled={leer}>
             <Icon name="export" size={14} /> Excel
           </button>
         </>
@@ -150,6 +187,12 @@ export function ExportDialog({ project, onClose }: { project: Project; onClose: 
             </button>
           </div>
 
+          {vorauswahl ? (
+            <p className="small tertiary" style={{ marginBottom: 6 }}>
+              Vorgewählt sind die Einträge, die der Filter im Reiter „Planläufe“ zeigt.
+            </p>
+          ) : null}
+
           {alleIds.length === 0 ? (
             <Callout ton="warn" icon="!">
               In diesem Projekt gibt es noch keinen Planlauf.
@@ -157,13 +200,13 @@ export function ExportDialog({ project, onClose }: { project: Project; onClose: 
           ) : (
             <div className="card" style={{ maxHeight: 300, overflowY: 'auto' }}>
               {bericht.gruppen.map((gruppe, gi) => {
-                const ids = dokumenteVon(gruppe.zeilen);
+                const ids = schluesselVon(gruppe.zeilen);
                 const kopf = gruppe.art !== 'ohne-paket' || bericht.mitPaketen;
                 return (
                   <div key={gi}>
                     {kopf ? (
                       <label className="list-row clickable" style={{ cursor: 'pointer', background: 'var(--fill-gruppe)' }}>
-                        <Haken ids={ids} />
+                        {haken(ids)}
                         {gruppe.art === 'paket' ? <DocKindIcon kind="paket" /> : null}
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <strong>{gruppenTitel(gruppe)}</strong>
@@ -178,27 +221,27 @@ export function ExportDialog({ project, onClose }: { project: Project; onClose: 
                       const einzug = (kopf ? 26 : 0) + zeile.ebene * 22;
                       if (zeile.art === 'klammer') {
                         // Die Klammer wählt die Pläne aus, die unter ihr folgen
-                        const kinder: BerichtZeile[] = [];
-                        for (const z of gruppe.zeilen.slice(zi + 1)) {
-                          if (z.ebene === 0) break;
-                          kinder.push(z);
-                        }
                         return (
                           <label key={zi} className="list-row clickable" style={{ cursor: 'pointer', paddingLeft: 20 + einzug }}>
-                            <Haken ids={dokumenteVon(kinder)} />
+                            {haken(schluesselVon(unterzeilen(gruppe.zeilen, zi)))}
                             <DocKindIcon kind="verzeichnis" />
                             {eintragText(zeile.verzeichnis, '')}
                             <span className="small tertiary">Pläne einzeln</span>
                           </label>
                         );
                       }
-                      const id = zeilenDokument(zeile)!;
+                      const id = zeilenSchluessel(zeile)!;
                       const doc = zeile.art === 'mitlaufend' ? zeile.plan : zeile.eintrag.doc;
+                      // Ein Verzeichnis wählt seine Pläne mit, ein mitlaufender Plan sein Verzeichnis
+                      const ids = zeile.ebene === 0 ? [id, ...schluesselVon(unterzeilen(gruppe.zeilen, zi))] : [id];
+                      const mit = zeile.art === 'mitlaufend' ? [zeile.verzeichnisLauf.id] : [];
+                      const run = zeile.art === 'lauf' ? zeile.eintrag.run : undefined;
+                      const index = run?.status === 'abgebrochen' ? run.index || doc?.index : doc?.index;
                       return (
                         <label key={zi} className="list-row clickable" style={{ cursor: 'pointer', paddingLeft: 20 + einzug }}>
-                          <Haken ids={[id]} />
+                          {haken(ids, mit)}
                           {doc ? <DocKindIcon kind={doc.kind} /> : null}
-                          {eintragText(doc, zeile.art === 'lauf' ? zeile.eintrag.run.name : '')}
+                          {eintragText(doc, run?.name ?? '', index)}
                           {zeile.art === 'mitlaufend' ? (
                             <span className="small tertiary">läuft im Verzeichnis mit</span>
                           ) : null}

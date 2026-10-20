@@ -5,11 +5,16 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { eigeneKontakteSichern, laufUebernehmen, recalcRun, zustaendigkeitenNachziehen } from '../domain/engine';
+import {
+  eigeneKontakteSichern,
+  laufUebernehmen,
+  planlaufName,
+  recalcRun,
+  zustaendigkeitenNachziehen,
+} from '../domain/engine';
 import { seedData } from '../domain/seed';
 import { ladeDaten, speichereDaten } from './storage';
 import { today } from '../../../shared/dates';
-import { INDEX_LABEL } from '../domain/types';
 import type {
   AbbruchArt,
   AppData,
@@ -31,10 +36,6 @@ export function newId(prefix = 'id'): ID {
 }
 
 /** Name eines Planlaufs – wie beim Start aus der Planliste. */
-function laufName(doc: PlanDocument): string {
-  return `Planlauf ${doc.nummer || doc.titel}${doc.index ? ` ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}`;
-}
-
 interface StoreValue {
   data: AppData;
   /* Bearbeiter */
@@ -242,18 +243,55 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return id;
       },
       updateDocument: (id, patch) => mutate((d) => ({ ...d, documents: upd(d.documents, id, patch) })),
-      deleteDocument: (id) =>
+      deleteDocument: (id) => {
+        const geloescht = data.documents.find((x) => x.id === id);
+        // Pläne eines gelöschten Verzeichnisses werden zu Einzelplänen im Paket
+        // des Verzeichnisses – sonst verlören Pläne mit eigenem Lauf ihren Platz
+        // in den Listen. Wer im Lauf des Verzeichnisses mitlief, führt dessen
+        // Stand in einem eigenen Lauf weiter, damit kein Plan ohne Planlauf bleibt.
+        const quelle =
+          geloescht?.kind === 'verzeichnis'
+            ? data.runs
+                .filter((r) => r.documentId === id && r.status !== 'abgebrochen')
+                .sort((a, b) => (a.status === 'laufend' ? 0 : 1) - (b.status === 'laufend' ? 0 : 1))[0]
+            : undefined;
+        const uebernommen = quelle
+          ? data.documents
+              .filter(
+                (x) =>
+                  x.kind === 'plan' &&
+                  x.parentId === id &&
+                  !data.runs.some((r) => r.documentId === x.id && r.status !== 'abgebrochen'),
+              )
+              .map((plan) => ({
+                ...laufUebernehmen(
+                  quelle,
+                  {
+                    documentId: plan.id,
+                    name: planlaufName(plan),
+                    index: plan.index,
+                    bemerkung: `Stand von „${quelle.name}“ übernommen – Planverzeichnis gelöscht`,
+                  },
+                  newId,
+                ),
+                status: quelle.status,
+                id: newId('run'),
+              }))
+          : [];
         mutate((d) => ({
           ...d,
-          // Pläne eines gelöschten Verzeichnisses werden zu Einzelplänen –
-          // sonst verlören Pläne mit eigenem Lauf ihren Platz in den Listen.
           // Einträge eines gelöschten Planpakets sind keinem Paket mehr zugeordnet.
           documents: d.documents
             .filter((x) => x.id !== id)
-            .map((x) => (x.parentId === id ? { ...x, parentId: null, eigenerLauf: undefined } : x))
+            .map((x) =>
+              x.parentId === id
+                ? { ...x, parentId: null, eigenerLauf: undefined, paketId: geloescht?.paketId ?? null }
+                : x,
+            )
             .map((x) => (x.paketId === id ? { ...x, paketId: null } : x)),
-          runs: d.runs.filter((r) => r.documentId !== id),
-        })),
+          runs: [...d.runs.filter((r) => r.documentId !== id), ...uebernommen],
+        }));
+      },
 
       setEmailVorlage: (t) =>
         mutate((d) => ({
@@ -329,7 +367,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           quelle,
           {
             documentId: plan.id,
-            name: laufName(plan),
+            name: planlaufName(plan),
             index: plan.index,
             bemerkung: `Aus „${quelle.name}“ herausgelöst`,
           },
@@ -360,7 +398,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 quelle,
                 {
                   documentId: plan.id,
-                  name: laufName(plan),
+                  name: planlaufName(plan),
                   index: plan.index,
                   bemerkung: `Aus „${quelle.name}“ aufgeteilt`,
                 },
@@ -407,7 +445,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               quelle,
               {
                 documentId: verzeichnisId,
-                name: laufName(verzeichnis),
+                name: planlaufName(verzeichnis),
                 index: verzeichnis.index,
                 bemerkung: `Pläne wieder gebündelt – Stand von „${quelle.name}“ übernommen`,
               },
