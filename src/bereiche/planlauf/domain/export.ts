@@ -8,10 +8,11 @@
  * Verzeichnis mit einzeln laufenden Plänen fasst diese zusammen; abgebrochene
  * Läufe stehen am Ende.
  *
- * Kurzfassung: genau die Angaben der Übersicht – Aktueller Stand, Nächster
- * Schritt, Zuständig, Fortschritt und Status. Die PDF-Fassung gibt die Tabelle
- * so wieder, wie sie im Programm erscheint (ohne Schaltflächen); in Excel steht
- * jede Angabe in einer eigenen Spalte. Langfassung: zusätzlich alle
+ * Kurzfassung: Die PDF-Fassung gibt die Tabelle der Übersicht so wieder, wie
+ * sie im Programm erscheint (ohne Schaltflächen) – Aktueller Stand, Nächster
+ * Schritt, Zuständig, Fortschritt und Status. In Excel ist sie ein formatiertes
+ * Blatt mit Planpaket, Plancode, Index/Ausgabe, Titel, Gewerk, Aktuellem Stand,
+ * Datum, Nächstem Schritt und Frist (kurzBlatt). Langfassung: zusätzlich alle
  * durchlaufenen und ausstehenden Schritte je Planlauf.
  */
 import { formatDate, relativeLabel, today } from '../../../shared/dates';

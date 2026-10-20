@@ -2,7 +2,8 @@
  * Export der Planläufe eines Projekts als Excel-Arbeitsmappe oder PDF (über
  * den Druckdialog).
  *
- * Kurzfassung: genau die Angaben der Übersicht im Reiter „Planläufe“.
+ * Kurzfassung: als PDF genau die Angaben der Übersicht im Reiter „Planläufe“,
+ * in Excel ein formatiertes Blatt nach Planpaket, Plancode, Stand und Frist.
  * Langfassung: zusätzlich alle durchlaufenen und ausstehenden Schritte.
  * Die Auswahl der Einträge ist wie die Übersicht nach Planpaketen gegliedert;
  * gewählt wird je Planlauf bzw. mitlaufendem Plan. Ein Verzeichnis wählt die
@@ -175,7 +176,7 @@ export function ExportDialog({
           />
           <span className="hint">
             {umfang === 'kurz'
-              ? 'Genau die Angaben des Reiters „Planläufe“: Aktueller Stand, Nächster Schritt, Zuständig, Fortschritt und Status. Als PDF wie im Programm; in Excel je Angabe eine Spalte, abgeschlossene Planläufe grün und abgebrochene grau gesondert am Ende.'
+              ? 'Als PDF genau die Angaben des Reiters „Planläufe“ wie im Programm: Aktueller Stand, Nächster Schritt, Zuständig, Fortschritt und Status. In Excel die Spalten Planpaket, Plancode, Index/Ausgabe, Titel, Gewerk, Aktueller Stand, Datum, Nächster Schritt und Frist; abgeschlossene Planläufe grün und abgebrochene grau gesondert am Ende.'
               : 'Je Planlauf alle bereits durchlaufenen und alle ausstehenden Schritte mit Verantwortlichen – gegliedert nach Planpaketen.'}
           </span>
         </Field>
