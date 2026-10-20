@@ -57,7 +57,12 @@ npm run typecheck
 
 Beim ersten Start wird ein Demodatenbestand mit einem Projekt samt Funktionen, Besetzungen, Plänen
 und laufenden Planläufen geladen. Über **Zurücksetzen** (unten in der Seitenleiste) lässt sich
-dieser Stand jederzeit wiederherstellen, über **Sicherung** der gesamte Bestand als JSON sichern.
+dieser Stand jederzeit wiederherstellen, über **Sicherung** der gesamte Bestand als JSON sichern
+und über **Einspielen** eine solche Sicherung wieder laden. Vor dem Einspielen nennt eine Rückfrage
+Projekte, Pläne und Planläufe der Sicherung und bietet an, den jetzigen Stand vorher zu sichern –
+denn er wird vollständig ersetzt. Sicherungen älterer Fassungen werden dabei auf den aktuellen Stand
+gehoben. *Angemeldet als* bleibt erhalten, es sei denn, der Name aus der Sicherung wird ausdrücklich
+übernommen.
 
 ## Veröffentlichen (GitHub Pages)
 
@@ -483,7 +488,8 @@ src/
         store.tsx    Zentraler Zustand, alle Schreibzugriffe
       lib/router.ts  Hash-Adressen unterhalb von #/planlauf
       pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen, Projektreiter)
-      components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe, PaketDialog, BuendelnDialog …)
+      components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe, PaketDialog, BuendelnDialog,
+                     SicherungEinspielen …)
     baubetrieb/  Bereich „Baubetriebsplanung“ – angelegt, noch ohne Inhalt
 ```
 
