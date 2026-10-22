@@ -204,7 +204,11 @@ automatisch ausgeblendet oder archiviert werden?
 **D11. Anmeldeleichen** – „werden komplett gelöscht“. Soll wirklich nichts übrig bleiben, oder
 zumindest ein Vermerk im Projekt (wer, wann, warum)?
 
-*Entwurf:* Rückfrage, dann vollständiges Löschen samt Verlauf.
+*Entwurf:* Die Anmeldeleiche ist ein eigener, rot gekennzeichneter Status am Ende jedes Workflows
+(aus „Entwurf“ und „Abgelehnt“); sie deckt keinen Anmeldebedarf mehr ab. Gelöscht wird erst im
+nächsten Schritt („Eintrag löschen“) – nach Rückfrage vollständig samt Verlauf. Folgefrage: Soll
+die Anmeldeleiche auch aus weiteren Status erreichbar sein (z. B. „Angemeldet“, „Genehmigt“), und
+soll sie nach einer gewissen Zeit automatisch gelöscht werden?
 
 **D12. Korrekturen** – Ein versehentlicher Statuswechsel lässt sich im Entwurf zurücknehmen
 („Letzten Wechsel zurücknehmen“). Ist das gewünscht, oder sollen Wechsel unveränderlich sein?
