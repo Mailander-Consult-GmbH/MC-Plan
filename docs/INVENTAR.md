@@ -106,8 +106,19 @@ abgefragt (`src/bereiche/planlauf/components/SchrittStatus.tsx`).
   eine E-Mail vorsieht“ und Schalter „Farbmodus für Rot-Grün-Sehschwäche
   (hoher Kontrast)“.
 * **Sicherung**: lädt den gesamten Bestand als JSON herunter
-  (`exportiereDaten`). **Zurücksetzen**: verwirft den Bestand und lädt die
-  Demodaten (`zuruecksetzen` in `src/bereiche/planlauf/store/store.tsx`).
+  (`exportiereDaten`). **Einspielen**
+  (`src/bereiche/planlauf/components/SicherungEinspielen.tsx`): wählt eine
+  solche JSON-Datei, liest sie mit `sicherungLesen`
+  (`src/bereiche/planlauf/store/storage.ts`, Anhebung wie beim Laden) und
+  fragt „Sicherung einspielen?“ – mit der Zahl der Projekte, Pläne und
+  Planverzeichnisse und Planläufe, der Warnung, dass der jetzige Bestand
+  ersetzt wird, „Aktuellen Stand sichern“ und, wenn die Namen abweichen, dem
+  Haken „„Angemeldet als“ aus der Sicherung übernehmen“ (vorgewählt, solange
+  der Name `STANDARD_BEARBEITER` ist); ohne gesetzten Haken bleiben Name,
+  Farbmodus und E-Mail-Nachfrage der Person am Rechner. „Einspielen“ ersetzt den Bestand über
+  `ersetzeDaten` und wechselt zur Übersicht. **Zurücksetzen**: verwirft den
+  Bestand und lädt die Demodaten (`zuruecksetzen` in
+  `src/bereiche/planlauf/store/store.tsx`).
 * **E-Mail-Dialog** (`src/bereiche/planlauf/components/EmailDialog.tsx`): Vorlage wählen, Betreff
   und Text bearbeiten, „In Outlook öffnen“ (mailto), „Outlook im Web“ oder „In
   die Zwischenablage“.
@@ -232,6 +243,17 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | „Dieser Browser kann keine Excel-Dateien entpacken – bitte die Liste als CSV speichern.“ | `DecompressionStream` fehlt im Browser. |
 | „Die Datei konnte nicht gelesen werden.“ | Auffangmeldung für alle übrigen Lesefehler. |
 | Hinweise je Zeile: „Eintrag mit dieser Bezeichnung ist bereits vorhanden“, „Planpaket ‚…‘ wird angelegt“, „Workflow ‚…‘ ist nicht hinterlegt – es gilt der im Dialog gewählte“, „Bezeichnung kommt in der Datei mehrfach vor“, „Planverzeichnis ‚…‘ wird angelegt“, „Planverzeichnis ‚…‘ startet seinen Planlauf“, „Gewerk ‚…‘ wird angelegt“, „Funktion ‚…‘ wird angelegt“, „ersetzt … in dieser Funktion“ | Kein Fehler: Die Vorschau nennt, was beim Übernehmen geschieht. |
+
+### Sicherung einspielen
+
+| Meldung | Ursache |
+| --- | --- |
+| „Die Datei ist keine gültige JSON-Datei.“ | Die gewählte Datei lässt sich nicht als JSON lesen (`sicherungLesen`). |
+| „Die Datei ist keine Sicherung von KaPlan.“ | Das JSON enthält keine Liste `projects`. |
+| „Die Sicherung stammt aus einer neueren Fassung von KaPlan. Bitte die Seite neu laden (Strg+Umschalt+R) und erneut einspielen.“ | `version` der Sicherung ist größer als `DATEN_VERSION` – die geladene Programmfassung ist älter als die, die gesichert hat. |
+| „Die Sicherung ist unvollständig.“ | Einer Sicherung der aktuellen Fassung fehlt eine der Listen (Projekte, Funktionen, Kontakte, Einträge, Workflows, Planläufe …) oder der Name unter „Angemeldet als“. |
+| „Die Sicherung konnte nicht gelesen werden.“ | Das Anheben auf die aktuelle Fassung schlug fehl. |
+| „Sicherung eingespielt – ….“ | Kein Fehler: Der Bestand wurde ersetzt; die Meldung nennt die Zahl der Projekte und Planläufe. |
 
 ### Laufzeit und Technik
 

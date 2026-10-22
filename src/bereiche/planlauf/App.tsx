@@ -18,6 +18,7 @@ import { EIGENE_ROLLE, STANDARD_BEARBEITER } from './domain/types';
 import { Icon } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { BereichWechsel } from '../../shell/BereichWechsel';
+import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/SicherungEinspielen';
 import type { IconName } from '../../shared/icons';
 
 export function App() {
@@ -27,6 +28,7 @@ export function App() {
   const [menuOffen, setMenuOffen] = useState(false);
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [bearbeiterDialog, setBearbeiterDialog] = useState(false);
+  const [sicherung, setSicherung] = useState<Sicherung | null>(null);
 
   const markierte = sichtbareProjekte(data.projects);
   const markierteIds = markierte.map((p) => p.id);
@@ -102,7 +104,7 @@ export function App() {
               <strong className="truncate">{data.bearbeiter.name}</strong>
             </span>
           </button>
-          <div className="row" style={{ gap: 4, margin: '8px 0' }}>
+          <div className="sicherung-knoepfe">
             <button
               type="button"
               className="btn btn-sm btn-outline"
@@ -111,6 +113,7 @@ export function App() {
             >
               <Icon name="export" size={12} /> Sicherung
             </button>
+            <SicherungWaehlen onGelesen={setSicherung} />
             <button type="button" className="btn btn-sm btn-outline" onClick={() => setZuruecksetzenDialog(true)}>
               Zurücksetzen
             </button>
@@ -174,6 +177,14 @@ export function App() {
       ) : null}
 
       {bearbeiterDialog ? <BearbeiterDialog onClose={() => setBearbeiterDialog(false)} /> : null}
+
+      {sicherung ? (
+        <SicherungEinspielenDialog
+          sicherung={sicherung}
+          onClose={() => setSicherung(null)}
+          onEingespielt={() => gehe({ view: 'dashboard' })}
+        />
+      ) : null}
 
       {zuruecksetzenDialog ? (
         <ConfirmDialog
