@@ -3,7 +3,7 @@
 KaPlan ist eine React-19-/TypeScript-/Vite-Anwendung **ohne Server**; alle Daten liegen im
 `localStorage` des Browsers. Installierbar als PWA, veröffentlicht über GitHub Pages. Sie besteht
 aus zwei getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`) und
-**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, noch Platzhalter). Überblick über Aufbau und
+**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, erster Entwurf). Überblick über Aufbau und
 Funktionen: `README.md`; belegtes Inventar aller Routen, Aktionen und Meldungen: `docs/INVENTAR.md`.
 
 ## Nach jeder Änderung nachziehen
@@ -57,6 +57,14 @@ ignoriert.
   * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten,
   * `store/store.tsx` alle Schreibzugriffe, `store/storage.ts` Laden, Speichern, Migration,
   * `lib/router.ts` Hash-Router, `pages/` Ansichten, `components/` fachliche Bausteine.
+* `src/bereiche/baubetrieb/` – gleich aufgebaut: `domain/workflow.ts` Standard-Workflows je Phase
+  und Nachschlagen von Status (Anmeldungen verweisen per `statusId` auf einen Status; die
+  Workflows liegen im Bestand und sind bearbeitbar), `domain/workflowPflege.ts` Speichern,
+  Duplizieren, Löschen von Workflows, `domain/fristen.ts` Fahrplanjahr, Terminfrist, Ampel,
+  Anmeldebedarf, `domain/ablauf.ts` Statuswechsel samt Übernahme/Aufteilung, `store/` mit
+  eigenem Schlüssel `baubetrieb-planung.data.v1`. Neue Felder dort über `DATEN_VERSION`
+  (`baubetrieb/domain/types.ts`) und `migriere()` (`baubetrieb/store/storage.ts`). Die festen IDs
+  der Standard-Status nicht ändern – `STATUS_AUS_NUMMER` ordnet ihnen ältere Stände zu.
 
 ## Randbedingungen
 

@@ -13,8 +13,8 @@ export interface Bereich {
   untertitel?: string;
   beschreibung: string;
   icon: IconName;
-  /** Bereiche in Vorbereitung zeigen vorerst nur einen Platzhalter. */
-  inVorbereitung?: boolean;
+  /** Kennzeichen auf der Kachel, etwa für einen Bereich im Entwurfsstand. */
+  marke?: string;
 }
 
 export const BEREICHE: Bereich[] = [
@@ -29,11 +29,11 @@ export const BEREICHE: Bereich[] = [
   {
     id: 'baubetrieb',
     titel: 'Baubetriebsplanung',
-    untertitel: 'Noch ohne Inhalt',
+    untertitel: 'Anmeldungen für Sperrpausen',
     beschreibung:
-      'Der Bereich ist angelegt – mit eigenem Datenbestand und eigenen Einstellungen. Die Fachlichkeit folgt.',
+      'Baubetriebliche Anmeldungen je Projekt durch anpassbare Workflows – SKM, PzE, Vorprozess und unterjährige Anmeldung – verfolgen, mit Terminfristen und Nachhak-Terminen.',
     icon: 'kalender',
-    inVorbereitung: true,
+    marke: 'Erster Entwurf',
   },
 ];
 
