@@ -16,9 +16,13 @@ import {
   BAUZEITRAUM_LABEL,
   FRIST_TYP_LABEL,
   LOESCHEN,
+  PHASE_LABEL,
   RIL_BEZUG_LABEL,
+  RIL_BEZUG_PHASE,
+  RIL_KUERZEL,
   RIL_LABEL,
-  RIL_SCHLUESSEL,
+  rilFristenNachPhase,
+  type Phase,
   STATUS_ART_LABEL,
   type AnmeldungsArt,
   type BauzeitraumModus,
@@ -135,25 +139,32 @@ export function Workflows({ navigate }: { navigate: (r: Route) => void }) {
       <Card>
         <CardHeader
           titel="Fristen laut Richtlinie"
-          sub="Grundlage der Terminfristen „Frist laut Richtlinie“: Ril_X je nach Maßnahme, Ril_Nx je nach Prozessphase N-2 oder N-1"
+          sub="Grundlage der Terminfristen „Frist laut Richtlinie“, gegliedert nach Phase: Ril_KM nimmt die N-2- oder die N-1-Frist, Ril_KKM die Frist der Maßnahmenart"
           actions={
             <button type="button" className="btn btn-outline btn-sm" onClick={() => navigate({ view: 'einstellungen' })}>
               Anpassen
             </button>
           }
         />
-        {RIL_SCHLUESSEL.map((s) => {
-          const frist = data.einstellungen.rilFristen[s];
-          return (
-            <div key={s} className="list-row">
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <strong>{RIL_LABEL[s]}</strong>
-              </div>
-              <span className="small">{rilFristText(frist)}</span>
-              {frist.platzhalter ? <Badge ton="orange">Platzhalter</Badge> : <Badge ton="green">geprüft</Badge>}
+        {rilFristenNachPhase().map(({ phase, schluessel }) => (
+          <Fragment key={phase}>
+            <div className="list-row small" style={{ background: 'var(--fill-gruppe)', paddingTop: 6, paddingBottom: 6 }}>
+              <strong>{PHASE_LABEL[phase]}</strong>
             </div>
-          );
-        })}
+            {schluessel.map((s) => {
+              const frist = data.einstellungen.rilFristen[s];
+              return (
+                <div key={s} className="list-row">
+                  <div style={{ flex: 1, minWidth: 0 }} title={RIL_LABEL[s]}>
+                    <strong>{RIL_KUERZEL[s]}</strong>
+                  </div>
+                  <span className="small">{rilFristText(frist)}</span>
+                  {frist.platzhalter ? <Badge ton="orange">Platzhalter</Badge> : <Badge ton="green">geprüft</Badge>}
+                </div>
+              );
+            })}
+          </Fragment>
+        ))}
       </Card>
 
       {editor ? <WorkflowEditor workflow={editor.workflow} onClose={() => setEditor(null)} /> : null}
@@ -275,10 +286,10 @@ function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onClose: (
 
         <div className="form-grid">
           <Field label="Name">
-            <TextInput value={name} onChange={setName} placeholder="z. B. Unterjährige Anmeldung" />
+            <TextInput value={name} onChange={setName} placeholder="z. B. KKM (unterjährig)" />
           </Field>
-          <Field label="Kurzbezeichnung" hint="für Listen und Kennzeichen, z. B. „PzE“">
-            <TextInput value={kurz} onChange={setKurz} placeholder="z. B. Unterjährig" />
+          <Field label="Kurzbezeichnung" hint="für Listen und Kennzeichen, z. B. „MKM“">
+            <TextInput value={kurz} onChange={setKurz} placeholder="z. B. KKM" />
           </Field>
           <Field label="Beschreibung" full>
             <TextArea value={beschreibung} onChange={setBeschreibung} rows={2} />
@@ -610,10 +621,16 @@ function FristFeld({ frist, onChange }: { frist: FristRegel; onChange: (f: Frist
               aria-label="Frist laut Richtlinie"
               onChange={(e) => onChange({ ...frist, bezug: e.target.value as RilBezug })}
             >
-              {(Object.keys(RIL_BEZUG_LABEL) as RilBezug[]).map((k) => (
-                <option key={k} value={k}>
-                  {RIL_BEZUG_LABEL[k]}
-                </option>
+              {(Object.keys(PHASE_LABEL) as Phase[]).map((phase) => (
+                <optgroup key={phase} label={PHASE_LABEL[phase]}>
+                  {(Object.keys(RIL_BEZUG_LABEL) as RilBezug[])
+                    .filter((k) => RIL_BEZUG_PHASE[k] === phase)
+                    .map((k) => (
+                      <option key={k} value={k}>
+                        {RIL_BEZUG_LABEL[k]}
+                      </option>
+                    ))}
+                </optgroup>
               ))}
             </select>
             <span className="small muted">abzüglich</span>

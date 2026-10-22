@@ -54,7 +54,7 @@ export interface WechselIds {
 }
 
 /**
- * Führt der Workflow den Sperrzeitraum als ganzes Fahrplanjahr (SKM, PzE),
+ * Führt der Workflow den Sperrzeitraum als ganzes Fahrplanjahr (SKM, MKM),
  * reicht er vom Fahrplanwechsel bis zum nächsten; sonst folgt das
  * Fahrplanjahr dem Sperrbeginn.
  */

@@ -16,6 +16,7 @@ import {
   ALLE_ARTEN,
   ANNEX_VII,
   DATEN_VERSION,
+  ERSTE_PHASE_LABEL,
   LOESCHEN,
   RIL_BEZUG_LABEL,
   RIL_SCHLUESSEL,
@@ -26,6 +27,7 @@ import {
   type AnmeldungsArt,
   type BaubetriebDaten,
   type Einstellungen,
+  type ErstePhase,
   type FristRegel,
   type Projekt,
   type RilBezug,
@@ -138,7 +140,7 @@ function aufbereiten(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
       projektleiter: text(p.projektleiter),
       dbGNummer: text(p.dbGNummer),
       ersterAnmeldetermin: datum(p.ersterAnmeldetermin),
-      erstePhase: p.erstePhase ?? 'skm',
+      erstePhase: (p.erstePhase as string) in ERSTE_PHASE_LABEL ? (p.erstePhase as ErstePhase) : 'skm',
       bauzeitVon: datum(p.bauzeitVon),
       bauzeitBis: datum(p.bauzeitBis),
       inbetriebnahme: datum(p.inbetriebnahme),
@@ -153,7 +155,7 @@ function aufbereiten(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   const anmeldungen = (Array.isArray(roh.anmeldungen) ? roh.anmeldungen : [])
     .filter((a: Partial<Anmeldung>) => projektIds.has(text(a.projektId)))
     .map((a: Partial<Anmeldung>): Anmeldung => {
-      const art = ALLE_ARTEN.includes(a.art as AnmeldungsArt) ? (a.art as AnmeldungsArt) : 'A_unterjahr';
+      const art = ALLE_ARTEN.includes(a.art as AnmeldungsArt) ? (a.art as AnmeldungsArt) : 'A';
       const statusId = statusInfo(workflows, text(a.statusId)) ? text(a.statusId) : ersatzStatus(workflows, art);
       return {
         id: text(a.id) || zufallsId('an'),
@@ -235,10 +237,11 @@ function ausFassung2(roh: Partial<BaubetriebDaten> & { anmeldungen?: unknown }):
 const ALTE_KURZ_UNTERJAEHRIG = 'Unterjahr';
 
 /**
- * Hebt Fassung 3 auf Fassung 4: Die unterjährige Anmeldung heißt kurz
- * „Unterjährig“ (nur, wenn die mitgelieferte Kurzbezeichnung nicht geändert
- * wurde), die Texte im Statusverlauf folgen, und die Beschreibungen der
- * Standard-Workflows sprechen vom Sperrzeitraum.
+ * Hebt Fassung 3 auf Fassung 4: Die unterjährige Anmeldung erhält die
+ * aktuelle Kurzbezeichnung (in Fassung 4 „Unterjährig“, seit Fassung 6
+ * „KKM“) – nur, wenn die mitgelieferte nicht geändert wurde –, die Texte im
+ * Statusverlauf folgen, und die Beschreibungen der Standard-Workflows sprechen
+ * vom Sperrzeitraum.
  */
 function ausFassung3(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
   const neu = standardWorkflows();
@@ -311,6 +314,121 @@ function ausFassung4(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
   return { ...roh, workflows: workflows as Workflow[] };
 }
 
+/** Maßnahmenarten bis Fassung 5, die umbenannt wurden bzw. in A aufgegangen sind. */
+const ARTEN_BIS_FASSUNG5: Record<string, AnmeldungsArt> = {
+  PzE: 'MKM',
+  'A_Vor_N-2': 'A',
+  'A_Vor_N-1': 'A',
+  A_unterjahr: 'A',
+};
+
+/** Name, Kurzbezeichnung und Beschreibung der umbenannten Standard-Workflows bis Fassung 5. */
+const STANDARDS_BIS_FASSUNG5: Record<string, Pick<Workflow, 'name' | 'kurz' | 'beschreibung'>> = {
+  'wf-pze': {
+    name: 'PzE',
+    kurz: 'PzE',
+    beschreibung: 'Noch keine Anmeldung – Sammeleintrag nach Begriffen/tVE-Nr, Sperrzeitraum ganzes Fahrplanjahr.',
+  },
+  'wf-vorprozess': {
+    name: 'Vorprozess N-x',
+    kurz: 'Vorprozess',
+    beschreibung:
+      'Anmeldung im Vorprozess N-2 bzw. N-1, tagesscharf, mit Mitwirkung der BBK. Annahme: Anmeldungen in den Vorprozessen erfolgen immer fristgerecht.',
+  },
+  'wf-unterjahr': {
+    name: 'Unterjährige Anmeldung',
+    kurz: 'Unterjährig',
+    beschreibung: 'Anmeldung je Maßnahme (A, B(0), B(S), B, C, Container), tagesscharf, mit Mitwirkung der BBK.',
+  },
+};
+
+/** Prozessphase des ersten Anmeldetermins bis Fassung 5. */
+const ERSTE_PHASE_BIS_FASSUNG5: Record<string, ErstePhase> = { pze: 'mkm', unterjahr: 'kkm' };
+
+/**
+ * Hebt Fassung 5 auf Fassung 6: Die Phasen heißen SKM, MKM, KM (n-2 & n-1)
+ * und KKM (unterjährig). Die Standard-Workflows erhalten neue Namen,
+ * Kurzbezeichnungen und Beschreibungen, soweit diese nicht geändert wurden;
+ * die Texte im Statusverlauf folgen. Die Maßnahmenart PzE heißt MKM, A_Vor_N-2,
+ * A_Vor_N-1 und A_unterjahr gehen in A auf. Fristbezug und Richtlinienfrist
+ * „pze“ heißen „mkm“, die Prozessphase des ersten Anmeldetermins „mkm“ bzw.
+ * „kkm“ statt „pze“ bzw. „unterjahr“.
+ */
+function ausFassung5(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
+  const standard = standardWorkflows();
+  const art = <T,>(a: T): T | AnmeldungsArt =>
+    typeof a === 'string' && a in ARTEN_BIS_FASSUNG5 ? ARTEN_BIS_FASSUNG5[a] : a;
+  // Alte → neue Kurzbezeichnung, soweit umbenannt – für die Texte im Statusverlauf
+  const kurzNeu = new Map<string, string>();
+  const workflows = (Array.isArray(roh.workflows) ? roh.workflows : []).map((w: Partial<Workflow>) => {
+    const alt = w.id ? STANDARDS_BIS_FASSUNG5[w.id] : undefined;
+    const neu = standard.find((x) => x.id === w.id);
+    const wieBisher = (feld: 'name' | 'kurz' | 'beschreibung') => !!alt && !!neu && w[feld] === alt[feld];
+    if (wieBisher('kurz') && alt!.kurz !== neu!.kurz) kurzNeu.set(alt!.kurz, neu!.kurz);
+    return {
+      ...w,
+      name: wieBisher('name') ? neu!.name : w.name,
+      kurz: wieBisher('kurz') ? neu!.kurz : w.kurz,
+      beschreibung: wieBisher('beschreibung') ? neu!.beschreibung : w.beschreibung,
+      arten: Array.isArray(w.arten) ? [...new Set(w.arten.map(art))] : w.arten,
+      status: Array.isArray(w.status)
+        ? w.status.map((s) =>
+            s.frist?.typ === 'ril' && (s.frist.bezug as string) === 'pze' ? { ...s, frist: { ...s.frist, bezug: 'mkm' } } : s,
+          )
+        : w.status,
+    };
+  });
+
+  const umbenennen = (t: unknown) => {
+    if (typeof t !== 'string') return t;
+    for (const [alt, neu] of kurzNeu) if (t.startsWith(`${alt} · `)) return `${neu} · ${t.slice(alt.length + 3)}`;
+    return t;
+  };
+  // Bemerkung einer Aufteilung: „Bei der Übernahme aus „…“ (PzE · Angemeldet) aufgeteilt“
+  const imText = (t: unknown) => {
+    if (typeof t !== 'string') return t;
+    let ergebnis = t;
+    for (const [alt, neu] of kurzNeu) ergebnis = ergebnis.split(`(${alt} · `).join(`(${neu} · `);
+    return ergebnis;
+  };
+  const anmeldungen = (Array.isArray(roh.anmeldungen) ? roh.anmeldungen : []).map((a: Partial<Anmeldung>) => ({
+    ...a,
+    art: art(a.art),
+    verlauf: Array.isArray(a.verlauf)
+      ? a.verlauf.map((v) => ({
+          ...v,
+          vonText: umbenennen(v.vonText),
+          nachText: umbenennen(v.nachText),
+          text: imText(v.text),
+          ...(v.vorher ? { vorher: { ...v.vorher, art: art(v.vorher.art) } } : {}),
+        }))
+      : a.verlauf,
+  }));
+
+  const projekte = (Array.isArray(roh.projekte) ? roh.projekte : []).map((p: Partial<Projekt>) => ({
+    ...p,
+    erstePhase: ERSTE_PHASE_BIS_FASSUNG5[p.erstePhase as string] ?? p.erstePhase,
+  }));
+
+  // Die Richtlinienfrist „pze“ heißt „mkm“.
+  const gespeichert = roh.einstellungen?.rilFristen as Record<string, RilFrist> | undefined;
+  const einstellungen =
+    roh.einstellungen && gespeichert && 'pze' in gespeichert && !('mkm' in gespeichert)
+      ? (() => {
+          const { pze, ...rest } = gespeichert;
+          return { ...roh.einstellungen, rilFristen: { ...rest, mkm: pze } as Einstellungen['rilFristen'] };
+        })()
+      : roh.einstellungen;
+
+  return {
+    ...roh,
+    einstellungen,
+    workflows: workflows as Workflow[],
+    anmeldungen: anmeldungen as Anmeldung[],
+    projekte: projekte as Projekt[],
+  };
+}
+
 /**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt. Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch
@@ -323,11 +441,13 @@ function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
     return { ...neu, einstellungen: { ...neu.einstellungen, farbmodus: roh.einstellungen?.farbmodus ?? 'standard' } };
   }
   // Fassung 2 erhält die Standard-Workflows bereits in der aktuellen Form; die
-  // folgenden Schritte finden darin nichts mehr zu ändern.
+  // folgenden Schritte ändern an ihnen nichts mehr, wohl aber an Maßnahmenarten
+  // und Einstellungen.
   let stand = roh;
   if (version <= 2) stand = ausFassung2(stand);
   if (version <= 3) stand = ausFassung3(stand);
   if (version <= 4) stand = ausFassung4(stand);
+  if (version <= 5) stand = ausFassung5(stand);
   return aufbereiten(stand);
 }
 

@@ -23,7 +23,7 @@ export const STATUS_TON: Record<StatusArt, Ton> = {
 
 /**
  * Status einer Anmeldung, eingefärbt nach seiner Art. Ohne `ohneWorkflow`
- * steht der Workflow davor („PzE · Angemeldet“), weil Status wie „Entwurf“ in
+ * steht der Workflow davor („MKM · Angemeldet“), weil Status wie „Entwurf“ in
  * mehreren Workflows vorkommen.
  */
 export function StatusBadge({ statusId, ohneWorkflow = false }: { statusId: ID; ohneWorkflow?: boolean }) {
@@ -133,7 +133,7 @@ export function NachfolgerAuswahl({
   );
 }
 
-/** „Genehmigt“, „→ PzE: Entwurf (Übernahme)“ bzw. „Eintrag löschen“. */
+/** „Genehmigt“, „→ MKM: Entwurf (Übernahme)“ bzw. „Eintrag löschen“. */
 export function nachfolgerText(workflows: Workflow[], von: ID, nach: StatusZiel): string {
   if (nach === LOESCHEN) return 'Eintrag löschen';
   const ziel = statusInfo(workflows, nach);

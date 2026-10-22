@@ -1,7 +1,8 @@
 /**
  * Workflows der baubetrieblichen Anmeldungen. Mitgeliefert wird je Phase ein
  * Standard-Workflow nach der Tabelle „Ausprägung Merkmal Status Workflow“ des
- * Lastenhefts (SKM, PzE, Vorprozess N-x, unterjährige Anmeldung). Die
+ * Lastenhefts: SKM, MKM, KM (n-2 & n-1) und KKM (unterjährig) – im Lastenheft
+ * SKM, PzE, Vorprozess N-x und unterjährige Anmeldung. Die
  * Workflows lassen sich unter „Workflows“ anpassen, duplizieren und ergänzen.
  *
  * Der Workflow bildet bewusst nicht den Genehmigungs- und Eskalationsprozess
@@ -10,7 +11,8 @@
  */
 import {
   LOESCHEN,
-  UNTERJAEHRIGE_ARTEN,
+  MASSNAHMENARTEN,
+  PHASE_LABEL,
   type AnmeldungsArt,
   type FristRegel,
   type ID,
@@ -54,6 +56,12 @@ const status = (
  */
 const anmeldeleiche = (id: ID): WorkflowStatus => status(id, 'Anmeldeleiche', 'leiche', keine, [LOESCHEN]);
 
+/** Beschreibungen der Standard-Workflows KM und KKM (auch für die Migration). */
+export const KM_BESCHREIBUNG =
+  'Anmeldung im KM für N-2 bzw. N-1, tagesscharf, mit Mitwirkung der BBK. Es gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist, sonst die N-1-Frist. Annahme: Anmeldungen im KM erfolgen immer fristgerecht.';
+export const KKM_BESCHREIBUNG =
+  'Anmeldung je Maßnahmenart (A, B(0), B(S), B, C, Container), tagesscharf, mit Mitwirkung der BBK.';
+
 /**
  * Die vier Standard-Workflows. Die Kennungen sind fest, damit ältere Stände
  * (Statusnummern V0 … Y9) zugeordnet werden können (`STATUS_AUS_NUMMER`) und
@@ -78,21 +86,21 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
           'skm-genehmigt',
           'skm-abgelehnt',
         ], { nachhaken: true }),
-        status('skm-genehmigt', 'Genehmigt', 'genehmigt', ril('pze'), ['pze-entwurf']),
+        status('skm-genehmigt', 'Genehmigt', 'genehmigt', ril('mkm'), ['pze-entwurf']),
         status('skm-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, ['skm-anmeldeleiche', 'skm-entwurf', 'pze-entwurf']),
         anmeldeleiche('skm-anmeldeleiche'),
       ],
     },
     {
       id: 'wf-pze',
-      name: 'PzE',
-      kurz: 'PzE',
+      name: PHASE_LABEL.mkm,
+      kurz: 'MKM',
       beschreibung: 'Noch keine Anmeldung – Sammeleintrag nach Begriffen/tVE-Nr, Sperrzeitraum ganzes Fahrplanjahr.',
       herkunft: 'standard',
       bauzeitraum: 'fahrplanjahr',
-      arten: ['PzE'],
+      arten: ['MKM'],
       status: [
-        status('pze-entwurf', 'Entwurf', 'entwurf', ril('pze'), ['pze-angemeldet', 'pze-anmeldeleiche']),
+        status('pze-entwurf', 'Entwurf', 'entwurf', ril('mkm'), ['pze-angemeldet', 'pze-anmeldeleiche']),
         status('pze-angemeldet', 'Angemeldet', 'angemeldet', { typ: 'stichtag', tag: 31, monat: 7 }, [
           'pze-genehmigt',
           'pze-abgelehnt',
@@ -109,13 +117,12 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
     },
     {
       id: 'wf-vorprozess',
-      name: 'Vorprozess N-x',
-      kurz: 'Vorprozess',
-      beschreibung:
-        'Anmeldung im Vorprozess N-2 bzw. N-1, tagesscharf, mit Mitwirkung der BBK. Annahme: Anmeldungen in den Vorprozessen erfolgen immer fristgerecht.',
+      name: PHASE_LABEL.km,
+      kurz: 'KM',
+      beschreibung: KM_BESCHREIBUNG,
       herkunft: 'standard',
       bauzeitraum: 'tagesscharf',
-      arten: ['A_Vor_N-2', 'A_Vor_N-1'],
+      arten: ['A'],
       status: [
         status('vp-entwurf', 'Entwurf', 'entwurf', ril('Nx', -14), ['vp-mitwirkung', 'vp-anmeldeleiche']),
         status('vp-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('Nx', -2), ['vp-zugestimmt', 'vp-abgelehnt'], {
@@ -143,12 +150,12 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
     },
     {
       id: 'wf-unterjahr',
-      name: 'Unterjährige Anmeldung',
-      kurz: 'Unterjährig',
-      beschreibung: 'Anmeldung je Maßnahme (A, B(0), B(S), B, C, Container), tagesscharf, mit Mitwirkung der BBK.',
+      name: PHASE_LABEL.kkm,
+      kurz: 'KKM',
+      beschreibung: KKM_BESCHREIBUNG,
       herkunft: 'standard',
       bauzeitraum: 'tagesscharf',
-      arten: [...UNTERJAEHRIGE_ARTEN],
+      arten: [...MASSNAHMENARTEN],
       status: [
         status('uj-entwurf', 'Entwurf', 'entwurf', ril('X', -14), ['uj-mitwirkung', 'uj-anmeldeleiche']),
         status('uj-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('X', -2), ['uj-zugestimmt', 'uj-abgelehnt'], {
@@ -261,7 +268,7 @@ export function statusVon(workflows: Workflow[], statusId: ID): StatusInfo {
   );
 }
 
-/** „PzE · Angemeldet“ */
+/** „MKM · Angemeldet“ */
 export function statusText(info: Pick<StatusInfo, 'workflow' | 'status'>): string {
   return `${info.workflow.kurz || info.workflow.name} · ${info.status.name}`;
 }
@@ -309,6 +316,9 @@ export function istAenderung(workflows: Workflow[], statusId: ID | null): boolea
 export function workflowFuerArt(workflows: Workflow[], art: AnmeldungsArt): Workflow | undefined {
   return workflows.find((w) => w.status.length > 0 && w.arten.includes(art));
 }
+
+/** Workflow, in dem „Neue Anmeldung“ ohne Vorgabe anlegt: KKM (unterjährig). */
+export const NEUANLAGE_WORKFLOW = 'wf-unterjahr';
 
 /** Workflows, in denen neu angelegt werden kann – jeder mit mindestens einem Status. */
 export function startbareWorkflows(workflows: Workflow[]): Workflow[] {

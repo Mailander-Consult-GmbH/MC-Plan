@@ -40,12 +40,15 @@ import { ProjektDialog, PROJEKT_STATUS_TON } from './Projekte';
 /** Kürzt einzeilig mit Auslassungspunkten – so bleibt jede Tabellenzeile bei höchstens zwei Textzeilen. */
 const EINZEILIG = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
 
-/** Neuanlage aus dem Anmeldebedarf: Art je Phase – der Workflow ergibt sich aus der Art. */
+/**
+ * Neuanlage aus dem Anmeldebedarf: Art je Phase – der Workflow ergibt sich aus
+ * der Art (A: der erste Workflow, der sie führt, in den Standard-Workflows KM).
+ */
 const BEDARF_ART: Record<BedarfPhase, AnmeldungsArt> = {
   skm: 'SKM',
-  pze: 'PzE',
-  'N-2': 'A_Vor_N-2',
-  'N-1': 'A_Vor_N-1',
+  mkm: 'MKM',
+  'N-2': 'A',
+  'N-1': 'A',
 };
 
 export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigate: (r: Route) => void }) {
@@ -164,7 +167,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
       <Card>
         <CardHeader
           titel="Anmeldebedarf je Fahrplanjahr"
-          sub="Aus Sperrzeit und erstem Anmeldetermin: ob eine Anmeldung zum nächsten SKM, PzE oder N-x fällig ist"
+          sub="Aus Sperrzeit und erstem Anmeldetermin: ob eine Anmeldung zum nächsten SKM, MKM oder KM fällig ist"
         />
         {bedarf.length === 0 ? (
           <EmptyState icon="kalender" titel="Ohne Sperrzeit" text="Mit einer geplanten Sperrzeit lässt sich der Anmeldebedarf ablesen." />
@@ -226,7 +229,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
           <EmptyState
             icon="kalender"
             titel="Noch keine Anmeldung"
-            text="Neu angelegt wird im ersten Status eines Workflows – SKM, PzE, Vorprozess oder unterjährig."
+            text="Neu angelegt wird im ersten Status eines Workflows – SKM, MKM, KM oder KKM."
           />
         </Card>
       ) : (

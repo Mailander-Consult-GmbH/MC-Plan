@@ -5,8 +5,9 @@
  */
 import { addDays, diffDays, formatDate, parseISO, toISO, today } from '../../../shared/dates';
 import {
+  MASSNAHMENARTEN,
+  RIL_BEZUG_KUERZEL,
   RIL_LABEL,
-  UNTERJAEHRIGE_ARTEN,
   type Anmeldung,
   type AnmeldungsArt,
   type BaubetriebDaten,
@@ -62,22 +63,28 @@ function datumAus(jahr: number, monat: number, tag: number): ISODate {
 /* Richtlinienfristen                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Welche Richtlinienfrist gilt – Ril_Nx und Ril_X hängen von der Maßnahmenart ab. */
-export function rilSchluesselFuer(bezug: RilBezug, art: AnmeldungsArt): RilSchluessel {
+/**
+ * Welche Richtlinienfrist gilt. Ril_KM nimmt die N-2-Frist, solange sie am Tag
+ * des Statuswechsels nicht verstrichen ist, sonst die N-1-Frist. Ril_KKM
+ * richtet sich nach der Maßnahmenart; SKM und MKM rechnen wie A.
+ */
+export function rilSchluesselFuer(
+  bezug: RilBezug,
+  a: Pick<Anmeldung, 'art' | 'statusSeit' | 'fahrplanjahr' | 'bauVon'>,
+  e: Pick<Einstellungen, 'rilFristen'>,
+): RilSchluessel {
   switch (bezug) {
     case 'skm':
-      return 'skm';
-    case 'pze':
-      return 'pze';
+    case 'mkm':
     case 'N-2':
-      return 'N-2';
-    case 'Nx':
-      return art === 'A_Vor_N-1' ? 'N-1' : 'N-2';
     case 'A':
-      return 'A';
+      return bezug;
+    case 'Nx': {
+      const n2 = rilDatum(e.rilFristen['N-2'], a.fahrplanjahr, a.bauVon);
+      return n2 && a.statusSeit > n2 ? 'N-1' : 'N-2';
+    }
     case 'X':
-      // Außerhalb der unterjährigen Arten gilt die Frist der Maßnahme A
-      return art === 'A_unterjahr' || !UNTERJAEHRIGE_ARTEN.includes(art) ? 'A' : (art as RilSchluessel);
+      return MASSNAHMENARTEN.includes(a.art) ? (a.art as RilSchluessel) : 'A';
   }
 }
 
@@ -110,7 +117,7 @@ export function fristRegelText(regel: FristRegel): string {
     case 'nachhaken':
       return `Nachhak-Termin (+${regel.tage} Tage)`;
     case 'ril': {
-      const name = `Ril_${regel.bezug}`;
+      const name = RIL_BEZUG_KUERZEL[regel.bezug];
       if (!regel.versatzTage) return name;
       return `${name} ${regel.versatzTage < 0 ? '−' : '+'} ${Math.abs(regel.versatzTage)} Tage`;
     }
@@ -123,7 +130,7 @@ export function fristRegelText(regel: FristRegel): string {
 
 export interface Terminfrist {
   datum: ISODate | null;
-  /** Regel in Kurzform, z. B. „Ril_X − 14 Tage“. */
+  /** Regel in Kurzform, z. B. „Ril_KKM − 14 Tage“. */
   regel: string;
   /** Rechenweg in Worten. */
   erlaeuterung: string;
@@ -169,7 +176,9 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
       };
     }
     case 'ril': {
-      const schluessel = rilSchluesselFuer(status.frist.bezug, a.art);
+      const schluessel = rilSchluesselFuer(status.frist.bezug, a, e);
+      // Ril_KM: Hinweis, warum die N-1-Frist gilt
+      const n1 = status.frist.bezug === 'Nx' && schluessel === 'N-1' ? ' – die N-2-Frist war beim Statuswechsel verstrichen' : '';
       const ril = e.rilFristen[schluessel];
       const grund = rilDatum(ril, a.fahrplanjahr, a.bauVon);
       const versatz = status.frist.versatzTage;
@@ -188,7 +197,7 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
         platzhalter: ril.platzhalter,
         erlaeuterung: `${RIL_LABEL[schluessel]}: ${rilFristText(ril)} (${bezugText})${
           grund ? ` = ${formatDate(grund)}` : ''
-        }${versatz ? `, ${versatz < 0 ? 'abzüglich' : 'zuzüglich'} ${Math.abs(versatz)} Tage` : ''}`,
+        }${versatz ? `, ${versatz < 0 ? 'abzüglich' : 'zuzüglich'} ${Math.abs(versatz)} Tage` : ''}${n1}`,
       };
     }
   }
@@ -255,26 +264,26 @@ export function offeneTermine(d: BaubetriebDaten, projektIds?: ID[]): TerminEint
 /* Anmeldebedarf eines Projekts                                        */
 /* ------------------------------------------------------------------ */
 
-/** Prozessphasen mit festem Anmeldetermin je Fahrplanjahr. */
-export type BedarfPhase = 'skm' | 'pze' | 'N-2' | 'N-1';
+/** Prozessphasen mit festem Anmeldetermin je Fahrplanjahr: SKM, MKM, KM N-2 und KM N-1. */
+export type BedarfPhase = 'skm' | 'mkm' | 'N-2' | 'N-1';
 
-export const BEDARF_PHASEN: BedarfPhase[] = ['skm', 'pze', 'N-2', 'N-1'];
+export const BEDARF_PHASEN: BedarfPhase[] = ['skm', 'mkm', 'N-2', 'N-1'];
 
-const BEDARF_RANG: Record<BedarfPhase, number> = { skm: 0, pze: 1, 'N-2': 2, 'N-1': 3 };
+const BEDARF_RANG: Record<BedarfPhase, number> = { skm: 0, mkm: 1, 'N-2': 2, 'N-1': 3 };
 
-/** Wie weit eine Maßnahmenart im Ablauf steht – spätere Phasen decken frühere ab. */
+/**
+ * Wie weit eine Maßnahmenart im Ablauf steht – spätere Phasen decken frühere
+ * ab. Einträge in KM und KKM (A, B, C …) decken beide KM-Fristen ab: Ob N-2
+ * oder N-1 gilt, entscheidet der Zeitpunkt, nicht die Art.
+ */
 function rangDerArt(art: AnmeldungsArt): number {
   switch (art) {
     case 'SKM':
       return 0;
-    case 'PzE':
+    case 'MKM':
       return 1;
-    case 'A_Vor_N-2':
-      return 2;
-    case 'A_Vor_N-1':
-      return 3;
     default:
-      return 4;
+      return 3;
   }
 }
 
@@ -298,7 +307,7 @@ export interface BedarfZeile {
 const CA_TOLERANZ_TAGE = 31;
 
 /**
- * Anmeldebedarf je Fahrplanjahr der Sperrzeit: Für SKM, PzE, N-2 und N-1 die
+ * Anmeldebedarf je Fahrplanjahr der Sperrzeit: Für SKM, MKM, KM N-2 und KM N-1 die
  * Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat.
  * Anmeldeleichen zählen nicht mit. Fristen vor dem ersten Anmeldetermin
  * liegen vor der Betreuung durch MIC.
@@ -373,7 +382,7 @@ export function ersterTerminVorschlag(
   e: Einstellungen,
 ): ISODate | null {
   if (!p.bauzeitVon) return null;
-  const schluessel: RilSchluessel = p.erstePhase === 'unterjahr' ? 'A' : p.erstePhase;
+  const schluessel: RilSchluessel = p.erstePhase === 'kkm' ? 'A' : p.erstePhase;
   return rilDatum(e.rilFristen[schluessel], fahrplanjahrVon(p.bauzeitVon), p.bauzeitVon);
 }
 

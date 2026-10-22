@@ -4,7 +4,7 @@
  * Führt der Wechsel in einen anderen Workflow (eine neue Phase), wird die
  * Anmeldung dorthin übernommen: Maßnahmenart, Anmelde-ID und Sperrzeitraum
  * werden neu erfasst, und der Eintrag lässt sich auf mehrere Anmeldungen
- * aufteilen – in SKM und PzE stehen ja nur Sammeleinträge. Der Status
+ * aufteilen – in SKM und MKM stehen ja nur Sammeleinträge. Der Status
  * „Anmeldeleiche“ ist ein gewöhnlicher Status; erst der Schritt „Eintrag
  * löschen“ (`LOESCHEN`) entfernt den Eintrag.
  */

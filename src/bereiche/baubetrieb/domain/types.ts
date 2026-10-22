@@ -17,7 +17,7 @@ export type ID = string;
  * Fassung des gespeicherten Bestands. Erhöhen, sobald `migriere()` in
  * `store/storage.ts` ältere Stände anheben muss.
  */
-export const DATEN_VERSION = 5;
+export const DATEN_VERSION = 6;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -25,36 +25,34 @@ export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
 export type Farbmodus = 'standard' | 'kontrast';
 
 /* ------------------------------------------------------------------ */
-/* Maßnahmenarten, AnnexVII                                            */
+/* Phasen, Maßnahmenarten, AnnexVII                                    */
 /* ------------------------------------------------------------------ */
 
-export type AnmeldungsArt =
-  | 'SKM'
-  | 'PzE'
-  | 'A_Vor_N-2'
-  | 'A_Vor_N-1'
-  | 'A_unterjahr'
-  | 'B(0)'
-  | 'B(S)'
-  | 'B'
-  | 'C'
-  | 'Container';
+/**
+ * Phasen der Baubetriebsplanung – je Phase ein Standard-Workflow. Im
+ * Lastenheft hießen sie SKM, PzE, Vorprozess N-x und unterjährige Anmeldung.
+ */
+export type Phase = 'skm' | 'mkm' | 'km' | 'kkm';
 
-export const ALLE_ARTEN: AnmeldungsArt[] = [
-  'SKM',
-  'PzE',
-  'A_Vor_N-2',
-  'A_Vor_N-1',
-  'A_unterjahr',
-  'B(0)',
-  'B(S)',
-  'B',
-  'C',
-  'Container',
-];
+export const PHASE_LABEL: Record<Phase, string> = {
+  skm: 'SKM',
+  mkm: 'MKM',
+  km: 'KM (n-2 & n-1)',
+  kkm: 'KKM (unterjährig)',
+};
 
-/** Arten der unterjährigen Anmeldung – für sie gilt Ril_X je nach Maßnahme. */
-export const UNTERJAEHRIGE_ARTEN: AnmeldungsArt[] = ['A_unterjahr', 'B(0)', 'B(S)', 'B', 'C', 'Container'];
+/**
+ * Maßnahmenart einer Anmeldung. SKM und MKM kennzeichnen die Sammeleinträge
+ * dieser Phasen; die übrigen Arten können in mehreren Phasen vorkommen –
+ * getrennt wird nach Workflow. Das Lastenheft unterschied A_Vor_N-2,
+ * A_Vor_N-1 und A_unterjahr; sie sind in A aufgegangen, PzE heißt MKM.
+ */
+export type AnmeldungsArt = 'SKM' | 'MKM' | 'A' | 'B(0)' | 'B(S)' | 'B' | 'C' | 'Container';
+
+export const ALLE_ARTEN: AnmeldungsArt[] = ['SKM', 'MKM', 'A', 'B(0)', 'B(S)', 'B', 'C', 'Container'];
+
+/** Maßnahmenarten mit eigener Frist im KKM (Ril_KKM je Maßnahmenart). */
+export const MASSNAHMENARTEN: AnmeldungsArt[] = ['A', 'B(0)', 'B(S)', 'B', 'C', 'Container'];
 
 export type AnnexVIIGrund =
   | 'ausserhalbKontrolle'
@@ -106,26 +104,47 @@ export const STATUS_ART_LABEL: Record<StatusArt, string> = {
 };
 
 /**
- * Bezug einer Terminfrist auf die Richtlinie, wie im Lastenheft benannt:
- * Ril_skm, Ril_pze, Ril_N-2, Ril_Nx (N-2 oder N-1 nach Maßnahmenart),
- * Ril_A und Ril_X (je nach Maßnahme).
+ * Bezug einer Terminfrist auf die Richtlinie: Ril_SKM, Ril_MKM, Ril_KM N-2,
+ * Ril_KM (N-2 oder N-1 – die N-2-Frist, solange sie am Tag des Statuswechsels
+ * nicht verstrichen ist), Ril_KKM A und Ril_KKM (je Maßnahmenart). Im
+ * Lastenheft hießen sie Ril_skm, Ril_pze, Ril_N-2, Ril_Nx, Ril_A und Ril_X.
  */
-export type RilBezug = 'skm' | 'pze' | 'N-2' | 'Nx' | 'A' | 'X';
+export type RilBezug = 'skm' | 'mkm' | 'N-2' | 'Nx' | 'A' | 'X';
+
+/** Kürzel in Fristregeln, z. B. „Ril_KKM − 14 Tage“. */
+export const RIL_BEZUG_KUERZEL: Record<RilBezug, string> = {
+  skm: 'Ril_SKM',
+  mkm: 'Ril_MKM',
+  'N-2': 'Ril_KM N-2',
+  Nx: 'Ril_KM',
+  A: 'Ril_KKM A',
+  X: 'Ril_KKM',
+};
+
+/** Phase eines Fristbezugs – für die nach Phase gegliederte Auswahl im Workflow-Editor. */
+export const RIL_BEZUG_PHASE: Record<RilBezug, Phase> = {
+  skm: 'skm',
+  mkm: 'mkm',
+  'N-2': 'km',
+  Nx: 'km',
+  A: 'kkm',
+  X: 'kkm',
+};
 
 export const RIL_BEZUG_LABEL: Record<RilBezug, string> = {
-  skm: 'SKM (Ril_skm)',
-  pze: 'PzE (Ril_pze)',
-  'N-2': 'Vorprozess N-2 (Ril_N-2)',
-  Nx: 'Vorprozess N-2/N-1 je nach Art (Ril_Nx)',
-  A: 'Maßnahme A (Ril_A)',
-  X: 'je nach Maßnahme (Ril_X)',
+  skm: 'SKM (Ril_SKM)',
+  mkm: 'MKM (Ril_MKM)',
+  'N-2': 'KM N-2 (Ril_KM N-2)',
+  Nx: 'KM N-2 oder N-1 – die beim Statuswechsel offene (Ril_KM)',
+  A: 'KKM Maßnahmenart A (Ril_KKM A)',
+  X: 'KKM je Maßnahmenart (Ril_KKM)',
 };
 
 /** Terminfrist, die eine Anmeldung in einem Status einhalten soll. */
 export type FristRegel =
   /** „.-.“ – keine Frist */
   | { typ: 'keine' }
-  /** Frist laut Richtlinie, ggf. mit Versatz in Kalendertagen (−14 für „Ril_X – 14 Tage“) */
+  /** Frist laut Richtlinie, ggf. mit Versatz in Kalendertagen (−14 für „Ril_KKM − 14 Tage“) */
   | { typ: 'ril'; bezug: RilBezug; versatzTage: number }
   /** „Nächster 1.8.“ – der nächste Stichtag ab dem Statuswechsel */
   | { typ: 'stichtag'; tag: number; monat: number }
@@ -167,7 +186,7 @@ export interface WorkflowStatus {
 }
 
 /**
- * In SKM und PzE gibt es noch keine Anmeldungen: Der Sperrzeitraum umfasst das
+ * In SKM und MKM gibt es noch keine Anmeldungen: Der Sperrzeitraum umfasst das
  * ganze Fahrplanjahr, statt einer Anmelde-ID steht ein Begriff bzw. die tVE-Nr.
  */
 export type BauzeitraumModus = 'fahrplanjahr' | 'tagesscharf';
@@ -185,7 +204,7 @@ export const BAUZEITRAUM_LABEL: Record<BauzeitraumModus, string> = {
 export interface Workflow {
   id: ID;
   name: string;
-  /** Kurzbezeichnung für Listen und Kennzeichen, z. B. „PzE“. */
+  /** Kurzbezeichnung für Listen und Kennzeichen, z. B. „MKM“. */
   kurz: string;
   beschreibung: string;
   herkunft: 'standard' | 'manuell';
@@ -200,22 +219,53 @@ export interface Workflow {
 /* Richtlinienfristen                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Einzelne Fristen laut Richtlinie: je Prozessphase bzw. je Maßnahme. */
-export type RilSchluessel = 'skm' | 'pze' | 'N-2' | 'N-1' | 'A' | 'B(0)' | 'B(S)' | 'B' | 'C' | 'Container';
+/**
+ * Einzelne Fristen laut Richtlinie: je Phase, im KM getrennt nach N-2 und
+ * N-1, im KKM je Maßnahmenart.
+ */
+export type RilSchluessel = 'skm' | 'mkm' | 'N-2' | 'N-1' | 'A' | 'B(0)' | 'B(S)' | 'B' | 'C' | 'Container';
 
-export const RIL_SCHLUESSEL: RilSchluessel[] = ['skm', 'pze', 'N-2', 'N-1', 'A', 'B(0)', 'B(S)', 'B', 'C', 'Container'];
+export const RIL_SCHLUESSEL: RilSchluessel[] = ['skm', 'mkm', 'N-2', 'N-1', 'A', 'B(0)', 'B(S)', 'B', 'C', 'Container'];
 
 export const RIL_LABEL: Record<RilSchluessel, string> = {
   skm: 'SKM',
-  pze: 'PzE',
-  'N-2': 'Vorprozess N-2',
-  'N-1': 'Vorprozess N-1',
-  A: 'Maßnahme A',
-  'B(0)': 'Maßnahme B(0)',
-  'B(S)': 'Maßnahme B(S)',
-  B: 'Maßnahme B',
-  C: 'Maßnahme C',
-  Container: 'Container',
+  mkm: 'MKM',
+  'N-2': 'KM N-2',
+  'N-1': 'KM N-1',
+  A: 'KKM Maßnahmenart A',
+  'B(0)': 'KKM Maßnahmenart B(0)',
+  'B(S)': 'KKM Maßnahmenart B(S)',
+  B: 'KKM Maßnahmenart B',
+  C: 'KKM Maßnahmenart C',
+  Container: 'KKM Maßnahmenart Container',
+};
+
+/** Kürzel einer Richtlinienfrist, z. B. „Ril_KM N-2“ oder „Ril_KKM B(S)“. */
+export const RIL_KUERZEL: Record<RilSchluessel, string> = {
+  skm: 'Ril_SKM',
+  mkm: 'Ril_MKM',
+  'N-2': 'Ril_KM N-2',
+  'N-1': 'Ril_KM N-1',
+  A: 'Ril_KKM A',
+  'B(0)': 'Ril_KKM B(0)',
+  'B(S)': 'Ril_KKM B(S)',
+  B: 'Ril_KKM B',
+  C: 'Ril_KKM C',
+  Container: 'Ril_KKM Container',
+};
+
+/** Phase, zu der eine Richtlinienfrist gehört – danach gliedern sich Einstellungen und Übersicht. */
+export const RIL_PHASE: Record<RilSchluessel, Phase> = {
+  skm: 'skm',
+  mkm: 'mkm',
+  'N-2': 'km',
+  'N-1': 'km',
+  A: 'kkm',
+  'B(0)': 'kkm',
+  'B(S)': 'kkm',
+  B: 'kkm',
+  C: 'kkm',
+  Container: 'kkm',
 };
 
 /**
@@ -244,15 +294,31 @@ export const PROJEKT_STATUS_LABEL: Record<ProjektStatus, string> = {
   abgeschlossen: 'Abgeschlossen',
 };
 
+/** Hinweis je Phase, wie sich ihre Richtlinienfrist auswählt. */
+export const RIL_PHASE_HINWEIS: Record<Phase, string> = {
+  skm: 'Stichtag je Fahrplanjahr',
+  mkm: 'Stichtag je Fahrplanjahr',
+  km: 'Es gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist, sonst die N-1-Frist (Ril_KM).',
+  kkm: 'Frist je Maßnahmenart (Ril_KKM); SKM und MKM rechnen wie A.',
+};
+
+/** Richtlinienfristen gegliedert nach Phase, in der Reihenfolge der Phasen. */
+export function rilFristenNachPhase(): { phase: Phase; schluessel: RilSchluessel[] }[] {
+  return (Object.keys(PHASE_LABEL) as Phase[]).map((phase) => ({
+    phase,
+    schluessel: RIL_SCHLUESSEL.filter((s) => RIL_PHASE[s] === phase),
+  }));
+}
+
 /** Prozessphase, auf die sich der erste Anmeldetermin bezieht. */
-export type ErstePhase = 'skm' | 'pze' | 'N-2' | 'N-1' | 'unterjahr';
+export type ErstePhase = 'skm' | 'mkm' | 'N-2' | 'N-1' | 'kkm';
 
 export const ERSTE_PHASE_LABEL: Record<ErstePhase, string> = {
   skm: 'SKM',
-  pze: 'PzE',
-  'N-2': 'Vorprozess N-2',
-  'N-1': 'Vorprozess N-1',
-  unterjahr: 'Unterjährig',
+  mkm: 'MKM',
+  'N-2': 'KM N-2',
+  'N-1': 'KM N-1',
+  kkm: 'KKM (unterjährig)',
 };
 
 /** Projekt (im Lastenheft „Projekthülle“) – wird bei der MIC-Beauftragung angelegt. */
@@ -289,7 +355,7 @@ export interface VerlaufEintrag {
   von: ID | null;
   nach: ID | null;
   /**
-   * Workflow und Status zum Zeitpunkt des Eintrags, z. B. „PzE · Angemeldet“ –
+   * Workflow und Status zum Zeitpunkt des Eintrags, z. B. „MKM · Angemeldet“ –
    * bleibt lesbar, auch wenn der Workflow später geändert wird.
    */
   vonText: string;

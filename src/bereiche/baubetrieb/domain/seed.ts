@@ -52,7 +52,7 @@ const vorBaubeginn = (wochenVorher: number): RilFrist => ({
 export function standardRilFristen(): Record<RilSchluessel, RilFrist> {
   return {
     skm: stichtag(31, 3, 4),
-    pze: stichtag(31, 3, 3),
+    mkm: stichtag(31, 3, 3),
     'N-2': stichtag(31, 10, 2),
     'N-1': stichtag(30, 4, 1),
     A: vorBaubeginn(26),
@@ -170,7 +170,7 @@ export function seedDaten(): BaubetriebDaten {
     projektleiter: 'Projektleitung DB InfraGO (Muster)',
     dbGNummer: 'G.40001234',
     ersterAnmeldetermin: `${jahr - 1}-03-31`,
-    erstePhase: 'pze',
+    erstePhase: 'mkm',
     bauzeitVon: `${jahr + 2}-03-01`,
     bauzeitBis: `${jahr + 3}-06-30`,
     inbetriebnahme: `${jahr + 3}-06-02`,
@@ -212,7 +212,7 @@ export function seedDaten(): BaubetriebDaten {
     demoAnmeldung(
       alb.id,
       {
-        art: 'A_Vor_N-2',
+        art: 'A',
         anmeldeId: 'A-4000-0812',
         verlauf: [
           ['W0', `${jahr - 1}-02-10`],
@@ -232,7 +232,7 @@ export function seedDaten(): BaubetriebDaten {
     demoAnmeldung(
       alb.id,
       {
-        art: 'PzE',
+        art: 'MKM',
         anmeldeId: 'tVE 4000-17',
         verlauf: [
           ['W0', `${jahr}-02-12`],
@@ -241,7 +241,7 @@ export function seedDaten(): BaubetriebDaten {
         fahrplanjahr: jahr + 3,
         bfStrecke: 'Strecke 4000, Bereich Bf Durmersheim',
         gewerk: 'Restarbeiten Überbau, Rückbau Hilfsbrücke',
-        bemerkung: 'Sammeleintrag – wird im Vorprozess in Einzelanmeldungen aufgeteilt.',
+        bemerkung: 'Sammeleintrag – wird im KM in Einzelanmeldungen aufgeteilt.',
       },
       wer,
       workflows,
@@ -307,7 +307,7 @@ export function seedDaten(): BaubetriebDaten {
     demoAnmeldung(
       durmersheim.id,
       {
-        art: 'A_unterjahr',
+        art: 'A',
         anmeldeId: 'A-4000-0977',
         verlauf: [
           ['X0', tag(-420)],
