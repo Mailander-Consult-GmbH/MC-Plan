@@ -20,7 +20,7 @@ import {
   type RilSchluessel,
   type Workflow,
 } from './types';
-import { statusVon, type StatusInfo } from './workflow';
+import { istLeiche, statusVon, type StatusInfo } from './workflow';
 
 /** Was die Fristenrechnung aus dem Bestand braucht. */
 export type FristKontext = Pick<BaubetriebDaten, 'einstellungen' | 'workflows'>;
@@ -300,18 +300,19 @@ const CA_TOLERANZ_TAGE = 31;
 /**
  * Anmeldebedarf je Fahrplanjahr der Sperrzeit: Für SKM, PzE, N-2 und N-1 die
  * Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat.
- * Fristen vor dem ersten Anmeldetermin liegen vor der Betreuung durch MIC.
+ * Anmeldeleichen zählen nicht mit. Fristen vor dem ersten Anmeldetermin
+ * liegen vor der Betreuung durch MIC.
  */
 export function anmeldebedarf(
   p: Projekt,
-  anmeldungen: Anmeldung[],
-  e: Einstellungen,
+  d: Pick<BaubetriebDaten, 'anmeldungen' | 'workflows' | 'einstellungen'>,
   heute: ISODate = today(),
 ): BedarfZeile[] {
+  const e = d.einstellungen;
   const von = fahrplanjahrVon(p.bauzeitVon);
   if (!von) return [];
   const bis = Math.max(von, Math.min(fahrplanjahrVon(p.bauzeitBis) ?? von, von + 9));
-  const eigene = anmeldungen.filter((a) => a.projektId === p.id);
+  const eigene = d.anmeldungen.filter((a) => a.projektId === p.id && !istLeiche(d.workflows, a.statusId));
   const beginnGrenze = p.ersterAnmeldetermin ? addDays(p.ersterAnmeldetermin, -CA_TOLERANZ_TAGE) : null;
 
   const zeilen: BedarfZeile[] = [];
@@ -355,7 +356,7 @@ export function faelligerBedarf(d: BaubetriebDaten, projektIds?: ID[]): BedarfEi
   return d.projekte
     .filter((p) => p.status !== 'abgeschlossen' && (!projektIds || projektIds.includes(p.id)))
     .flatMap((projekt) =>
-      anmeldebedarf(projekt, d.anmeldungen, d.einstellungen)
+      anmeldebedarf(projekt, d)
         .flatMap((z) => z.zellen)
         .filter((zelle) => zelle.zustand === 'faellig')
         .map((zelle) => ({ projekt, zelle })),

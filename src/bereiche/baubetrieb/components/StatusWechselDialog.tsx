@@ -4,8 +4,9 @@
  * Führt der Wechsel in einen anderen Workflow (eine neue Phase), wird die
  * Anmeldung dorthin übernommen: Maßnahmenart, Anmelde-ID und Sperrzeitraum
  * werden neu erfasst, und der Eintrag lässt sich auf mehrere Anmeldungen
- * aufteilen – in SKM und PzE stehen ja nur Sammeleinträge. Die Anmeldeleiche
- * löscht den Eintrag.
+ * aufteilen – in SKM und PzE stehen ja nur Sammeleinträge. Der Status
+ * „Anmeldeleiche“ ist ein gewöhnlicher Status; erst der Schritt „Eintrag
+ * löschen“ (`LOESCHEN`) entfernt den Eintrag.
  */
 import { useState } from 'react';
 import { formatDate, today } from '../../../shared/dates';
@@ -15,8 +16,8 @@ import { Callout, Field, Modal, Select, TextArea, TextInput } from '../../../sha
 import { bauzeitraumAbgleichen, type Aufteilung } from '../domain/ablauf';
 import { ganzesFahrplanjahr, terminfrist } from '../domain/fristen';
 import {
-  ANMELDELEICHE,
   ANNEX_VII_LABEL,
+  LOESCHEN,
   type Anmeldung,
   type AnmeldungsArt,
   type AnnexVIIGrund,
@@ -46,15 +47,18 @@ export function StatusWechselDialog({
   anmeldung: Anmeldung;
   nach: StatusZiel;
   onClose: () => void;
-  /** Nach dem Löschen als Anmeldeleiche – die Ansicht der Anmeldung gibt es dann nicht mehr. */
+  /** Nach dem Löschen – die Ansicht der Anmeldung gibt es dann nicht mehr. */
   onGeloescht?: () => void;
   onAufgeteilt?: (ids: ID[]) => void;
 }) {
   const { data, statusWechseln } = useStore();
   const toast = useToast();
   const von = statusVon(data.workflows, anmeldung.statusId);
-  const leiche = nach === ANMELDELEICHE;
-  const ziel = leiche ? von : statusVon(data.workflows, nach);
+  const loeschen = nach === LOESCHEN;
+  const ziel = loeschen ? von : statusVon(data.workflows, nach);
+  // Wechsel in den Status „Anmeldeleiche“ – gelöscht wird erst im nächsten Schritt.
+  const wirdLeiche = !loeschen && ziel.status.art === 'leiche' && von.status.art !== 'leiche';
+  const vonLeiche = von.status.art === 'leiche';
   const uebernahme = istUebernahme(data.workflows, anmeldung.statusId, nach);
   const ganzesJahr = ganzesFahrplanjahr(ziel.workflow);
   const wirdAenderung = istAenderung(data.workflows, nach) && !istAenderung(data.workflows, anmeldung.statusId);
@@ -84,7 +88,7 @@ export function StatusWechselDialog({
       : { fahrplanjahr: null, bauVon: z.bauVon || null, bauBis: z.bauBis || z.bauVon || null };
 
   // Vorschau der Terminfrist im neuen Status
-  const vorschau = leiche
+  const vorschau = loeschen
     ? null
     : terminfrist(
         bauzeitraumAbgleichen(
@@ -101,7 +105,7 @@ export function StatusWechselDialog({
       );
 
   const ausfuehren = () => {
-    if (!leiche && !datum) {
+    if (!loeschen && !datum) {
       toast('Bitte das Datum des Statuswechsels angeben.');
       return;
     }
@@ -125,8 +129,8 @@ export function StatusWechselDialog({
         ? weitere.map((z): Aufteilung => ({ anmeldeId: z.anmeldeId, bfStrecke: z.bfStrecke, ...bauzeit(z) }))
         : undefined,
     });
-    if (leiche) {
-      toast('Anmeldeleiche gelöscht.');
+    if (loeschen) {
+      toast(vonLeiche ? 'Anmeldeleiche gelöscht.' : 'Anmeldung gelöscht.');
       onClose();
       onGeloescht?.();
       return;
@@ -143,7 +147,13 @@ export function StatusWechselDialog({
     if (neueIds.length > 0) onAufgeteilt?.(neueIds);
   };
 
-  const titel = leiche ? 'Als Anmeldeleiche löschen?' : uebernahme ? `Übernahme in ${ziel.workflow.name}` : 'Status ändern';
+  const titel = loeschen
+    ? vonLeiche
+      ? 'Anmeldeleiche löschen?'
+      : 'Anmeldung löschen?'
+    : uebernahme
+      ? `Übernahme in ${ziel.workflow.name}`
+      : 'Status ändern';
 
   return (
     <Modal
@@ -152,7 +162,7 @@ export function StatusWechselDialog({
         <span className="row wrap" style={{ gap: 6 }}>
           <StatusBadge statusId={anmeldung.statusId} />
           <Icon name="chevron" size={12} />
-          {leiche ? <span className="small">Anmeldeleiche</span> : <StatusBadge statusId={nach} />}
+          {loeschen ? <span className="small">Löschen</span> : <StatusBadge statusId={nach} />}
         </span>
       }
       onClose={onClose}
@@ -165,17 +175,17 @@ export function StatusWechselDialog({
           <button
             type="button"
             className="btn btn-primary"
-            style={leiche ? { background: 'var(--red)' } : undefined}
+            style={loeschen ? { background: 'var(--red)' } : undefined}
             onClick={ausfuehren}
           >
-            {leiche ? 'Löschen' : uebernahme ? 'Übernehmen' : 'Status setzen'}
+            {loeschen ? 'Löschen' : uebernahme ? 'Übernehmen' : 'Status setzen'}
           </button>
         </>
       }
     >
-      {leiche ? (
+      {loeschen ? (
         <p className="muted">
-          Anmeldeleichen werden komplett gelöscht. Der Eintrag „{anmeldung.anmeldeId || anmeldung.gewerk || 'ohne ID'}“
+          {vonLeiche ? 'Anmeldeleichen werden komplett gelöscht. ' : ''}Der Eintrag „{anmeldung.anmeldeId || anmeldung.gewerk || 'ohne ID'}“
           verschwindet samt Statusverlauf aus dem Projekt. Das lässt sich nicht rückgängig machen.
         </p>
       ) : (
@@ -186,6 +196,13 @@ export function StatusWechselDialog({
               Anmelde-ID und Sperrzeitraum gelten ab jetzt für die neue Phase; der bisherige Stand bleibt im Verlauf
               erhalten.
               {ganzesJahr ? '' : ' Der Sperrzeitraum ist ab hier tagesscharf.'}
+            </Callout>
+          ) : null}
+          {wirdLeiche ? (
+            <Callout ton="warn">
+              Die Anmeldung bleibt als Anmeldeleiche rot gekennzeichnet im Projekt stehen und deckt keinen
+              Anmeldebedarf mehr ab.
+              {ziel.status.nachfolger.includes(LOESCHEN) ? ' Gelöscht wird sie erst im nächsten Schritt („Eintrag löschen“).' : ''}
             </Callout>
           ) : null}
           {nach === anmeldung.statusId ? (

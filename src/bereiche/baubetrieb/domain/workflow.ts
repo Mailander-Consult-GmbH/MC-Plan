@@ -9,7 +9,7 @@
  * verfolgt. Neu angelegt wird immer im ersten Status eines Workflows.
  */
 import {
-  ANMELDELEICHE,
+  LOESCHEN,
   UNTERJAEHRIGE_ARTEN,
   type AnmeldungsArt,
   type FristRegel,
@@ -49,8 +49,15 @@ const status = (
 });
 
 /**
+ * Anmeldeleiche am Ende eines Standard-Workflows: Die Anmeldung bleibt rot
+ * gekennzeichnet stehen und wird erst mit dem nächsten Schritt gelöscht.
+ */
+const anmeldeleiche = (id: ID): WorkflowStatus => status(id, 'Anmeldeleiche', 'leiche', keine, [LOESCHEN]);
+
+/**
  * Die vier Standard-Workflows. Die Kennungen sind fest, damit ältere Stände
- * (Statusnummern V0 … Y9) zugeordnet werden können (`STATUS_AUS_NUMMER`).
+ * (Statusnummern V0 … Y9) zugeordnet werden können (`STATUS_AUS_NUMMER`) und
+ * die Migration den Status „Anmeldeleiche“ dem passenden Workflow zuordnet.
  * `nachhakTage` ist der Abstand der Nachhak-Termine – die Migration übergibt
  * den Wert, der bisher in den Einstellungen für alle Status galt.
  */
@@ -66,13 +73,14 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
       bauzeitraum: 'fahrplanjahr',
       arten: ['SKM'],
       status: [
-        status('skm-entwurf', 'Entwurf', 'entwurf', ril('skm'), ['skm-angemeldet', ANMELDELEICHE]),
+        status('skm-entwurf', 'Entwurf', 'entwurf', ril('skm'), ['skm-angemeldet', 'skm-anmeldeleiche']),
         status('skm-angemeldet', 'Angemeldet', 'angemeldet', { typ: 'stichtag', tag: 1, monat: 8 }, [
           'skm-genehmigt',
           'skm-abgelehnt',
         ], { nachhaken: true }),
         status('skm-genehmigt', 'Genehmigt', 'genehmigt', ril('pze'), ['pze-entwurf']),
-        status('skm-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, [ANMELDELEICHE, 'skm-entwurf', 'pze-entwurf']),
+        status('skm-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, ['skm-anmeldeleiche', 'skm-entwurf', 'pze-entwurf']),
+        anmeldeleiche('skm-anmeldeleiche'),
       ],
     },
     {
@@ -84,18 +92,19 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
       bauzeitraum: 'fahrplanjahr',
       arten: ['PzE'],
       status: [
-        status('pze-entwurf', 'Entwurf', 'entwurf', ril('pze'), ['pze-angemeldet', ANMELDELEICHE]),
+        status('pze-entwurf', 'Entwurf', 'entwurf', ril('pze'), ['pze-angemeldet', 'pze-anmeldeleiche']),
         status('pze-angemeldet', 'Angemeldet', 'angemeldet', { typ: 'stichtag', tag: 31, monat: 7 }, [
           'pze-genehmigt',
           'pze-abgelehnt',
         ], { nachhaken: true }),
         status('pze-genehmigt', 'Genehmigt', 'genehmigt', ril('N-2'), ['vp-entwurf']),
         status('pze-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, [
-          ANMELDELEICHE,
+          'pze-anmeldeleiche',
           'skm-entwurf',
           'pze-entwurf',
           'vp-entwurf',
         ]),
+        anmeldeleiche('pze-anmeldeleiche'),
       ],
     },
     {
@@ -108,7 +117,7 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
       bauzeitraum: 'tagesscharf',
       arten: ['A_Vor_N-2', 'A_Vor_N-1'],
       status: [
-        status('vp-entwurf', 'Entwurf', 'entwurf', ril('Nx', -14), ['vp-mitwirkung', ANMELDELEICHE]),
+        status('vp-entwurf', 'Entwurf', 'entwurf', ril('Nx', -14), ['vp-mitwirkung', 'vp-anmeldeleiche']),
         status('vp-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('Nx', -2), ['vp-zugestimmt', 'vp-abgelehnt'], {
           nachhaken: true,
         }),
@@ -124,11 +133,12 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
         ]),
         status('vp-aenderung-abgelehnt', 'Änderung abgelehnt', 'abgelehnt', ril('A'), ['vp-abgelehnt', 'vp-genehmigt']),
         status('vp-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, [
-          ANMELDELEICHE,
+          'vp-anmeldeleiche',
           'vp-entwurf',
           'pze-entwurf',
           'uj-entwurf',
         ]),
+        anmeldeleiche('vp-anmeldeleiche'),
       ],
     },
     {
@@ -140,7 +150,7 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
       bauzeitraum: 'tagesscharf',
       arten: [...UNTERJAEHRIGE_ARTEN],
       status: [
-        status('uj-entwurf', 'Entwurf', 'entwurf', ril('X', -14), ['uj-mitwirkung', ANMELDELEICHE]),
+        status('uj-entwurf', 'Entwurf', 'entwurf', ril('X', -14), ['uj-mitwirkung', 'uj-anmeldeleiche']),
         status('uj-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('X', -2), ['uj-zugestimmt', 'uj-abgelehnt'], {
           nachhaken: true,
         }),
@@ -161,7 +171,8 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
         status('uj-aenderung-abgelehnt', 'Änderung abgelehnt', 'abgelehnt', keine, ['uj-genehmigt'], {
           bemerkung: 'Ggf. cfPeDi',
         }),
-        status('uj-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, ['uj-genehmigt', ANMELDELEICHE]),
+        status('uj-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, ['uj-genehmigt', 'uj-anmeldeleiche']),
+        anmeldeleiche('uj-anmeldeleiche'),
       ],
     },
   ];
@@ -257,7 +268,7 @@ export function statusText(info: Pick<StatusInfo, 'workflow' | 'status'>): strin
 
 /** Text eines Wechselziels, z. B. für den Statusverlauf. */
 export function zielText(workflows: Workflow[], ziel: StatusZiel): string {
-  if (ziel === ANMELDELEICHE) return 'Anmeldeleiche';
+  if (ziel === LOESCHEN) return 'Gelöscht';
   const info = statusInfo(workflows, ziel);
   return info ? statusText(info) : 'Unbekannter Status';
 }
@@ -266,7 +277,7 @@ export function zielText(workflows: Workflow[], ziel: StatusZiel): string {
 export function nachfolgerVon(workflows: Workflow[], statusId: ID): StatusZiel[] {
   const info = statusInfo(workflows, statusId);
   if (!info) return [];
-  return info.status.nachfolger.filter((z) => z === ANMELDELEICHE || statusInfo(workflows, z) !== null);
+  return info.status.nachfolger.filter((z) => z === LOESCHEN || statusInfo(workflows, z) !== null);
 }
 
 /**
@@ -275,10 +286,18 @@ export function nachfolgerVon(workflows: Workflow[], statusId: ID): StatusZiel[]
  * entfernt), gilt der Wechsel nicht als Übernahme.
  */
 export function istUebernahme(workflows: Workflow[], von: ID, nach: StatusZiel): boolean {
-  if (nach === ANMELDELEICHE) return false;
+  if (nach === LOESCHEN) return false;
   const ziel = statusInfo(workflows, nach);
   const herkunft = statusInfo(workflows, von);
   return !!ziel && !!herkunft && ziel.workflow.id !== herkunft.workflow.id;
+}
+
+/**
+ * Die Anmeldung steht in einem Status der Art „Anmeldeleiche“: Sie ist
+ * erledigt, deckt keinen Anmeldebedarf mehr ab und wartet aufs Löschen.
+ */
+export function istLeiche(workflows: Workflow[], statusId: ID | null): boolean {
+  return statusInfo(workflows, statusId)?.status.art === 'leiche';
 }
 
 /** Während einer Änderungsabstimmung sind ÄAbst-Nr und AnnexVII relevant. */

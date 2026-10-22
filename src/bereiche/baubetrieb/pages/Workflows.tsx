@@ -13,9 +13,9 @@ import { STATUS_TON } from '../components/common';
 import { fristRegelText, rilFristText } from '../domain/fristen';
 import {
   ALLE_ARTEN,
-  ANMELDELEICHE,
   BAUZEITRAUM_LABEL,
   FRIST_TYP_LABEL,
+  LOESCHEN,
   RIL_BEZUG_LABEL,
   RIL_LABEL,
   RIL_SCHLUESSEL,
@@ -352,9 +352,9 @@ function StatusListe({
   const entfernen = (id: string) =>
     setStatus(status.filter((s) => s.id !== id).map((s) => ({ ...s, nachfolger: s.nachfolger.filter((z) => z !== id) })));
 
-  /** Beschriftung eines Nachfolgers: Nummer im Workflow, Übernahme oder Anmeldeleiche. */
+  /** Beschriftung eines Nachfolgers: Nummer im Workflow, Übernahme oder Löschen. */
   const zielText = (ziel: StatusZiel): string | null => {
-    if (ziel === ANMELDELEICHE) return 'Anmeldeleiche (löschen)';
+    if (ziel === LOESCHEN) return 'Eintrag löschen';
     const eigen = status.findIndex((s) => s.id === ziel);
     if (eigen >= 0) return `${eigen + 1}. ${status[eigen].name || 'ohne Namen'}`;
     for (const w of andere) {
@@ -396,7 +396,13 @@ function StatusListe({
                     </Field>
                     <Field
                       label="Art"
-                      hint={s.art === 'aenderung' ? 'In diesem Status sind ÄAbst-Nr und AnnexVII aktiv.' : undefined}
+                      hint={
+                        s.art === 'aenderung'
+                          ? 'In diesem Status sind ÄAbst-Nr und AnnexVII aktiv.'
+                          : s.art === 'leiche'
+                            ? 'Rot gekennzeichnet; deckt keinen Anmeldebedarf ab. Gelöscht wird mit dem Nachfolger „Eintrag löschen“.'
+                            : undefined
+                      }
                     >
                       <Select
                         value={s.art}
@@ -475,8 +481,8 @@ function StatusListe({
                                 ))}
                             </optgroup>
                           ))}
-                          {!s.nachfolger.includes(ANMELDELEICHE) ? (
-                            <option value={ANMELDELEICHE}>Anmeldeleiche – Eintrag löschen</option>
+                          {!s.nachfolger.includes(LOESCHEN) ? (
+                            <option value={LOESCHEN}>Eintrag löschen (endgültig)</option>
                           ) : null}
                         </select>
                       </div>
