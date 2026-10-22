@@ -71,6 +71,30 @@ export function TerminZelle({ frist, mitRegel = true }: { frist: Terminfrist; mi
   );
 }
 
+const EINZEILIG = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
+
+/**
+ * Terminfrist in höchstens zwei Zeilen: Ampelpunkt und Datum, darunter der
+ * Abstand. Regel und Rechenweg stehen im Tooltip. Für Tabellen, deren Zeilen
+ * nicht höher werden sollen.
+ */
+export function TerminKompakt({ frist, ampel }: { frist: Terminfrist; ampel: Ampel }) {
+  if (!frist.datum) {
+    return <span className="small tertiary">{frist.regel === '.-.' ? 'keine' : 'nicht berechenbar'}</span>;
+  }
+  const regel = `${frist.manuell ? 'von Hand' : frist.regel}${frist.platzhalter ? ' · Platzhalter' : ''}`;
+  return (
+    <div className="small" title={`${regel}\n${frist.erlaeuterung}`}>
+      <div style={EINZEILIG}>
+        <AmpelPunkt ampel={ampel} /> <b>{formatDate(frist.datum)}</b>
+      </div>
+      <div className="tertiary" style={EINZEILIG}>
+        {relativeLabel(frist.datum)}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Auswahl des nächsten Status – angeboten werden nur die möglichen
  * Nachfolger des aktuellen Status.

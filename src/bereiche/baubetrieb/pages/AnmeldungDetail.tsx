@@ -230,9 +230,9 @@ export function AnmeldungDetail({
           <dl className="kv kv-breit" style={{ margin: 0 }}>
             <dt>{ganzesFahrplanjahr(workflow) ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}</dt>
             <dd>{anmeldung.anmeldeId || '–'}</dd>
-            <dt>Anmeldungs-Art</dt>
+            <dt>Maßnahmenart</dt>
             <dd>{anmeldung.art}</dd>
-            <dt>Bauzeitraum</dt>
+            <dt>Sperrzeitraum</dt>
             <dd>
               {bauzeitraumText(anmeldung, data.workflows)}
               {ganzesFahrplanjahr(workflow) && anmeldung.bauVon ? (
@@ -315,7 +315,7 @@ export function AnmeldungDetail({
       {zuruecknehmen && letzter ? (
         <ConfirmDialog
           titel="Letzten Statuswechsel zurücknehmen?"
-          text={`Die Anmeldung kehrt von „${letzter.nachText}“ zurück nach „${letzter.vonText}“ – mit dem Stand von vorher (Art, ID, Bauzeitraum). ${
+          text={`Die Anmeldung kehrt von „${letzter.nachText}“ zurück nach „${letzter.vonText}“ – mit dem Stand von vorher (Maßnahmenart, ID, Sperrzeitraum). ${
             aufgeteilt.length > 0 ? 'Bei der Übernahme aufgeteilte Anmeldungen bleiben bestehen.' : ''
           }`}
           bestaetigenLabel="Zurücknehmen"

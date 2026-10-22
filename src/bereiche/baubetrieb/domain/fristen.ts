@@ -62,7 +62,7 @@ function datumAus(jahr: number, monat: number, tag: number): ISODate {
 /* Richtlinienfristen                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Welche Richtlinienfrist gilt – Ril_Nx und Ril_X hängen von der Anmeldungs-Art ab. */
+/** Welche Richtlinienfrist gilt – Ril_Nx und Ril_X hängen von der Maßnahmenart ab. */
 export function rilSchluesselFuer(bezug: RilBezug, art: AnmeldungsArt): RilSchluessel {
   switch (bezug) {
     case 'skm':
@@ -81,7 +81,7 @@ export function rilSchluesselFuer(bezug: RilBezug, art: AnmeldungsArt): RilSchlu
   }
 }
 
-/** Datum einer Richtlinienfrist für ein Fahrplanjahr bzw. einen Baubeginn. */
+/** Datum einer Richtlinienfrist für ein Fahrplanjahr bzw. einen Sperrbeginn. */
 export function rilDatum(frist: RilFrist, fahrplanjahr: number | null, baubeginn: ISODate | null): ISODate | null {
   if (frist.bezug === 'stichtag') {
     return fahrplanjahr ? datumAus(fahrplanjahr - frist.jahreVorher, frist.monat, frist.tag) : null;
@@ -91,13 +91,13 @@ export function rilDatum(frist: RilFrist, fahrplanjahr: number | null, baubeginn
 
 const zweistellig = (n: number) => String(n).padStart(2, '0');
 
-/** „Stichtag 31.03. im Jahr N−4“ bzw. „12 Wochen vor Baubeginn“. */
+/** „Stichtag 31.03. im Jahr N−4“ bzw. „12 Wochen vor Sperrbeginn“. */
 export function rilFristText(frist: RilFrist): string {
   if (frist.bezug === 'stichtag') {
     const jahr = frist.jahreVorher === 0 ? 'N' : `N−${frist.jahreVorher}`;
     return `Stichtag ${zweistellig(frist.tag)}.${zweistellig(frist.monat)}. im Jahr ${jahr}`;
   }
-  return `${frist.wochenVorher} ${frist.wochenVorher === 1 ? 'Woche' : 'Wochen'} vor Baubeginn`;
+  return `${frist.wochenVorher} ${frist.wochenVorher === 1 ? 'Woche' : 'Wochen'} vor Sperrbeginn`;
 }
 
 /** Kurzform der Fristregel eines Status, wie im Lastenheft geschrieben. */
@@ -180,8 +180,8 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
             ? `Fahrplanjahr ${a.fahrplanjahr}`
             : 'Fahrplanjahr fehlt'
           : a.bauVon
-            ? `Baubeginn ${formatDate(a.bauVon)}`
-            : 'Baubeginn fehlt';
+            ? `Sperrbeginn ${formatDate(a.bauVon)}`
+            : 'Sperrbeginn fehlt';
       return {
         ...basis,
         datum,
@@ -262,7 +262,7 @@ export const BEDARF_PHASEN: BedarfPhase[] = ['skm', 'pze', 'N-2', 'N-1'];
 
 const BEDARF_RANG: Record<BedarfPhase, number> = { skm: 0, pze: 1, 'N-2': 2, 'N-1': 3 };
 
-/** Wie weit eine Anmeldungs-Art im Ablauf steht – spätere Phasen decken frühere ab. */
+/** Wie weit eine Maßnahmenart im Ablauf steht – spätere Phasen decken frühere ab. */
 function rangDerArt(art: AnmeldungsArt): number {
   switch (art) {
     case 'SKM':
@@ -298,7 +298,7 @@ export interface BedarfZeile {
 const CA_TOLERANZ_TAGE = 31;
 
 /**
- * Anmeldebedarf je Fahrplanjahr der Bauzeit: Für SKM, PzE, N-2 und N-1 die
+ * Anmeldebedarf je Fahrplanjahr der Sperrzeit: Für SKM, PzE, N-2 und N-1 die
  * Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat.
  * Fristen vor dem ersten Anmeldetermin liegen vor der Betreuung durch MIC.
  */
@@ -365,7 +365,7 @@ export function faelligerBedarf(d: BaubetriebDaten, projektIds?: ID[]): BedarfEi
 
 /**
  * Vorschlag für den ersten Anmeldetermin eines Projekts: die Frist laut
- * Richtlinie für die gewählte Prozessphase und das Fahrplanjahr des Baubeginns.
+ * Richtlinie für die gewählte Prozessphase und das Fahrplanjahr des Sperrbeginns.
  */
 export function ersterTerminVorschlag(
   p: Pick<Projekt, 'erstePhase' | 'bauzeitVon'>,
@@ -380,7 +380,7 @@ export function ersterTerminVorschlag(
 /* Darstellung                                                         */
 /* ------------------------------------------------------------------ */
 
-/** Der Workflow führt den Bauzeitraum als ganzes Fahrplanjahr. */
+/** Der Workflow führt den Sperrzeitraum als ganzes Fahrplanjahr. */
 export function ganzesFahrplanjahr(workflow: Pick<Workflow, 'bauzeitraum'>): boolean {
   return workflow.bauzeitraum === 'fahrplanjahr';
 }

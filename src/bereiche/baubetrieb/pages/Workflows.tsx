@@ -95,7 +95,7 @@ export function Workflows({ navigate }: { navigate: (r: Route) => void }) {
                     {w.herkunft === 'standard' ? <Badge>Standard</Badge> : <Badge ton="blue">Eigener Workflow</Badge>}
                   </div>
                   <div className="small tertiary">
-                    {w.status.length} Status · {BAUZEITRAUM_LABEL[w.bauzeitraum]} · Arten: {w.arten.join(', ')} ·{' '}
+                    {w.status.length} Status · {BAUZEITRAUM_LABEL[w.bauzeitraum]} · Maßnahmenarten: {w.arten.join(', ')} ·{' '}
                     {anzahl} {anzahl === 1 ? 'Anmeldung' : 'Anmeldungen'}
                   </div>
                   <div className="small muted">
@@ -200,7 +200,7 @@ function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onClose: (
     workflow?.status.map((s) => ({ ...s, frist: { ...s.frist }, nachfolger: [...s.nachfolger] })) ?? [neuerStatus()],
   );
 
-  // Anmeldungen in diesem Workflow: Ihr Bauzeitraum ist im bisherigen Modus erfasst.
+  // Anmeldungen in diesem Workflow: Ihr Sperrzeitraum ist im bisherigen Modus erfasst.
   const zahl = anmeldungenJeStatus(data);
   const imWorkflow = workflow ? workflow.status.reduce((summe, s) => summe + (zahl.get(s.id) ?? 0), 0) : 0;
 
@@ -221,11 +221,11 @@ function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onClose: (
       return;
     }
     if (arten.length === 0) {
-      toast('Bitte mindestens eine Anmeldungs-Art wählen.');
+      toast('Bitte mindestens eine Maßnahmenart wählen.');
       return;
     }
     if (workflow && imWorkflow > 0 && bauzeitraum !== workflow.bauzeitraum) {
-      toast('Der Bauzeitraum lässt sich nicht umstellen, solange Anmeldungen in diesem Workflow stehen.');
+      toast('Der Sperrzeitraum lässt sich nicht umstellen, solange Anmeldungen in diesem Workflow stehen.');
       return;
     }
     const id = workflow?.id ?? newId('wf');
@@ -278,16 +278,16 @@ function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onClose: (
             <TextInput value={name} onChange={setName} placeholder="z. B. Unterjährige Anmeldung" />
           </Field>
           <Field label="Kurzbezeichnung" hint="für Listen und Kennzeichen, z. B. „PzE“">
-            <TextInput value={kurz} onChange={setKurz} placeholder="z. B. Unterjahr" />
+            <TextInput value={kurz} onChange={setKurz} placeholder="z. B. Unterjährig" />
           </Field>
           <Field label="Beschreibung" full>
             <TextArea value={beschreibung} onChange={setBeschreibung} rows={2} />
           </Field>
           <Field
-            label="Bauzeitraum"
+            label="Sperrzeitraum"
             hint={
               imWorkflow > 0
-                ? 'Fest, solange Anmeldungen in diesem Workflow stehen – ihr Bauzeitraum ist so erfasst.'
+                ? 'Fest, solange Anmeldungen in diesem Workflow stehen – ihr Sperrzeitraum ist so erfasst.'
                 : 'Ganzes Fahrplanjahr: statt Anmelde-ID Begriff bzw. tVE-Nr'
             }
           >
@@ -295,7 +295,7 @@ function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onClose: (
               className="select"
               value={bauzeitraum}
               disabled={imWorkflow > 0}
-              aria-label="Bauzeitraum"
+              aria-label="Sperrzeitraum"
               onChange={(e) => setBauzeitraum(e.target.value as BauzeitraumModus)}
             >
               {(Object.keys(BAUZEITRAUM_LABEL) as BauzeitraumModus[]).map((k) => (
@@ -305,7 +305,7 @@ function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onClose: (
               ))}
             </select>
           </Field>
-          <Field label="Anmeldungs-Arten" hint="die erste gewählte ist die Vorgabe">
+          <Field label="Maßnahmenarten" hint="die erste gewählte ist die Vorgabe">
             <div className="row wrap" style={{ gap: '4px 12px' }}>
               {ALLE_ARTEN.map((a) => (
                 <label key={a} className="checkbox">

@@ -17,7 +17,7 @@ export type ID = string;
  * Fassung des gespeicherten Bestands. Erhöhen, sobald `migriere()` in
  * `store/storage.ts` ältere Stände anheben muss.
  */
-export const DATEN_VERSION = 3;
+export const DATEN_VERSION = 4;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -25,7 +25,7 @@ export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
 export type Farbmodus = 'standard' | 'kontrast';
 
 /* ------------------------------------------------------------------ */
-/* Anmeldungs-Arten, AnnexVII                                          */
+/* Maßnahmenarten, AnnexVII                                            */
 /* ------------------------------------------------------------------ */
 
 export type AnmeldungsArt =
@@ -105,7 +105,7 @@ export const STATUS_ART_LABEL: Record<StatusArt, string> = {
 
 /**
  * Bezug einer Terminfrist auf die Richtlinie, wie im Lastenheft benannt:
- * Ril_skm, Ril_pze, Ril_N-2, Ril_Nx (N-2 oder N-1 nach Anmeldungs-Art),
+ * Ril_skm, Ril_pze, Ril_N-2, Ril_Nx (N-2 oder N-1 nach Maßnahmenart),
  * Ril_A und Ril_X (je nach Maßnahme).
  */
 export type RilBezug = 'skm' | 'pze' | 'N-2' | 'Nx' | 'A' | 'X';
@@ -161,7 +161,7 @@ export interface WorkflowStatus {
 }
 
 /**
- * In SKM und PzE gibt es noch keine Anmeldungen: Der Bauzeitraum umfasst das
+ * In SKM und PzE gibt es noch keine Anmeldungen: Der Sperrzeitraum umfasst das
  * ganze Fahrplanjahr, statt einer Anmelde-ID steht ein Begriff bzw. die tVE-Nr.
  */
 export type BauzeitraumModus = 'fahrplanjahr' | 'tagesscharf';
@@ -184,7 +184,7 @@ export interface Workflow {
   beschreibung: string;
   herkunft: 'standard' | 'manuell';
   bauzeitraum: BauzeitraumModus;
-  /** Zulässige Anmeldungs-Arten; die erste ist die Vorgabe. */
+  /** Zulässige Maßnahmenarten; die erste ist die Vorgabe. */
   arten: AnmeldungsArt[];
   /** Status in ihrer Reihenfolge; der erste ist der Startstatus. */
   status: WorkflowStatus[];
@@ -214,7 +214,7 @@ export const RIL_LABEL: Record<RilSchluessel, string> = {
 
 /**
  * Berechnungsweise einer Richtlinienfrist: als Stichtag TT.MM. im Jahr
- * N − k (N = Fahrplanjahr der Anmeldung) oder als Wochen vor Baubeginn.
+ * N − k (N = Fahrplanjahr der Anmeldung) oder als Wochen vor Sperrbeginn.
  */
 export interface RilFrist {
   bezug: 'stichtag' | 'baubeginn';
@@ -260,7 +260,7 @@ export interface Projekt {
   ersterAnmeldetermin: ISODate | null;
   erstePhase: ErstePhase;
   bauzeitVon: ISODate | null;
-  /** Ende der Bauzeit – in der Regel Inbetriebnahme + 4 Wochen. */
+  /** Ende der geplanten Sperrzeit – in der Regel Inbetriebnahme + 4 Wochen. */
   bauzeitBis: ISODate | null;
   inbetriebnahme: ISODate | null;
   hauptbearbeiter: string;

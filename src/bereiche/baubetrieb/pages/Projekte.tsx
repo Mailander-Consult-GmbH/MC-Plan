@@ -84,7 +84,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
                       </div>
                       <h2 style={{ marginTop: 2 }}>{p.name}</h2>
                       <div className="small muted truncate" style={{ marginTop: 3 }}>
-                        Bauzeit {formatDate(p.bauzeitVon)} – {formatDate(p.bauzeitBis)}
+                        Sperrzeit {formatDate(p.bauzeitVon)} – {formatDate(p.bauzeitBis)}
                         {p.hauptbearbeiter ? ` · ${p.hauptbearbeiter}` : ''}
                       </div>
                     </div>
@@ -179,7 +179,7 @@ export function ProjektDialog({
       return;
     }
     if (form.bauzeitVon && form.bauzeitBis && form.bauzeitBis < form.bauzeitVon) {
-      toast('Das Ende der Bauzeit liegt vor dem Beginn.');
+      toast('Das Ende der Sperrzeit liegt vor dem Beginn.');
       return;
     }
     const werte = {
@@ -236,13 +236,13 @@ export function ProjektDialog({
           <TextInput value={form.projektnummer} onChange={(v) => set('projektnummer', v)} />
         </Field>
 
-        <Field label="Geplante Bauzeit von">
+        <Field label="Geplante Sperrzeit von">
           <TextInput type="date" value={form.bauzeitVon} onChange={(v) => set('bauzeitVon', v)} />
         </Field>
-        <Field label="Geplante Bauzeit bis" hint="Ende in der Regel Inbetriebnahme + 4 Wochen">
+        <Field label="Geplante Sperrzeit bis" hint="Ende in der Regel Inbetriebnahme + 4 Wochen">
           <TextInput type="date" value={form.bauzeitBis} onChange={(v) => set('bauzeitBis', v)} />
         </Field>
-        <Field label="Inbetriebnahme" hint="optional – daraus lässt sich das Ende der Bauzeit vorschlagen">
+        <Field label="Inbetriebnahme" hint="optional – daraus lässt sich das Ende der Sperrzeit vorschlagen">
           <TextInput type="date" value={form.inbetriebnahme} onChange={(v) => set('inbetriebnahme', v)} />
         </Field>
         <Field label="Ende aus Inbetriebnahme">
@@ -252,7 +252,7 @@ export function ProjektDialog({
             disabled={!endeAusIbn || endeAusIbn === form.bauzeitBis}
             onClick={() => endeAusIbn && set('bauzeitBis', endeAusIbn)}
           >
-            {endeAusIbn ? `Bauzeit bis ${formatDate(endeAusIbn)} übernehmen` : 'Inbetriebnahme fehlt'}
+            {endeAusIbn ? `Sperrzeit bis ${formatDate(endeAusIbn)} übernehmen` : 'Inbetriebnahme fehlt'}
           </button>
         </Field>
 
@@ -271,7 +271,7 @@ export function ProjektDialog({
           hint={
             vorschlag
               ? `Laut Richtlinie für ${ERSTE_PHASE_LABEL[form.erstePhase]}: ${formatDate(vorschlag)}`
-              : 'Je nach Prozessphase laut Richtlinie – mit Bauzeit lässt er sich vorschlagen.'
+              : 'Je nach Prozessphase laut Richtlinie – mit Sperrzeit lässt er sich vorschlagen.'
           }
         >
           <span className="row" style={{ gap: 6 }}>

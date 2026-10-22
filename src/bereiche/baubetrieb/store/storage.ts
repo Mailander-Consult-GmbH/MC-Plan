@@ -231,6 +231,38 @@ function ausFassung2(roh: Partial<BaubetriebDaten> & { anmeldungen?: unknown }):
   return { ...roh, workflows, anmeldungen };
 }
 
+/** Kurzbezeichnung der unterjährigen Anmeldung bis Fassung 3. */
+const ALTE_KURZ_UNTERJAEHRIG = 'Unterjahr';
+
+/**
+ * Hebt Fassung 3 auf Fassung 4: Die unterjährige Anmeldung heißt kurz
+ * „Unterjährig“ (nur, wenn die mitgelieferte Kurzbezeichnung nicht geändert
+ * wurde), die Texte im Statusverlauf folgen, und die Beschreibungen der
+ * Standard-Workflows sprechen vom Sperrzeitraum.
+ */
+function ausFassung3(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
+  const neu = standardWorkflows();
+  const neueKurz = neu.find((w) => w.id === 'wf-unterjahr')?.kurz ?? ALTE_KURZ_UNTERJAEHRIG;
+  const alterPraefix = `${ALTE_KURZ_UNTERJAEHRIG} · `;
+  const umbenennen = (t: unknown) =>
+    typeof t === 'string' && t.startsWith(alterPraefix) ? `${neueKurz} · ${t.slice(alterPraefix.length)}` : t;
+  const workflows = (Array.isArray(roh.workflows) ? roh.workflows : []).map((w: Partial<Workflow>) => ({
+    ...w,
+    kurz: w.id === 'wf-unterjahr' && w.kurz === ALTE_KURZ_UNTERJAEHRIG ? neueKurz : w.kurz,
+    beschreibung:
+      w.herkunft === 'standard' && typeof w.beschreibung === 'string'
+        ? w.beschreibung.replace('Bauzeitraum ganzes Fahrplanjahr', 'Sperrzeitraum ganzes Fahrplanjahr')
+        : w.beschreibung,
+  }));
+  const anmeldungen = (Array.isArray(roh.anmeldungen) ? roh.anmeldungen : []).map((a: Partial<Anmeldung>) => ({
+    ...a,
+    verlauf: Array.isArray(a.verlauf)
+      ? a.verlauf.map((v) => ({ ...v, vonText: umbenennen(v.vonText), nachText: umbenennen(v.nachText) }))
+      : a.verlauf,
+  }));
+  return { ...roh, workflows: workflows as Workflow[], anmeldungen: anmeldungen as Anmeldung[] };
+}
+
 /**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Schritt.
  * Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch keinen Inhalt.
@@ -242,7 +274,10 @@ function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
     const neu = seedDaten();
     return { ...neu, einstellungen: { ...neu.einstellungen, farbmodus: roh.einstellungen?.farbmodus ?? 'standard' } };
   }
-  return aufbereiten(version === 2 ? ausFassung2(roh) : roh);
+  // Fassung 2 erhält die Standard-Workflows bereits in der aktuellen Form.
+  if (version === 2) return aufbereiten(ausFassung2(roh));
+  if (version === 3) return aufbereiten(ausFassung3(roh));
+  return aufbereiten(roh);
 }
 
 export function ladeDaten(): BaubetriebDaten {

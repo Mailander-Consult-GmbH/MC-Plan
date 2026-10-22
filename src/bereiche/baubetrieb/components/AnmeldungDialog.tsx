@@ -49,7 +49,7 @@ export interface AnmeldungVorgabe {
 }
 
 /**
- * Baubeginn einer vorbelegten tagesscharfen Anmeldung: der Beginn der Bauzeit
+ * Sperrbeginn einer vorbelegten tagesscharfen Anmeldung: der Beginn der Sperrzeit
  * im vorgegebenen Fahrplanjahr, damit sich die Frist gleich berechnen lässt.
  */
 function vorgabeBaubeginn(projekt: Projekt, workflow: Workflow | undefined, vorgabe?: AnmeldungVorgabe): string {
@@ -116,7 +116,7 @@ export function AnmeldungDialog({
       return;
     }
     if (!ganzesJahr && form.bauVon && form.bauBis && form.bauBis < form.bauVon) {
-      toast('Das Ende des Bauzeitraums liegt vor dem Beginn.');
+      toast('Das Ende des Sperrzeitraums liegt vor dem Beginn.');
       return;
     }
     if (ganzesJahr && !form.fahrplanjahr) {
@@ -209,7 +209,7 @@ export function AnmeldungDialog({
           </>
         )}
 
-        <Field label="Anmeldungs-Art">
+        <Field label="Maßnahmenart">
           {arten.length <= 1 ? (
             <TextInput value={arten[0] ?? form.art} onChange={() => undefined} disabled />
           ) : (
@@ -233,7 +233,7 @@ export function AnmeldungDialog({
         </Field>
 
         {ganzesJahr ? (
-          <Field label="Bauzeitraum" full hint="In diesem Workflow gilt das gesamte Fahrplanjahr.">
+          <Field label="Sperrzeitraum" full hint="In diesem Workflow gilt das gesamte Fahrplanjahr.">
             <Select
               value={String(form.fahrplanjahr ?? '')}
               onChange={(v) => set('fahrplanjahr', v ? Number(v) : null)}
@@ -243,10 +243,10 @@ export function AnmeldungDialog({
           </Field>
         ) : (
           <>
-            <Field label="Bauzeitraum von" hint="tagesscharf">
+            <Field label="Sperrzeitraum von" hint="tagesscharf">
               <TextInput type="date" value={form.bauVon} onChange={(v) => set('bauVon', v)} />
             </Field>
-            <Field label="Bauzeitraum bis">
+            <Field label="Sperrzeitraum bis">
               <TextInput type="date" value={form.bauBis} onChange={(v) => set('bauBis', v)} />
             </Field>
           </>
@@ -282,7 +282,7 @@ export function AnmeldungDialog({
       {!ganzesJahr && !form.bauVon ? (
         <div style={{ marginTop: 12 }}>
           <Callout ton="warn" icon="!">
-            Ohne Baubeginn lässt sich die Terminfrist nach Richtlinie nicht berechnen.
+            Ohne Beginn des Sperrzeitraums lässt sich die Terminfrist nach Richtlinie nicht berechnen.
           </Callout>
         </div>
       ) : null}
