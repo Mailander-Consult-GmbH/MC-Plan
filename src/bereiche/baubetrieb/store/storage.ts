@@ -278,11 +278,15 @@ function ausFassung4(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
   const alle = Array.isArray(roh.workflows) ? roh.workflows : [];
   const vergeben = new Set(alle.flatMap((w) => (Array.isArray(w.status) ? w.status.map((s) => s.id) : [])));
   const workflows = alle.map((w: Partial<Workflow>) => {
-    const status = Array.isArray(w.status) ? w.status : [];
+    const vorlage = standard.find((x) => x.id === w.id)?.status.find((s) => s.art === 'leiche');
+    // Speichert eine ältere Fassung (etwa aus dem Zwischenspeicher) einen Bestand der Fassung 5,
+    // wird aus der ihr unbekannten Art „Anmeldeleiche“ ein „Entwurf“ – die feste Kennung verrät ihn.
+    const status = (Array.isArray(w.status) ? w.status : []).map((s) =>
+      vorlage && s.id === vorlage.id ? { ...s, art: 'leiche' as const } : s,
+    );
     const verweist = (s: Partial<WorkflowStatus>) =>
       Array.isArray(s.nachfolger) && s.nachfolger.includes(ALTES_ZIEL_ANMELDELEICHE);
-    if (!status.some(verweist)) return w;
-    const vorlage = standard.find((x) => x.id === w.id)?.status.find((s) => s.art === 'leiche');
+    if (!status.some(verweist)) return { ...w, status };
     const id = vorlage && !vergeben.has(vorlage.id) ? vorlage.id : zufallsId('st');
     vergeben.add(id);
     const leiche: WorkflowStatus = {

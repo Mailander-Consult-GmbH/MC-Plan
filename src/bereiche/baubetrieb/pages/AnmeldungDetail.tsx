@@ -23,7 +23,7 @@ import {
   type StatusZiel,
   type VerlaufEintrag,
 } from '../domain/types';
-import { istAenderung, istUebernahme, nachfolgerVon, statusInfo, statusVon } from '../domain/workflow';
+import { istAenderung, istLeiche, istUebernahme, nachfolgerVon, statusInfo, statusVon } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 
@@ -69,7 +69,7 @@ export function AnmeldungDetail({
   const uebernahmen = nachfolger.filter((n) => istUebernahme(data.workflows, anmeldung.statusId, n));
   const loeschbar = nachfolger.includes(LOESCHEN);
   // Der Wechsel in eine Anmeldeleiche ist rot hervorgehoben.
-  const rot = (n: StatusZiel) => (statusInfo(data.workflows, n)?.status.art === 'leiche' ? { color: 'var(--red)' } : undefined);
+  const rot = (n: StatusZiel) => (istLeiche(data.workflows, n) ? { color: 'var(--red)' } : undefined);
 
   return (
     <div className="stack">
