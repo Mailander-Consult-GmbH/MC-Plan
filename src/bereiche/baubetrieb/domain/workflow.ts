@@ -1,172 +1,290 @@
 /**
- * Status-Workflow der baubetrieblichen Anmeldungen – Tabelle „Ausprägung
- * Merkmal Status Workflow“ aus dem Lastenheft. Der Workflow bildet bewusst
- * nicht den Genehmigungs- und Eskalationsprozess 1:1 ab, und die einzelnen
- * Schreibtische einer Änderungsabstimmung werden nicht verfolgt.
+ * Workflows der baubetrieblichen Anmeldungen. Mitgeliefert wird je Phase ein
+ * Standard-Workflow nach der Tabelle „Ausprägung Merkmal Status Workflow“ des
+ * Lastenhefts (SKM, PzE, Vorprozess N-x, unterjährige Anmeldung). Die
+ * Workflows lassen sich unter „Workflows“ anpassen, duplizieren und ergänzen.
  *
- * Die Nummer nennt Phase (Buchstabe) und Stand (Ziffer). Neu angelegt werden
- * kann nur in einem der vier Entwurfs-Status (START_STATUS).
+ * Der Workflow bildet bewusst nicht den Genehmigungs- und Eskalationsprozess
+ * 1:1 ab, und die einzelnen Schreibtische einer Änderungsabstimmung werden nicht
+ * verfolgt. Neu angelegt wird immer im ersten Status eines Workflows.
  */
-import type { PhaseId, StatusCode, StatusDef } from './types';
+import {
+  ANMELDELEICHE,
+  UNTERJAEHRIGE_ARTEN,
+  type AnmeldungsArt,
+  type FristRegel,
+  type ID,
+  type RilBezug,
+  type StatusArt,
+  type StatusZiel,
+  type Workflow,
+  type WorkflowStatus,
+} from './types';
 
-const ril = (bezug: Extract<StatusDef['frist'], { typ: 'ril' }>['bezug'], versatzTage = 0): StatusDef['frist'] => ({
-  typ: 'ril',
-  bezug,
-  versatzTage,
+/* ------------------------------------------------------------------ */
+/* Mitgelieferte Workflows                                             */
+/* ------------------------------------------------------------------ */
+
+const ril = (bezug: RilBezug, versatzTage = 0): FristRegel => ({ typ: 'ril', bezug, versatzTage });
+const keine: FristRegel = { typ: 'keine' };
+const nachhakTermin = (tage: number): FristRegel => ({ typ: 'nachhaken', tage });
+
+/** Nachhak-Termin der mitgelieferten Status („Nachhak-Termin!?“ im Lastenheft). */
+const NACHHAK_TAGE = 21;
+
+const status = (
+  id: ID,
+  name: string,
+  art: StatusArt,
+  frist: FristRegel,
+  nachfolger: StatusZiel[],
+  zusatz: Partial<Pick<WorkflowStatus, 'nachhaken' | 'bemerkung'>> = {},
+): WorkflowStatus => ({
+  id,
+  name,
+  art,
+  frist,
+  nachfolger,
+  nachhaken: zusatz.nachhaken ?? frist.typ === 'nachhaken',
+  bemerkung: zusatz.bemerkung ?? '',
 });
-const keine: StatusDef['frist'] = { typ: 'keine' };
-const nachhaken: StatusDef['frist'] = { typ: 'nachhaken' };
 
-export const STATUS_WORKFLOW: StatusDef[] = [
-  // SKM
-  { code: 'V0', name: 'Entwurf_SKM', phase: 'V', art: 'entwurf', nachfolger: ['V2', 'Z0'], frist: ril('skm') },
-  {
-    code: 'V2',
-    name: 'Angemeldet_SKM',
-    phase: 'V',
-    art: 'angemeldet',
-    nachfolger: ['V3', 'V4'],
-    frist: { typ: 'stichtag', tag: 1, monat: 8 },
-    nachhaken: true,
-  },
-  { code: 'V3', name: 'Genehmigt_SKM', phase: 'V', art: 'genehmigt', nachfolger: ['W0'], frist: ril('pze') },
-  { code: 'V4', name: 'Abgelehnt_SKM', phase: 'V', art: 'abgelehnt', nachfolger: ['Z0', 'V0', 'W0'], frist: keine },
-
-  // PzE
-  { code: 'W0', name: 'Entwurf_PzE', phase: 'W', art: 'entwurf', nachfolger: ['W2', 'Z0'], frist: ril('pze') },
-  {
-    code: 'W2',
-    name: 'Angemeldet_PzE',
-    phase: 'W',
-    art: 'angemeldet',
-    nachfolger: ['W3', 'W4'],
-    frist: { typ: 'stichtag', tag: 31, monat: 7 },
-    nachhaken: true,
-  },
-  { code: 'W3', name: 'Genehmigt_PzE', phase: 'W', art: 'genehmigt', nachfolger: ['X0'], frist: ril('N-2') },
-  {
-    code: 'W4',
-    name: 'Abgelehnt_PzE',
-    phase: 'W',
-    art: 'abgelehnt',
-    nachfolger: ['Z0', 'V0', 'W0', 'X0'],
-    frist: keine,
-  },
-
-  // Vorprozess N-x – Anmeldungen hier gelten als fristgerecht (Annahme des Lastenhefts)
-  {
-    code: 'X0',
-    name: 'Entwurf_Vorprozess',
-    phase: 'X',
-    art: 'entwurf',
-    nachfolger: ['X2', 'Z0'],
-    frist: ril('Nx', -14),
-  },
-  {
-    code: 'X2',
-    name: 'MitwirkungBBK_Vorprozess',
-    phase: 'X',
-    art: 'abstimmung',
-    nachfolger: ['X3', 'X8'],
-    frist: ril('Nx', -2),
-    nachhaken: true,
-  },
-  { code: 'X3', name: 'Zugestimmt_Vorprozess', phase: 'X', art: 'abstimmung', nachfolger: ['X4'], frist: ril('Nx') },
-  {
-    code: 'X4',
-    name: 'Angemeldet_fristgerecht_Vorprozess',
-    phase: 'X',
-    art: 'angemeldet',
-    nachfolger: ['X5', 'X8'],
-    frist: nachhaken,
-  },
-  {
-    code: 'X5',
-    name: 'Genehmigt_Vorprozess',
-    phase: 'X',
-    art: 'genehmigt',
-    nachfolger: ['X6', 'X5', 'Y4'],
-    frist: ril('A'),
-  },
-  {
-    code: 'X6',
-    name: 'Änderung_angemeldet_Vorprozess',
-    phase: 'X',
-    art: 'aenderung',
-    nachfolger: ['X5', 'X7'],
-    frist: nachhaken,
-  },
-  {
-    code: 'X7',
-    name: 'Änderung_abgelehnt_Vorprozess',
-    phase: 'X',
-    art: 'abgelehnt',
-    nachfolger: ['X8', 'X5'],
-    frist: ril('A'),
-  },
-  {
-    code: 'X8',
-    name: 'Abgelehnt_Vorprozess',
-    phase: 'X',
-    art: 'abgelehnt',
-    nachfolger: ['Z0', 'X0', 'W0', 'Y0'],
-    frist: keine,
-  },
-
-  // Unterjährige Anmeldung
-  { code: 'Y0', name: 'Entwurf', phase: 'Y', art: 'entwurf', nachfolger: ['Y2', 'Z0'], frist: ril('X', -14) },
-  {
-    code: 'Y2',
-    name: 'MitwirkungBBK',
-    phase: 'Y',
-    art: 'abstimmung',
-    nachfolger: ['Y3', 'Y9'],
-    frist: ril('X', -2),
-    nachhaken: true,
-  },
-  { code: 'Y3', name: 'Zugestimmt', phase: 'Y', art: 'abstimmung', nachfolger: ['Y4', 'Y5'], frist: ril('X') },
-  { code: 'Y4', name: 'Angemeldet_fristgerecht', phase: 'Y', art: 'angemeldet', nachfolger: ['Y6', 'Y9'], frist: nachhaken },
-  { code: 'Y5', name: 'Angemeldet_verspätet', phase: 'Y', art: 'angemeldet', nachfolger: ['Y6', 'Y9'], frist: nachhaken },
-  { code: 'Y6', name: 'Genehmigt', phase: 'Y', art: 'genehmigt', nachfolger: ['Y9', 'Y7'], frist: keine },
-  { code: 'Y7', name: 'Änderung_angestoßen', phase: 'Y', art: 'aenderung', nachfolger: ['Y6', 'Y8'], frist: nachhaken },
-  {
-    code: 'Y8',
-    name: 'Änderung_abgelehnt',
-    phase: 'Y',
-    art: 'abgelehnt',
-    nachfolger: ['Y6'],
-    frist: keine,
-    bemerkung: 'Ggf. cfPeDi',
-  },
-  { code: 'Y9', name: 'Abgelehnt', phase: 'Y', art: 'abgelehnt', nachfolger: ['Y6', 'Z0'], frist: keine },
-
-  // Anmeldeleichen werden komplett gelöscht
-  { code: 'Z0', name: 'Anmeldeleiche', phase: 'Z', art: 'leiche', nachfolger: [], frist: keine },
-];
-
-const NACH_CODE = new Map(STATUS_WORKFLOW.map((s) => [s.code, s]));
-
-export function statusDef(code: StatusCode): StatusDef {
-  return NACH_CODE.get(code) ?? STATUS_WORKFLOW[0];
+/**
+ * Die vier Standard-Workflows. Die Kennungen sind fest, damit ältere Stände
+ * (Statusnummern V0 … Y9) zugeordnet werden können (`STATUS_AUS_NUMMER`).
+ */
+export function standardWorkflows(): Workflow[] {
+  return [
+    {
+      id: 'wf-skm',
+      name: 'SKM',
+      kurz: 'SKM',
+      beschreibung: 'Noch keine Anmeldung – Sammeleintrag nach Begriffen/tVE-Nr, Bauzeitraum ganzes Fahrplanjahr.',
+      herkunft: 'standard',
+      bauzeitraum: 'fahrplanjahr',
+      arten: ['SKM'],
+      status: [
+        status('skm-entwurf', 'Entwurf', 'entwurf', ril('skm'), ['skm-angemeldet', ANMELDELEICHE]),
+        status('skm-angemeldet', 'Angemeldet', 'angemeldet', { typ: 'stichtag', tag: 1, monat: 8 }, [
+          'skm-genehmigt',
+          'skm-abgelehnt',
+        ], { nachhaken: true }),
+        status('skm-genehmigt', 'Genehmigt', 'genehmigt', ril('pze'), ['pze-entwurf']),
+        status('skm-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, [ANMELDELEICHE, 'skm-entwurf', 'pze-entwurf']),
+      ],
+    },
+    {
+      id: 'wf-pze',
+      name: 'PzE',
+      kurz: 'PzE',
+      beschreibung: 'Noch keine Anmeldung – Sammeleintrag nach Begriffen/tVE-Nr, Bauzeitraum ganzes Fahrplanjahr.',
+      herkunft: 'standard',
+      bauzeitraum: 'fahrplanjahr',
+      arten: ['PzE'],
+      status: [
+        status('pze-entwurf', 'Entwurf', 'entwurf', ril('pze'), ['pze-angemeldet', ANMELDELEICHE]),
+        status('pze-angemeldet', 'Angemeldet', 'angemeldet', { typ: 'stichtag', tag: 31, monat: 7 }, [
+          'pze-genehmigt',
+          'pze-abgelehnt',
+        ], { nachhaken: true }),
+        status('pze-genehmigt', 'Genehmigt', 'genehmigt', ril('N-2'), ['vp-entwurf']),
+        status('pze-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, [
+          ANMELDELEICHE,
+          'skm-entwurf',
+          'pze-entwurf',
+          'vp-entwurf',
+        ]),
+      ],
+    },
+    {
+      id: 'wf-vorprozess',
+      name: 'Vorprozess N-x',
+      kurz: 'Vorprozess',
+      beschreibung:
+        'Anmeldung im Vorprozess N-2 bzw. N-1, tagesscharf, mit Mitwirkung der BBK. Annahme: Anmeldungen in den Vorprozessen erfolgen immer fristgerecht.',
+      herkunft: 'standard',
+      bauzeitraum: 'tagesscharf',
+      arten: ['A_Vor_N-2', 'A_Vor_N-1'],
+      status: [
+        status('vp-entwurf', 'Entwurf', 'entwurf', ril('Nx', -14), ['vp-mitwirkung', ANMELDELEICHE]),
+        status('vp-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('Nx', -2), ['vp-zugestimmt', 'vp-abgelehnt'], {
+          nachhaken: true,
+        }),
+        status('vp-zugestimmt', 'Zugestimmt', 'abstimmung', ril('Nx'), ['vp-angemeldet']),
+        status('vp-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(NACHHAK_TAGE), [
+          'vp-genehmigt',
+          'vp-abgelehnt',
+        ]),
+        status('vp-genehmigt', 'Genehmigt', 'genehmigt', ril('A'), ['vp-aenderung', 'vp-genehmigt', 'uj-angemeldet']),
+        status('vp-aenderung', 'Änderung angemeldet', 'aenderung', nachhakTermin(NACHHAK_TAGE), [
+          'vp-genehmigt',
+          'vp-aenderung-abgelehnt',
+        ]),
+        status('vp-aenderung-abgelehnt', 'Änderung abgelehnt', 'abgelehnt', ril('A'), ['vp-abgelehnt', 'vp-genehmigt']),
+        status('vp-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, [
+          ANMELDELEICHE,
+          'vp-entwurf',
+          'pze-entwurf',
+          'uj-entwurf',
+        ]),
+      ],
+    },
+    {
+      id: 'wf-unterjahr',
+      name: 'Unterjährige Anmeldung',
+      kurz: 'Unterjahr',
+      beschreibung: 'Anmeldung je Maßnahme (A, B(0), B(S), B, C, Container), tagesscharf, mit Mitwirkung der BBK.',
+      herkunft: 'standard',
+      bauzeitraum: 'tagesscharf',
+      arten: [...UNTERJAEHRIGE_ARTEN],
+      status: [
+        status('uj-entwurf', 'Entwurf', 'entwurf', ril('X', -14), ['uj-mitwirkung', ANMELDELEICHE]),
+        status('uj-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('X', -2), ['uj-zugestimmt', 'uj-abgelehnt'], {
+          nachhaken: true,
+        }),
+        status('uj-zugestimmt', 'Zugestimmt', 'abstimmung', ril('X'), ['uj-angemeldet', 'uj-verspaetet']),
+        status('uj-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(NACHHAK_TAGE), [
+          'uj-genehmigt',
+          'uj-abgelehnt',
+        ]),
+        status('uj-verspaetet', 'Angemeldet (verspätet)', 'verspaetet', nachhakTermin(NACHHAK_TAGE), [
+          'uj-genehmigt',
+          'uj-abgelehnt',
+        ]),
+        status('uj-genehmigt', 'Genehmigt', 'genehmigt', keine, ['uj-abgelehnt', 'uj-aenderung']),
+        status('uj-aenderung', 'Änderung angestoßen', 'aenderung', nachhakTermin(NACHHAK_TAGE), [
+          'uj-genehmigt',
+          'uj-aenderung-abgelehnt',
+        ]),
+        status('uj-aenderung-abgelehnt', 'Änderung abgelehnt', 'abgelehnt', keine, ['uj-genehmigt'], {
+          bemerkung: 'Ggf. cfPeDi',
+        }),
+        status('uj-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, ['uj-genehmigt', ANMELDELEICHE]),
+      ],
+    },
+  ];
 }
 
-/** Bei der Neuanlage eines Eintrags gibt es nur diese vier Status. */
-export const START_STATUS: StatusCode[] = ['V0', 'W0', 'X0', 'Y0'];
+/**
+ * Zuordnung der Statusnummern früherer Fassungen (V0 … Y9) zu den Status der
+ * Standard-Workflows – für die Migration gespeicherter Stände.
+ */
+export const STATUS_AUS_NUMMER: Record<string, ID> = {
+  V0: 'skm-entwurf',
+  V2: 'skm-angemeldet',
+  V3: 'skm-genehmigt',
+  V4: 'skm-abgelehnt',
+  W0: 'pze-entwurf',
+  W2: 'pze-angemeldet',
+  W3: 'pze-genehmigt',
+  W4: 'pze-abgelehnt',
+  X0: 'vp-entwurf',
+  X2: 'vp-mitwirkung',
+  X3: 'vp-zugestimmt',
+  X4: 'vp-angemeldet',
+  X5: 'vp-genehmigt',
+  X6: 'vp-aenderung',
+  X7: 'vp-aenderung-abgelehnt',
+  X8: 'vp-abgelehnt',
+  Y0: 'uj-entwurf',
+  Y2: 'uj-mitwirkung',
+  Y3: 'uj-zugestimmt',
+  Y4: 'uj-angemeldet',
+  Y5: 'uj-verspaetet',
+  Y6: 'uj-genehmigt',
+  Y7: 'uj-aenderung',
+  Y8: 'uj-aenderung-abgelehnt',
+  Y9: 'uj-abgelehnt',
+};
 
-/** Der Wechsel führt in eine andere Phase – die Anmeldung wird dorthin übernommen. */
-export function istUebernahme(von: StatusCode, nach: StatusCode): boolean {
-  const ziel = statusDef(nach);
-  return ziel.phase !== 'Z' && ziel.phase !== statusDef(von).phase;
+/* ------------------------------------------------------------------ */
+/* Nachschlagen                                                        */
+/* ------------------------------------------------------------------ */
+
+export interface StatusInfo {
+  workflow: Workflow;
+  status: WorkflowStatus;
+  /** Position im Workflow (0 = Startstatus). */
+  index: number;
+}
+
+export function statusInfo(workflows: Workflow[], statusId: ID | null): StatusInfo | null {
+  if (!statusId) return null;
+  for (const workflow of workflows) {
+    const index = workflow.status.findIndex((s) => s.id === statusId);
+    if (index >= 0) return { workflow, status: workflow.status[index], index };
+  }
+  return null;
+}
+
+/** Ersatz, falls ein Status fehlt (beschädigter Bestand): Status ohne Nachfolger und Frist. */
+const UNBEKANNT_WORKFLOW: Workflow = {
+  id: 'wf-unbekannt',
+  name: 'Unbekannter Workflow',
+  kurz: '?',
+  beschreibung: '',
+  herkunft: 'manuell',
+  bauzeitraum: 'tagesscharf',
+  arten: [],
+  status: [],
+};
+
+/** Status einer Anmeldung; ein nicht (mehr) vorhandener Status erscheint als „unbekannt“. */
+export function statusVon(workflows: Workflow[], statusId: ID): StatusInfo {
+  return (
+    statusInfo(workflows, statusId) ?? {
+      workflow: UNBEKANNT_WORKFLOW,
+      status: {
+        id: statusId,
+        name: 'Unbekannter Status',
+        art: 'entwurf',
+        frist: keine,
+        nachhaken: false,
+        bemerkung: '',
+        nachfolger: [],
+      },
+      index: -1,
+    }
+  );
+}
+
+/** „PzE · Angemeldet“ */
+export function statusText(info: Pick<StatusInfo, 'workflow' | 'status'>): string {
+  return `${info.workflow.kurz || info.workflow.name} · ${info.status.name}`;
+}
+
+/** Text eines Wechselziels, z. B. für den Statusverlauf. */
+export function zielText(workflows: Workflow[], ziel: StatusZiel): string {
+  if (ziel === ANMELDELEICHE) return 'Anmeldeleiche';
+  const info = statusInfo(workflows, ziel);
+  return info ? statusText(info) : 'Unbekannter Status';
+}
+
+/** Nachfolger eines Status, soweit es sie (noch) gibt. */
+export function nachfolgerVon(workflows: Workflow[], statusId: ID): StatusZiel[] {
+  const info = statusInfo(workflows, statusId);
+  if (!info) return [];
+  return info.status.nachfolger.filter((z) => z === ANMELDELEICHE || statusInfo(workflows, z) !== null);
+}
+
+/** Der Wechsel führt in einen anderen Workflow – die Anmeldung wird in die neue Phase übernommen. */
+export function istUebernahme(workflows: Workflow[], von: ID, nach: StatusZiel): boolean {
+  if (nach === ANMELDELEICHE) return false;
+  const ziel = statusInfo(workflows, nach);
+  return !!ziel && ziel.workflow.id !== statusInfo(workflows, von)?.workflow.id;
 }
 
 /** Während einer Änderungsabstimmung sind ÄAbst-Nr und AnnexVII relevant. */
-export function istAenderung(code: StatusCode): boolean {
-  return statusDef(code).art === 'aenderung';
+export function istAenderung(workflows: Workflow[], statusId: ID | null): boolean {
+  return statusInfo(workflows, statusId)?.status.art === 'aenderung';
 }
 
-export function statusLabel(code: StatusCode): string {
-  return `${code} · ${statusDef(code).name}`;
+/** Workflow, dessen Anmeldungs-Arten die Art enthalten – etwa für die Neuanlage aus dem Anmeldebedarf. */
+export function workflowFuerArt(workflows: Workflow[], art: AnmeldungsArt): Workflow | undefined {
+  return workflows.find((w) => w.status.length > 0 && w.arten.includes(art));
 }
 
-/** Reihenfolge der Phasen auf dem Weg zur Sperrpause. */
-export const PHASEN_FOLGE: PhaseId[] = ['V', 'W', 'X', 'Y'];
+/** Workflows, in denen neu angelegt werden kann – jeder mit mindestens einem Status. */
+export function startbareWorkflows(workflows: Workflow[]): Workflow[] {
+  return workflows.filter((w) => w.status.length > 0);
+}

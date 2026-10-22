@@ -8,6 +8,7 @@ import { useToast } from '../../../shared/toast';
 import { Field, Modal, TextArea, TextInput } from '../../../shared/ui';
 import { terminfrist } from '../domain/fristen';
 import type { Anmeldung } from '../domain/types';
+import { statusVon } from '../domain/workflow';
 import { useStore } from '../store/store';
 
 /** Hält fest, dass nachgehakt wurde – mit Notiz und optional neuem Termin. */
@@ -16,7 +17,10 @@ export function NachhakenDialog({ anmeldung, onClose }: { anmeldung: Anmeldung; 
   const toast = useToast();
   const [datum, setDatum] = useState(today());
   const [notiz, setNotiz] = useState('');
-  const [neuerTermin, setNeuerTermin] = useState(addDays(today(), data.einstellungen.nachhakTage));
+  // Nächster Nachhak-Termin: Abstand des Status, sonst die Vorgabe aus den Einstellungen
+  const { status } = statusVon(data.workflows, anmeldung.statusId);
+  const abstand = status.frist.typ === 'nachhaken' ? status.frist.tage : data.einstellungen.nachhakTage;
+  const [neuerTermin, setNeuerTermin] = useState(addDays(today(), abstand));
 
   return (
     <Modal
@@ -61,7 +65,7 @@ export function NachhakenDialog({ anmeldung, onClose }: { anmeldung: Anmeldung; 
 export function TerminDialog({ anmeldung, onClose }: { anmeldung: Anmeldung; onClose: () => void }) {
   const { data, terminSetzen } = useStore();
   const toast = useToast();
-  const berechnet = terminfrist({ ...anmeldung, terminManuell: null }, data.einstellungen);
+  const berechnet = terminfrist({ ...anmeldung, terminManuell: null }, data);
   const [termin, setTermin] = useState(anmeldung.terminManuell ?? berechnet.datum ?? today());
 
   return (

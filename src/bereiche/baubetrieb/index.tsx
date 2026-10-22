@@ -1,6 +1,6 @@
 /**
  * Einstiegspunkt des Bereichs „Baubetriebsplanung“: baubetriebliche
- * Anmeldungen für Sperrpausen je Projekthülle verfolgen. Der Datenbestand des
+ * Anmeldungen für Sperrpausen je Projekt verfolgen. Der Datenbestand des
  * Bereichs wird hier bereitgestellt – eigener Speicherort, eigene
  * Einstellungen, eigener Router, unabhängig vom Planlaufmanagement.
  */

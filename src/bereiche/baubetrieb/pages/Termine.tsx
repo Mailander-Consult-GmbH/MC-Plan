@@ -1,7 +1,6 @@
 /**
- * Termine & Nachhaken: alle Anmeldungen mit Terminfrist über alle
- * Projekthüllen, gefiltert nach Dringlichkeit, dazu der Anmeldebedarf aus den
- * Projekthüllen.
+ * Termine & Nachhaken: alle Anmeldungen mit Terminfrist über alle Projekte,
+ * gefiltert nach Dringlichkeit, dazu der Anmeldebedarf aus den Projekten.
  */
 import { Fragment, useMemo, useState } from 'react';
 import { formatDate, relativeLabel } from '../../../shared/dates';
@@ -11,7 +10,7 @@ import { AmpelPunkt, NachfolgerAuswahl, NachhakenBadge, StatusBadge, TerminZelle
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import { NachhakenDialog } from '../components/TerminDialoge';
 import { faelligerBedarf, offeneTermine } from '../domain/fristen';
-import { RIL_LABEL, type Anmeldung, type StatusCode } from '../domain/types';
+import { RIL_LABEL, type Anmeldung, type StatusZiel } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 
@@ -21,7 +20,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
   const { data } = useStore();
   const [filter, setFilter] = useState<Filter>('alle');
   const [suche, setSuche] = useState('');
-  const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusCode } | null>(null);
+  const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusZiel } | null>(null);
   const [nachhaken, setNachhaken] = useState<Anmeldung | null>(null);
 
   const alle = useMemo(() => offeneTermine(data), [data]);
@@ -36,8 +35,8 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
       t.anmeldung.bfStrecke,
       t.anmeldung.gewerk,
       t.anmeldung.art,
-      t.status.code,
-      t.status.name,
+      t.status.workflow.name,
+      t.status.status.name,
       t.projekt.name,
       t.projekt.dbGNummer,
     ]
@@ -64,7 +63,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
             { value: 'nachhaken', label: `Zum Nachhaken (${zaehler('nachhaken')})` },
           ]}
         />
-        <Search value={suche} onChange={setSuche} placeholder="ID, Status, Projekthülle …" />
+        <Search value={suche} onChange={setSuche} placeholder="ID, Status, Projekt …" />
       </div>
 
       <Card>
@@ -126,7 +125,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
                             </div>
                           </td>
                           <td>
-                            <StatusBadge code={t.anmeldung.status} />
+                            <StatusBadge statusId={t.anmeldung.statusId} />
                             {t.frist.nachhaken ? (
                               <div style={{ marginTop: 4 }}>
                                 <NachhakenBadge />
@@ -149,7 +148,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
                                 </button>
                               ) : null}
                               <NachfolgerAuswahl
-                                code={t.anmeldung.status}
+                                statusId={t.anmeldung.statusId}
                                 onWaehle={(nach) => setWechsel({ anmeldung: t.anmeldung, nach })}
                               />
                             </span>
@@ -167,7 +166,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
 
       <Card>
         <CardHeader
-          titel="Anmeldebedarf aus den Projekthüllen"
+          titel="Anmeldebedarf aus den Projekten"
           sub={`Fristen laut Richtlinie für SKM, PzE und N-x in den nächsten ${data.einstellungen.bedarfVorschauTage} Tagen ohne Eintrag`}
         />
         {bedarf.length === 0 ? (

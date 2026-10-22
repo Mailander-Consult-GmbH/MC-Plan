@@ -1,12 +1,12 @@
 /**
  * Fristenrechnung der Baubetriebsplanung: Fahrplanjahre, Fristen laut
  * Richtlinie, die Terminfrist einer Anmeldung in ihrem aktuellen Status,
- * Ampel und der Anmeldebedarf einer Projekthülle.
+ * Ampel und der Anmeldebedarf eines Projekts.
  */
 import { addDays, diffDays, formatDate, parseISO, toISO, today } from '../../../shared/dates';
 import {
-  ARTEN_JE_PHASE,
   RIL_LABEL,
+  UNTERJAEHRIGE_ARTEN,
   type Anmeldung,
   type AnmeldungsArt,
   type BaubetriebDaten,
@@ -18,9 +18,12 @@ import {
   type RilBezug,
   type RilFrist,
   type RilSchluessel,
-  type StatusDef,
+  type Workflow,
 } from './types';
-import { statusDef } from './workflow';
+import { statusVon, type StatusInfo } from './workflow';
+
+/** Was die Fristenrechnung aus dem Bestand braucht. */
+export type FristKontext = Pick<BaubetriebDaten, 'einstellungen' | 'workflows'>;
 
 /* ------------------------------------------------------------------ */
 /* Fahrplanjahr                                                        */
@@ -74,7 +77,7 @@ export function rilSchluesselFuer(bezug: RilBezug, art: AnmeldungsArt): RilSchlu
       return 'A';
     case 'X':
       // Außerhalb der unterjährigen Arten gilt die Frist der Maßnahme A
-      return art === 'A_unterjahr' || !ARTEN_JE_PHASE.Y.includes(art) ? 'A' : (art as RilSchluessel);
+      return art === 'A_unterjahr' || !UNTERJAEHRIGE_ARTEN.includes(art) ? 'A' : (art as RilSchluessel);
   }
 }
 
@@ -105,7 +108,7 @@ export function fristRegelText(regel: FristRegel): string {
     case 'stichtag':
       return `Nächster ${regel.tag}.${regel.monat}.`;
     case 'nachhaken':
-      return 'Nachhak-Termin';
+      return `Nachhak-Termin (+${regel.tage} Tage)`;
     case 'ril': {
       const name = `Ril_${regel.bezug}`;
       if (!regel.versatzTage) return name;
@@ -131,10 +134,11 @@ export interface Terminfrist {
 }
 
 /** Terminfrist der Anmeldung in ihrem aktuellen Status. */
-export function terminfrist(a: Anmeldung, e: Einstellungen): Terminfrist {
-  const def = statusDef(a.status);
-  const regel = fristRegelText(def.frist);
-  const basis = { regel, manuell: false, nachhaken: !!def.nachhaken, platzhalter: false };
+export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
+  const e = d.einstellungen;
+  const { status } = statusVon(d.workflows, a.statusId);
+  const regel = fristRegelText(status.frist);
+  const basis = { regel, manuell: false, nachhaken: status.nachhaken, platzhalter: false };
 
   if (a.terminManuell) {
     return {
@@ -146,30 +150,29 @@ export function terminfrist(a: Anmeldung, e: Einstellungen): Terminfrist {
     };
   }
 
-  switch (def.frist.typ) {
+  switch (status.frist.typ) {
     case 'keine':
       return { ...basis, datum: null, erlaeuterung: 'Keine Terminfrist in diesem Status' };
     case 'stichtag': {
-      const { tag, monat } = def.frist;
+      const { tag, monat } = status.frist;
       const jahr = parseISO(a.statusSeit)?.getFullYear() ?? new Date().getFullYear();
       let datum = datumAus(jahr, monat, tag);
       if (datum < a.statusSeit) datum = datumAus(jahr + 1, monat, tag);
       return { ...basis, datum, erlaeuterung: `Nächster ${tag}.${monat}. nach dem Statuswechsel am ${formatDate(a.statusSeit)}` };
     }
     case 'nachhaken': {
-      const datum = addDays(a.statusSeit, e.nachhakTage);
+      const tage = status.frist.tage;
       return {
         ...basis,
-        datum,
-        nachhaken: true,
-        erlaeuterung: `${e.nachhakTage} Tage nach dem Statuswechsel am ${formatDate(a.statusSeit)}`,
+        datum: addDays(a.statusSeit, tage),
+        erlaeuterung: `${tage} Tage nach dem Statuswechsel am ${formatDate(a.statusSeit)}`,
       };
     }
     case 'ril': {
-      const schluessel = rilSchluesselFuer(def.frist.bezug, a.art);
+      const schluessel = rilSchluesselFuer(status.frist.bezug, a.art);
       const ril = e.rilFristen[schluessel];
       const grund = rilDatum(ril, a.fahrplanjahr, a.bauVon);
-      const versatz = def.frist.versatzTage;
+      const versatz = status.frist.versatzTage;
       const datum = grund ? addDays(grund, versatz) : null;
       const bezugText =
         ril.bezug === 'stichtag'
@@ -213,13 +216,13 @@ export function ampelFuer(datum: ISODate | null, vorlaufTage: number, heute: ISO
 }
 
 /* ------------------------------------------------------------------ */
-/* Offene Termine über alle Projekthüllen                              */
+/* Offene Termine über alle Projekte                                   */
 /* ------------------------------------------------------------------ */
 
 export interface TerminEintrag {
   anmeldung: Anmeldung;
   projekt: Projekt;
-  status: StatusDef;
+  status: StatusInfo;
   frist: Terminfrist;
   ampel: Ampel;
 }
@@ -233,12 +236,12 @@ export function offeneTermine(d: BaubetriebDaten, projektIds?: ID[]): TerminEint
     if (projektIds && !projektIds.includes(anmeldung.projektId)) continue;
     const projekt = d.projekte.find((p) => p.id === anmeldung.projektId);
     if (!projekt) continue;
-    const frist = terminfrist(anmeldung, d.einstellungen);
+    const frist = terminfrist(anmeldung, d);
     if (!frist.datum) continue;
     eintraege.push({
       anmeldung,
       projekt,
-      status: statusDef(anmeldung.status),
+      status: statusVon(d.workflows, anmeldung.statusId),
       frist,
       ampel: ampelFuer(frist.datum, d.einstellungen.vorlaufTage),
     });
@@ -249,7 +252,7 @@ export function offeneTermine(d: BaubetriebDaten, projektIds?: ID[]): TerminEint
 }
 
 /* ------------------------------------------------------------------ */
-/* Anmeldebedarf einer Projekthülle                                    */
+/* Anmeldebedarf eines Projekts                                        */
 /* ------------------------------------------------------------------ */
 
 /** Prozessphasen mit festem Anmeldetermin je Fahrplanjahr. */
@@ -296,7 +299,7 @@ const CA_TOLERANZ_TAGE = 31;
 
 /**
  * Anmeldebedarf je Fahrplanjahr der Bauzeit: Für SKM, PzE, N-2 und N-1 die
- * Frist laut Richtlinie und ob die Projekthülle dafür schon einen Eintrag hat.
+ * Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat.
  * Fristen vor dem ersten Anmeldetermin liegen vor der Betreuung durch MIC.
  */
 export function anmeldebedarf(
@@ -333,7 +336,7 @@ export function anmeldebedarf(
   return zeilen;
 }
 
-/** Nächster offener Anmeldetermin der Projekthülle, sonst null. */
+/** Nächster offener Anmeldetermin des Projekts, sonst null. */
 export function naechsterBedarf(zeilen: BedarfZeile[]): BedarfZelle | null {
   const offen = zeilen
     .flatMap((z) => z.zellen)
@@ -347,7 +350,7 @@ export interface BedarfEintrag {
   zelle: BedarfZelle;
 }
 
-/** Anmeldebedarf aller (bzw. der genannten) Projekthüllen, der in die Vorschau fällt. */
+/** Anmeldebedarf aller (bzw. der genannten) Projekte, der in die Vorschau fällt. */
 export function faelligerBedarf(d: BaubetriebDaten, projektIds?: ID[]): BedarfEintrag[] {
   return d.projekte
     .filter((p) => p.status !== 'abgeschlossen' && (!projektIds || projektIds.includes(p.id)))
@@ -361,7 +364,7 @@ export function faelligerBedarf(d: BaubetriebDaten, projektIds?: ID[]): BedarfEi
 }
 
 /**
- * Vorschlag für den ersten Anmeldetermin einer Projekthülle: die Frist laut
+ * Vorschlag für den ersten Anmeldetermin eines Projekts: die Frist laut
  * Richtlinie für die gewählte Prozessphase und das Fahrplanjahr des Baubeginns.
  */
 export function ersterTerminVorschlag(
@@ -377,10 +380,19 @@ export function ersterTerminVorschlag(
 /* Darstellung                                                         */
 /* ------------------------------------------------------------------ */
 
-/** „FPJ 2029“ bzw. „03.03.2027 – 17.03.2027“. */
-export function bauzeitraumText(a: Pick<Anmeldung, 'bauVon' | 'bauBis' | 'fahrplanjahr' | 'status'>): string {
-  const phase = statusDef(a.status).phase;
-  if ((phase === 'V' || phase === 'W') && a.fahrplanjahr) return `Fahrplanjahr ${a.fahrplanjahr}`;
+/** Der Workflow führt den Bauzeitraum als ganzes Fahrplanjahr. */
+export function ganzesFahrplanjahr(workflow: Pick<Workflow, 'bauzeitraum'>): boolean {
+  return workflow.bauzeitraum === 'fahrplanjahr';
+}
+
+/** „Fahrplanjahr 2029“ bzw. „03.03.2027 – 17.03.2027“. */
+export function bauzeitraumText(
+  a: Pick<Anmeldung, 'bauVon' | 'bauBis' | 'fahrplanjahr' | 'statusId'>,
+  workflows: Workflow[],
+): string {
+  if (ganzesFahrplanjahr(statusVon(workflows, a.statusId).workflow) && a.fahrplanjahr) {
+    return `Fahrplanjahr ${a.fahrplanjahr}`;
+  }
   if (!a.bauVon && !a.bauBis) return '–';
   return `${formatDate(a.bauVon)} – ${formatDate(a.bauBis)}`;
 }

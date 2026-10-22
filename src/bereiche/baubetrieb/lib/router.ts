@@ -4,10 +4,10 @@
  *
  *   #/baubetrieb                                  Übersicht
  *   #/baubetrieb/termine                          Termine & Nachhaken
- *   #/baubetrieb/projekte                         Projekthüllen
- *   #/baubetrieb/projekt/<id>                     Projekthülle mit ihren Anmeldungen
+ *   #/baubetrieb/projekte                         Projekte
+ *   #/baubetrieb/projekt/<id>                     Projekt mit seinen Anmeldungen
  *   #/baubetrieb/projekt/<id>/anmeldung/<id>      Anmeldung mit Statusverlauf
- *   #/baubetrieb/workflow                         Status-Workflow
+ *   #/baubetrieb/workflows                        Workflows (früher #/baubetrieb/workflow)
  *   #/baubetrieb/einstellungen                    Richtlinienfristen und Einstellungen
  *
  * Unbekannte Adressen führen auf die Übersicht.
@@ -22,7 +22,7 @@ export type Route =
   | { view: 'uebersicht' }
   | { view: 'termine' }
   | { view: 'projekte' }
-  | { view: 'workflow' }
+  | { view: 'workflows' }
   | { view: 'einstellungen' }
   | { view: 'projekt'; projektId: ID }
   | { view: 'anmeldung'; projektId: ID; anmeldungId: ID };
@@ -52,7 +52,8 @@ export function hashToRoute(hash: string): Route {
   }
   if (teile[0] === 'termine') return { view: 'termine' };
   if (teile[0] === 'projekte') return { view: 'projekte' };
-  if (teile[0] === 'workflow') return { view: 'workflow' };
+  // Die frühere Adresse „workflow“ führt auf dieselbe Seite.
+  if (teile[0] === 'workflows' || teile[0] === 'workflow') return { view: 'workflows' };
   if (teile[0] === 'einstellungen') return { view: 'einstellungen' };
   return { view: 'uebersicht' };
 }

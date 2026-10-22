@@ -152,15 +152,15 @@ export function Einstellungen() {
       </Card>
 
       <Card>
-        <CardHeader titel="Ampel und Nachhaken" sub="Gilt für alle Projekthüllen" />
+        <CardHeader titel="Ampel und Nachhaken" sub="Gilt für alle Projekte" />
         <div className="card-pad">
           <div className="form-grid">
             <Field label="Fällig ab (Tage vor der Terminfrist)" hint="Ab hier steht eine Anmeldung auf „Fällig“.">
               <ZahlFeld label="Tage" wert={e.vorlaufTage} min={0} max={365} onChange={(n) => setEinstellungen({ vorlaufTage: n })} />
             </Field>
             <Field
-              label="Nachhak-Termin (Tage nach dem Statuswechsel)"
-              hint="Für Status ohne Frist laut Richtlinie, z. B. Angemeldet_fristgerecht oder Änderung_angestoßen."
+              label="Nachhak-Abstand – Vorgabe (Tage)"
+              hint="Vorbelegung für neue Nachhak-Termine im Workflow-Editor und für den nächsten Termin unter „Nachgehakt …“. Der Abstand je Status steht im Workflow."
             >
               <ZahlFeld label="Tage" wert={e.nachhakTage} min={1} max={365} onChange={(n) => setEinstellungen({ nachhakTage: n })} />
             </Field>

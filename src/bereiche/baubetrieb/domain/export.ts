@@ -1,30 +1,22 @@
 /**
  * Excel-Ausgabe des Monitors: ein Blatt mit den Anmeldungen samt Status und
- * Terminfrist, ein Blatt mit den Projekthüllen.
+ * Terminfrist, ein Blatt mit den Projekten.
  */
 import { formatDate, today } from '../../../shared/dates';
 import { dateiLaden, xlsxErzeugen, type Zelle } from '../../../shared/xlsx';
 import { AMPEL_LABEL, ampelFuer, terminfrist } from './fristen';
-import {
-  ANNEX_VII_LABEL,
-  ERSTE_PHASE_LABEL,
-  PHASE_NAME,
-  PROJEKT_STATUS_LABEL,
-  type BaubetriebDaten,
-  type ID,
-} from './types';
-import { statusDef } from './workflow';
+import { ANNEX_VII_LABEL, ERSTE_PHASE_LABEL, PROJEKT_STATUS_LABEL, type BaubetriebDaten, type ID } from './types';
+import { statusVon } from './workflow';
 
 const KOPF_STIL = { fett: true, fuellung: 'E8EDF3', rahmen: true };
 
 const ANMELDUNG_KOPF = [
-  'Projekthülle',
+  'Projekt',
   'DB-G-Nummer',
   'Anmelde-ID / Begriff',
   'Anmeldungs-Art',
-  'Nr.',
+  'Workflow',
   'Status',
-  'Phase',
   'Status seit',
   'Bau von',
   'Bau bis',
@@ -40,7 +32,7 @@ const ANMELDUNG_KOPF = [
 ];
 
 const PROJEKT_KOPF = [
-  'Projekthülle',
+  'Projekt',
   'Projektleiter',
   'DB-G-Nummer',
   'Erster Anmeldetermin (ca.)',
@@ -70,7 +62,7 @@ function dateiname(text: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
-/** Lädt den Monitor der genannten (bzw. aller) Projekthüllen als Excel-Datei herunter. */
+/** Lädt den Monitor der genannten (bzw. aller) Projekte als Excel-Datei herunter. */
 export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void {
   const projekte = d.projekte.filter((p) => !projektIds || projektIds.includes(p.id));
   const stand = `Stand: ${formatDate(today())}`;
@@ -79,8 +71,8 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
     d.anmeldungen
       .filter((a) => a.projektId === p.id)
       .map((a): Zelle[] => {
-        const def = statusDef(a.status);
-        const frist = terminfrist(a, d.einstellungen);
+        const { workflow, status } = statusVon(d.workflows, a.statusId);
+        const frist = terminfrist(a, d);
         const ampel = ampelFuer(frist.datum, d.einstellungen.vorlaufTage);
         const fuellung = ampel === 'ueberfaellig' ? 'F8D0CC' : ampel === 'faellig' ? 'FCE4C4' : undefined;
         return [
@@ -88,9 +80,8 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
           p.dbGNummer,
           a.anmeldeId,
           a.art,
-          def.code,
-          def.name,
-          PHASE_NAME[def.phase],
+          workflow.name,
+          status.name,
           datum(a.statusSeit),
           datum(a.bauVon),
           datum(a.bauBis),
@@ -124,7 +115,7 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
   ]);
 
   const kopf = (spalten: string[]): Zelle[] => spalten.map((wert) => ({ wert, stil: KOPF_STIL }));
-  const titel = projekte.length === 1 ? `Projekthülle: ${projekte[0].name}` : 'Baubetriebsplanung – Monitor';
+  const titel = projekte.length === 1 ? `Projekt: ${projekte[0].name}` : 'Baubetriebsplanung – Monitor';
 
   const blob = xlsxErzeugen([
     {
@@ -133,12 +124,12 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
       zeilen: [[{ wert: titel, stil: { fett: true, groesse: 13 } }], [stand], [], kopf(ANMELDUNG_KOPF), ...anmeldungZeilen],
       fixierteZeilen: 4,
       querformat: true,
-      spaltenbreiten: [28, 14, 22, 13, 6, 30, 20, 12, 12, 12, 11, 12, 18, 11, 30, 30, 12, 26, 36],
+      spaltenbreiten: [28, 14, 22, 13, 20, 26, 12, 12, 12, 11, 12, 18, 11, 30, 30, 12, 26, 36],
     },
     {
-      name: 'Projekthüllen',
+      name: 'Projekte',
       kopfzeileFett: false,
-      zeilen: [[{ wert: 'Projekthüllen', stil: { fett: true, groesse: 13 } }], [stand], [], kopf(PROJEKT_KOPF), ...projektZeilen],
+      zeilen: [[{ wert: 'Projekte', stil: { fett: true, groesse: 13 } }], [stand], [], kopf(PROJEKT_KOPF), ...projektZeilen],
       fixierteZeilen: 4,
       querformat: true,
       spaltenbreiten: [32, 26, 14, 14, 16, 12, 12, 14, 20, 18, 16, 12, 36],

@@ -16,7 +16,10 @@ import type {
   Projekt,
   RilFrist,
   RilSchluessel,
+  Workflow,
 } from '../domain/types';
+import { zielText } from '../domain/workflow';
+import { workflowLoeschen, workflowSpeichern } from '../domain/workflowPflege';
 import { ladeDaten, speichereDaten } from './storage';
 
 export { newId };
@@ -33,15 +36,24 @@ interface StoreValue {
   setEinstellungen: (e: Partial<Omit<Einstellungen, 'rilFristen'>>) => void;
   /** Ändert eine Richtlinienfrist; sie gilt danach nicht mehr als Platzhalter. */
   setRilFrist: (schluessel: RilSchluessel, patch: Partial<RilFrist>) => void;
-  /* Projekthüllen */
+  /* Workflows */
+  /**
+   * Legt einen Workflow an oder ersetzt ihn. Nachfolger, die auf entfallene
+   * Status zeigen, werden in allen Workflows entfernt. Ob entfallende Status
+   * noch belegt sind, prüft der Editor vorher (belegteEntfallendeStatus).
+   */
+  saveWorkflow: (w: Workflow) => void;
+  /** Löscht einen Workflow, in dem keine Anmeldung mehr steht. */
+  deleteWorkflow: (id: ID) => void;
+  /* Projekte */
   addProjekt: (p: Omit<Projekt, 'id'>) => ID;
   updateProjekt: (id: ID, patch: Partial<Projekt>) => void;
-  /** Löscht die Projekthülle samt ihrer Anmeldungen. */
+  /** Löscht das Projekt samt seiner Anmeldungen. */
   deleteProjekt: (id: ID) => void;
   toggleMarkiert: (id: ID) => void;
   /* Anmeldungen */
   addAnmeldung: (a: NeueAnmeldung) => ID;
-  updateAnmeldung: (id: ID, patch: Partial<Omit<Anmeldung, 'id' | 'status' | 'verlauf'>>) => void;
+  updateAnmeldung: (id: ID, patch: Partial<Omit<Anmeldung, 'id' | 'statusId' | 'verlauf'>>) => void;
   deleteAnmeldung: (id: ID) => void;
   /**
    * Statuswechsel auf einen zulässigen Nachfolger. Liefert die Kennungen der
@@ -95,6 +107,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           },
         })),
 
+      saveWorkflow: (w) => mutate((d) => workflowSpeichern(d, w)),
+      deleteWorkflow: (id) => mutate((d) => workflowLoeschen(d, id)),
+
       addProjekt: (p) => {
         const id = newId('pr');
         mutate((d) => ({ ...d, projekte: [...d.projekte, { ...p, id }] }));
@@ -119,7 +134,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const verlaufId = newId('vl');
         const erfasst = new Date().toISOString();
         mutate((d) => {
-          const neu: Anmeldung = bauzeitraumAbgleichen({
+          const neu: Anmeldung = bauzeitraumAbgleichen(
+            {
             ...werte,
             id,
             aenderungsNr: '',
@@ -134,16 +150,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 erfasst,
                 bearbeiter: d.einstellungen.bearbeiter,
                 von: null,
-                nach: werte.status,
+                nach: werte.statusId,
+                vonText: '',
+                nachText: zielText(d.workflows, werte.statusId),
                 text: 'Eintrag angelegt',
               },
             ],
-          });
+            },
+            d.workflows,
+          );
           return { ...d, anmeldungen: [...d.anmeldungen, neu] };
         });
         return id;
       },
-      updateAnmeldung: (id, patch) => anmeldungAendern(id, (a) => bauzeitraumAbgleichen({ ...a, ...patch, id })),
+      updateAnmeldung: (id, patch) =>
+        mutate((d) => ({
+          ...d,
+          anmeldungen: d.anmeldungen.map((a) =>
+            a.id === id ? bauzeitraumAbgleichen({ ...a, ...patch, id }, d.workflows) : a,
+          ),
+        })),
       deleteAnmeldung: (id) =>
         mutate((d) => ({
           ...d,
@@ -182,6 +208,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                       bearbeiter: d.einstellungen.bearbeiter,
                       von: null,
                       nach: null,
+                      vonText: '',
+                      nachText: '',
                       text: [notiz.trim() || 'Nachgehakt', neuerTermin ? `neuer Termin ${neuerTermin}` : '']
                         .filter(Boolean)
                         .join(' · '),

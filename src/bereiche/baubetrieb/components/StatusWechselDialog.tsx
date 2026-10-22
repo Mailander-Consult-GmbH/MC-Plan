@@ -1,10 +1,11 @@
 /**
  * Statuswechsel einer Anmeldung auf einen der möglichen Nachfolger.
  *
- * Führt der Wechsel in eine andere Phase, wird die Anmeldung dorthin
- * übernommen: Anmeldungs-Art, Anmelde-ID und Bauzeitraum werden neu erfasst,
- * und der Eintrag lässt sich auf mehrere Anmeldungen aufteilen – in SKM und
- * PzE stehen ja nur Sammeleinträge. Z0 (Anmeldeleiche) löscht den Eintrag.
+ * Führt der Wechsel in einen anderen Workflow (eine neue Phase), wird die
+ * Anmeldung dorthin übernommen: Anmeldungs-Art, Anmelde-ID und Bauzeitraum
+ * werden neu erfasst, und der Eintrag lässt sich auf mehrere Anmeldungen
+ * aufteilen – in SKM und PzE stehen ja nur Sammeleinträge. Die Anmeldeleiche
+ * löscht den Eintrag.
  */
 import { useState } from 'react';
 import { formatDate, today } from '../../../shared/dates';
@@ -12,20 +13,17 @@ import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
 import { bauzeitraumAbgleichen, type Aufteilung } from '../domain/ablauf';
-import { terminfrist } from '../domain/fristen';
+import { ganzesFahrplanjahr, terminfrist } from '../domain/fristen';
 import {
+  ANMELDELEICHE,
   ANNEX_VII_LABEL,
-  ARTEN_JE_PHASE,
-  PHASE_NAME,
-  phaseMitFahrplanjahr,
   type Anmeldung,
   type AnmeldungsArt,
   type AnnexVIIGrund,
-  type ArbeitsPhase,
   type ID,
-  type StatusCode,
+  type StatusZiel,
 } from '../domain/types';
-import { istAenderung, istUebernahme, statusDef } from '../domain/workflow';
+import { istAenderung, istUebernahme, statusVon } from '../domain/workflow';
 import { useStore } from '../store/store';
 import { ANNEX_OPTIONEN, fahrplanjahrOptionen } from './AnmeldungDialog';
 import { StatusBadge } from './common';
@@ -46,7 +44,7 @@ export function StatusWechselDialog({
   onAufgeteilt,
 }: {
   anmeldung: Anmeldung;
-  nach: StatusCode;
+  nach: StatusZiel;
   onClose: () => void;
   /** Nach dem Löschen als Anmeldeleiche – die Ansicht der Anmeldung gibt es dann nicht mehr. */
   onGeloescht?: () => void;
@@ -54,15 +52,15 @@ export function StatusWechselDialog({
 }) {
   const { data, statusWechseln } = useStore();
   const toast = useToast();
-  const von = statusDef(anmeldung.status);
-  const ziel = statusDef(nach);
-  const leiche = ziel.art === 'leiche';
-  const uebernahme = istUebernahme(anmeldung.status, nach);
-  const zielPhase = (ziel.phase === 'Z' ? von.phase : ziel.phase) as ArbeitsPhase;
-  const ganzesJahr = phaseMitFahrplanjahr(zielPhase);
-  const wirdAenderung = istAenderung(nach) && !istAenderung(anmeldung.status);
-  const endetAenderung = istAenderung(anmeldung.status) && !istAenderung(nach);
-  const arten = ARTEN_JE_PHASE[zielPhase];
+  const von = statusVon(data.workflows, anmeldung.statusId);
+  const leiche = nach === ANMELDELEICHE;
+  const ziel = leiche ? von : statusVon(data.workflows, nach);
+  const uebernahme = istUebernahme(data.workflows, anmeldung.statusId, nach);
+  const ganzesJahr = ganzesFahrplanjahr(ziel.workflow);
+  const wirdAenderung = istAenderung(data.workflows, nach) && !istAenderung(data.workflows, anmeldung.statusId);
+  const endetAenderung = istAenderung(data.workflows, anmeldung.statusId) && !istAenderung(data.workflows, nach);
+  // Bleibt die Anmeldung im Workflow, bleibt auch ihre Art wählbar.
+  const arten = ziel.workflow.arten.length > 0 ? ziel.workflow.arten : [anmeldung.art];
 
   const [datum, setDatum] = useState(today());
   const [bemerkung, setBemerkung] = useState('');
@@ -89,14 +87,17 @@ export function StatusWechselDialog({
   const vorschau = leiche
     ? null
     : terminfrist(
-        bauzeitraumAbgleichen({
-          ...anmeldung,
-          status: nach,
-          statusSeit: datum || today(),
-          terminManuell: null,
-          ...(uebernahme ? { art, ...bauzeit(zeilen[0]) } : {}),
-        }),
-        data.einstellungen,
+        bauzeitraumAbgleichen(
+          {
+            ...anmeldung,
+            statusId: nach,
+            statusSeit: datum || today(),
+            terminManuell: null,
+            ...(uebernahme ? { art, ...bauzeit(zeilen[0]) } : {}),
+          },
+          data.workflows,
+        ),
+        data,
       );
 
   const ausfuehren = () => {
@@ -130,27 +131,28 @@ export function StatusWechselDialog({
       onGeloescht?.();
       return;
     }
+    const zielName = `${ziel.workflow.kurz || ziel.workflow.name} · ${ziel.status.name}`;
     toast(
       neueIds.length > 0
-        ? `Übernommen in ${ziel.name} – ${neueIds.length + 1} Anmeldungen.`
+        ? `Übernommen in ${zielName} – ${neueIds.length + 1} Anmeldungen.`
         : uebernahme
-          ? `Übernommen in ${ziel.name}.`
-          : `Status ${ziel.code} · ${ziel.name} gesetzt.`,
+          ? `Übernommen in ${zielName}.`
+          : `Status ${ziel.status.name} gesetzt.`,
     );
     onClose();
     if (neueIds.length > 0) onAufgeteilt?.(neueIds);
   };
 
-  const titel = leiche ? 'Als Anmeldeleiche löschen?' : uebernahme ? `Übernahme in ${PHASE_NAME[ziel.phase]}` : 'Status ändern';
+  const titel = leiche ? 'Als Anmeldeleiche löschen?' : uebernahme ? `Übernahme in ${ziel.workflow.name}` : 'Status ändern';
 
   return (
     <Modal
       titel={titel}
       sub={
         <span className="row wrap" style={{ gap: 6 }}>
-          <StatusBadge code={anmeldung.status} />
+          <StatusBadge statusId={anmeldung.statusId} />
           <Icon name="chevron" size={12} />
-          <StatusBadge code={nach} />
+          {leiche ? <span className="small">Anmeldeleiche</span> : <StatusBadge statusId={nach} />}
         </span>
       }
       onClose={onClose}
@@ -174,18 +176,19 @@ export function StatusWechselDialog({
       {leiche ? (
         <p className="muted">
           Anmeldeleichen werden komplett gelöscht. Der Eintrag „{anmeldung.anmeldeId || anmeldung.gewerk || 'ohne ID'}“
-          verschwindet samt Statusverlauf aus der Projekthülle. Das lässt sich nicht rückgängig machen.
+          verschwindet samt Statusverlauf aus dem Projekt. Das lässt sich nicht rückgängig machen.
         </p>
       ) : (
         <div className="stack" style={{ gap: 14 }}>
           {uebernahme ? (
             <Callout>
-              Die Anmeldung wechselt von {PHASE_NAME[von.phase]} in {PHASE_NAME[ziel.phase]}. Art, Anmelde-ID und
-              Bauzeitraum gelten ab jetzt für die neue Phase; der bisherige Stand bleibt im Verlauf erhalten.
+              Die Anmeldung wechselt vom Workflow {von.workflow.name} in den Workflow {ziel.workflow.name}. Art,
+              Anmelde-ID und Bauzeitraum gelten ab jetzt für die neue Phase; der bisherige Stand bleibt im Verlauf
+              erhalten.
               {ganzesJahr ? '' : ' Der Bauzeitraum ist ab hier tagesscharf.'}
             </Callout>
           ) : null}
-          {nach === anmeldung.status ? (
+          {nach === anmeldung.statusId ? (
             <Callout>
               Der Status wird erneut gesetzt: Der Wechsel erscheint mit Datum im Verlauf, die Terminfrist wird vom
               neuen Datum aus berechnet.

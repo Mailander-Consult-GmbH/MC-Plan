@@ -31,7 +31,7 @@ export const BEREICHE: Bereich[] = [
     titel: 'Baubetriebsplanung',
     untertitel: 'Anmeldungen für Sperrpausen',
     beschreibung:
-      'Baubetriebliche Anmeldungen je Projekthülle durch SKM, PzE, Vorprozess und unterjährige Anmeldung verfolgen – mit Terminfristen und Nachhak-Terminen.',
+      'Baubetriebliche Anmeldungen je Projekt durch anpassbare Workflows – SKM, PzE, Vorprozess und unterjährige Anmeldung – verfolgen, mit Terminfristen und Nachhak-Terminen.',
     icon: 'kalender',
     marke: 'Erster Entwurf',
   },

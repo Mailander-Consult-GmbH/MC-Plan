@@ -1,11 +1,12 @@
 /**
  * Ablauflogik einer Anmeldung: Statuswechsel samt Übernahme in eine neue
- * Phase und Aufteilung, Rücknahme des letzten Wechsels und Abgleich des
- * Bauzeitraums. Reine Funktionen – der Store ruft sie in `mutate()` auf.
+ * Phase (einen anderen Workflow) und Aufteilung, Rücknahme des letzten
+ * Wechsels und Abgleich des Bauzeitraums. Reine Funktionen – der Store ruft
+ * sie in `mutate()` auf.
  */
-import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon } from './fristen';
+import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon, ganzesFahrplanjahr } from './fristen';
 import {
-  phaseMitFahrplanjahr,
+  ANMELDELEICHE,
   type Anmeldung,
   type AnmeldungStand,
   type AnmeldungsArt,
@@ -13,10 +14,11 @@ import {
   type BaubetriebDaten,
   type ID,
   type ISODate,
-  type StatusCode,
+  type StatusZiel,
   type VerlaufEintrag,
+  type Workflow,
 } from './types';
-import { istAenderung, istUebernahme, statusDef } from './workflow';
+import { istAenderung, istUebernahme, nachfolgerVon, statusInfo, statusVon, zielText } from './workflow';
 
 /** Bauzeitraum einer übernommenen bzw. aufgeteilten Anmeldung. */
 export interface Bauzeitraum {
@@ -32,15 +34,15 @@ export interface Aufteilung extends Bauzeitraum {
 }
 
 export interface Wechsel {
-  nach: StatusCode;
+  nach: StatusZiel;
   datum: ISODate;
   bemerkung: string;
   /** Beim Eintritt in eine Änderungsabstimmung. */
   aenderungsNr?: string;
   annexVII?: AnnexVIIGrund | null;
-  /** Beim Wechsel in eine andere Phase: neue Art, Anmelde-ID und Bauzeitraum. */
+  /** Beim Wechsel in einen anderen Workflow: neue Art, Anmelde-ID und Bauzeitraum. */
   uebernahme?: Bauzeitraum & { art: AnmeldungsArt; anmeldeId: string };
-  /** Beim Wechsel in eine andere Phase: weitere Anmeldungen aus diesem Eintrag. */
+  /** Beim Wechsel in einen anderen Workflow: weitere Anmeldungen aus diesem Eintrag. */
   weitere?: Aufteilung[];
 }
 
@@ -52,11 +54,12 @@ export interface WechselIds {
 }
 
 /**
- * In SKM und PzE umfasst der Bauzeitraum das ganze Fahrplanjahr; sonst folgt
- * das Fahrplanjahr dem Baubeginn.
+ * Führt der Workflow den Bauzeitraum als ganzes Fahrplanjahr (SKM, PzE),
+ * reicht er vom Fahrplanwechsel bis zum nächsten; sonst folgt das
+ * Fahrplanjahr dem Baubeginn.
  */
-export function bauzeitraumAbgleichen<T extends Bauzeitraum & { status: StatusCode }>(a: T): T {
-  if (phaseMitFahrplanjahr(statusDef(a.status).phase)) {
+export function bauzeitraumAbgleichen<T extends Bauzeitraum & { statusId: ID }>(a: T, workflows: Workflow[]): T {
+  if (ganzesFahrplanjahr(statusVon(workflows, a.statusId).workflow)) {
     const fpj = a.fahrplanjahr ?? fahrplanjahrVon(a.bauVon);
     return fpj
       ? { ...a, fahrplanjahr: fpj, bauVon: fahrplanjahrBeginn(fpj), bauBis: fahrplanjahrEnde(fpj) }
@@ -67,7 +70,7 @@ export function bauzeitraumAbgleichen<T extends Bauzeitraum & { status: StatusCo
 
 function standVon(a: Anmeldung): AnmeldungStand {
   return {
-    status: a.status,
+    statusId: a.statusId,
     statusSeit: a.statusSeit,
     art: a.art,
     anmeldeId: a.anmeldeId,
@@ -82,7 +85,7 @@ function standVon(a: Anmeldung): AnmeldungStand {
 
 /**
  * Wendet einen Statuswechsel an. Zulässig sind nur die Nachfolger des
- * aktuellen Status. Z0 (Anmeldeleiche) löscht den Eintrag vollständig.
+ * aktuellen Status. Die Anmeldeleiche löscht den Eintrag vollständig.
  */
 export function wechselAnwenden(
   d: BaubetriebDaten,
@@ -93,9 +96,9 @@ export function wechselAnwenden(
   erfasst: string,
 ): BaubetriebDaten {
   const alt = d.anmeldungen.find((a) => a.id === id);
-  if (!alt || !statusDef(alt.status).nachfolger.includes(w.nach)) return d;
+  if (!alt || !nachfolgerVon(d.workflows, alt.statusId).includes(w.nach)) return d;
 
-  if (w.nach === 'Z0') {
+  if (w.nach === ANMELDELEICHE) {
     return {
       ...d,
       anmeldungen: d.anmeldungen
@@ -104,9 +107,11 @@ export function wechselAnwenden(
     };
   }
 
-  const warAenderung = istAenderung(alt.status);
-  const wirdAenderung = istAenderung(w.nach);
-  const uebernahme = istUebernahme(alt.status, w.nach) ? w.uebernahme : undefined;
+  const warAenderung = istAenderung(d.workflows, alt.statusId);
+  const wirdAenderung = istAenderung(d.workflows, w.nach);
+  const uebernahme = istUebernahme(d.workflows, alt.statusId, w.nach) ? w.uebernahme : undefined;
+  const vonText = zielText(d.workflows, alt.statusId);
+  const nachText = zielText(d.workflows, w.nach);
 
   const eintrag: VerlaufEintrag = {
     id: ids.verlauf,
@@ -114,8 +119,10 @@ export function wechselAnwenden(
     datum: w.datum,
     erfasst,
     bearbeiter,
-    von: alt.status,
+    von: alt.statusId,
     nach: w.nach,
+    vonText,
+    nachText,
     text: w.bemerkung.trim(),
     vorher: standVon(alt),
   };
@@ -125,45 +132,53 @@ export function wechselAnwenden(
     eintrag.annexVII = alt.annexVII;
   }
 
-  const neu: Anmeldung = bauzeitraumAbgleichen({
-    ...alt,
-    status: w.nach,
-    statusSeit: w.datum,
-    terminManuell: null,
-    art: uebernahme?.art ?? alt.art,
-    anmeldeId: uebernahme ? uebernahme.anmeldeId.trim() : alt.anmeldeId,
-    bauVon: uebernahme ? uebernahme.bauVon : alt.bauVon,
-    bauBis: uebernahme ? uebernahme.bauBis : alt.bauBis,
-    fahrplanjahr: uebernahme ? uebernahme.fahrplanjahr : alt.fahrplanjahr,
-    aenderungsNr: wirdAenderung ? (w.aenderungsNr ?? alt.aenderungsNr).trim() : '',
-    annexVII: wirdAenderung ? (w.annexVII !== undefined ? w.annexVII : alt.annexVII) : null,
-    verlauf: [...alt.verlauf, eintrag],
-  });
+  const neu: Anmeldung = bauzeitraumAbgleichen(
+    {
+      ...alt,
+      statusId: w.nach,
+      statusSeit: w.datum,
+      terminManuell: null,
+      art: uebernahme?.art ?? alt.art,
+      anmeldeId: uebernahme ? uebernahme.anmeldeId.trim() : alt.anmeldeId,
+      bauVon: uebernahme ? uebernahme.bauVon : alt.bauVon,
+      bauBis: uebernahme ? uebernahme.bauBis : alt.bauBis,
+      fahrplanjahr: uebernahme ? uebernahme.fahrplanjahr : alt.fahrplanjahr,
+      aenderungsNr: wirdAenderung ? (w.aenderungsNr ?? alt.aenderungsNr).trim() : '',
+      annexVII: wirdAenderung ? (w.annexVII !== undefined ? w.annexVII : alt.annexVII) : null,
+      verlauf: [...alt.verlauf, eintrag],
+    },
+    d.workflows,
+  );
 
   const weitere: Anmeldung[] = uebernahme
     ? (w.weitere ?? []).map((t, i) =>
-        bauzeitraumAbgleichen({
-          ...neu,
-          id: ids.weitere[i].anmeldung,
-          anmeldeId: t.anmeldeId.trim(),
-          bfStrecke: t.bfStrecke.trim() || alt.bfStrecke,
-          bauVon: t.bauVon,
-          bauBis: t.bauBis,
-          fahrplanjahr: t.fahrplanjahr,
-          herkunftId: alt.id,
-          verlauf: [
-            {
-              id: ids.weitere[i].verlauf,
-              typ: 'anlage',
-              datum: w.datum,
-              erfasst,
-              bearbeiter,
-              von: alt.status,
-              nach: w.nach,
-              text: `Bei der Übernahme aus „${alt.anmeldeId || 'ohne ID'}“ (${statusDef(alt.status).name}) aufgeteilt`,
-            },
-          ],
-        }),
+        bauzeitraumAbgleichen(
+          {
+            ...neu,
+            id: ids.weitere[i].anmeldung,
+            anmeldeId: t.anmeldeId.trim(),
+            bfStrecke: t.bfStrecke.trim() || alt.bfStrecke,
+            bauVon: t.bauVon,
+            bauBis: t.bauBis,
+            fahrplanjahr: t.fahrplanjahr,
+            herkunftId: alt.id,
+            verlauf: [
+              {
+                id: ids.weitere[i].verlauf,
+                typ: 'anlage',
+                datum: w.datum,
+                erfasst,
+                bearbeiter,
+                von: alt.statusId,
+                nach: w.nach,
+                vonText,
+                nachText,
+                text: `Bei der Übernahme aus „${alt.anmeldeId || 'ohne ID'}“ (${vonText}) aufgeteilt`,
+              },
+            ],
+          },
+          d.workflows,
+        ),
       )
     : [];
 
@@ -174,9 +189,11 @@ export function wechselAnwenden(
 }
 
 /** Der letzte Eintrag des Verlaufs, der ein Statuswechsel ist und zurückgenommen werden kann. */
-export function letzterWechsel(a: Anmeldung): VerlaufEintrag | null {
+export function letzterWechsel(a: Anmeldung, workflows: Workflow[]): VerlaufEintrag | null {
   const letzter = [...a.verlauf].reverse().find((v) => v.typ !== 'notiz');
-  return letzter && letzter.typ === 'wechsel' && letzter.vorher ? letzter : null;
+  if (!letzter || letzter.typ !== 'wechsel' || !letzter.vorher) return null;
+  // Gibt es den früheren Status nicht mehr, lässt sich nicht zurückkehren.
+  return statusInfo(workflows, letzter.vorher.statusId) ? letzter : null;
 }
 
 /**
@@ -188,7 +205,7 @@ export function wechselZuruecknehmen(d: BaubetriebDaten, id: ID): BaubetriebDate
     ...d,
     anmeldungen: d.anmeldungen.map((a) => {
       if (a.id !== id) return a;
-      const letzter = letzterWechsel(a);
+      const letzter = letzterWechsel(a, d.workflows);
       if (!letzter?.vorher) return a;
       return { ...a, ...letzter.vorher, verlauf: a.verlauf.filter((v) => v.id !== letzter.id) };
     }),

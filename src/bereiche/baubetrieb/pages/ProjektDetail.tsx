@@ -1,5 +1,5 @@
 /**
- * Projekthülle: Stammdaten, Anmeldebedarf je Fahrplanjahr und die Liste der
+ * Projekt: Stammdaten, Anmeldebedarf je Fahrplanjahr und die Liste der
  * baubetrieblichen Anmeldungen mit Statuswechsel direkt in der Zeile.
  */
 import { useState } from 'react';
@@ -7,7 +7,7 @@ import { formatDate } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Search, Segmented } from '../../../shared/ui';
-import { AnmeldungDialog } from '../components/AnmeldungDialog';
+import { AnmeldungDialog, type AnmeldungVorgabe } from '../components/AnmeldungDialog';
 import { AmpelPunkt, NachfolgerAuswahl, StatusBadge, TerminZelle } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import { monitorExportieren } from '../domain/export';
@@ -22,28 +22,28 @@ import {
 import {
   ANNEX_VII_LABEL,
   ERSTE_PHASE_LABEL,
-  PHASEN,
   PROJEKT_STATUS_LABEL,
   RIL_LABEL,
   type Anmeldung,
   type AnmeldungsArt,
-  type ArbeitsPhase,
+  type ID,
   type Projekt,
-  type StatusCode,
+  type StatusZiel,
 } from '../domain/types';
-import { PHASEN_FOLGE, istAenderung, statusDef } from '../domain/workflow';
+import { istAenderung, statusVon, workflowFuerArt } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { ProjektDialog, PROJEKT_STATUS_TON } from './Projekte';
 
-type PhasenFilter = 'alle' | ArbeitsPhase;
+/** „alle“ oder die ID eines Workflows. */
+type WorkflowFilter = 'alle' | ID;
 
-/** Neuanlage aus dem Anmeldebedarf: Startstatus und Art je Phase. */
-const BEDARF_VORGABE: Record<BedarfPhase, { status: StatusCode; art?: AnmeldungsArt }> = {
-  skm: { status: 'V0' },
-  pze: { status: 'W0' },
-  'N-2': { status: 'X0', art: 'A_Vor_N-2' },
-  'N-1': { status: 'X0', art: 'A_Vor_N-1' },
+/** Neuanlage aus dem Anmeldebedarf: Art je Phase – der Workflow ergibt sich aus der Art. */
+const BEDARF_ART: Record<BedarfPhase, AnmeldungsArt> = {
+  skm: 'SKM',
+  pze: 'PzE',
+  'N-2': 'A_Vor_N-2',
+  'N-1': 'A_Vor_N-1',
 };
 
 export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigate: (r: Route) => void }) {
@@ -51,44 +51,42 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
   const toast = useToast();
   const [bearbeiten, setBearbeiten] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
-  const [neu, setNeu] = useState<{ status: StatusCode; art?: AnmeldungsArt; fahrplanjahr?: number } | null>(null);
-  const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusCode } | null>(null);
-  const [filter, setFilter] = useState<PhasenFilter>('alle');
+  const [neu, setNeu] = useState<AnmeldungVorgabe | null>(null);
+  const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusZiel } | null>(null);
+  const [filter, setFilter] = useState<WorkflowFilter>('alle');
   const [suche, setSuche] = useState('');
 
   const eigene = data.anmeldungen.filter((a) => a.projektId === projekt.id);
   const bedarf = anmeldebedarf(projekt, data.anmeldungen, data.einstellungen);
   const oeffne = (a: Anmeldung) => navigate({ view: 'anmeldung', projektId: projekt.id, anmeldungId: a.id });
 
-  const phaseVon = (a: Anmeldung) => statusDef(a.status).phase as ArbeitsPhase;
+  const workflowVon = (a: Anmeldung) => statusVon(data.workflows, a.statusId).workflow.id;
+  // Sortiert nach der Reihenfolge der Workflows, darin nach Baubeginn
+  const rang = (a: Anmeldung) => data.workflows.findIndex((w) => w.id === workflowVon(a));
   const gefiltert = eigene
-    .filter((a) => filter === 'alle' || phaseVon(a) === filter)
+    .filter((a) => filter === 'alle' || workflowVon(a) === filter)
     .filter((a) => {
       if (!suche.trim()) return true;
-      const def = statusDef(a.status);
-      return [a.anmeldeId, a.bfStrecke, a.gewerk, a.bemerkung, a.art, def.code, def.name, a.aenderungsNr]
+      const { workflow, status } = statusVon(data.workflows, a.statusId);
+      return [a.anmeldeId, a.bfStrecke, a.gewerk, a.bemerkung, a.art, workflow.name, status.name, a.aenderungsNr]
         .join(' ')
         .toLowerCase()
         .includes(suche.toLowerCase());
     })
-    .sort(
-      (a, b) =>
-        PHASEN_FOLGE.indexOf(phaseVon(a)) - PHASEN_FOLGE.indexOf(phaseVon(b)) ||
-        (a.bauVon ?? '').localeCompare(b.bauVon ?? ''),
-    );
+    .sort((a, b) => rang(a) - rang(b) || (a.bauVon ?? '').localeCompare(b.bauVon ?? ''));
 
   return (
     <div className="stack">
       <div className="row-between wrap">
         <button type="button" className="btn btn-ghost" onClick={() => navigate({ view: 'projekte' })}>
-          <Icon name="zurueck" size={14} /> Projekthüllen
+          <Icon name="zurueck" size={14} /> Projekte
         </button>
         <div className="row wrap">
           <button
             type="button"
             className="btn btn-outline"
             onClick={() => monitorExportieren(data, [projekt.id])}
-            title="Anmeldungen und Projekthülle als Excel-Datei"
+            title="Anmeldungen und Projekt als Excel-Datei"
           >
             <Icon name="export" size={14} /> Excel
           </button>
@@ -185,7 +183,11 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
                           zelle={zelle}
                           onOeffnen={oeffne}
                           onAnlegen={() =>
-                            setNeu({ ...BEDARF_VORGABE[zelle.phase], fahrplanjahr: zelle.fahrplanjahr })
+                            setNeu({
+                              workflowId: workflowFuerArt(data.workflows, BEDARF_ART[zelle.phase])?.id,
+                              art: BEDARF_ART[zelle.phase],
+                              fahrplanjahr: zelle.fahrplanjahr,
+                            })
                           }
                         />
                       </td>
@@ -199,20 +201,20 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
       </Card>
 
       <div className="row-between wrap">
-        <Segmented<PhasenFilter>
+        <Segmented<WorkflowFilter>
           value={filter}
           onChange={setFilter}
           options={[
             { value: 'alle', label: `Alle (${eigene.length})` },
-            ...PHASEN.map((p) => ({
-              value: p.id,
-              label: `${p.kurz} (${eigene.filter((a) => phaseVon(a) === p.id).length})`,
+            ...data.workflows.map((w) => ({
+              value: w.id,
+              label: `${w.kurz || w.name} (${eigene.filter((a) => workflowVon(a) === w.id).length})`,
             })),
           ]}
         />
         <div className="row wrap">
           <Search value={suche} onChange={setSuche} placeholder="ID, Bf/Strecke, Gewerk, Status …" />
-          <button type="button" className="btn btn-primary" onClick={() => setNeu({ status: 'Y0' })}>
+          <button type="button" className="btn btn-primary" onClick={() => setNeu({})}>
             <Icon name="plus" size={14} /> Neue Anmeldung
           </button>
         </div>
@@ -229,7 +231,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
             titel={eigene.length === 0 ? 'Noch keine Anmeldung' : 'Nichts gefunden'}
             text={
               eigene.length === 0
-                ? 'Neu angelegt wird als Entwurf in SKM, PzE, Vorprozess oder unterjährig.'
+                ? 'Neu angelegt wird im ersten Status eines Workflows – SKM, PzE, Vorprozess oder unterjährig.'
                 : 'Für diese Auswahl gibt es keine Anmeldung.'
             }
           />
@@ -249,7 +251,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
               </thead>
               <tbody>
                 {gefiltert.map((a) => {
-                  const frist = terminfrist(a, data.einstellungen);
+                  const frist = terminfrist(a, data);
                   const ampel = ampelFuer(frist.datum, data.einstellungen.vorlaufTage);
                   return (
                     <tr key={a.id} className="clickable" onClick={() => oeffne(a)}>
@@ -266,10 +268,10 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
                       <td className="small col-optional" style={{ whiteSpace: 'nowrap' }}>
                         {a.art}
                       </td>
-                      <td className="small">{bauzeitraumText(a)}</td>
+                      <td className="small">{bauzeitraumText(a, data.workflows)}</td>
                       <td>
-                        <StatusBadge code={a.status} />
-                        {istAenderung(a.status) && (a.aenderungsNr || a.annexVII) ? (
+                        <StatusBadge statusId={a.statusId} />
+                        {istAenderung(data.workflows, a.statusId) && (a.aenderungsNr || a.annexVII) ? (
                           <div className="small tertiary">
                             {[a.aenderungsNr && `ÄAbst-Nr ${a.aenderungsNr}`, a.annexVII && ANNEX_VII_LABEL[a.annexVII]]
                               .filter(Boolean)
@@ -281,7 +283,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
                         <TerminZelle frist={frist} />
                       </td>
                       <td className="actions" onClick={(e) => e.stopPropagation()}>
-                        <NachfolgerAuswahl code={a.status} onWaehle={(nach) => setWechsel({ anmeldung: a, nach })} />
+                        <NachfolgerAuswahl statusId={a.statusId} onWaehle={(nach) => setWechsel({ anmeldung: a, nach })} />
                       </td>
                     </tr>
                   );
@@ -301,13 +303,13 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
       ) : null}
       {loeschen ? (
         <ConfirmDialog
-          titel="Projekthülle löschen?"
+          titel="Projekt löschen?"
           text={`„${projekt.name}“ wird samt ${eigene.length} ${
             eigene.length === 1 ? 'Anmeldung' : 'Anmeldungen'
           } gelöscht. Das lässt sich nicht rückgängig machen.`}
           onConfirm={() => {
             deleteProjekt(projekt.id);
-            toast('Projekthülle gelöscht.');
+            toast('Projekt gelöscht.');
             navigate({ view: 'projekte' });
           }}
           onClose={() => setLoeschen(false)}
@@ -327,13 +329,14 @@ function BedarfInhalt({
   onOeffnen: (a: Anmeldung) => void;
   onAnlegen: () => void;
 }) {
+  const { data } = useStore();
   const datum = zelle.frist ? formatDate(zelle.frist) : '–';
   switch (zelle.zustand) {
     case 'abgedeckt':
       return (
         <button type="button" className="link-btn small" onClick={() => onOeffnen(zelle.durch!)} title="Eintrag öffnen">
           <Badge ton="green">✓ {zelle.durch!.art}</Badge>
-          <div className="tertiary small">{statusDef(zelle.durch!.status).name}</div>
+          <div className="tertiary small">{statusVon(data.workflows, zelle.durch!.statusId).status.name}</div>
         </button>
       );
     case 'faellig':
@@ -358,7 +361,7 @@ function BedarfInhalt({
       );
     case 'vorBeginn':
       return (
-        <span className="small tertiary" title="Liegt vor dem ersten Anmeldetermin der Projekthülle">
+        <span className="small tertiary" title="Liegt vor dem ersten Anmeldetermin des Projekts">
           vor Betreuung
           <div>{datum}</div>
         </span>

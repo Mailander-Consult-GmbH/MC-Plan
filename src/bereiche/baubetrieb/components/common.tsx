@@ -2,29 +2,34 @@
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Badge } from '../../../shared/ui';
 import { AMPEL_LABEL, type Ampel, type Terminfrist } from '../domain/fristen';
-import { PHASE_NAME, type StatusArt, type StatusCode } from '../domain/types';
-import { istUebernahme, statusDef } from '../domain/workflow';
+import { ANMELDELEICHE, type ID, type StatusArt, type StatusZiel, type Workflow } from '../domain/types';
+import { istUebernahme, nachfolgerVon, statusInfo, statusVon, statusText } from '../domain/workflow';
+import { useStore } from '../store/store';
 
 type Ton = '' | 'green' | 'orange' | 'red' | 'blue' | 'purple' | 'gelb';
 
-const STATUS_TON: Record<StatusArt, Ton> = {
+export const STATUS_TON: Record<StatusArt, Ton> = {
   entwurf: '',
   abstimmung: 'blue',
   angemeldet: 'blue',
+  // Eine verspätete Anmeldung ist kein Fehler, verdient aber Aufmerksamkeit.
+  verspaetet: 'orange',
   genehmigt: 'green',
   abgelehnt: 'red',
   aenderung: 'purple',
-  leiche: '',
 };
 
-/** Status mit Nummer und Bezeichnung, eingefärbt nach seiner Art. */
-export function StatusBadge({ code, kurz = false }: { code: StatusCode; kurz?: boolean }) {
-  const def = statusDef(code);
-  // Eine verspätete Anmeldung ist kein Fehler, verdient aber Aufmerksamkeit.
-  const ton = code === 'Y5' ? 'orange' : STATUS_TON[def.art];
+/**
+ * Status einer Anmeldung, eingefärbt nach seiner Art. Ohne `ohneWorkflow`
+ * steht der Workflow davor („PzE · Angemeldet“), weil Status wie „Entwurf“ in
+ * mehreren Workflows vorkommen.
+ */
+export function StatusBadge({ statusId, ohneWorkflow = false }: { statusId: ID; ohneWorkflow?: boolean }) {
+  const { data } = useStore();
+  const info = statusVon(data.workflows, statusId);
   return (
-    <span title={`${def.code} · ${def.name} (${PHASE_NAME[def.phase]})`}>
-      <Badge ton={ton}>{kurz ? def.code : `${def.code} · ${def.name}`}</Badge>
+    <span title={`${info.workflow.name}: ${info.status.name}`}>
+      <Badge ton={STATUS_TON[info.status.art]}>{ohneWorkflow ? info.status.name : statusText(info)}</Badge>
     </span>
   );
 }
@@ -71,13 +76,14 @@ export function TerminZelle({ frist, mitRegel = true }: { frist: Terminfrist; mi
  * Nachfolger des aktuellen Status.
  */
 export function NachfolgerAuswahl({
-  code,
+  statusId,
   onWaehle,
 }: {
-  code: StatusCode;
-  onWaehle: (nach: StatusCode) => void;
+  statusId: ID;
+  onWaehle: (nach: StatusZiel) => void;
 }) {
-  const nachfolger = statusDef(code).nachfolger;
+  const { data } = useStore();
+  const nachfolger = nachfolgerVon(data.workflows, statusId);
   if (nachfolger.length === 0) return null;
   return (
     <select
@@ -87,25 +93,26 @@ export function NachfolgerAuswahl({
       title="Nur die möglichen Nachfolge-Status stehen zur Wahl"
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => {
-        if (e.target.value) onWaehle(e.target.value as StatusCode);
+        if (e.target.value) onWaehle(e.target.value);
       }}
       style={{ minWidth: 150 }}
     >
       <option value="">Status ändern …</option>
       {nachfolger.map((n) => (
         <option key={n} value={n}>
-          {nachfolgerText(code, n)}
+          {nachfolgerText(data.workflows, statusId, n)}
         </option>
       ))}
     </select>
   );
 }
 
-/** „W0 · Entwurf_PzE → Übernahme in PzE“ bzw. „Z0 · Anmeldeleiche (löschen)“. */
-export function nachfolgerText(von: StatusCode, nach: StatusCode): string {
-  const def = statusDef(nach);
-  if (nach === von) return `${def.code} · ${def.name} (erneut)`;
-  if (def.art === 'leiche') return `${def.code} · ${def.name} (löschen)`;
-  if (istUebernahme(von, nach)) return `${def.code} · ${def.name} → Übernahme in ${PHASE_NAME[def.phase]}`;
-  return `${def.code} · ${def.name}`;
+/** „Genehmigt“, „→ PzE: Entwurf (Übernahme)“ bzw. „Anmeldeleiche (löschen)“. */
+export function nachfolgerText(workflows: Workflow[], von: ID, nach: StatusZiel): string {
+  if (nach === ANMELDELEICHE) return 'Anmeldeleiche (löschen)';
+  const ziel = statusInfo(workflows, nach);
+  if (!ziel) return 'Unbekannter Status';
+  if (nach === von) return `${ziel.status.name} (erneut)`;
+  if (istUebernahme(workflows, von, nach)) return `→ ${ziel.workflow.kurz || ziel.workflow.name}: ${ziel.status.name} (Übernahme)`;
+  return ziel.status.name;
 }

@@ -79,7 +79,7 @@ export function SicherungEinspielenDialog({
         : { ...daten.einstellungen, bearbeiter: data.einstellungen.bearbeiter, farbmodus: data.einstellungen.farbmodus },
     });
     toast(
-      `Sicherung eingespielt – ${anzahl(daten.projekte.length, 'Projekthülle', 'Projekthüllen')}, ${anzahl(
+      `Sicherung eingespielt – ${anzahl(daten.projekte.length, 'Projekt', 'Projekte')}, ${anzahl(
         daten.anmeldungen.length,
         'Anmeldung',
         'Anmeldungen',
@@ -111,7 +111,7 @@ export function SicherungEinspielenDialog({
     >
       <div className="stack" style={{ gap: 14 }}>
         <p>
-          Die Sicherung enthält {anzahl(daten.projekte.length, 'Projekthülle', 'Projekthüllen')} und{' '}
+          Die Sicherung enthält {anzahl(daten.projekte.length, 'Projekt', 'Projekte')} und{' '}
           {anzahl(daten.anmeldungen.length, 'Anmeldung', 'Anmeldungen')}.
         </p>
         <Callout ton="warn" icon="!">

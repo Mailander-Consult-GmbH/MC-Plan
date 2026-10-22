@@ -1,4 +1,4 @@
-/** Projekthüllen: Liste mit Anlage- und Bearbeitungsdialog. */
+/** Projekte: Liste mit Anlage- und Bearbeitungsdialog. */
 import { useState } from 'react';
 import { addDays, formatDate } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
@@ -40,12 +40,12 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
         <div className="row wrap">
           <Search value={suche} onChange={setSuche} placeholder="Bezeichnung, DB-G-Nr., MIC-Nr. …" />
           <span className="small tertiary">
-            Die Projekthülle wird bei der MIC-Beauftragung angelegt. Mit ★ markierte erscheinen in der Übersicht und
+            Das Projekt wird bei der MIC-Beauftragung angelegt. Mit ★ markierte erscheinen in der Übersicht und
             in der Seitenleiste.
           </span>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
-          <Icon name="plus" size={14} /> Neue Projekthülle
+          <Icon name="plus" size={14} /> Neues Projekt
         </button>
       </div>
 
@@ -53,11 +53,11 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
         <Card>
           <EmptyState
             icon="projekt"
-            titel="Keine Projekthülle gefunden"
-            text="Legen Sie eine Projekthülle an, um die baubetrieblichen Anmeldungen der Maßnahme zu verfolgen."
+            titel="Kein Projekt gefunden"
+            text="Legen Sie ein Projekt an, um die baubetrieblichen Anmeldungen der Maßnahme zu verfolgen."
             action={
               <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
-                <Icon name="plus" size={14} /> Neue Projekthülle
+                <Icon name="plus" size={14} /> Neues Projekt
               </button>
             }
           />
@@ -192,19 +192,19 @@ export function ProjektDialog({
     };
     if (projekt) {
       updateProjekt(projekt.id, werte);
-      toast('Projekthülle gespeichert.');
+      toast('Projekt gespeichert.');
       onClose();
       return;
     }
     const id = addProjekt({ ...werte, markiert: true });
-    toast('Projekthülle angelegt.');
+    toast('Projekt angelegt.');
     onClose();
     navigate?.({ view: 'projekt', projektId: id });
   };
 
   return (
     <Modal
-      titel={projekt ? 'Projekthülle bearbeiten' : 'Neue Projekthülle'}
+      titel={projekt ? 'Projekt bearbeiten' : 'Neues Projekt'}
       sub={projekt ? projekt.name : 'Wird bei der MIC-Beauftragung angelegt'}
       onClose={onClose}
       wide

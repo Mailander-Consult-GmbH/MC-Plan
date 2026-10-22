@@ -1,7 +1,7 @@
 /**
  * Startseite des Bereichs: Kennzahlen, anstehende Terminfristen, Anmeldebedarf
- * aus den Projekthüllen und die Projekthüllen nach Phasen. Angezeigt werden
- * die markierten Projekthüllen.
+ * aus den Projekten und die Projekte mit ihren Anmeldungen je Workflow.
+ * Angezeigt werden die markierten Projekte.
  */
 import { useState } from 'react';
 import { formatDate, relativeLabel } from '../../../shared/dates';
@@ -10,12 +10,12 @@ import { Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
 import { AmpelPunkt, NachfolgerAuswahl, StatusBadge, TerminZelle } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import { faelligerBedarf, offeneTermine } from '../domain/fristen';
-import { PHASEN, RIL_LABEL, type Anmeldung, type Projekt, type StatusCode } from '../domain/types';
-import { statusDef } from '../domain/workflow';
+import { RIL_LABEL, type Anmeldung, type Projekt, type StatusZiel } from '../domain/types';
+import { statusVon } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 
-/** Markierte Projekthüllen; ohne Markierung alle. */
+/** Markierte Projekte; ohne Markierung alle. */
 export function sichtbareProjekte(projekte: Projekt[]): Projekt[] {
   const markiert = projekte.filter((p) => p.markiert);
   return markiert.length > 0 ? markiert : projekte;
@@ -26,7 +26,7 @@ const ANZAHL_TERMINE = 8;
 
 export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
   const { data } = useStore();
-  const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusCode } | null>(null);
+  const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusZiel } | null>(null);
   const projekte = sichtbareProjekte(data.projekte);
   const ids = projekte.map((p) => p.id);
   const anmeldungen = data.anmeldungen.filter((a) => ids.includes(a.projektId));
@@ -64,8 +64,8 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
 
       {alleMarkiert === 0 ? (
         <p className="small tertiary">
-          Keine Projekthülle markiert – es werden alle angezeigt. Unter <strong>Projekthüllen</strong> lassen sich
-          einzelne markieren; dann erscheinen nur diese hier und in der Seitenleiste.
+          Kein Projekt markiert – es werden alle angezeigt. Unter <strong>Projekte</strong> lassen sich einzelne
+          markieren; dann erscheinen nur diese hier und in der Seitenleiste.
         </p>
       ) : null}
 
@@ -90,7 +90,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                 <tr>
                   <th className="col-optional" style={{ width: 22 }} />
                   <th>Anmeldung</th>
-                  <th className="col-optional">Projekthülle</th>
+                  <th className="col-optional">Projekt</th>
                   <th>Status</th>
                   <th>Terminfrist</th>
                   <th className="actions" />
@@ -116,7 +116,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                     </td>
                     <td className="small muted col-optional">{t.projekt.name}</td>
                     <td>
-                      <StatusBadge code={t.anmeldung.status} />
+                      <StatusBadge statusId={t.anmeldung.statusId} />
                       {t.frist.nachhaken ? <div className="small tertiary">zum Nachhaken</div> : null}
                     </td>
                     <td>
@@ -124,7 +124,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                     </td>
                     <td className="actions" onClick={(e) => e.stopPropagation()}>
                       <NachfolgerAuswahl
-                        code={t.anmeldung.status}
+                        statusId={t.anmeldung.statusId}
                         onWaehle={(nach) => setWechsel({ anmeldung: t.anmeldung, nach })}
                       />
                     </td>
@@ -139,7 +139,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
       {bedarf.length > 0 ? (
         <Card>
           <CardHeader
-            titel="Anmeldebedarf aus den Projekthüllen"
+            titel="Anmeldebedarf aus den Projekten"
             sub={`Fristen laut Richtlinie in den nächsten ${data.einstellungen.bedarfVorschauTage} Tagen, für die noch kein Eintrag besteht`}
           />
           {bedarf.map(({ projekt, zelle }) => (
@@ -165,18 +165,18 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
       ) : null}
 
       <Card>
-        <CardHeader titel="Projekthüllen" sub="Anmeldungen je Phase und Fristenlage" />
+        <CardHeader titel="Projekte" sub="Anmeldungen je Workflow und Fristenlage" />
         {projekte.length === 0 ? (
-          <EmptyState icon="projekt" titel="Keine Projekthülle" text="Legen Sie unter „Projekthüllen“ eine an." />
+          <EmptyState icon="projekt" titel="Kein Projekt" text="Legen Sie unter „Projekte“ eines an." />
         ) : (
           <div className="table-scroll">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Projekthülle</th>
-                  {PHASEN.map((p) => (
-                    <th key={p.id} className="zahl">
-                      {p.kurz}
+                  <th>Projekt</th>
+                  {data.workflows.map((w) => (
+                    <th key={w.id} className="zahl" title={w.name}>
+                      {w.kurz || w.name}
                     </th>
                   ))}
                   <th className="zahl">Überfällig</th>
@@ -197,10 +197,10 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                           <strong>{p.name}</strong>
                         </div>
                       </td>
-                      {PHASEN.map((ph) => {
-                        const n = eigene.filter((a) => statusDef(a.status).phase === ph.id).length;
+                      {data.workflows.map((w) => {
+                        const n = eigene.filter((a) => statusVon(data.workflows, a.statusId).workflow.id === w.id).length;
                         return (
-                          <td key={ph.id} className={`zahl ${n ? '' : 'leer'}`}>
+                          <td key={w.id} className={`zahl ${n ? '' : 'leer'}`}>
                             {n}
                           </td>
                         );
@@ -215,7 +215,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                         {naechste ? (
                           <>
                             {formatDate(naechste.frist.datum)}
-                            <div className="tertiary small">{naechste.anmeldung.anmeldeId || naechste.status.name}</div>
+                            <div className="tertiary small">{naechste.anmeldung.anmeldeId || naechste.status.status.name}</div>
                           </>
                         ) : (
                           <span className="tertiary">–</span>

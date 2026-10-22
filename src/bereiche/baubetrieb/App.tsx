@@ -15,7 +15,7 @@ import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
 import { Termine } from './pages/Termine';
 import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
-import { Workflow } from './pages/Workflow';
+import { Workflows } from './pages/Workflows';
 import { exportiereDaten } from './store/storage';
 import { useStore } from './store/store';
 
@@ -72,8 +72,8 @@ export function App() {
           badgeAlarm
           onClick={() => gehe({ view: 'termine' })}
         />
-        <NavItem icon="projekt" label="Projekthüllen" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
-        <NavItem icon="kette" label="Workflow" aktiv={route.view === 'workflow'} onClick={() => gehe({ view: 'workflow' })} />
+        <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
+        <NavItem icon="kette" label="Workflows" aktiv={route.view === 'workflows'} onClick={() => gehe({ view: 'workflows' })} />
         <NavItem
           icon="einstellungen"
           label="Einstellungen"
@@ -82,7 +82,7 @@ export function App() {
         />
 
         <div className="nav-group-label">
-          Projekthüllen
+          Projekte
           {markierte.length < data.projekte.length ? <span className="tertiary"> (markierte)</span> : null}
         </div>
         {markierte.map((p) => {
@@ -147,7 +147,7 @@ export function App() {
             {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
             {route.view === 'termine' ? <Termine navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
-            {route.view === 'workflow' ? <Workflow navigate={gehe} /> : null}
+            {route.view === 'workflows' ? <Workflows navigate={gehe} /> : null}
             {route.view === 'einstellungen' ? <Einstellungen /> : null}
             {route.view === 'projekt' ? (
               projekt ? (
@@ -184,7 +184,7 @@ export function App() {
       {zuruecksetzenDialog ? (
         <ConfirmDialog
           titel="Daten zurücksetzen?"
-          text="Alle lokal gespeicherten Projekthüllen und Anmeldungen der Baubetriebsplanung werden verworfen und der Demodatenbestand wird neu geladen. Das Planlaufmanagement bleibt unberührt."
+          text="Alle lokal gespeicherten Projekte, Anmeldungen und Workflows der Baubetriebsplanung werden verworfen und der Demodatenbestand samt Standard-Workflows wird neu geladen. Das Planlaufmanagement bleibt unberührt."
           bestaetigenLabel="Zurücksetzen"
           onConfirm={() => {
             zuruecksetzen();
@@ -294,7 +294,7 @@ function NichtGefunden({ onZurueck }: { onZurueck: () => void }) {
         text="Der aufgerufene Eintrag existiert nicht (mehr) – etwa weil er als Anmeldeleiche gelöscht wurde."
         action={
           <button type="button" className="btn btn-primary" onClick={onZurueck}>
-            Zu den Projekthüllen
+            Zu den Projekten
           </button>
         }
       />
@@ -309,13 +309,13 @@ function kopfzeile(route: Route, projektName?: string, anmeldeId?: string): { ti
     case 'termine':
       return { titel: 'Termine & Nachhaken', sub: 'Terminfristen aller Anmeldungen und Anmeldebedarf' };
     case 'projekte':
-      return { titel: 'Projekthüllen', sub: 'Je Baumaßnahme eine Hülle mit ihren Anmeldungen' };
-    case 'workflow':
-      return { titel: 'Workflow', sub: 'Phasen, Status und Terminfristen der Anmeldungen' };
+      return { titel: 'Projekte', sub: 'Je Baumaßnahme ein Projekt mit seinen Anmeldungen' };
+    case 'workflows':
+      return { titel: 'Workflows', sub: 'Status, Terminfristen und Nachfolger je Phase – anpassbar' };
     case 'einstellungen':
       return { titel: 'Einstellungen', sub: 'Fristen laut Richtlinie, Ampel und Nachhaken' };
     case 'projekt':
-      return { titel: projektName ?? 'Projekthülle', sub: 'Projekthülle' };
+      return { titel: projektName ?? 'Projekt', sub: 'Projekt' };
     case 'anmeldung':
       return { titel: anmeldeId || 'Anmeldung', sub: projektName };
   }

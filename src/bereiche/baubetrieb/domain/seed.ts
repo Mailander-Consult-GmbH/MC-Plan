@@ -17,10 +17,10 @@ import {
   type Projekt,
   type RilFrist,
   type RilSchluessel,
-  type StatusCode,
   type VerlaufEintrag,
+  type Workflow,
 } from './types';
-import { statusDef } from './workflow';
+import { STATUS_AUS_NUMMER, standardWorkflows, statusVon, zielText } from './workflow';
 
 export function newId(prefix = 'id'): ID {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -76,23 +76,35 @@ export function standardEinstellungen(): Einstellungen {
 }
 
 export function leererBestand(): BaubetriebDaten {
-  return { version: DATEN_VERSION, einstellungen: standardEinstellungen(), projekte: [], anmeldungen: [] };
+  return {
+    version: DATEN_VERSION,
+    einstellungen: standardEinstellungen(),
+    workflows: standardWorkflows(),
+    projekte: [],
+    anmeldungen: [],
+  };
 }
 
 /* ------------------------------------------------------------------ */
 /* Demodaten                                                           */
 /* ------------------------------------------------------------------ */
 
-/** Statusverlauf aus einer Folge von Status mit Datum. */
-function verlaufAus(schritte: [StatusCode, ISODate][], bearbeiter: string): VerlaufEintrag[] {
-  return schritte.map(([code, datum], i) => ({
+/**
+ * Statusverlauf aus einer Folge von Status mit Datum. Die Demodaten nennen die
+ * Status kurz mit den Nummern des Lastenhefts (V0 … Y9).
+ */
+function verlaufAus(schritte: [string, ISODate][], bearbeiter: string, workflows: Workflow[]): VerlaufEintrag[] {
+  const id = (nummer: string) => STATUS_AUS_NUMMER[nummer];
+  return schritte.map(([nummer, datum], i) => ({
     id: newId('vl'),
     typ: i === 0 ? 'anlage' : 'wechsel',
     datum,
     erfasst: `${datum}T09:00:00.000Z`,
     bearbeiter,
-    von: i === 0 ? null : schritte[i - 1][0],
-    nach: code,
+    von: i === 0 ? null : id(schritte[i - 1][0]),
+    nach: id(nummer),
+    vonText: i === 0 ? '' : zielText(workflows, id(schritte[i - 1][0])),
+    nachText: zielText(workflows, id(nummer)),
     text: i === 0 ? 'Eintrag angelegt' : '',
   }));
 }
@@ -100,7 +112,7 @@ function verlaufAus(schritte: [StatusCode, ISODate][], bearbeiter: string): Verl
 interface DemoAnmeldung {
   art: AnmeldungsArt;
   anmeldeId: string;
-  verlauf: [StatusCode, ISODate][];
+  verlauf: [string, ISODate][];
   bauVon?: ISODate;
   bauBis?: ISODate;
   fahrplanjahr?: number;
@@ -111,8 +123,10 @@ interface DemoAnmeldung {
   annexVII?: AnnexVIIGrund;
 }
 
-function demoAnmeldung(projektId: ID, d: DemoAnmeldung, bearbeiter: string): Anmeldung {
-  const [status, statusSeit] = d.verlauf[d.verlauf.length - 1];
+function demoAnmeldung(projektId: ID, d: DemoAnmeldung, bearbeiter: string, workflows: Workflow[]): Anmeldung {
+  const [nummer, statusSeit] = d.verlauf[d.verlauf.length - 1];
+  const statusId = STATUS_AUS_NUMMER[nummer];
+  const aenderung = statusVon(workflows, statusId).status.art === 'aenderung';
   const ganzesJahr = d.fahrplanjahr !== undefined;
   const bauVon = ganzesJahr ? fahrplanjahrBeginn(d.fahrplanjahr!) : (d.bauVon ?? null);
   return {
@@ -120,19 +134,19 @@ function demoAnmeldung(projektId: ID, d: DemoAnmeldung, bearbeiter: string): Anm
     projektId,
     anmeldeId: d.anmeldeId,
     art: d.art,
-    status,
+    statusId,
     statusSeit,
     bauVon,
     bauBis: ganzesJahr ? fahrplanjahrEnde(d.fahrplanjahr!) : (d.bauBis ?? null),
     fahrplanjahr: ganzesJahr ? d.fahrplanjahr! : fahrplanjahrVon(bauVon),
     bfStrecke: d.bfStrecke,
     gewerk: d.gewerk,
-    aenderungsNr: statusDef(status).art === 'aenderung' ? (d.aenderungsNr ?? '') : '',
-    annexVII: statusDef(status).art === 'aenderung' ? (d.annexVII ?? null) : null,
+    aenderungsNr: aenderung ? (d.aenderungsNr ?? '') : '',
+    annexVII: aenderung ? (d.annexVII ?? null) : null,
     terminManuell: null,
     bemerkung: d.bemerkung ?? '',
     herkunftId: null,
-    verlauf: verlaufAus(d.verlauf, bearbeiter),
+    verlauf: verlaufAus(d.verlauf, bearbeiter, workflows),
   };
 }
 
@@ -141,6 +155,7 @@ export function seedDaten(): BaubetriebDaten {
   const tag = (n: number) => addDays(heute, n);
   const jahr = new Date().getFullYear();
   const einstellungen = standardEinstellungen();
+  const workflows = standardWorkflows();
   const wer = 'M. Muster';
 
   const projekt = (p: Omit<Projekt, 'id' | 'markiert' | 'status'> & Partial<Projekt>): Projekt => ({
@@ -212,6 +227,7 @@ export function seedDaten(): BaubetriebDaten {
         gewerk: 'Totalsperrung Einhub Überbau',
       },
       wer,
+      workflows,
     ),
     demoAnmeldung(
       alb.id,
@@ -228,6 +244,7 @@ export function seedDaten(): BaubetriebDaten {
         bemerkung: 'Sammeleintrag – wird im Vorprozess in Einzelanmeldungen aufgeteilt.',
       },
       wer,
+      workflows,
     ),
     demoAnmeldung(
       alb.id,
@@ -247,6 +264,7 @@ export function seedDaten(): BaubetriebDaten {
         gewerk: 'Vorarbeiten Kabeltrog',
       },
       wer,
+      workflows,
     ),
     demoAnmeldung(
       durmersheim.id,
@@ -260,6 +278,7 @@ export function seedDaten(): BaubetriebDaten {
         gewerk: 'Weichenprüfung nach IBN-Vorbereitung',
       },
       wer,
+      workflows,
     ),
     demoAnmeldung(
       durmersheim.id,
@@ -283,6 +302,7 @@ export function seedDaten(): BaubetriebDaten {
         bemerkung: 'Verschiebung um eine Woche wegen Lieferverzug Signalausleger.',
       },
       wer,
+      workflows,
     ),
     demoAnmeldung(
       durmersheim.id,
@@ -303,6 +323,7 @@ export function seedDaten(): BaubetriebDaten {
         gewerk: 'IBN ESTW, Totalsperrung',
       },
       wer,
+      workflows,
     ),
     demoAnmeldung(
       durmersheim.id,
@@ -321,6 +342,7 @@ export function seedDaten(): BaubetriebDaten {
         bemerkung: 'Abgelehnt – Kollision mit Sperrpause Nachbarmaßnahme.',
       },
       wer,
+      workflows,
     ),
     demoAnmeldung(
       durlach.id,
@@ -333,8 +355,9 @@ export function seedDaten(): BaubetriebDaten {
         gewerk: 'Kabeltiefbau, Querungen',
       },
       wer,
+      workflows,
     ),
   ];
 
-  return { version: DATEN_VERSION, einstellungen, projekte: [alb, durmersheim, durlach], anmeldungen };
+  return { version: DATEN_VERSION, einstellungen, workflows, projekte: [alb, durmersheim, durlach], anmeldungen };
 }
