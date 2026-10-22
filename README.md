@@ -6,8 +6,8 @@ KaPlan gliedert sich in zwei getrennte Bereiche, zwischen denen der Startbildsch
   Planpakete/Pläne/Planverzeichnisse und die Prozessketten, die diese durchlaufen – mit
   Soll-/Ist-Terminen, Fristenüberwachung und vorbereiteten Erinnerungs-E-Mails.
 * **Baubetriebsplanung** (erster Entwurf) – Monitor für baubetriebliche Anmeldungen von
-  Sperrpausen: Projekthüllen mit ihren Anmeldungen, die einen festen Status-Workflow durch SKM,
-  PzE, Vorprozess N-x und unterjährige Anmeldung durchlaufen – mit Terminfristen laut Richtlinie,
+  Sperrpausen: Projekte mit ihren Anmeldungen, die anpassbare Workflows je Phase durchlaufen –
+  SKM, PzE, Vorprozess N-x und unterjährige Anmeldung – mit Terminfristen laut Richtlinie,
   Nachhak-Terminen und dem Anmeldebedarf je Fahrplanjahr.
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
@@ -450,71 +450,90 @@ Erster Entwurf nach dem Lastenheft „Laufender Baubetrieb – Ideensammler für
 der Anwender. Offene fachliche Fragen und die Annahmen des Entwurfs stehen in
 [`docs/BAUBETRIEB_RUECKFRAGEN.md`](docs/BAUBETRIEB_RUECKFRAGEN.md).
 
-### Projekthülle
-Wird bei der MIC-Beauftragung angelegt: Bezeichnung, Projektleiter, DB-G-Nummer, erster
-Anmeldetermin (ca.-Wert) samt Prozessphase, geplante Bauzeit von/bis, Inbetriebnahme,
-Hauptbearbeiter MIC, MIC-Projektnummer (wiko), Status der Betreuung (Aktiv, Betreuungspause,
-Abgeschlossen) und Bemerkung. Aus Prozessphase und Bauzeit schlägt der Dialog den ersten
-Anmeldetermin laut Richtlinie vor, aus der Inbetriebnahme das Ende der Bauzeit (+ 4 Wochen).
-Mit ★ markierte Projekthüllen erscheinen in Übersicht und Seitenleiste.
+### Projekt
+Im Lastenheft „Projekthülle“; wird bei der MIC-Beauftragung angelegt: Bezeichnung, Projektleiter,
+DB-G-Nummer, erster Anmeldetermin (ca.-Wert) samt Prozessphase, geplante Bauzeit von/bis,
+Inbetriebnahme, Hauptbearbeiter MIC, MIC-Projektnummer (wiko), Status der Betreuung (Aktiv,
+Betreuungspause, Abgeschlossen) und Bemerkung. Aus Prozessphase und Bauzeit schlägt der Dialog den
+ersten Anmeldetermin laut Richtlinie vor, aus der Inbetriebnahme das Ende der Bauzeit (+ 4 Wochen).
+Mit ★ markierte Projekte erscheinen in Übersicht und Seitenleiste.
 
-**Anmeldebedarf je Fahrplanjahr:** Für jedes Fahrplanjahr der Bauzeit stellt die Projekthülle die
+**Anmeldebedarf je Fahrplanjahr:** Für jedes Fahrplanjahr der Bauzeit stellt das Projekt die
 Fristen für SKM, PzE, Vorprozess N-2 und N-1 dar und zeigt, ob dafür schon ein Eintrag besteht
 (ein Eintrag einer späteren Phase deckt frühere ab). Fristen, die mehr als einen Monat vor dem
-ersten Anmeldetermin liegen, gelten als „vor Betreuung“. Offene Fristen lassen sich direkt mit **Anlegen** als Entwurf übernehmen;
-was in die Vorschau fällt (Vorgabe 180 Tage), erscheint auch in Übersicht und Terminen. So lässt
-sich nach längeren Betreuungspausen ablesen, ob eine Anmeldung zum nächsten SKM, PzE oder N-x
-fällig ist.
+ersten Anmeldetermin liegen, gelten als „vor Betreuung“. Offene Fristen lassen sich direkt mit
+**Anlegen** übernehmen – im Workflow, der die passende Anmeldungs-Art führt; was in die Vorschau
+fällt (Vorgabe 180 Tage), erscheint auch in Übersicht und Terminen. So lässt sich nach längeren
+Betreuungspausen ablesen, ob eine Anmeldung zum nächsten SKM, PzE oder N-x fällig ist.
 
 ### Anmeldung
-Je Anmeldung eine Zeile in der Projekthülle: Anmelde-ID (in SKM und PzE Begriff bzw. tVE-Nr, weil
-es dort noch keine Anmeldungen gibt), Anmeldungs-Art (SKM, PzE, A_Vor_N-2, A_Vor_N-1,
-A_unterjahr, B(0), B(S), B, C, Container), Status, Bauzeitraum (in SKM und PzE das ganze
-Fahrplanjahr, sonst tagesscharf), Terminfrist, Bf/Strecke, Gewerk/Tätigkeit, Bemerkungen.
-ÄAbst-Nr und AnnexVII-Kennzeichen sind nur während einer laufenden Änderungsabstimmung (X6, Y7)
+Je Anmeldung eine Zeile im Projekt: Anmelde-ID (in Workflows mit ganzem Fahrplanjahr Begriff bzw.
+tVE-Nr, weil es in SKM und PzE noch keine Anmeldungen gibt), Anmeldungs-Art (SKM, PzE, A_Vor_N-2,
+A_Vor_N-1, A_unterjahr, B(0), B(S), B, C, Container), Workflow und Status, Bauzeitraum (ganzes
+Fahrplanjahr oder tagesscharf – je nach Workflow), Terminfrist, Bf/Strecke, Gewerk/Tätigkeit,
+Bemerkungen. ÄAbst-Nr und AnnexVII-Kennzeichen sind nur in Status der Art „Änderungsabstimmung“
 aktiv; endet sie, werden beide im Statusverlauf festgehalten und in der Anmeldung geleert.
 
-### Status-Workflow
-Der Workflow (`domain/workflow.ts`) folgt der Tabelle des Lastenhefts: V0–V4 (SKM), W0–W4
-(PzE), X0–X8 (Vorprozess N-x), Y0–Y9 (unterjährig) und Z0 (Anmeldeleiche). Neu angelegt wird nur
-in Entwurf_SKM, Entwurf_PzE, Entwurf_Vorprozess oder Entwurf; danach stehen in der Liste
-(„Status ändern …“) und in der Anmeldung **nur die möglichen Nachfolger** zur Wahl.
+Die Seite einer Anmeldung ist wie ein Planlauf aufgebaut: der Weg durch die Workflows, darunter
+die Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit Haken und Datum, der
+aktuelle mit Terminfrist, Ampel und den möglichen Nachfolgern („Weiter mit“, „Übernahme in neue
+Phase“, „Erledigt sich“). Darunter Merkmale und Statusverlauf.
 
-* **Übernahme in eine neue Phase** (z. B. V3 → W0, W3 → X0, X5 → Y4): Anmeldungs-Art,
-  Anmelde-ID und Bauzeitraum werden neu erfasst. Der Eintrag lässt sich dabei auf mehrere
-  Anmeldungen **aufteilen** – die weiteren verweisen auf ihn als Herkunft.
-* **Anmeldeleiche (Z0)**: Der Eintrag wird nach Rückfrage samt Verlauf gelöscht.
-* **Statusverlauf**: Jeder Wechsel mit Datum (frei wählbar), Bearbeitung und Bemerkung; der
-  letzte Wechsel lässt sich **zurücknehmen** (der vorherige Stand samt Art, ID und Bauzeitraum
-  kehrt zurück).
-* Die Seite **Workflow** zeigt alle Status mit Terminfrist, Nachfolgern und der Zahl der
-  Anmeldungen je Status.
+### Workflows
+Wie im Planlaufmanagement sind die Workflows **anpassbar**. Mitgeliefert wird je Phase ein
+Standard-Workflow nach der Statustabelle des Lastenhefts: **SKM**, **PzE**, **Vorprozess N-x**
+und **Unterjährige Anmeldung**. Die Statusnummern des Lastenhefts (V0 … Y9) dienten nur der
+Veranschaulichung; die Status tragen lesbare Namen („Entwurf“, „Mitwirkung BBK“, „Angemeldet
+(fristgerecht)“ …) und erscheinen mit ihrem Workflow, z. B. „PzE · Angemeldet“.
+
+* Die Seite **Workflows** listet alle Workflows mit **Öffnen**, **Duplizieren** und – bei eigenen
+  Workflows ohne Anmeldungen – **Löschen**; **Neuer Workflow** legt einen weiteren an.
+* Im **Editor** stehen Name, Kurzbezeichnung, Beschreibung, Bauzeitraum (ganzes Fahrplanjahr oder
+  tagesscharf) und die zulässigen Anmeldungs-Arten; darunter je Status eine Karte mit
+  Bezeichnung, Art (Entwurf, In Abstimmung, Angemeldet, Angemeldet (verspätet), Genehmigt,
+  Abgelehnt, Änderungsabstimmung), Terminfrist, „Termin dient zum Nachhaken“, Bemerkung und
+  **Nachfolgern**. Status lassen sich verschieben, ergänzen und entfernen; der erste ist der
+  **Startstatus**. Ein Status, in dem noch Anmeldungen stehen, kann nicht entfallen.
+* **Nachfolger** sind Status desselben Workflows, Status eines anderen Workflows (**Übernahme in
+  eine neue Phase**) oder die **Anmeldeleiche** (Eintrag löschen). Beim Statuswechsel stehen nur
+  sie zur Wahl – in der Liste („Status ändern …“) und auf der Seite der Anmeldung.
+* **Neu angelegt** wird immer im ersten Status eines Workflows.
+* **Übernahme in eine neue Phase:** Anmeldungs-Art, Anmelde-ID und Bauzeitraum werden neu
+  erfasst. Der Eintrag lässt sich dabei auf mehrere Anmeldungen **aufteilen** – die weiteren
+  verweisen auf ihn als Herkunft.
+* **Statusverlauf:** Jeder Wechsel mit Datum (frei wählbar), Bearbeitung und Bemerkung; der Text
+  des Status wird zum Zeitpunkt des Wechsels festgehalten. Der letzte Wechsel lässt sich
+  **zurücknehmen** (der vorherige Stand samt Art, ID und Bauzeitraum kehrt zurück), solange es
+  den früheren Status noch gibt.
 
 ### Terminfristen und Nachhaken
-Jeder Status trägt eine Fristregel: **Ril_…** (Frist laut Richtlinie, ggf. „− 14 Tage“ bzw.
-„− 2 Tage“), **„Nächster 1.8.“ / „Nächster 31.7.“** (ab dem Statuswechsel) oder **Nachhak-Termin**
-(Tage nach dem Statuswechsel, Vorgabe 21). Die Richtlinienfristen werden unter **Einstellungen**
-gepflegt – je Frist als Stichtag TT.MM. im Jahr N − k des Fahrplanjahres oder als Wochen vor
-Baubeginn. **Die vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis sie
-geändert oder als „Geprüft“ bestätigt werden. Ril_Nx richtet sich nach der Art (N-2/N-1), Ril_X
-nach der Maßnahme. Das Fahrplanjahr N reicht vom Sonntag nach dem zweiten Samstag im Dezember
-N−1 bis zum zweiten Samstag im Dezember N.
+Jeder Status trägt eine Terminfrist: **Frist laut Richtlinie** (Ril_skm, Ril_pze, Ril_N-2, Ril_Nx,
+Ril_A oder Ril_X, ggf. abzüglich einiger Tage – etwa „Ril_X − 14 Tage“), **nächster Stichtag**
+(„Nächster 1.8.“ ab dem Statuswechsel), **Nachhak-Termin** (Tage nach dem Statuswechsel, je Status
+einstellbar) oder **keine**. Die Richtlinienfristen werden unter **Einstellungen** gepflegt – je
+Frist als Stichtag TT.MM. im Jahr N − k des Fahrplanjahres oder als Wochen vor Baubeginn. **Die
+vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis sie geändert oder als
+„Geprüft“ bestätigt werden. Ril_Nx richtet sich nach der Art (N-2/N-1), Ril_X nach der Maßnahme.
+Das Fahrplanjahr N reicht vom Sonntag nach dem zweiten Samstag im Dezember N−1 bis zum zweiten
+Samstag im Dezember N.
 
 Die Ampel zeigt *Überfällig*, *Fällig* (Vorgabe 14 Tage vorher) und *Im Plan*; Status „zum
 Nachhaken“ sind eigens gekennzeichnet. **Nachgehakt …** hält das Nachhaken mit Notiz und neuem
 Termin fest, **Termin festlegen …** setzt die Frist im aktuellen Status von Hand.
 
 ### Ansichten
-**Übersicht** (Kennzahlen, anstehende Terminfristen, Anmeldebedarf, Projekthüllen nach Phasen),
-**Termine & Nachhaken** (alle Fristen nach Projekthüllen, Filter Überfällig/Fällig/Im Plan/Zum
-Nachhaken), **Projekthüllen**, **Workflow**, **Einstellungen**. **Excel** in der Projekthülle
-lädt Anmeldungen und Projekthülle als Arbeitsmappe herunter.
+**Übersicht** (Kennzahlen, anstehende Terminfristen, Anmeldebedarf, Projekte mit ihren
+Anmeldungen je Workflow), **Termine & Nachhaken** (alle Fristen nach Projekten, Filter
+Überfällig/Fällig/Im Plan/Zum Nachhaken), **Projekte**, **Workflows**, **Einstellungen**.
+**Excel** im Projekt lädt Anmeldungen und Projekt als Arbeitsmappe herunter.
 
 ### Daten
 Eigener Schlüssel `baubetrieb-planung.data.v1` im `localStorage`, eigene Demodaten,
 **Sicherung**/**Einspielen** (JSON mit dem Kennzeichen `"bereich": "baubetrieb"`; eine Sicherung
-des Planlaufmanagements wird abgewiesen) und **Zurücksetzen**. Name unter „Angemeldet als“ und
-Farbmodus gelten nur in diesem Bereich.
+des Planlaufmanagements wird abgewiesen) und **Zurücksetzen** (lädt Demodaten und
+Standard-Workflows neu). Stände der ersten Entwurfsfassung mit Statusnummern werden beim Laden
+übernommen: Die Nummern werden den Status der Standard-Workflows zugeordnet. Name unter
+„Angemeldet als“ und Farbmodus gelten nur in diesem Bereich.
 
 ## Aufbau des Codes
 
@@ -570,15 +589,16 @@ src/
       index.tsx  Einstiegspunkt samt Datenbestand des Bereichs
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
       domain/
-        types.ts     Datenmodell (Projekthülle, Anmeldung, Phasen, Arten, AnnexVII, Richtlinienfristen)
-        workflow.ts  Status-Workflow V0–Z0 mit Nachfolgern und Fristregeln
+        types.ts     Datenmodell (Projekt, Anmeldung, Workflow mit Status, Arten, AnnexVII, Richtlinienfristen)
+        workflow.ts  Standard-Workflows je Phase, Nachschlagen von Status und Nachfolgern
+        workflowPflege.ts  Workflows speichern, duplizieren, löschen – mit Prüfung belegter Status
         fristen.ts   Fahrplanjahr, Terminfrist je Status, Ampel, Anmeldebedarf
         ablauf.ts    Statuswechsel, Übernahme mit Aufteilung, Rücknahme
         export.ts    Excel-Ausgabe des Monitors
         seed.ts      Platzhalter der Richtlinienfristen und Demodaten
       store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe)
       lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
-      pages/         Übersicht, Termine, Projekthüllen, Projekthülle, Anmeldung, Workflow, Einstellungen
+      pages/         Übersicht, Termine, Projekte, Projekt, Anmeldung, Workflows (mit Editor), Einstellungen
       components/    Status- und Fristanzeigen, Dialoge (Anmeldung, Statuswechsel, Nachhaken), Sicherung
 ```
 

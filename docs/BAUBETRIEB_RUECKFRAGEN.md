@@ -6,7 +6,9 @@ trifft dort, wo es offen ist, Annahmen. Jede Frage nennt deshalb unter **Entwurf
 Stand – eine kurze Bestätigung („passt“) genügt, wo die Annahme stimmt.
 
 Die Fragen sind nach Themen gegliedert; die mit ★ markierten bestimmen das Verhalten am stärksten
-und sollten zuerst geklärt werden.
+und sollten zuerst geklärt werden. Status werden – wie im Lastenheft – zur eindeutigen Zuordnung
+mit ihren Nummern genannt (V0 … Y9); in der Anwendung tragen sie nur noch lesbare Namen, etwa
+„PzE · Angemeldet“ für W2. Die „Projekthülle“ heißt in der Anwendung „Projekt“.
 
 ---
 
@@ -45,7 +47,7 @@ Schreibweise, die wir prüfen sollen?
 
 ---
 
-## B. Projekthülle
+## B. Projekt (im Lastenheft „Projekthülle“)
 
 **B1. Zusätzliche Felder** – Für Listen und Seitenleiste haben wir eine **Bezeichnung** der
 Maßnahme ergänzt. Werden weitere Angaben gebraucht, z. B. Streckennummer(n), Regionalbereich,
@@ -66,17 +68,17 @@ vorgeschlagen.
 
 **B4. Projektleiter** – Ist der Projektleiter der DB oder der von MIC gemeint?
 
-**B5. Status der Projekthülle** – Wir haben „Aktiv“, „Betreuungspause“ und „Abgeschlossen“
-ergänzt. Ist das hilfreich? Wann gilt eine Hülle als abgeschlossen (nach Bauende, nach
+**B5. Status des Projekts** – Wir haben „Aktiv“, „Betreuungspause“ und „Abgeschlossen“
+ergänzt. Ist das hilfreich? Wann gilt ein Projekt als abgeschlossen (nach Bauende, nach
 Schlussrechnung)?
 
-*Entwurf:* Der Anmeldebedarf abgeschlossener Hüllen erscheint nicht mehr in Übersicht und Terminen.
+*Entwurf:* Der Anmeldebedarf abgeschlossener Projekte erscheint nicht mehr in Übersicht und Terminen.
 
 **B6. ★ Anmeldebedarf** – „Bei längeren Betreuungspausen … nachvollziehen, ob eine Anmeldung zum
 nächsten SKM oder PzE oder N-x fällig ist“.
 
 *Entwurf:* Für jedes Fahrplanjahr der Bauzeit werden die Fristen für SKM, PzE, N-2 und N-1
-berechnet. Eine Frist gilt als **abgedeckt**, sobald die Hülle für dieses Fahrplanjahr einen
+berechnet. Eine Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen
 Eintrag in dieser oder einer späteren Phase hat. Fristen deutlich vor dem ersten Anmeldetermin
 gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne Eintrag erscheinen in der
 Übersicht.
@@ -116,8 +118,9 @@ eingleisig, Gleissperrung) oder betroffene Gleise?
 **C5. ★ ÄAbst-Nr und AnnexVII** – „nur relevant (und aktiv), wenn eine Änderungsabstimmung
 läuft“:
 
-- Welche Status sind „Änderungsabstimmung läuft“? *Entwurf:* X6 Änderung_angemeldet_Vorprozess
-  und Y7 Änderung_angestoßen.
+- Welche Status sind „Änderungsabstimmung läuft“? *Entwurf:* Status der Art
+  „Änderungsabstimmung“ – in den Standard-Workflows X6 (Vorprozess · Änderung angemeldet) und Y7
+  (Unterjahr · Änderung angestoßen); im Workflow-Editor je Status einstellbar.
 - Was geschieht mit beiden Feldern, wenn die Änderung abgeschlossen ist? *Entwurf:* Sie werden im
   Statusverlauf festgehalten und in der Anmeldung geleert, sodass die nächste Änderung leer
   beginnt.
@@ -135,14 +138,15 @@ Anmeldung im DB-System?
 
 ---
 
-## D. Status-Workflow
+## D. Status-Workflow (Inhalt der Standard-Workflows)
 
 **D1. ★ Übernahme in eine neue Phase** – Soll der Eintrag beim Wechsel in die nächste Phase
 (z. B. V3 → W0, W3 → X0) **fortgeführt** werden, oder entsteht eine **neue Zeile** und die alte
 bleibt mit ihrem Endstatus stehen?
 
-*Entwurf:* Der Eintrag wird fortgeführt; Art, ID und Bauzeitraum werden neu erfasst, der frühere
-Stand bleibt im Statusverlauf sichtbar.
+*Entwurf:* Je Phase ein Workflow; die Übernahme ist ein Nachfolger in einem anderen Workflow. Der
+Eintrag wird fortgeführt; Art, ID und Bauzeitraum werden neu erfasst, der frühere Stand bleibt im
+Statusverlauf sichtbar.
 
 **D2. ★ Aufteilen** – „In SKM und PzE gibt es keine Anmeldungen. Daher hier sinnvoll mit
 Begriffen/tVE-Nr zusammenfassen.“ Wird ein solcher Sammeleintrag beim Übergang in den Vorprozess
@@ -180,15 +184,17 @@ Genehmigt zurück?
 **D8. X6 „Änderung_angemeldet“ vs. Y7 „Änderung_angestoßen“** – Ist der Unterschied in der
 Benennung fachlich gewollt?
 
-**D9. Nummern ohne „1“** – In jeder Phase fehlt die Ziffer 1 (V1, W1, X1, Y1), in Y außerdem
-nichts zwischen Y0 und Y2. Ist dort ein Status vorgesehen (z. B. „in Bearbeitung“)?
+**D9. Fehlende Status** – Im Lastenheft fehlt in jeder Phase die Ziffer 1 (V1, W1, X1, Y1). War dort
+ein Status vorgesehen (z. B. „in Bearbeitung“)?
+
+*Entwurf:* Nicht vorhanden; im Workflow-Editor lässt sich ein solcher Status ergänzen.
 
 **D10. ★ Ende einer Anmeldung** – Wann ist eine Anmeldung erledigt? Es gibt keinen Status
 „Durchgeführt“ oder „Abgeschlossen“ nach der Sperrpause. Sollen Anmeldungen nach dem Bauzeitraum
 automatisch ausgeblendet oder archiviert werden?
 
 **D11. Anmeldeleichen** – „werden komplett gelöscht“. Soll wirklich nichts übrig bleiben, oder
-zumindest ein Vermerk in der Projekthülle (wer, wann, warum)?
+zumindest ein Vermerk im Projekt (wer, wann, warum)?
 
 *Entwurf:* Rückfrage, dann vollständiges Löschen samt Verlauf.
 
@@ -238,8 +244,9 @@ und PzE (31.7.)?
 **E4. ★ „Nachhak-Termin!?“** (X4, X6, Y4, Y5, Y7) – Welcher Abstand ist sinnvoll? Für alle Status
 gleich oder je Status verschieden? Ab Statuswechsel oder abhängig vom Baubeginn?
 
-*Entwurf:* Einheitlich 21 Tage nach dem Statuswechsel (einstellbar); jeder Termin lässt sich je
-Anmeldung von Hand setzen, „Nachgehakt …“ hält das Nachhaken mit Notiz und neuem Termin fest.
+*Entwurf:* In den Standard-Workflows 21 Tage nach dem Statuswechsel; der Abstand ist im
+Workflow-Editor je Status einstellbar. Jeder Termin lässt sich je Anmeldung von Hand setzen,
+„Nachgehakt …“ hält das Nachhaken mit Notiz und neuem Termin fest.
 
 **E5. Fristen in „Genehmigt“-Status** – V3 (Ril_pze), W3 (Ril_N-2), X5 (Ril_A): Wir verstehen
 diese Frist als „bis dahin muss die Übernahme in die nächste Phase erfolgt sein“. Richtig?
@@ -267,17 +274,17 @@ Vertretung)? Brauchen mehrere Personen denselben Datenbestand?
 *Hinweis:* Wie im Planlaufmanagement liegen die Daten derzeit lokal im Browser; ein gemeinsamer
 Bestand setzt eine Datenbank voraus.
 
-**F2. Sicht „Meine Projekthüllen“** – Soll nach Hauptbearbeiter gefiltert werden können?
+**F2. Sicht „Meine Projekte“** – Soll nach Hauptbearbeiter gefiltert werden können?
 
 *Entwurf:* Markieren mit ★ wie im Planlaufmanagement.
 
 **F3. E-Mail-Erinnerungen** – Sollen wie im Planlaufmanagement vorbereitete E-Mails erzeugt
 werden (z. B. Nachhaken bei BBK oder DB-Projektleitung)? An wen, mit welchem Inhalt?
 
-**F4. Berichte** – Welche Ausgaben werden gebraucht (Liste je Projekthülle, Gesamtliste aller
+**F4. Berichte** – Welche Ausgaben werden gebraucht (Liste je Projekt, Gesamtliste aller
 Anmeldungen, Monatsbericht an den Auftraggeber, PDF)?
 
-*Entwurf:* Excel je Projekthülle mit den Blättern „Anmeldungen“ und „Projekthüllen“.
+*Entwurf:* Excel je Projekt mit den Blättern „Anmeldungen“ und „Projekte“.
 
 **F5. Import** – Gibt es bestehende Listen (Excel), die übernommen werden sollen? Wenn ja, bitte
 ein Beispiel mit den Spaltenüberschriften.
@@ -286,6 +293,33 @@ ein Beispiel mit den Spaltenüberschriften.
 Strecke, um Überschneidungen zu erkennen? Soll die Anwendung vor Überschneidungen warnen?
 
 **F7. Verbindung zum Planlaufmanagement** – Betreffen beide Bereiche oft dieselben Projekte?
-Soll eine Projekthülle mit einem Projekt des Planlaufmanagements verknüpft werden können?
+Soll ein Projekt der Baubetriebsplanung mit einem Projekt des Planlaufmanagements verknüpft werden
+können?
 
 *Entwurf:* Beide Bereiche sind vollständig getrennt.
+
+---
+
+## G. Anpassbare Workflows
+
+Die Workflows lassen sich – wie im Planlaufmanagement – unter „Workflows“ bearbeiten: Status
+umbenennen, ergänzen, verschieben, entfernen, Terminfristen und Nachfolger ändern, Workflows
+duplizieren und neu anlegen.
+
+**G1. ★ Namen der Status** – Die Status tragen statt der Nummern lesbare Namen: Entwurf,
+Mitwirkung BBK, Zugestimmt, Angemeldet (fristgerecht), Angemeldet (verspätet), Genehmigt,
+Änderung angemeldet bzw. angestoßen, Änderung abgelehnt, Abgelehnt. Passen diese Bezeichnungen,
+oder sind andere üblich?
+
+**G2. Wer pflegt die Workflows?** – Sollen alle Bearbeiter die Workflows ändern dürfen, oder nur
+eine verantwortliche Person? Änderungen wirken sofort auf alle Anmeldungen in einem Workflow.
+
+**G3. Projektvarianten** – Im Planlaufmanagement gibt es je Projekt abweichende Workflows. Wird
+das hier auch gebraucht (z. B. Projekte, die ohne SKM und PzE direkt im Vorprozess beginnen)?
+
+*Entwurf:* Alle Workflows gelten projektübergreifend; neu angelegt wird in einem beliebigen
+Workflow, also auch direkt im Vorprozess oder unterjährig.
+
+**G4. Weitere Workflows** – Gibt es Abläufe, die nicht in die vier Phasen passen (z. B.
+kurzfristige Anmeldungen, Störungsbeseitigung, reine Containerstellungen), und sollen sie eigene
+Workflows erhalten?
