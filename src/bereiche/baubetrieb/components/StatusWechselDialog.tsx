@@ -2,7 +2,7 @@
  * Statuswechsel einer Anmeldung auf einen der möglichen Nachfolger.
  *
  * Führt der Wechsel in einen anderen Workflow (eine neue Phase), wird die
- * Anmeldung dorthin übernommen: Anmeldungs-Art, Anmelde-ID und Bauzeitraum
+ * Anmeldung dorthin übernommen: Maßnahmenart, Anmelde-ID und Sperrzeitraum
  * werden neu erfasst, und der Eintrag lässt sich auf mehrere Anmeldungen
  * aufteilen – in SKM und PzE stehen ja nur Sammeleinträge. Die Anmeldeleiche
  * löscht den Eintrag.
@@ -110,7 +110,7 @@ export function StatusWechselDialog({
       return;
     }
     if (uebernahme && !ganzesJahr && zeilen.some((z) => z.bauVon && z.bauBis && z.bauBis < z.bauVon)) {
-      toast('Das Ende eines Bauzeitraums liegt vor dem Beginn.');
+      toast('Das Ende eines Sperrzeitraums liegt vor dem Beginn.');
       return;
     }
     const [erste, ...weitere] = zeilen;
@@ -183,9 +183,9 @@ export function StatusWechselDialog({
           {uebernahme ? (
             <Callout>
               Die Anmeldung wechselt vom Workflow {von.workflow.name} in den Workflow {ziel.workflow.name}. Art,
-              Anmelde-ID und Bauzeitraum gelten ab jetzt für die neue Phase; der bisherige Stand bleibt im Verlauf
+              Anmelde-ID und Sperrzeitraum gelten ab jetzt für die neue Phase; der bisherige Stand bleibt im Verlauf
               erhalten.
-              {ganzesJahr ? '' : ' Der Bauzeitraum ist ab hier tagesscharf.'}
+              {ganzesJahr ? '' : ' Der Sperrzeitraum ist ab hier tagesscharf.'}
             </Callout>
           ) : null}
           {nach === anmeldung.statusId ? (
@@ -200,7 +200,7 @@ export function StatusWechselDialog({
               <TextInput type="date" value={datum} onChange={setDatum} />
             </Field>
             {uebernahme ? (
-              <Field label="Anmeldungs-Art">
+              <Field label="Maßnahmenart">
                 {arten.length === 1 ? (
                   <TextInput value={arten[0]} onChange={() => undefined} disabled />
                 ) : (
@@ -261,8 +261,8 @@ export function StatusWechselDialog({
                     <tr>
                       <th>{ganzesJahr ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}</th>
                       <th>Bf/Strecke</th>
-                      {ganzesJahr ? <th>Fahrplanjahr</th> : <th>Bau von</th>}
-                      {ganzesJahr ? null : <th>Bau bis</th>}
+                      {ganzesJahr ? <th>Fahrplanjahr</th> : <th>Sperrzeit von</th>}
+                      {ganzesJahr ? null : <th>Sperrzeit bis</th>}
                       <th className="actions" />
                     </tr>
                   </thead>
@@ -300,7 +300,7 @@ export function StatusWechselDialog({
                                 type="date"
                                 value={z.bauVon}
                                 onChange={(v) => zeileSetzen(i, { bauVon: v })}
-                                aria-label="Bau von"
+                                aria-label="Sperrzeit von"
                               />
                             </td>
                             <td>
@@ -308,7 +308,7 @@ export function StatusWechselDialog({
                                 type="date"
                                 value={z.bauBis}
                                 onChange={(v) => zeileSetzen(i, { bauBis: v })}
-                                aria-label="Bau bis"
+                                aria-label="Sperrzeit bis"
                               />
                             </td>
                           </>

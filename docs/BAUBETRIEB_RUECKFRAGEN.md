@@ -8,7 +8,9 @@ Stand – eine kurze Bestätigung („passt“) genügt, wo die Annahme stimmt.
 Die Fragen sind nach Themen gegliedert; die mit ★ markierten bestimmen das Verhalten am stärksten
 und sollten zuerst geklärt werden. Status werden – wie im Lastenheft – zur eindeutigen Zuordnung
 mit ihren Nummern genannt (V0 … Y9); in der Anwendung tragen sie nur noch lesbare Namen, etwa
-„PzE · Angemeldet“ für W2. Die „Projekthülle“ heißt in der Anwendung „Projekt“.
+„PzE · Angemeldet“ für W2. Begriffe der Anwendung: Die „Projekthülle“ heißt „Projekt“, „Bauzeit“
+bzw. „Bauzeitraum“ heißen „Sperrzeit“ bzw. „Sperrzeitraum“, die „Anmeldungs-Art“ heißt
+„Maßnahmenart“.
 
 ---
 
@@ -18,7 +20,7 @@ mit ihren Nummern genannt (V0 … Y9); in der Anwendung tragen sie nur noch lesb
 Phasen fachlich (wer meldet bei wem, was ist das Ergebnis)?
 
 *Entwurf:* Beide Phasen werden als „noch keine Anmeldung“ behandelt – Sammeleintrag nach Begriff
-bzw. tVE-Nr, Bauzeitraum ein ganzes Fahrplanjahr.
+bzw. tVE-Nr, Sperrzeitraum ein ganzes Fahrplanjahr.
 
 **A2. tVE-Nr** – Was bezeichnet die tVE-Nr, wie ist sie aufgebaut, und hat ein SKM-/PzE-Eintrag
 genau eine oder mehrere tVE-Nr?
@@ -33,9 +35,10 @@ Anwendung dabei etwas tun (Hinweis anzeigen, Aufgabe anlegen, Feld erfassen)?
 
 *Entwurf:* Der Text steht nur als Hinweis am Status.
 
-**A5. Anmeldungs-Arten** – Die Tabelle im Lastenheft ist zweispaltig. Wir lesen sie als zehn
-Arten: SKM, PzE, A_Vor_N-2, A_Vor_N-1, A_unterjahr, B(0), B(S), B, C, Container. Stimmt das?
-Was unterscheidet B(0), B(S) und B, und was ist eine „Container“-Anmeldung?
+**A5. Anmeldungs-Arten (in der Anwendung „Maßnahmenart“)** – Die Tabelle im Lastenheft ist
+zweispaltig. Wir lesen sie als zehn Arten: SKM, PzE, A_Vor_N-2, A_Vor_N-1, A_unterjahr, B(0),
+B(S), B, C, Container. Stimmt das? Was unterscheidet B(0), B(S) und B, und was ist eine
+„Container“-Anmeldung?
 
 *Entwurf:* Zuordnung zu den Phasen – SKM → SKM, PzE → PzE, A_Vor_N-2/N-1 → Vorprozess, alle
 übrigen → unterjährige Anmeldung.
@@ -54,17 +57,22 @@ Maßnahme ergänzt. Werden weitere Angaben gebraucht, z. B. Streckennummer(n), R
 Auftraggeber/Ansprechpartner DB, Vertretung des Hauptbearbeiters?
 
 **B2. ★ Erster Anmeldetermin** – „je nach Prozessphase lt. Richtlinie, ca-Wert“: Wird der Termin
-von Hand eingetragen oder soll er sich aus Bauzeit und Prozessphase ergeben? Welche Prozessphase
+von Hand eingetragen oder soll er sich aus Sperrzeit und Prozessphase ergeben? Welche Prozessphase
 ist gemeint – die, in der MIC in das Projekt einsteigt?
 
 *Entwurf:* Feld „Prozessphase des ersten Anmeldetermins“ (SKM, PzE, N-2, N-1, unterjährig) und
 ein Vorschlag laut Richtlinie, der übernommen werden kann, aber nicht muss.
 
-**B3. Bauzeit-Ende** – „Ende = i. d. R. Inbetriebnahme + 4 Wochen“: Gilt das immer? Soll die
+**B3. Ende der Sperrzeit** – „Ende = i. d. R. Inbetriebnahme + 4 Wochen“: Gilt das immer? Soll die
 Inbetriebnahme als eigenes Feld geführt werden?
 
 *Entwurf:* Optionales Feld Inbetriebnahme; das Ende wird auf Knopfdruck mit IBN + 4 Wochen
 vorgeschlagen.
+
+**B3a. ★ Geplante Sperrzeit oder Bauzeit?** – Im Lastenheft heißt das Feld „geplante Bauzeit“ (Ende
+= Inbetriebnahme + 4 Wochen); in der Anwendung heißt es jetzt „geplante Sperrzeit“. Ist damit der
+gesamte Bauzeitraum der Maßnahme gemeint oder nur der Zeitraum, in dem gesperrt wird? Aus diesem
+Zeitraum berechnet die Anwendung die Fahrplanjahre für den Anmeldebedarf.
 
 **B4. Projektleiter** – Ist der Projektleiter der DB oder der von MIC gemeint?
 
@@ -77,7 +85,7 @@ Schlussrechnung)?
 **B6. ★ Anmeldebedarf** – „Bei längeren Betreuungspausen … nachvollziehen, ob eine Anmeldung zum
 nächsten SKM oder PzE oder N-x fällig ist“.
 
-*Entwurf:* Für jedes Fahrplanjahr der Bauzeit werden die Fristen für SKM, PzE, N-2 und N-1
+*Entwurf:* Für jedes Fahrplanjahr der Sperrzeit werden die Fristen für SKM, PzE, N-2 und N-1
 berechnet. Eine Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen
 Eintrag in dieser oder einer späteren Phase hat. Fristen deutlich vor dem ersten Anmeldetermin
 gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne Eintrag erscheinen in der
@@ -98,13 +106,13 @@ aufgebaut, und ändert sie sich beim Übergang Vorprozess → unterjährige Anme
 *Entwurf:* Freitext, im Entwurf darf sie fehlen; bei jeder Übernahme in eine neue Phase wird sie
 neu abgefragt (vorbelegt mit der bisherigen).
 
-**C2. ★ Bauzeitraum in SKM und PzE** – „gesamtes Fahrplanjahr“: immer genau **ein**
+**C2. ★ Sperrzeitraum in SKM und PzE** – „gesamtes Fahrplanjahr“: immer genau **ein**
 Fahrplanjahr je Eintrag? Oder kann ein Sammeleintrag mehrere Fahrplanjahre umfassen?
 
 *Entwurf:* Ein Fahrplanjahr je Eintrag; das Fahrplanjahr reicht vom Fahrplanwechsel im Dezember
 (zweiter Samstag) bis zum nächsten.
 
-**C3. ★ Bauzeitraum tagesscharf** – Reicht „von – bis“ als Datum? Oder braucht es mehrere
+**C3. ★ Sperrzeitraum tagesscharf** – Reicht „von – bis“ als Datum? Oder braucht es mehrere
 Sperrzeiträume je Anmeldung, Uhrzeiten (Nacht-/Wochenendsperrpausen), Sperrart (Totalsperrung,
 eingleisig, Gleissperrung) oder betroffene Gleise?
 
@@ -120,7 +128,7 @@ läuft“:
 
 - Welche Status sind „Änderungsabstimmung läuft“? *Entwurf:* Status der Art
   „Änderungsabstimmung“ – in den Standard-Workflows X6 (Vorprozess · Änderung angemeldet) und Y7
-  (Unterjahr · Änderung angestoßen); im Workflow-Editor je Status einstellbar.
+  (Unterjährig · Änderung angestoßen); im Workflow-Editor je Status einstellbar.
 - Was geschieht mit beiden Feldern, wenn die Änderung abgeschlossen ist? *Entwurf:* Sie werden im
   Statusverlauf festgehalten und in der Anmeldung geleert, sodass die nächste Änderung leer
   beginnt.
@@ -145,7 +153,7 @@ Anmeldung im DB-System?
 bleibt mit ihrem Endstatus stehen?
 
 *Entwurf:* Je Phase ein Workflow; die Übernahme ist ein Nachfolger in einem anderen Workflow. Der
-Eintrag wird fortgeführt; Art, ID und Bauzeitraum werden neu erfasst, der frühere Stand bleibt im
+Eintrag wird fortgeführt; Art, ID und Sperrzeitraum werden neu erfasst, der frühere Stand bleibt im
 Statusverlauf sichtbar.
 
 **D2. ★ Aufteilen** – „In SKM und PzE gibt es keine Anmeldungen. Daher hier sinnvoll mit
@@ -190,7 +198,7 @@ ein Status vorgesehen (z. B. „in Bearbeitung“)?
 *Entwurf:* Nicht vorhanden; im Workflow-Editor lässt sich ein solcher Status ergänzen.
 
 **D10. ★ Ende einer Anmeldung** – Wann ist eine Anmeldung erledigt? Es gibt keinen Status
-„Durchgeführt“ oder „Abgeschlossen“ nach der Sperrpause. Sollen Anmeldungen nach dem Bauzeitraum
+„Durchgeführt“ oder „Abgeschlossen“ nach der Sperrpause. Sollen Anmeldungen nach dem Sperrzeitraum
 automatisch ausgeblendet oder archiviert werden?
 
 **D11. Anmeldeleichen** – „werden komplett gelöscht“. Soll wirklich nichts übrig bleiben, oder
@@ -219,12 +227,12 @@ Abschnitt, Stand) nennen:
 | Ril_pze | Stichtag je Fahrplanjahr? | 31.03. im Jahr N−3 |
 | Ril_N-2 | Stichtag je Fahrplanjahr? | 31.10. im Jahr N−2 |
 | Ril_N-1 | Stichtag je Fahrplanjahr? | 30.04. im Jahr N−1 |
-| Ril_A | Wochen vor Baubeginn? | 26 Wochen |
-| Ril_B(0) | Wochen vor Baubeginn? | 20 Wochen |
-| Ril_B(S) | Wochen vor Baubeginn? | 16 Wochen |
-| Ril_B | Wochen vor Baubeginn? | 12 Wochen |
-| Ril_C | Wochen vor Baubeginn? | 6 Wochen |
-| Ril_Container | Wochen vor Baubeginn? | 4 Wochen |
+| Ril_A | Wochen vor Sperrbeginn? | 26 Wochen |
+| Ril_B(0) | Wochen vor Sperrbeginn? | 20 Wochen |
+| Ril_B(S) | Wochen vor Sperrbeginn? | 16 Wochen |
+| Ril_B | Wochen vor Sperrbeginn? | 12 Wochen |
+| Ril_C | Wochen vor Sperrbeginn? | 6 Wochen |
+| Ril_Container | Wochen vor Sperrbeginn? | 4 Wochen |
 
 Die Platzhalter sind frei gewählt und in der Anwendung als solche gekennzeichnet. Falls sich eine
 Frist anders berechnet (z. B. Monate vor dem Fahrplanwechsel, Kalenderwoche, abhängig von
@@ -242,7 +250,7 @@ und PzE (31.7.)?
 *Entwurf:* Kalendertage.
 
 **E4. ★ „Nachhak-Termin!?“** (X4, X6, Y4, Y5, Y7) – Welcher Abstand ist sinnvoll? Für alle Status
-gleich oder je Status verschieden? Ab Statuswechsel oder abhängig vom Baubeginn?
+gleich oder je Status verschieden? Ab Statuswechsel oder abhängig vom Sperrbeginn?
 
 *Entwurf:* In den Standard-Workflows 21 Tage nach dem Statuswechsel; der Abstand ist im
 Workflow-Editor je Status einstellbar. Jeder Termin lässt sich je Anmeldung von Hand setzen,

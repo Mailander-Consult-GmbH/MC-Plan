@@ -61,7 +61,7 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
       id: 'wf-skm',
       name: 'SKM',
       kurz: 'SKM',
-      beschreibung: 'Noch keine Anmeldung – Sammeleintrag nach Begriffen/tVE-Nr, Bauzeitraum ganzes Fahrplanjahr.',
+      beschreibung: 'Noch keine Anmeldung – Sammeleintrag nach Begriffen/tVE-Nr, Sperrzeitraum ganzes Fahrplanjahr.',
       herkunft: 'standard',
       bauzeitraum: 'fahrplanjahr',
       arten: ['SKM'],
@@ -79,7 +79,7 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
       id: 'wf-pze',
       name: 'PzE',
       kurz: 'PzE',
-      beschreibung: 'Noch keine Anmeldung – Sammeleintrag nach Begriffen/tVE-Nr, Bauzeitraum ganzes Fahrplanjahr.',
+      beschreibung: 'Noch keine Anmeldung – Sammeleintrag nach Begriffen/tVE-Nr, Sperrzeitraum ganzes Fahrplanjahr.',
       herkunft: 'standard',
       bauzeitraum: 'fahrplanjahr',
       arten: ['PzE'],
@@ -134,7 +134,7 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
     {
       id: 'wf-unterjahr',
       name: 'Unterjährige Anmeldung',
-      kurz: 'Unterjahr',
+      kurz: 'Unterjährig',
       beschreibung: 'Anmeldung je Maßnahme (A, B(0), B(S), B, C, Container), tagesscharf, mit Mitwirkung der BBK.',
       herkunft: 'standard',
       bauzeitraum: 'tagesscharf',
@@ -286,7 +286,7 @@ export function istAenderung(workflows: Workflow[], statusId: ID | null): boolea
   return statusInfo(workflows, statusId)?.status.art === 'aenderung';
 }
 
-/** Workflow, dessen Anmeldungs-Arten die Art enthalten – etwa für die Neuanlage aus dem Anmeldebedarf. */
+/** Workflow, dessen Maßnahmenarten die Art enthalten – etwa für die Neuanlage aus dem Anmeldebedarf. */
 export function workflowFuerArt(workflows: Workflow[], art: AnmeldungsArt): Workflow | undefined {
   return workflows.find((w) => w.status.length > 0 && w.arten.includes(art));
 }

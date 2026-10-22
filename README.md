@@ -452,27 +452,34 @@ der Anwender. Offene fachliche Fragen und die Annahmen des Entwurfs stehen in
 
 ### Projekt
 Im Lastenheft „Projekthülle“; wird bei der MIC-Beauftragung angelegt: Bezeichnung, Projektleiter,
-DB-G-Nummer, erster Anmeldetermin (ca.-Wert) samt Prozessphase, geplante Bauzeit von/bis,
+DB-G-Nummer, erster Anmeldetermin (ca.-Wert) samt Prozessphase, geplante Sperrzeit von/bis,
 Inbetriebnahme, Hauptbearbeiter MIC, MIC-Projektnummer (wiko), Status der Betreuung (Aktiv,
-Betreuungspause, Abgeschlossen) und Bemerkung. Aus Prozessphase und Bauzeit schlägt der Dialog den
-ersten Anmeldetermin laut Richtlinie vor, aus der Inbetriebnahme das Ende der Bauzeit (+ 4 Wochen).
+Betreuungspause, Abgeschlossen) und Bemerkung. Aus Prozessphase und Sperrzeit schlägt der Dialog den
+ersten Anmeldetermin laut Richtlinie vor, aus der Inbetriebnahme das Ende der Sperrzeit (+ 4 Wochen).
 Mit ★ markierte Projekte erscheinen in Übersicht und Seitenleiste.
 
-**Anmeldebedarf je Fahrplanjahr:** Für jedes Fahrplanjahr der Bauzeit stellt das Projekt die
+**Anmeldebedarf je Fahrplanjahr:** Für jedes Fahrplanjahr der Sperrzeit stellt das Projekt die
 Fristen für SKM, PzE, Vorprozess N-2 und N-1 dar und zeigt, ob dafür schon ein Eintrag besteht
 (ein Eintrag einer späteren Phase deckt frühere ab). Fristen, die mehr als einen Monat vor dem
 ersten Anmeldetermin liegen, gelten als „vor Betreuung“. Offene Fristen lassen sich direkt mit
-**Anlegen** übernehmen – im Workflow, der die passende Anmeldungs-Art führt; was in die Vorschau
+**Anlegen** übernehmen – im Workflow, der die passende Maßnahmenart führt; was in die Vorschau
 fällt (Vorgabe 180 Tage), erscheint auch in Übersicht und Terminen. So lässt sich nach längeren
 Betreuungspausen ablesen, ob eine Anmeldung zum nächsten SKM, PzE oder N-x fällig ist.
 
 ### Anmeldung
 Je Anmeldung eine Zeile im Projekt: Anmelde-ID (in Workflows mit ganzem Fahrplanjahr Begriff bzw.
-tVE-Nr, weil es in SKM und PzE noch keine Anmeldungen gibt), Anmeldungs-Art (SKM, PzE, A_Vor_N-2,
-A_Vor_N-1, A_unterjahr, B(0), B(S), B, C, Container), Workflow und Status, Bauzeitraum (ganzes
+tVE-Nr, weil es in SKM und PzE noch keine Anmeldungen gibt), Maßnahmenart (SKM, PzE, A_Vor_N-2,
+A_Vor_N-1, A_unterjahr, B(0), B(S), B, C, Container), Workflow und Status, Sperrzeitraum (ganzes
 Fahrplanjahr oder tagesscharf – je nach Workflow), Terminfrist, Bf/Strecke, Gewerk/Tätigkeit,
 Bemerkungen. ÄAbst-Nr und AnnexVII-Kennzeichen sind nur in Status der Art „Änderungsabstimmung“
 aktiv; endet sie, werden beide im Statusverlauf festgehalten und in der Anmeldung geleert.
+
+Im Projekt stehen die Anmeldungen **je Workflow in einer eigenen Tabelle** (SKM, PzE, Vorprozess
+N-x, Unterjährige Anmeldung) mit den Spalten Anmeldung, Maßnahmenart, Sperrzeitraum, Status und
+Terminfrist, dazu „Status ändern …“. Jede Anmeldung belegt höchstens zwei Textzeilen; Längeres
+wird gekürzt und steht vollständig im Tooltip. Der Status steht hier ohne den Workflow davor, weil
+die Tabelle ihn nennt. „+ Anmeldung“ im Kopf einer Tabelle legt in deren Workflow an; Workflows
+ohne Anmeldung zeigen nur ihre Kopfzeile.
 
 Die Seite einer Anmeldung ist wie ein Planlauf aufgebaut: der Weg durch die Workflows, darunter
 die Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit Haken und Datum, der
@@ -484,29 +491,30 @@ Wie im Planlaufmanagement sind die Workflows **anpassbar**. Mitgeliefert wird je
 Standard-Workflow nach der Statustabelle des Lastenhefts: **SKM**, **PzE**, **Vorprozess N-x**
 und **Unterjährige Anmeldung**. Die Statusnummern des Lastenhefts (V0 … Y9) dienten nur der
 Veranschaulichung; die Status tragen lesbare Namen („Entwurf“, „Mitwirkung BBK“, „Angemeldet
-(fristgerecht)“ …) und erscheinen mit ihrem Workflow, z. B. „PzE · Angemeldet“.
+(fristgerecht)“ …) und erscheinen außerhalb der Projekttabellen mit der Kurzbezeichnung ihres
+Workflows, z. B. „PzE · Angemeldet“ oder „Unterjährig · Entwurf“.
 
 * Die Seite **Workflows** listet alle Workflows mit **Öffnen**, **Duplizieren** und – bei eigenen
   Workflows ohne Anmeldungen – **Löschen**; **Neuer Workflow** legt einen weiteren an.
-* Im **Editor** stehen Name, Kurzbezeichnung, Beschreibung, Bauzeitraum (ganzes Fahrplanjahr oder
-  tagesscharf) und die zulässigen Anmeldungs-Arten; darunter je Status eine Karte mit
+* Im **Editor** stehen Name, Kurzbezeichnung, Beschreibung, Sperrzeitraum (ganzes Fahrplanjahr oder
+  tagesscharf) und die zulässigen Maßnahmenarten; darunter je Status eine Karte mit
   Bezeichnung, Art (Entwurf, In Abstimmung, Angemeldet, Angemeldet (verspätet), Genehmigt,
   Abgelehnt, Änderungsabstimmung), Terminfrist, „Termin dient zum Nachhaken“, Bemerkung und
   **Nachfolgern**. Status lassen sich verschieben, ergänzen und entfernen; der erste ist der
   **Startstatus**. Ein Status, in dem noch Anmeldungen stehen, kann nicht entfallen, und der
-  Bauzeitraum eines Workflows bleibt fest, solange Anmeldungen darin stehen. Eine Kopie erhält
+  Sperrzeitraum eines Workflows bleibt fest, solange Anmeldungen darin stehen. Eine Kopie erhält
   „(Kopie)“ an Name und Kurzbezeichnung.
 * **Nachfolger** sind Status desselben Workflows, Status eines anderen Workflows (**Übernahme in
   eine neue Phase**) oder die **Anmeldeleiche** (Eintrag löschen). Beim Statuswechsel stehen nur
   sie zur Wahl – in der Liste („Status ändern …“) und auf der Seite der Anmeldung.
 * **Neu angelegt** wird immer im ersten Status eines Workflows; vorbelegt ist die unterjährige
   Anmeldung.
-* **Übernahme in eine neue Phase:** Anmeldungs-Art, Anmelde-ID und Bauzeitraum werden neu
+* **Übernahme in eine neue Phase:** Maßnahmenart, Anmelde-ID und Sperrzeitraum werden neu
   erfasst. Der Eintrag lässt sich dabei auf mehrere Anmeldungen **aufteilen** – die weiteren
   verweisen auf ihn als Herkunft.
 * **Statusverlauf:** Jeder Wechsel mit Datum (frei wählbar), Bearbeitung und Bemerkung; der Text
   des Status wird zum Zeitpunkt des Wechsels festgehalten. Der letzte Wechsel lässt sich
-  **zurücknehmen** (der vorherige Stand samt Art, ID und Bauzeitraum kehrt zurück), solange es
+  **zurücknehmen** (der vorherige Stand samt Art, ID und Sperrzeitraum kehrt zurück), solange es
   den früheren Status noch gibt.
 
 ### Terminfristen und Nachhaken
@@ -514,7 +522,7 @@ Jeder Status trägt eine Terminfrist: **Frist laut Richtlinie** (Ril_skm, Ril_pz
 Ril_A oder Ril_X, ggf. abzüglich einiger Tage – etwa „Ril_X − 14 Tage“), **nächster Stichtag**
 („Nächster 1.8.“ ab dem Statuswechsel), **Nachhak-Termin** (Tage nach dem Statuswechsel, je Status
 einstellbar) oder **keine**. Die Richtlinienfristen werden unter **Einstellungen** gepflegt – je
-Frist als Stichtag TT.MM. im Jahr N − k des Fahrplanjahres oder als Wochen vor Baubeginn. **Die
+Frist als Stichtag TT.MM. im Jahr N − k des Fahrplanjahres oder als Wochen vor Sperrbeginn. **Die
 vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis sie geändert oder als
 „Geprüft“ bestätigt werden. Ril_Nx richtet sich nach der Art (N-2/N-1), Ril_X nach der Maßnahme.
 Das Fahrplanjahr N reicht vom Sonntag nach dem zweiten Samstag im Dezember N−1 bis zum zweiten
@@ -536,7 +544,8 @@ Eigener Schlüssel `baubetrieb-planung.data.v1` im `localStorage`, eigene Demoda
 des Planlaufmanagements wird abgewiesen) und **Zurücksetzen** (lädt Demodaten und
 Standard-Workflows neu). Stände der ersten Entwurfsfassung mit Statusnummern werden beim Laden
 übernommen: Die Nummern werden den Status der Standard-Workflows zugeordnet, der bisher
-eingestellte Nachhak-Abstand gilt für deren Nachhak-Termine. Name unter
+eingestellte Nachhak-Abstand gilt für deren Nachhak-Termine. Aus der Kurzbezeichnung „Unterjahr“
+wird „Unterjährig“, sofern sie nicht geändert wurde. Name unter
 „Angemeldet als“ und Farbmodus gelten nur in diesem Bereich.
 
 ## Aufbau des Codes

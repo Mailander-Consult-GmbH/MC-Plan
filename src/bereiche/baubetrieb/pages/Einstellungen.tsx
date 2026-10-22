@@ -97,7 +97,7 @@ export function Einstellungen() {
                         onChange={(v) => setze({ bezug: v as RilFrist['bezug'] })}
                         options={[
                           { value: 'stichtag', label: 'Stichtag im Fahrplanjahr' },
-                          { value: 'baubeginn', label: 'Wochen vor Baubeginn' },
+                          { value: 'baubeginn', label: 'Wochen vor Sperrbeginn' },
                         ]}
                       />
                     </td>
@@ -120,7 +120,7 @@ export function Einstellungen() {
                       ) : (
                         <span className="row" style={{ gap: 6 }}>
                           <ZahlFeld
-                            label="Wochen vor Baubeginn"
+                            label="Wochen vor Sperrbeginn"
                             wert={f.wochenVorher}
                             min={0}
                             max={260}

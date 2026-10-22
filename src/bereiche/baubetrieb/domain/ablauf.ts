@@ -1,7 +1,7 @@
 /**
  * Ablauflogik einer Anmeldung: Statuswechsel samt Übernahme in eine neue
  * Phase (einen anderen Workflow) und Aufteilung, Rücknahme des letzten
- * Wechsels und Abgleich des Bauzeitraums. Reine Funktionen – der Store ruft
+ * Wechsels und Abgleich des Sperrzeitraums. Reine Funktionen – der Store ruft
  * sie in `mutate()` auf.
  */
 import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon, ganzesFahrplanjahr } from './fristen';
@@ -20,7 +20,7 @@ import {
 } from './types';
 import { istAenderung, istUebernahme, nachfolgerVon, statusInfo, statusVon, zielText } from './workflow';
 
-/** Bauzeitraum einer übernommenen bzw. aufgeteilten Anmeldung. */
+/** Sperrzeitraum einer übernommenen bzw. aufgeteilten Anmeldung (Felder bauVon/bauBis). */
 export interface Bauzeitraum {
   bauVon: ISODate | null;
   bauBis: ISODate | null;
@@ -40,7 +40,7 @@ export interface Wechsel {
   /** Beim Eintritt in eine Änderungsabstimmung. */
   aenderungsNr?: string;
   annexVII?: AnnexVIIGrund | null;
-  /** Beim Wechsel in einen anderen Workflow: neue Art, Anmelde-ID und Bauzeitraum. */
+  /** Beim Wechsel in einen anderen Workflow: neue Maßnahmenart, Anmelde-ID und Sperrzeitraum. */
   uebernahme?: Bauzeitraum & { art: AnmeldungsArt; anmeldeId: string };
   /** Beim Wechsel in einen anderen Workflow: weitere Anmeldungen aus diesem Eintrag. */
   weitere?: Aufteilung[];
@@ -54,9 +54,9 @@ export interface WechselIds {
 }
 
 /**
- * Führt der Workflow den Bauzeitraum als ganzes Fahrplanjahr (SKM, PzE),
+ * Führt der Workflow den Sperrzeitraum als ganzes Fahrplanjahr (SKM, PzE),
  * reicht er vom Fahrplanwechsel bis zum nächsten; sonst folgt das
- * Fahrplanjahr dem Baubeginn.
+ * Fahrplanjahr dem Sperrbeginn.
  */
 export function bauzeitraumAbgleichen<T extends Bauzeitraum & { statusId: ID }>(a: T, workflows: Workflow[]): T {
   if (ganzesFahrplanjahr(statusVon(workflows, a.statusId).workflow)) {
