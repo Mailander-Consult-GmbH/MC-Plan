@@ -8,8 +8,9 @@ jeweilige Fundstelle.
 ## 1. Zweck der Anwendung
 
 **KaPlan** besteht aus den Bereichen **Planlaufmanagement** und
-**Baubetriebsplanung**; letzterer ist angelegt, aber noch ohne Inhalt. Dieses
-Inventar beschreibt das Planlaufmanagement.
+**Baubetriebsplanung**; letzterer liegt als erster Entwurf vor. Die Abschnitte
+1 bis 6 beschreiben das Planlaufmanagement, Abschnitt 7 die
+Baubetriebsplanung.
 
 Der Bereich verwaltet die Planläufe von Bauprojekten: Zu
 jedem Plan bzw. Planverzeichnis wird ein Workflow (Prozesskette) gestartet,
@@ -34,9 +35,9 @@ Die Anwendung besteht aus zwei getrennten Bereichen. Die erste Wegmarke der
 Adresse benennt den Bereich; die Shell (`src/shell/router.ts`) wählt danach
 aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
 (`src/shell/Start.tsx`: zwei hochkante Kacheln, links Planlaufmanagement,
-rechts Baubetriebsplanung mit dem Kennzeichen „In Vorbereitung“),
-`#/planlauf/…` das Planlaufmanagement, `#/baubetrieb` die noch leere
-Baubetriebsplanung. Innerhalb des Bereichs adressiert ein Hash-Router ohne
+rechts Baubetriebsplanung mit dem Kennzeichen „Erster Entwurf“ aus `marke` in
+`src/shell/bereiche.ts`), `#/planlauf/…` das Planlaufmanagement,
+`#/baubetrieb/…` die Baubetriebsplanung (Abschnitt 7). Innerhalb des Bereichs adressiert ein Hash-Router ohne
 Bibliothek (`src/bereiche/planlauf/lib/router.ts`); unbekannte Adressen führen
 auf die Übersicht. Adressen aus der Fassung ohne Bereiche (`#/dashboard`,
 `#/projekt/<id>/<reiter>` …) werden beim Aufruf auf `#/planlauf/…` umgelenkt
@@ -268,3 +269,108 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | Ein alter Stand erscheint nach einer Aktualisierung | Entweder liegt unter `app/` noch ein älterer Build (siehe Abschnitt 5, Schritt 7), oder der Service Worker liefert aus seinem Cache, derzeit `mc-plan-v5` (`public/sw.js`). Beim Aktivieren löscht er alle älteren Caches; bis dahin hilft einmal Neuladen bzw. Strg+Umschalt+R. |
 | Planliste: Haken „Pläne einzeln durch den Planlauf führen“ ist ausgegraut – „Es bestehen bereits Planläufe. Die Pläne lassen sich nur noch nachträglich einzeln weiterführen.“ bzw. „Die Pläne laufen bereits einzeln. Über „Pläne wieder bündeln …“ lassen sich ausgewählte Pläne zurückführen.“ | Kein Fehler: Sobald das Verzeichnis oder einer seiner Pläne einen Lauf hat, ist die Wahl gesperrt (`modusGesperrt` in `Plaene.tsx`). Weiter geht es über die Nachträge „Herauslösen …“, „Alle Pläne einzeln weiterführen …“ und „Pläne wieder bündeln …“ bzw. „Bündeln …“ – im Dialog der Planliste, in der Karte „Pläne dieses Verzeichnisses“ des Planlaufs und im Reiter „Planläufe“. |
 | Konsole der Wurzelseite: 404 für `/src/main.tsx` und die Symbole unter `icons/` | Kein Fehler: Die Wurzelseite ist der ausgelieferte Quellcode und springt nur nach `app/` weiter; dort gibt es diese Fehlanfragen nicht. |
+
+## 7. Bereich Baubetriebsplanung
+
+Monitor für baubetriebliche Anmeldungen von Sperrpausen, erster Entwurf nach
+dem Lastenheft der Anwender. Offene Fragen und Annahmen:
+`docs/BAUBETRIEB_RUECKFRAGEN.md`. Der Bereich greift nicht auf das
+Planlaufmanagement zu; Einstiegspunkt ist `src/bereiche/baubetrieb/index.tsx`,
+Rahmen und Seitenleiste stehen in `src/bereiche/baubetrieb/App.tsx`.
+
+### 7.1 Datenmodell und Speicherung
+
+* `src/bereiche/baubetrieb/domain/types.ts`: `Projekt` (Projekthülle),
+  `Anmeldung` mit `verlauf` (`VerlaufEintrag`: `anlage`, `wechsel`, `notiz`),
+  `Einstellungen` mit `rilFristen`. Anmeldungs-Arten je Phase in
+  `ARTEN_JE_PHASE`, AnnexVII-Gründe in `ANNEX_VII` („Entspricht Prozessphase“
+  und „Zustimmung EVU/EIU“ mit `selten`).
+* Schlüssel `baubetrieb-planung.data.v1` im `localStorage`
+  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 2`. Fassung 1
+  kannte nur den Farbmodus; `migriere()` lädt dafür die Demodaten und behält
+  den Farbmodus. Ohne gespeicherten Bestand lädt `seedDaten()`
+  (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekthüllen mit acht
+  Anmeldungen, Termine relativ zum heutigen Tag.
+* Alle Schreibzugriffe über `mutate()` in
+  `src/bereiche/baubetrieb/store/store.tsx`; Statuswechsel und Rücknahme als
+  reine Funktionen `wechselAnwenden` und `wechselZuruecknehmen` in
+  `src/bereiche/baubetrieb/domain/ablauf.ts`.
+
+### 7.2 Routen
+
+| Route | Seite | Aktionen |
+| --- | --- | --- |
+| `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`) mit „Status ändern …“ je Zeile; Karte „Anmeldebedarf aus den Projekthüllen“ (nur wenn Bedarf besteht); Karte „Projekthüllen“ mit der Zahl der Anmeldungen je Phase, überfälligen Fristen und nächster Frist. Angezeigt werden markierte Projekthüllen, ohne Markierung alle (`sichtbareProjekte`). |
+| `#/baubetrieb/termine` | Termine & Nachhaken (`src/bereiche/baubetrieb/pages/Termine.tsx`) | Alle Anmeldungen mit Terminfrist über alle Projekthüllen, gegliedert nach Projekthülle; Filter Alle / Überfällig / Fällig / Im Plan / Zum Nachhaken, Suche; je Zeile „Nachgehakt“ (bei Status zum Nachhaken) und „Status ändern …“. Darunter „Anmeldebedarf aus den Projekthüllen“. |
+| `#/baubetrieb/projekte` | Projekthüllen (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit DB-G-Nummer, MIC-Projektnummer, Bauzeit, Status der Betreuung, ★-Markierung, Zahl der Anmeldungen, überfälligen Fristen und „Nächste Anmeldung“ aus dem Anmeldebedarf; „Neue Projekthülle“ (`ProjektDialog`). |
+| `#/baubetrieb/projekt/<id>` | Projekthülle (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen); Stammdaten; Karte „Anmeldebedarf je Fahrplanjahr“; Phasenfilter, Suche, „Neue Anmeldung“; Tabelle „Baubetriebliche Anmeldungen“ mit Ampelpunkt, Anmeldung, Art, Bauzeitraum, Status, Terminfrist und „Status ändern …“. |
+| `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Phasenkette, Karte „Aktueller Status“ mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter im Workflow:“, „Übernahme in neue Phase:“, „Erledigt sich:“), „Nachgehakt …“, „Termin festlegen …“, „Letzten Wechsel zurücknehmen“; Karte „Merkmale“ (mit Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; „Bearbeiten“, „Löschen“. |
+| `#/baubetrieb/workflow` | Workflow (`src/bereiche/baubetrieb/pages/Workflow.tsx`) | Phasenkette, Startstatus, je Phase eine Tabelle mit Nr., Name, Terminfrist, Nachfolgern (Übernahmen mit „→“), Bemerkung und Zahl der Anmeldungen; Übersicht der Richtlinienfristen mit „Anpassen“. |
+| `#/baubetrieb/einstellungen` | Einstellungen (`src/bereiche/baubetrieb/pages/Einstellungen.tsx`) | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`) als „Stichtag im Fahrplanjahr“ oder „Wochen vor Baubeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Termin“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. |
+
+Router: `src/bereiche/baubetrieb/lib/router.ts`; unbekannte Adressen führen auf
+die Übersicht.
+
+### 7.3 Status-Workflow und Fristen
+
+* `STATUS_WORKFLOW` in `src/bereiche/baubetrieb/domain/workflow.ts`: Status
+  V0–V4, W0–W4, X0–X8, Y0–Y9 und Z0 mit `nachfolger`, Fristregel (`ril`,
+  `stichtag`, `nachhaken`, `keine`) und Kennzeichen `nachhaken`. Neuanlage nur
+  in `START_STATUS` (V0, W0, X0, Y0). Die Auswahl „Status ändern …“
+  (`NachfolgerAuswahl` in `src/bereiche/baubetrieb/components/common.tsx`)
+  bietet nur `nachfolger` an.
+* Statuswechsel im Dialog `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx`:
+  Datum, Bemerkung, beim Eintritt in eine Änderung ÄAbst-Nr und AnnexVII; bei
+  einem Wechsel in eine andere Phase (`istUebernahme`) Anmeldungs-Art und je
+  Zeile Anmelde-ID, Bf/Strecke und Bauzeitraum, mit „Weitere Anmeldung“ zur
+  Aufteilung (weitere Einträge erhalten `herkunftId`). Z0 fragt „Als
+  Anmeldeleiche löschen?“ und löscht den Eintrag.
+* Terminfrist (`terminfrist` in `src/bereiche/baubetrieb/domain/fristen.ts`):
+  von Hand festgelegter Termin (`terminManuell`, gilt bis zum nächsten
+  Wechsel), sonst nach Fristregel. Richtlinienfristen aus `rilFristen`; die
+  Vorbelegung `standardRilFristen()` in `seed.ts` ist als `platzhalter`
+  gekennzeichnet. Ampel `ampelFuer` mit `vorlaufTage`.
+* Fahrplanjahr: `fahrplanjahrBeginn`, `fahrplanjahrEnde`, `fahrplanjahrVon` –
+  Ende am zweiten Samstag im Dezember.
+* Anmeldebedarf (`anmeldebedarf`, `faelligerBedarf`): je Fahrplanjahr der
+  Bauzeit und je SKM, PzE, N-2, N-1 die Frist und der Zustand `abgedeckt`,
+  `faellig`, `kuenftig`, `verstrichen`, `vorBeginn` oder `offen`; Fristen, die
+  mehr als 31 Tage vor dem ersten Anmeldetermin liegen, gelten als `vorBeginn`
+  (`CA_TOLERANZ_TAGE`, weil der erste Anmeldetermin nur ein ca.-Wert ist).
+
+### 7.4 Übergreifende Bedienelemente
+
+* Seitenleiste: Übersicht, „Termine & Nachhaken“ (mit der Zahl überfälliger
+  Fristen), Projekthüllen, Workflow, Einstellungen, darunter die markierten
+  Projekthüllen; unten „Angemeldet als“ (Name, Vorgabe `STANDARD_BEARBEITER =
+  'Bearbeitung MIC'`, und „Farbmodus für Rot-Grün-Sehschwäche (hoher
+  Kontrast)“), „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich
+  wechseln“.
+* Sicherung (`exportiereDaten`) lädt `baubetrieb-sicherung-<Datum>.json` mit
+  `"bereich": "baubetrieb"`. Einspielen
+  (`src/bereiche/baubetrieb/components/Sicherung.tsx`) fragt „Sicherung
+  einspielen?“, bietet „Aktuellen Stand sichern“ und übernimmt „Angemeldet
+  als“ und Farbmodus nur mit dem Haken „Auch „Angemeldet als“ und Farbmodus
+  aus der Sicherung übernehmen“.
+* Excel (`monitorExportieren` in `src/bereiche/baubetrieb/domain/export.ts`):
+  Blätter „Anmeldungen“ und „Projekthüllen“, Terminfristen bei überfälligen
+  Anmeldungen rot, bei fälligen orange hinterlegt.
+
+### 7.5 Meldungen
+
+| Meldung | Fundstelle | Ursache |
+| --- | --- | --- |
+| „Bitte eine Bezeichnung angeben.“ | `src/bereiche/baubetrieb/pages/Projekte.tsx` | Projekthülle ohne Bezeichnung. |
+| „Das Ende der Bauzeit liegt vor dem Beginn.“ | `src/bereiche/baubetrieb/pages/Projekte.tsx` | Bauzeit bis vor Bauzeit von. |
+| „Das Ende des Bauzeitraums liegt vor dem Beginn.“ | `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx` | Bauzeitraum einer Anmeldung verkehrt. |
+| „Bitte das Fahrplanjahr wählen.“ | `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx` | SKM- oder PzE-Eintrag ohne Fahrplanjahr. |
+| „Ohne Baubeginn lässt sich die Terminfrist nach Richtlinie nicht berechnen.“ | `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx` | Hinweis bei tagesscharfen Anmeldungen ohne Baubeginn. |
+| „Bitte das Datum des Statuswechsels angeben.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Datum geleert. |
+| „Bitte je Eintrag das Fahrplanjahr wählen.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Übernahme nach SKM/PzE ohne Fahrplanjahr. |
+| „Das Ende eines Bauzeitraums liegt vor dem Beginn.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Übernahme mit verkehrtem Bauzeitraum. |
+| „Anmeldeleiche gelöscht.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Kein Fehler: Wechsel nach Z0. |
+| „Die Datei ist keine gültige JSON-Datei.“ | `src/bereiche/baubetrieb/store/storage.ts` | Einspielen einer Datei, die kein JSON ist. |
+| „Die Datei ist eine Sicherung des Planlaufmanagements – bitte dort einspielen.“ | `src/bereiche/baubetrieb/store/storage.ts` | Das JSON enthält `projects`. |
+| „Die Datei ist keine Sicherung der Baubetriebsplanung.“ | `src/bereiche/baubetrieb/store/storage.ts` | Kennzeichen `bereich` fehlt oder Listen fehlen. |
+| „Die Sicherung stammt aus einer neueren Fassung von KaPlan. Bitte die Seite neu laden (Strg+Umschalt+R) und erneut einspielen.“ | `src/bereiche/baubetrieb/store/storage.ts` | `version` größer als `DATEN_VERSION`. |
+| Seite „Nicht gefunden“ | `src/bereiche/baubetrieb/App.tsx` | Adresse nennt eine Projekthülle oder Anmeldung, die es nicht (mehr) gibt – etwa nach dem Löschen als Anmeldeleiche. |

@@ -3,7 +3,7 @@
 KaPlan ist eine React-19-/TypeScript-/Vite-Anwendung **ohne Server**; alle Daten liegen im
 `localStorage` des Browsers. Installierbar als PWA, veröffentlicht über GitHub Pages. Sie besteht
 aus zwei getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`) und
-**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, noch Platzhalter). Überblick über Aufbau und
+**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, erster Entwurf). Überblick über Aufbau und
 Funktionen: `README.md`; belegtes Inventar aller Routen, Aktionen und Meldungen: `docs/INVENTAR.md`.
 
 ## Nach jeder Änderung nachziehen
@@ -57,6 +57,11 @@ ignoriert.
   * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten,
   * `store/store.tsx` alle Schreibzugriffe, `store/storage.ts` Laden, Speichern, Migration,
   * `lib/router.ts` Hash-Router, `pages/` Ansichten, `components/` fachliche Bausteine.
+* `src/bereiche/baubetrieb/` – gleich aufgebaut: `domain/workflow.ts` Status-Workflow V0–Z0
+  (Nachfolger und Fristregeln), `domain/fristen.ts` Fahrplanjahr, Terminfrist, Ampel,
+  Anmeldebedarf, `domain/ablauf.ts` Statuswechsel samt Übernahme/Aufteilung, `store/` mit
+  eigenem Schlüssel `baubetrieb-planung.data.v1`. Neue Felder dort über `DATEN_VERSION`
+  (`baubetrieb/domain/types.ts`) und `migriere()` (`baubetrieb/store/storage.ts`).
 
 ## Randbedingungen
 

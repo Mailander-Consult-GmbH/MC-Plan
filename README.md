@@ -5,12 +5,16 @@ KaPlan gliedert sich in zwei getrennte Bereiche, zwischen denen der Startbildsch
 * **Planlaufmanagement** – Verwaltungssoftware für Planläufe: Projekte,
   Planpakete/Pläne/Planverzeichnisse und die Prozessketten, die diese durchlaufen – mit
   Soll-/Ist-Terminen, Fristenüberwachung und vorbereiteten Erinnerungs-E-Mails.
-* **Baubetriebsplanung** – angelegt, aber noch ohne Inhalt.
+* **Baubetriebsplanung** (erster Entwurf) – Monitor für baubetriebliche Anmeldungen von
+  Sperrpausen: Projekthüllen mit ihren Anmeldungen, die einen festen Status-Workflow durch SKM,
+  PzE, Vorprozess N-x und unterjährige Anmeldung durchlaufen – mit Terminfristen laut Richtlinie,
+  Nachhak-Terminen und dem Anmeldebedarf je Fahrplanjahr.
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
 Browser, eigene Einstellungen, eigener Router. Der Startbildschirm zeigt beide als Kacheln; in einem
-Bereich führt **Bereich wechseln** unten in der Seitenleiste zurück. Alles Weitere in dieser
-Beschreibung betrifft das Planlaufmanagement.
+Bereich führt **Bereich wechseln** unten in der Seitenleiste zurück. Der Abschnitt
+**Funktionsumfang** beschreibt das Planlaufmanagement, der Abschnitt
+[**Baubetriebsplanung**](#baubetriebsplanung) den zweiten Bereich.
 
 Dieser Stand ist ein **lauffähiger Prototyp ohne Datenbank**: Alle Daten liegen lokal im Browser
 (`localStorage`). Die Anwendung ist responsiv und als PWA installierbar.
@@ -440,6 +444,78 @@ Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie �
 **E-Mail-Texte** (Betreff und Text, mit Übersicht der Platzhalter) werden projektübergreifend unter
 **Vorlagen** in der Seitenleiste gepflegt; dort liegen auch die Excel-Vorlagen für die Importe.
 
+## Baubetriebsplanung
+
+Erster Entwurf nach dem Lastenheft „Laufender Baubetrieb – Ideensammler für einen groben Monitor“
+der Anwender. Offene fachliche Fragen und die Annahmen des Entwurfs stehen in
+[`docs/BAUBETRIEB_RUECKFRAGEN.md`](docs/BAUBETRIEB_RUECKFRAGEN.md).
+
+### Projekthülle
+Wird bei der MIC-Beauftragung angelegt: Bezeichnung, Projektleiter, DB-G-Nummer, erster
+Anmeldetermin (ca.-Wert) samt Prozessphase, geplante Bauzeit von/bis, Inbetriebnahme,
+Hauptbearbeiter MIC, MIC-Projektnummer (wiko), Status der Betreuung (Aktiv, Betreuungspause,
+Abgeschlossen) und Bemerkung. Aus Prozessphase und Bauzeit schlägt der Dialog den ersten
+Anmeldetermin laut Richtlinie vor, aus der Inbetriebnahme das Ende der Bauzeit (+ 4 Wochen).
+Mit ★ markierte Projekthüllen erscheinen in Übersicht und Seitenleiste.
+
+**Anmeldebedarf je Fahrplanjahr:** Für jedes Fahrplanjahr der Bauzeit stellt die Projekthülle die
+Fristen für SKM, PzE, Vorprozess N-2 und N-1 dar und zeigt, ob dafür schon ein Eintrag besteht
+(ein Eintrag einer späteren Phase deckt frühere ab). Fristen, die mehr als einen Monat vor dem
+ersten Anmeldetermin liegen, gelten als „vor Betreuung“. Offene Fristen lassen sich direkt mit **Anlegen** als Entwurf übernehmen;
+was in die Vorschau fällt (Vorgabe 180 Tage), erscheint auch in Übersicht und Terminen. So lässt
+sich nach längeren Betreuungspausen ablesen, ob eine Anmeldung zum nächsten SKM, PzE oder N-x
+fällig ist.
+
+### Anmeldung
+Je Anmeldung eine Zeile in der Projekthülle: Anmelde-ID (in SKM und PzE Begriff bzw. tVE-Nr, weil
+es dort noch keine Anmeldungen gibt), Anmeldungs-Art (SKM, PzE, A_Vor_N-2, A_Vor_N-1,
+A_unterjahr, B(0), B(S), B, C, Container), Status, Bauzeitraum (in SKM und PzE das ganze
+Fahrplanjahr, sonst tagesscharf), Terminfrist, Bf/Strecke, Gewerk/Tätigkeit, Bemerkungen.
+ÄAbst-Nr und AnnexVII-Kennzeichen sind nur während einer laufenden Änderungsabstimmung (X6, Y7)
+aktiv; endet sie, werden beide im Statusverlauf festgehalten und in der Anmeldung geleert.
+
+### Status-Workflow
+Der Workflow (`domain/workflow.ts`) folgt der Tabelle des Lastenhefts: V0–V4 (SKM), W0–W4
+(PzE), X0–X8 (Vorprozess N-x), Y0–Y9 (unterjährig) und Z0 (Anmeldeleiche). Neu angelegt wird nur
+in Entwurf_SKM, Entwurf_PzE, Entwurf_Vorprozess oder Entwurf; danach stehen in der Liste
+(„Status ändern …“) und in der Anmeldung **nur die möglichen Nachfolger** zur Wahl.
+
+* **Übernahme in eine neue Phase** (z. B. V3 → W0, W3 → X0, X5 → Y4): Anmeldungs-Art,
+  Anmelde-ID und Bauzeitraum werden neu erfasst. Der Eintrag lässt sich dabei auf mehrere
+  Anmeldungen **aufteilen** – die weiteren verweisen auf ihn als Herkunft.
+* **Anmeldeleiche (Z0)**: Der Eintrag wird nach Rückfrage samt Verlauf gelöscht.
+* **Statusverlauf**: Jeder Wechsel mit Datum (frei wählbar), Bearbeitung und Bemerkung; der
+  letzte Wechsel lässt sich **zurücknehmen** (der vorherige Stand samt Art, ID und Bauzeitraum
+  kehrt zurück).
+* Die Seite **Workflow** zeigt alle Status mit Terminfrist, Nachfolgern und der Zahl der
+  Anmeldungen je Status.
+
+### Terminfristen und Nachhaken
+Jeder Status trägt eine Fristregel: **Ril_…** (Frist laut Richtlinie, ggf. „− 14 Tage“ bzw.
+„− 2 Tage“), **„Nächster 1.8.“ / „Nächster 31.7.“** (ab dem Statuswechsel) oder **Nachhak-Termin**
+(Tage nach dem Statuswechsel, Vorgabe 21). Die Richtlinienfristen werden unter **Einstellungen**
+gepflegt – je Frist als Stichtag TT.MM. im Jahr N − k des Fahrplanjahres oder als Wochen vor
+Baubeginn. **Die vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis sie
+geändert oder als „Geprüft“ bestätigt werden. Ril_Nx richtet sich nach der Art (N-2/N-1), Ril_X
+nach der Maßnahme. Das Fahrplanjahr N reicht vom Sonntag nach dem zweiten Samstag im Dezember
+N−1 bis zum zweiten Samstag im Dezember N.
+
+Die Ampel zeigt *Überfällig*, *Fällig* (Vorgabe 14 Tage vorher) und *Im Plan*; Status „zum
+Nachhaken“ sind eigens gekennzeichnet. **Nachgehakt …** hält das Nachhaken mit Notiz und neuem
+Termin fest, **Termin festlegen …** setzt die Frist im aktuellen Status von Hand.
+
+### Ansichten
+**Übersicht** (Kennzahlen, anstehende Terminfristen, Anmeldebedarf, Projekthüllen nach Phasen),
+**Termine & Nachhaken** (alle Fristen nach Projekthüllen, Filter Überfällig/Fällig/Im Plan/Zum
+Nachhaken), **Projekthüllen**, **Workflow**, **Einstellungen**. **Excel** in der Projekthülle
+lädt Anmeldungen und Projekthülle als Arbeitsmappe herunter.
+
+### Daten
+Eigener Schlüssel `baubetrieb-planung.data.v1` im `localStorage`, eigene Demodaten,
+**Sicherung**/**Einspielen** (JSON mit dem Kennzeichen `"bereich": "baubetrieb"`; eine Sicherung
+des Planlaufmanagements wird abgewiesen) und **Zurücksetzen**. Name unter „Angemeldet als“ und
+Farbmodus gelten nur in diesem Bereich.
+
 ## Aufbau des Codes
 
 Hinweise für die Arbeit am Code – was nach jeder Änderung nachzuziehen ist, wie gebaut und
@@ -490,7 +566,20 @@ src/
       pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen, Projektreiter)
       components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe, PaketDialog, BuendelnDialog,
                      SicherungEinspielen …)
-    baubetrieb/  Bereich „Baubetriebsplanung“ – angelegt, noch ohne Inhalt
+    baubetrieb/  Bereich „Baubetriebsplanung“ (erster Entwurf)
+      index.tsx  Einstiegspunkt samt Datenbestand des Bereichs
+      App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
+      domain/
+        types.ts     Datenmodell (Projekthülle, Anmeldung, Phasen, Arten, AnnexVII, Richtlinienfristen)
+        workflow.ts  Status-Workflow V0–Z0 mit Nachfolgern und Fristregeln
+        fristen.ts   Fahrplanjahr, Terminfrist je Status, Ampel, Anmeldebedarf
+        ablauf.ts    Statuswechsel, Übernahme mit Aufteilung, Rücknahme
+        export.ts    Excel-Ausgabe des Monitors
+        seed.ts      Platzhalter der Richtlinienfristen und Demodaten
+      store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe)
+      lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
+      pages/         Übersicht, Termine, Projekthüllen, Projekthülle, Anmeldung, Workflow, Einstellungen
+      components/    Status- und Fristanzeigen, Dialoge (Anmeldung, Statuswechsel, Nachhaken), Sicherung
 ```
 
 Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden
