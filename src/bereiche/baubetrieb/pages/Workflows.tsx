@@ -200,6 +200,10 @@ function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onClose: (
     workflow?.status.map((s) => ({ ...s, frist: { ...s.frist }, nachfolger: [...s.nachfolger] })) ?? [neuerStatus()],
   );
 
+  // Anmeldungen in diesem Workflow: Ihr Bauzeitraum ist im bisherigen Modus erfasst.
+  const zahl = anmeldungenJeStatus(data);
+  const imWorkflow = workflow ? workflow.status.reduce((summe, s) => summe + (zahl.get(s.id) ?? 0), 0) : 0;
+
   const artUmschalten = (art: AnmeldungsArt, an: boolean) =>
     setArten((alt) => ALLE_ARTEN.filter((a) => (a === art ? an : alt.includes(a))));
 
@@ -218,6 +222,10 @@ function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onClose: (
     }
     if (arten.length === 0) {
       toast('Bitte mindestens eine Anmeldungs-Art wählen.');
+      return;
+    }
+    if (workflow && imWorkflow > 0 && bauzeitraum !== workflow.bauzeitraum) {
+      toast('Der Bauzeitraum lässt sich nicht umstellen, solange Anmeldungen in diesem Workflow stehen.');
       return;
     }
     const id = workflow?.id ?? newId('wf');
@@ -275,15 +283,27 @@ function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onClose: (
           <Field label="Beschreibung" full>
             <TextArea value={beschreibung} onChange={setBeschreibung} rows={2} />
           </Field>
-          <Field label="Bauzeitraum" hint="Ganzes Fahrplanjahr: statt Anmelde-ID Begriff bzw. tVE-Nr">
-            <Select
+          <Field
+            label="Bauzeitraum"
+            hint={
+              imWorkflow > 0
+                ? 'Fest, solange Anmeldungen in diesem Workflow stehen – ihr Bauzeitraum ist so erfasst.'
+                : 'Ganzes Fahrplanjahr: statt Anmelde-ID Begriff bzw. tVE-Nr'
+            }
+          >
+            <select
+              className="select"
               value={bauzeitraum}
-              onChange={(v) => setBauzeitraum(v as BauzeitraumModus)}
-              options={(Object.keys(BAUZEITRAUM_LABEL) as BauzeitraumModus[]).map((k) => ({
-                value: k,
-                label: BAUZEITRAUM_LABEL[k],
-              }))}
-            />
+              disabled={imWorkflow > 0}
+              aria-label="Bauzeitraum"
+              onChange={(e) => setBauzeitraum(e.target.value as BauzeitraumModus)}
+            >
+              {(Object.keys(BAUZEITRAUM_LABEL) as BauzeitraumModus[]).map((k) => (
+                <option key={k} value={k}>
+                  {BAUZEITRAUM_LABEL[k]}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Anmeldungs-Arten" hint="die erste gewählte ist die Vorgabe">
             <div className="row wrap" style={{ gap: '4px 12px' }}>
@@ -503,8 +523,50 @@ function StatusListe({
   );
 }
 
-/** Zahl aus einem Eingabefeld; nur Ziffern, leer gilt als 0. */
-const ziffern = (wert: string) => Number(wert.replace(/\D/g, '')) || 0;
+/**
+ * Zahlenfeld, das während der Eingabe auch leer oder außerhalb des Bereichs
+ * stehen darf – übernommen werden nur gültige Werte, beim Verlassen zeigt es
+ * wieder den übernommenen Wert. So lassen sich Werte ohne Markieren ersetzen.
+ */
+function ZiffernFeld({
+  wert,
+  onChange,
+  min,
+  max,
+  label,
+  breite = 64,
+}: {
+  wert: number;
+  onChange: (n: number) => void;
+  min: number;
+  max: number;
+  label: string;
+  breite?: number;
+}) {
+  const [text, setText] = useState(String(wert));
+  const [vorher, setVorher] = useState(wert);
+  // Ändert sich der Wert von außen, folgt das Feld
+  if (wert !== vorher) {
+    setVorher(wert);
+    setText(String(wert));
+  }
+  return (
+    <input
+      className="input"
+      style={{ width: breite }}
+      inputMode="numeric"
+      aria-label={label}
+      value={text}
+      onChange={(e) => {
+        const roh = e.target.value.replace(/\D/g, '');
+        setText(roh);
+        const n = Number(roh);
+        if (roh !== '' && n >= min && n <= max) onChange(n);
+      }}
+      onBlur={() => setText(String(wert))}
+    />
+  );
+}
 
 /** Terminfrist eines Status: Art der Frist und ihre Angaben. */
 function FristFeld({ frist, onChange }: { frist: FristRegel; onChange: (f: FristRegel) => void }) {
@@ -549,13 +611,12 @@ function FristFeld({ frist, onChange }: { frist: FristRegel; onChange: (f: Frist
               ))}
             </select>
             <span className="small muted">abzüglich</span>
-            <input
-              className="input"
-              style={{ width: 64 }}
-              inputMode="numeric"
-              aria-label="Tage vor der Frist"
-              value={Math.abs(frist.versatzTage)}
-              onChange={(e) => onChange({ ...frist, versatzTage: -ziffern(e.target.value) })}
+            <ZiffernFeld
+              label="Tage vor der Frist"
+              wert={Math.abs(frist.versatzTage)}
+              min={0}
+              max={365}
+              onChange={(n) => onChange({ ...frist, versatzTage: -n })}
             />
             <span className="small muted">Tage</span>
           </>
@@ -563,35 +624,27 @@ function FristFeld({ frist, onChange }: { frist: FristRegel; onChange: (f: Frist
         {frist.typ === 'stichtag' ? (
           <>
             <span className="small muted">nächster</span>
-            <input
-              className="input"
-              style={{ width: 56 }}
-              inputMode="numeric"
-              aria-label="Tag"
-              value={frist.tag}
-              onChange={(e) => onChange({ ...frist, tag: Math.min(31, Math.max(1, ziffern(e.target.value))) })}
-            />
+            <ZiffernFeld label="Tag" wert={frist.tag} min={1} max={31} breite={56} onChange={(n) => onChange({ ...frist, tag: n })} />
             <span className="tertiary">.</span>
-            <input
-              className="input"
-              style={{ width: 56 }}
-              inputMode="numeric"
-              aria-label="Monat"
-              value={frist.monat}
-              onChange={(e) => onChange({ ...frist, monat: Math.min(12, Math.max(1, ziffern(e.target.value))) })}
+            <ZiffernFeld
+              label="Monat"
+              wert={frist.monat}
+              min={1}
+              max={12}
+              breite={56}
+              onChange={(n) => onChange({ ...frist, monat: n })}
             />
             <span className="small muted">. ab dem Statuswechsel</span>
           </>
         ) : null}
         {frist.typ === 'nachhaken' ? (
           <>
-            <input
-              className="input"
-              style={{ width: 64 }}
-              inputMode="numeric"
-              aria-label="Tage nach dem Statuswechsel"
-              value={frist.tage}
-              onChange={(e) => onChange({ ...frist, tage: ziffern(e.target.value) })}
+            <ZiffernFeld
+              label="Tage nach dem Statuswechsel"
+              wert={frist.tage}
+              min={0}
+              max={365}
+              onChange={(n) => onChange({ ...frist, tage: n })}
             />
             <span className="small muted">Tage nach dem Statuswechsel</span>
           </>

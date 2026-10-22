@@ -27,10 +27,9 @@ import {
 
 const ril = (bezug: RilBezug, versatzTage = 0): FristRegel => ({ typ: 'ril', bezug, versatzTage });
 const keine: FristRegel = { typ: 'keine' };
-const nachhakTermin = (tage: number): FristRegel => ({ typ: 'nachhaken', tage });
 
 /** Nachhak-Termin der mitgelieferten Status („Nachhak-Termin!?“ im Lastenheft). */
-const NACHHAK_TAGE = 21;
+export const NACHHAK_TAGE = 21;
 
 const status = (
   id: ID,
@@ -52,8 +51,11 @@ const status = (
 /**
  * Die vier Standard-Workflows. Die Kennungen sind fest, damit ältere Stände
  * (Statusnummern V0 … Y9) zugeordnet werden können (`STATUS_AUS_NUMMER`).
+ * `nachhakTage` ist der Abstand der Nachhak-Termine – die Migration übergibt
+ * den Wert, der bisher in den Einstellungen für alle Status galt.
  */
-export function standardWorkflows(): Workflow[] {
+export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[] {
+  const nachhakTermin = (): FristRegel => ({ typ: 'nachhaken', tage: nachhakTage });
   return [
     {
       id: 'wf-skm',
@@ -111,12 +113,12 @@ export function standardWorkflows(): Workflow[] {
           nachhaken: true,
         }),
         status('vp-zugestimmt', 'Zugestimmt', 'abstimmung', ril('Nx'), ['vp-angemeldet']),
-        status('vp-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(NACHHAK_TAGE), [
+        status('vp-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(), [
           'vp-genehmigt',
           'vp-abgelehnt',
         ]),
         status('vp-genehmigt', 'Genehmigt', 'genehmigt', ril('A'), ['vp-aenderung', 'vp-genehmigt', 'uj-angemeldet']),
-        status('vp-aenderung', 'Änderung angemeldet', 'aenderung', nachhakTermin(NACHHAK_TAGE), [
+        status('vp-aenderung', 'Änderung angemeldet', 'aenderung', nachhakTermin(), [
           'vp-genehmigt',
           'vp-aenderung-abgelehnt',
         ]),
@@ -143,16 +145,16 @@ export function standardWorkflows(): Workflow[] {
           nachhaken: true,
         }),
         status('uj-zugestimmt', 'Zugestimmt', 'abstimmung', ril('X'), ['uj-angemeldet', 'uj-verspaetet']),
-        status('uj-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(NACHHAK_TAGE), [
+        status('uj-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(), [
           'uj-genehmigt',
           'uj-abgelehnt',
         ]),
-        status('uj-verspaetet', 'Angemeldet (verspätet)', 'verspaetet', nachhakTermin(NACHHAK_TAGE), [
+        status('uj-verspaetet', 'Angemeldet (verspätet)', 'verspaetet', nachhakTermin(), [
           'uj-genehmigt',
           'uj-abgelehnt',
         ]),
         status('uj-genehmigt', 'Genehmigt', 'genehmigt', keine, ['uj-abgelehnt', 'uj-aenderung']),
-        status('uj-aenderung', 'Änderung angestoßen', 'aenderung', nachhakTermin(NACHHAK_TAGE), [
+        status('uj-aenderung', 'Änderung angestoßen', 'aenderung', nachhakTermin(), [
           'uj-genehmigt',
           'uj-aenderung-abgelehnt',
         ]),
@@ -267,11 +269,16 @@ export function nachfolgerVon(workflows: Workflow[], statusId: ID): StatusZiel[]
   return info.status.nachfolger.filter((z) => z === ANMELDELEICHE || statusInfo(workflows, z) !== null);
 }
 
-/** Der Wechsel führt in einen anderen Workflow – die Anmeldung wird in die neue Phase übernommen. */
+/**
+ * Der Wechsel führt in einen anderen Workflow – die Anmeldung wird in die neue
+ * Phase übernommen. Fehlt einer der beiden Status (später aus dem Workflow
+ * entfernt), gilt der Wechsel nicht als Übernahme.
+ */
 export function istUebernahme(workflows: Workflow[], von: ID, nach: StatusZiel): boolean {
   if (nach === ANMELDELEICHE) return false;
   const ziel = statusInfo(workflows, nach);
-  return !!ziel && ziel.workflow.id !== statusInfo(workflows, von)?.workflow.id;
+  const herkunft = statusInfo(workflows, von);
+  return !!ziel && !!herkunft && ziel.workflow.id !== herkunft.workflow.id;
 }
 
 /** Während einer Änderungsabstimmung sind ÄAbst-Nr und AnnexVII relevant. */

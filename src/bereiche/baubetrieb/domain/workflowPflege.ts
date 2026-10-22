@@ -70,6 +70,8 @@ export function workflowKopie(w: Workflow, neueId: () => ID, workflowId: ID): Wo
     ...w,
     id: workflowId,
     name: `${w.name} (Kopie)`,
+    // Auch die Kurzbezeichnung unterscheidet sich, sonst sehen Auswahl und Kennzeichen gleich aus.
+    kurz: `${w.kurz || w.name} (Kopie)`,
     herkunft: 'manuell',
     arten: [...w.arten],
     status: w.status.map((s) => ({

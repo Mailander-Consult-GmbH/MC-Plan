@@ -17,7 +17,7 @@ import {
   type Projekt,
   type Workflow,
 } from '../domain/types';
-import { istAenderung, startbareWorkflows, statusVon } from '../domain/workflow';
+import { istAenderung, startbareWorkflows, statusVon, workflowFuerArt } from '../domain/workflow';
 import { useStore } from '../store/store';
 import { StatusBadge } from './common';
 
@@ -74,9 +74,11 @@ export function AnmeldungDialog({
   const { data, addAnmeldung, updateAnmeldung } = useStore();
   const toast = useToast();
   const startbar = startbareWorkflows(data.workflows);
-  // Neuanlage: vorgegebener Workflow, sonst der letzte (unterjährige Anmeldung)
+  // Neuanlage: vorgegebener Workflow, sonst der der unterjährigen Anmeldung (Art A_unterjahr)
   const startWorkflow =
-    startbar.find((w) => w.id === vorgabe?.workflowId) ?? startbar[startbar.length - 1] ?? undefined;
+    startbar.find((w) => w.id === vorgabe?.workflowId) ??
+    workflowFuerArt(startbar, 'A_unterjahr') ??
+    startbar[startbar.length - 1];
   const [form, setForm] = useState({
     workflowId: anmeldung ? statusVon(data.workflows, anmeldung.statusId).workflow.id : (startWorkflow?.id ?? ''),
     statusSeit: anmeldung?.statusSeit ?? today(),

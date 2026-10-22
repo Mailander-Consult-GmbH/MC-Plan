@@ -4,7 +4,14 @@
  * geschrieben.
  */
 import { seedDaten, standardEinstellungen, standardRilFristen } from '../domain/seed';
-import { STATUS_AUS_NUMMER, standardWorkflows, statusInfo, workflowFuerArt, zielText } from '../domain/workflow';
+import {
+  NACHHAK_TAGE,
+  STATUS_AUS_NUMMER,
+  standardWorkflows,
+  statusInfo,
+  workflowFuerArt,
+  zielText,
+} from '../domain/workflow';
 import {
   ALLE_ARTEN,
   ANMELDELEICHE,
@@ -197,7 +204,8 @@ const ausNummer = (nummer: string | null | undefined): string | null =>
  * Standard-Workflows zugeordnet.
  */
 function ausFassung2(roh: Partial<BaubetriebDaten> & { anmeldungen?: unknown }): Partial<BaubetriebDaten> {
-  const workflows = standardWorkflows();
+  // Bisher galt ein Nachhak-Abstand für alle Status – er geht in die Standard-Workflows über.
+  const workflows = standardWorkflows(zahl(roh.einstellungen?.nachhakTage, NACHHAK_TAGE));
   const anmeldungen = (Array.isArray(roh.anmeldungen) ? (roh.anmeldungen as Fassung2Anmeldung[]) : []).map(
     ({ status, verlauf, ...rest }): Anmeldung => ({
       ...rest,
