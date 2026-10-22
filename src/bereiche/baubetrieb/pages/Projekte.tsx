@@ -1,0 +1,312 @@
+/** Projekthüllen: Liste mit Anlage- und Bearbeitungsdialog. */
+import { useState } from 'react';
+import { addDays, formatDate } from '../../../shared/dates';
+import { Icon } from '../../../shared/icons';
+import { useToast } from '../../../shared/toast';
+import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
+import { anmeldebedarf, ersterTerminVorschlag, naechsterBedarf, offeneTermine } from '../domain/fristen';
+import {
+  ERSTE_PHASE_LABEL,
+  PROJEKT_STATUS_LABEL,
+  RIL_LABEL,
+  type ErstePhase,
+  type Projekt,
+  type ProjektStatus,
+} from '../domain/types';
+import type { Route } from '../lib/router';
+import { useStore } from '../store/store';
+
+export const PROJEKT_STATUS_TON: Record<ProjektStatus, '' | 'green' | 'orange'> = {
+  aktiv: 'green',
+  pausiert: 'orange',
+  abgeschlossen: '',
+};
+
+export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
+  const { data, toggleMarkiert } = useStore();
+  const [suche, setSuche] = useState('');
+  const [dialog, setDialog] = useState(false);
+
+  const projekte = data.projekte.filter((p) =>
+    [p.name, p.dbGNummer, p.projektnummer, p.projektleiter, p.hauptbearbeiter, p.bemerkung]
+      .join(' ')
+      .toLowerCase()
+      .includes(suche.toLowerCase()),
+  );
+
+  return (
+    <div className="stack">
+      <div className="row-between wrap">
+        <div className="row wrap">
+          <Search value={suche} onChange={setSuche} placeholder="Bezeichnung, DB-G-Nr., MIC-Nr. …" />
+          <span className="small tertiary">
+            Die Projekthülle wird bei der MIC-Beauftragung angelegt. Mit ★ markierte erscheinen in der Übersicht und
+            in der Seitenleiste.
+          </span>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
+          <Icon name="plus" size={14} /> Neue Projekthülle
+        </button>
+      </div>
+
+      {projekte.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon="projekt"
+            titel="Keine Projekthülle gefunden"
+            text="Legen Sie eine Projekthülle an, um die baubetrieblichen Anmeldungen der Maßnahme zu verfolgen."
+            action={
+              <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
+                <Icon name="plus" size={14} /> Neue Projekthülle
+              </button>
+            }
+          />
+        </Card>
+      ) : (
+        <div className="grid grid-2">
+          {projekte.map((p) => {
+            const anzahl = data.anmeldungen.filter((a) => a.projektId === p.id).length;
+            const termine = offeneTermine(data, [p.id]);
+            const ueberfaellig = termine.filter((t) => t.ampel === 'ueberfaellig').length;
+            const bedarf = naechsterBedarf(anmeldebedarf(p, data.anmeldungen, data.einstellungen));
+            return (
+              <button
+                key={p.id}
+                type="button"
+                className="card card-click"
+                onClick={() => navigate({ view: 'projekt', projektId: p.id })}
+              >
+                <div className="card-pad">
+                  <div className="row-between" style={{ alignItems: 'flex-start' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="mono tertiary">
+                        {[p.dbGNummer, p.projektnummer].filter(Boolean).join(' · ') || 'ohne Nummer'}
+                      </div>
+                      <h2 style={{ marginTop: 2 }}>{p.name}</h2>
+                      <div className="small muted truncate" style={{ marginTop: 3 }}>
+                        Bauzeit {formatDate(p.bauzeitVon)} – {formatDate(p.bauzeitBis)}
+                        {p.hauptbearbeiter ? ` · ${p.hauptbearbeiter}` : ''}
+                      </div>
+                    </div>
+                    <span className="row" style={{ gap: 6 }}>
+                      <Badge ton={PROJEKT_STATUS_TON[p.status]}>{PROJEKT_STATUS_LABEL[p.status]}</Badge>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className={`stern ${p.markiert ? 'aktiv' : ''}`}
+                        title={p.markiert ? 'Markierung aufheben' : 'Markieren – erscheint in Übersicht und Seitenleiste'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleMarkiert(p.id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleMarkiert(p.id);
+                          }
+                        }}
+                      >
+                        {p.markiert ? '★' : '☆'}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="row wrap" style={{ gap: 16, marginTop: 14 }}>
+                    <span className="small muted">
+                      <b>{anzahl}</b> {anzahl === 1 ? 'Anmeldung' : 'Anmeldungen'}
+                    </span>
+                    {ueberfaellig > 0 ? (
+                      <Badge ton="red">{ueberfaellig} überfällig</Badge>
+                    ) : (
+                      <Badge ton="green">im Plan</Badge>
+                    )}
+                    {bedarf ? (
+                      <span className="small muted">
+                        Nächste Anmeldung: <b>{RIL_LABEL[bedarf.phase]}</b> FPJ {bedarf.fahrplanjahr} bis{' '}
+                        <b>{formatDate(bedarf.frist)}</b>
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {dialog ? <ProjektDialog onClose={() => setDialog(false)} navigate={navigate} /> : null}
+    </div>
+  );
+}
+
+export function ProjektDialog({
+  projekt,
+  onClose,
+  navigate,
+}: {
+  projekt?: Projekt;
+  onClose: () => void;
+  navigate?: (r: Route) => void;
+}) {
+  const { data, addProjekt, updateProjekt } = useStore();
+  const toast = useToast();
+  const [form, setForm] = useState({
+    name: projekt?.name ?? '',
+    projektleiter: projekt?.projektleiter ?? '',
+    dbGNummer: projekt?.dbGNummer ?? '',
+    ersterAnmeldetermin: projekt?.ersterAnmeldetermin ?? '',
+    erstePhase: projekt?.erstePhase ?? ('skm' as ErstePhase),
+    bauzeitVon: projekt?.bauzeitVon ?? '',
+    bauzeitBis: projekt?.bauzeitBis ?? '',
+    inbetriebnahme: projekt?.inbetriebnahme ?? '',
+    hauptbearbeiter: projekt?.hauptbearbeiter ?? data.einstellungen.bearbeiter,
+    projektnummer: projekt?.projektnummer ?? '',
+    status: projekt?.status ?? ('aktiv' as ProjektStatus),
+    bemerkung: projekt?.bemerkung ?? '',
+  });
+  const set = <K extends keyof typeof form>(key: K, wert: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: wert }));
+
+  const vorschlag = ersterTerminVorschlag(
+    { erstePhase: form.erstePhase, bauzeitVon: form.bauzeitVon || null },
+    data.einstellungen,
+  );
+  const endeAusIbn = form.inbetriebnahme ? addDays(form.inbetriebnahme, 28) : null;
+
+  const speichern = () => {
+    if (!form.name.trim()) {
+      toast('Bitte eine Bezeichnung angeben.');
+      return;
+    }
+    if (form.bauzeitVon && form.bauzeitBis && form.bauzeitBis < form.bauzeitVon) {
+      toast('Das Ende der Bauzeit liegt vor dem Beginn.');
+      return;
+    }
+    const werte = {
+      ...form,
+      name: form.name.trim(),
+      ersterAnmeldetermin: form.ersterAnmeldetermin || null,
+      bauzeitVon: form.bauzeitVon || null,
+      bauzeitBis: form.bauzeitBis || null,
+      inbetriebnahme: form.inbetriebnahme || null,
+    };
+    if (projekt) {
+      updateProjekt(projekt.id, werte);
+      toast('Projekthülle gespeichert.');
+      onClose();
+      return;
+    }
+    const id = addProjekt({ ...werte, markiert: true });
+    toast('Projekthülle angelegt.');
+    onClose();
+    navigate?.({ view: 'projekt', projektId: id });
+  };
+
+  return (
+    <Modal
+      titel={projekt ? 'Projekthülle bearbeiten' : 'Neue Projekthülle'}
+      sub={projekt ? projekt.name : 'Wird bei der MIC-Beauftragung angelegt'}
+      onClose={onClose}
+      wide
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button type="button" className="btn btn-primary" onClick={speichern}>
+            {projekt ? 'Speichern' : 'Anlegen'}
+          </button>
+        </>
+      }
+    >
+      <div className="form-grid">
+        <Field label="Bezeichnung" full>
+          <TextInput value={form.name} onChange={(v) => set('name', v)} placeholder="EÜ … – Erneuerung …" />
+        </Field>
+        <Field label="Projektleiter">
+          <TextInput value={form.projektleiter} onChange={(v) => set('projektleiter', v)} />
+        </Field>
+        <Field label="DB-G-Nummer">
+          <TextInput value={form.dbGNummer} onChange={(v) => set('dbGNummer', v)} placeholder="G.…" />
+        </Field>
+        <Field label="Hauptbearbeiter MIC">
+          <TextInput value={form.hauptbearbeiter} onChange={(v) => set('hauptbearbeiter', v)} />
+        </Field>
+        <Field label="MIC-Projektnummer (wiko)">
+          <TextInput value={form.projektnummer} onChange={(v) => set('projektnummer', v)} />
+        </Field>
+
+        <Field label="Geplante Bauzeit von">
+          <TextInput type="date" value={form.bauzeitVon} onChange={(v) => set('bauzeitVon', v)} />
+        </Field>
+        <Field label="Geplante Bauzeit bis" hint="Ende in der Regel Inbetriebnahme + 4 Wochen">
+          <TextInput type="date" value={form.bauzeitBis} onChange={(v) => set('bauzeitBis', v)} />
+        </Field>
+        <Field label="Inbetriebnahme" hint="optional – daraus lässt sich das Ende der Bauzeit vorschlagen">
+          <TextInput type="date" value={form.inbetriebnahme} onChange={(v) => set('inbetriebnahme', v)} />
+        </Field>
+        <Field label="Ende aus Inbetriebnahme">
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={!endeAusIbn || endeAusIbn === form.bauzeitBis}
+            onClick={() => endeAusIbn && set('bauzeitBis', endeAusIbn)}
+          >
+            {endeAusIbn ? `Bauzeit bis ${formatDate(endeAusIbn)} übernehmen` : 'Inbetriebnahme fehlt'}
+          </button>
+        </Field>
+
+        <Field label="Prozessphase des ersten Anmeldetermins">
+          <Select
+            value={form.erstePhase}
+            onChange={(v) => set('erstePhase', v as ErstePhase)}
+            options={(Object.keys(ERSTE_PHASE_LABEL) as ErstePhase[]).map((k) => ({
+              value: k,
+              label: ERSTE_PHASE_LABEL[k],
+            }))}
+          />
+        </Field>
+        <Field
+          label="Erster Anmeldetermin (ca.)"
+          hint={
+            vorschlag
+              ? `Laut Richtlinie für ${ERSTE_PHASE_LABEL[form.erstePhase]}: ${formatDate(vorschlag)}`
+              : 'Je nach Prozessphase laut Richtlinie – mit Bauzeit lässt er sich vorschlagen.'
+          }
+        >
+          <span className="row" style={{ gap: 6 }}>
+            <TextInput
+              type="date"
+              value={form.ersterAnmeldetermin}
+              onChange={(v) => set('ersterAnmeldetermin', v)}
+            />
+            {vorschlag && vorschlag !== form.ersterAnmeldetermin ? (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => set('ersterAnmeldetermin', vorschlag)}
+                title="Vorschlag laut Richtlinie übernehmen"
+              >
+                Übernehmen
+              </button>
+            ) : null}
+          </span>
+        </Field>
+
+        <Field label="Status der Betreuung">
+          <Select
+            value={form.status}
+            onChange={(v) => set('status', v as ProjektStatus)}
+            options={(Object.keys(PROJEKT_STATUS_LABEL) as ProjektStatus[]).map((k) => ({
+              value: k,
+              label: PROJEKT_STATUS_LABEL[k],
+            }))}
+          />
+        </Field>
+        <Field label="Bemerkung" full>
+          <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={3} />
+        </Field>
+      </div>
+    </Modal>
+  );
+}

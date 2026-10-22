@@ -24,7 +24,7 @@ export function Start() {
             <button key={b.id} type="button" className="bereich-kachel" onClick={() => zumBereich(b.id)}>
               <span className="bereich-kachel-bild">
                 <Icon name={b.icon} size={64} strokeWidth={1.3} />
-                {b.inVorbereitung ? <span className="bereich-kachel-marke">In Vorbereitung</span> : null}
+                {b.marke ? <span className="bereich-kachel-marke">{b.marke}</span> : null}
               </span>
               <span className="bereich-kachel-inhalt">
                 <strong className="bereich-kachel-titel">{b.titel}</strong>

@@ -1,15 +1,62 @@
 /**
- * Datenbestand des Bereichs „Baubetriebsplanung“. Vorerst enthält er nur die
- * Einstellungen des Bereichs; der Aufbau entspricht dem des
- * Planlaufmanagements, ist davon aber vollständig getrennt.
+ * Datenbestand des Bereichs „Baubetriebsplanung“. Alle Schreibzugriffe laufen
+ * über `mutate()`; der Bestand wird danach lokal gespeichert. Der Aufbau
+ * entspricht dem des Planlaufmanagements, ist davon aber vollständig getrennt.
  */
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ladeDaten, speichereDaten, type BaubetriebDaten, type BaubetriebEinstellungen } from './storage';
+import { bauzeitraumAbgleichen, wechselAnwenden, wechselZuruecknehmen, type Wechsel } from '../domain/ablauf';
+import { newId, seedDaten } from '../domain/seed';
+import type {
+  Anmeldung,
+  BaubetriebDaten,
+  Einstellungen,
+  ID,
+  ISODate,
+  Projekt,
+  RilFrist,
+  RilSchluessel,
+} from '../domain/types';
+import { ladeDaten, speichereDaten } from './storage';
+
+export { newId };
+
+/** Angaben zur Neuanlage einer Anmeldung; Verlauf und Änderungsmerkmale entstehen im Store. */
+export type NeueAnmeldung = Omit<
+  Anmeldung,
+  'id' | 'verlauf' | 'herkunftId' | 'aenderungsNr' | 'annexVII' | 'terminManuell'
+>;
 
 interface StoreValue {
   data: BaubetriebDaten;
-  setEinstellungen: (e: Partial<BaubetriebEinstellungen>) => void;
+  /* Einstellungen */
+  setEinstellungen: (e: Partial<Omit<Einstellungen, 'rilFristen'>>) => void;
+  /** Ändert eine Richtlinienfrist; sie gilt danach nicht mehr als Platzhalter. */
+  setRilFrist: (schluessel: RilSchluessel, patch: Partial<RilFrist>) => void;
+  /* Projekthüllen */
+  addProjekt: (p: Omit<Projekt, 'id'>) => ID;
+  updateProjekt: (id: ID, patch: Partial<Projekt>) => void;
+  /** Löscht die Projekthülle samt ihrer Anmeldungen. */
+  deleteProjekt: (id: ID) => void;
+  toggleMarkiert: (id: ID) => void;
+  /* Anmeldungen */
+  addAnmeldung: (a: NeueAnmeldung) => ID;
+  updateAnmeldung: (id: ID, patch: Partial<Omit<Anmeldung, 'id' | 'status' | 'verlauf'>>) => void;
+  deleteAnmeldung: (id: ID) => void;
+  /**
+   * Statuswechsel auf einen zulässigen Nachfolger. Liefert die Kennungen der
+   * bei einer Aufteilung zusätzlich entstandenen Anmeldungen.
+   */
+  statusWechseln: (id: ID, w: Wechsel) => ID[];
+  /** Nimmt den letzten Statuswechsel zurück. */
+  statusZuruecknehmen: (id: ID) => void;
+  /** Hält fest, dass nachgehakt wurde, und setzt ggf. einen neuen Termin. */
+  nachgehakt: (id: ID, datum: ISODate, notiz: string, neuerTermin: ISODate | null) => void;
+  /** Legt die Terminfrist im aktuellen Status von Hand fest (null: berechnen). */
+  terminSetzen: (id: ID, termin: ISODate | null) => void;
+  /* Verwaltung */
+  ersetzeDaten: (d: BaubetriebDaten) => void;
+  zuruecksetzen: () => void;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -21,13 +68,147 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     speichereDaten(data);
   }, [data]);
 
+  /** Jede Änderung läuft hierüber – die Funktion muss rein sein. */
+  const mutate = useCallback((fn: (d: BaubetriebDaten) => BaubetriebDaten) => {
+    setData((alt) => fn(alt));
+  }, []);
+
+  const anmeldungAendern = useCallback(
+    (id: ID, fn: (a: Anmeldung) => Anmeldung) =>
+      mutate((d) => ({ ...d, anmeldungen: d.anmeldungen.map((a) => (a.id === id ? fn(a) : a)) })),
+    [mutate],
+  );
+
   const value = useMemo<StoreValue>(
     () => ({
       data,
-      setEinstellungen: (e) =>
-        setData((alt) => ({ ...alt, einstellungen: { ...alt.einstellungen, ...e } })),
+      setEinstellungen: (e) => mutate((d) => ({ ...d, einstellungen: { ...d.einstellungen, ...e } })),
+      setRilFrist: (schluessel, patch) =>
+        mutate((d) => ({
+          ...d,
+          einstellungen: {
+            ...d.einstellungen,
+            rilFristen: {
+              ...d.einstellungen.rilFristen,
+              [schluessel]: { ...d.einstellungen.rilFristen[schluessel], platzhalter: false, ...patch },
+            },
+          },
+        })),
+
+      addProjekt: (p) => {
+        const id = newId('pr');
+        mutate((d) => ({ ...d, projekte: [...d.projekte, { ...p, id }] }));
+        return id;
+      },
+      updateProjekt: (id, patch) =>
+        mutate((d) => ({ ...d, projekte: d.projekte.map((p) => (p.id === id ? { ...p, ...patch, id } : p)) })),
+      deleteProjekt: (id) =>
+        mutate((d) => ({
+          ...d,
+          projekte: d.projekte.filter((p) => p.id !== id),
+          anmeldungen: d.anmeldungen.filter((a) => a.projektId !== id),
+        })),
+      toggleMarkiert: (id) =>
+        mutate((d) => ({
+          ...d,
+          projekte: d.projekte.map((p) => (p.id === id ? { ...p, markiert: !p.markiert } : p)),
+        })),
+
+      addAnmeldung: (werte) => {
+        const id = newId('an');
+        const verlaufId = newId('vl');
+        const erfasst = new Date().toISOString();
+        mutate((d) => {
+          const neu: Anmeldung = bauzeitraumAbgleichen({
+            ...werte,
+            id,
+            aenderungsNr: '',
+            annexVII: null,
+            terminManuell: null,
+            herkunftId: null,
+            verlauf: [
+              {
+                id: verlaufId,
+                typ: 'anlage',
+                datum: werte.statusSeit,
+                erfasst,
+                bearbeiter: d.einstellungen.bearbeiter,
+                von: null,
+                nach: werte.status,
+                text: 'Eintrag angelegt',
+              },
+            ],
+          });
+          return { ...d, anmeldungen: [...d.anmeldungen, neu] };
+        });
+        return id;
+      },
+      updateAnmeldung: (id, patch) => anmeldungAendern(id, (a) => bauzeitraumAbgleichen({ ...a, ...patch, id })),
+      deleteAnmeldung: (id) =>
+        mutate((d) => ({
+          ...d,
+          anmeldungen: d.anmeldungen
+            .filter((a) => a.id !== id)
+            .map((a) => (a.herkunftId === id ? { ...a, herkunftId: null } : a)),
+        })),
+
+      statusWechseln: (id, w) => {
+        const ids = {
+          verlauf: newId('vl'),
+          weitere: (w.weitere ?? []).map(() => ({ anmeldung: newId('an'), verlauf: newId('vl') })),
+        };
+        const erfasst = new Date().toISOString();
+        mutate((d) => wechselAnwenden(d, id, w, ids, d.einstellungen.bearbeiter, erfasst));
+        return ids.weitere.map((x) => x.anmeldung);
+      },
+      statusZuruecknehmen: (id) => mutate((d) => wechselZuruecknehmen(d, id)),
+      nachgehakt: (id, datum, notiz, neuerTermin) => {
+        const verlaufId = newId('vl');
+        const erfasst = new Date().toISOString();
+        mutate((d) => ({
+          ...d,
+          anmeldungen: d.anmeldungen.map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  terminManuell: neuerTermin ?? a.terminManuell,
+                  verlauf: [
+                    ...a.verlauf,
+                    {
+                      id: verlaufId,
+                      typ: 'notiz',
+                      datum,
+                      erfasst,
+                      bearbeiter: d.einstellungen.bearbeiter,
+                      von: null,
+                      nach: null,
+                      text: [notiz.trim() || 'Nachgehakt', neuerTermin ? `neuer Termin ${neuerTermin}` : '']
+                        .filter(Boolean)
+                        .join(' · '),
+                    },
+                  ],
+                }
+              : a,
+          ),
+        }));
+      },
+      terminSetzen: (id, termin) => anmeldungAendern(id, (a) => ({ ...a, terminManuell: termin })),
+
+      ersetzeDaten: (d) => mutate(() => d),
+      zuruecksetzen: () => {
+        const neu = seedDaten();
+        // Persönliche Einstellungen bleiben erhalten.
+        mutate((d) => ({
+          ...neu,
+          einstellungen: {
+            ...neu.einstellungen,
+            farbmodus: d.einstellungen.farbmodus,
+            bearbeiter: d.einstellungen.bearbeiter,
+          },
+        }));
+      },
     }),
-    [data],
+    [data, mutate, anmeldungAendern],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
