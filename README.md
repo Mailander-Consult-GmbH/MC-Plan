@@ -493,11 +493,14 @@ Veranschaulichung; die Status tragen lesbare Namen („Entwurf“, „Mitwirkung
   Bezeichnung, Art (Entwurf, In Abstimmung, Angemeldet, Angemeldet (verspätet), Genehmigt,
   Abgelehnt, Änderungsabstimmung), Terminfrist, „Termin dient zum Nachhaken“, Bemerkung und
   **Nachfolgern**. Status lassen sich verschieben, ergänzen und entfernen; der erste ist der
-  **Startstatus**. Ein Status, in dem noch Anmeldungen stehen, kann nicht entfallen.
+  **Startstatus**. Ein Status, in dem noch Anmeldungen stehen, kann nicht entfallen, und der
+  Bauzeitraum eines Workflows bleibt fest, solange Anmeldungen darin stehen. Eine Kopie erhält
+  „(Kopie)“ an Name und Kurzbezeichnung.
 * **Nachfolger** sind Status desselben Workflows, Status eines anderen Workflows (**Übernahme in
   eine neue Phase**) oder die **Anmeldeleiche** (Eintrag löschen). Beim Statuswechsel stehen nur
   sie zur Wahl – in der Liste („Status ändern …“) und auf der Seite der Anmeldung.
-* **Neu angelegt** wird immer im ersten Status eines Workflows.
+* **Neu angelegt** wird immer im ersten Status eines Workflows; vorbelegt ist die unterjährige
+  Anmeldung.
 * **Übernahme in eine neue Phase:** Anmeldungs-Art, Anmelde-ID und Bauzeitraum werden neu
   erfasst. Der Eintrag lässt sich dabei auf mehrere Anmeldungen **aufteilen** – die weiteren
   verweisen auf ihn als Herkunft.
@@ -532,7 +535,8 @@ Eigener Schlüssel `baubetrieb-planung.data.v1` im `localStorage`, eigene Demoda
 **Sicherung**/**Einspielen** (JSON mit dem Kennzeichen `"bereich": "baubetrieb"`; eine Sicherung
 des Planlaufmanagements wird abgewiesen) und **Zurücksetzen** (lädt Demodaten und
 Standard-Workflows neu). Stände der ersten Entwurfsfassung mit Statusnummern werden beim Laden
-übernommen: Die Nummern werden den Status der Standard-Workflows zugeordnet. Name unter
+übernommen: Die Nummern werden den Status der Standard-Workflows zugeordnet, der bisher
+eingestellte Nachhak-Abstand gilt für deren Nachhak-Termine. Name unter
 „Angemeldet als“ und Farbmodus gelten nur in diesem Bereich.
 
 ## Aufbau des Codes

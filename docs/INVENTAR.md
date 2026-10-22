@@ -296,7 +296,8 @@ Rahmen und Seitenleiste stehen in `src/bereiche/baubetrieb/App.tsx`. Die
   Farbmodus und erhält die Demodaten; Fassung 2 führte Statusnummern (V0 … Y9),
   die `STATUS_AUS_NUMMER` (`src/bereiche/baubetrieb/domain/workflow.ts`) den
   Status der Standard-Workflows zuordnet – in Anmeldungen, Verlauf und
-  gespeichertem Vorstand. Ohne gespeicherten Bestand lädt `seedDaten()`
+  gespeichertem Vorstand; der bisher eingestellte `nachhakTage` wird zum
+  Abstand der Nachhak-Termine (`standardWorkflows(nachhakTage)`). Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekte mit acht
   Anmeldungen, Termine relativ zum heutigen Tag, und die Standard-Workflows.
 * Alle Schreibzugriffe über `mutate()` in
@@ -327,7 +328,8 @@ die Übersicht.
   die Standard-Workflows „SKM“, „PzE“, „Vorprozess N-x“ und „Unterjährige
   Anmeldung“ mit festen Status-IDs. Neu angelegt wird im ersten Status eines
   Workflows (`AnmeldungDialog` in
-  `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx`, Feld „Workflow“).
+  `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx`, Feld „Workflow“);
+  vorbelegt ist der Workflow mit der Art A_unterjahr (`workflowFuerArt`).
 * Editor (`WorkflowEditor` in `src/bereiche/baubetrieb/pages/Workflows.tsx`):
   Name, Kurzbezeichnung, Beschreibung, Bauzeitraum, Anmeldungs-Arten; je Status
   eine Karte mit Bezeichnung, Art (`STATUS_ART_LABEL`), Terminfrist
@@ -336,9 +338,11 @@ die Übersicht.
   Nachhaken“, Bemerkung und Nachfolgern („Nachfolger hinzufügen …“ mit „Dieser
   Workflow“, „Übernahme in …“ und „Anmeldeleiche – Eintrag löschen“);
   Verschieben, Entfernen (nicht bei Status mit Anmeldungen), „Status“ fügt
-  einen Status an. Speichern prüft Name, Status-Bezeichnungen, Arten und
+  einen Status an. Der Bauzeitraum ist gesperrt, solange Anmeldungen im
+  Workflow stehen. Speichern prüft Name, Status-Bezeichnungen, Arten und
   belegte Status (`belegteEntfallendeStatus`); Nachfolger auf entfallene
-  Status werden in allen Workflows entfernt.
+  Status werden in allen Workflows entfernt. „Duplizieren“ (`workflowKopie`)
+  hängt „(Kopie)“ an Name und Kurzbezeichnung.
 * Die Auswahl „Status ändern …“ (`NachfolgerAuswahl` in
   `src/bereiche/baubetrieb/components/common.tsx`) bietet nur die Nachfolger
   des aktuellen Status an (`nachfolgerVon`).
@@ -397,6 +401,7 @@ die Übersicht.
 | „Anmeldeleiche gelöscht.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Kein Fehler: Wechsel auf die Anmeldeleiche. |
 | „Bitte einen Namen angeben.“ / „Bitte mindestens einen Status anlegen.“ / „Bitte jeden Status benennen.“ / „Bitte mindestens eine Anmeldungs-Art wählen.“ | `src/bereiche/baubetrieb/pages/Workflows.tsx` | Workflow-Editor: Pflichtangaben fehlen. |
 | „„…“ kann nicht entfallen – darin stehen noch Anmeldungen.“ | `src/bereiche/baubetrieb/pages/Workflows.tsx` | Beim Speichern entfiele ein Status, in dem noch Anmeldungen stehen. |
+| „Der Bauzeitraum lässt sich nicht umstellen, solange Anmeldungen in diesem Workflow stehen.“ | `src/bereiche/baubetrieb/pages/Workflows.tsx` | Schutz beim Speichern; das Auswahlfeld ist in diesem Fall ohnehin gesperrt. |
 | „Die Datei ist keine gültige JSON-Datei.“ | `src/bereiche/baubetrieb/store/storage.ts` | Einspielen einer Datei, die kein JSON ist. |
 | „Die Datei ist eine Sicherung des Planlaufmanagements – bitte dort einspielen.“ | `src/bereiche/baubetrieb/store/storage.ts` | Das JSON enthält `projects`. |
 | „Die Datei ist keine Sicherung der Baubetriebsplanung.“ | `src/bereiche/baubetrieb/store/storage.ts` | Kennzeichen `bereich` fehlt oder Listen fehlen. |
