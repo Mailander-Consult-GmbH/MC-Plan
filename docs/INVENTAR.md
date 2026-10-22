@@ -305,7 +305,9 @@ Rahmen und Seitenleiste stehen in `src/bereiche/baubetrieb/App.tsx`. Die
   sofort löschte – jeder Workflow mit diesem Nachfolger erhält am Ende den
   Status „Anmeldeleiche“ (in den Standard-Workflows mit fester ID, z. B.
   `skm-anmeldeleiche`), auf den die bisherigen Verweise zeigen und dessen
-  einziger Nachfolger `LOESCHEN` ist. Ohne gespeicherten Bestand lädt `seedDaten()`
+  einziger Nachfolger `LOESCHEN` ist; hat eine ältere Fassung einen Bestand
+  der Fassung 5 gespeichert und die Art dabei zu „Entwurf“ gemacht, führt
+  `ausFassung4` den Status mit fester ID wieder als Anmeldeleiche. Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekte mit acht
   Anmeldungen, Termine relativ zum heutigen Tag, und die Standard-Workflows.
 * Alle Schreibzugriffe über `mutate()` in

@@ -87,13 +87,13 @@ nächsten SKM oder PzE oder N-x fällig ist“.
 
 *Entwurf:* Für jedes Fahrplanjahr der Sperrzeit werden die Fristen für SKM, PzE, N-2 und N-1
 berechnet. Eine Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen
-Eintrag in dieser oder einer späteren Phase hat. Fristen deutlich vor dem ersten Anmeldetermin
-gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne Eintrag erscheinen in der
-Übersicht.
+Eintrag in dieser oder einer späteren Phase hat; Anmeldeleichen zählen nicht. Fristen deutlich
+vor dem ersten Anmeldetermin gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne
+Eintrag erscheinen in der Übersicht.
 
 - Ist die Prüfung je Fahrplanjahr richtig, oder je Maßnahme/Bauabschnitt?
-- Reicht ein beliebiger Eintrag als „abgedeckt“, oder muss er einen bestimmten Status haben
-  (z. B. mindestens „Angemeldet“)?
+- Reicht jeder Eintrag außer einer Anmeldeleiche als „abgedeckt“, oder muss er einen bestimmten
+  Status haben (z. B. mindestens „Angemeldet“)?
 - Wie weit im Voraus soll der Bedarf angezeigt werden?
 
 ---
