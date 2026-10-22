@@ -6,7 +6,7 @@
  */
 import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon, ganzesFahrplanjahr } from './fristen';
 import {
-  ANMELDELEICHE,
+  LOESCHEN,
   type Anmeldung,
   type AnmeldungStand,
   type AnmeldungsArt,
@@ -85,7 +85,8 @@ function standVon(a: Anmeldung): AnmeldungStand {
 
 /**
  * Wendet einen Statuswechsel an. Zulässig sind nur die Nachfolger des
- * aktuellen Status. Die Anmeldeleiche löscht den Eintrag vollständig.
+ * aktuellen Status. `LOESCHEN` entfernt den Eintrag vollständig – in den
+ * Standard-Workflows der Schritt nach dem Status „Anmeldeleiche“.
  */
 export function wechselAnwenden(
   d: BaubetriebDaten,
@@ -98,7 +99,7 @@ export function wechselAnwenden(
   const alt = d.anmeldungen.find((a) => a.id === id);
   if (!alt || !nachfolgerVon(d.workflows, alt.statusId).includes(w.nach)) return d;
 
-  if (w.nach === ANMELDELEICHE) {
+  if (w.nach === LOESCHEN) {
     return {
       ...d,
       anmeldungen: d.anmeldungen

@@ -6,7 +6,7 @@
  * noch Anmeldungen stehen, darf deshalb nicht entfallen; Nachfolger, die auf
  * einen entfallenen Status zeigen, werden in allen Workflows entfernt.
  */
-import { ANMELDELEICHE, type BaubetriebDaten, type ID, type Workflow, type WorkflowStatus } from './types';
+import { LOESCHEN, type BaubetriebDaten, type ID, type Workflow, type WorkflowStatus } from './types';
 
 /** Zahl der Anmeldungen je Status. */
 export function anmeldungenJeStatus(d: Pick<BaubetriebDaten, 'anmeldungen'>): Map<ID, number> {
@@ -39,7 +39,7 @@ function nachfolgerBereinigen(workflows: Workflow[]): Workflow[] {
     ...w,
     status: w.status.map((s) => ({
       ...s,
-      nachfolger: [...new Set(s.nachfolger)].filter((z) => z === ANMELDELEICHE || vorhanden.has(z)),
+      nachfolger: [...new Set(s.nachfolger)].filter((z) => z === LOESCHEN || vorhanden.has(z)),
     })),
   }));
 }

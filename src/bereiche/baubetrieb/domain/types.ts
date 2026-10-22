@@ -17,7 +17,7 @@ export type ID = string;
  * Fassung des gespeicherten Bestands. Erhöhen, sobald `migriere()` in
  * `store/storage.ts` ältere Stände anheben muss.
  */
-export const DATEN_VERSION = 4;
+export const DATEN_VERSION = 5;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -91,7 +91,8 @@ export type StatusArt =
   | 'verspaetet'
   | 'genehmigt'
   | 'abgelehnt'
-  | 'aenderung';
+  | 'aenderung'
+  | 'leiche';
 
 export const STATUS_ART_LABEL: Record<StatusArt, string> = {
   entwurf: 'Entwurf',
@@ -101,6 +102,7 @@ export const STATUS_ART_LABEL: Record<StatusArt, string> = {
   genehmigt: 'Genehmigt',
   abgelehnt: 'Abgelehnt',
   aenderung: 'Änderungsabstimmung',
+  leiche: 'Anmeldeleiche',
 };
 
 /**
@@ -139,12 +141,16 @@ export const FRIST_TYP_LABEL: Record<FristTyp, string> = {
   nachhaken: 'Nachhak-Termin nach Statuswechsel',
 };
 
-/** Ziel eines Statuswechsels, das den Eintrag als Anmeldeleiche löscht. */
-export const ANMELDELEICHE = 'anmeldeleiche';
+/**
+ * Ziel eines Statuswechsels, das den Eintrag samt Verlauf löscht. In den
+ * Standard-Workflows folgt es nur auf den Status „Anmeldeleiche“: Eine
+ * Anmeldung wird erst zur Anmeldeleiche und im nächsten Schritt gelöscht.
+ */
+export const LOESCHEN = 'loeschen';
 
 /**
  * Ziel eines Statuswechsels: die ID eines Status – auch eines Status in einem
- * anderen Workflow (Übernahme in eine neue Phase) – oder `ANMELDELEICHE`.
+ * anderen Workflow (Übernahme in eine neue Phase) – oder `LOESCHEN`.
  */
 export type StatusZiel = ID;
 

@@ -2,7 +2,7 @@
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Badge } from '../../../shared/ui';
 import { AMPEL_LABEL, type Ampel, type Terminfrist } from '../domain/fristen';
-import { ANMELDELEICHE, type ID, type StatusArt, type StatusZiel, type Workflow } from '../domain/types';
+import { LOESCHEN, type ID, type StatusArt, type StatusZiel, type Workflow } from '../domain/types';
 import { istUebernahme, nachfolgerVon, statusInfo, statusVon, statusText } from '../domain/workflow';
 import { useStore } from '../store/store';
 
@@ -17,6 +17,8 @@ export const STATUS_TON: Record<StatusArt, Ton> = {
   genehmigt: 'green',
   abgelehnt: 'red',
   aenderung: 'purple',
+  // Erledigt und zum Löschen vorgemerkt – rot, damit sie auffällt.
+  leiche: 'red',
 };
 
 /**
@@ -131,9 +133,9 @@ export function NachfolgerAuswahl({
   );
 }
 
-/** „Genehmigt“, „→ PzE: Entwurf (Übernahme)“ bzw. „Anmeldeleiche (löschen)“. */
+/** „Genehmigt“, „→ PzE: Entwurf (Übernahme)“ bzw. „Eintrag löschen“. */
 export function nachfolgerText(workflows: Workflow[], von: ID, nach: StatusZiel): string {
-  if (nach === ANMELDELEICHE) return 'Anmeldeleiche (löschen)';
+  if (nach === LOESCHEN) return 'Eintrag löschen';
   const ziel = statusInfo(workflows, nach);
   if (!ziel) return 'Unbekannter Status';
   if (nach === von) return `${ziel.status.name} (erneut)`;

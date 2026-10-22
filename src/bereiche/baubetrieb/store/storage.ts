@@ -14,9 +14,9 @@ import {
 } from '../domain/workflow';
 import {
   ALLE_ARTEN,
-  ANMELDELEICHE,
   ANNEX_VII,
   DATEN_VERSION,
+  LOESCHEN,
   RIL_BEZUG_LABEL,
   RIL_SCHLUESSEL,
   STANDARD_BEARBEITER,
@@ -194,9 +194,9 @@ type Fassung2Anmeldung = Omit<Anmeldung, 'statusId' | 'verlauf'> & {
   })[];
 };
 
-/** Statusnummer → Status-ID der Standard-Workflows; „Z0“ war die Anmeldeleiche. */
+/** Statusnummer → Status-ID der Standard-Workflows; „Z0“ war die Anmeldeleiche, die sofort löschte. */
 const ausNummer = (nummer: string | null | undefined): string | null =>
-  !nummer ? null : nummer === 'Z0' ? ANMELDELEICHE : (STATUS_AUS_NUMMER[nummer] ?? null);
+  !nummer ? null : nummer === 'Z0' ? LOESCHEN : (STATUS_AUS_NUMMER[nummer] ?? null);
 
 /**
  * Hebt Fassung 2 auf Fassung 3: Die Standard-Workflows kommen hinzu, und die
@@ -263,10 +263,58 @@ function ausFassung3(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
   return { ...roh, workflows: workflows as Workflow[], anmeldungen: anmeldungen as Anmeldung[] };
 }
 
+/** Nachfolger bis Fassung 4, der den Eintrag sofort als Anmeldeleiche löschte. */
+const ALTES_ZIEL_ANMELDELEICHE = 'anmeldeleiche';
+
 /**
- * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Schritt.
- * Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch keinen Inhalt.
- * Sie erhält deshalb die Demodaten und behält ihre Einstellung.
+ * Hebt Fassung 4 auf Fassung 5: Die Anmeldeleiche ist ein eigener Status,
+ * gelöscht wird erst im nächsten Schritt. Jeder Workflow, der auf die
+ * Anmeldeleiche verwies, erhält am Ende den Status „Anmeldeleiche“ – in den
+ * Standard-Workflows mit deren fester Kennung. Die bisherigen Verweise zeigen
+ * auf ihn, und sein einziger Nachfolger ist „Eintrag löschen“.
+ */
+function ausFassung4(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
+  const standard = standardWorkflows();
+  const alle = Array.isArray(roh.workflows) ? roh.workflows : [];
+  const vergeben = new Set(alle.flatMap((w) => (Array.isArray(w.status) ? w.status.map((s) => s.id) : [])));
+  const workflows = alle.map((w: Partial<Workflow>) => {
+    const vorlage = standard.find((x) => x.id === w.id)?.status.find((s) => s.art === 'leiche');
+    // Speichert eine ältere Fassung (etwa aus dem Zwischenspeicher) einen Bestand der Fassung 5,
+    // wird aus der ihr unbekannten Art „Anmeldeleiche“ ein „Entwurf“ – die feste Kennung verrät ihn.
+    const status = (Array.isArray(w.status) ? w.status : []).map((s) =>
+      vorlage && s.id === vorlage.id ? { ...s, art: 'leiche' as const } : s,
+    );
+    const verweist = (s: Partial<WorkflowStatus>) =>
+      Array.isArray(s.nachfolger) && s.nachfolger.includes(ALTES_ZIEL_ANMELDELEICHE);
+    if (!status.some(verweist)) return { ...w, status };
+    const id = vorlage && !vergeben.has(vorlage.id) ? vorlage.id : zufallsId('st');
+    vergeben.add(id);
+    const leiche: WorkflowStatus = {
+      id,
+      name: 'Anmeldeleiche',
+      art: 'leiche',
+      frist: { typ: 'keine' },
+      nachhaken: false,
+      bemerkung: '',
+      nachfolger: [LOESCHEN],
+    };
+    return {
+      ...w,
+      status: [
+        ...status.map((s) =>
+          verweist(s) ? { ...s, nachfolger: s.nachfolger!.map((z) => (z === ALTES_ZIEL_ANMELDELEICHE ? id : z)) } : s,
+        ),
+        leiche,
+      ],
+    };
+  });
+  return { ...roh, workflows: workflows as Workflow[] };
+}
+
+/**
+ * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
+ * für Schritt. Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch
+ * keinen Inhalt. Sie erhält deshalb die Demodaten und behält ihre Einstellung.
  */
 function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   const version = roh.version ?? 1;
@@ -274,10 +322,13 @@ function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
     const neu = seedDaten();
     return { ...neu, einstellungen: { ...neu.einstellungen, farbmodus: roh.einstellungen?.farbmodus ?? 'standard' } };
   }
-  // Fassung 2 erhält die Standard-Workflows bereits in der aktuellen Form.
-  if (version === 2) return aufbereiten(ausFassung2(roh));
-  if (version === 3) return aufbereiten(ausFassung3(roh));
-  return aufbereiten(roh);
+  // Fassung 2 erhält die Standard-Workflows bereits in der aktuellen Form; die
+  // folgenden Schritte finden darin nichts mehr zu ändern.
+  let stand = roh;
+  if (version <= 2) stand = ausFassung2(stand);
+  if (version <= 3) stand = ausFassung3(stand);
+  if (version <= 4) stand = ausFassung4(stand);
+  return aufbereiten(stand);
 }
 
 export function ladeDaten(): BaubetriebDaten {

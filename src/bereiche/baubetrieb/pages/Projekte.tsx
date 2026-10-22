@@ -68,7 +68,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
             const anzahl = data.anmeldungen.filter((a) => a.projektId === p.id).length;
             const termine = offeneTermine(data, [p.id]);
             const ueberfaellig = termine.filter((t) => t.ampel === 'ueberfaellig').length;
-            const bedarf = naechsterBedarf(anmeldebedarf(p, data.anmeldungen, data.einstellungen));
+            const bedarf = naechsterBedarf(anmeldebedarf(p, data));
             return (
               <button
                 key={p.id}

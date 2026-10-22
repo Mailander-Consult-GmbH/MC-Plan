@@ -460,10 +460,10 @@ Mit ★ markierte Projekte erscheinen in Übersicht und Seitenleiste.
 
 **Anmeldebedarf je Fahrplanjahr:** Für jedes Fahrplanjahr der Sperrzeit stellt das Projekt die
 Fristen für SKM, PzE, Vorprozess N-2 und N-1 dar und zeigt, ob dafür schon ein Eintrag besteht
-(ein Eintrag einer späteren Phase deckt frühere ab). Fristen, die mehr als einen Monat vor dem
-ersten Anmeldetermin liegen, gelten als „vor Betreuung“. Offene Fristen lassen sich direkt mit
-**Anlegen** übernehmen – im Workflow, der die passende Maßnahmenart führt; was in die Vorschau
-fällt (Vorgabe 180 Tage), erscheint auch in Übersicht und Terminen. So lässt sich nach längeren
+(ein Eintrag einer späteren Phase deckt frühere ab; Anmeldeleichen zählen nicht). Fristen, die
+mehr als einen Monat vor dem ersten Anmeldetermin liegen, gelten als „vor Betreuung“. Offene
+Fristen lassen sich direkt mit **Anlegen** übernehmen – im Workflow, der die passende Maßnahmenart
+führt; was in die Vorschau fällt (Vorgabe 180 Tage), erscheint auch in Übersicht und Terminen. So lässt sich nach längeren
 Betreuungspausen ablesen, ob eine Anmeldung zum nächsten SKM, PzE oder N-x fällig ist.
 
 ### Anmeldung
@@ -484,7 +484,7 @@ ohne Anmeldung zeigen nur ihre Kopfzeile.
 Die Seite einer Anmeldung ist wie ein Planlauf aufgebaut: der Weg durch die Workflows, darunter
 die Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit Haken und Datum, der
 aktuelle mit Terminfrist, Ampel und den möglichen Nachfolgern („Weiter mit“, „Übernahme in neue
-Phase“, „Erledigt sich“). Darunter Merkmale und Statusverlauf.
+Phase“, „Abschluss“ mit „Eintrag löschen“). Darunter Merkmale und Statusverlauf.
 
 ### Workflows
 Wie im Planlaufmanagement sind die Workflows **anpassbar**. Mitgeliefert wird je Phase ein
@@ -499,14 +499,20 @@ Workflows, z. B. „PzE · Angemeldet“ oder „Unterjährig · Entwurf“.
 * Im **Editor** stehen Name, Kurzbezeichnung, Beschreibung, Sperrzeitraum (ganzes Fahrplanjahr oder
   tagesscharf) und die zulässigen Maßnahmenarten; darunter je Status eine Karte mit
   Bezeichnung, Art (Entwurf, In Abstimmung, Angemeldet, Angemeldet (verspätet), Genehmigt,
-  Abgelehnt, Änderungsabstimmung), Terminfrist, „Termin dient zum Nachhaken“, Bemerkung und
+  Abgelehnt, Änderungsabstimmung, Anmeldeleiche), Terminfrist, „Termin dient zum Nachhaken“, Bemerkung und
   **Nachfolgern**. Status lassen sich verschieben, ergänzen und entfernen; der erste ist der
   **Startstatus**. Ein Status, in dem noch Anmeldungen stehen, kann nicht entfallen, und der
   Sperrzeitraum eines Workflows bleibt fest, solange Anmeldungen darin stehen. Eine Kopie erhält
   „(Kopie)“ an Name und Kurzbezeichnung.
 * **Nachfolger** sind Status desselben Workflows, Status eines anderen Workflows (**Übernahme in
-  eine neue Phase**) oder die **Anmeldeleiche** (Eintrag löschen). Beim Statuswechsel stehen nur
-  sie zur Wahl – in der Liste („Status ändern …“) und auf der Seite der Anmeldung.
+  eine neue Phase**) oder **Eintrag löschen**. Beim Statuswechsel stehen nur sie zur Wahl – in der
+  Liste („Status ändern …“) und auf der Seite der Anmeldung.
+* **Anmeldeleiche:** Jeder Standard-Workflow endet mit dem Status **Anmeldeleiche** (erreichbar aus
+  „Entwurf“ und „Abgelehnt“). Er ist ein gewöhnlicher Status mit Datum im Statusverlauf, wird
+  **rot** angezeigt, hat keine Terminfrist und deckt keinen Anmeldebedarf mehr ab. Gelöscht wird
+  erst im **nächsten Schritt** mit „Eintrag löschen“ – samt Statusverlauf und ohne Rückweg; bis
+  dahin lässt sich der Wechsel in die Anmeldeleiche zurücknehmen. Ältere Bestände erhalten den
+  Status beim Laden automatisch (Fassung 5).
 * **Neu angelegt** wird immer im ersten Status eines Workflows; vorbelegt ist die unterjährige
   Anmeldung.
 * **Übernahme in eine neue Phase:** Maßnahmenart, Anmelde-ID und Sperrzeitraum werden neu

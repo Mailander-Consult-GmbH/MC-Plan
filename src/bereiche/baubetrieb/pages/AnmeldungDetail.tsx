@@ -16,14 +16,14 @@ import { NachhakenDialog, TerminDialog } from '../components/TerminDialoge';
 import { letzterWechsel, verwandte } from '../domain/ablauf';
 import { ampelFuer, bauzeitraumText, fristRegelText, ganzesFahrplanjahr, terminfrist } from '../domain/fristen';
 import {
-  ANMELDELEICHE,
   ANNEX_VII_LABEL,
+  LOESCHEN,
   type Anmeldung,
   type Projekt,
   type StatusZiel,
   type VerlaufEintrag,
 } from '../domain/types';
-import { istAenderung, istUebernahme, nachfolgerVon, statusInfo, statusVon } from '../domain/workflow';
+import { istAenderung, istLeiche, istUebernahme, nachfolgerVon, statusInfo, statusVon } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 
@@ -65,9 +65,11 @@ export function AnmeldungDetail({
     [...anmeldung.verlauf].reverse().find((v) => v.typ !== 'notiz' && v.nach === statusId)?.datum ?? null;
 
   const nachfolger = nachfolgerVon(data.workflows, anmeldung.statusId);
-  const imWorkflow = nachfolger.filter((n) => n !== ANMELDELEICHE && !istUebernahme(data.workflows, anmeldung.statusId, n));
+  const imWorkflow = nachfolger.filter((n) => n !== LOESCHEN && !istUebernahme(data.workflows, anmeldung.statusId, n));
   const uebernahmen = nachfolger.filter((n) => istUebernahme(data.workflows, anmeldung.statusId, n));
-  const leiche = nachfolger.includes(ANMELDELEICHE);
+  const loeschbar = nachfolger.includes(LOESCHEN);
+  // Der Wechsel in eine Anmeldeleiche ist rot hervorgehoben.
+  const rot = (n: StatusZiel) => (istLeiche(data.workflows, n) ? { color: 'var(--red)' } : undefined);
 
   return (
     <div className="stack">
@@ -164,7 +166,7 @@ export function AnmeldungDetail({
                       <div className="row wrap" style={{ gap: 6 }}>
                         <span className="small muted">Weiter mit:</span>
                         {imWorkflow.map((n) => (
-                          <button key={n} type="button" className="antwort-chip" onClick={() => setWechsel(n)}>
+                          <button key={n} type="button" className="antwort-chip" style={rot(n)} onClick={() => setWechsel(n)}>
                             {nachfolgerText(data.workflows, anmeldung.statusId, n)}
                           </button>
                         ))}
@@ -180,16 +182,16 @@ export function AnmeldungDetail({
                         ))}
                       </div>
                     ) : null}
-                    {leiche ? (
+                    {loeschbar ? (
                       <div className="row wrap" style={{ gap: 6 }}>
-                        <span className="small muted">Erledigt sich:</span>
+                        <span className="small muted">Abschluss:</span>
                         <button
                           type="button"
                           className="antwort-chip"
                           style={{ color: 'var(--red)' }}
-                          onClick={() => setWechsel(ANMELDELEICHE)}
+                          onClick={() => setWechsel(LOESCHEN)}
                         >
-                          {nachfolgerText(data.workflows, anmeldung.statusId, ANMELDELEICHE)}
+                          {nachfolgerText(data.workflows, anmeldung.statusId, LOESCHEN)}
                         </button>
                       </div>
                     ) : null}
@@ -330,7 +332,7 @@ export function AnmeldungDetail({
       {loeschen ? (
         <ConfirmDialog
           titel="Anmeldung löschen?"
-          text={`„${anmeldung.anmeldeId || anmeldung.gewerk || 'ohne ID'}“ wird samt Statusverlauf gelöscht. Für Anmeldeleichen ist der Statuswechsel „Anmeldeleiche“ vorgesehen.`}
+          text={`„${anmeldung.anmeldeId || anmeldung.gewerk || 'ohne ID'}“ wird samt Statusverlauf gelöscht. Für Anmeldeleichen ist der Status „Anmeldeleiche“ vorgesehen.`}
           onConfirm={() => {
             deleteAnmeldung(anmeldung.id);
             toast('Anmeldung gelöscht.');

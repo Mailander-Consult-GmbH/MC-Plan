@@ -58,7 +58,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
   const [suche, setSuche] = useState('');
 
   const eigene = data.anmeldungen.filter((a) => a.projektId === projekt.id);
-  const bedarf = anmeldebedarf(projekt, data.anmeldungen, data.einstellungen);
+  const bedarf = anmeldebedarf(projekt, data);
   const oeffne = (a: Anmeldung) => navigate({ view: 'anmeldung', projektId: projekt.id, anmeldungId: a.id });
 
   const workflowVon = (a: Anmeldung) => statusVon(data.workflows, a.statusId).workflow.id;
