@@ -277,7 +277,10 @@ dem Lastenheft der Anwender. Offene Fragen und Annahmen:
 `docs/BAUBETRIEB_RUECKFRAGEN.md`. Der Bereich greift nicht auf das
 Planlaufmanagement zu; Einstiegspunkt ist `src/bereiche/baubetrieb/index.tsx`,
 Rahmen und Seitenleiste stehen in `src/bereiche/baubetrieb/App.tsx`. Die
-„Projekthülle“ des Lastenhefts heißt in der Anwendung „Projekt“.
+„Projekthülle“ des Lastenhefts heißt in der Anwendung „Projekt“; die Phasen
+heißen SKM, MKM, KM (n-2 & n-1) und KKM (unterjährig) (`PHASE_LABEL` in
+`src/bereiche/baubetrieb/domain/types.ts`), im Lastenheft SKM, PzE, Vorprozess
+N-x und unterjährige Anmeldung.
 
 ### 7.1 Datenmodell und Speicherung
 
@@ -286,20 +289,21 @@ Rahmen und Seitenleiste stehen in `src/bereiche/baubetrieb/App.tsx`. Die
   `vonText`/`nachText` halten Workflow und Status zum Zeitpunkt des Eintrags
   fest), `Workflow` mit `status` (`WorkflowStatus`: Name, Art, Fristregel,
   `nachhaken`, Bemerkung, `nachfolger`), `Einstellungen` mit `rilFristen`.
-  Maßnahmenarten in `ALLE_ARTEN`, AnnexVII-Gründe in `ANNEX_VII`
+  Maßnahmenarten in `ALLE_ARTEN` (SKM, MKM, A, B(0), B(S), B, C, Container;
+  mit eigener KKM-Frist `MASSNAHMENARTEN`), AnnexVII-Gründe in `ANNEX_VII`
   („Entspricht Prozessphase“ und „Zustimmung EVU/EIU“ mit `selten`). Ein
   Nachfolger ist die ID eines Status – auch eines anderen Workflows – oder
   `LOESCHEN` (Eintrag löschen). Statusarten in `STATUS_ART_LABEL`, darunter
   `leiche` („Anmeldeleiche“).
 * Schlüssel `baubetrieb-planung.data.v1` im `localStorage`
-  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 5`.
+  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 6`.
   `migriere()` hebt ältere Stände in einem Aufruf Schritt für Schritt: Fassung 1 kannte nur den
   Farbmodus und erhält die Demodaten; Fassung 2 führte Statusnummern (V0 … Y9),
   die `STATUS_AUS_NUMMER` (`src/bereiche/baubetrieb/domain/workflow.ts`) den
   Status der Standard-Workflows zuordnet – in Anmeldungen, Verlauf und
   gespeichertem Vorstand; der bisher eingestellte `nachhakTage` wird zum
   Abstand der Nachhak-Termine (`standardWorkflows(nachhakTage)`); Fassung 3
-  (`ausFassung3`) erhält statt der Kurzbezeichnung „Unterjahr“ „Unterjährig“
+  (`ausFassung3`) erhält statt der Kurzbezeichnung „Unterjahr“ die aktuelle
   (auch in den Texten des Statusverlaufs), sofern sie nicht geändert wurde;
   Fassung 4 (`ausFassung4`) kannte die Anmeldeleiche nur als Nachfolger, der
   sofort löschte – jeder Workflow mit diesem Nachfolger erhält am Ende den
@@ -307,7 +311,14 @@ Rahmen und Seitenleiste stehen in `src/bereiche/baubetrieb/App.tsx`. Die
   `skm-anmeldeleiche`), auf den die bisherigen Verweise zeigen und dessen
   einziger Nachfolger `LOESCHEN` ist; hat eine ältere Fassung einen Bestand
   der Fassung 5 gespeichert und die Art dabei zu „Entwurf“ gemacht, führt
-  `ausFassung4` den Status mit fester ID wieder als Anmeldeleiche. Ohne gespeicherten Bestand lädt `seedDaten()`
+  `ausFassung4` den Status mit fester ID wieder als Anmeldeleiche; Fassung 5
+  (`ausFassung5`) kannte die Phasennamen des Lastenhefts – Standard-Workflows
+  erhalten Name, Kurzbezeichnung und Beschreibung von MKM, KM und KKM, soweit
+  sie nicht geändert wurden (die Texte im Statusverlauf folgen), die Art PzE
+  wird MKM, A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A (auch in den Arten
+  der Workflows und im gespeicherten Vorstand), Fristbezug und
+  Richtlinienfrist `pze` heißen `mkm`, die Prozessphase des ersten
+  Anmeldetermins `mkm` bzw. `kkm`. Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekte mit acht
   Anmeldungen, Termine relativ zum heutigen Tag, und die Standard-Workflows.
 * Alle Schreibzugriffe über `mutate()` in
@@ -324,10 +335,10 @@ Rahmen und Seitenleiste stehen in `src/bereiche/baubetrieb/App.tsx`. Die
 | `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`) mit „Status ändern …“ je Zeile; Karte „Anmeldebedarf aus den Projekten“ (nur wenn Bedarf besteht); Karte „Projekte“ mit der Zahl der Anmeldungen je Workflow, überfälligen Fristen und nächster Frist. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`). |
 | `#/baubetrieb/termine` | Termine & Nachhaken (`src/bereiche/baubetrieb/pages/Termine.tsx`) | Alle Anmeldungen mit Terminfrist über alle Projekte, gegliedert nach Projekt; Filter Alle / Überfällig / Fällig / Im Plan / Zum Nachhaken, Suche; je Zeile „Nachgehakt“ (bei Status zum Nachhaken) und „Status ändern …“. Darunter „Anmeldebedarf aus den Projekten“. |
 | `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit DB-G-Nummer, MIC-Projektnummer, Sperrzeit, Status der Betreuung, ★-Markierung, Zahl der Anmeldungen, überfälligen Fristen und „Nächste Anmeldung“ aus dem Anmeldebedarf; „Neues Projekt“ (`ProjektDialog`). |
-| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen); Stammdaten; Karte „Anmeldebedarf je Fahrplanjahr“ mit „Anlegen“ im Workflow der passenden Art (`workflowFuerArt`); Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung, Maßnahmenart, Sperrzeitraum, Status (ohne Workflow davor), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip) und „Status ändern …“, im Kopf „Anmeldung“ zum Anlegen in diesem Workflow. Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. |
+| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen); Stammdaten; Karte „Anmeldebedarf je Fahrplanjahr“ (SKM, MKM, KM N-2, KM N-1) mit „Anlegen“ im Workflow der passenden Art (`workflowFuerArt`; für KM N-2 und N-1 die Art A); Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung, Maßnahmenart, Sperrzeitraum, Status (ohne Workflow davor), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip) und „Status ändern …“, im Kopf „Anmeldung“ zum Anlegen in diesem Workflow. Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. |
 | `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“, „Letzten Wechsel zurücknehmen“; Karte „Merkmale“ (mit Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; „Bearbeiten“, „Löschen“. |
-| `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Liste „Workflows“ mit Kennzeichen „Standard“ bzw. „Eigener Workflow“, Zahl der Status und Anmeldungen, den Status in ihrer Reihenfolge, „Öffnen“, „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
-| `#/baubetrieb/einstellungen` | Einstellungen (`src/bereiche/baubetrieb/pages/Einstellungen.tsx`) | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`) als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. |
+| `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Liste „Workflows“ mit Kennzeichen „Standard“ bzw. „Eigener Workflow“, Zahl der Status und Anmeldungen, den Status in ihrer Reihenfolge, „Öffnen“, „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
+| `#/baubetrieb/einstellungen` | Einstellungen (`src/bereiche/baubetrieb/pages/Einstellungen.tsx`) | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase ein Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. |
 
 Router: `src/bereiche/baubetrieb/lib/router.ts`; unbekannte Adressen führen auf
 die Übersicht.
@@ -335,19 +346,23 @@ die Übersicht.
 ### 7.3 Workflows, Statuswechsel und Fristen
 
 * `standardWorkflows()` in `src/bereiche/baubetrieb/domain/workflow.ts` liefert
-  die Standard-Workflows „SKM“, „PzE“, „Vorprozess N-x“ und „Unterjährige
-  Anmeldung“ mit festen Status-IDs. Jeder endet mit dem Status
+  die Standard-Workflows „SKM“, „MKM“, „KM (n-2 & n-1)“ und „KKM
+  (unterjährig)“ (Kurzbezeichnungen SKM, MKM, KM, KKM) mit festen Status-IDs. Jeder endet mit dem Status
   „Anmeldeleiche“ (Art `leiche`, ohne Terminfrist, einziger Nachfolger
   `LOESCHEN`), erreichbar aus „Entwurf“ und „Abgelehnt“. `STATUS_TON` in
   `src/bereiche/baubetrieb/components/common.tsx` zeigt ihn rot. Neu angelegt wird im ersten Status eines
   Workflows (`AnmeldungDialog` in
-  `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx`, Feld „Workflow“);
-  vorbelegt ist der Workflow mit der Art A_unterjahr (`workflowFuerArt`).
+  `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx`: ein Auswahlfeld
+  „Phase und Maßnahmenart“, nach Phase gegliedert; je Eintrag Kurzbezeichnung
+  und Art, etwa KKM · B(S));
+  vorbelegt ist KKM (`NEUANLAGE_WORKFLOW`).
 * Editor (`WorkflowEditor` in `src/bereiche/baubetrieb/pages/Workflows.tsx`):
   Name, Kurzbezeichnung, Beschreibung, Sperrzeitraum, Maßnahmenarten; je Status
   eine Karte mit Bezeichnung, Art (`STATUS_ART_LABEL`), Terminfrist
   (`FRIST_TYP_LABEL`: „Keine Terminfrist“, „Frist laut Richtlinie“, „Nächster
-  Stichtag (TT.MM.)“, „Nachhak-Termin nach Statuswechsel“), „Termin dient zum
+  Stichtag (TT.MM.)“, „Nachhak-Termin nach Statuswechsel“; der Bezug einer
+  Frist laut Richtlinie nach Phase gegliedert, `RIL_BEZUG_LABEL` und
+  `RIL_BEZUG_PHASE`, Kurzform mit `RIL_BEZUG_KUERZEL`), „Termin dient zum
   Nachhaken“, Bemerkung und Nachfolgern („Nachfolger hinzufügen …“ mit „Dieser
   Workflow“, „Übernahme in …“ und „Eintrag löschen (endgültig)“; zur Art
   „Anmeldeleiche“ ein Hinweis);
@@ -373,14 +388,18 @@ die Übersicht.
 * Terminfrist (`terminfrist` in `src/bereiche/baubetrieb/domain/fristen.ts`):
   von Hand festgelegter Termin (`terminManuell`, gilt bis zum nächsten
   Wechsel), sonst nach der Fristregel des Status. Richtlinienfristen aus
-  `rilFristen`; die Vorbelegung `standardRilFristen()` in `seed.ts` ist als
+  `rilFristen`; welche gilt, entscheidet `rilSchluesselFuer`: Ril_KM nimmt die
+  N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist, sonst
+  die N-1-Frist (der Rechenweg nennt den Grund), Ril_KKM die Frist der
+  Maßnahmenart, für SKM und MKM die von A. Die Vorbelegung `standardRilFristen()` in `seed.ts` ist als
   `platzhalter` gekennzeichnet. Ampel `ampelFuer` mit `vorlaufTage`.
 * Fahrplanjahr: `fahrplanjahrBeginn`, `fahrplanjahrEnde`, `fahrplanjahrVon` –
   Ende am zweiten Samstag im Dezember. Ob ein Workflow den Sperrzeitraum als
   ganzes Fahrplanjahr führt, entscheidet `ganzesFahrplanjahr`.
 * Anmeldebedarf (`anmeldebedarf`, `faelligerBedarf`): je Fahrplanjahr der
-  Sperrzeit und je SKM, PzE, N-2, N-1 die Frist und der Zustand `abgedeckt`
-  (Anmeldungen in einer Anmeldeleiche zählen nicht, `istLeiche`),
+  Sperrzeit und je SKM, MKM, KM N-2, KM N-1 die Frist und der Zustand `abgedeckt`
+  (Einträge im KM oder KKM decken beide KM-Fristen ab; Anmeldungen in einer
+  Anmeldeleiche zählen nicht, `istLeiche`),
   `faellig`, `kuenftig`, `verstrichen`, `vorBeginn` oder `offen`; Fristen, die
   mehr als 31 Tage vor dem ersten Anmeldetermin liegen, gelten als `vorBeginn`
   (`CA_TOLERANZ_TAGE`, weil der erste Anmeldetermin nur ein ca.-Wert ist).

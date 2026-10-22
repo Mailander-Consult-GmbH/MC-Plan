@@ -8,9 +8,12 @@ Stand – eine kurze Bestätigung („passt“) genügt, wo die Annahme stimmt.
 Die Fragen sind nach Themen gegliedert; die mit ★ markierten bestimmen das Verhalten am stärksten
 und sollten zuerst geklärt werden. Status werden – wie im Lastenheft – zur eindeutigen Zuordnung
 mit ihren Nummern genannt (V0 … Y9); in der Anwendung tragen sie nur noch lesbare Namen, etwa
-„PzE · Angemeldet“ für W2. Begriffe der Anwendung: Die „Projekthülle“ heißt „Projekt“, „Bauzeit“
+„MKM · Angemeldet“ für W2. Begriffe der Anwendung: Die „Projekthülle“ heißt „Projekt“, „Bauzeit“
 bzw. „Bauzeitraum“ heißen „Sperrzeit“ bzw. „Sperrzeitraum“, die „Anmeldungs-Art“ heißt
-„Maßnahmenart“.
+„Maßnahmenart“. Die Phasen heißen SKM, MKM (im Lastenheft PzE), KM (n-2 & n-1) (Vorprozess N-x)
+und KKM (unterjährig) (unterjährige Anmeldung); die Fristen laut Richtlinie Ril_SKM, Ril_MKM,
+Ril_KM N-2/N-1 und Ril_KKM je Maßnahmenart (im Lastenheft Ril_skm, Ril_pze, Ril_N-2/Ril_Nx, Ril_A
+und Ril_X). Die Fragen zitieren das Lastenheft mit seinen Begriffen.
 
 ---
 
@@ -40,8 +43,9 @@ zweispaltig. Wir lesen sie als zehn Arten: SKM, PzE, A_Vor_N-2, A_Vor_N-1, A_unt
 B(S), B, C, Container. Stimmt das? Was unterscheidet B(0), B(S) und B, und was ist eine
 „Container“-Anmeldung?
 
-*Entwurf:* Zuordnung zu den Phasen – SKM → SKM, PzE → PzE, A_Vor_N-2/N-1 → Vorprozess, alle
-übrigen → unterjährige Anmeldung.
+*Entwurf (nach Rückmeldung angepasst):* Die Unterscheidung A_Vor_N-2, A_Vor_N-1 und A_unterjahr
+entfällt – es gibt nur A, die Phase ergibt sich aus dem Workflow. Maßnahmenarten je Phase: SKM →
+SKM, MKM → MKM, KM → A, KKM → A, B(0), B(S), B, C, Container.
 
 **A6. ÄAbst-Nr** – Woher kommt die Nummer (welches DB-System), wie ist sie aufgebaut?
 
@@ -60,7 +64,7 @@ Auftraggeber/Ansprechpartner DB, Vertretung des Hauptbearbeiters?
 von Hand eingetragen oder soll er sich aus Sperrzeit und Prozessphase ergeben? Welche Prozessphase
 ist gemeint – die, in der MIC in das Projekt einsteigt?
 
-*Entwurf:* Feld „Prozessphase des ersten Anmeldetermins“ (SKM, PzE, N-2, N-1, unterjährig) und
+*Entwurf:* Feld „Prozessphase des ersten Anmeldetermins“ (SKM, MKM, KM N-2, KM N-1, KKM) und
 ein Vorschlag laut Richtlinie, der übernommen werden kann, aber nicht muss.
 
 **B3. Ende der Sperrzeit** – „Ende = i. d. R. Inbetriebnahme + 4 Wochen“: Gilt das immer? Soll die
@@ -85,8 +89,8 @@ Schlussrechnung)?
 **B6. ★ Anmeldebedarf** – „Bei längeren Betreuungspausen … nachvollziehen, ob eine Anmeldung zum
 nächsten SKM oder PzE oder N-x fällig ist“.
 
-*Entwurf:* Für jedes Fahrplanjahr der Sperrzeit werden die Fristen für SKM, PzE, N-2 und N-1
-berechnet. Eine Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen
+*Entwurf:* Für jedes Fahrplanjahr der Sperrzeit werden die Fristen für SKM, MKM, KM N-2 und KM
+N-1 berechnet; ein Eintrag im KM oder KKM deckt beide KM-Fristen ab. Eine Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen
 Eintrag in dieser oder einer späteren Phase hat; Anmeldeleichen zählen nicht. Fristen deutlich
 vor dem ersten Anmeldetermin gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne
 Eintrag erscheinen in der Übersicht.
@@ -127,8 +131,8 @@ eingleisig, Gleissperrung) oder betroffene Gleise?
 läuft“:
 
 - Welche Status sind „Änderungsabstimmung läuft“? *Entwurf:* Status der Art
-  „Änderungsabstimmung“ – in den Standard-Workflows X6 (Vorprozess · Änderung angemeldet) und Y7
-  (Unterjährig · Änderung angestoßen); im Workflow-Editor je Status einstellbar.
+  „Änderungsabstimmung“ – in den Standard-Workflows X6 (KM · Änderung angemeldet) und Y7
+  (KKM · Änderung angestoßen); im Workflow-Editor je Status einstellbar.
 - Was geschieht mit beiden Feldern, wenn die Änderung abgeschlossen ist? *Entwurf:* Sie werden im
   Statusverlauf festgehalten und in der Anmeldung geleert, sodass die nächste Änderung leer
   beginnt.
@@ -168,12 +172,14 @@ Ursprungseintrag verweisen.
 Übergang von N-2 nach N-1 bei weiter bestehender Genehmigung? Soll sich dabei die Art von
 A_Vor_N-2 auf A_Vor_N-1 ändern?
 
-*Entwurf:* Der Status wird erneut gesetzt, das neue Datum im Verlauf festgehalten; die Art bleibt.
+*Entwurf:* Der Status wird erneut gesetzt, das neue Datum im Verlauf festgehalten. Eine Art
+A_Vor_N-1 gibt es nicht mehr: Im KM gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht
+verstrichen ist, danach die N-1-Frist (siehe E9).
 
 **D4. X5 → Y4** – Eine im Vorprozess genehmigte Anmeldung wird direkt „Angemeldet_fristgerecht“
 (unterjährig), ohne Entwurf und BBK-Mitwirkung. Richtig? Ist die Art dann immer A_unterjahr?
 
-*Entwurf:* Die Art wird bei der Übernahme gewählt, vorbelegt ist A_unterjahr.
+*Entwurf:* Die Art wird bei der Übernahme gewählt, vorbelegt ist A.
 
 **D5. Rückfälle nach Ablehnung** – V4 → V0/W0, W4 → V0/W0/X0, X8 → X0/W0/Y0: Bedeutet z. B.
 W4 → V0 einen neuen Anlauf im SKM für ein **späteres** Fahrplanjahr? Soll das Fahrplanjahr dabei
@@ -225,18 +231,18 @@ heute erfasst)?
 **E1. ★ Werte laut Richtlinie** – Bitte die konkreten Fristen und die Fundstelle (Richtlinie,
 Abschnitt, Stand) nennen:
 
-| Frist | Frage | Platzhalter im Entwurf |
+| Frist (im Lastenheft) | Frage | Platzhalter im Entwurf |
 | --- | --- | --- |
-| Ril_skm | Stichtag je Fahrplanjahr? | 31.03. im Jahr N−4 |
-| Ril_pze | Stichtag je Fahrplanjahr? | 31.03. im Jahr N−3 |
-| Ril_N-2 | Stichtag je Fahrplanjahr? | 31.10. im Jahr N−2 |
-| Ril_N-1 | Stichtag je Fahrplanjahr? | 30.04. im Jahr N−1 |
-| Ril_A | Wochen vor Sperrbeginn? | 26 Wochen |
-| Ril_B(0) | Wochen vor Sperrbeginn? | 20 Wochen |
-| Ril_B(S) | Wochen vor Sperrbeginn? | 16 Wochen |
-| Ril_B | Wochen vor Sperrbeginn? | 12 Wochen |
-| Ril_C | Wochen vor Sperrbeginn? | 6 Wochen |
-| Ril_Container | Wochen vor Sperrbeginn? | 4 Wochen |
+| Ril_SKM (Ril_skm) | Stichtag je Fahrplanjahr? | 31.03. im Jahr N−4 |
+| Ril_MKM (Ril_pze) | Stichtag je Fahrplanjahr? | 31.03. im Jahr N−3 |
+| Ril_KM N-2 (Ril_N-2) | Stichtag je Fahrplanjahr? | 31.10. im Jahr N−2 |
+| Ril_KM N-1 (Ril_N-1) | Stichtag je Fahrplanjahr? | 30.04. im Jahr N−1 |
+| Ril_KKM A (Ril_A) | Wochen vor Sperrbeginn? | 26 Wochen |
+| Ril_KKM B(0) | Wochen vor Sperrbeginn? | 20 Wochen |
+| Ril_KKM B(S) | Wochen vor Sperrbeginn? | 16 Wochen |
+| Ril_KKM B | Wochen vor Sperrbeginn? | 12 Wochen |
+| Ril_KKM C | Wochen vor Sperrbeginn? | 6 Wochen |
+| Ril_KKM Container | Wochen vor Sperrbeginn? | 4 Wochen |
 
 Die Platzhalter sind frei gewählt und in der Anwendung als solche gekennzeichnet. Falls sich eine
 Frist anders berechnet (z. B. Monate vor dem Fahrplanwechsel, Kalenderwoche, abhängig von
@@ -260,7 +266,7 @@ gleich oder je Status verschieden? Ab Statuswechsel oder abhängig vom Sperrbegi
 Workflow-Editor je Status einstellbar. Jeder Termin lässt sich je Anmeldung von Hand setzen,
 „Nachgehakt …“ hält das Nachhaken mit Notiz und neuem Termin fest.
 
-**E5. Fristen in „Genehmigt“-Status** – V3 (Ril_pze), W3 (Ril_N-2), X5 (Ril_A): Wir verstehen
+**E5. Fristen in „Genehmigt“-Status** – V3 (Ril_MKM), W3 (Ril_KM N-2), X5 (Ril_KKM A): Wir verstehen
 diese Frist als „bis dahin muss die Übernahme in die nächste Phase erfolgt sein“. Richtig?
 
 **E6. Ampel** – Ab wie vielen Tagen vor der Frist soll eine Anmeldung als „fällig“ gelten?
@@ -269,12 +275,18 @@ diese Frist als „bis dahin muss die Übernahme in die nächste Phase erfolgt s
 
 **E7. ★ Fristgerecht oder verspätet** – Wann ist eine unterjährige Anmeldung „verspätet“ (Y5)?
 Soll die Anwendung beim Wechsel aus Y3 selbst vorschlagen, ob Y4 oder Y5 zutrifft (Anmeldedatum
-nach Ril_X)?
+nach Ril_KKM)?
 
 *Entwurf:* Die Wahl trifft die bearbeitende Person.
 
 **E8. Vorprozess immer fristgerecht** – Das Lastenheft nimmt an, dass Anmeldungen in den
-Vorprozessen N-x immer fristgerecht erfolgen. Gibt es Ausnahmen, die abgebildet werden müssen?
+Vorprozessen N-x (KM) immer fristgerecht erfolgen. Gibt es Ausnahmen, die abgebildet werden müssen?
+
+**E9. ★ KM: N-2 oder N-1** – Bisher entschied die Art (A_Vor_N-2 oder A_Vor_N-1), welche Frist im
+KM gilt. Ohne diese Arten wählt die Anwendung selbst: Es gilt die N-2-Frist, solange sie am Tag
+des Statuswechsels nicht verstrichen ist, danach die N-1-Frist; der Rechenweg nennt den Grund.
+Passt das, oder gibt es Maßnahmen, die unabhängig vom Zeitpunkt in N-2 (bzw. N-1) angemeldet
+werden müssen?
 
 ---
 
