@@ -5,6 +5,7 @@
  */
 import { today } from '../../../shared/dates';
 import { leereLop } from '../domain/lop';
+import { zeilenAusAltform } from '../domain/protokoll';
 import { STANDARD_GEWERKE, seedDaten } from '../domain/seed';
 import {
   DATEN_VERSION,
@@ -13,6 +14,7 @@ import {
   TEILNAHME,
   type Beteiligter,
   type Eintrag,
+  type EintragTyp,
   type Funktion,
   type Logo,
   type Lop,
@@ -25,6 +27,7 @@ import {
   type Teilnehmer,
   type Top,
   type Vorstand,
+  type Zeile,
 } from '../domain/types';
 
 export { DATEN_VERSION };
@@ -44,16 +47,65 @@ const idOderNull = (w: unknown) => (typeof w === 'string' && w ? w : null);
 const zufallsId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 const erledigung = (w: unknown) => (w === 'erledigt' ? 'erledigt' : 'offen') as 'erledigt' | 'offen';
 
+const typVon = (w: unknown): EintragTyp => (w === 'F' || w === 'A' ? w : 'I');
+const objekt = (w: unknown): Roh | null => (w && typeof w === 'object' ? (w as Roh) : null);
+
+/** Stand eines LOP-Punkts bei der letzten Fortschreibung. */
 function vorstand(w: unknown): Vorstand | null {
-  if (!w || typeof w !== 'object') return null;
-  const v = w as Roh;
+  const v = objekt(w);
+  if (!v) return null;
   return {
-    ...(v.typ === 'I' || v.typ === 'F' || v.typ === 'A' ? { typ: v.typ } : {}),
     text: text(v.text),
     wer: text(v.wer),
     termin: datum(v.termin),
     status: erledigung(v.status),
-    ...(v.entfaellt === true ? { entfaellt: true } : {}),
+    ...(typeof v.bemerkung === 'string' ? { bemerkung: v.bemerkung } : {}),
+  };
+}
+
+function zeileAufbereiten(z: Roh): Zeile {
+  const vor = objekt(z.vor);
+  return {
+    id: text(z.id) || zufallsId('z'),
+    text: text(z.text),
+    herkunft: typeof z.herkunft === 'number' && z.herkunft >= 1 ? Math.round(z.herkunft) : null,
+    entfaellt: z.entfaellt === true,
+    vor: vor ? { text: text(vor.text), entfaellt: vor.entfaellt === true } : null,
+  };
+}
+
+/**
+ * Eintrag eines Protokolls mit der Nummer `nr`. Einträge der Fassungen 1 bis
+ * 3 kennen noch keine Zeilen: Ihr Text wird eine Zeile aus dem Protokoll der
+ * Fundstelle, ihre Ergänzung eine neue Zeile (`zeilenAusAltform`).
+ */
+function eintragAufbereiten(e: Roh, nr: number): Eintrag {
+  const typ = typVon(e.typ);
+  const vor = objekt(e.vor);
+  return {
+    id: text(e.id) || zufallsId('e'),
+    typ,
+    zeilen: Array.isArray(e.zeilen)
+      ? liste(e.zeilen).map(zeileAufbereiten)
+      : zeilenAusAltform(
+          { text: text(e.text), zusatz: text(e.zusatz), herkunft: text(e.herkunft), vorText: vor ? text(vor.text) : null },
+          nr,
+        ),
+    wer: text(e.wer),
+    termin: datum(e.termin),
+    status: erledigung(e.status),
+    uebernommenIn: idOderNull(e.uebernommenIn),
+    lopPunktId: idOderNull(e.lopPunktId),
+    entfaellt: e.entfaellt === true,
+    vor: vor
+      ? {
+          typ: vor.typ === undefined ? typ : typVon(vor.typ),
+          wer: text(vor.wer),
+          termin: datum(vor.termin),
+          status: erledigung(vor.status),
+          entfaellt: vor.entfaellt === true,
+        }
+      : null,
   };
 }
 
@@ -70,12 +122,13 @@ function protokollAufbereiten(p: Roh): Protokoll {
     }),
   );
   const fuehrerId = idOderNull(p.fuehrerId);
+  const nr = Math.max(1, Math.round(zahl(p.nr, 1)));
   return {
     id: text(p.id) || zufallsId('pt'),
     projektId: text(p.projektId),
     reiheId: text(p.reiheId) || zufallsId('rh'),
     art: text(p.art),
-    nr: Math.max(1, Math.round(zahl(p.nr, 1))),
+    nr,
     datum: datum(p.datum) || today(),
     beginn: text(p.beginn),
     ende: text(p.ende),
@@ -90,22 +143,9 @@ function protokollAufbereiten(p: Roh): Protokoll {
         id: text(t.id) || zufallsId('top'),
         titel: text(t.titel),
         vorTitel: typeof t.vorTitel === 'string' ? t.vorTitel : null,
-        eintraege: liste(t.eintraege).map(
-          (e): Eintrag => ({
-            id: text(e.id) || zufallsId('e'),
-            typ: e.typ === 'F' || e.typ === 'A' ? e.typ : 'I',
-            text: text(e.text),
-            zusatz: text(e.zusatz),
-            wer: text(e.wer),
-            termin: datum(e.termin),
-            status: erledigung(e.status),
-            herkunft: text(e.herkunft),
-            uebernommenIn: idOderNull(e.uebernommenIn),
-            lopPunktId: idOderNull(e.lopPunktId),
-            entfaellt: e.entfaellt === true,
-            vor: vorstand(e.vor),
-          }),
-        ),
+        entfaellt: t.entfaellt === true,
+        vorEntfaellt: t.vorEntfaellt === true,
+        eintraege: liste(t.eintraege).map((e) => eintragAufbereiten(e, nr)),
       }),
     ),
     geaendert: text(p.geaendert) || new Date().toISOString(),
@@ -132,6 +172,7 @@ function lopAufbereiten(l: Roh, projektId: string): Lop {
       termin: datum(p.termin),
       status: erledigung(p.status),
       erledigtAm: datum(p.erledigtAm),
+      bemerkung: text(p.bemerkung),
       herkunft: text(p.herkunft),
       erfasst: datum(p.erfasst) || today(),
       vor: vorstand(p.vor),
@@ -147,8 +188,6 @@ function lopAufbereiten(l: Roh, projektId: string): Lop {
     projektId,
     stand: Math.max(1, Math.round(zahl(l.stand, 1))),
     standDatum: datum(l.standDatum) || today(),
-    aufgestelltVon: idOderNull(l.aufgestelltVon),
-    hinweis: text(l.hinweis),
     themen: themenListe,
     punkte: punkteListe,
     naechsteNr: Math.max(hoechste + 1, Math.round(zahl(l.naechsteNr, 1))),
@@ -247,7 +286,9 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
  * Sie erhält die mitgelieferten Gewerke; ihre Funktionen gelten als
  * übergreifend, ihre Aufgaben als nicht übernommen (beides ergänzt
  * `aufbereiten`). Fassung 2 kannte keine gestrichenen Einträge; `aufbereiten`
- * setzt `entfaellt` auf false.
+ * setzt `entfaellt` auf false. Bis Fassung 3 bestanden Einträge aus Text und
+ * Ergänzung; `aufbereiten` bildet daraus Zeilen, gibt LOP-Punkten eine leere
+ * Bemerkung und lässt Ersteller und Hinweis der LOP fallen.
  */
 function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   let stand = roh;

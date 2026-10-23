@@ -1,47 +1,38 @@
 /**
  * Protokolle eines Projekts: je Besprechungsreihe eine Karte mit ihren
- * Protokollen (öffnen, Folgeprotokoll, löschen), darunter die Aufgaben aus
- * allen Protokollen mit Filter und die Logos im Druckkopf. Dateien des
- * eigenständigen Protokoll-Tools lassen sich übernehmen.
+ * Protokollen (öffnen, Folgeprotokoll, löschen), darunter die Logos im
+ * Druckkopf. Dateien des eigenständigen Protokoll-Tools lassen sich
+ * übernehmen.
  */
 import { useRef, useState } from 'react';
 import { formatDate, today } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Field, Modal, Segmented, TextInput } from '../../../../shared/ui';
-import { AmpelBadge } from '../../components/common';
+import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../../../shared/ui';
 import { LogoVerwaltung } from '../../components/Logos';
 import {
   ausProtokollTool,
   bezeichnung,
-  herkunftText,
   mitgehendeEintraege,
   naechsteNr,
   neueReihe,
   protokollAufgaben,
   reihenVon,
   uebernommeneEintraege,
-  volltext,
 } from '../../domain/protokoll';
 import { ampelFuer } from '../../domain/punkte';
 import { BESPRECHUNG_VORSCHLAEGE, newId, personName, type Projekt, type Protokoll } from '../../domain/types';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 
-type StatusFilter = 'offen' | 'erledigt' | 'alle';
-
 export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: (r: Route) => void }) {
-  const { data, deleteProtokoll, folgeprotokollAnlegen, protokolleUebernehmen, updateProtokoll } = useStore();
+  const { data, deleteProtokoll, folgeprotokollAnlegen, protokolleUebernehmen } = useStore();
   const toast = useToast();
   const [neu, setNeu] = useState(false);
   const [loeschen, setLoeschen] = useState<Protokoll | null>(null);
-  const [status, setStatus] = useState<StatusFilter>('offen');
-  const [wer, setWer] = useState('');
-  const [nurSpaet, setNurSpaet] = useState(false);
   const datei = useRef<HTMLInputElement>(null);
 
   const protokolle = data.protokolle.filter((p) => p.projektId === projekt.id);
-  const lop = data.lops.find((l) => l.projektId === projekt.id);
   const reihen = reihenVon(protokolle);
   const oeffne = (p: Protokoll) => navigate({ view: 'protokoll', projektId: projekt.id, protokollId: p.id });
 
@@ -68,35 +59,12 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
     if (anzahl > 0) toast(anzahl === 1 ? '1 Protokoll übernommen.' : `${anzahl} Protokolle übernommen.`);
   };
 
-  // Aufgaben aus den Protokollen dieses Projekts
-  const aufgaben = protokollAufgaben(protokolle);
-  const verantwortliche = [...new Set(aufgaben.map((a) => a.eintrag.wer).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b, 'de'),
-  );
-  const gefiltert = aufgaben
-    .filter((a) => status === 'alle' || (status === 'offen' ? a.eintrag.status !== 'erledigt' : a.eintrag.status === 'erledigt'))
-    .filter((a) => !wer || a.eintrag.wer === wer)
-    .filter((a) => !nurSpaet || ampelFuer(a.eintrag.termin, a.eintrag.status) === 'ueberfaellig')
-    .sort((a, b) => (a.eintrag.termin || '9999').localeCompare(b.eintrag.termin || '9999'));
-
-  const aufgabeSetzen = (p: Protokoll, eintragId: string, erledigt: boolean) => {
-    updateProtokoll(p.id, (x) => ({
-      ...x,
-      tops: x.tops.map((t) => ({
-        ...t,
-        eintraege: t.eintraege.map((e) => (e.id === eintragId ? { ...e, status: erledigt ? 'erledigt' : 'offen' } : e)),
-      })),
-    }));
-    toast(erledigt ? 'Als erledigt markiert.' : 'Wieder geöffnet.');
-  };
-
   return (
     <div className="stack">
       <div className="row-between wrap">
         <p className="small muted" style={{ maxWidth: 620 }}>
-          Ein Folgeprotokoll übernimmt Teilnehmende und Tagesordnung mit allen Einträgen. Erledigte und gestrichene
-          Einträge stehen darin noch einmal durchgestrichen und entfallen danach. Neue und geänderte Einträge erscheinen
-          im Druck blau.
+          Ein Folgeprotokoll übernimmt Teilnehmende und Tagesordnung mit allen Einträgen. Erledigtes und Gestrichenes steht
+          darin noch einmal durchgestrichen und entfällt danach. Neue und geänderte Einträge erscheinen im Druck blau.
         </p>
         <div className="row wrap">
           <button
@@ -230,103 +198,6 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
           </Card>
         ))
       )}
-
-      <Card>
-        <CardHeader
-          titel="Aufgaben aus den Protokollen"
-          sub="Je Aufgabe ihr jüngstes Vorkommen – übernommene Aufgaben zählen im Folgeprotokoll"
-        />
-        <div className="card-pad ps-filter" style={{ borderBottom: '1px solid var(--separator)' }}>
-          <Segmented<StatusFilter>
-            value={status}
-            onChange={setStatus}
-            options={[
-              { value: 'offen', label: 'Offen' },
-              { value: 'erledigt', label: 'Erledigt' },
-              { value: 'alle', label: 'Alle' },
-            ]}
-          />
-          <select className="select ps-kompakt" value={wer} onChange={(e) => setWer(e.target.value)} aria-label="Verantwortlich">
-            <option value="">Alle Verantwortlichen</option>
-            {verantwortliche.map((w) => (
-              <option key={w} value={w}>
-                {w}
-              </option>
-            ))}
-          </select>
-          <label className="checkbox">
-            <input type="checkbox" checked={nurSpaet} onChange={(e) => setNurSpaet(e.target.checked)} />
-            nur überfällige
-          </label>
-        </div>
-        {gefiltert.length === 0 ? (
-          <EmptyState
-            icon="check"
-            titel="Keine Aufgaben für diese Auswahl"
-            text="Aufgaben entstehen, wenn in einem Protokoll ein Eintrag vom Typ A angelegt wird."
-          />
-        ) : (
-          <div className="table-scroll">
-            <table className="table table-stack">
-              <thead>
-                <tr>
-                  <th style={{ width: 70 }}>Erledigt</th>
-                  <th style={{ width: 60 }}>Pkt.</th>
-                  <th>Aufgabe</th>
-                  <th>Verantw.</th>
-                  <th>Termin</th>
-                  <th className="actions">Protokoll</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gefiltert.map((a) => {
-                  const ampel = ampelFuer(a.eintrag.termin, a.eintrag.status);
-                  return (
-                    <tr key={a.eintrag.id}>
-                      <td>
-                        <label className="ps-haken" style={{ paddingTop: 0 }}>
-                          <input
-                            type="checkbox"
-                            checked={a.eintrag.status === 'erledigt'}
-                            onChange={(e) => aufgabeSetzen(a.protokoll, a.eintrag.id, e.target.checked)}
-                            aria-label="Als erledigt markieren"
-                          />
-                        </label>
-                      </td>
-                      <td className="num">{a.nr}</td>
-                      <td style={{ whiteSpace: 'pre-wrap' }}>
-                        {volltext(a.eintrag) || <span className="tertiary">ohne Text</span>}
-                        {a.eintrag.herkunft ? <div className="small tertiary">{herkunftText(a.eintrag)}</div> : null}
-                        {a.eintrag.lopPunktId ? (
-                          <div className="small" style={{ color: 'var(--accent)' }}>
-                            in der LOP (Nr. {lop?.punkte.find((x) => x.id === a.eintrag.lopPunktId)?.nr ?? '–'})
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="small">{a.eintrag.wer || <span className="tertiary">–</span>}</td>
-                      <td className="small">
-                        {ampel === 'ueberfaellig' || ampel === 'erledigt' ? (
-                          <AmpelBadge ampel={ampel} />
-                        ) : a.eintrag.termin ? (
-                          formatDate(a.eintrag.termin)
-                        ) : (
-                          <span className="tertiary">ohne Termin</span>
-                        )}
-                        {ampel === 'ueberfaellig' ? <div className="tertiary small">{formatDate(a.eintrag.termin)}</div> : null}
-                      </td>
-                      <td className="actions">
-                        <button type="button" className="btn btn-sm btn-ghost" onClick={() => oeffne(a.protokoll)}>
-                          {bezeichnung(a.protokoll)} <Icon name="chevron" size={12} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
 
       <LogoVerwaltung projekt={projekt} />
 

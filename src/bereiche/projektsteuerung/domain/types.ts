@@ -15,8 +15,10 @@ export type ISODate = string;
  * `migriere()` (store/storage.ts) nachgetragen – dann diese Zahl erhöhen.
  * Fassung 2: Gewerke der Funktionen, Verweis von Aufgaben auf LOP-Punkte.
  * Fassung 3: gestrichene Einträge (`entfaellt`).
+ * Fassung 4: Einträge aus Zeilen mit Ursprungsprotokoll, gestrichene
+ * Tagesordnungspunkte, Bemerkung der LOP-Punkte; die LOP ohne Kopfangaben.
  */
-export const DATEN_VERSION = 3;
+export const DATEN_VERSION = 4;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
@@ -139,36 +141,61 @@ export const EINTRAG_TYP_LABEL: Record<EintragTyp, string> = {
 
 export type Erledigung = 'offen' | 'erledigt';
 
-/** Stand eines Eintrags im Vorprotokoll bzw. in der letzten Fortschreibung der LOP. */
+/** Stand eines LOP-Punkts bei der letzten Fortschreibung. */
 export interface Vorstand {
-  typ?: EintragTyp;
   text: string;
   wer: string;
   termin: ISODate;
   status: Erledigung;
+  bemerkung?: string;
+}
+
+/** Stand eines Protokolleintrags im Vorprotokoll. */
+export interface EintragVorstand {
+  typ: EintragTyp;
+  wer: string;
+  termin: ISODate;
+  status: Erledigung;
   /** Im Vorprotokoll gestrichen. */
-  entfaellt?: boolean;
+  entfaellt: boolean;
+}
+
+/**
+ * Zeile eines Eintrags: der Text, der in einem Protokoll hinzukam. Ein
+ * Eintrag beginnt mit einer Zeile; jedes Folgeprotokoll kann eine Ergänzung
+ * als weitere Zeile anfügen. Übernommene Zeilen nennen im Druck ihr
+ * Ursprungsprotokoll („aus Prot. 1“).
+ */
+export interface Zeile {
+  id: ID;
+  text: string;
+  /** Nummer des Protokolls, in dem die Zeile entstand; null = neu in diesem Protokoll. */
+  herkunft: number | null;
+  /**
+   * Gestrichen: Die Zeile steht in diesem Protokoll durchgestrichen, im
+   * Folgeprotokoll noch einmal und danach nicht mehr.
+   */
+  entfaellt: boolean;
+  /** Stand im Vorprotokoll; null = neu in diesem Protokoll. */
+  vor: { text: string; entfaellt: boolean } | null;
 }
 
 export interface Eintrag {
   id: ID;
   typ: EintragTyp;
-  text: string;
-  /** Ergänzung zu einem übernommenen Eintrag – im Druck blau. */
-  zusatz: string;
-  /** Verantwortlich (Aufgabe) bzw. Beteiligt; Kürzel oder Name. */
+  /** Ursprungstext und Ergänzungen der Folgeprotokolle, je eine Zeile. */
+  zeilen: Zeile[];
+  /** Verantwortlich (Aufgabe) bzw. Beteiligt; Kürzel einer teilnehmenden Person. */
   wer: string;
   termin: ISODate;
   status: Erledigung;
-  /** Fundstelle im Ursprungsprotokoll, z. B. „Prot. 2, Pkt. 1.3“; leer = neu. */
-  herkunft: string;
   /** Folgeprotokoll, das diese Aufgabe weiterführt. */
   uebernommenIn: ID | null;
   /**
    * LOP-Punkt, in den die Aufgabe übernommen wurde – ein interner Verweis:
-   * Druck, Live-Druckansicht und Text des Protokolls zeigen ihn nicht. Die
-   * Aufgabe läuft im Protokoll weiter wie jede andere; „erledigt“ wird mit
-   * dem LOP-Punkt abgeglichen.
+   * Druck und Live-Druckansicht des Protokolls zeigen ihn nicht. Die Aufgabe
+   * läuft im Protokoll weiter wie jede andere; „erledigt“ wird mit dem
+   * LOP-Punkt abgeglichen.
    */
   lopPunktId: ID | null;
   /**
@@ -178,7 +205,7 @@ export interface Eintrag {
    */
   entfaellt: boolean;
   /** Stand im Vorprotokoll; null = neu in diesem Protokoll. */
-  vor: Vorstand | null;
+  vor: EintragVorstand | null;
 }
 
 /** Tagesordnungspunkt. */
@@ -187,6 +214,13 @@ export interface Top {
   titel: string;
   /** Titel im Vorprotokoll; null = neuer Punkt. */
   vorTitel: string | null;
+  /**
+   * Gestrichen: Der Punkt steht mit allen Einträgen durchgestrichen, im
+   * Folgeprotokoll noch einmal und danach nicht mehr.
+   */
+  entfaellt: boolean;
+  /** Im Vorprotokoll gestrichen. */
+  vorEntfaellt: boolean;
   eintraege: Eintrag[];
 }
 
@@ -252,6 +286,8 @@ export interface LopPunkt {
   termin: ISODate;
   status: Erledigung;
   erledigtAm: ISODate;
+  /** Bemerkung zum Punkt (Freitext). */
+  bemerkung: string;
   /** Woher der Punkt stammt, etwa „Baubesprechung Nr. 3“. */
   herkunft: string;
   /** Tag der Aufnahme in die LOP. */
@@ -267,9 +303,6 @@ export interface Lop {
   /** Laufende Nummer des aktuellen Stands. */
   stand: number;
   standDatum: ISODate;
-  /** Projektbeteiligter, der die LOP aufstellt. */
-  aufgestelltVon: ID | null;
-  hinweis: string;
   themen: LopThema[];
   punkte: LopPunkt[];
   /** Nummer, die der nächste neue Punkt erhält. */

@@ -1,8 +1,13 @@
 /**
- * Fachlogik der Protokolle: Reihen und Folgeprotokolle, Kennzeichnung neuer
- * und geänderter Einträge, Aufgaben aus den Protokollen, Teilnehmende aus der
+ * Fachlogik der Protokolle: Reihen und Folgeprotokolle, Zeilen mit ihrem
+ * Ursprungsprotokoll, Kennzeichnung neuer, geänderter und gestrichener
+ * Angaben, Aufgaben aus den Protokollen, Teilnehmende aus der
  * Projektbeteiligtenliste und die Übernahme von Dateien des Protokoll-Tools.
  * Alle Funktionen sind rein; geschrieben wird nur über den Store.
+ *
+ * Gestrichen werden kann auf drei Ebenen – Tagesordnungspunkt, Eintrag und
+ * Zeile. Gestrichenes steht im Protokoll der Änderung durchgestrichen, im
+ * Folgeprotokoll noch einmal und entfällt danach; ebenso erledigte Aufgaben.
  */
 import { today } from '../../../shared/dates';
 import {
@@ -15,6 +20,7 @@ import {
   type Beteiligter,
   type Eintrag,
   type EintragTyp,
+  type EintragVorstand,
   type Erledigung,
   type Funktion,
   type ID,
@@ -23,33 +29,67 @@ import {
   type Teilnahme,
   type Teilnehmer,
   type Top,
-  type Vorstand,
+  type Zeile,
 } from './types';
 
-/** Ursprungstext und Ergänzung als ein Text. */
-export function volltext(e: { text: string; zusatz: string }): string {
-  return [e.text, e.zusatz]
-    .map((x) => (x || '').trim())
+/* ------------------------------------------------------------------ */
+/* Zeilen und Kennzeichnung                                            */
+/* ------------------------------------------------------------------ */
+
+/** Text eines Eintrags ohne gestrichene Zeilen – etwa für die LOP. */
+export function eintragText(e: Eintrag): string {
+  return e.zeilen
+    .filter((z) => !z.entfaellt)
+    .map((z) => z.text.trim())
     .filter(Boolean)
     .join('\n');
 }
 
-/**
- * Neu oder gegenüber dem Vorprotokoll geändert – im Druck blau. Ohne Felder
- * fragt die Funktion, ob der ganze Eintrag neu ist.
- */
-export function eintragNeu(e: Eintrag, ...felder: (keyof Vorstand)[]): boolean {
-  if (!e.vor) return !e.herkunft;
-  if (felder.length === 0) return false;
-  return felder.some((k) => (e[k] ?? '') !== (e.vor![k] ?? ''));
+/** Ganzer Eintrag neu in diesem Protokoll – im Druck blau. */
+export const eintragNeu = (e: Eintrag): boolean => !e.vor && e.zeilen.every((z) => z.herkunft === null);
+
+/** Angabe gegenüber dem Vorprotokoll geändert bzw. neu – im Druck blau. */
+export function feldNeu(e: Eintrag, k: Exclude<keyof EintragVorstand, 'entfaellt'>): boolean {
+  return e.vor ? e[k] !== e.vor[k] : eintragNeu(e);
 }
 
 export const topNeu = (top: Top): boolean => top.vorTitel === null || top.titel !== top.vorTitel;
 
-/** „offen seit Prot. 2, Pkt. 1.3“ bzw. „aus Prot. 2, Pkt. 1.3“. */
-export function herkunftText(e: Eintrag): string {
-  return `${e.typ === 'A' && e.status !== 'erledigt' && !e.entfaellt ? 'offen seit ' : 'aus '}${e.herkunft}`;
+/** „aus Prot. 1“ – Ursprung einer übernommenen Zeile; leer bei neuen Zeilen. */
+export const zeileHerkunft = (z: Zeile): string => (z.herkunft !== null ? `aus Prot. ${z.herkunft}` : '');
+
+/** Erledigt (Aufgabe) oder gestrichen. */
+export function abgeschlossen(x: { typ?: EintragTyp; status: Erledigung; entfaellt?: boolean }): boolean {
+  return !!x.entfaellt || (x.typ === 'A' && x.status === 'erledigt');
 }
+
+/** Eintrag erscheint durchgestrichen: erledigt, gestrichen oder in einem gestrichenen Punkt. */
+export const eintragGestrichen = (top: Top, e: Eintrag): boolean => top.entfaellt || abgeschlossen(e);
+
+/** Gestrichen – über den Punkt oder den Eintrag –, aber nicht bloß erledigt. */
+export const eintragEntfaellt = (top: Top, e: Eintrag): boolean => top.entfaellt || e.entfaellt;
+
+/** Zeile erscheint durchgestrichen. */
+export const zeileGestrichen = (top: Top, e: Eintrag, z: Zeile): boolean => z.entfaellt || eintragGestrichen(top, e);
+
+/** Zeile war schon im Vorprotokoll durchgestrichen. */
+function zeileVorherGestrichen(top: Top, e: Eintrag, z: Zeile): boolean {
+  if (!z.vor) return false;
+  return z.vor.entfaellt || (!!e.vor && abgeschlossen(e.vor)) || (top.vorTitel !== null && top.vorEntfaellt);
+}
+
+/** In diesem Protokoll gestrichen bzw. erledigt – die Linie wird blau, der Text bleibt schwarz. */
+export const zeileNeuGestrichen = (top: Top, e: Eintrag, z: Zeile): boolean =>
+  zeileGestrichen(top, e, z) && !zeileVorherGestrichen(top, e, z);
+
+/** Gestrichen-Stand gegenüber dem Vorprotokoll gewechselt (gestrichen oder wiederhergestellt). */
+export function entfallenGeaendert(top: Top, e: Eintrag): boolean {
+  const vorher = !!e.vor && (e.vor.entfaellt || (top.vorTitel !== null && top.vorEntfaellt));
+  return eintragEntfaellt(top, e) !== vorher;
+}
+
+/** Punkt in diesem Protokoll gestrichen – die Linie wird blau. */
+export const topNeuGestrichen = (top: Top): boolean => top.entfaellt && !(top.vorTitel !== null && top.vorEntfaellt);
 
 /** „Baubesprechung Nr. 3“. */
 export function bezeichnung(p: Pick<Protokoll, 'art' | 'nr'>): string {
@@ -69,16 +109,19 @@ export function fuehrerVon(p: Protokoll): Teilnehmer | undefined {
 /* Anlegen                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Neue Zeile dieses Protokolls. */
+export function neueZeile(text = '', id: ID = newId('z')): Zeile {
+  return { id, text, herkunft: null, entfaellt: false, vor: null };
+}
+
 export function neuerEintrag(typ: EintragTyp): Eintrag {
   return {
     id: newId('e'),
     typ,
-    text: '',
-    zusatz: '',
+    zeilen: [neueZeile()],
     wer: '',
     termin: '',
     status: 'offen',
-    herkunft: '',
     uebernommenIn: null,
     lopPunktId: null,
     entfaellt: false,
@@ -87,7 +130,7 @@ export function neuerEintrag(typ: EintragTyp): Eintrag {
 }
 
 export function neuerTop(titel = ''): Top {
-  return { id: newId('top'), titel, vorTitel: null, eintraege: [] };
+  return { id: newId('top'), titel, vorTitel: null, entfaellt: false, vorEntfaellt: false, eintraege: [] };
 }
 
 /** Teilnehmende Person aus der Projektbeteiligtenliste. */
@@ -107,6 +150,9 @@ export function teilnehmerAus(b: Beteiligter, funktionen: Funktion[], status: Te
 export function freierTeilnehmer(): Teilnehmer {
   return { id: newId('tn'), beteiligterId: null, name: '', funktion: '', firma: '', kuerzel: '', status: 'anwesend' };
 }
+
+/** Wert für „Verantwortlich“: das Kürzel, ohne Kürzel der Name. */
+export const zuordnung = (t: Teilnehmer): string => t.kuerzel.trim() || t.name.trim();
 
 /**
  * Erstes Protokoll einer neuen Reihe. Die Protokollführung übernimmt die
@@ -140,12 +186,80 @@ export function neueReihe(
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Folgeprotokoll                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Schon im Vorprotokoll gestrichen: Der Punkt steht hier zum letzten Mal. */
+const topLetztmalig = (t: Top): boolean => t.entfaellt && t.vorTitel !== null && t.vorEntfaellt;
+
+/** Schon im Vorprotokoll abgeschlossen: In diesem Protokoll steht der Eintrag zum letzten Mal. */
+export const letztmalig = (e: Eintrag): boolean => abgeschlossen(e) && !!e.vor && abgeschlossen(e.vor);
+
+/** Schon im Vorprotokoll gestrichen: Die Zeile steht hier zum letzten Mal. */
+const zeileLetztmalig = (z: Zeile): boolean => z.entfaellt && !!z.vor?.entfaellt;
+
+/**
+ * Geht der Eintrag in ein Folgeprotokoll über? Ja – außer er war schon im
+ * Vorprotokoll erledigt bzw. gestrichen (dann ist er hier zum letzten Mal
+ * aufgeführt) oder die Aufgabe wurde bereits in ein Folgeprotokoll
+ * weitergeführt. Dazu muss ihm eine Zeile bleiben (`uebernahme`).
+ */
+export const mitgehen = (e: Eintrag): boolean => !letztmalig(e) && !(e.typ === 'A' && e.uebernommenIn);
+
+/**
+ * Tagesordnung eines Folgeprotokolls: Punkte, Einträge und Zeilen, die zum
+ * letzten Mal gestrichen bzw. erledigt dastanden, bleiben zurück, ebenso
+ * leere Zeilen und Einträge ohne Zeile. Jede übernommene Zeile behält ihr
+ * Ursprungsprotokoll; neue Zeilen erhalten die Nummer des Vorprotokolls.
+ * `mitgenommen` nennt die übernommenen Einträge des Vorprotokolls.
+ */
+function uebernahme(vorher: Protokoll): { tops: Top[]; mitgenommen: Set<ID> } {
+  const mitgenommen = new Set<ID>();
+  const tops = vorher.tops
+    .filter((top) => !topLetztmalig(top))
+    .map(
+      (top): Top => ({
+        id: newId('top'),
+        titel: top.titel,
+        vorTitel: top.titel,
+        entfaellt: top.entfaellt,
+        vorEntfaellt: top.entfaellt,
+        eintraege: top.eintraege.filter(mitgehen).flatMap((e): Eintrag[] => {
+          const zeilen = e.zeilen
+            .filter((z) => z.text.trim() && !zeileLetztmalig(z))
+            .map(
+              (z): Zeile => ({
+                id: newId('z'),
+                text: z.text,
+                herkunft: z.herkunft ?? vorher.nr,
+                entfaellt: z.entfaellt,
+                vor: { text: z.text, entfaellt: z.entfaellt },
+              }),
+            );
+          if (zeilen.length === 0) return [];
+          mitgenommen.add(e.id);
+          return [
+            {
+              ...e,
+              id: newId('e'),
+              zeilen,
+              uebernommenIn: null,
+              lopPunktId: e.typ === 'A' ? e.lopPunktId : null,
+              vor: { typ: e.typ, wer: e.wer, termin: e.termin, status: e.status, entfaellt: e.entfaellt },
+            },
+          ];
+        }),
+      }),
+    );
+  return { tops, mitgenommen };
+}
+
 /**
  * Folgeprotokoll: übernimmt Kopfdaten, Teilnehmende und Tagesordnung mit
- * allen Einträgen (`mitgehen`). Erledigte und gestrichene Einträge gehen
- * noch einmal durchgestrichen mit und entfallen erst im übernächsten
- * Protokoll. Das Vorprotokoll vermerkt bei Aufgaben, wohin sie übernommen
- * wurden; in die LOP übernommene Aufgaben behalten ihren Verweis.
+ * allen Einträgen (`uebernahme`). Das Vorprotokoll vermerkt bei Aufgaben,
+ * wohin sie übernommen wurden; in die LOP übernommene Aufgaben behalten
+ * ihren Verweis.
  */
 export function folgeprotokoll(
   vorher: Protokoll,
@@ -158,30 +272,7 @@ export function folgeprotokoll(
     neueIds.set(t.id, neu);
     return { ...t, id: neu, status: t.status === 'nur Verteiler' ? t.status : 'anwesend' };
   });
-
-  const tops = vorher.tops.map(
-    (top, ti): Top => ({
-      id: newId('top'),
-      titel: top.titel,
-      vorTitel: top.titel,
-      eintraege: top.eintraege
-        .map((e, ei) => ({ e, nr: `${ti + 1}.${ei + 1}` }))
-        .filter(({ e }) => mitgehen(e))
-        .map(({ e, nr }): Eintrag => {
-          const text = volltext(e);
-          return {
-            ...e,
-            id: newId('e'),
-            text,
-            zusatz: '',
-            uebernommenIn: null,
-            lopPunktId: e.typ === 'A' ? e.lopPunktId : null,
-            herkunft: e.herkunft || `Prot. ${vorher.nr}, Pkt. ${nr}`,
-            vor: { typ: e.typ, text, wer: e.wer, termin: e.termin, status: e.status, entfaellt: e.entfaellt },
-          };
-        }),
-    }),
-  );
+  const { tops, mitgenommen } = uebernahme(vorher);
 
   const neu: Protokoll = {
     id,
@@ -206,31 +297,14 @@ export function folgeprotokoll(
     ...vorher,
     tops: vorher.tops.map((top) => ({
       ...top,
-      eintraege: top.eintraege.map((e) => (e.typ === 'A' && mitgehen(e) ? { ...e, uebernommenIn: id } : e)),
+      eintraege: top.eintraege.map((e) => (e.typ === 'A' && mitgenommen.has(e.id) ? { ...e, uebernommenIn: id } : e)),
     })),
   };
   return { neu, vorher: vorherNeu };
 }
 
-/** Erledigt (Aufgabe) oder gestrichen – der Eintrag wird durchgestrichen aufgeführt. */
-export function abgeschlossen(x: { typ?: EintragTyp; status: Erledigung; entfaellt?: boolean }): boolean {
-  return !!x.entfaellt || (x.typ === 'A' && x.status === 'erledigt');
-}
-
-/** Schon im Vorprotokoll abgeschlossen: In diesem Protokoll steht der Eintrag zum letzten Mal. */
-export const letztmalig = (e: Eintrag): boolean => abgeschlossen(e) && !!e.vor && abgeschlossen(e.vor);
-
-/**
- * Geht der Eintrag in ein Folgeprotokoll über? Ja – außer er war schon im
- * Vorprotokoll erledigt bzw. gestrichen (dann ist er hier zum letzten Mal
- * aufgeführt) oder die Aufgabe wurde bereits in ein Folgeprotokoll
- * weitergeführt.
- */
-export const mitgehen = (e: Eintrag): boolean => !letztmalig(e) && !(e.typ === 'A' && e.uebernommenIn);
-
 /** Zahl der Einträge, die ein Folgeprotokoll aus diesem Protokoll übernähme. */
-export const mitgehendeEintraege = (p: Protokoll): number =>
-  p.tops.reduce((n, t) => n + t.eintraege.filter(mitgehen).length, 0);
+export const mitgehendeEintraege = (p: Protokoll): number => uebernahme(p).mitgenommen.size;
 
 /** Nummer des nächsten Protokolls einer Reihe. */
 export const naechsteNr = (protokolle: Protokoll[], reiheId: ID): number =>
@@ -273,15 +347,15 @@ export interface ProtokollAufgabe {
 
 /**
  * Aufgaben aus Protokollen – je Aufgabe nur ihr jüngstes Vorkommen: Wurde sie
- * in ein Folgeprotokoll übernommen, zählt sie dort. Gestrichene Aufgaben
- * zählen nicht.
+ * in ein Folgeprotokoll übernommen, zählt sie dort. Gestrichene Aufgaben und
+ * Aufgaben gestrichener Punkte zählen nicht.
  */
 export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
   const aufgaben: ProtokollAufgabe[] = [];
   for (const protokoll of protokolle) {
     protokoll.tops.forEach((top, ti) =>
       top.eintraege.forEach((eintrag, ei) => {
-        if (eintrag.typ === 'A' && !eintrag.uebernommenIn && !eintrag.entfaellt) {
+        if (eintrag.typ === 'A' && !eintrag.uebernommenIn && !eintragEntfaellt(top, eintrag)) {
           aufgaben.push({ protokoll, top, eintrag, nr: `${ti + 1}.${ei + 1}` });
         }
       }),
@@ -322,13 +396,7 @@ export function teilnehmerNachziehen(d: ProjektsteuerungDaten): Projektsteuerung
     geaendert = true;
     return { ...p, teilnehmer };
   });
-  // Die LOP verweist auf die Person, die sie aufstellt.
-  const lops = d.lops.map((l) => {
-    if (!l.aufgestelltVon || beteiligte.get(l.aufgestelltVon)?.projektId === l.projektId) return l;
-    geaendert = true;
-    return { ...l, aufgestelltVon: null };
-  });
-  return geaendert ? { ...d, protokolle, lops } : d;
+  return geaendert ? { ...d, protokolle } : d;
 }
 
 /**
@@ -356,55 +424,34 @@ export function lopVerweiseNachziehen(d: ProjektsteuerungDaten): Projektsteuerun
 }
 
 /* ------------------------------------------------------------------ */
-/* Als Text                                                            */
+/* Frühere Form der Einträge                                           */
 /* ------------------------------------------------------------------ */
 
-const datumText = (iso: string) => (iso ? iso.split('-').reverse().join('.') : '');
-
 /**
- * Protokoll als schlichter Text, etwa für eine E-Mail. Verweise auf die LOP
- * sind intern und erscheinen nicht.
+ * Zeilen aus der früheren Form eines Eintrags – ein Text, eine Ergänzung und
+ * eine Fundstelle wie „Prot. 2, Pkt. 1.3“ – für ältere Bestände und Dateien
+ * des Protokoll-Tools. Der Text wird eine Zeile aus dem Protokoll der
+ * Fundstelle, die Ergänzung eine neue Zeile. `nr` ist die Nummer des
+ * Protokolls, in dem der Eintrag steht.
  */
-export function alsText(p: Protokoll, projektName: string): string {
-  const z: string[] = [];
-  z.push(`PROTOKOLL – ${bezeichnung(p)}`);
-  if (projektName) z.push(`Projekt: ${projektName}`);
-  z.push(`Datum: ${datumText(p.datum)}${zeitText(p) ? `, ${zeitText(p)}` : ''}`);
-  if (p.ort) z.push(`Ort: ${p.ort}`);
-  const fuehrer = fuehrerVon(p);
-  if (fuehrer) z.push(`Protokollführung: ${fuehrer.name}`);
-  const tn = p.teilnehmer.filter((t) => t.name);
-  if (tn.length) {
-    z.push('', 'Teilnehmende:');
-    tn.forEach((t) =>
-      z.push(
-        `- ${t.name}${t.funktion || t.firma ? ` (${[t.funktion, t.firma].filter(Boolean).join(', ')})` : ''}${
-          t.kuerzel ? ` [${t.kuerzel}]` : ''
-        }${t.status !== 'anwesend' ? ` – ${t.status}` : ''}`,
-      ),
-    );
-  }
-  if (p.verteiler) z.push('', `Zusätzlicher Verteiler: ${p.verteiler}`);
-  z.push('', 'I = Information, F = Festlegung, A = Aufgabe');
-  p.tops.forEach((top, ti) => {
-    z.push('', `TOP ${ti + 1}  ${top.titel || 'Ohne Titel'}`);
-    top.eintraege.forEach((e, ei) => {
-      z.push(
-        `${ti + 1}.${ei + 1} [${e.typ}] ${volltext(e).replace(/\n/g, '\n      ')}${e.entfaellt ? ' (entfällt)' : ''}`,
-      );
-      if (e.typ === 'A') {
-        z.push(
-          `      Verantwortlich: ${e.wer || '–'} | Termin: ${datumText(e.termin) || '–'}${
-            e.status === 'erledigt' ? ' | erledigt' : ''
-          }`,
-        );
-      } else if (e.wer) z.push(`      Wer: ${e.wer}`);
-      if (e.herkunft) z.push(`      ${herkunftText(e)}`);
+export function zeilenAusAltform(
+  alt: { text: string; zusatz: string; herkunft: string; vorText: string | null },
+  nr: number,
+): Zeile[] {
+  const uebernommen = alt.herkunft.trim() !== '' || alt.vorText !== null;
+  const fundstelle = /Prot\.?\s*(\d+)/i.exec(alt.herkunft);
+  const zeilen: Zeile[] = [];
+  if (alt.text.trim() || !alt.zusatz.trim()) {
+    zeilen.push({
+      id: newId('z'),
+      text: alt.text,
+      herkunft: uebernommen ? (fundstelle ? Number(fundstelle[1]) : Math.max(1, nr - 1)) : null,
+      entfaellt: false,
+      vor: alt.vorText !== null ? { text: alt.vorText, entfaellt: false } : null,
     });
-  });
-  if (p.naechster) z.push('', `Nächster Termin: ${datumText(p.naechster)}`);
-  if (p.hinweis) z.push('', p.hinweis);
-  return z.join('\n');
+  }
+  if (alt.zusatz.trim()) zeilen.push(neueZeile(alt.zusatz));
+  return zeilen;
 }
 
 /* ------------------------------------------------------------------ */
@@ -486,53 +533,53 @@ export function ausProtokollTool(
       fuehrerId = t.id;
     }
     const typ = (w: unknown): EintragTyp => (w === 'F' || w === 'A' ? w : 'I');
-    const vorstand = (v: unknown): Vorstand | null => {
-      if (!v || typeof v !== 'object') return null;
-      const r = v as Roh;
+    const zahl = Number.parseInt(text(x.nr), 10);
+    const nr = Number.isFinite(zahl) && zahl > 0 ? zahl : 1;
+    const eintrag = (e: Roh): Eintrag => {
+      const vor = e.vor && typeof e.vor === 'object' ? (e.vor as Roh) : null;
       return {
-        typ: typ(r.typ),
-        text: text(r.text),
-        wer: text(r.wer),
-        termin: datum(r.termin),
-        status: r.status === 'erledigt' ? 'erledigt' : 'offen',
+        id: newId('e'),
+        typ: typ(e.typ),
+        zeilen: zeilenAusAltform(
+          { text: text(e.text), zusatz: text(e.zusatz), herkunft: text(e.herkunft), vorText: vor ? text(vor.text) : null },
+          nr,
+        ),
+        wer: text(e.wer),
+        termin: datum(e.termin),
+        status: e.status === 'erledigt' ? 'erledigt' : 'offen',
+        lopPunktId: null,
+        entfaellt: false,
+        uebernommenIn: e.carriedTo
+          ? (kennung.get(text(e.carriedTo)) ?? (imProjekt.has(text(e.carriedTo)) ? text(e.carriedTo) : null))
+          : null,
+        vor: vor
+          ? {
+              typ: vor.typ === undefined ? typ(e.typ) : typ(vor.typ),
+              wer: text(vor.wer),
+              termin: datum(vor.termin),
+              status: vor.status === 'erledigt' ? 'erledigt' : 'offen',
+              entfaellt: false,
+            }
+          : null,
       };
     };
     const tops = (x.tops as Roh[])
       .filter((t) => t && typeof t === 'object')
       .map(
         (t): Top => ({
-          id: newId('top'),
-          titel: text(t.titel),
+          ...neuerTop(text(t.titel)),
           vorTitel: typeof t.vorTitel === 'string' ? t.vorTitel : null,
           eintraege: (Array.isArray(t.eintraege) ? (t.eintraege as Roh[]) : [])
             .filter((e) => e && typeof e === 'object')
-            .map(
-              (e): Eintrag => ({
-                id: newId('e'),
-                typ: typ(e.typ),
-                text: text(e.text),
-                zusatz: text(e.zusatz),
-                wer: text(e.wer),
-                termin: datum(e.termin),
-                status: e.status === 'erledigt' ? 'erledigt' : 'offen',
-                herkunft: text(e.herkunft),
-                lopPunktId: null,
-                entfaellt: false,
-                uebernommenIn: e.carriedTo
-                  ? (kennung.get(text(e.carriedTo)) ?? (imProjekt.has(text(e.carriedTo)) ? text(e.carriedTo) : null))
-                  : null,
-                vor: vorstand(e.vor),
-              }),
-            ),
+            .map(eintrag),
         }),
       );
-    const nr = Number.parseInt(text(x.nr), 10);
     return {
       id: kennung.get(text(x.id))!,
       projektId,
       reiheId: `${projektId}:${serie}`,
       art: text(x.art) || 'Besprechung',
-      nr: Number.isFinite(nr) && nr > 0 ? nr : 1,
+      nr,
       datum: datum(x.datum) || today(),
       beginn: uhrzeit(x.beginn),
       ende: uhrzeit(x.ende),

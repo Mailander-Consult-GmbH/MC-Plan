@@ -1,10 +1,10 @@
 /**
  * Liste offener Punkte (LOP) eines Projekts – eine To-do-Liste, die laufend
- * fortgeschrieben wird. Aufgebaut wie ein Protokoll: Themen statt
- * Tagesordnungspunkten, je Punkt Verantwortlich, Termin und Erledigung. Jeder
- * Punkt behält seine Nummer. „Fortschreiben“ schließt den Stand ab; danach
- * erscheinen neue und geänderte Angaben im Druck blau, erledigte Punkte
- * wandern ins Archiv.
+ * fortgeschrieben wird. Aufgebaut wie ein Protokoll: Themenblöcke statt
+ * Tagesordnungspunkten, je Punkt Verantwortlich, Termin, Erledigung und eine
+ * Bemerkung. Jeder Punkt behält seine Nummer. „Fortschreiben“ schließt den
+ * Stand ab; danach erscheinen neue und geänderte Angaben im Druck blau,
+ * erledigte Punkte wandern ins Archiv.
  */
 import { useEffect, useState } from 'react';
 import { formatDate, today } from '../../../../shared/dates';
@@ -20,8 +20,6 @@ import {
   Modal,
   Search,
   Segmented,
-  Select,
-  Stat,
   TextInput,
 } from '../../../../shared/ui';
 import { Blatt, KuerzelListe, Textfeld, useLiveDruck } from '../../components/common';
@@ -35,12 +33,12 @@ import {
   leereLop,
   neuesThema,
   punktAnfuegen,
+  volltext,
   wiederAufnehmen,
 } from '../../domain/lop';
-import { volltext } from '../../domain/protokoll';
 import { ampelFuer } from '../../domain/punkte';
 import { logosVon } from '../../domain/seed';
-import { newId, personName, type ID, type Lop, type LopPunkt, type LopThema, type Projekt } from '../../domain/types';
+import { newId, type ID, type Lop, type LopPunkt, type LopThema, type Projekt } from '../../domain/types';
 import { useStore } from '../../store/store';
 import { nachFunktion } from './Beteiligte';
 
@@ -73,8 +71,7 @@ export function LopSeite({ projekt }: { projekt: Projekt }) {
     data.beteiligte.filter((b) => b.projektId === projekt.id),
     data.funktionen,
   );
-  const aufgestellt = beteiligte.find((b) => b.id === lop.aufgestelltVon);
-  const inhalt = lopHtml(lop, projekt, logosVon(projekt), aufgestellt ? personName(aufgestellt) : '');
+  const inhalt = lopHtml(lop, projekt, logosVon(projekt));
   const titel = `LOP Stand ${lop.stand} – ${projekt.name}`;
   const liveOeffnen = useLiveDruck(titel, inhalt);
   const listeId = `ps-kuerzel-lop-${projekt.id}`;
@@ -86,10 +83,7 @@ export function LopSeite({ projekt }: { projekt: Projekt }) {
     aendern((l) => ({ ...l, themen: l.themen.map((t) => (t.id === id ? { ...t, titel } : t)) }));
 
   const aktiv = aktivePunkte(lop);
-  const offen = aktiv.filter((p) => p.status !== 'erledigt');
-  const spaet = offen.filter((p) => ampelFuer(p.termin, p.status) === 'ueberfaellig');
   const archiv = archiviertePunkte(lop);
-  const letzte = lop.fortschreibungen[lop.fortschreibungen.length - 1];
   const verantwortliche = [...new Set(aktiv.map((p) => p.wer).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
 
   const filterAktiv = Boolean(suche.trim()) || status !== 'alle' || Boolean(wer) || nurSpaet;
@@ -98,7 +92,7 @@ export function LopSeite({ projekt }: { projekt: Projekt }) {
     (!wer || p.wer === wer) &&
     (!nurSpaet || ampelFuer(p.termin, p.status) === 'ueberfaellig') &&
     (!suche.trim() ||
-      [p.nr, volltext(p), p.wer, p.herkunft].join(' ').toLowerCase().includes(suche.trim().toLowerCase()));
+      [p.nr, volltext(p), p.wer, p.bemerkung, p.herkunft].join(' ').toLowerCase().includes(suche.trim().toLowerCase()));
   const treffer = aktiv.filter(passt).length;
 
   const punktNeu = (themaId: ID) => {
@@ -148,78 +142,9 @@ export function LopSeite({ projekt }: { projekt: Projekt }) {
       </div>
 
       {ansicht === 'druck' ? (
-        <>
-          <div className="row wrap">
-            <button type="button" className="btn btn-primary" onClick={drucken}>
-              Drucken oder als PDF speichern
-            </button>
-            <span className="small tertiary">
-              Gedruckt wird der aktuelle Stand mit allen Punkten der Liste – ohne Archiv. Für eine PDF-Datei im
-              Druckdialog „Als PDF speichern“ wählen.
-            </span>
-          </div>
-          <Blatt inhalt={inhalt} />
-        </>
+        <Blatt inhalt={inhalt} />
       ) : (
         <>
-          <Card>
-            <CardHeader
-              titel={`Liste offener Punkte – Stand Nr. ${lop.stand}`}
-              sub={
-                letzte
-                  ? `Fortgeschrieben aus Stand Nr. ${letzte.stand} vom ${formatDate(letzte.datum)} – Änderungen seitdem erscheinen im Druck blau`
-                  : 'Erster Stand – alle Punkte gelten als neu'
-              }
-            />
-            <div className="kennzahlen">
-              <Stat wert={offen.length} label="Offen" ton="blue" onClick={() => setStatus('offen')} />
-              <Stat
-                wert={spaet.length}
-                label="Überfällig"
-                ton={spaet.length ? 'red' : 'green'}
-                onClick={() => {
-                  setStatus('offen');
-                  setNurSpaet(true);
-                }}
-              />
-              <Stat wert={aktiv.length - offen.length} label="Erledigt in diesem Stand" onClick={() => setStatus('erledigt')} />
-              <Stat wert={archiv.length} label="Im Archiv" onClick={() => setArchivOffen(true)} />
-            </div>
-            <div className="card-pad ps-raster">
-              <div className="s3">
-                <Field label="Datum des Stands">
-                  <TextInput
-                    type="date"
-                    value={lop.standDatum}
-                    onChange={(v) => aendern((l) => ({ ...l, standDatum: v || today() }))}
-                  />
-                </Field>
-              </div>
-              <div className="s4">
-                <Field label="Aufgestellt von">
-                  <Select
-                    value={lop.aufgestelltVon ?? ''}
-                    onChange={(v) => aendern((l) => ({ ...l, aufgestelltVon: v || null }))}
-                    placeholder="– aus der Projektbeteiligtenliste –"
-                    options={beteiligte.map((b) => ({
-                      value: b.id,
-                      label: `${personName(b)}${b.firma ? ` (${b.firma})` : ''}`,
-                    }))}
-                  />
-                </Field>
-              </div>
-              <div className="s5">
-                <Field label="Hinweis am Ende der Liste">
-                  <Textfeld
-                    value={lop.hinweis}
-                    onChange={(v) => aendern((l) => ({ ...l, hinweis: v }))}
-                    placeholder="z. B. Verteiler oder Hinweis zur Fortschreibung"
-                  />
-                </Field>
-              </div>
-            </div>
-          </Card>
-
           <div className="ps-filter">
             <Search value={suche} onChange={setSuche} placeholder="Nr., Inhalt, Verantwortlich …" />
             <Segmented<StatusFilter>
@@ -506,7 +431,7 @@ function PunktZeile({
       className="ps-zusatz"
       value={p.zusatz}
       onChange={(v) => patch({ zusatz: v })}
-      placeholder="Fortschreibung eintragen (wird in der LOP blau dargestellt)"
+      placeholder="Fortschreibung eintragen"
       aria-label={`Fortschreibung Punkt ${p.nr}`}
     />
   );
@@ -579,6 +504,14 @@ function PunktZeile({
           erledigt
         </label>
         {erledigt && p.erledigtAm ? <span className="ps-erledigt-am">am {formatDate(p.erledigtAm)}</span> : null}
+      </div>
+      <div className="ps-bem">
+        <Textfeld
+          value={p.bemerkung}
+          onChange={(v) => patch({ bemerkung: v })}
+          placeholder="Bemerkung"
+          aria-label={`Bemerkung Punkt ${p.nr}`}
+        />
       </div>
       <button
         type="button"

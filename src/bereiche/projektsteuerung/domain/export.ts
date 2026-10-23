@@ -5,8 +5,7 @@
 import { formatDate, today } from '../../../shared/dates';
 import { dateiLaden, xlsxErzeugen, type Zelle } from '../../../shared/xlsx';
 import { BETEILIGTE_KOPF } from './beteiligteImport';
-import { aktivePunkte, archiviertePunkte } from './lop';
-import { volltext } from './protokoll';
+import { aktivePunkte, archiviertePunkte, volltext } from './lop';
 import { AMPEL_LABEL, ampelFuer } from './punkte';
 import { kuerzelVon, type Beteiligter, type Funktion, type Lop, type LopPunkt, type Projekt } from './types';
 
@@ -96,12 +95,24 @@ export function lopExportieren(projekt: Projekt, lop: Lop): void {
       { wert: p.termin || null, datum: true, stil: fuellung ? { fuellung } : undefined },
       AMPEL_LABEL[ampel],
       datum(p.erledigtAm),
+      p.bemerkung,
       p.herkunft,
       datum(p.erfasst),
     ];
   };
-  const spalten = ['Nr.', 'Thema', 'Inhalt', 'Verantwortlich', 'Termin', 'Status', 'Erledigt am', 'Herkunft', 'Aufgenommen am'];
-  const breiten = [7, 22, 60, 16, 12, 16, 12, 24, 14];
+  const spalten = [
+    'Nr.',
+    'Thema',
+    'Inhalt',
+    'Verantwortlich',
+    'Termin',
+    'Status',
+    'Erledigt am',
+    'Bemerkung',
+    'Herkunft',
+    'Aufgenommen am',
+  ];
+  const breiten = [7, 22, 60, 16, 12, 16, 12, 36, 24, 14];
   const titel = `Liste offener Punkte – ${projektTitel(projekt)}`;
   const stand = `Stand Nr. ${lop.stand} vom ${formatDate(lop.standDatum)}`;
   const blob = xlsxErzeugen([

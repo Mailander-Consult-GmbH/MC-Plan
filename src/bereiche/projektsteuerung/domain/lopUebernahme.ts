@@ -4,12 +4,12 @@
  * entsteht es); die Aufgabe verweist danach auf den Punkt.
  *
  * Die LOP ist für den internen Gebrauch: Im Protokoll läuft die Aufgabe weiter
- * wie jede andere, Druck, Live-Druckansicht und Text zeigen den Verweis nicht.
+ * wie jede andere, Druck und Live-Druckansicht zeigen den Verweis nicht.
  * „Erledigt“ wird zwischen Aufgabe und LOP-Punkt abgeglichen
  * (`lopStatusAbgleichen`).
  */
 import { erledigen, punktAnfuegen, neuesThema } from './lop';
-import { bezeichnung, volltext } from './protokoll';
+import { bezeichnung, eintragEntfaellt, eintragText } from './protokoll';
 import { type Eintrag, type ID, type ISODate, type Lop, type Protokoll, type ProjektsteuerungDaten, type Top } from './types';
 
 export interface UebernehmbareAufgabe {
@@ -26,7 +26,11 @@ export function uebernehmbareAufgaben(p: Protokoll): UebernehmbareAufgabe[] {
       .map((eintrag, ei) => ({ top, eintrag, nr: `${ti + 1}.${ei + 1}` }))
       .filter(
         ({ eintrag: e }) =>
-          e.typ === 'A' && e.status !== 'erledigt' && !e.entfaellt && !e.uebernommenIn && !e.lopPunktId,
+          e.typ === 'A' &&
+          e.status !== 'erledigt' &&
+          !eintragEntfaellt(top, e) &&
+          !e.uebernommenIn &&
+          !e.lopPunktId,
       ),
   );
 }
@@ -68,7 +72,7 @@ export function aufgabenInLop(
     }
     lop = punktAnfuegen(lop, themaId, {
       id: punktId,
-      text: volltext(eintrag),
+      text: eintragText(eintrag),
       wer: eintrag.wer,
       termin: eintrag.termin,
       herkunft: `${bezeichnung(protokoll)}, Pkt. ${nr}`,
@@ -122,7 +126,7 @@ export function lopStatusAbgleichen(alt: ProjektsteuerungDaten, neu: Projektsteu
     if (p.nr !== juengste.get(p.reiheId)) continue;
     for (const t of p.tops) {
       for (const e of t.eintraege) {
-        if (e.typ !== 'A' || !e.lopPunktId || e.uebernommenIn || e.entfaellt) continue;
+        if (e.typ !== 'A' || !e.lopPunktId || e.uebernommenIn || eintragEntfaellt(t, e)) continue;
         const punkt = neuPunkte.get(e.lopPunktId);
         if (!punkt) continue;
         const erledigt = e.status === 'erledigt';
