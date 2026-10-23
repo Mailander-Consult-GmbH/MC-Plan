@@ -356,7 +356,7 @@ export function PlanlaufListe({
     const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
     const pct = fortschritt(run);
     const kontakt = data.contacts.find((c) => c.id === step?.contactId);
-    // Aktueller Stand: der zuletzt abgeschlossene Schritt des Verlaufs
+    // Aktueller Stand: der zuletzt erledigte Schritt des Verlaufs (übersprungene zählen nicht)
     const stand = letzterAbgeschlossenerSchritt(run);
     // Pläne eines gebündelten Verzeichnisses stehen aufklappbar darunter –
     // mitlaufend oder, wenn herausgelöst, mit eigenem Stand.
@@ -636,7 +636,7 @@ export function PlanlaufListe({
               <Kopf feld="gewerk" filter="gewerk">
                 Gewerk
               </Kopf>
-              <Kopf feld="stand" titel="Nach dem Datum des zuletzt abgeschlossenen Schritts sortieren">
+              <Kopf feld="stand" titel="Nach dem Datum des zuletzt erledigten Schritts sortieren">
                 Aktueller Stand
               </Kopf>
               <Kopf feld="schritt" titel="Nach Soll-Termin des nächsten Schritts sortieren">

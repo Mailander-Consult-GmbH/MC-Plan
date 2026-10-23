@@ -85,15 +85,17 @@ export function paketVon(documents: PlanDocument[], doc: PlanDocument | undefine
 }
 
 /**
- * Der „aktuelle Stand“ eines Laufs: der zuletzt abgeschlossene Schritt vor dem
- * offenen. Ist ein früherer Schritt wieder geöffnet, zählen die erledigten
- * Schritte dahinter nicht – der Stand liegt nie hinter dem nächsten Schritt.
+ * Der „aktuelle Stand“ eines Laufs: der zuletzt erledigte Schritt vor dem
+ * offenen. Übersprungene Schritte zählen nicht – es gilt der erledigte davor.
+ * Ist ein früherer Schritt wieder geöffnet, zählen die erledigten Schritte
+ * dahinter nicht – der Stand liegt nie hinter dem nächsten Schritt.
  */
 export function letzterAbgeschlossenerSchritt(run: PlanRun | undefined): RunStep | undefined {
   if (!run) return undefined;
   const verlauf = pfad(run.steps);
   const offen = verlauf.findIndex((s) => s.status !== 'erledigt' && s.status !== 'uebersprungen');
-  return offen === -1 ? verlauf[verlauf.length - 1] : verlauf[offen - 1];
+  const bisher = offen === -1 ? verlauf : verlauf.slice(0, offen);
+  return [...bisher].reverse().find((s) => s.status === 'erledigt');
 }
 
 /** Zeilen der Übersicht zu den gegebenen Läufen. */
