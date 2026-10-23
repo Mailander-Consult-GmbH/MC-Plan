@@ -635,21 +635,29 @@ Erledigt) und einem Hinweis am Ende.
   sie sich nachträglich in die Projektbeteiligtenliste übernehmen. Die Protokollführung wird aus
   den Teilnehmenden oder der Projektbeteiligtenliste gewählt; bei einer neuen Reihe übernimmt sie
   die angemeldete Person, sofern ihr Name in der Projektbeteiligtenliste steht.
-* **Folgeprotokoll anlegen** übernimmt Kopfdaten, Teilnehmende und Tagesordnung, alle
-  Informationen und Festlegungen und die offenen Aufgaben (außer denen in der LOP); Datum ist der
-  „nächste Termin“. Der
-  Ursprungstext übernommener Einträge steht fest (✎ korrigiert ihn), Ergänzungen kommen in ein
-  eigenes Feld. Im Druck erscheinen neue und gegenüber dem Vorprotokoll geänderte Angaben **blau**.
+* **Folgeprotokoll anlegen** übernimmt Kopfdaten, Teilnehmende und Tagesordnung mit allen
+  Einträgen; Datum ist der „nächste Termin“. Der Ursprungstext übernommener Einträge steht fest
+  (✎ korrigiert ihn), Ergänzungen kommen in ein eigenes Feld. Im Druck erscheinen neue und
+  gegenüber dem Vorprotokoll geänderte Angaben **blau**.
+* **Löschen heißt Durchstreichen** (Standard, für Informationen, Festlegungen und Aufgaben): Der
+  Papierkorb am Eintrag bietet **Durchstreichen** und **Sofort löschen**. Ein gestrichener Eintrag
+  steht im Druck und in der Live-Druckansicht dieses Protokolls mit **blauer Linie**
+  durchgestrichen – der Text bleibt schwarz –, im Folgeprotokoll noch einmal (schwarze Linie) und
+  entfällt im übernächsten Protokoll. Ebenso erledigte Aufgaben. Die Termin-Spalte nennt
+  „entfällt“ bzw. „erledigt“. **Wiederherstellen** hebt das Streichen auf; **Sofort löschen**
+  entfernt einen Eintrag ohne Spur.
 * **Druckansicht**, **Drucken / PDF** (Druckdialog des Browsers, „Als PDF speichern“), **Als Text
   kopieren** und **Live-Druckansicht ↗** – ein eigenes Fenster, etwa für den zweiten Bildschirm in
   der Besprechung, das jeder Eingabe folgt.
 * **In die LOP übernehmen**: Offene Aufgaben werden einzeln („→ In die LOP übernehmen“ am
   Eintrag) oder gesammelt („Aufgaben in die LOP …“ über der Tagesordnung) zu neuen LOP-Punkten –
   im Thema, das wie ihr Tagesordnungspunkt heißt (fehlt es, entsteht es), mit der Herkunft
-  „<Besprechung> Nr. n, Pkt. x.y“. Von da an verfolgt die LOP die Aufgabe: Sie geht nicht mehr in
-  Folgeprotokolle über und zählt in Übersicht und Aufgabenliste nur einmal. Im Protokoll und im
-  Druck steht „In die LOP übernommen (Nr. …)“; **Verknüpfung lösen** holt sie zurück ins Protokoll,
-  ebenso das Löschen des LOP-Punkts.
+  „<Besprechung> Nr. n, Pkt. x.y“. Die LOP ist für den **internen Gebrauch**: Druck,
+  Live-Druckansicht und kopierter Text des Protokolls zeigen keinen Vermerk; die Aufgabe läuft im
+  Protokoll weiter wie jede andere, auch in Folgeprotokolle. „Erledigt“ wird zwischen der Aufgabe
+  im jüngsten Protokoll ihrer Reihe und dem LOP-Punkt in beide Richtungen abgeglichen; die
+  Übersicht zählt sie nur einmal. Nur der Editor zeigt den Verweis; **Verknüpfung lösen** hebt ihn
+  auf, ebenso das Löschen des LOP-Punkts.
 * **Aufgaben aus den Protokollen**: alle Aufgaben des Projekts (je Aufgabe ihr jüngstes Vorkommen)
   mit Filter nach Status, Verantwortlich und „nur überfällige“; abhaken direkt in der Liste.
 * **Logos im Druckkopf** je Projekt – Standard sind DB InfraGO und Mailänder Consult; eigene
@@ -682,7 +690,8 @@ Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodate
 mit Projektbeteiligten, zwei Protokollen und LOP), **Sicherung**/**Einspielen** (JSON mit dem
 Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
 Protokoll-Tools werden mit Hinweis abgewiesen) und **Zurücksetzen**. Stände der ersten Fassung
-erhalten beim Laden die mitgelieferten Gewerke; ihre Funktionen gelten als übergreifend. Name unter „Angemeldet als“
+erhalten beim Laden die mitgelieferten Gewerke; ihre Funktionen gelten als übergreifend. Ältere
+Stände kennen keine gestrichenen Einträge – ihre Einträge gelten als nicht gestrichen. Name unter „Angemeldet als“
 und Farbmodus gelten nur in diesem Bereich.
 
 ## Aufbau des Codes

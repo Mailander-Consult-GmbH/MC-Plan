@@ -171,6 +171,8 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
         return { ...e, zusatz: 'Teil 1 übergeben, Teil 2 folgt.', termin: tag(4) };
       }
       if (e.text.startsWith('Bauzeitenplan')) return { ...e, status: 'erledigt' as const };
+      // Gestrichen: steht im Druck von Nr. 2 blau durchgestrichen, in Nr. 3 noch einmal
+      if (e.text.startsWith('Die Baustelleneinrichtung')) return { ...e, entfaellt: true };
       return e;
     }),
   }));

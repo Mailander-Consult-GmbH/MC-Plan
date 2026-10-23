@@ -1,15 +1,16 @@
 /**
  * Datenbestand des Bereichs „Projektsteuerung“. Alle Schreibzugriffe laufen
  * über `mutate()`; danach werden die Teilnehmenden der Protokolle mit der
- * Projektbeteiligtenliste abgeglichen (`teilnehmerNachziehen`), Verweise auf
- * gelöschte LOP-Punkte gelöst (`lopVerweiseNachziehen`) und der Bestand lokal
- * gespeichert. Der Aufbau entspricht dem des Planlaufmanagements, ist
+ * Projektbeteiligtenliste abgeglichen (`teilnehmerNachziehen`), „erledigt“
+ * zwischen Aufgaben und ihren LOP-Punkten abgeglichen (`lopStatusAbgleichen`),
+ * Verweise auf gelöschte LOP-Punkte gelöst (`lopVerweiseNachziehen`) und der
+ * Bestand lokal gespeichert. Der Aufbau entspricht dem des Planlaufmanagements, ist
  * davon aber vollständig getrennt.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { erledigen, fortschreiben, leereLop } from '../domain/lop';
-import { aufgabenInLop } from '../domain/lopUebernahme';
+import { aufgabenInLop, lopStatusAbgleichen } from '../domain/lopUebernahme';
 import { folgeprotokoll, lopVerweiseNachziehen, naechsteNr, teilnehmerNachziehen } from '../domain/protokoll';
 import { today } from '../../../shared/dates';
 import { seedDaten } from '../domain/seed';
@@ -65,7 +66,7 @@ interface StoreValue {
   folgeprotokollAnlegen: (id: ID) => ID | null;
   /**
    * Übernimmt offene Aufgaben eines Protokolls als neue Punkte in die LOP des
-   * Projekts; die Aufgaben verweisen danach auf ihren Punkt.
+   * Projekts; die Aufgaben verweisen danach (intern) auf ihren Punkt.
    */
   aufgabenInLopUebernehmen: (protokollId: ID, eintragIds: ID[]) => void;
   /** Übernimmt Protokolle (etwa aus dem Protokoll-Tool); gleiche Kennungen werden ersetzt. */
@@ -92,7 +93,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   /** Jede Änderung läuft hierüber – die Funktion muss rein sein. */
   const mutate = useCallback((fn: (d: ProjektsteuerungDaten) => ProjektsteuerungDaten) => {
-    setData((alt) => teilnehmerNachziehen(lopVerweiseNachziehen(fn(alt))));
+    setData((alt) => teilnehmerNachziehen(lopVerweiseNachziehen(lopStatusAbgleichen(alt, fn(alt)))));
   }, []);
 
   const protokollAendern = useCallback(

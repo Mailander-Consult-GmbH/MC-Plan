@@ -7,6 +7,11 @@
  * Übernommene Einträge zeigen ihren Ursprungstext fest; Ergänzungen kommen in
  * ein eigenes Feld und erscheinen im Druck blau. Über ✎ lässt sich der
  * Ursprungstext dennoch korrigieren.
+ *
+ * Löschen heißt standardmäßig Durchstreichen: Der Eintrag steht in diesem
+ * Protokoll blau durchgestrichen, im Folgeprotokoll noch einmal und entfällt
+ * danach – wie eine erledigte Aufgabe. „Sofort löschen“ entfernt ihn ohne
+ * Spur. Verweise auf die LOP zeigt nur der Editor, nicht der Druck.
  */
 import { useEffect, useState } from 'react';
 import { formatDate, toISO, today } from '../../../../shared/dates';
@@ -21,7 +26,9 @@ import {
   alsText,
   bezeichnung,
   freierTeilnehmer,
+  abgeschlossen,
   herkunftText,
+  letztmalig,
   mitgehendeEintraege,
   naechsteNr,
   neuerEintrag,
@@ -80,7 +87,7 @@ export function ProtokollEditor({
   const [auswahl, setAuswahl] = useState(false);
   const [person, setPerson] = useState<{ beteiligter?: Beteiligter; teilnehmer?: Teilnehmer } | null>(null);
   const [topLoeschen, setTopLoeschen] = useState<Top | null>(null);
-  const [eintragLoeschen, setEintragLoeschen] = useState<{ top: Top; eintrag: Eintrag } | null>(null);
+  const [eintragLoeschen, setEintragLoeschen] = useState<{ top: Top; eintrag: Eintrag; nr: string } | null>(null);
   const [fokus, setFokus] = useState<string | null>(null);
   const [lopDialog, setLopDialog] = useState(false);
 
@@ -106,7 +113,7 @@ export function ProtokollEditor({
         : `${ids.length} Aufgaben in die LOP übernommen (Nr. ${erste}–${erste + ids.length - 1}).`,
     );
   };
-  const inhalt = protokollHtml(p, projekt, logosVon(projekt), lopNr);
+  const inhalt = protokollHtml(p, projekt, logosVon(projekt));
   const titel = `${bezeichnung(p)} – ${projekt.name}`;
   const liveOeffnen = useLiveDruck(titel, inhalt);
   const listeId = `ps-kuerzel-${p.id}`;
@@ -205,7 +212,7 @@ export function ProtokollEditor({
               type="button"
               className="btn btn-outline"
               onClick={async () =>
-                toast((await kopieren(alsText(p, [projekt.nummer, projekt.name].filter(Boolean).join(' '), lopNr)))
+                toast((await kopieren(alsText(p, [projekt.nummer, projekt.name].filter(Boolean).join(' '))))
                   ? 'Protokoll als Text kopiert.'
                   : 'Kopieren nicht möglich.')
               }
@@ -580,6 +587,7 @@ export function ProtokollEditor({
                     const nr = `${ti + 1}.${ei + 1}`;
                     const istA = e.typ === 'A';
                     const erledigt = istA && e.status === 'erledigt';
+                    const gestrichen = abgeschlossen(e);
                     const spaet = istA && ampelFuer(e.termin, e.status) === 'ueberfaellig';
                     const patch = (werte: Partial<Eintrag>) => eintragAendern(top.id, e.id, werte);
                     const zusatz = (
@@ -592,7 +600,7 @@ export function ProtokollEditor({
                       />
                     );
                     return (
-                      <div key={e.id} className={`ps-eintrag ps-typ-${e.typ} ${erledigt ? 'ps-erledigt' : ''}`}>
+                      <div key={e.id} className={`ps-eintrag ps-typ-${e.typ} ${gestrichen ? 'ps-gestrichen' : ''}`}>
                         <div className="ps-nr">{nr}</div>
                         <div className="ps-typwahl" role="group" aria-label="Typ">
                           {TYPEN.map((k) => (
@@ -645,13 +653,29 @@ export function ProtokollEditor({
                           ) : (
                             <span className="ps-neu">Neu in diesem Protokoll</span>
                           )}
+                          {gestrichen ? (
+                            <span className="ps-streich-hinweis">
+                              {e.entfaellt ? 'Gestrichen' : 'Erledigt'} –{' '}
+                              {letztmalig(e)
+                                ? 'hier letztmalig aufgeführt, im Folgeprotokoll entfällt der Eintrag'
+                                : 'im Druck blau durchgestrichen, im Folgeprotokoll noch einmal aufgeführt, danach entfällt er'}
+                              {e.entfaellt ? (
+                                <>
+                                  {' · '}
+                                  <button type="button" className="ps-link" onClick={() => patch({ entfaellt: false })}>
+                                    Wiederherstellen
+                                  </button>
+                                </>
+                              ) : null}
+                            </span>
+                          ) : null}
                           {e.lopPunktId ? (
                             <span className="ps-lop-hinweis">
-                              In die LOP übernommen (Nr. {lopNr(e.lopPunktId)}) – dort weiterverfolgt ·{' '}
+                              In die LOP übernommen (Nr. {lopNr(e.lopPunktId)}) – nur intern, nicht im Druck ·{' '}
                               <button
                                 type="button"
                                 className="ps-link"
-                                title="Die Aufgabe wird wieder im Protokoll verfolgt; der LOP-Punkt bleibt bestehen."
+                                title="Der Verweis entfällt; Aufgabe und LOP-Punkt bleiben bestehen und werden nicht mehr abgeglichen."
                                 onClick={() => patch({ lopPunktId: null })}
                               >
                                 Verknüpfung lösen
@@ -684,12 +708,13 @@ export function ProtokollEditor({
                                 aria-label="Termin"
                               />
                             </div>
-                            {e.lopPunktId ? (
-                              <span className="ps-haken ps-st" title="Die Aufgabe wird in der LOP weiterverfolgt.">
-                                <Badge ton="blue">LOP Nr. {lopNr(e.lopPunktId)}</Badge>
-                              </span>
+                            {e.entfaellt ? (
+                              <span className="ps-haken ps-st">entfällt</span>
                             ) : (
-                              <label className="ps-haken ps-st">
+                              <label
+                                className="ps-haken ps-st"
+                                title={e.lopPunktId ? 'Wird mit dem LOP-Punkt abgeglichen.' : undefined}
+                              >
                                 <input
                                   type="checkbox"
                                   checked={erledigt}
@@ -702,17 +727,17 @@ export function ProtokollEditor({
                         ) : (
                           <>
                             <div className="ps-termin" />
-                            <div className="ps-st" />
+                            {e.entfaellt ? <span className="ps-haken ps-st">entfällt</span> : <div className="ps-st" />}
                           </>
                         )}
                         <button
                           type="button"
                           className="btn-icon ps-weg"
-                          title="Eintrag löschen"
+                          title="Aus dem Protokoll löschen"
                           aria-label={`Eintrag ${nr} löschen`}
                           onClick={() =>
                             e.text.trim() || e.zusatz.trim()
-                              ? setEintragLoeschen({ top, eintrag: e })
+                              ? setEintragLoeschen({ top, eintrag: e, nr })
                               : topAendern(top.id, (t) => ({ ...t, eintraege: t.eintraege.filter((x) => x.id !== e.id) }))
                           }
                         >
@@ -816,15 +841,20 @@ export function ProtokollEditor({
       ) : null}
 
       {eintragLoeschen ? (
-        <ConfirmDialog
-          titel="Eintrag löschen?"
-          text="Der Eintrag wird aus diesem Protokoll entfernt."
-          onConfirm={() =>
+        <EintragLoeschenDialog
+          nr={eintragLoeschen.nr}
+          schonGestrichen={eintragLoeschen.eintrag.entfaellt}
+          onStreichen={() => {
+            eintragAendern(eintragLoeschen.top.id, eintragLoeschen.eintrag.id, { entfaellt: true });
+            toast(`Eintrag ${eintragLoeschen.nr} durchgestrichen.`);
+          }}
+          onSofort={() => {
             topAendern(eintragLoeschen.top.id, (t) => ({
               ...t,
               eintraege: t.eintraege.filter((x) => x.id !== eintragLoeschen.eintrag.id),
-            }))
-          }
+            }));
+            toast(`Eintrag ${eintragLoeschen.nr} gelöscht.`);
+          }}
           onClose={() => setEintragLoeschen(null)}
         />
       ) : null}
@@ -1002,8 +1032,9 @@ function LopUebernahmeDialog({
     >
       <div className="stack" style={{ gap: 10 }}>
         <p className="small muted">
-          Übernommene Aufgaben verfolgt danach die LOP: Sie gehen nicht mehr in Folgeprotokolle über und zählen nicht
-          mehr zu den Aufgaben der Protokolle. Im Protokoll bleiben sie mit Verweis auf ihren LOP-Punkt stehen.
+          Die Aufgaben bleiben im Protokoll unverändert und gehen wie gewohnt in Folgeprotokolle über. Der Verweis auf die
+          LOP ist nur intern sichtbar – nicht im Druck, in der Live-Druckansicht oder im kopierten Text. „Erledigt“ wird
+          zwischen Protokoll und LOP abgeglichen.
         </p>
         <div className="ps-auswahl">
           {aufgaben.map((a) => (
@@ -1021,6 +1052,76 @@ function LopUebernahmeDialog({
           ))}
         </div>
       </div>
+    </Modal>
+  );
+}
+
+/**
+ * Eintrag aus dem Protokoll löschen. Standard ist das Durchstreichen: Der
+ * Eintrag steht in diesem Protokoll blau durchgestrichen, im Folgeprotokoll
+ * noch einmal und entfällt danach. „Sofort löschen“ entfernt ihn ohne Spur.
+ */
+function EintragLoeschenDialog({
+  nr,
+  schonGestrichen,
+  onStreichen,
+  onSofort,
+  onClose,
+}: {
+  nr: string;
+  schonGestrichen: boolean;
+  onStreichen: () => void;
+  onSofort: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      titel={schonGestrichen ? `Eintrag ${nr} sofort löschen?` : `Eintrag ${nr} aus dem Protokoll löschen?`}
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            type="button"
+            className={schonGestrichen ? 'btn btn-primary' : 'btn btn-danger'}
+            style={schonGestrichen ? { background: 'var(--red)' } : undefined}
+            onClick={() => {
+              onSofort();
+              onClose();
+            }}
+          >
+            Sofort löschen
+          </button>
+          <span className="spacer" />
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          {schonGestrichen ? null : (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                onStreichen();
+                onClose();
+              }}
+            >
+              Durchstreichen
+            </button>
+          )}
+        </>
+      }
+    >
+      {schonGestrichen ? (
+        <p className="muted">Der Eintrag ist bereits durchgestrichen. „Sofort löschen“ entfernt ihn ohne Spur aus diesem Protokoll.</p>
+      ) : (
+        <div className="stack" style={{ gap: 10 }}>
+          <p className="muted">
+            <strong>Durchstreichen</strong> (Standard): Der Eintrag bleibt stehen und wird im Druck dieses Protokolls blau
+            durchgestrichen – der Text bleibt schwarz. Im Folgeprotokoll wird er noch einmal durchgestrichen aufgeführt
+            und danach nicht mehr.
+          </p>
+          <p className="small tertiary">„Sofort löschen“ entfernt ihn ohne Spur aus diesem Protokoll.</p>
+        </div>
+      )}
     </Modal>
   );
 }

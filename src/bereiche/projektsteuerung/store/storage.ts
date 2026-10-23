@@ -53,6 +53,7 @@ function vorstand(w: unknown): Vorstand | null {
     wer: text(v.wer),
     termin: datum(v.termin),
     status: erledigung(v.status),
+    ...(v.entfaellt === true ? { entfaellt: true } : {}),
   };
 }
 
@@ -101,6 +102,7 @@ function protokollAufbereiten(p: Roh): Protokoll {
             herkunft: text(e.herkunft),
             uebernommenIn: idOderNull(e.uebernommenIn),
             lopPunktId: idOderNull(e.lopPunktId),
+            entfaellt: e.entfaellt === true,
             vor: vorstand(e.vor),
           }),
         ),
@@ -244,7 +246,8 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
  * für Schritt. Fassung 1 kannte weder Gewerke noch Verweise auf LOP-Punkte:
  * Sie erhält die mitgelieferten Gewerke; ihre Funktionen gelten als
  * übergreifend, ihre Aufgaben als nicht übernommen (beides ergänzt
- * `aufbereiten`).
+ * `aufbereiten`). Fassung 2 kannte keine gestrichenen Einträge; `aufbereiten`
+ * setzt `entfaellt` auf false.
  */
 function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   let stand = roh;

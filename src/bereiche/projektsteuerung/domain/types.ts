@@ -14,8 +14,9 @@ export type ISODate = string;
  * Fassung des gespeicherten Bestands. Neue Felder sind optional oder werden in
  * `migriere()` (store/storage.ts) nachgetragen – dann diese Zahl erhöhen.
  * Fassung 2: Gewerke der Funktionen, Verweis von Aufgaben auf LOP-Punkte.
+ * Fassung 3: gestrichene Einträge (`entfaellt`).
  */
-export const DATEN_VERSION = 2;
+export const DATEN_VERSION = 3;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
@@ -145,6 +146,8 @@ export interface Vorstand {
   wer: string;
   termin: ISODate;
   status: Erledigung;
+  /** Im Vorprotokoll gestrichen. */
+  entfaellt?: boolean;
 }
 
 export interface Eintrag {
@@ -162,11 +165,18 @@ export interface Eintrag {
   /** Folgeprotokoll, das diese Aufgabe weiterführt. */
   uebernommenIn: ID | null;
   /**
-   * LOP-Punkt, in den die Aufgabe übernommen wurde. Von da an verfolgt die
-   * LOP sie weiter: Sie geht nicht mehr in Folgeprotokolle über und zählt
-   * nicht mehr zu den Aufgaben der Protokolle.
+   * LOP-Punkt, in den die Aufgabe übernommen wurde – ein interner Verweis:
+   * Druck, Live-Druckansicht und Text des Protokolls zeigen ihn nicht. Die
+   * Aufgabe läuft im Protokoll weiter wie jede andere; „erledigt“ wird mit
+   * dem LOP-Punkt abgeglichen.
    */
   lopPunktId: ID | null;
+  /**
+   * Gestrichen („aus dem Protokoll löschen“): Der Eintrag erscheint in diesem
+   * Protokoll durchgestrichen, im Folgeprotokoll noch einmal und danach nicht
+   * mehr – wie eine erledigte Aufgabe.
+   */
+  entfaellt: boolean;
   /** Stand im Vorprotokoll; null = neu in diesem Protokoll. */
   vor: Vorstand | null;
 }

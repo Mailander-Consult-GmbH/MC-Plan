@@ -41,6 +41,7 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
   const datei = useRef<HTMLInputElement>(null);
 
   const protokolle = data.protokolle.filter((p) => p.projektId === projekt.id);
+  const lop = data.lops.find((l) => l.projektId === projekt.id);
   const reihen = reihenVon(protokolle);
   const oeffne = (p: Protokoll) => navigate({ view: 'protokoll', projektId: projekt.id, protokollId: p.id });
 
@@ -93,9 +94,9 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
     <div className="stack">
       <div className="row-between wrap">
         <p className="small muted" style={{ maxWidth: 620 }}>
-          Ein Folgeprotokoll übernimmt Teilnehmende und Tagesordnung, alle Informationen und Festlegungen sowie die
-          offenen Aufgaben – außer denen, die in die LOP übernommen wurden. Neue und geänderte Einträge erscheinen im
-          Druck blau.
+          Ein Folgeprotokoll übernimmt Teilnehmende und Tagesordnung mit allen Einträgen. Erledigte und gestrichene
+          Einträge stehen darin noch einmal durchgestrichen und entfallen danach. Neue und geänderte Einträge erscheinen
+          im Druck blau.
         </p>
         <div className="row wrap">
           <button
@@ -233,7 +234,7 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
       <Card>
         <CardHeader
           titel="Aufgaben aus den Protokollen"
-          sub="Je Aufgabe ihr jüngstes Vorkommen – übernommene Aufgaben zählen im Folgeprotokoll, Aufgaben in der LOP verfolgt die LOP"
+          sub="Je Aufgabe ihr jüngstes Vorkommen – übernommene Aufgaben zählen im Folgeprotokoll"
         />
         <div className="card-pad ps-filter" style={{ borderBottom: '1px solid var(--separator)' }}>
           <Segmented<StatusFilter>
@@ -296,6 +297,11 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
                       <td style={{ whiteSpace: 'pre-wrap' }}>
                         {volltext(a.eintrag) || <span className="tertiary">ohne Text</span>}
                         {a.eintrag.herkunft ? <div className="small tertiary">{herkunftText(a.eintrag)}</div> : null}
+                        {a.eintrag.lopPunktId ? (
+                          <div className="small" style={{ color: 'var(--accent)' }}>
+                            in der LOP (Nr. {lop?.punkte.find((x) => x.id === a.eintrag.lopPunktId)?.nr ?? '–'})
+                          </div>
+                        ) : null}
                       </td>
                       <td className="small">{a.eintrag.wer || <span className="tertiary">–</span>}</td>
                       <td className="small">

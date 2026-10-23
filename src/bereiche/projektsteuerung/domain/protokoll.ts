@@ -15,6 +15,7 @@ import {
   type Beteiligter,
   type Eintrag,
   type EintragTyp,
+  type Erledigung,
   type Funktion,
   type ID,
   type Protokoll,
@@ -47,7 +48,7 @@ export const topNeu = (top: Top): boolean => top.vorTitel === null || top.titel 
 
 /** „offen seit Prot. 2, Pkt. 1.3“ bzw. „aus Prot. 2, Pkt. 1.3“. */
 export function herkunftText(e: Eintrag): string {
-  return `${e.typ === 'A' && e.status !== 'erledigt' ? 'offen seit ' : 'aus '}${e.herkunft}`;
+  return `${e.typ === 'A' && e.status !== 'erledigt' && !e.entfaellt ? 'offen seit ' : 'aus '}${e.herkunft}`;
 }
 
 /** „Baubesprechung Nr. 3“. */
@@ -80,6 +81,7 @@ export function neuerEintrag(typ: EintragTyp): Eintrag {
     herkunft: '',
     uebernommenIn: null,
     lopPunktId: null,
+    entfaellt: false,
     vor: null,
   };
 }
@@ -139,10 +141,11 @@ export function neueReihe(
 }
 
 /**
- * Folgeprotokoll: übernimmt Kopfdaten, Teilnehmende und Tagesordnung.
- * Informationen und Festlegungen gehen immer mit, Aufgaben nur, solange sie
- * offen und noch nicht weitergeführt sind; das Vorprotokoll vermerkt bei
- * ihnen, wohin sie übernommen wurden.
+ * Folgeprotokoll: übernimmt Kopfdaten, Teilnehmende und Tagesordnung mit
+ * allen Einträgen (`mitgehen`). Erledigte und gestrichene Einträge gehen
+ * noch einmal durchgestrichen mit und entfallen erst im übernächsten
+ * Protokoll. Das Vorprotokoll vermerkt bei Aufgaben, wohin sie übernommen
+ * wurden; in die LOP übernommene Aufgaben behalten ihren Verweis.
  */
 export function folgeprotokoll(
   vorher: Protokoll,
@@ -172,9 +175,9 @@ export function folgeprotokoll(
             text,
             zusatz: '',
             uebernommenIn: null,
-            lopPunktId: null,
+            lopPunktId: e.typ === 'A' ? e.lopPunktId : null,
             herkunft: e.herkunft || `Prot. ${vorher.nr}, Pkt. ${nr}`,
-            vor: { typ: e.typ, text, wer: e.wer, termin: e.termin, status: e.status },
+            vor: { typ: e.typ, text, wer: e.wer, termin: e.termin, status: e.status, entfaellt: e.entfaellt },
           };
         }),
     }),
@@ -209,12 +212,21 @@ export function folgeprotokoll(
   return { neu, vorher: vorherNeu };
 }
 
+/** Erledigt (Aufgabe) oder gestrichen – der Eintrag wird durchgestrichen aufgeführt. */
+export function abgeschlossen(x: { typ?: EintragTyp; status: Erledigung; entfaellt?: boolean }): boolean {
+  return !!x.entfaellt || (x.typ === 'A' && x.status === 'erledigt');
+}
+
+/** Schon im Vorprotokoll abgeschlossen: In diesem Protokoll steht der Eintrag zum letzten Mal. */
+export const letztmalig = (e: Eintrag): boolean => abgeschlossen(e) && !!e.vor && abgeschlossen(e.vor);
+
 /**
- * Geht der Eintrag in ein Folgeprotokoll über? Aufgaben nur, solange sie
- * offen, nicht weitergeführt und nicht in die LOP übernommen sind.
+ * Geht der Eintrag in ein Folgeprotokoll über? Ja – außer er war schon im
+ * Vorprotokoll erledigt bzw. gestrichen (dann ist er hier zum letzten Mal
+ * aufgeführt) oder die Aufgabe wurde bereits in ein Folgeprotokoll
+ * weitergeführt.
  */
-export const mitgehen = (e: Eintrag): boolean =>
-  e.typ !== 'A' || (e.status !== 'erledigt' && !e.uebernommenIn && !e.lopPunktId);
+export const mitgehen = (e: Eintrag): boolean => !letztmalig(e) && !(e.typ === 'A' && e.uebernommenIn);
 
 /** Zahl der Einträge, die ein Folgeprotokoll aus diesem Protokoll übernähme. */
 export const mitgehendeEintraege = (p: Protokoll): number =>
@@ -261,15 +273,15 @@ export interface ProtokollAufgabe {
 
 /**
  * Aufgaben aus Protokollen – je Aufgabe nur ihr jüngstes Vorkommen: Wurde sie
- * in ein Folgeprotokoll übernommen, zählt sie dort. Aufgaben, die in die LOP
- * übernommen wurden, verfolgt die LOP; sie zählen hier nicht mehr.
+ * in ein Folgeprotokoll übernommen, zählt sie dort. Gestrichene Aufgaben
+ * zählen nicht.
  */
 export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
   const aufgaben: ProtokollAufgabe[] = [];
   for (const protokoll of protokolle) {
     protokoll.tops.forEach((top, ti) =>
       top.eintraege.forEach((eintrag, ei) => {
-        if (eintrag.typ === 'A' && !eintrag.uebernommenIn && !eintrag.lopPunktId) {
+        if (eintrag.typ === 'A' && !eintrag.uebernommenIn && !eintrag.entfaellt) {
           aufgaben.push({ protokoll, top, eintrag, nr: `${ti + 1}.${ei + 1}` });
         }
       }),
@@ -350,10 +362,10 @@ export function lopVerweiseNachziehen(d: ProjektsteuerungDaten): Projektsteuerun
 const datumText = (iso: string) => (iso ? iso.split('-').reverse().join('.') : '');
 
 /**
- * Protokoll als schlichter Text, etwa für eine E-Mail. `lopNr` nennt die
- * Nummer des LOP-Punkts einer übernommenen Aufgabe.
+ * Protokoll als schlichter Text, etwa für eine E-Mail. Verweise auf die LOP
+ * sind intern und erscheinen nicht.
  */
-export function alsText(p: Protokoll, projektName: string, lopNr: (id: ID) => number | undefined = () => undefined): string {
+export function alsText(p: Protokoll, projektName: string): string {
   const z: string[] = [];
   z.push(`PROTOKOLL – ${bezeichnung(p)}`);
   if (projektName) z.push(`Projekt: ${projektName}`);
@@ -377,7 +389,9 @@ export function alsText(p: Protokoll, projektName: string, lopNr: (id: ID) => nu
   p.tops.forEach((top, ti) => {
     z.push('', `TOP ${ti + 1}  ${top.titel || 'Ohne Titel'}`);
     top.eintraege.forEach((e, ei) => {
-      z.push(`${ti + 1}.${ei + 1} [${e.typ}] ${volltext(e).replace(/\n/g, '\n      ')}`);
+      z.push(
+        `${ti + 1}.${ei + 1} [${e.typ}] ${volltext(e).replace(/\n/g, '\n      ')}${e.entfaellt ? ' (entfällt)' : ''}`,
+      );
       if (e.typ === 'A') {
         z.push(
           `      Verantwortlich: ${e.wer || '–'} | Termin: ${datumText(e.termin) || '–'}${
@@ -386,8 +400,6 @@ export function alsText(p: Protokoll, projektName: string, lopNr: (id: ID) => nu
         );
       } else if (e.wer) z.push(`      Wer: ${e.wer}`);
       if (e.herkunft) z.push(`      ${herkunftText(e)}`);
-      const nr = e.lopPunktId ? lopNr(e.lopPunktId) : undefined;
-      if (nr !== undefined) z.push(`      In die LOP übernommen (Nr. ${nr})`);
     });
   });
   if (p.naechster) z.push('', `Nächster Termin: ${datumText(p.naechster)}`);
@@ -505,6 +517,7 @@ export function ausProtokollTool(
                 status: e.status === 'erledigt' ? 'erledigt' : 'offen',
                 herkunft: text(e.herkunft),
                 lopPunktId: null,
+                entfaellt: false,
                 uebernommenIn: e.carriedTo
                   ? (kennung.get(text(e.carriedTo)) ?? (imProjekt.has(text(e.carriedTo)) ? text(e.carriedTo) : null))
                   : null,

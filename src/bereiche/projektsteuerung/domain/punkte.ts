@@ -81,7 +81,10 @@ export function allePunkte(d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[]
         ampel: ampelFuer(p.termin, p.status, heute),
       });
     }
-    const aufgaben = protokollAufgaben(d.protokolle.filter((p) => p.projektId === projekt.id));
+    // Aufgaben, die in die LOP übernommen wurden, zählen dort – nicht doppelt.
+    const aufgaben = protokollAufgaben(d.protokolle.filter((p) => p.projektId === projekt.id)).filter(
+      (a) => !a.eintrag.lopPunktId,
+    );
     for (const a of aufgaben) {
       punkte.push({
         schluessel: `pt:${a.eintrag.id}`,

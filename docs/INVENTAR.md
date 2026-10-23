@@ -496,17 +496,19 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
   `Protokoll` mit `reiheId`, `teilnehmer` (`Teilnehmer` mit `beteiligterId`)
   und `tops` (`Top` mit `eintraege`; `Eintrag` vom Typ `I`, `F` oder `A`,
   `EINTRAG_TYP_LABEL`; `vor` hält den Stand im Vorprotokoll, `uebernommenIn`
-  das Folgeprotokoll einer weitergeführten Aufgabe, `lopPunktId` den LOP-Punkt
-  einer in die LOP übernommenen Aufgabe) sowie je Projekt eine
+  das Folgeprotokoll einer weitergeführten Aufgabe, `lopPunktId` – nur intern –
+  den LOP-Punkt einer in die LOP übernommenen Aufgabe, `entfaellt` einen
+  gestrichenen Eintrag) sowie je Projekt eine
   `Lop` mit `themen`, `punkte` (`LopPunkt` mit fester `nr`, `vor` und
   `archiviertAb`), `naechsteNr` und `fortschreibungen`. Teilnahmestatus in
   `TEILNAHME` (anwesend, entschuldigt, abwesend, nur Verteiler).
 * Schlüssel `projektsteuerung.data.v1` im `localStorage`
-  (`src/bereiche/projektsteuerung/store/storage.ts`), `DATEN_VERSION = 2`. `aufbereiten()` ergänzt
-  fehlende Felder, ergänzt die Gewerke der Funktionen in `gewerke` und legt je
-  Projekt genau eine LOP an. `migriere()` hebt Fassung 1 (ohne Gewerke und
-  LOP-Verweise) an: Sie erhält `STANDARD_GEWERKE`, ihre Funktionen gelten als
-  übergreifend. Ohne gespeicherten Bestand lädt `seedDaten()`
+  (`src/bereiche/projektsteuerung/store/storage.ts`), `DATEN_VERSION = 3`. `aufbereiten()` ergänzt
+  fehlende Felder (`entfaellt` als false), ergänzt die Gewerke der Funktionen
+  in `gewerke` und legt je Projekt genau eine LOP an. `migriere()` hebt
+  Fassung 1 (ohne Gewerke und LOP-Verweise) an: Sie erhält `STANDARD_GEWERKE`,
+  ihre Funktionen gelten als übergreifend; Fassung 2 kannte keine gestrichenen
+  Einträge. Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/projektsteuerung/domain/seed.ts`) die Gewerke (`STANDARD_GEWERKE`: 50 Hz, KIB, LST, OLA,
   TK), die Standard-Funktionen (`STANDARD_FUNKTIONEN`, je Gewerk die
   Fachplanung, für LST und OLA zusätzlich die Bauüberwachung) und zwei
@@ -593,8 +595,11 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
   Projektbeteiligtenliste auf); „Tagesordnung“ („TOP hinzufügen“,
   verschieben, löschen; Einträge mit Umschalter I/F/A, Verantwortlich mit
   Vorschlägen aus den Kürzeln der Projektbeteiligten – `KuerzelListe` –, bei
-  Aufgaben Termin und „erledigt“ – in die LOP übernommene Aufgaben zeigen
-  stattdessen „LOP Nr. …“); Karte „Abschluss“ („Hinweis am
+  Aufgaben Termin und „erledigt“; der Papierkorb „Aus dem Protokoll löschen“
+  öffnet den Dialog `EintragLoeschenDialog` mit „Durchstreichen“ und „Sofort
+  löschen“, ein leerer Eintrag entfällt sofort; gestrichene Einträge zeigen
+  „entfällt“, einen Hinweis zum weiteren Verlauf und „Wiederherstellen“);
+  Karte „Abschluss“ („Hinweis am
   Protokollende“, Vorgabe `STANDARD_HINWEIS`). Übernommene Einträge zeigen den
   Ursprungstext fest („Ursprungstext korrigieren“) und ein eigenes Feld für
   die Ergänzung.
@@ -605,25 +610,36 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
   (Dialog „Aufgaben in die LOP übernehmen“ mit Auswahl). Jede wird ein neuer
   LOP-Punkt im Thema, das wie ihr Tagesordnungspunkt heißt (`zielThema`; fehlt
   es, entsteht es); als Herkunft stehen Besprechung, Nummer und Punkt des
-  Protokolls. Die Aufgabe
-  erhält `lopPunktId`, zeigt „In die LOP übernommen (Nr. …) – dort
-  weiterverfolgt“ mit „Verknüpfung lösen“ und zählt nicht mehr in
-  `protokollAufgaben` (Übersicht, Aufgabenliste).
+  Protokolls. Die Aufgabe erhält `lopPunktId`; nur der Editor zeigt „In die
+  LOP übernommen (Nr. …) – nur intern, nicht im Druck“ mit „Verknüpfung
+  lösen“. Im Protokoll läuft sie weiter wie jede andere, auch in
+  Folgeprotokolle. „Erledigt“ gleicht `lopStatusAbgleichen` nach jeder
+  Änderung in beide Richtungen ab – zwischen dem LOP-Punkt und dem jüngsten
+  Vorkommen der Aufgabe im jüngsten Protokoll ihrer Reihe. Die Übersicht
+  (`allePunkte` in `src/bereiche/projektsteuerung/domain/punkte.ts`) zählt sie nur über die LOP.
 * Folgeprotokoll (`folgeprotokoll` in `src/bereiche/projektsteuerung/domain/protokoll.ts`): Nummer =
   höchste der Reihe + 1 (`naechsteNr`), Datum = nächster Termin des
   Vorprotokolls, Teilnehmende mit Status anwesend (außer nur Verteiler),
-  Informationen und Festlegungen immer, Aufgaben nur offen, nicht
-  weitergeführt und nicht in der LOP (`mitgehen`); Ergänzungen gehen in den Text über, `herkunft`
-  nennt Protokoll und Punkt des Ursprungs. Wird ein Protokoll gelöscht,
+  alle Einträge außer denen, die schon im Vorprotokoll erledigt bzw.
+  gestrichen waren (`letztmalig`), und Aufgaben, die bereits weitergeführt
+  wurden (`mitgehen`). Erledigte und gestrichene Einträge (`abgeschlossen`)
+  gehen also noch einmal mit und entfallen im übernächsten Protokoll.
+  Ergänzungen gehen in den Text über, `herkunft` nennt Protokoll und Punkt des
+  Ursprungs. Wird ein Protokoll gelöscht,
   gelten die von ihm weitergeführten Aufgaben im Vorprotokoll wieder als
   offen.
 * Druckfassung `protokollHtml` (`src/bereiche/projektsteuerung/domain/druck.ts`): Kopf mit Logos,
   Datum, Zeit, Ort, Protokollführung, Teilnehmende und Verteiler, Legende,
   Tabelle Nr. / Inhalt / Typ / Verantwortlich / Termin, nächster Termin,
-  „Aufgestellt:“ und „Freigegeben:“, Hinweis; bei Aufgaben in der LOP „In die
-  LOP übernommen (Nr. …)“. Neue und gegenüber dem
-  Vorprotokoll geänderte Angaben stehen blau (`eintragNeu`, `topNeu`). „Als
-  Text kopieren“ nutzt `alsText`.
+  „Aufgestellt:“ und „Freigegeben:“, Hinweis. Neue und gegenüber dem
+  Vorprotokoll geänderte Angaben stehen blau (`eintragNeu`, `topNeu`).
+  Erledigte und gestrichene Einträge stehen durchgestrichen (Klasse
+  `ps-gestrichen`): mit blauer Linie, wenn sie in diesem Protokoll erledigt
+  bzw. gestrichen wurden (`neuGestrichen`, `ps-gestrichen-neu`), sonst mit
+  schwarzer; der Text behält seine Farbe. Die Termin-Spalte nennt „entfällt“
+  bzw. „erledigt“, die Legende „Durchgestrichene Einträge sind erledigt oder
+  entfallen.“ Verweise auf die LOP erscheinen nicht. „Als Text kopieren“
+  nutzt `alsText` (gestrichene Einträge mit „(entfällt)“, ohne LOP-Verweis).
 
 ### 8.5 LOP
 
@@ -679,6 +695,7 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
 | „In der Datei fehlt eine Spalte „Nachname“ oder „Name“.“ | `src/bereiche/projektsteuerung/domain/beteiligteImport.ts` | Excel-Import ohne erkennbare Kopfzeile. |
 | „Die Datei enthält keine Zeile mit einem Nachnamen.“ | `src/bereiche/projektsteuerung/components/BeteiligteImport.tsx` | Excel-Import ohne verwertbare Zeile. |
 | „Aufgabe als LOP-Punkt Nr. … übernommen.“ / „… Aufgaben in die LOP übernommen (Nr. …).“ | `src/bereiche/projektsteuerung/pages/projekt/ProtokollEditor.tsx` | Kein Fehler: Aufgaben wurden in die LOP übernommen. |
+| „Eintrag … durchgestrichen.“ / „Eintrag … gelöscht.“ | `src/bereiche/projektsteuerung/pages/projekt/ProtokollEditor.tsx` | Kein Fehler: „Durchstreichen“ bzw. „Sofort löschen“ im Dialog „Eintrag … aus dem Protokoll löschen?“. |
 | „„…“ ist noch … Projektbeteiligten zugeordnet und lässt sich deshalb nicht löschen.“ | `src/bereiche/projektsteuerung/pages/Funktionen.tsx` | Löschen einer Funktion, die Personen tragen. |
 | „Bitte eine Funktion wählen.“ / „Bitte einen Nachnamen angeben.“ | `src/bereiche/projektsteuerung/components/BeteiligterDialog.tsx` | Pflichtangaben einer Person fehlen. |
 | „Bitte die Besprechung benennen.“ / „Bitte das Datum angeben.“ | `src/bereiche/projektsteuerung/pages/projekt/Protokolle.tsx` | Neue Protokollreihe ohne Besprechung bzw. Datum. |
