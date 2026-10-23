@@ -468,8 +468,9 @@ in Übersicht und Terminen. Die Spalte **KKM (unterjährig)** nennt je Maßnahme
 B(S), B, C, Container) keine Frist, sondern den **frühesten Sperrbeginn bei Anmeldung heute**:
 Stichtag der Anmeldung ist der nächste Mittwoch, dazu kommt der Vorlauf der Maßnahmenart laut
 Einstellungen (z. B. C mit 6 Wochen: Anmeldung zum Mittwoch, 28.10. – Sperrpause frühestens ab
-9.12.). Angezeigt wird „ganzes Jahr“, „ab …“ oder „nicht mehr“; besteht schon eine unterjährige
-Anmeldung dieser Art, steht dort ihr Status. Angelegt wird nur über **Neue Anmeldung**. So lässt
+9.12.). Angezeigt wird „ganzes Jahr“, „ab …“ oder „nicht mehr“; dahinter stehen vorhandene
+unterjährige Anmeldungen dieser Art mit ihrem Status (abgelehnte ohne Haken), denn je Sperrpause
+wird eigens angemeldet. Angelegt wird nur über **Neue Anmeldung**. So lässt
 sich nach längeren Betreuungspausen ablesen, ob eine Anmeldung zum nächsten SKM, MKM oder KM
 fällig ist und was unterjährig noch möglich ist.
 

@@ -292,6 +292,13 @@ des Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin 
 Passt das, oder gibt es Maßnahmen, die unabhängig vom Zeitpunkt in N-2 (bzw. N-1) angemeldet
 werden müssen?
 
+**E10. ★ Stichtag Mittwoch im KKM** – Unterjährig zählt als Anmeldetag immer der Mittwoch.
+*Entwurf:* Im Anmeldebedarf rechnet die Anwendung vom nächsten Mittwoch (ein Mittwoch selbst
+zählt noch) plus Vorlauf der Maßnahmenart den frühesten Sperrbeginn. Die Terminfrist einer
+unterjährigen Anmeldung (Ril_KKM) fällt auf den Mittwoch an oder vor „Sperrbeginn minus Vorlauf“
+– z. B. C mit Sperrbeginn Donnerstag, 10.12., auf Mittwoch, 28.10. Stimmt beides so, und bis wann
+am Mittwoch muss die Anmeldung eingehen?
+
 ---
 
 ## F. Bedienung, Ausgaben und Betrieb
