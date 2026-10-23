@@ -91,13 +91,15 @@ Weiter: **Schritt einfügen**, Antwort einer Entscheidung
 wählen, **Workflow ändern …**, **Planlauf abbrechen** (ersatzlos oder mit neuem Index bzw. neuer
 Ausgabe – dann startet ein Nachfolgelauf) und **Lauf löschen**. „Workflow
 ändern …“ öffnet „Workflow ändern und neu starten“: Workflow, „Start des
-Planlaufs“, „Eingang Soll“ (wird am Eintrag nachgetragen), „Grund“ und die
-Schritte des neuen Laufs (`SchrittListe`); „Neu starten“ beendet den Lauf mit
-der Abbruchart `neu_gestartet` und legt einen neuen an (`planlaufNeuStarten`
-in `store/store.tsx`). Ein so beendeter Lauf gilt wie ein aufgeteilter nicht
-als Abbruch (`laufUeberfuehrt`), zeigt „Mit geändertem Workflow neu gestartet
-am …“ mit „Aktuellen Planlauf öffnen“; der neue Lauf führt unter „Frühere
-Läufe vor dem Neustart:“ zu ihm. Ein
+Planlaufs“, „Eingang Soll“ (wird am Eintrag nachgetragen; ein vergangenes
+Datum ist nicht vorbelegt, leer gelten die Termine ab dem Start), „Grund“ und
+die Schritte des neuen Laufs (`SchrittListe`); „Neu starten“ beendet den Lauf
+mit der Abbruchart `neu_gestartet` und legt einen neuen mit Name und Index des
+Eintrags an (`planlaufNeuStarten` in `store/store.tsx`). Ein so beendeter Lauf
+gilt wie ein aufgeteilter nicht als Abbruch (`laufUeberfuehrt`), behält seine
+Soll-Termine (`recalcRun` lässt ihn stehen) und zeigt „Mit geändertem Workflow
+neu gestartet am …“ mit „Aktuellen Planlauf öffnen“; der neue Lauf führt unter
+„Frühere Läufe vor dem Neustart:“ zu den Läufen der Neustart-Kette vor ihm. Ein
 abgebrochener Lauf ist schreibgeschützt: `beendet = run.status !== 'laufend'`
 blendet alle Schaltflächen aus. Verlangt ein Schritt einen Nachweis
 (`Freigabe-Nr.` oder `Prüfbericht-Nr.`), wird die Nummer beim Erledigen
