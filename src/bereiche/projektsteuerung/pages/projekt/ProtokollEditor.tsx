@@ -16,6 +16,7 @@ import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Field, Modal, Segme
 import { BeteiligterDialog } from '../../components/BeteiligterDialog';
 import { Blatt, KuerzelListe, Textfeld, kopieren, useLiveDruck } from '../../components/common';
 import { blattDrucken, protokollHtml } from '../../domain/druck';
+import { uebernehmbareAufgaben, zielThema, type UebernehmbareAufgabe } from '../../domain/lopUebernahme';
 import {
   alsText,
   bezeichnung,
@@ -26,6 +27,7 @@ import {
   neuerEintrag,
   neuerTop,
   teilnehmerAus,
+  volltext,
 } from '../../domain/protokoll';
 import { ampelFuer } from '../../domain/punkte';
 import { logosVon } from '../../domain/seed';
@@ -33,6 +35,7 @@ import {
   BESPRECHUNG_VORSCHLAEGE,
   EINTRAG_TYP_LABEL,
   TEILNAHME,
+  funktionsName,
   personName,
   type Beteiligter,
   type Eintrag,
@@ -70,7 +73,7 @@ export function ProtokollEditor({
   protokoll: Protokoll;
   navigate: (r: Route) => void;
 }) {
-  const { data, updateProtokoll, folgeprotokollAnlegen } = useStore();
+  const { data, updateProtokoll, folgeprotokollAnlegen, aufgabenInLopUebernehmen } = useStore();
   const toast = useToast();
   const [ansicht, setAnsicht] = useState<Ansicht>('bearbeiten');
   const [korrektur, setKorrektur] = useState<Set<ID>>(new Set());
@@ -79,6 +82,7 @@ export function ProtokollEditor({
   const [topLoeschen, setTopLoeschen] = useState<Top | null>(null);
   const [eintragLoeschen, setEintragLoeschen] = useState<{ top: Top; eintrag: Eintrag } | null>(null);
   const [fokus, setFokus] = useState<string | null>(null);
+  const [lopDialog, setLopDialog] = useState(false);
 
   useEffect(() => {
     if (!fokus) return;
@@ -90,7 +94,19 @@ export function ProtokollEditor({
     data.beteiligte.filter((b) => b.projektId === projekt.id),
     data.funktionen,
   );
-  const inhalt = protokollHtml(p, projekt, logosVon(projekt));
+  const lop = data.lops.find((l) => l.projektId === projekt.id);
+  const lopNr = (id: ID) => lop?.punkte.find((x) => x.id === id)?.nr;
+  const fuerLop = uebernehmbareAufgaben(p);
+  const inLop = (ids: ID[]) => {
+    const erste = lop?.naechsteNr ?? 1;
+    aufgabenInLopUebernehmen(p.id, ids);
+    toast(
+      ids.length === 1
+        ? `Aufgabe als LOP-Punkt Nr. ${erste} übernommen.`
+        : `${ids.length} Aufgaben in die LOP übernommen (Nr. ${erste}–${erste + ids.length - 1}).`,
+    );
+  };
+  const inhalt = protokollHtml(p, projekt, logosVon(projekt), lopNr);
   const titel = `${bezeichnung(p)} – ${projekt.name}`;
   const liveOeffnen = useLiveDruck(titel, inhalt);
   const listeId = `ps-kuerzel-${p.id}`;
@@ -189,7 +205,7 @@ export function ProtokollEditor({
               type="button"
               className="btn btn-outline"
               onClick={async () =>
-                toast((await kopieren(alsText(p, [projekt.nummer, projekt.name].filter(Boolean).join(' '))))
+                toast((await kopieren(alsText(p, [projekt.nummer, projekt.name].filter(Boolean).join(' '), lopNr)))
                   ? 'Protokoll als Text kopiert.'
                   : 'Kopieren nicht möglich.')
               }
@@ -462,17 +478,29 @@ export function ProtokollEditor({
           {/* Tagesordnung */}
           <div className="row-between wrap">
             <h2 style={{ fontSize: 17 }}>Tagesordnung</h2>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={() => {
-                const top = neuerTop();
-                aendern((x) => ({ ...x, tops: [...x.tops, top] }));
-                setFokus(`ps-top-${top.id}`);
-              }}
-            >
-              <Icon name="plus" size={12} /> TOP hinzufügen
-            </button>
+            <div className="row wrap">
+              {fuerLop.length > 0 ? (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  title="Offene Aufgaben dieses Protokolls als Punkte in die Liste offener Punkte übernehmen"
+                  onClick={() => setLopDialog(true)}
+                >
+                  <Icon name="export" size={12} /> Aufgaben in die LOP …
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => {
+                  const top = neuerTop();
+                  aendern((x) => ({ ...x, tops: [...x.tops, top] }));
+                  setFokus(`ps-top-${top.id}`);
+                }}
+              >
+                <Icon name="plus" size={12} /> TOP hinzufügen
+              </button>
+            </div>
           </div>
 
           <KuerzelListe id={listeId} beteiligte={beteiligte} funktionen={data.funktionen} />
@@ -617,6 +645,23 @@ export function ProtokollEditor({
                           ) : (
                             <span className="ps-neu">Neu in diesem Protokoll</span>
                           )}
+                          {e.lopPunktId ? (
+                            <span className="ps-lop-hinweis">
+                              In die LOP übernommen (Nr. {lopNr(e.lopPunktId)}) – dort weiterverfolgt ·{' '}
+                              <button
+                                type="button"
+                                className="ps-link"
+                                title="Die Aufgabe wird wieder im Protokoll verfolgt; der LOP-Punkt bleibt bestehen."
+                                onClick={() => patch({ lopPunktId: null })}
+                              >
+                                Verknüpfung lösen
+                              </button>
+                            </span>
+                          ) : fuerLop.some((x) => x.eintrag.id === e.id) ? (
+                            <button type="button" className="ps-link ps-lop-hinweis" onClick={() => inLop([e.id])}>
+                              → In die LOP übernehmen
+                            </button>
+                          ) : null}
                         </div>
                         <div className="ps-wer">
                           <input
@@ -639,14 +684,20 @@ export function ProtokollEditor({
                                 aria-label="Termin"
                               />
                             </div>
-                            <label className="ps-haken ps-st">
-                              <input
-                                type="checkbox"
-                                checked={erledigt}
-                                onChange={(ev) => patch({ status: ev.target.checked ? 'erledigt' : 'offen' })}
-                              />
-                              erledigt
-                            </label>
+                            {e.lopPunktId ? (
+                              <span className="ps-haken ps-st" title="Die Aufgabe wird in der LOP weiterverfolgt.">
+                                <Badge ton="blue">LOP Nr. {lopNr(e.lopPunktId)}</Badge>
+                              </span>
+                            ) : (
+                              <label className="ps-haken ps-st">
+                                <input
+                                  type="checkbox"
+                                  checked={erledigt}
+                                  onChange={(ev) => patch({ status: ev.target.checked ? 'erledigt' : 'offen' })}
+                                />
+                                erledigt
+                              </label>
+                            )}
                           </>
                         ) : (
                           <>
@@ -704,10 +755,20 @@ export function ProtokollEditor({
         </>
       )}
 
+      {lopDialog ? (
+        <LopUebernahmeDialog
+          aufgaben={fuerLop}
+          themaVorhanden={(top) => zielThema(lop, top) !== null}
+          naechsteNr={lop?.naechsteNr ?? 1}
+          onClose={() => setLopDialog(false)}
+          onUebernehmen={inLop}
+        />
+      ) : null}
+
       {auswahl ? (
         <TeilnehmerAuswahl
           beteiligte={beteiligte}
-          funktionName={(b) => data.funktionen.find((f) => f.id === b.funktionId)?.name ?? ''}
+          funktionName={(b) => ((f) => (f ? funktionsName(f) : ''))(data.funktionen.find((f) => f.id === b.funktionId))}
           vorhanden={new Set(p.teilnehmer.map((t) => t.beteiligterId).filter((x): x is ID => !!x))}
           projektId={projekt.id}
           onClose={() => setAuswahl(false)}
@@ -886,5 +947,80 @@ function TeilnehmerAuswahl({
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Offene Aufgaben dieses Protokolls in die LOP übernehmen. Jede Aufgabe kommt
+ * in das Thema, das wie ihr Tagesordnungspunkt heißt – fehlt es, entsteht es.
+ */
+function LopUebernahmeDialog({
+  aufgaben,
+  themaVorhanden,
+  naechsteNr,
+  onClose,
+  onUebernehmen,
+}: {
+  aufgaben: UebernehmbareAufgabe[];
+  themaVorhanden: (top: Top) => boolean;
+  naechsteNr: number;
+  onClose: () => void;
+  onUebernehmen: (ids: ID[]) => void;
+}) {
+  const [gewaehlt, setGewaehlt] = useState<Set<ID>>(() => new Set(aufgaben.map((a) => a.eintrag.id)));
+  const umschalten = (id: ID) =>
+    setGewaehlt((g) => {
+      const neu = new Set(g);
+      if (neu.has(id)) neu.delete(id);
+      else neu.add(id);
+      return neu;
+    });
+
+  return (
+    <Modal
+      titel="Aufgaben in die LOP übernehmen"
+      sub={`Neue Punkte ab Nr. ${naechsteNr} – je Aufgabe im Thema ihres Tagesordnungspunkts`}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={gewaehlt.size === 0}
+            onClick={() => {
+              onUebernehmen(aufgaben.filter((a) => gewaehlt.has(a.eintrag.id)).map((a) => a.eintrag.id));
+              onClose();
+            }}
+          >
+            In die LOP übernehmen{gewaehlt.size ? ` (${gewaehlt.size})` : ''}
+          </button>
+        </>
+      }
+    >
+      <div className="stack" style={{ gap: 10 }}>
+        <p className="small muted">
+          Übernommene Aufgaben verfolgt danach die LOP: Sie gehen nicht mehr in Folgeprotokolle über und zählen nicht
+          mehr zu den Aufgaben der Protokolle. Im Protokoll bleiben sie mit Verweis auf ihren LOP-Punkt stehen.
+        </p>
+        <div className="ps-auswahl">
+          {aufgaben.map((a) => (
+            <label key={a.eintrag.id}>
+              <input type="checkbox" checked={gewaehlt.has(a.eintrag.id)} onChange={() => umschalten(a.eintrag.id)} />
+              <span className="ps-auswahl-text">
+                <strong>{a.nr}</strong> <span className="ps-zweizeilig">{volltext(a.eintrag) || 'ohne Text'}</span>
+                <span className="small tertiary">
+                  {a.eintrag.wer ? `${a.eintrag.wer} · ` : ''}
+                  {a.eintrag.termin ? `${formatDate(a.eintrag.termin)} · ` : ''}
+                  Thema „{a.top.titel.trim() || 'Allgemeines'}“{themaVorhanden(a.top) ? '' : ' (neu)'}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </Modal>
   );
 }

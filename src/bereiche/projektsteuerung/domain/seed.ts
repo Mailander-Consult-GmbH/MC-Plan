@@ -23,15 +23,19 @@ import {
   type Teilnahme,
 } from './types';
 
-const F = (id: ID, name: string, kuerzel: string, farbe: string, beschreibung = ''): Funktion => ({
-  id,
-  name,
-  kuerzel,
-  farbe,
-  beschreibung,
-});
+const F = (
+  id: ID,
+  name: string,
+  kuerzel: string,
+  farbe: string,
+  beschreibung = '',
+  gewerk: string | null = null,
+): Funktion => ({ id, name, kuerzel, farbe, beschreibung, gewerk });
 
-/** Projektübergreifende Funktionen eines neuen Bestands. */
+/** Gewerke eines neuen Bestands. */
+export const STANDARD_GEWERKE = ['50 Hz', 'KIB', 'LST', 'OLA', 'TK'];
+
+/** Projektübergreifende Funktionen eines neuen Bestands – übergreifend und je Gewerk. */
 export const STANDARD_FUNKTIONEN: Funktion[] = [
   F('fn-ag', 'Auftraggeber', 'AG', '#24456e', 'Vorhabenträger bzw. Bauherr, etwa DB InfraGO AG'),
   F('fn-pl', 'Projektleitung', 'PL', '#24456e', 'Projektleitung des Auftraggebers'),
@@ -40,11 +44,13 @@ export const STANDARD_FUNKTIONEN: Funktion[] = [
   F('fn-ps', 'Projektsteuerung', 'PS', '#00a0a0', 'Externe Projektsteuerung'),
   F('fn-plm', 'Planlaufmanagement', 'PLM', '#00a0a0', 'Steuerung der Planläufe'),
   F('fn-op', 'Objektplanung', 'OP', '#ff9500', 'Objektplanung Verkehrsanlagen bzw. Ingenieurbauwerke'),
-  F('fn-lst', 'Fachplanung LST', 'LST', '#ff9500', 'Leit- und Sicherungstechnik'),
-  F('fn-ola', 'Fachplanung OLA', 'OLA', '#ff9500', 'Oberleitungsanlagen'),
-  F('fn-kib', 'Fachplanung KIB', 'KIB', '#ff9500', 'Konstruktiver Ingenieurbau'),
-  F('fn-tk', 'Fachplanung TK', 'TK', '#ff9500', 'Telekommunikation'),
-  F('fn-50hz', 'Fachplanung 50 Hz', '50HZ', '#ff9500', 'Elektrische Energieanlagen 50 Hz'),
+  F('fn-lst', 'Fachplanung', 'LST', '#ff9500', 'Leit- und Sicherungstechnik', 'LST'),
+  F('fn-ola', 'Fachplanung', 'OLA', '#ff9500', 'Oberleitungsanlagen', 'OLA'),
+  F('fn-kib', 'Fachplanung', 'KIB', '#ff9500', 'Konstruktiver Ingenieurbau', 'KIB'),
+  F('fn-tk', 'Fachplanung', 'TK', '#ff9500', 'Telekommunikation', 'TK'),
+  F('fn-50hz', 'Fachplanung', '50HZ', '#ff9500', 'Elektrische Energieanlagen 50 Hz', '50 Hz'),
+  F('fn-bue-lst', 'Bauüberwachung', 'BÜ-LST', '#34c759', 'Bauüberwachung Leit- und Sicherungstechnik', 'LST'),
+  F('fn-bue-ola', 'Bauüberwachung', 'BÜ-OLA', '#34c759', 'Bauüberwachung Oberleitungsanlagen', 'OLA'),
   F('fn-bue', 'Bauüberwachung', 'BÜ', '#34c759', 'Bauüberwachung Bahn'),
   F('fn-an', 'Bauunternehmen', 'AN', '#c77700', 'Ausführendes Bauunternehmen (Auftragnehmer)'),
   F('fn-psv', 'Prüfsachverständiger', 'PSV', '#af52de', 'Prüfsachverständiger bzw. Prüfingenieur'),
@@ -307,6 +313,7 @@ export function seedDaten(): ProjektsteuerungDaten {
   return {
     version: DATEN_VERSION,
     einstellungen: { bearbeiter: STANDARD_BEARBEITER, farbmodus: 'standard' },
+    gewerke: [...STANDARD_GEWERKE],
     funktionen: STANDARD_FUNKTIONEN.map((f) => ({ ...f })),
     projekte: [p1, p2],
     beteiligte: [...Object.values(b), ...zweite],

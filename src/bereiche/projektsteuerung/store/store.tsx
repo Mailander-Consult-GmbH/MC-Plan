@@ -1,14 +1,17 @@
 /**
  * Datenbestand des Bereichs „Projektsteuerung“. Alle Schreibzugriffe laufen
  * über `mutate()`; danach werden die Teilnehmenden der Protokolle mit der
- * Projektbeteiligtenliste abgeglichen (`teilnehmerNachziehen`) und der Bestand
- * lokal gespeichert. Der Aufbau entspricht dem des Planlaufmanagements, ist
+ * Projektbeteiligtenliste abgeglichen (`teilnehmerNachziehen`), Verweise auf
+ * gelöschte LOP-Punkte gelöst (`lopVerweiseNachziehen`) und der Bestand lokal
+ * gespeichert. Der Aufbau entspricht dem des Planlaufmanagements, ist
  * davon aber vollständig getrennt.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { erledigen, fortschreiben, leereLop } from '../domain/lop';
-import { folgeprotokoll, naechsteNr, teilnehmerNachziehen } from '../domain/protokoll';
+import { aufgabenInLop } from '../domain/lopUebernahme';
+import { folgeprotokoll, lopVerweiseNachziehen, naechsteNr, teilnehmerNachziehen } from '../domain/protokoll';
+import { today } from '../../../shared/dates';
 import { seedDaten } from '../domain/seed';
 import {
   newId,
@@ -31,6 +34,10 @@ interface StoreValue {
   data: ProjektsteuerungDaten;
   /* Einstellungen */
   setEinstellungen: (e: Partial<Einstellungen>) => void;
+  /* Gewerke */
+  addGewerk: (name: string) => void;
+  /** Löscht ein Gewerk samt seiner Funktionen; ob diese noch Personen tragen, prüft die Oberfläche vorher. */
+  deleteGewerk: (name: string) => void;
   /* Funktionen (projektübergreifend) */
   addFunktion: (f: Omit<Funktion, 'id'>) => ID;
   updateFunktion: (id: ID, patch: Partial<Omit<Funktion, 'id'>>) => void;
@@ -56,6 +63,11 @@ interface StoreValue {
   deleteProtokoll: (id: ID) => void;
   /** Legt das Folgeprotokoll an (Nummer: höchste der Reihe + 1) und liefert seine Kennung. */
   folgeprotokollAnlegen: (id: ID) => ID | null;
+  /**
+   * Übernimmt offene Aufgaben eines Protokolls als neue Punkte in die LOP des
+   * Projekts; die Aufgaben verweisen danach auf ihren Punkt.
+   */
+  aufgabenInLopUebernehmen: (protokollId: ID, eintragIds: ID[]) => void;
   /** Übernimmt Protokolle (etwa aus dem Protokoll-Tool); gleiche Kennungen werden ersetzt. */
   protokolleUebernehmen: (liste: Protokoll[]) => void;
   /* LOP */
@@ -80,7 +92,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   /** Jede Änderung läuft hierüber – die Funktion muss rein sein. */
   const mutate = useCallback((fn: (d: ProjektsteuerungDaten) => ProjektsteuerungDaten) => {
-    setData((alt) => teilnehmerNachziehen(fn(alt)));
+    setData((alt) => teilnehmerNachziehen(lopVerweiseNachziehen(fn(alt))));
   }, []);
 
   const protokollAendern = useCallback(
@@ -108,9 +120,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       data,
       setEinstellungen: (e) => mutate((d) => ({ ...d, einstellungen: { ...d.einstellungen, ...e } })),
 
+      addGewerk: (name) =>
+        mutate((d) =>
+          d.gewerke.some((g) => g.toLowerCase() === name.trim().toLowerCase())
+            ? d
+            : { ...d, gewerke: [...d.gewerke, name.trim()].sort((a, b) => a.localeCompare(b, 'de')) },
+        ),
+      deleteGewerk: (name) =>
+        mutate((d) => {
+          const gleich = (g: string | null) => (g ?? '').toLowerCase() === name.toLowerCase();
+          const weg = new Set(d.funktionen.filter((f) => gleich(f.gewerk)).map((f) => f.id));
+          return {
+            ...d,
+            gewerke: d.gewerke.filter((g) => !gleich(g)),
+            funktionen: d.funktionen.filter((f) => !weg.has(f.id)),
+            beteiligte: d.beteiligte.map((b) => (b.funktionId && weg.has(b.funktionId) ? { ...b, funktionId: null } : b)),
+          };
+        }),
+
       addFunktion: (f) => {
         const id = newId('fn');
-        mutate((d) => ({ ...d, funktionen: [...d.funktionen, { ...f, id }] }));
+        mutate((d) => {
+          // Ein Gewerk, das es noch nicht gibt, kommt mit der Funktion hinzu.
+          const neuesGewerk = f.gewerk && !d.gewerke.some((g) => g.toLowerCase() === f.gewerk!.toLowerCase());
+          return {
+            ...d,
+            gewerke: neuesGewerk ? [...d.gewerke, f.gewerk!].sort((a, b) => a.localeCompare(b, 'de')) : d.gewerke,
+            funktionen: [...d.funktionen, { ...f, id }],
+          };
+        });
         return id;
       },
       updateFunktion: (id, patch) =>
@@ -186,6 +224,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return { ...d, protokolle: [...d.protokolle.map((p) => (p.id === id ? vorher : p)), neu] };
         });
         return neueId;
+      },
+      aufgabenInLopUebernehmen: (protokollId, eintragIds) => {
+        // Kennungen vorab, damit die Änderung im StrictMode rein bleibt.
+        const punktIds = new Map(eintragIds.map((id) => [id, newId('lp')]));
+        const heute = today();
+        mutate((d) => aufgabenInLop(d, protokollId, punktIds, heute));
       },
       protokolleUebernehmen: (liste) =>
         mutate((d) => {

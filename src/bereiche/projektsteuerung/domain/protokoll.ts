@@ -8,6 +8,7 @@ import { today } from '../../../shared/dates';
 import {
   STANDARD_HINWEIS,
   TEILNAHME,
+  funktionsName,
   kuerzelVon,
   newId,
   personName,
@@ -78,6 +79,7 @@ export function neuerEintrag(typ: EintragTyp): Eintrag {
     status: 'offen',
     herkunft: '',
     uebernommenIn: null,
+    lopPunktId: null,
     vor: null,
   };
 }
@@ -92,7 +94,7 @@ export function teilnehmerAus(b: Beteiligter, funktionen: Funktion[], status: Te
     id: newId('tn'),
     beteiligterId: b.id,
     name: personName(b),
-    funktion: funktionen.find((f) => f.id === b.funktionId)?.name ?? '',
+    funktion: ((f) => (f ? funktionsName(f) : ''))(funktionen.find((f) => f.id === b.funktionId)),
     firma: b.firma,
     kuerzel: kuerzelVon(b, funktionen),
     status,
@@ -170,6 +172,7 @@ export function folgeprotokoll(
             text,
             zusatz: '',
             uebernommenIn: null,
+            lopPunktId: null,
             herkunft: e.herkunft || `Prot. ${vorher.nr}, Pkt. ${nr}`,
             vor: { typ: e.typ, text, wer: e.wer, termin: e.termin, status: e.status },
           };
@@ -206,8 +209,12 @@ export function folgeprotokoll(
   return { neu, vorher: vorherNeu };
 }
 
-/** Geht der Eintrag in ein Folgeprotokoll über? Aufgaben nur, solange sie offen und nicht weitergeführt sind. */
-export const mitgehen = (e: Eintrag): boolean => e.typ !== 'A' || (e.status !== 'erledigt' && !e.uebernommenIn);
+/**
+ * Geht der Eintrag in ein Folgeprotokoll über? Aufgaben nur, solange sie
+ * offen, nicht weitergeführt und nicht in die LOP übernommen sind.
+ */
+export const mitgehen = (e: Eintrag): boolean =>
+  e.typ !== 'A' || (e.status !== 'erledigt' && !e.uebernommenIn && !e.lopPunktId);
 
 /** Zahl der Einträge, die ein Folgeprotokoll aus diesem Protokoll übernähme. */
 export const mitgehendeEintraege = (p: Protokoll): number =>
@@ -254,14 +261,15 @@ export interface ProtokollAufgabe {
 
 /**
  * Aufgaben aus Protokollen – je Aufgabe nur ihr jüngstes Vorkommen: Wurde sie
- * in ein Folgeprotokoll übernommen, zählt sie dort.
+ * in ein Folgeprotokoll übernommen, zählt sie dort. Aufgaben, die in die LOP
+ * übernommen wurden, verfolgt die LOP; sie zählen hier nicht mehr.
  */
 export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
   const aufgaben: ProtokollAufgabe[] = [];
   for (const protokoll of protokolle) {
     protokoll.tops.forEach((top, ti) =>
       top.eintraege.forEach((eintrag, ei) => {
-        if (eintrag.typ === 'A' && !eintrag.uebernommenIn) {
+        if (eintrag.typ === 'A' && !eintrag.uebernommenIn && !eintrag.lopPunktId) {
           aufgaben.push({ protokoll, top, eintrag, nr: `${ti + 1}.${ei + 1}` });
         }
       }),
@@ -311,14 +319,41 @@ export function teilnehmerNachziehen(d: ProjektsteuerungDaten): Projektsteuerung
   return geaendert ? { ...d, protokolle, lops } : d;
 }
 
+/**
+ * Löst Verweise auf LOP-Punkte, die es in der LOP des Projekts nicht mehr gibt
+ * – die Aufgabe wird dann wieder im Protokoll verfolgt. Läuft nach jeder
+ * Änderung im Store.
+ */
+export function lopVerweiseNachziehen(d: ProjektsteuerungDaten): ProjektsteuerungDaten {
+  const punkte = new Map(d.lops.map((l) => [l.projektId, new Set(l.punkte.map((p) => p.id))]));
+  let geaendert = false;
+  const protokolle = d.protokolle.map((p) => {
+    const vorhanden = punkte.get(p.projektId);
+    const veraltet = (e: Eintrag) => !!e.lopPunktId && !vorhanden?.has(e.lopPunktId);
+    if (!p.tops.some((t) => t.eintraege.some(veraltet))) return p;
+    geaendert = true;
+    return {
+      ...p,
+      tops: p.tops.map((t) => ({
+        ...t,
+        eintraege: t.eintraege.map((e) => (veraltet(e) ? { ...e, lopPunktId: null } : e)),
+      })),
+    };
+  });
+  return geaendert ? { ...d, protokolle } : d;
+}
+
 /* ------------------------------------------------------------------ */
 /* Als Text                                                            */
 /* ------------------------------------------------------------------ */
 
 const datumText = (iso: string) => (iso ? iso.split('-').reverse().join('.') : '');
 
-/** Protokoll als schlichter Text, etwa für eine E-Mail. */
-export function alsText(p: Protokoll, projektName: string): string {
+/**
+ * Protokoll als schlichter Text, etwa für eine E-Mail. `lopNr` nennt die
+ * Nummer des LOP-Punkts einer übernommenen Aufgabe.
+ */
+export function alsText(p: Protokoll, projektName: string, lopNr: (id: ID) => number | undefined = () => undefined): string {
   const z: string[] = [];
   z.push(`PROTOKOLL – ${bezeichnung(p)}`);
   if (projektName) z.push(`Projekt: ${projektName}`);
@@ -351,6 +386,8 @@ export function alsText(p: Protokoll, projektName: string): string {
         );
       } else if (e.wer) z.push(`      Wer: ${e.wer}`);
       if (e.herkunft) z.push(`      ${herkunftText(e)}`);
+      const nr = e.lopPunktId ? lopNr(e.lopPunktId) : undefined;
+      if (nr !== undefined) z.push(`      In die LOP übernommen (Nr. ${nr})`);
     });
   });
   if (p.naechster) z.push('', `Nächster Termin: ${datumText(p.naechster)}`);
@@ -467,6 +504,7 @@ export function ausProtokollTool(
                 termin: datum(e.termin),
                 status: e.status === 'erledigt' ? 'erledigt' : 'offen',
                 herkunft: text(e.herkunft),
+                lopPunktId: null,
                 uebernommenIn: e.carriedTo
                   ? (kennung.get(text(e.carriedTo)) ?? (imProjekt.has(text(e.carriedTo)) ? text(e.carriedTo) : null))
                   : null,

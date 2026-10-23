@@ -299,7 +299,7 @@ function kopfzeile(route: Route, projektName?: string, protokollName?: string): 
     case 'projekte':
       return { titel: 'Projekte', sub: 'Projektverwaltung' };
     case 'funktionen':
-      return { titel: 'Funktionen', sub: 'Projektübergreifend – Auswahl für die Projektbeteiligten' };
+      return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Gewerken' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'protokoll':

@@ -114,6 +114,15 @@
 .ps-herkunft-eingabe::placeholder { color: var(--text-tertiary); }
 .ps-herkunft-eingabe:hover { border-color: var(--separator); }
 .ps-herkunft-eingabe:focus { outline: none; border-color: var(--accent); background: #fff; }
+/* Aufgabe in der LOP: Hinweis und Schaltflächen im Textstil */
+.ps-lop-hinweis { display: block; margin-top: 4px; font-size: 11.5px; color: var(--accent); }
+.ps-link {
+  border: none; background: none; padding: 0; cursor: pointer;
+  font: inherit; font-size: 11.5px; color: var(--accent); text-decoration: underline; text-underline-offset: 2px;
+}
+.ps-link:hover { color: var(--accent-hover); }
+button.ps-link.ps-lop-hinweis { display: inline-block; text-decoration: none; }
+button.ps-link.ps-lop-hinweis:hover { text-decoration: underline; }
 .ps-haken { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); padding-top: 8px; cursor: pointer; white-space: nowrap; }
 .ps-haken input { width: 16px; height: 16px; accent-color: var(--green); }
 .input.ps-spaet { border-color: var(--red); color: var(--red); }

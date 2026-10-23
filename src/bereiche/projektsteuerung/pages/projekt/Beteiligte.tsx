@@ -3,27 +3,46 @@
  * Planlaufmanagement, aber ohne leere Funktionen: Es erscheinen nur Personen,
  * und jede trägt eine der projektübergreifenden Funktionen. Neue Personen
  * erhalten ihre Funktion aus einer Auswahl, in der sich auch gleich eine neue
- * Funktion anlegen lässt.
+ * Funktion anlegen lässt; ganze Listen kommen über den Excel-Import. Die
+ * Reiter gliedern nach den Gewerken der Funktionen.
  */
 import { useState } from 'react';
 import { today } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Avatar, Card, CardHeader, ConfirmDialog, EmptyState, Search } from '../../../../shared/ui';
+import { BeteiligteImport } from '../../components/BeteiligteImport';
 import { BeteiligterDialog } from '../../components/BeteiligterDialog';
 import { beteiligteHtml, blattDrucken } from '../../domain/druck';
 import { beteiligteExportieren } from '../../domain/export';
 import { logosVon } from '../../domain/seed';
-import { kuerzelVon, personName, type Beteiligter, type Funktion, type Projekt } from '../../domain/types';
+import {
+  UEBERGREIFEND,
+  funktionsName,
+  kuerzelVon,
+  personName,
+  type Beteiligter,
+  type Funktion,
+  type Projekt,
+} from '../../domain/types';
 import { useStore } from '../../store/store';
 
-/** Nach Funktion, dann nach Nachname; Personen ohne Funktion am Ende. */
+/**
+ * Übergreifende Funktionen zuerst, dann nach Gewerk und Funktion, zuletzt
+ * nach Nachname; Personen ohne Funktion am Ende.
+ */
 export function nachFunktion(beteiligte: Beteiligter[], funktionen: Funktion[]): Beteiligter[] {
-  const name = (b: Beteiligter) => funktionen.find((f) => f.id === b.funktionId)?.name ?? '￿';
+  const rang = (b: Beteiligter) => {
+    const f = funktionen.find((x) => x.id === b.funktionId);
+    return f ? `${f.gewerk === null ? '0' : `1${f.gewerk}`} ${f.name}` : '\uffff';
+  };
   return [...beteiligte].sort(
-    (a, b) => name(a).localeCompare(name(b), 'de') || a.nachname.localeCompare(b.nachname, 'de'),
+    (a, b) => rang(a).localeCompare(rang(b), 'de') || a.nachname.localeCompare(b.nachname, 'de'),
   );
 }
+
+/** Reiter „Alle“ der Beteiligtenliste. */
+const ALLE = 'Alle';
 
 export function Beteiligte({ projekt }: { projekt: Projekt }) {
   const { data, deleteBeteiligter } = useStore();
@@ -31,16 +50,25 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
   const [suche, setSuche] = useState('');
   const [dialog, setDialog] = useState<{ beteiligter?: Beteiligter } | null>(null);
   const [loeschen, setLoeschen] = useState<Beteiligter | null>(null);
+  const [importOffen, setImportOffen] = useState(false);
+  const [seite, setSeite] = useState(ALLE);
 
   const funktion = (b: Beteiligter) => data.funktionen.find((f) => f.id === b.funktionId);
   const alle = nachFunktion(
     data.beteiligte.filter((b) => b.projektId === projekt.id),
     data.funktionen,
   );
+  // Reiter: Gewerke, die im Projekt vorkommen
+  const gewerkVon = (b: Beteiligter) => funktion(b)?.gewerk ?? null;
+  const gewerke = data.gewerke.filter((g) => alle.some((b) => gewerkVon(b) === g));
+  const mitUebergreifend = alle.some((b) => gewerkVon(b) === null);
+  const aktiveSeite = seite === ALLE || seite === UEBERGREIFEND || gewerke.includes(seite) ? seite : ALLE;
   const sichtbar = alle.filter((b) => {
+    if (aktiveSeite === UEBERGREIFEND && gewerkVon(b) !== null) return false;
+    if (aktiveSeite !== ALLE && aktiveSeite !== UEBERGREIFEND && gewerkVon(b) !== aktiveSeite) return false;
     if (!suche.trim()) return true;
     const f = funktion(b);
-    return [f?.name, f?.kuerzel, b.kuerzel, b.vorname, b.nachname, b.firma, b.email]
+    return [f ? funktionsName(f) : '', f?.kuerzel, b.kuerzel, b.vorname, b.nachname, b.firma, b.email]
       .join(' ')
       .toLowerCase()
       .includes(suche.toLowerCase());
@@ -53,7 +81,7 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
       beteiligteHtml(
         projekt,
         alle.map((b) => ({
-          funktion: funktion(b)?.name ?? '',
+          funktion: ((f) => (f ? funktionsName(f) : ''))(funktion(b)),
           name: [b.anrede, personName(b)].filter(Boolean).join(' '),
           firma: b.firma,
           kuerzel: kuerzelVon(b, data.funktionen),
@@ -67,9 +95,22 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
 
   return (
     <div className="stack">
+      {gewerke.length > 0 ? (
+        <div className="tabs">
+          {[ALLE, ...(mitUebergreifend ? [UEBERGREIFEND] : []), ...gewerke].map((g) => (
+            <button key={g} type="button" className={aktiveSeite === g ? 'active' : ''} onClick={() => setSeite(g)}>
+              {g}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div className="row-between wrap">
         <Search value={suche} onChange={setSuche} placeholder="Funktion, Person, Firma …" />
         <div className="row wrap">
+          <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
+            <Icon name="importieren" size={14} /> Excel-Import
+          </button>
           <button type="button" className="btn btn-outline" onClick={drucken} disabled={alle.length === 0}>
             <Icon name="plan" size={14} /> Drucken / PDF
           </button>
@@ -134,7 +175,7 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
                           <span className="row" style={{ gap: 8 }}>
                             <span className="dot" style={{ background: f.farbe }} />
                             <span style={{ minWidth: 0 }}>
-                              <strong>{f.name}</strong>
+                              <strong>{funktionsName(f)}</strong>
                               {kuerzel ? <span className="num tertiary"> · {kuerzel}</span> : null}
                             </span>
                           </span>
@@ -198,6 +239,8 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
           </div>
         )}
       </Card>
+
+      {importOffen ? <BeteiligteImport projekt={projekt} onClose={() => setImportOffen(false)} /> : null}
 
       {dialog ? (
         <BeteiligterDialog projektId={projekt.id} beteiligter={dialog.beteiligter} onClose={() => setDialog(null)} />

@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { ConfirmDialog, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
-import { personName, type Beteiligter, type ID } from '../domain/types';
+import { UEBERGREIFEND, funktionsName, personName, type Beteiligter, type ID } from '../domain/types';
 import { useStore } from '../store/store';
 import { FunktionDialog } from './FunktionDialog';
 
@@ -56,7 +56,15 @@ export function BeteiligterDialog({
 
   const set = <K extends keyof Werte>(k: K, v: Werte[K]) => setForm((f) => ({ ...f, [k]: v }));
 
-  const funktionen = [...data.funktionen].sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  // Auswahl nach Gewerk gegliedert: zuerst die übergreifenden Funktionen
+  const gruppen = [null, ...data.gewerke]
+    .map((gewerk) => ({
+      gewerk,
+      funktionen: data.funktionen
+        .filter((f) => f.gewerk === gewerk)
+        .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+    }))
+    .filter((g) => g.funktionen.length > 0);
   const gewaehlt = data.funktionen.find((f) => f.id === form.funktionId);
   // Wer diese Funktion im Projekt schon ausfüllt – nur als Hinweis.
   const schonBesetzt = gewaehlt
@@ -118,15 +126,26 @@ export function BeteiligterDialog({
                 : 'Aus den projektübergreifenden Funktionen – oder eine neue anlegen.'
             }
           >
-            <Select
+            <select
+              className="select"
               value={form.funktionId ?? ''}
-              onChange={(v) => (v === NEUE_FUNKTION ? setNeueFunktion(true) : set('funktionId', v || null))}
-              placeholder="– Funktion wählen –"
-              options={[
-                ...funktionen.map((f) => ({ value: f.id, label: f.kuerzel ? `${f.name} (${f.kuerzel})` : f.name })),
-                { value: NEUE_FUNKTION, label: '+ Neue Funktion anlegen …' },
-              ]}
-            />
+              onChange={(e) =>
+                e.target.value === NEUE_FUNKTION ? setNeueFunktion(true) : set('funktionId', e.target.value || null)
+              }
+            >
+              <option value="">– Funktion wählen –</option>
+              {gruppen.map((g) => (
+                <optgroup key={g.gewerk ?? ''} label={g.gewerk ?? UEBERGREIFEND}>
+                  {g.funktionen.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {funktionsName(f)}
+                      {f.kuerzel ? ` (${f.kuerzel})` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              <option value={NEUE_FUNKTION}>+ Neue Funktion anlegen …</option>
+            </select>
           </Field>
           <Field label="Anrede">
             <Select

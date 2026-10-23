@@ -13,8 +13,9 @@ export type ISODate = string;
 /**
  * Fassung des gespeicherten Bestands. Neue Felder sind optional oder werden in
  * `migriere()` (store/storage.ts) nachgetragen – dann diese Zahl erhöhen.
+ * Fassung 2: Gewerke der Funktionen, Verweis von Aufgaben auf LOP-Punkte.
  */
-export const DATEN_VERSION = 1;
+export const DATEN_VERSION = 2;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
@@ -69,6 +70,19 @@ export interface Funktion {
   kuerzel: string;
   farbe: string;
   beschreibung: string;
+  /**
+   * Gewerk, zu dem die Funktion gehört: „Fachplanung“ im Gewerk LST ist eine
+   * andere Funktion als „Fachplanung“ im Gewerk OLA. `null` = übergreifend.
+   */
+  gewerk: string | null;
+}
+
+/** Seite der Funktionen ohne Gewerkbezug. */
+export const UEBERGREIFEND = 'Übergreifend';
+
+/** Vollständige Bezeichnung einer Funktion samt Gewerk, etwa „Fachplanung LST“. */
+export function funktionsName(f: { name: string; gewerk: string | null }): string {
+  return f.gewerk ? `${f.name} ${f.gewerk}` : f.name;
 }
 
 /** Person in der Projektbeteiligtenliste eines Projekts. */
@@ -147,6 +161,12 @@ export interface Eintrag {
   herkunft: string;
   /** Folgeprotokoll, das diese Aufgabe weiterführt. */
   uebernommenIn: ID | null;
+  /**
+   * LOP-Punkt, in den die Aufgabe übernommen wurde. Von da an verfolgt die
+   * LOP sie weiter: Sie geht nicht mehr in Folgeprotokolle über und zählt
+   * nicht mehr zu den Aufgaben der Protokolle.
+   */
+  lopPunktId: ID | null;
   /** Stand im Vorprotokoll; null = neu in diesem Protokoll. */
   vor: Vorstand | null;
 }
@@ -255,6 +275,8 @@ export interface Lop {
 export interface ProjektsteuerungDaten {
   version: number;
   einstellungen: Einstellungen;
+  /** Gewerke, nach denen die Funktionen gegliedert sind. */
+  gewerke: string[];
   funktionen: Funktion[];
   projekte: Projekt[];
   beteiligte: Beteiligter[];

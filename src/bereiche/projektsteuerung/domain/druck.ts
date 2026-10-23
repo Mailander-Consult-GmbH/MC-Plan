@@ -11,7 +11,7 @@ import { druckeHtml } from '../../../shared/print';
 import { ampelFuer } from './punkte';
 import { aktivePunkte, punktNeu, themaNeu } from './lop';
 import { eintragNeu, fuehrerVon, herkunftText, topNeu, zeitText } from './protokoll';
-import type { Logo, Lop, Projekt, Protokoll, Vorstand } from './types';
+import type { ID, Logo, Lop, Projekt, Protokoll, Vorstand } from './types';
 
 /** Maskiert Text für HTML – auch in Attributen. */
 export function esc(wert: string | number | null | undefined): string {
@@ -64,7 +64,13 @@ const blau = (neu: boolean) => (neu ? ' ps-n' : '');
 /* Protokoll                                                           */
 /* ------------------------------------------------------------------ */
 
-export function protokollHtml(p: Protokoll, projekt: Projekt, logos: Logo[]): string {
+/** `lopNr` nennt die Nummer des LOP-Punkts einer in die LOP übernommenen Aufgabe. */
+export function protokollHtml(
+  p: Protokoll,
+  projekt: Projekt,
+  logos: Logo[],
+  lopNr: (id: ID) => number | undefined = () => undefined,
+): string {
   const tn = p.teilnehmer.filter((t) => t.name || t.firma || t.funktion);
   const fuehrer = fuehrerVon(p);
   const pt = projektText(projekt);
@@ -82,11 +88,12 @@ export function protokollHtml(p: Protokoll, projekt: Projekt, logos: Logo[]): st
           .map((e, ei) => {
             const n = (...felder: (keyof Vorstand)[]) => blau(eintragNeu(e, ...felder));
             const termin = e.typ === 'A' ? (e.status === 'erledigt' ? 'erledigt' : fmt(e.termin) || 'offen') : '';
+            const nrLop = e.lopPunktId ? lopNr(e.lopPunktId) : undefined;
             return `<tr>
               <td class="ps-no${n()}">${ti + 1}.${ei + 1}</td>
               <td>${inhaltHtml(e.text, e.zusatz, e.vor?.text ?? null, !e.vor && !e.herkunft)}${
                 e.herkunft ? `<span class="ps-from">${esc(herkunftText(e))}</span>` : ''
-              }</td>
+              }${nrLop !== undefined ? `<span class="ps-from">In die LOP übernommen (Nr. ${nrLop})</span>` : ''}</td>
               <td class="ps-ty${n('typ')}">${e.typ}</td>
               <td class="ps-w${n('wer')}">${esc(e.wer)}</td>
               <td class="ps-d${n('termin', 'status')}">${termin}</td>

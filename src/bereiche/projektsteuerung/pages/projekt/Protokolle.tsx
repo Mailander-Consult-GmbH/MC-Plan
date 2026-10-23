@@ -94,7 +94,8 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
       <div className="row-between wrap">
         <p className="small muted" style={{ maxWidth: 620 }}>
           Ein Folgeprotokoll übernimmt Teilnehmende und Tagesordnung, alle Informationen und Festlegungen sowie die
-          offenen Aufgaben. Neue und geänderte Einträge erscheinen im Druck blau.
+          offenen Aufgaben – außer denen, die in die LOP übernommen wurden. Neue und geänderte Einträge erscheinen im
+          Druck blau.
         </p>
         <div className="row wrap">
           <button
@@ -232,7 +233,7 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
       <Card>
         <CardHeader
           titel="Aufgaben aus den Protokollen"
-          sub="Je Aufgabe ihr jüngstes Vorkommen – übernommene Aufgaben zählen im Folgeprotokoll"
+          sub="Je Aufgabe ihr jüngstes Vorkommen – übernommene Aufgaben zählen im Folgeprotokoll, Aufgaben in der LOP verfolgt die LOP"
         />
         <div className="card-pad ps-filter" style={{ borderBottom: '1px solid var(--separator)' }}>
           <Segmented<StatusFilter>

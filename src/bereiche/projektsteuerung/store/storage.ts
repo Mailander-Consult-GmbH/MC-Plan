@@ -5,7 +5,7 @@
  */
 import { today } from '../../../shared/dates';
 import { leereLop } from '../domain/lop';
-import { seedDaten } from '../domain/seed';
+import { STANDARD_GEWERKE, seedDaten } from '../domain/seed';
 import {
   DATEN_VERSION,
   STANDARD_BEARBEITER,
@@ -100,6 +100,7 @@ function protokollAufbereiten(p: Roh): Protokoll {
             status: erledigung(e.status),
             herkunft: text(e.herkunft),
             uebernommenIn: idOderNull(e.uebernommenIn),
+            lopPunktId: idOderNull(e.lopPunktId),
             vor: vorstand(e.vor),
           }),
         ),
@@ -166,8 +167,18 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
       kuerzel: text(f.kuerzel),
       farbe: text(f.farbe) || '#24456e',
       beschreibung: text(f.beschreibung),
+      gewerk: text(f.gewerk).trim() || null,
     }),
   );
+  // Gewerke: gepflegte Liste, ergänzt um die der Funktionen
+  const gewerke = [
+    ...new Set([
+      ...(Array.isArray(roh.gewerke) ? roh.gewerke.map(text).map((g) => g.trim()) : []),
+      ...funktionen.map((f) => f.gewerk ?? ''),
+    ]),
+  ]
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, 'de'));
   const funktionIds = new Set(funktionen.map((f) => f.id));
   const projekte = liste(roh.projekte).map(
     (p): Projekt => ({
@@ -219,6 +230,7 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
       bearbeiter: text(e.bearbeiter).trim() || STANDARD_BEARBEITER,
       farbmodus: e.farbmodus === 'kontrast' ? 'kontrast' : 'standard',
     },
+    gewerke,
     funktionen,
     projekte,
     beteiligte,
@@ -228,11 +240,16 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
 }
 
 /**
- * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf.
- * Bisher gibt es nur Fassung 1; künftige Schritte kommen hier hinzu.
+ * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
+ * für Schritt. Fassung 1 kannte weder Gewerke noch Verweise auf LOP-Punkte:
+ * Sie erhält die mitgelieferten Gewerke; ihre Funktionen gelten als
+ * übergreifend, ihre Aufgaben als nicht übernommen (beides ergänzt
+ * `aufbereiten`).
  */
 function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
-  return aufbereiten(roh);
+  let stand = roh;
+  if ((roh.version ?? 1) < 2) stand = { ...stand, gewerke: [...STANDARD_GEWERKE] };
+  return aufbereiten(stand);
 }
 
 export function ladeDaten(): ProjektsteuerungDaten {

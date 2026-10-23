@@ -5,7 +5,7 @@ import { useToast } from '../../../shared/toast';
 import { Badge } from '../../../shared/ui';
 import { DRUCK_STIL, liveDokument } from '../domain/druck';
 import { AMPEL_LABEL, type Ampel } from '../domain/punkte';
-import { kuerzelVon, personName, type Beteiligter, type Funktion } from '../domain/types';
+import { funktionsName, kuerzelVon, personName, type Beteiligter, type Funktion } from '../domain/types';
 
 const AMPEL_TON: Record<Ampel, '' | 'green' | 'orange' | 'red' | 'blue'> = {
   erledigt: 'green',
@@ -156,7 +156,8 @@ export function KuerzelListe({ id, beteiligte, funktionen }: { id: string; betei
     for (const wert of [k, personName(b)]) {
       if (!wert || gesehen.has(wert)) continue;
       gesehen.add(wert);
-      optionen.push({ wert, text: wert === k ? personName(b) : (funktionen.find((f) => f.id === b.funktionId)?.name ?? '') });
+      const f = funktionen.find((x) => x.id === b.funktionId);
+      optionen.push({ wert, text: wert === k ? personName(b) : f ? funktionsName(f) : '' });
     }
   }
   return (
