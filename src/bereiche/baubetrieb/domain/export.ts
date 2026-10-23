@@ -130,7 +130,7 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
       zeilen: [[{ wert: 'Projekte', stil: { fett: true, groesse: 13 } }], [stand], [], kopf(PROJEKT_KOPF), ...projektZeilen],
       fixierteZeilen: 4,
       querformat: true,
-      spaltenbreiten: [32, 26, 14, 14, 16, 12, 12, 14, 20, 18, 16, 12, 36],
+      spaltenbreiten: [32, 26, 14, 14, 16, 22, 14, 20, 18, 16, 12, 36],
     },
   ]);
   const name = projekte.length === 1 ? dateiname(projekte[0].name) : 'Monitor';

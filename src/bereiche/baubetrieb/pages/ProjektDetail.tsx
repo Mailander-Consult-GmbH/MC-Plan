@@ -306,9 +306,9 @@ function BedarfInhalt({ zelle, onOeffnen }: { zelle: BedarfZelle; onOeffnen: (a:
 }
 
 /**
- * KKM im Anmeldebedarf: je Maßnahmenart eine Zeile – die unterjährige
- * Anmeldung, falls es sie gibt, sonst ab wann die Sperrpause bei Anmeldung zum
- * nächsten Stichtag frühestens sein kann.
+ * KKM im Anmeldebedarf: je Maßnahmenart eine Zeile – ab wann die Sperrpause
+ * bei Anmeldung zum nächsten Stichtag frühestens sein kann, dahinter die
+ * vorhandenen unterjährigen Anmeldungen (abgelehnte ohne Haken).
  */
 function KkmInhalt({ zellen, onOeffnen }: { zellen: KkmZelle[]; onOeffnen: (a: Anmeldung) => void }) {
   const { data } = useStore();
@@ -317,21 +317,36 @@ function KkmInhalt({ zellen, onOeffnen }: { zellen: KkmZelle[]; onOeffnen: (a: A
       {zellen.map((z) => (
         <Fragment key={z.art}>
           <b>{z.art}</b>
-          {z.durch ? (
-            <button type="button" className="link-btn small" style={{ textAlign: 'left' }} onClick={() => onOeffnen(z.durch!)} title="Eintrag öffnen">
-              ✓ {statusVon(data.workflows, z.durch.statusId).status.name}
-            </button>
-          ) : z.zustand === 'ganzesJahr' ? (
-            <span className="muted">ganzes Jahr</span>
-          ) : z.zustand === 'ab' ? (
-            <span>
-              ab <b>{formatDate(z.fruehestens)}</b>
-            </span>
-          ) : (
-            <span className="tertiary" title="Bei Anmeldung zum nächsten Stichtag liegt der früheste Sperrbeginn nach dem Ende des Fahrplanjahres">
-              nicht mehr
-            </span>
-          )}
+          <span>
+            {z.zustand === 'ganzesJahr' ? (
+              <span className="muted">ganzes Jahr</span>
+            ) : z.zustand === 'ab' ? (
+              <span>
+                ab <b>{formatDate(z.fruehestens)}</b>
+              </span>
+            ) : (
+              <span className="tertiary" title="Bei Anmeldung zum nächsten Stichtag ist in diesem Fahrplanjahr keine Sperrpause mehr möglich">
+                nicht mehr
+              </span>
+            )}
+            {z.eintraege.map((a) => {
+              const status = statusVon(data.workflows, a.statusId).status;
+              return (
+                <Fragment key={a.id}>
+                  <span className="tertiary"> · </span>
+                  <button
+                    type="button"
+                    className="link-btn small"
+                    onClick={() => onOeffnen(a)}
+                    title={`${a.anmeldeId || 'ohne ID'} – Eintrag öffnen`}
+                  >
+                    {status.art === 'abgelehnt' ? '' : '✓ '}
+                    {status.name}
+                  </button>
+                </Fragment>
+              );
+            })}
+          </span>
         </Fragment>
       ))}
     </div>

@@ -370,8 +370,8 @@ export interface KkmZelle {
   /** Frühester Sperrbeginn bei Anmeldung zum nächsten Stichtag. */
   fruehestens: ISODate | null;
   zustand: KkmZustand;
-  /** Unterjährige Anmeldung dieser Art im Fahrplanjahr. */
-  durch?: Anmeldung;
+  /** Unterjährige Anmeldungen dieser Art im Fahrplanjahr, nach Sperrbeginn. */
+  eintraege: Anmeldung[];
 }
 
 export interface BedarfZeile {
@@ -383,7 +383,9 @@ export interface BedarfZeile {
 /**
  * KKM je Maßnahmenart: frühester Sperrbeginn bei Anmeldung zum Stichtag
  * (Mittwoch) zuzüglich des Vorlaufs laut Richtlinie. Ist die Frist als
- * Stichtag im Fahrplanjahr eingestellt, ist das ganze Jahr oder nichts mehr möglich.
+ * Stichtag im Fahrplanjahr eingestellt, ist alles ab dem Stichtag oder nichts
+ * mehr möglich. Vorhandene Anmeldungen ändern daran nichts – je Sperrpause wird
+ * eigens angemeldet.
  */
 function kkmZellen(n: number, kkm: Anmeldung[], e: Einstellungen, stichtag: ISODate): KkmZelle[] {
   const beginn = fahrplanjahrBeginn(n);
@@ -395,11 +397,14 @@ function kkmZellen(n: number, kkm: Anmeldung[], e: Einstellungen, stichtag: ISOD
       fruehestens = addDays(stichtag, 7 * ril.wochenVorher);
     } else {
       const frist = rilDatum(ril, n, null);
-      fruehestens = frist && stichtag <= frist ? beginn : null;
+      fruehestens = frist && stichtag <= frist ? (stichtag > beginn ? stichtag : beginn) : null;
     }
     const zustand: KkmZustand =
       !fruehestens || fruehestens > ende ? 'nichtMehr' : fruehestens <= beginn ? 'ganzesJahr' : 'ab';
-    return { art, fruehestens, zustand, durch: kkm.find((a) => a.fahrplanjahr === n && a.art === art) };
+    const eintraege = kkm
+      .filter((a) => a.fahrplanjahr === n && a.art === art)
+      .sort((a, b) => (a.bauVon ?? '').localeCompare(b.bauVon ?? ''));
+    return { art, fruehestens, zustand, eintraege };
   });
 }
 
