@@ -14,7 +14,7 @@ import {
 } from '../domain/engine';
 import { seedData } from '../domain/seed';
 import { ladeDaten, speichereDaten } from './storage';
-import { today } from '../../../shared/dates';
+import { formatDate, today } from '../../../shared/dates';
 import { hatEigenenPlanlauf } from '../domain/types';
 import type {
   AbbruchArt,
@@ -81,6 +81,24 @@ interface StoreValue {
   addStep: (runId: ID, step: Omit<RunStep, 'id'>, position?: number) => void;
   /** Bricht einen Lauf mit Begründung ab; er bleibt im Projekt sichtbar. */
   abbrechenRun: (runId: ID, grund: string, art: AbbruchArt, neuerIndex: string | null) => void;
+  /**
+   * Beginnt einen laufenden Planlauf mit einem (anderen) Workflow von vorn:
+   * Der bisherige Lauf endet als „neu gestartet“ und bleibt zum Nachschlagen
+   * erhalten, ein neuer Lauf mit den übergebenen Schritten tritt an seine
+   * Stelle. Ein übergebenes Eingang Soll gilt fortan für den Eintrag (es
+   * bestimmt den Termin des ersten Schritts). Liefert die Kennung des neuen Laufs.
+   */
+  planlaufNeuStarten: (
+    runId: ID,
+    neu: {
+      templateId: ID | null;
+      templateName: string;
+      steps: RunStep[];
+      start: string;
+      grund: string;
+      eingangSoll?: string | null;
+    },
+  ) => ID | null;
   /* Planverzeichnisse: gebündelt oder Pläne einzeln */
   /**
    * Löst einen Plan aus dem laufenden Lauf seines gebündelten Verzeichnisses
@@ -358,6 +376,57 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               : r,
           ),
         })),
+
+      planlaufNeuStarten: (runId, neu) => {
+        const alt = data.runs.find((r) => r.id === runId);
+        if (!alt || alt.status !== 'laufend') return null;
+        const eintrag = data.documents.find((x) => x.id === alt.documentId);
+        const id = newId('run');
+        const heute = today();
+        const grund = neu.grund.trim();
+        const lauf: PlanRun = {
+          id,
+          projectId: alt.projectId,
+          documentId: alt.documentId,
+          templateId: neu.templateId,
+          templateName: neu.templateName,
+          name: eintrag ? planlaufName(eintrag) : alt.name,
+          index: eintrag ? eintrag.index : alt.index,
+          start: neu.start,
+          status: 'laufend',
+          abbruchGrund: null,
+          abbruchDatum: null,
+          abbruchArt: null,
+          abbruchNeuerIndex: null,
+          steps: neu.steps,
+          bemerkung: `Neu gestartet am ${formatDate(heute)} – vorher Workflow „${alt.templateName}“${
+            grund ? ` (${grund})` : ''
+          }`,
+        };
+        mutate((d) => ({
+          ...d,
+          documents:
+            neu.eingangSoll === undefined
+              ? d.documents
+              : d.documents.map((x) => (x.id === alt.documentId ? { ...x, eingangSoll: neu.eingangSoll ?? null } : x)),
+          runs: [
+            ...d.runs.map((r) =>
+              r.id === runId
+                ? {
+                    ...r,
+                    status: 'abgebrochen' as const,
+                    abbruchArt: 'neu_gestartet' as const,
+                    abbruchGrund: grund || `Mit Workflow „${neu.templateName}“ neu gestartet`,
+                    abbruchDatum: heute,
+                    abbruchNeuerIndex: null,
+                  }
+                : r,
+            ),
+            lauf,
+          ],
+        }));
+        return id;
+      },
 
       planHerausloesen: (planId) => {
         const plan = data.documents.find((x) => x.id === planId);

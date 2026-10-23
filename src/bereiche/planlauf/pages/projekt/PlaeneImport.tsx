@@ -24,7 +24,7 @@ import {
   PLAN_SPALTEN as SPALTEN,
   planVorlageLaden,
 } from '../../domain/importVorlagen';
-import { planlaufAusWorkflow } from '../../domain/engine';
+import { laufUeberfuehrt, planlaufAusWorkflow } from '../../domain/engine';
 import { formatDate, today } from '../../../../shared/dates';
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
@@ -91,8 +91,11 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
   /** Vorhandenes Planverzeichnis des Projekts, das eine Zeile nennt. */
   const vorhandenesVerzeichnis = (name: string) =>
     vorhandene.find((d) => d.kind === 'verzeichnis' && heisst(d, name));
-  /** Hatte der Eintrag schon einen Planlauf? Ein abgebrochener startet nicht von selbst neu. */
-  const hatLauf = (docId: string) => data.runs.some((r) => r.documentId === docId);
+  /**
+   * Hatte der Eintrag schon einen Planlauf? Ein abgebrochener startet nicht von
+   * selbst neu; überführte Läufe (aufgeteilt, gebündelt, neu gestartet) zählen nicht.
+   */
+  const hatLauf = (docId: string) => data.runs.some((r) => r.documentId === docId && !laufUeberfuehrt(r));
 
   const lies = async (f: File) => {
     setFehler('');
