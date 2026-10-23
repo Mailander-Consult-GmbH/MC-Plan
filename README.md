@@ -595,18 +595,32 @@ Die Protokolle übernehmen die Funktionen des bisherigen eigenständigen Protoko
 (HTML-Datei), in der Optik von KaPlan.
 
 ### Funktionen
-Projektübergreifende Liste (Bezeichnung, Kürzel, Farbe, Beschreibung) – die Auswahl, aus der jede
-Person der Projektbeteiligtenliste ihre Funktion erhält. Mitgeliefert sind typische Funktionen
-einer DB-Baumaßnahme (Auftraggeber, Projektleitung, Teilprojektleitung, Projektsteuerung,
-Objekt- und Fachplanung, Bauüberwachung, Bauunternehmen, Prüfsachverständiger, Eisenbahn-Bundesamt
-…). Eine Funktion, die noch Projektbeteiligten zugeordnet ist, lässt sich nicht löschen.
+Projektübergreifende Funktionen (Bezeichnung, Gewerk, Kürzel, Farbe, Beschreibung) – die Auswahl,
+aus der jede Person der Projektbeteiligtenliste ihre Funktion erhält. Gegliedert wie im
+Planlaufmanagement: eine Seite **Übergreifend** und je **Gewerk** eine eigene; „Fachplanung“ im
+Gewerk LST ist eine andere Funktion als „Fachplanung“ in OLA und erscheint überall als
+„Fachplanung LST“. Über das **+** an den Reitern entsteht ein Gewerk, **Vorhandene Funktion**
+übernimmt eine Funktion aus einem anderen Gewerk, **Gewerk … löschen** entfernt ein Gewerk samt
+seinen Funktionen. Mitgeliefert sind typische Funktionen einer DB-Baumaßnahme (übergreifend etwa
+Auftraggeber, Projektleitung, Teilprojektleitung, Projektsteuerung, Objektplanung, Bauüberwachung,
+Bauunternehmen, Prüfsachverständiger, Eisenbahn-Bundesamt; je Gewerk 50 Hz, KIB, LST, OLA und TK
+die Fachplanung, für LST und OLA zusätzlich die Bauüberwachung). Funktionen und Gewerke, die noch
+Projektbeteiligten zugeordnet sind, lassen sich nicht löschen.
 
 ### Projektbeteiligte
 Aufgebaut wie die Seite **Funktion** im Planlaufmanagement, aber ohne leere Funktionen: Es stehen
 nur Personen in der Liste, je Person mit ihrer Funktion, Firma/Büro, Kürzel und Kontaktdaten.
-Beim Hinzufügen wird die Funktion aus einem Auswahlfeld gewählt; **+ Neue Funktion anlegen …**
-legt dort gleich eine neue projektübergreifende Funktion an. Ohne eigenes Kürzel gilt das der
-Funktion. Die Liste lässt sich drucken (PDF) und als Excel-Datei herunterladen.
+Beim Hinzufügen wird die Funktion aus einem Auswahlfeld gewählt, nach Gewerk gruppiert;
+**+ Neue Funktion anlegen …** legt dort gleich eine neue projektübergreifende Funktion an. Ohne
+eigenes Kürzel gilt das der Funktion. Reiter gliedern die Liste nach den Gewerken, die im Projekt
+vorkommen. Die Liste lässt sich drucken (PDF) und als Excel-Datei herunterladen.
+
+**Excel-Import** liest eine Liste (.xlsx oder .csv) mit den Spalten Funktion, Gewerk, Kürzel,
+Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift, Notiz; zwingend ist nur
+der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen). Die Vorschau nennt je Zeile, ob die
+Person neu ist oder aktualisiert wird (gleicher Name im Projekt) und ob Funktion oder Gewerk neu
+angelegt werden. **Vorlage** lädt eine leere Datei mit diesen Spalten; die Excel-Ausgabe der
+Beteiligtenliste hat dieselben Spalten und lässt sich so in ein anderes Projekt übernehmen.
 
 ### Protokolle
 Je Besprechung (z. B. Baubesprechung, Jour fixe) eine **Protokollreihe**. Ein Protokoll besteht
@@ -622,12 +636,20 @@ Erledigt) und einem Hinweis am Ende.
   den Teilnehmenden oder der Projektbeteiligtenliste gewählt; bei einer neuen Reihe übernimmt sie
   die angemeldete Person, sofern ihr Name in der Projektbeteiligtenliste steht.
 * **Folgeprotokoll anlegen** übernimmt Kopfdaten, Teilnehmende und Tagesordnung, alle
-  Informationen und Festlegungen und die offenen Aufgaben; Datum ist der „nächste Termin“. Der
+  Informationen und Festlegungen und die offenen Aufgaben (außer denen in der LOP); Datum ist der
+  „nächste Termin“. Der
   Ursprungstext übernommener Einträge steht fest (✎ korrigiert ihn), Ergänzungen kommen in ein
   eigenes Feld. Im Druck erscheinen neue und gegenüber dem Vorprotokoll geänderte Angaben **blau**.
 * **Druckansicht**, **Drucken / PDF** (Druckdialog des Browsers, „Als PDF speichern“), **Als Text
   kopieren** und **Live-Druckansicht ↗** – ein eigenes Fenster, etwa für den zweiten Bildschirm in
   der Besprechung, das jeder Eingabe folgt.
+* **In die LOP übernehmen**: Offene Aufgaben werden einzeln („→ In die LOP übernehmen“ am
+  Eintrag) oder gesammelt („Aufgaben in die LOP …“ über der Tagesordnung) zu neuen LOP-Punkten –
+  im Thema, das wie ihr Tagesordnungspunkt heißt (fehlt es, entsteht es), mit der Herkunft
+  „<Besprechung> Nr. n, Pkt. x.y“. Von da an verfolgt die LOP die Aufgabe: Sie geht nicht mehr in
+  Folgeprotokolle über und zählt in Übersicht und Aufgabenliste nur einmal. Im Protokoll und im
+  Druck steht „In die LOP übernommen (Nr. …)“; **Verknüpfung lösen** holt sie zurück ins Protokoll,
+  ebenso das Löschen des LOP-Punkts.
 * **Aufgaben aus den Protokollen**: alle Aufgaben des Projekts (je Aufgabe ihr jüngstes Vorkommen)
   mit Filter nach Status, Verantwortlich und „nur überfällige“; abhaken direkt in der Liste.
 * **Logos im Druckkopf** je Projekt – Standard sind DB InfraGO und Mailänder Consult; eigene
@@ -659,7 +681,8 @@ Punkte je Projekt.
 Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
 mit Projektbeteiligten, zwei Protokollen und LOP), **Sicherung**/**Einspielen** (JSON mit dem
 Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
-Protokoll-Tools werden mit Hinweis abgewiesen) und **Zurücksetzen**. Name unter „Angemeldet als“
+Protokoll-Tools werden mit Hinweis abgewiesen) und **Zurücksetzen**. Stände der ersten Fassung
+erhalten beim Laden die mitgelieferten Gewerke; ihre Funktionen gelten als übergreifend. Name unter „Angemeldet als“
 und Farbmodus gelten nur in diesem Bereich.
 
 ## Aufbau des Codes
@@ -732,9 +755,12 @@ src/
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
       projektsteuerung.css  Gestaltung des Bereichs (Klassen mit Präfix ps-, nur Design-Tokens)
       domain/
-        types.ts     Datenmodell (Projekt, Funktion, Beteiligter, Protokoll mit TOPs und Einträgen, LOP)
-        protokoll.ts Reihen, Folgeprotokoll, Aufgaben, Teilnehmende nachziehen, Übernahme aus dem Protokoll-Tool
+        types.ts     Datenmodell (Projekt, Funktion mit Gewerk, Beteiligter, Protokoll mit TOPs und Einträgen, LOP)
+        protokoll.ts Reihen, Folgeprotokoll, Aufgaben, Teilnehmende und LOP-Verweise nachziehen,
+                     Übernahme aus dem Protokoll-Tool
         lop.ts       Punkte, Fortschreibung in Ständen, Archiv
+        lopUebernahme.ts  Aufgaben eines Protokolls als LOP-Punkte übernehmen
+        beteiligteImport.ts  Excel-/CSV-Import der Projektbeteiligten (Spalten, Abgleich von Funktionen)
         punkte.ts    Offene Punkte aus LOP und Protokollen mit Ampel
         druck.ts     Druckfassungen (Protokoll, LOP, Beteiligtenliste) samt Gestaltung und Live-Fenster
         export.ts    Excel-Ausgaben (Projektbeteiligte, LOP)
@@ -743,7 +769,7 @@ src/
       lib/router.ts  Hash-Adressen unterhalb von #/projektsteuerung
       pages/         Übersicht, Projekte, Funktionen, Projekt mit Projektbeteiligten, Protokollen
                      (Liste und Editor) und LOP
-      components/    Dialoge (Person, Funktion), Logos, Sicherung, Ampel, Live-Druckansicht
+      components/    Dialoge (Person, Funktion, Gewerk), Excel-Import, Logos, Sicherung, Ampel, Live-Druckansicht
 ```
 
 Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden

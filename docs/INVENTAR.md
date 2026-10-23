@@ -489,26 +489,35 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
 ### 8.1 Datenmodell und Speicherung
 
 * `src/bereiche/projektsteuerung/domain/types.ts`: `Projekt` (mit `logos`; `null` steht für
-  `STANDARD_LOGOS` aus `src/bereiche/projektsteuerung/domain/seed.ts`), `Funktion` (projektübergreifend),
+  `STANDARD_LOGOS` aus `src/bereiche/projektsteuerung/domain/seed.ts`), `Funktion` (projektübergreifend,
+  mit `gewerk`; `null` = übergreifend, Seite `UEBERGREIFEND`; volle Bezeichnung
+  `funktionsName`, etwa „Fachplanung LST“), Liste `gewerke`,
   `Beteiligter` (Person der Projektbeteiligtenliste mit `funktionId`),
   `Protokoll` mit `reiheId`, `teilnehmer` (`Teilnehmer` mit `beteiligterId`)
   und `tops` (`Top` mit `eintraege`; `Eintrag` vom Typ `I`, `F` oder `A`,
   `EINTRAG_TYP_LABEL`; `vor` hält den Stand im Vorprotokoll, `uebernommenIn`
-  das Folgeprotokoll einer weitergeführten Aufgabe) sowie je Projekt eine
+  das Folgeprotokoll einer weitergeführten Aufgabe, `lopPunktId` den LOP-Punkt
+  einer in die LOP übernommenen Aufgabe) sowie je Projekt eine
   `Lop` mit `themen`, `punkte` (`LopPunkt` mit fester `nr`, `vor` und
   `archiviertAb`), `naechsteNr` und `fortschreibungen`. Teilnahmestatus in
   `TEILNAHME` (anwesend, entschuldigt, abwesend, nur Verteiler).
 * Schlüssel `projektsteuerung.data.v1` im `localStorage`
-  (`src/bereiche/projektsteuerung/store/storage.ts`), `DATEN_VERSION = 1`. `aufbereiten()` ergänzt
-  fehlende Felder und legt je Projekt genau eine LOP an. Ohne gespeicherten
-  Bestand lädt `seedDaten()` (`src/bereiche/projektsteuerung/domain/seed.ts`) die Standard-Funktionen
-  (`STANDARD_FUNKTIONEN`) und zwei Projekte mit Projektbeteiligten, zwei
-  Protokollen einer Reihe und LOP; Termine relativ zum heutigen Tag.
+  (`src/bereiche/projektsteuerung/store/storage.ts`), `DATEN_VERSION = 2`. `aufbereiten()` ergänzt
+  fehlende Felder, ergänzt die Gewerke der Funktionen in `gewerke` und legt je
+  Projekt genau eine LOP an. `migriere()` hebt Fassung 1 (ohne Gewerke und
+  LOP-Verweise) an: Sie erhält `STANDARD_GEWERKE`, ihre Funktionen gelten als
+  übergreifend. Ohne gespeicherten Bestand lädt `seedDaten()`
+  (`src/bereiche/projektsteuerung/domain/seed.ts`) die Gewerke (`STANDARD_GEWERKE`: 50 Hz, KIB, LST, OLA,
+  TK), die Standard-Funktionen (`STANDARD_FUNKTIONEN`, je Gewerk die
+  Fachplanung, für LST und OLA zusätzlich die Bauüberwachung) und zwei
+  Projekte mit Projektbeteiligten, zwei Protokollen einer Reihe und LOP;
+  Termine relativ zum heutigen Tag.
 * Alle Schreibzugriffe über `mutate()` in `src/bereiche/projektsteuerung/store/store.tsx`. Danach
   gleicht `teilnehmerNachziehen` (`src/bereiche/projektsteuerung/domain/protokoll.ts`) Name, Funktion,
   Firma und Kürzel verknüpfter Teilnehmender mit der Projektbeteiligtenliste
   ab; ist die Person gelöscht, bleiben die Angaben stehen und der Verweis
-  entfällt.
+  entfällt. `lopVerweiseNachziehen` löst Verweise auf LOP-Punkte, die es nicht
+  mehr gibt.
 
 ### 8.2 Routen
 
@@ -516,7 +525,7 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
 | --- | --- | --- |
 | `#/projektsteuerung` bzw. `#/projektsteuerung/uebersicht` | Übersicht (`src/bereiche/projektsteuerung/pages/Uebersicht.tsx`) | Kacheln „Aktive Projekte“, „Offene Punkte“, „Überfällig“, „Demnächst fällig“. Karte „Offene Punkte“ aus LOP und Aufgaben der Protokolle (`offenePunkte` in `src/bereiche/projektsteuerung/domain/punkte.ts`), Filter Alle / Überfällig / Fällig, zunächst zehn Zeilen (`ANZAHL_PUNKTE`), je Zeile „Erledigt“; ein Klick führt zur LOP bzw. zum Protokoll (`punktZiel`). Karte „Projekte“ mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin, offenen und überfälligen Punkten. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`). |
 | `#/projektsteuerung/projekte` | Projekte (`src/bereiche/projektsteuerung/pages/Projekte.tsx`) | Projektkarten mit Nummer, Status, ★-Markierung und der Zahl der Beteiligten, Protokolle und offenen Punkte; „Neues Projekt“ (`ProjektDialog`: Projektnummer, Status, Projektname, Beschreibung). |
-| `#/projektsteuerung/funktionen` | Funktionen (`src/bereiche/projektsteuerung/pages/Funktionen.tsx`) | Projektübergreifende Funktionen mit Suche und Spalte „Verwendet“; „Neue Funktion“ und Bearbeiten per Klick (`FunktionDialog` in `src/bereiche/projektsteuerung/components/FunktionDialog.tsx`: Bezeichnung, Kürzel – leer aus der Bezeichnung gebildet, `kuerzelAus` –, Farbe, Beschreibung); Löschen nur, solange keine Projektbeteiligten die Funktion tragen. |
+| `#/projektsteuerung/funktionen` | Funktionen (`src/bereiche/projektsteuerung/pages/Funktionen.tsx`) | Reiter „Übergreifend“ und je Gewerk, **+** legt ein Gewerk an (`GewerkDialog` in `src/bereiche/projektsteuerung/components/GewerkDialog.tsx`). Je Seite die Funktionen mit Suche und Spalten Kürzel, Gewerk, Beschreibung, „Verwendet“; „Neue Funktion“ und Bearbeiten per Klick (`FunktionDialog` in `src/bereiche/projektsteuerung/components/FunktionDialog.tsx`: Bezeichnung, Gewerk mit „Gewerk“ zum Anlegen, Kürzel – leer aus der Bezeichnung gebildet, `kuerzelAus` –, Farbe, Beschreibung); auf Gewerkseiten „Vorhandene Funktion“ (Funktion eines anderen Gewerks übernehmen, Kürzel nach `kuerzelFuer`) und „Gewerk „…“ löschen“ (`GewerkLoeschenDialog`, entfernt das Gewerk samt Funktionen). Funktionen und Gewerke, die Projektbeteiligte tragen, lassen sich nicht löschen. |
 | `#/projektsteuerung/projekt/<id>/<seite>` | Projekt (`src/bereiche/projektsteuerung/pages/ProjektDetail.tsx`) | Kopfzeile mit Nummer, Status, Beschreibung, „Bearbeiten“ und „Löschen“ (samt Beteiligten, Protokollen und LOP). Seiten `beteiligte` („Projektbeteiligte“), `protokolle` („Protokolle“) und `lop` („LOP“); ohne gültige Angabe `beteiligte`. Siehe 8.3 bis 8.5. |
 | `#/projektsteuerung/projekt/<id>/protokoll/<id>` | Protokoll (`src/bereiche/projektsteuerung/pages/projekt/ProtokollEditor.tsx`) | Siehe 8.4. |
 
@@ -524,9 +533,11 @@ Router: `src/bereiche/projektsteuerung/lib/router.ts`; unbekannte Adressen führ
 
 ### 8.3 Projektbeteiligte
 
-`src/bereiche/projektsteuerung/pages/projekt/Beteiligte.tsx`: Tabelle mit Funktion (Farbpunkt und
-Kürzel), Person, Firma / Büro und Kontakt – nur Personen, keine leeren
-Funktionen; sortiert nach Funktion, dann Nachname (`nachFunktion`). Suche,
+`src/bereiche/projektsteuerung/pages/projekt/Beteiligte.tsx`: Tabelle mit Funktion (Farbpunkt, volle
+Bezeichnung und Kürzel), Person, Firma / Büro und Kontakt – nur Personen,
+keine leeren Funktionen; übergreifende Funktionen zuerst, dann nach Gewerk,
+Funktion und Nachname (`nachFunktion`). Reiter „Alle“, „Übergreifend“ und je
+Gewerk, das im Projekt vorkommt. Suche, „Excel-Import“ (siehe unten),
 „Drucken / PDF“ (`beteiligteHtml` und `blattDrucken` in
 `src/bereiche/projektsteuerung/domain/druck.ts`), „Excel“ (`beteiligteExportieren` in
 `src/bereiche/projektsteuerung/domain/export.ts`), „Person hinzufügen“. Dialog `BeteiligterDialog`
@@ -534,8 +545,23 @@ Funktionen; sortiert nach Funktion, dann Nachname (`nachFunktion`). Suche,
 projektübergreifenden Funktionen mit „+ Neue Funktion anlegen …“ (öffnet
 `FunktionDialog`; die neue Funktion ist danach gewählt), Anrede, Vorname,
 Nachname, Firma / Büro, Kürzel (leer: Kürzel der Funktion, `kuerzelVon`),
-E-Mail, Telefon, Mobil, Anschrift, Notiz; der Hinweis nennt, wer die
-Funktion im Projekt bereits führt; „Person löschen“.
+E-Mail, Telefon, Mobil, Anschrift, Notiz; die Funktionsauswahl ist nach
+Gewerk gruppiert, der Hinweis nennt, wer die Funktion im Projekt bereits führt;
+„Person löschen“.
+
+Excel-Import (`BeteiligteImport` in
+`src/bereiche/projektsteuerung/components/BeteiligteImport.tsx`, Logik in
+`src/bereiche/projektsteuerung/domain/beteiligteImport.ts`): .xlsx oder .csv, Kopfzeile in den ersten 15
+Zeilen gesucht, Spalten nach `BETEILIGTE_KOPF` (Funktion, Gewerk, Kürzel,
+Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift,
+Notiz) mit weiteren Schreibweisen; statt Vor- und Nachname genügt „Name“
+(„Berger, Anna“ oder „Anna Berger“). Funktionen über `funktionFinden`
+(Bezeichnung und Gewerk, volle Bezeichnung, eindeutige Bezeichnung, Kürzel);
+fehlende werden samt Gewerk angelegt. Personen gleichen Namens im Projekt
+werden mit den ausgefüllten Angaben aktualisiert. Die Vorschau nennt je
+Zeile „wird aktualisiert“, „neue Funktion“, „neues Gewerk“, „ohne Funktion“
+bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.xlsx`
+(`beteiligteVorlageLaden`); die Excel-Ausgabe hat dieselben Spalten.
 
 ### 8.4 Protokolle
 
@@ -567,22 +593,35 @@ Funktion im Projekt bereits führt; „Person löschen“.
   Projektbeteiligtenliste auf); „Tagesordnung“ („TOP hinzufügen“,
   verschieben, löschen; Einträge mit Umschalter I/F/A, Verantwortlich mit
   Vorschlägen aus den Kürzeln der Projektbeteiligten – `KuerzelListe` –, bei
-  Aufgaben Termin und „erledigt“); Karte „Abschluss“ („Hinweis am
+  Aufgaben Termin und „erledigt“ – in die LOP übernommene Aufgaben zeigen
+  stattdessen „LOP Nr. …“); Karte „Abschluss“ („Hinweis am
   Protokollende“, Vorgabe `STANDARD_HINWEIS`). Übernommene Einträge zeigen den
   Ursprungstext fest („Ursprungstext korrigieren“) und ein eigenes Feld für
   die Ergänzung.
+* In die LOP übernehmen (`aufgabenInLop` in
+  `src/bereiche/projektsteuerung/domain/lopUebernahme.ts`, Store `aufgabenInLopUebernehmen`): offene,
+  nicht weitergeführte Aufgaben (`uebernehmbareAufgaben`) einzeln über „→ In
+  die LOP übernehmen“ am Eintrag oder gesammelt über „Aufgaben in die LOP …“
+  (Dialog „Aufgaben in die LOP übernehmen“ mit Auswahl). Jede wird ein neuer
+  LOP-Punkt im Thema, das wie ihr Tagesordnungspunkt heißt (`zielThema`; fehlt
+  es, entsteht es); als Herkunft stehen Besprechung, Nummer und Punkt des
+  Protokolls. Die Aufgabe
+  erhält `lopPunktId`, zeigt „In die LOP übernommen (Nr. …) – dort
+  weiterverfolgt“ mit „Verknüpfung lösen“ und zählt nicht mehr in
+  `protokollAufgaben` (Übersicht, Aufgabenliste).
 * Folgeprotokoll (`folgeprotokoll` in `src/bereiche/projektsteuerung/domain/protokoll.ts`): Nummer =
   höchste der Reihe + 1 (`naechsteNr`), Datum = nächster Termin des
   Vorprotokolls, Teilnehmende mit Status anwesend (außer nur Verteiler),
-  Informationen und Festlegungen immer, Aufgaben nur offen und nicht
-  weitergeführt (`mitgehen`); Ergänzungen gehen in den Text über, `herkunft`
+  Informationen und Festlegungen immer, Aufgaben nur offen, nicht
+  weitergeführt und nicht in der LOP (`mitgehen`); Ergänzungen gehen in den Text über, `herkunft`
   nennt Protokoll und Punkt des Ursprungs. Wird ein Protokoll gelöscht,
   gelten die von ihm weitergeführten Aufgaben im Vorprotokoll wieder als
   offen.
 * Druckfassung `protokollHtml` (`src/bereiche/projektsteuerung/domain/druck.ts`): Kopf mit Logos,
   Datum, Zeit, Ort, Protokollführung, Teilnehmende und Verteiler, Legende,
   Tabelle Nr. / Inhalt / Typ / Verantwortlich / Termin, nächster Termin,
-  „Aufgestellt:“ und „Freigegeben:“, Hinweis. Neue und gegenüber dem
+  „Aufgestellt:“ und „Freigegeben:“, Hinweis; bei Aufgaben in der LOP „In die
+  LOP übernommen (Nr. …)“. Neue und gegenüber dem
   Vorprotokoll geänderte Angaben stehen blau (`eintragNeu`, `topNeu`). „Als
   Text kopieren“ nutzt `alsText`.
 
@@ -633,8 +672,13 @@ Funktion im Projekt bereits führt; „Person löschen“.
 | Meldung | Fundstelle | Ursache |
 | --- | --- | --- |
 | „Bitte einen Projektnamen angeben.“ | `src/bereiche/projektsteuerung/pages/Projekte.tsx` | Projekt ohne Namen. |
-| „Bitte eine Bezeichnung angeben.“ | `src/bereiche/projektsteuerung/components/FunktionDialog.tsx` | Funktion ohne Bezeichnung. |
-| „Die Funktion „…“ gibt es bereits.“ | `src/bereiche/projektsteuerung/components/FunktionDialog.tsx` | Bezeichnung schon vergeben (ohne Rücksicht auf Groß- und Kleinschreibung). |
+| „Bitte eine Bezeichnung angeben.“ | `src/bereiche/projektsteuerung/components/FunktionDialog.tsx`, `src/bereiche/projektsteuerung/components/GewerkDialog.tsx` | Funktion bzw. Gewerk ohne Bezeichnung. |
+| „Die Funktion „…“ gibt es bereits.“ | `src/bereiche/projektsteuerung/components/FunktionDialog.tsx` | Bezeichnung im selben Gewerk schon vergeben (ohne Rücksicht auf Groß- und Kleinschreibung). |
+| „„…“ ist bereits angelegt.“ | `src/bereiche/projektsteuerung/components/GewerkDialog.tsx` | Gewerk gibt es schon (auch „Übergreifend“). |
+| „Funktionen des Gewerks „…“ sind noch Projektbeteiligten zugeordnet – das Gewerk lässt sich deshalb nicht löschen.“ | `src/bereiche/projektsteuerung/pages/Funktionen.tsx` | Löschen eines Gewerks, dessen Funktionen Personen tragen. |
+| „In der Datei fehlt eine Spalte „Nachname“ oder „Name“.“ | `src/bereiche/projektsteuerung/domain/beteiligteImport.ts` | Excel-Import ohne erkennbare Kopfzeile. |
+| „Die Datei enthält keine Zeile mit einem Nachnamen.“ | `src/bereiche/projektsteuerung/components/BeteiligteImport.tsx` | Excel-Import ohne verwertbare Zeile. |
+| „Aufgabe als LOP-Punkt Nr. … übernommen.“ / „… Aufgaben in die LOP übernommen (Nr. …).“ | `src/bereiche/projektsteuerung/pages/projekt/ProtokollEditor.tsx` | Kein Fehler: Aufgaben wurden in die LOP übernommen. |
 | „„…“ ist noch … Projektbeteiligten zugeordnet und lässt sich deshalb nicht löschen.“ | `src/bereiche/projektsteuerung/pages/Funktionen.tsx` | Löschen einer Funktion, die Personen tragen. |
 | „Bitte eine Funktion wählen.“ / „Bitte einen Nachnamen angeben.“ | `src/bereiche/projektsteuerung/components/BeteiligterDialog.tsx` | Pflichtangaben einer Person fehlen. |
 | „Bitte die Besprechung benennen.“ / „Bitte das Datum angeben.“ | `src/bereiche/projektsteuerung/pages/projekt/Protokolle.tsx` | Neue Protokollreihe ohne Besprechung bzw. Datum. |

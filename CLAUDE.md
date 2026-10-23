@@ -70,8 +70,11 @@ ignoriert.
   `domain/types.ts` Datenmodell (projektübergreifende `Funktion`, `Beteiligter` mit `funktionId`,
   `Protokoll`, je Projekt eine `Lop`), `domain/protokoll.ts` Reihen, Folgeprotokoll, Übernahme aus
   dem Protokoll-Tool und `teilnehmerNachziehen` (läuft nach jedem `mutate()` und hält
-  Teilnehmende auf dem Stand der Projektbeteiligtenliste), `domain/lop.ts` Fortschreibung und
-  Archiv, `domain/punkte.ts` offene Punkte und Ampel, `domain/druck.ts` Druckfassungen. Eigene
+  Teilnehmende auf dem Stand der Projektbeteiligtenliste; ebenso `lopVerweiseNachziehen` für
+  Aufgaben, die in die LOP übernommen wurden), `domain/lop.ts` Fortschreibung und Archiv,
+  `domain/lopUebernahme.ts` Aufgaben als LOP-Punkte, `domain/beteiligteImport.ts` Excel-Import,
+  `domain/punkte.ts` offene Punkte und Ampel, `domain/druck.ts` Druckfassungen. Funktionen tragen
+  ein Gewerk (`null` = übergreifend); angezeigt wird stets `funktionsName`. Eigene
   Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens). Neue Felder
   über `DATEN_VERSION` (`projektsteuerung/domain/types.ts`) und `migriere()`
   (`projektsteuerung/store/storage.ts`). IDs, die die Oberfläche braucht (Fokus, Navigation),
