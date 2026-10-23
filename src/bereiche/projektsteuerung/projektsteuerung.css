@@ -77,7 +77,11 @@
   border-left: 4px solid var(--ps-typ, transparent);
 }
 .ps-eintrag + .ps-eintrag { border-top: 1px solid var(--separator); }
-.ps-eintrag.ps-erledigt { opacity: 0.62; }
+.ps-eintrag.ps-gestrichen { opacity: 0.62; }
+/* Erledigt oder gestrichen: Text durchgestrichen wie im Druck */
+.ps-eintrag.ps-gestrichen .ps-orig-text,
+.ps-eintrag.ps-gestrichen .ps-text .textarea:not(:placeholder-shown) { text-decoration: line-through; text-decoration-color: #1846c4; }
+.ps-streich-hinweis { display: block; margin-top: 4px; font-size: 11.5px; color: #1846c4; }
 .ps-nr { font-weight: 600; padding-top: 7px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 
 /* Umschalter I / F / A */
