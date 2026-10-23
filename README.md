@@ -275,8 +275,9 @@ mehrfach vorkommen.
 
 ### Planläufe im Projekt
 Der erste Reiter eines Projekts, **Planläufe**, zeigt Kennzahlen und die Planlaufliste. Je Eintrag
-steht in der Spalte **Aktueller Stand** der zuletzt abgeschlossene Prozessschritt vor dem offenen –
-auch nach dem Wiederöffnen eines früheren Schritts –, darunter in Grau sein Erledigungsdatum, und in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist.
+steht in der Spalte **Aktueller Stand** der zuletzt erledigte Prozessschritt vor dem offenen –
+übersprungene Schritte zählen nicht, und auch nach dem Wiederöffnen eines früheren Schritts liegt er
+nie dahinter –, darunter in Grau sein Erledigungsdatum, und in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist.
 Die Liste ist nach Planpaketen gegliedert; Planverzeichnisse lassen sich am Pfeil vor Symbol und Titel
 aufklappen (zunächst zugeklappt). Darunter stehen die Pläne – mitlaufend mit **Herauslösen …**,
 herausgelöst mit eigenem Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als
@@ -369,6 +370,12 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
 * Ein Lauf kann mit Begründung **abgebrochen** werden – wahlweise **ersatzlos** oder mit **neuem
   Index bzw. neuer Ausgabe**. Im zweiten Fall erhält der Eintrag den angegebenen Index, und der
   Planlauf beginnt mit denselben Schritten von vorn.
+* Über **Workflow ändern …** lässt sich ein laufender Planlauf mit einem anderen (oder demselben)
+  Workflow **von vorn beginnen**: Workflow wählen, Schritte für diesen Lauf anpassen, Start und
+  *Eingang Soll* setzen, optional einen Grund angeben, dann **Neu starten**. Der bisherige Lauf gilt
+  nicht als Abbruch – er erscheint nicht unter *Abgebrochen*, bleibt aber mit dem Hinweis „Mit
+  geändertem Workflow neu gestartet am …“ zum Nachschlagen erhalten. Der neue Lauf vermerkt den
+  vorherigen Workflow und führt unter *Frühere Läufe vor dem Neustart* zu ihm.
 * Ein abgebrochener Lauf ist **nicht mehr zu bearbeiten**: In der Planlaufliste steht seine Zeile
   gesammelt am Ende unter **Abgebrochen**, ausgegraut, ohne aktuellen Schritt, Fortschritt und
   Schaltflächen – stattdessen mit seinem eigenen Index und in Grau „Abgebrochen am …“ mit dem
