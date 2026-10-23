@@ -537,8 +537,9 @@ Richtlinienfristen werden unter **Einstellungen** gepflegt, nach Phase geglieder
 Stichtag TT.MM. im Jahr N − k des Fahrplanjahres oder als Wochen vor Sperrbeginn. **Die
 vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis sie geändert oder als
 „Geprüft“ bestätigt werden. **Ril_KM** nimmt die N-2-Frist, solange sie am Tag des
-Statuswechsels nicht verstrichen ist, sonst die N-1-Frist; **Ril_KKM** richtet sich nach der
-Maßnahmenart (SKM und MKM rechnen wie A).
+Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt,
+sonst die N-1-Frist; der Rechenweg nennt den Grund. **Ril_KKM** richtet sich nach der Maßnahmenart
+(Einträge der Art SKM oder MKM rechnen dabei wie A).
 Das Fahrplanjahr N reicht vom Sonntag nach dem zweiten Samstag im Dezember N−1 bis zum zweiten
 Samstag im Dezember N.
 

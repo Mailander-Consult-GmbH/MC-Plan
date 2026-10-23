@@ -174,7 +174,8 @@ A_Vor_N-2 auf A_Vor_N-1 ändern?
 
 *Entwurf:* Der Status wird erneut gesetzt, das neue Datum im Verlauf festgehalten. Eine Art
 A_Vor_N-1 gibt es nicht mehr: Im KM gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht
-verstrichen ist, danach die N-1-Frist (siehe E9).
+verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt, sonst die N-1-Frist
+(siehe E9).
 
 **D4. X5 → Y4** – Eine im Vorprozess genehmigte Anmeldung wird direkt „Angemeldet_fristgerecht“
 (unterjährig), ohne Entwurf und BBK-Mitwirkung. Richtig? Ist die Art dann immer A_unterjahr?
@@ -284,7 +285,8 @@ Vorprozessen N-x (KM) immer fristgerecht erfolgen. Gibt es Ausnahmen, die abgebi
 
 **E9. ★ KM: N-2 oder N-1** – Bisher entschied die Art (A_Vor_N-2 oder A_Vor_N-1), welche Frist im
 KM gilt. Ohne diese Arten wählt die Anwendung selbst: Es gilt die N-2-Frist, solange sie am Tag
-des Statuswechsels nicht verstrichen ist, danach die N-1-Frist; der Rechenweg nennt den Grund.
+des Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt
+(MIC betreut dann erst ab N-1), sonst die N-1-Frist; der Rechenweg nennt den Grund.
 Passt das, oder gibt es Maßnahmen, die unabhängig vom Zeitpunkt in N-2 (bzw. N-1) angemeldet
 werden müssen?
 
