@@ -452,20 +452,26 @@ der Anwender. Offene fachliche Fragen und die Annahmen des Entwurfs stehen in
 
 ### Projekt
 Im Lastenheft „Projekthülle“; wird bei der MIC-Beauftragung angelegt: Bezeichnung, Projektleiter,
-DB-G-Nummer, erster Anmeldetermin (ca.-Wert) samt Prozessphase, geplante Sperrzeit von/bis,
-Inbetriebnahme, Hauptbearbeiter MIC, MIC-Projektnummer (wiko), Status der Betreuung (Aktiv,
-Betreuungspause, Abgeschlossen) und Bemerkung. Aus Prozessphase und Sperrzeit schlägt der Dialog den
-ersten Anmeldetermin laut Richtlinie vor, aus der Inbetriebnahme das Ende der Sperrzeit (+ 4 Wochen).
-Mit ★ markierte Projekte erscheinen in Übersicht und Seitenleiste.
+DB-G-Nummer, erster Anmeldetermin (ca.-Wert) samt Prozessphase, **betroffene Fahrplanjahre** (zum
+Ankreuzen, statt einer geplanten Sperrzeit), Inbetriebnahme, Hauptbearbeiter MIC,
+MIC-Projektnummer (wiko), Status der Betreuung (Aktiv, Betreuungspause, Abgeschlossen) und
+Bemerkung. Aus Prozessphase und erstem betroffenen Fahrplanjahr schlägt der Dialog den ersten
+Anmeldetermin laut Richtlinie vor. Mit ★ markierte Projekte erscheinen in Übersicht und
+Seitenleiste.
 
-**Anmeldebedarf je Fahrplanjahr:** Für jedes Fahrplanjahr der Sperrzeit stellt das Projekt die
+**Anmeldebedarf je Fahrplanjahr:** Für jedes betroffene Fahrplanjahr stellt das Projekt die
 Fristen für SKM, MKM, KM N-2 und KM N-1 dar und zeigt, ob dafür schon ein Eintrag besteht (ein
 Eintrag einer späteren Phase deckt frühere ab, ein Eintrag im KM oder KKM beide KM-Fristen;
 Anmeldeleichen zählen nicht). Fristen, die mehr als einen Monat vor dem ersten Anmeldetermin
-liegen, gelten als „vor Betreuung“. Offene Fristen lassen sich direkt mit **Anlegen** übernehmen –
-im Workflow, der die passende Maßnahmenart führt (für KM N-2 und N-1 die Art A im KM); was in die
-Vorschau fällt (Vorgabe 180 Tage), erscheint auch in Übersicht und Terminen. So lässt sich nach
-längeren Betreuungspausen ablesen, ob eine Anmeldung zum nächsten SKM, MKM oder KM fällig ist.
+liegen, gelten als „vor Betreuung“; was in die Vorschau fällt (Vorgabe 180 Tage), erscheint auch
+in Übersicht und Terminen. Die Spalte **KKM (unterjährig)** nennt je Maßnahmenart (A, B(0),
+B(S), B, C, Container) keine Frist, sondern den **frühesten Sperrbeginn bei Anmeldung heute**:
+Stichtag der Anmeldung ist der nächste Mittwoch, dazu kommt der Vorlauf der Maßnahmenart laut
+Einstellungen (z. B. C mit 6 Wochen: Anmeldung zum Mittwoch, 28.10. – Sperrpause frühestens ab
+9.12.). Angezeigt wird „ganzes Jahr“, „ab …“ oder „nicht mehr“; besteht schon eine unterjährige
+Anmeldung dieser Art, steht dort ihr Status. Angelegt wird nur über **Neue Anmeldung**. So lässt
+sich nach längeren Betreuungspausen ablesen, ob eine Anmeldung zum nächsten SKM, MKM oder KM
+fällig ist und was unterjährig noch möglich ist.
 
 ### Anmeldung
 Je Anmeldung eine Zeile im Projekt: Anmelde-ID (in Workflows mit ganzem Fahrplanjahr Begriff bzw.
@@ -480,8 +486,7 @@ Im Projekt stehen die Anmeldungen **je Workflow in einer eigenen Tabelle** (SKM,
 n-1), KKM (unterjährig)) mit den Spalten Anmeldung, Maßnahmenart, Sperrzeitraum, Status und
 Terminfrist, dazu „Status ändern …“. Jede Anmeldung belegt höchstens zwei Textzeilen; Längeres
 wird gekürzt und steht vollständig im Tooltip. Der Status steht hier ohne den Workflow davor, weil
-die Tabelle ihn nennt. „+ Anmeldung“ im Kopf einer Tabelle legt in deren Workflow an; Workflows
-ohne Anmeldung zeigen nur ihre Kopfzeile.
+die Tabelle ihn nennt. Workflows ohne Anmeldung zeigen nur ihre Kopfzeile.
 
 Die Seite einer Anmeldung ist wie ein Planlauf aufgebaut: der Weg durch die Workflows, darunter
 die Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit Haken und Datum, der
@@ -539,7 +544,8 @@ vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis sie geä
 „Geprüft“ bestätigt werden. **Ril_KM** nimmt die N-2-Frist, solange sie am Tag des
 Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt,
 sonst die N-1-Frist; der Rechenweg nennt den Grund. **Ril_KKM** richtet sich nach der Maßnahmenart
-(Einträge der Art SKM oder MKM rechnen dabei wie A).
+(Einträge der Art SKM oder MKM rechnen dabei wie A); ihr Stichtag ist ein Mittwoch – die Frist
+fällt auf den Mittwoch an oder vor „Sperrbeginn minus Vorlauf“.
 Das Fahrplanjahr N reicht vom Sonntag nach dem zweiten Samstag im Dezember N−1 bis zum zweiten
 Samstag im Dezember N.
 
@@ -562,7 +568,8 @@ Standard-Workflows neu). Stände der ersten Entwurfsfassung mit Statusnummern we
 eingestellte Nachhak-Abstand gilt für deren Nachhak-Termine. Ältere Stände übernehmen die
 Phasennamen SKM, MKM, KM (n-2 & n-1) und KKM (unterjährig), sofern Name, Kurzbezeichnung bzw.
 Beschreibung der Standard-Workflows nicht geändert wurden; die Maßnahmenart PzE wird MKM,
-A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A. Name unter „Angemeldet als“ und Farbmodus gelten
+A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A. Aus der bisherigen geplanten Sperrzeit eines
+Projekts werden seine betroffenen Fahrplanjahre. Name unter „Angemeldet als“ und Farbmodus gelten
 nur in diesem Bereich.
 
 ## Aufbau des Codes

@@ -296,7 +296,7 @@ N-x und unterjährige Anmeldung.
   `LOESCHEN` (Eintrag löschen). Statusarten in `STATUS_ART_LABEL`, darunter
   `leiche` („Anmeldeleiche“).
 * Schlüssel `baubetrieb-planung.data.v1` im `localStorage`
-  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 6`.
+  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 7`.
   `migriere()` hebt ältere Stände in einem Aufruf Schritt für Schritt: Fassung 1 kannte nur den
   Farbmodus und erhält die Demodaten; Fassung 2 führte Statusnummern (V0 … Y9),
   die `STATUS_AUS_NUMMER` (`src/bereiche/baubetrieb/domain/workflow.ts`) den
@@ -318,7 +318,10 @@ N-x und unterjährige Anmeldung.
   wird MKM, A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A (auch in den Arten
   der Workflows und im gespeicherten Vorstand), Fristbezug und
   Richtlinienfrist `pze` heißen `mkm`, die Prozessphase des ersten
-  Anmeldetermins `mkm` bzw. `kkm`. Ohne gespeicherten Bestand lädt `seedDaten()`
+  Anmeldetermins `mkm` bzw. `kkm`; Fassung 6 (`ausFassung6`) führte je Projekt
+  eine geplante Sperrzeit (`bauzeitVon`/`bauzeitBis`) – daraus werden die
+  betroffenen Fahrplanjahre (`fahrplanjahre`, über `fahrplanjahreZwischen`,
+  höchstens zehn). Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekte mit acht
   Anmeldungen, Termine relativ zum heutigen Tag, und die Standard-Workflows.
 * Alle Schreibzugriffe über `mutate()` in
@@ -334,8 +337,8 @@ N-x und unterjährige Anmeldung.
 | --- | --- | --- |
 | `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`) mit „Status ändern …“ je Zeile; Karte „Anmeldebedarf aus den Projekten“ (nur wenn Bedarf besteht); Karte „Projekte“ mit der Zahl der Anmeldungen je Workflow, überfälligen Fristen und nächster Frist. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`). |
 | `#/baubetrieb/termine` | Termine & Nachhaken (`src/bereiche/baubetrieb/pages/Termine.tsx`) | Alle Anmeldungen mit Terminfrist über alle Projekte, gegliedert nach Projekt; Filter Alle / Überfällig / Fällig / Im Plan / Zum Nachhaken, Suche; je Zeile „Nachgehakt“ (bei Status zum Nachhaken) und „Status ändern …“. Darunter „Anmeldebedarf aus den Projekten“. |
-| `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit DB-G-Nummer, MIC-Projektnummer, Sperrzeit, Status der Betreuung, ★-Markierung, Zahl der Anmeldungen, überfälligen Fristen und „Nächste Anmeldung“ aus dem Anmeldebedarf; „Neues Projekt“ (`ProjektDialog`). |
-| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen); Stammdaten; Karte „Anmeldebedarf je Fahrplanjahr“ (SKM, MKM, KM N-2, KM N-1; ein abgedecktes Feld nennt Phase und Status des Eintrags) mit „Anlegen“ im Standard-Workflow der Phase (`STANDARD_WORKFLOW_ID`, für KM N-2 und N-1 mit der Art A), sonst im ersten Workflow, der die Art führt (`workflowFuerArt`); Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung, Maßnahmenart, Sperrzeitraum, Status (ohne Workflow davor), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip) und „Status ändern …“, im Kopf „Anmeldung“ zum Anlegen in diesem Workflow. Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. |
+| `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit DB-G-Nummer, MIC-Projektnummer, betroffenen Fahrplanjahren, Status der Betreuung, ★-Markierung, Zahl der Anmeldungen, überfälligen Fristen und „Nächste Anmeldung“ aus dem Anmeldebedarf; „Neues Projekt“ (`ProjektDialog`). |
+| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen); Stammdaten; Karte „Anmeldebedarf je Fahrplanjahr“ je betroffenem Fahrplanjahr (SKM, MKM, KM N-2, KM N-1; ein abgedecktes Feld nennt Phase und Status des Eintrags; dazu „KKM (unterjährig)“ mit je Maßnahmenart „ganzes Jahr“, „ab …“, „nicht mehr“ oder dem Status der unterjährigen Anmeldung – `KkmInhalt`; ohne Fahrplanjahre „Keine Fahrplanjahre gewählt“), ohne eigene Schaltflächen zum Anlegen; Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`, ohne eigene Schaltfläche zum Anlegen) mit den Spalten Anmeldung, Maßnahmenart, Sperrzeitraum, Status (ohne Workflow davor), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip) und „Status ändern …“. Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. |
 | `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“, „Letzten Wechsel zurücknehmen“; Karte „Merkmale“ (mit Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; „Bearbeiten“, „Löschen“. |
 | `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Liste „Workflows“ mit Kennzeichen „Standard“ bzw. „Eigener Workflow“, Zahl der Status und Anmeldungen, den Status in ihrer Reihenfolge, „Öffnen“, „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
 | `#/baubetrieb/einstellungen` | Einstellungen (`src/bereiche/baubetrieb/pages/Einstellungen.tsx`) | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase eine Gruppenzeile mit Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. |
@@ -397,14 +400,24 @@ die Übersicht.
 * Fahrplanjahr: `fahrplanjahrBeginn`, `fahrplanjahrEnde`, `fahrplanjahrVon` –
   Ende am zweiten Samstag im Dezember. Ob ein Workflow den Sperrzeitraum als
   ganzes Fahrplanjahr führt, entscheidet `ganzesFahrplanjahr`.
-* Anmeldebedarf (`anmeldebedarf`, `faelligerBedarf`): je Fahrplanjahr der
-  Sperrzeit und je SKM, MKM, KM N-2, KM N-1 die Frist und der Zustand `abgedeckt`
+* Anmeldebedarf (`anmeldebedarf`, `faelligerBedarf`): je betroffenem
+  Fahrplanjahr (`Projekt.fahrplanjahre`) und je SKM, MKM, KM N-2, KM N-1 die
+  Frist (bei Wochen vor Sperrbeginn gerechnet ab Beginn des Fahrplanjahres) und der Zustand `abgedeckt`
   (Einträge im KM oder KKM decken beide KM-Fristen ab, bei mehreren zählt der
   frühere Workflow; Anmeldungen in einer Anmeldeleiche zählen nicht,
   `istLeiche`),
   `faellig`, `kuenftig`, `verstrichen`, `vorBeginn` oder `offen`; Fristen, die
   mehr als 31 Tage vor dem ersten Anmeldetermin liegen, gelten als `vorBeginn`
   (`CA_TOLERANZ_TAGE`, weil der erste Anmeldetermin nur ein ca.-Wert ist).
+  Für KKM je Maßnahmenart (`kkmZellen`): frühester Sperrbeginn bei Anmeldung
+  zum nächsten Stichtag (`naechsterMittwoch`, ein Mittwoch an oder nach heute)
+  zuzüglich `wochenVorher`; Zustand `ganzesJahr`, `ab` oder `nichtMehr`, bei
+  einer Frist als Stichtag im Fahrplanjahr nur `ganzesJahr` oder `nichtMehr`.
+  Unterjährige Anmeldungen sind Einträge in einem KKM-Workflow
+  (`istKkmWorkflow`).
+* Ril_KKM in Wochen vor Sperrbeginn fällt auf den Mittwoch an oder vor
+  diesem Datum (`rilDatum` mit `stichtagMittwoch`); der Rechenweg nennt
+  „(Stichtag Mittwoch)“.
 
 ### 7.4 Übergreifende Bedienelemente
 
@@ -430,7 +443,6 @@ die Übersicht.
 | Meldung | Fundstelle | Ursache |
 | --- | --- | --- |
 | „Bitte eine Bezeichnung angeben.“ | `src/bereiche/baubetrieb/pages/Projekte.tsx` | Projekt ohne Bezeichnung. |
-| „Das Ende der Sperrzeit liegt vor dem Beginn.“ | `src/bereiche/baubetrieb/pages/Projekte.tsx` | Sperrzeit bis vor Sperrzeit von. |
 | „Bitte einen Workflow wählen.“ | `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx` | Neuanlage ohne Workflow mit Status. |
 | „Das Ende des Sperrzeitraums liegt vor dem Beginn.“ | `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx` | Sperrzeitraum einer Anmeldung verkehrt. |
 | „Bitte das Fahrplanjahr wählen.“ | `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx` | Eintrag in einem Workflow mit ganzem Fahrplanjahr ohne Fahrplanjahr. |

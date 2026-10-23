@@ -61,7 +61,7 @@ Maßnahme ergänzt. Werden weitere Angaben gebraucht, z. B. Streckennummer(n), R
 Auftraggeber/Ansprechpartner DB, Vertretung des Hauptbearbeiters?
 
 **B2. ★ Erster Anmeldetermin** – „je nach Prozessphase lt. Richtlinie, ca-Wert“: Wird der Termin
-von Hand eingetragen oder soll er sich aus Sperrzeit und Prozessphase ergeben? Welche Prozessphase
+von Hand eingetragen oder soll er sich aus Fahrplanjahr und Prozessphase ergeben? Welche Prozessphase
 ist gemeint – die, in der MIC in das Projekt einsteigt?
 
 *Entwurf:* Feld „Prozessphase des ersten Anmeldetermins“ (SKM, MKM, KM N-2, KM N-1, KKM) und
@@ -70,13 +70,13 @@ ein Vorschlag laut Richtlinie, der übernommen werden kann, aber nicht muss.
 **B3. Ende der Sperrzeit** – „Ende = i. d. R. Inbetriebnahme + 4 Wochen“: Gilt das immer? Soll die
 Inbetriebnahme als eigenes Feld geführt werden?
 
-*Entwurf:* Optionales Feld Inbetriebnahme; das Ende wird auf Knopfdruck mit IBN + 4 Wochen
-vorgeschlagen.
+*Entwurf (nach Rückmeldung angepasst):* Statt einer geplanten Sperrzeit werden die betroffenen
+Fahrplanjahre angekreuzt; die Inbetriebnahme ist ein optionales Feld ohne weitere Rechnung.
 
-**B3a. ★ Geplante Sperrzeit oder Bauzeit?** – Im Lastenheft heißt das Feld „geplante Bauzeit“ (Ende
-= Inbetriebnahme + 4 Wochen); in der Anwendung heißt es jetzt „geplante Sperrzeit“. Ist damit der
-gesamte Bauzeitraum der Maßnahme gemeint oder nur der Zeitraum, in dem gesperrt wird? Aus diesem
-Zeitraum berechnet die Anwendung die Fahrplanjahre für den Anmeldebedarf.
+**B3a. Betroffene Fahrplanjahre** – Statt der „geplanten Bauzeit“ des Lastenhefts führt das
+Projekt die betroffenen Fahrplanjahre; je Jahr zeigt es den Anmeldebedarf. Reicht die Angabe in
+Fahrplanjahren, oder wird für Fristen „Wochen vor Sperrbeginn“ doch ein genaueres Datum gebraucht
+(heute rechnet der Anmeldebedarf dann ab Beginn des Fahrplanjahres)?
 
 **B4. Projektleiter** – Ist der Projektleiter der DB oder der von MIC gemeint?
 
@@ -89,8 +89,10 @@ Schlussrechnung)?
 **B6. ★ Anmeldebedarf** – „Bei längeren Betreuungspausen … nachvollziehen, ob eine Anmeldung zum
 nächsten SKM oder PzE oder N-x fällig ist“.
 
-*Entwurf:* Für jedes Fahrplanjahr der Sperrzeit werden die Fristen für SKM, MKM, KM N-2 und KM
-N-1 berechnet; ein Eintrag im KM oder KKM deckt beide KM-Fristen ab. Eine Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen
+*Entwurf:* Für jedes betroffene Fahrplanjahr werden die Fristen für SKM, MKM, KM N-2 und KM N-1
+berechnet; ein Eintrag im KM oder KKM deckt beide KM-Fristen ab. Für KKM zeigt die Anwendung je
+Maßnahmenart, ab wann eine Sperrpause bei Anmeldung heute frühestens möglich ist (Stichtag ist der
+nächste Mittwoch, dazu der Vorlauf der Maßnahmenart). Eine Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen
 Eintrag in dieser oder einer späteren Phase hat; Anmeldeleichen zählen nicht. Fristen deutlich
 vor dem ersten Anmeldetermin gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne
 Eintrag erscheinen in der Übersicht.
