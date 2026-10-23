@@ -1,10 +1,18 @@
 /** Projekte: Liste mit Anlage- und Bearbeitungsdialog. */
 import { useState } from 'react';
-import { addDays, formatDate } from '../../../shared/dates';
+import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
-import { anmeldebedarf, ersterTerminVorschlag, naechsterBedarf, offeneTermine } from '../domain/fristen';
+import {
+  anmeldebedarf,
+  ersterTerminVorschlag,
+  fahrplanjahrBeginn,
+  fahrplanjahrEnde,
+  fahrplanjahrVon,
+  naechsterBedarf,
+  offeneTermine,
+} from '../domain/fristen';
 import {
   ERSTE_PHASE_LABEL,
   PROJEKT_STATUS_LABEL,
@@ -84,7 +92,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
                       </div>
                       <h2 style={{ marginTop: 2 }}>{p.name}</h2>
                       <div className="small muted truncate" style={{ marginTop: 3 }}>
-                        Sperrzeit {formatDate(p.bauzeitVon)} – {formatDate(p.bauzeitBis)}
+                        {p.fahrplanjahre.length > 0 ? `Fahrplanjahre ${p.fahrplanjahre.join(', ')}` : 'ohne Fahrplanjahr'}
                         {p.hauptbearbeiter ? ` · ${p.hauptbearbeiter}` : ''}
                       </div>
                     </div>
@@ -157,8 +165,7 @@ export function ProjektDialog({
     dbGNummer: projekt?.dbGNummer ?? '',
     ersterAnmeldetermin: projekt?.ersterAnmeldetermin ?? '',
     erstePhase: projekt?.erstePhase ?? ('skm' as ErstePhase),
-    bauzeitVon: projekt?.bauzeitVon ?? '',
-    bauzeitBis: projekt?.bauzeitBis ?? '',
+    fahrplanjahre: projekt?.fahrplanjahre ?? [],
     inbetriebnahme: projekt?.inbetriebnahme ?? '',
     hauptbearbeiter: projekt?.hauptbearbeiter ?? data.einstellungen.bearbeiter,
     projektnummer: projekt?.projektnummer ?? '',
@@ -167,27 +174,28 @@ export function ProjektDialog({
   });
   const set = <K extends keyof typeof form>(key: K, wert: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: wert }));
 
-  const vorschlag = ersterTerminVorschlag(
-    { erstePhase: form.erstePhase, bauzeitVon: form.bauzeitVon || null },
-    data.einstellungen,
-  );
-  const endeAusIbn = form.inbetriebnahme ? addDays(form.inbetriebnahme, 28) : null;
+  const vorschlag = ersterTerminVorschlag(form, data.einstellungen);
+
+  // Zur Wahl: das vorige bis zehn Jahre nach dem laufenden Fahrplanjahr, dazu bereits gewählte
+  const jetzt = fahrplanjahrVon(today()) ?? new Date().getFullYear();
+  const jahre = [
+    ...new Set([...Array.from({ length: 12 }, (_, i) => jetzt - 1 + i), ...form.fahrplanjahre]),
+  ].sort((a, b) => a - b);
+  const jahrUmschalten = (n: number, an: boolean) =>
+    set(
+      'fahrplanjahre',
+      (an ? [...form.fahrplanjahre, n] : form.fahrplanjahre.filter((x) => x !== n)).sort((a, b) => a - b),
+    );
 
   const speichern = () => {
     if (!form.name.trim()) {
       toast('Bitte eine Bezeichnung angeben.');
       return;
     }
-    if (form.bauzeitVon && form.bauzeitBis && form.bauzeitBis < form.bauzeitVon) {
-      toast('Das Ende der Sperrzeit liegt vor dem Beginn.');
-      return;
-    }
     const werte = {
       ...form,
       name: form.name.trim(),
       ersterAnmeldetermin: form.ersterAnmeldetermin || null,
-      bauzeitVon: form.bauzeitVon || null,
-      bauzeitBis: form.bauzeitBis || null,
       inbetriebnahme: form.inbetriebnahme || null,
     };
     if (projekt) {
@@ -236,24 +244,26 @@ export function ProjektDialog({
           <TextInput value={form.projektnummer} onChange={(v) => set('projektnummer', v)} />
         </Field>
 
-        <Field label="Geplante Sperrzeit von">
-          <TextInput type="date" value={form.bauzeitVon} onChange={(v) => set('bauzeitVon', v)} />
+        <Field label="Betroffene Fahrplanjahre" full hint="Je gewähltem Fahrplanjahr zeigt das Projekt den Anmeldebedarf.">
+          <div className="row wrap" style={{ gap: '6px 16px' }}>
+            {jahre.map((n) => (
+              <label
+                key={n}
+                className="checkbox"
+                title={`Fahrplanjahr ${n}: ${formatDate(fahrplanjahrBeginn(n))} – ${formatDate(fahrplanjahrEnde(n))}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={form.fahrplanjahre.includes(n)}
+                  onChange={(e) => jahrUmschalten(n, e.target.checked)}
+                />
+                {n}
+              </label>
+            ))}
+          </div>
         </Field>
-        <Field label="Geplante Sperrzeit bis" hint="Ende in der Regel Inbetriebnahme + 4 Wochen">
-          <TextInput type="date" value={form.bauzeitBis} onChange={(v) => set('bauzeitBis', v)} />
-        </Field>
-        <Field label="Inbetriebnahme" hint="optional – daraus lässt sich das Ende der Sperrzeit vorschlagen">
+        <Field label="Inbetriebnahme" hint="optional">
           <TextInput type="date" value={form.inbetriebnahme} onChange={(v) => set('inbetriebnahme', v)} />
-        </Field>
-        <Field label="Ende aus Inbetriebnahme">
-          <button
-            type="button"
-            className="btn btn-outline"
-            disabled={!endeAusIbn || endeAusIbn === form.bauzeitBis}
-            onClick={() => endeAusIbn && set('bauzeitBis', endeAusIbn)}
-          >
-            {endeAusIbn ? `Sperrzeit bis ${formatDate(endeAusIbn)} übernehmen` : 'Inbetriebnahme fehlt'}
-          </button>
         </Field>
 
         <Field label="Prozessphase des ersten Anmeldetermins">
@@ -271,7 +281,7 @@ export function ProjektDialog({
           hint={
             vorschlag
               ? `Laut Richtlinie für ${ERSTE_PHASE_LABEL[form.erstePhase]}: ${formatDate(vorschlag)}`
-              : 'Je nach Prozessphase laut Richtlinie – mit Sperrzeit lässt er sich vorschlagen.'
+              : 'Je nach Prozessphase laut Richtlinie – mit betroffenen Fahrplanjahren lässt er sich vorschlagen.'
           }
         >
           <span className="row" style={{ gap: 6 }}>

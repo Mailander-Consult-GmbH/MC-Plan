@@ -3,7 +3,7 @@
  * und ein Demodatenbestand mit Terminen relativ zum heutigen Tag.
  */
 import { addDays, today } from '../../../shared/dates';
-import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon } from './fristen';
+import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahreZwischen, fahrplanjahrVon } from './fristen';
 import {
   DATEN_VERSION,
   STANDARD_BEARBEITER,
@@ -171,8 +171,7 @@ export function seedDaten(): BaubetriebDaten {
     dbGNummer: 'G.40001234',
     ersterAnmeldetermin: `${jahr - 1}-03-31`,
     erstePhase: 'mkm',
-    bauzeitVon: `${jahr + 2}-03-01`,
-    bauzeitBis: `${jahr + 3}-06-30`,
+    fahrplanjahre: fahrplanjahreZwischen(`${jahr + 2}-03-01`, `${jahr + 3}-06-30`),
     inbetriebnahme: `${jahr + 3}-06-02`,
     hauptbearbeiter: wer,
     projektnummer: 'MIC-25-0412',
@@ -185,8 +184,7 @@ export function seedDaten(): BaubetriebDaten {
     dbGNummer: 'G.40005678',
     ersterAnmeldetermin: `${jahr - 1}-10-31`,
     erstePhase: 'N-1',
-    bauzeitVon: tag(-20),
-    bauzeitBis: tag(220),
+    fahrplanjahre: fahrplanjahreZwischen(tag(-20), tag(220)),
     inbetriebnahme: tag(192),
     hauptbearbeiter: wer,
     projektnummer: 'MIC-24-0815',
@@ -199,8 +197,7 @@ export function seedDaten(): BaubetriebDaten {
     dbGNummer: 'G.40009012',
     ersterAnmeldetermin: `${jahr}-03-31`,
     erstePhase: 'skm',
-    bauzeitVon: `${jahr + 3}-04-01`,
-    bauzeitBis: `${jahr + 5}-03-31`,
+    fahrplanjahre: fahrplanjahreZwischen(`${jahr + 3}-04-01`, `${jahr + 5}-03-31`),
     inbetriebnahme: null,
     hauptbearbeiter: wer,
     projektnummer: 'MIC-26-0107',

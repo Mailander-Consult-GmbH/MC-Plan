@@ -17,7 +17,7 @@ export type ID = string;
  * Fassung des gespeicherten Bestands. Erhöhen, sobald `migriere()` in
  * `store/storage.ts` ältere Stände anheben muss.
  */
-export const DATEN_VERSION = 6;
+export const DATEN_VERSION = 7;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -300,7 +300,7 @@ export const RIL_PHASE_HINWEIS: Record<Phase, string> = {
   skm: 'Stichtag je Fahrplanjahr',
   mkm: 'Stichtag je Fahrplanjahr',
   km: 'Es gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt, sonst die N-1-Frist (Ril_KM).',
-  kkm: 'Frist je Maßnahmenart (Ril_KKM).',
+  kkm: 'Vorlauf je Maßnahmenart (Ril_KKM); Stichtag der Anmeldung ist der Mittwoch.',
 };
 
 /** Richtlinienfristen gegliedert nach Phase, in der Reihenfolge der Phasen. */
@@ -332,9 +332,8 @@ export interface Projekt {
   /** Erster Anmeldetermin (ca.-Wert, je nach Prozessphase laut Richtlinie). */
   ersterAnmeldetermin: ISODate | null;
   erstePhase: ErstePhase;
-  bauzeitVon: ISODate | null;
-  /** Ende der geplanten Sperrzeit – in der Regel Inbetriebnahme + 4 Wochen. */
-  bauzeitBis: ISODate | null;
+  /** Betroffene Fahrplanjahre, aufsteigend – je Jahr eine Zeile im Anmeldebedarf. */
+  fahrplanjahre: number[];
   inbetriebnahme: ISODate | null;
   hauptbearbeiter: string;
   /** MIC-Projektnummer (wiko). */

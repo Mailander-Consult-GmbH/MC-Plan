@@ -326,6 +326,14 @@ export const STANDARD_WORKFLOW_ID: Record<Phase, ID> = {
   kkm: 'wf-unterjahr',
 };
 
+/**
+ * Workflow der unterjährigen Anmeldung (KKM): der Standard-Workflow oder ein
+ * Workflow, dessen Fristen sich nach der Maßnahmenart richten (Ril_KKM).
+ */
+export function istKkmWorkflow(w: Workflow): boolean {
+  return w.id === STANDARD_WORKFLOW_ID.kkm || w.status.some((s) => s.frist.typ === 'ril' && s.frist.bezug === 'X');
+}
+
 /** Workflow, in dem „Neue Anmeldung“ ohne Vorgabe anlegt: KKM (unterjährig). */
 export const NEUANLAGE_WORKFLOW = STANDARD_WORKFLOW_ID.kkm;
 

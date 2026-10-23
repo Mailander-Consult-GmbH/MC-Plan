@@ -16,7 +16,6 @@ import {
   type AnnexVIIGrund,
   type ID,
   type Projekt,
-  type Workflow,
 } from '../domain/types';
 import { NEUANLAGE_WORKFLOW, istAenderung, startbareWorkflows, statusVon } from '../domain/workflow';
 import { useStore } from '../store/store';
@@ -42,54 +41,35 @@ export const ANNEX_OPTIONEN = ANNEX_VII.map((a) => ({
   label: a.selten ? `${a.label} (selten)` : a.label,
 }));
 
-/** Vorbelegung einer Neuanlage, etwa aus dem Anmeldebedarf des Projekts. */
-export interface AnmeldungVorgabe {
-  workflowId?: ID;
-  art?: AnmeldungsArt;
-  fahrplanjahr?: number;
-}
-
-/**
- * Sperrbeginn einer vorbelegten tagesscharfen Anmeldung: der Beginn der Sperrzeit
- * im vorgegebenen Fahrplanjahr, damit sich die Frist gleich berechnen lässt.
- */
-function vorgabeBaubeginn(projekt: Projekt, workflow: Workflow | undefined, vorgabe?: AnmeldungVorgabe): string {
-  if (!vorgabe?.fahrplanjahr || !workflow || ganzesFahrplanjahr(workflow)) return '';
-  const beginn = fahrplanjahrBeginn(vorgabe.fahrplanjahr);
-  return projekt.bauzeitVon && projekt.bauzeitVon > beginn ? projekt.bauzeitVon : beginn;
+/** Vorgabe für das Fahrplanjahr: das erste noch laufende betroffene, sonst das aktuelle. */
+function vorgabeFahrplanjahr(projekt: Projekt): number | null {
+  const jetzt = fahrplanjahrVon(today());
+  return projekt.fahrplanjahre.find((n) => !jetzt || n >= jetzt) ?? jetzt;
 }
 
 export function AnmeldungDialog({
   projekt,
   anmeldung,
-  vorgabe,
   onClose,
   onAngelegt,
 }: {
   projekt: Projekt;
   anmeldung?: Anmeldung;
-  vorgabe?: AnmeldungVorgabe;
   onClose: () => void;
   onAngelegt?: (id: ID) => void;
 }) {
   const { data, addAnmeldung, updateAnmeldung } = useStore();
   const toast = useToast();
   const startbar = startbareWorkflows(data.workflows);
-  // Neuanlage: vorgegebener Workflow, sonst KKM (unterjährig)
-  const startWorkflow =
-    startbar.find((w) => w.id === vorgabe?.workflowId) ??
-    startbar.find((w) => w.id === NEUANLAGE_WORKFLOW) ??
-    startbar[startbar.length - 1];
+  // Neuanlage: vorbelegt ist KKM (unterjährig)
+  const startWorkflow = startbar.find((w) => w.id === NEUANLAGE_WORKFLOW) ?? startbar[startbar.length - 1];
   const [form, setForm] = useState({
     workflowId: anmeldung ? statusVon(data.workflows, anmeldung.statusId).workflow.id : (startWorkflow?.id ?? ''),
     statusSeit: anmeldung?.statusSeit ?? today(),
-    art: (anmeldung?.art ??
-      (vorgabe?.art && startWorkflow?.arten.includes(vorgabe.art) ? vorgabe.art : startWorkflow?.arten[0]) ??
-      'A') as AnmeldungsArt,
+    art: (anmeldung?.art ?? startWorkflow?.arten[0] ?? 'A') as AnmeldungsArt,
     anmeldeId: anmeldung?.anmeldeId ?? '',
-    fahrplanjahr:
-      anmeldung?.fahrplanjahr ?? vorgabe?.fahrplanjahr ?? fahrplanjahrVon(projekt.bauzeitVon) ?? fahrplanjahrVon(today()),
-    bauVon: anmeldung?.bauVon ?? vorgabeBaubeginn(projekt, startWorkflow, vorgabe),
+    fahrplanjahr: anmeldung?.fahrplanjahr ?? vorgabeFahrplanjahr(projekt),
+    bauVon: anmeldung?.bauVon ?? '',
     bauBis: anmeldung?.bauBis ?? '',
     bfStrecke: anmeldung?.bfStrecke ?? '',
     gewerk: anmeldung?.gewerk ?? '',

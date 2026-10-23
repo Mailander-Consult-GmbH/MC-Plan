@@ -8,6 +8,7 @@ import {
   MASSNAHMENARTEN,
   RIL_BEZUG_KUERZEL,
   RIL_LABEL,
+  RIL_PHASE,
   type Anmeldung,
   type AnmeldungsArt,
   type BaubetriebDaten,
@@ -21,7 +22,7 @@ import {
   type RilSchluessel,
   type Workflow,
 } from './types';
-import { istLeiche, statusVon, type StatusInfo } from './workflow';
+import { istKkmWorkflow, istLeiche, statusInfo, statusVon, type StatusInfo } from './workflow';
 
 /** Was die Fristenrechnung aus dem Bestand braucht. */
 export type FristKontext = Pick<BaubetriebDaten, 'einstellungen' | 'workflows' | 'projekte'>;
@@ -51,6 +52,14 @@ export function fahrplanjahrVon(datum: ISODate | null): number | null {
   if (!d || !datum) return null;
   const jahr = d.getFullYear();
   return datum > fahrplanjahrEnde(jahr) ? jahr + 1 : jahr;
+}
+
+/** Fahrplanjahre eines Zeitraums – höchstens zehn, ohne Beginn keines. */
+export function fahrplanjahreZwischen(von: ISODate | null, bis: ISODate | null): number[] {
+  const erstes = fahrplanjahrVon(von);
+  if (!erstes) return [];
+  const letztes = Math.max(erstes, Math.min(fahrplanjahrVon(bis) ?? erstes, erstes + 9));
+  return Array.from({ length: letztes - erstes + 1 }, (_, i) => erstes + i);
 }
 
 /** Datum TT.MM.JJJJ; ein Tag jenseits des Monatsendes rückt auf den letzten Tag. */
@@ -110,12 +119,38 @@ export function rilSchluesselFuer(
   }
 }
 
-/** Datum einer Richtlinienfrist für ein Fahrplanjahr bzw. einen Sperrbeginn. */
-export function rilDatum(frist: RilFrist, fahrplanjahr: number | null, baubeginn: ISODate | null): ISODate | null {
+/** Wochentag Mittwoch (Date.getDay). */
+const MITTWOCH = 3;
+
+/** Der Mittwoch an oder nach dem Datum – Stichtag einer Anmeldung im KKM. */
+export function naechsterMittwoch(datum: ISODate): ISODate {
+  const tag = parseISO(datum)?.getDay() ?? MITTWOCH;
+  return addDays(datum, (MITTWOCH - tag + 7) % 7);
+}
+
+/** Der Mittwoch an oder vor dem Datum. */
+function vorigerMittwoch(datum: ISODate): ISODate {
+  const tag = parseISO(datum)?.getDay() ?? MITTWOCH;
+  return addDays(datum, -((tag - MITTWOCH + 7) % 7));
+}
+
+/**
+ * Datum einer Richtlinienfrist für ein Fahrplanjahr bzw. einen Sperrbeginn.
+ * Im KKM ist der Stichtag der Anmeldung immer ein Mittwoch: Eine Frist in
+ * Wochen vor Sperrbeginn fällt auf den Mittwoch an oder vor diesem Datum.
+ */
+export function rilDatum(
+  frist: RilFrist,
+  fahrplanjahr: number | null,
+  baubeginn: ISODate | null,
+  stichtagMittwoch = false,
+): ISODate | null {
   if (frist.bezug === 'stichtag') {
     return fahrplanjahr ? datumAus(fahrplanjahr - frist.jahreVorher, frist.monat, frist.tag) : null;
   }
-  return baubeginn ? addDays(baubeginn, -7 * frist.wochenVorher) : null;
+  if (!baubeginn) return null;
+  const datum = addDays(baubeginn, -7 * frist.wochenVorher);
+  return stichtagMittwoch ? vorigerMittwoch(datum) : datum;
 }
 
 const zweistellig = (n: number) => String(n).padStart(2, '0');
@@ -204,7 +239,8 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
       const kmGrund = status.frist.bezug === 'Nx' ? kmGrundFuerN1(a, e, ab) : null;
       const n1 = kmGrund ? ` – ${kmGrund}` : '';
       const ril = e.rilFristen[schluessel];
-      const grund = rilDatum(ril, a.fahrplanjahr, a.bauVon);
+      const mittwoch = RIL_PHASE[schluessel] === 'kkm' && ril.bezug === 'baubeginn';
+      const grund = rilDatum(ril, a.fahrplanjahr, a.bauVon, mittwoch);
       const versatz = status.frist.versatzTage;
       const datum = grund ? addDays(grund, versatz) : null;
       const bezugText =
@@ -220,7 +256,7 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
         datum,
         platzhalter: ril.platzhalter,
         erlaeuterung: `${RIL_LABEL[schluessel]}: ${rilFristText(ril)} (${bezugText})${
-          grund ? ` = ${formatDate(grund)}` : ''
+          grund ? ` = ${formatDate(grund)}${mittwoch ? ' (Stichtag Mittwoch)' : ''}` : ''
         }${versatz ? `, ${versatz < 0 ? 'abzüglich' : 'zuzüglich'} ${Math.abs(versatz)} Tage` : ''}${n1}`,
       };
     }
@@ -322,16 +358,57 @@ export interface BedarfZelle {
   durch?: Anmeldung;
 }
 
+/**
+ * KKM: Wann eine Sperrpause der Maßnahmenart im Fahrplanjahr frühestens sein
+ * kann, wenn heute angemeldet wird – das ganze Jahr, ab einem Datum oder gar
+ * nicht mehr.
+ */
+export type KkmZustand = 'ganzesJahr' | 'ab' | 'nichtMehr';
+
+export interface KkmZelle {
+  art: AnmeldungsArt;
+  /** Frühester Sperrbeginn bei Anmeldung zum nächsten Stichtag. */
+  fruehestens: ISODate | null;
+  zustand: KkmZustand;
+  /** Unterjährige Anmeldung dieser Art im Fahrplanjahr. */
+  durch?: Anmeldung;
+}
+
 export interface BedarfZeile {
   fahrplanjahr: number;
   zellen: BedarfZelle[];
+  kkm: KkmZelle[];
 }
 
 /**
- * Anmeldebedarf je Fahrplanjahr der Sperrzeit: Für SKM, MKM, KM N-2 und KM N-1 die
- * Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat.
- * Anmeldeleichen zählen nicht mit. Fristen vor dem ersten Anmeldetermin
- * liegen vor der Betreuung durch MIC.
+ * KKM je Maßnahmenart: frühester Sperrbeginn bei Anmeldung zum Stichtag
+ * (Mittwoch) zuzüglich des Vorlaufs laut Richtlinie. Ist die Frist als
+ * Stichtag im Fahrplanjahr eingestellt, ist das ganze Jahr oder nichts mehr möglich.
+ */
+function kkmZellen(n: number, kkm: Anmeldung[], e: Einstellungen, stichtag: ISODate): KkmZelle[] {
+  const beginn = fahrplanjahrBeginn(n);
+  const ende = fahrplanjahrEnde(n);
+  return MASSNAHMENARTEN.map((art): KkmZelle => {
+    const ril = e.rilFristen[art as RilSchluessel];
+    let fruehestens: ISODate | null;
+    if (ril.bezug === 'baubeginn') {
+      fruehestens = addDays(stichtag, 7 * ril.wochenVorher);
+    } else {
+      const frist = rilDatum(ril, n, null);
+      fruehestens = frist && stichtag <= frist ? beginn : null;
+    }
+    const zustand: KkmZustand =
+      !fruehestens || fruehestens > ende ? 'nichtMehr' : fruehestens <= beginn ? 'ganzesJahr' : 'ab';
+    return { art, fruehestens, zustand, durch: kkm.find((a) => a.fahrplanjahr === n && a.art === art) };
+  });
+}
+
+/**
+ * Anmeldebedarf je betroffenem Fahrplanjahr: Für SKM, MKM, KM N-2 und KM N-1
+ * die Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat;
+ * für KKM je Maßnahmenart, ab wann eine Sperrpause bei Anmeldung heute
+ * frühestens möglich ist. Anmeldeleichen zählen nicht mit. Fristen vor dem
+ * ersten Anmeldetermin liegen vor der Betreuung durch MIC.
  */
 export function anmeldebedarf(
   p: Projekt,
@@ -339,10 +416,12 @@ export function anmeldebedarf(
   heute: ISODate = today(),
 ): BedarfZeile[] {
   const e = d.einstellungen;
-  const von = fahrplanjahrVon(p.bauzeitVon);
-  if (!von) return [];
-  const bis = Math.max(von, Math.min(fahrplanjahrVon(p.bauzeitBis) ?? von, von + 9));
   const eigene = d.anmeldungen.filter((a) => a.projektId === p.id && !istLeiche(d.workflows, a.statusId));
+  const kkm = eigene.filter((a) => {
+    const info = statusInfo(d.workflows, a.statusId);
+    return !!info && istKkmWorkflow(info.workflow);
+  });
+  const stichtag = naechsterMittwoch(heute);
   const beginnGrenze = betreuungAb(p);
   // Bei gleichem Rang zählt der frühere Workflow – ein KM-Eintrag vor einem KKM-Eintrag.
   const workflowRang = (a: Anmeldung) => {
@@ -351,8 +430,8 @@ export function anmeldebedarf(
   };
 
   const zeilen: BedarfZeile[] = [];
-  for (let n = von; n <= bis; n++) {
-    const baubeginn = p.bauzeitVon && p.bauzeitVon > fahrplanjahrBeginn(n) ? p.bauzeitVon : fahrplanjahrBeginn(n);
+  for (const n of [...p.fahrplanjahre].sort((a, b) => a - b)) {
+    const baubeginn = fahrplanjahrBeginn(n);
     const zellen = BEDARF_PHASEN.map((phase): BedarfZelle => {
       const frist = rilDatum(e.rilFristen[phase], n, baubeginn);
       const durch = eigene
@@ -367,7 +446,7 @@ export function anmeldebedarf(
       else zustand = 'kuenftig';
       return { phase, fahrplanjahr: n, frist, zustand, durch };
     });
-    zeilen.push({ fahrplanjahr: n, zellen });
+    zeilen.push({ fahrplanjahr: n, zellen, kkm: kkmZellen(n, kkm, e, stichtag) });
   }
   return zeilen;
 }
@@ -401,15 +480,17 @@ export function faelligerBedarf(d: BaubetriebDaten, projektIds?: ID[]): BedarfEi
 
 /**
  * Vorschlag für den ersten Anmeldetermin eines Projekts: die Frist laut
- * Richtlinie für die gewählte Prozessphase und das Fahrplanjahr des Sperrbeginns.
+ * Richtlinie für die gewählte Prozessphase und das erste betroffene
+ * Fahrplanjahr (im KKM für eine Sperrpause ab Beginn des Fahrplanjahres).
  */
 export function ersterTerminVorschlag(
-  p: Pick<Projekt, 'erstePhase' | 'bauzeitVon'>,
+  p: Pick<Projekt, 'erstePhase' | 'fahrplanjahre'>,
   e: Einstellungen,
 ): ISODate | null {
-  if (!p.bauzeitVon) return null;
+  if (p.fahrplanjahre.length === 0) return null;
+  const n = Math.min(...p.fahrplanjahre);
   const schluessel: RilSchluessel = p.erstePhase === 'kkm' ? 'A' : p.erstePhase;
-  return rilDatum(e.rilFristen[schluessel], fahrplanjahrVon(p.bauzeitVon), p.bauzeitVon);
+  return rilDatum(e.rilFristen[schluessel], n, fahrplanjahrBeginn(n), RIL_PHASE[schluessel] === 'kkm');
 }
 
 /* ------------------------------------------------------------------ */

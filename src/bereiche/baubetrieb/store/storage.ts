@@ -3,6 +3,7 @@
  * Schlüssel. Der Bestand des Planlaufmanagements wird dabei weder gelesen noch
  * geschrieben.
  */
+import { fahrplanjahreZwischen } from '../domain/fristen';
 import { seedDaten, standardEinstellungen, standardRilFristen } from '../domain/seed';
 import {
   NACHHAK_TAGE,
@@ -141,8 +142,9 @@ function aufbereiten(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
       dbGNummer: text(p.dbGNummer),
       ersterAnmeldetermin: datum(p.ersterAnmeldetermin),
       erstePhase: (p.erstePhase as string) in ERSTE_PHASE_LABEL ? (p.erstePhase as ErstePhase) : 'skm',
-      bauzeitVon: datum(p.bauzeitVon),
-      bauzeitBis: datum(p.bauzeitBis),
+      fahrplanjahre: Array.isArray(p.fahrplanjahre)
+        ? [...new Set(p.fahrplanjahre.filter((n) => Number.isInteger(n) && n > 1900 && n < 2200))].sort((a, b) => a - b)
+        : [],
       inbetriebnahme: datum(p.inbetriebnahme),
       hauptbearbeiter: text(p.hauptbearbeiter),
       projektnummer: text(p.projektnummer),
@@ -430,6 +432,23 @@ function ausFassung5(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
 }
 
 /**
+ * Hebt Fassung 6 auf Fassung 7: Statt der geplanten Sperrzeit (von – bis)
+ * führt ein Projekt die betroffenen Fahrplanjahre – die des bisherigen
+ * Zeitraums.
+ */
+function ausFassung6(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
+  const projekte = (Array.isArray(roh.projekte) ? roh.projekte : []).map(
+    (p: Partial<Projekt> & { bauzeitVon?: unknown; bauzeitBis?: unknown }) => {
+      const { bauzeitVon, bauzeitBis, ...rest } = p;
+      return Array.isArray(rest.fahrplanjahre)
+        ? rest
+        : { ...rest, fahrplanjahre: fahrplanjahreZwischen(datum(bauzeitVon), datum(bauzeitBis)) };
+    },
+  );
+  return { ...roh, projekte: projekte as Projekt[] };
+}
+
+/**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt. Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch
  * keinen Inhalt. Sie erhält deshalb die Demodaten und behält ihre Einstellung.
@@ -448,6 +467,7 @@ function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   if (version <= 3) stand = ausFassung3(stand);
   if (version <= 4) stand = ausFassung4(stand);
   if (version <= 5) stand = ausFassung5(stand);
+  if (version <= 6) stand = ausFassung6(stand);
   return aufbereiten(stand);
 }
 
