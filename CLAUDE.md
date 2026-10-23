@@ -72,12 +72,14 @@ ignoriert.
   dem Protokoll-Tool und `teilnehmerNachziehen` (läuft nach jedem `mutate()` und hält
   Teilnehmende auf dem Stand der Projektbeteiligtenliste; ebenso `lopVerweiseNachziehen` und
   `lopStatusAbgleichen` für Aufgaben, die in die LOP übernommen wurden – der Verweis ist intern
-  und erscheint nie in Druck, Live-Druckansicht oder Text), `domain/lop.ts` Fortschreibung und Archiv,
+  und erscheint nie in Druck oder Live-Druckansicht), `domain/lop.ts` Fortschreibung und Archiv,
   `domain/lopUebernahme.ts` Aufgaben als LOP-Punkte, `domain/beteiligteImport.ts` Excel-Import,
   `domain/punkte.ts` offene Punkte und Ampel, `domain/druck.ts` Druckfassungen. Funktionen tragen
-  ein Gewerk (`null` = übergreifend); angezeigt wird stets `funktionsName`. Protokolleinträge werden
-  standardmäßig gestrichen statt gelöscht (`entfaellt`); ob ein Eintrag ins Folgeprotokoll geht,
-  entscheidet allein `mitgehen` (`domain/protokoll.ts`). Eigene
+  ein Gewerk (`null` = übergreifend); angezeigt wird stets `funktionsName`. Ein Eintrag besteht aus
+  `zeilen`; jede Zeile merkt sich ihr Ursprungsprotokoll (`herkunft`, im Druck „aus Prot. 1“).
+  TOPs, Einträge und Zeilen werden standardmäßig gestrichen statt gelöscht (`entfaellt`); was ins
+  Folgeprotokoll geht, entscheidet allein `uebernahme` (`domain/protokoll.ts`, für Einträge mit
+  `mitgehen`). Eigene
   Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens). Neue Felder
   über `DATEN_VERSION` (`projektsteuerung/domain/types.ts`) und `migriere()`
   (`projektsteuerung/store/storage.ts`). IDs, die die Oberfläche braucht (Fokus, Navigation),

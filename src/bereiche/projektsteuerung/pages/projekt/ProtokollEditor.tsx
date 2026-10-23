@@ -4,37 +4,40 @@
  * Festlegung und Aufgabe, Hinweis am Ende. Dazu Druckansicht, Live-
  * Druckansicht in einem eigenen Fenster und das Folgeprotokoll.
  *
- * Übernommene Einträge zeigen ihren Ursprungstext fest; Ergänzungen kommen in
- * ein eigenes Feld und erscheinen im Druck blau. Über ✎ lässt sich der
- * Ursprungstext dennoch korrigieren.
+ * Ein Eintrag besteht aus Zeilen: Übernommene Zeilen stehen fest und nennen
+ * ihr Ursprungsprotokoll („aus Prot. 1“); eine Ergänzung kommt als neue Zeile
+ * in ein eigenes Feld und erscheint im Druck blau. Über ✎ lässt sich eine
+ * übernommene Zeile dennoch korrigieren. „Verantwortlich“ wählt aus den
+ * Teilnehmenden – mit ihrem Kürzel.
  *
- * Löschen heißt standardmäßig Durchstreichen: Der Eintrag steht in diesem
- * Protokoll blau durchgestrichen, im Folgeprotokoll noch einmal und entfällt
- * danach – wie eine erledigte Aufgabe. „Sofort löschen“ entfernt ihn ohne
- * Spur. Verweise auf die LOP zeigt nur der Editor, nicht der Druck.
+ * Löschen heißt standardmäßig Durchstreichen – für Tagesordnungspunkte,
+ * Einträge und einzelne Zeilen: Das Gestrichene steht in diesem Protokoll
+ * blau durchgestrichen, im Folgeprotokoll noch einmal und entfällt danach –
+ * wie eine erledigte Aufgabe. „Sofort löschen“ entfernt es ohne Spur.
+ * Verweise auf die LOP zeigt nur der Editor, nicht der Druck.
  */
 import { useEffect, useState } from 'react';
 import { formatDate, toISO, today } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Field, Modal, Segmented, TextInput } from '../../../../shared/ui';
+import { Badge, Card, CardHeader, EmptyState, Field, Modal, Segmented, TextInput } from '../../../../shared/ui';
 import { BeteiligterDialog } from '../../components/BeteiligterDialog';
-import { Blatt, KuerzelListe, Textfeld, kopieren, useLiveDruck } from '../../components/common';
+import { Blatt, Textfeld, useLiveDruck } from '../../components/common';
 import { blattDrucken, protokollHtml } from '../../domain/druck';
 import { uebernehmbareAufgaben, zielThema, type UebernehmbareAufgabe } from '../../domain/lopUebernahme';
 import {
-  alsText,
   bezeichnung,
+  eintragGestrichen,
+  eintragText,
   freierTeilnehmer,
-  abgeschlossen,
-  herkunftText,
-  letztmalig,
   mitgehendeEintraege,
   naechsteNr,
+  neueZeile,
   neuerEintrag,
   neuerTop,
   teilnehmerAus,
-  volltext,
+  zeileHerkunft,
+  zuordnung,
 } from '../../domain/protokoll';
 import { ampelFuer } from '../../domain/punkte';
 import { logosVon } from '../../domain/seed';
@@ -43,6 +46,7 @@ import {
   EINTRAG_TYP_LABEL,
   TEILNAHME,
   funktionsName,
+  newId,
   personName,
   type Beteiligter,
   type Eintrag,
@@ -53,6 +57,7 @@ import {
   type Teilnahme,
   type Teilnehmer,
   type Top,
+  type Zeile,
 } from '../../domain/types';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
@@ -61,8 +66,16 @@ import { nachFunktion } from './Beteiligte';
 type Ansicht = 'bearbeiten' | 'druck';
 const TYPEN: EintragTyp[] = ['I', 'F', 'A'];
 
-/** Erster Buchstabe groß – „Offen seit …“. */
-const gross = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** Was gelöscht bzw. durchgestrichen werden soll: ein TOP, ein Eintrag oder eine Zeile. */
+interface Loeschen {
+  /** „TOP 2“, „Eintrag 1.3“, „Zeile 2 von Eintrag 1.3“. */
+  was: string;
+  /** Hinweis im Dialog, etwa wie viele Einträge ein TOP mitnimmt. */
+  umfang?: string;
+  schonGestrichen: boolean;
+  streichen: () => void;
+  sofort: () => void;
+}
 
 /** „am 23.10.2026 um 14:05 Uhr“ in Ortszeit. */
 function zeitpunkt(iso: string): string {
@@ -86,14 +99,16 @@ export function ProtokollEditor({
   const [korrektur, setKorrektur] = useState<Set<ID>>(new Set());
   const [auswahl, setAuswahl] = useState(false);
   const [person, setPerson] = useState<{ beteiligter?: Beteiligter; teilnehmer?: Teilnehmer } | null>(null);
-  const [topLoeschen, setTopLoeschen] = useState<Top | null>(null);
-  const [eintragLoeschen, setEintragLoeschen] = useState<{ top: Top; eintrag: Eintrag; nr: string } | null>(null);
+  const [loeschen, setLoeschen] = useState<Loeschen | null>(null);
   const [fokus, setFokus] = useState<string | null>(null);
   const [lopDialog, setLopDialog] = useState(false);
 
   useEffect(() => {
     if (!fokus) return;
-    document.getElementById(fokus)?.focus();
+    const el = document.getElementById(fokus);
+    el?.focus();
+    // Aus dem Ergänzungsfeld entsteht beim ersten Zeichen eine Zeile: weiterschreiben am Ende
+    if (el instanceof HTMLTextAreaElement) el.setSelectionRange(el.value.length, el.value.length);
     setFokus(null);
   }, [fokus]);
 
@@ -116,15 +131,21 @@ export function ProtokollEditor({
   const inhalt = protokollHtml(p, projekt, logosVon(projekt));
   const titel = `${bezeichnung(p)} – ${projekt.name}`;
   const liveOeffnen = useLiveDruck(titel, inhalt);
-  const listeId = `ps-kuerzel-${p.id}`;
+  // Für „Verantwortlich“ stehen nur Teilnehmende zur Wahl.
+  const zuordenbar = p.teilnehmer.filter((t) => zuordnung(t));
 
   /* Änderungen – alle über den Store */
   const aendern = (fn: (x: Protokoll) => Protokoll) => updateProtokoll(p.id, fn);
   const feld = <K extends keyof Protokoll>(k: K, v: Protokoll[K]) => aendern((x) => ({ ...x, [k]: v }));
   const topAendern = (topId: ID, fn: (t: Top) => Top) =>
     aendern((x) => ({ ...x, tops: x.tops.map((t) => (t.id === topId ? fn(t) : t)) }));
-  const eintragAendern = (topId: ID, eintragId: ID, patch: Partial<Eintrag>) =>
-    topAendern(topId, (t) => ({ ...t, eintraege: t.eintraege.map((e) => (e.id === eintragId ? { ...e, ...patch } : e)) }));
+  const eintragAendern = (topId: ID, eintragId: ID, fn: (e: Eintrag) => Eintrag) =>
+    topAendern(topId, (t) => ({ ...t, eintraege: t.eintraege.map((e) => (e.id === eintragId ? fn(e) : e)) }));
+  const zeileAendern = (topId: ID, eintragId: ID, zeileId: ID, patch: Partial<Zeile>) =>
+    eintragAendern(topId, eintragId, (e) => ({
+      ...e,
+      zeilen: e.zeilen.map((z) => (z.id === zeileId ? { ...z, ...patch } : z)),
+    }));
   const teilnehmerAendern = (id: ID, patch: Partial<Teilnehmer>) =>
     aendern((x) => ({ ...x, teilnehmer: x.teilnehmer.map((t) => (t.id === id ? { ...t, ...patch } : t)) }));
   const teilnehmerEntfernen = (id: ID) =>
@@ -203,26 +224,7 @@ export function ProtokollEditor({
       </div>
 
       {ansicht === 'druck' ? (
-        <>
-          <div className="row wrap">
-            <button type="button" className="btn btn-primary" onClick={drucken}>
-              Drucken oder als PDF speichern
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={async () =>
-                toast((await kopieren(alsText(p, [projekt.nummer, projekt.name].filter(Boolean).join(' '))))
-                  ? 'Protokoll als Text kopiert.'
-                  : 'Kopieren nicht möglich.')
-              }
-            >
-              <Icon name="kopieren" size={14} /> Als Text kopieren
-            </button>
-            <span className="small tertiary">Für eine PDF-Datei im Druckdialog „Als PDF speichern“ wählen.</span>
-          </div>
-          <Blatt inhalt={inhalt} />
-        </>
+        <Blatt inhalt={inhalt} />
       ) : (
         <>
           {/* Kopfdaten */}
@@ -510,8 +512,6 @@ export function ProtokollEditor({
             </div>
           </div>
 
-          <KuerzelListe id={listeId} beteiligte={beteiligte} funktionen={data.funktionen} />
-
           {p.tops.length === 0 ? (
             <Card>
               <EmptyState
@@ -522,7 +522,7 @@ export function ProtokollEditor({
             </Card>
           ) : (
             p.tops.map((top, ti) => (
-              <div key={top.id} className="card ps-top">
+              <div key={top.id} className={`card ps-top ${top.entfaellt ? 'ps-top-gestrichen' : ''}`}>
                 <div className="ps-top-kopf">
                   <span className="ps-top-nr">TOP {ti + 1}</span>
                   <input
@@ -533,6 +533,15 @@ export function ProtokollEditor({
                     placeholder="Titel des Tagesordnungspunkts"
                     aria-label={`Titel TOP ${ti + 1}`}
                   />
+                  {top.entfaellt ? (
+                    <button
+                      type="button"
+                      className="ps-link"
+                      onClick={() => topAendern(top.id, (t) => ({ ...t, entfaellt: false }))}
+                    >
+                      Wiederherstellen
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="btn-icon"
@@ -569,12 +578,29 @@ export function ProtokollEditor({
                     type="button"
                     className="btn-icon"
                     title="TOP löschen"
-                    aria-label="TOP löschen"
-                    onClick={() =>
-                      top.eintraege.length > 0
-                        ? setTopLoeschen(top)
-                        : aendern((x) => ({ ...x, tops: x.tops.filter((t) => t.id !== top.id) }))
-                    }
+                    aria-label={`TOP ${ti + 1} löschen`}
+                    onClick={() => {
+                      const entfernen = () => aendern((x) => ({ ...x, tops: x.tops.filter((t) => t.id !== top.id) }));
+                      // Ein leerer neuer Punkt hinterlässt nichts, was durchzustreichen wäre.
+                      if (top.vorTitel === null && top.eintraege.length === 0) {
+                        entfernen();
+                        return;
+                      }
+                      const n = top.eintraege.length;
+                      setLoeschen({
+                        was: `TOP ${ti + 1}`,
+                        umfang: n ? `Der Punkt nimmt ${n === 1 ? 'seinen Eintrag' : `seine ${n} Einträge`} mit.` : undefined,
+                        schonGestrichen: top.entfaellt,
+                        streichen: () => {
+                          topAendern(top.id, (t) => ({ ...t, entfaellt: true }));
+                          toast(`TOP ${ti + 1} durchgestrichen.`);
+                        },
+                        sofort: () => {
+                          entfernen();
+                          toast(`TOP ${ti + 1} gelöscht.`);
+                        },
+                      });
+                    }}
                   >
                     <Icon name="loeschen" size={14} />
                   </button>
@@ -587,18 +613,31 @@ export function ProtokollEditor({
                     const nr = `${ti + 1}.${ei + 1}`;
                     const istA = e.typ === 'A';
                     const erledigt = istA && e.status === 'erledigt';
-                    const gestrichen = abgeschlossen(e);
+                    const gestrichen = eintragGestrichen(top, e);
                     const spaet = istA && ampelFuer(e.termin, e.status) === 'ueberfaellig';
-                    const patch = (werte: Partial<Eintrag>) => eintragAendern(top.id, e.id, werte);
-                    const zusatz = (
-                      <Textfeld
-                        className="ps-zusatz"
-                        value={e.zusatz}
-                        onChange={(v) => patch({ zusatz: v })}
-                        placeholder="Ergänzung eintragen (wird im Protokoll blau dargestellt)"
-                        aria-label={`Ergänzung ${nr}`}
-                      />
-                    );
+                    const patch = (werte: Partial<Eintrag>) => eintragAendern(top.id, e.id, (x) => ({ ...x, ...werte }));
+                    const uebernommen = e.zeilen.some((z) => z.vor);
+                    // Einzelne Zeilen lassen sich streichen, sobald der Eintrag mehr als eine hat.
+                    const mehrere = e.zeilen.filter((z) => z.text.trim()).length > 1;
+                    // Ergänzungsfeld, solange dieses Protokoll dem Eintrag noch keine Zeile angefügt hat
+                    const ergaenzen = e.zeilen.length === 0 || !!e.zeilen[e.zeilen.length - 1].vor;
+                    const zeileLoeschen = (z: Zeile, zi: number) => {
+                      const was = `Zeile ${zi + 1} von Eintrag ${nr}`;
+                      setLoeschen({
+                        was,
+                        schonGestrichen: z.entfaellt,
+                        streichen: () => {
+                          zeileAendern(top.id, e.id, z.id, { entfaellt: true });
+                          toast(`${was} durchgestrichen.`);
+                        },
+                        sofort: () => {
+                          eintragAendern(top.id, e.id, (x) => ({ ...x, zeilen: x.zeilen.filter((y) => y.id !== z.id) }));
+                          toast(`${was} gelöscht.`);
+                        },
+                      });
+                    };
+                    const wer = e.wer.trim();
+                    const werBekannt = !wer || zuordenbar.some((t) => zuordnung(t) === wer);
                     return (
                       <div key={e.id} className={`ps-eintrag ps-typ-${e.typ} ${gestrichen ? 'ps-gestrichen' : ''}`}>
                         <div className="ps-nr">{nr}</div>
@@ -617,61 +656,93 @@ export function ProtokollEditor({
                           ))}
                         </div>
                         <div className="ps-text">
-                          {e.vor && !korrektur.has(e.id) ? (
-                            <>
-                              <div className="ps-orig">
-                                <div className="ps-orig-text">{e.text || <span className="tertiary">ohne Text</span>}</div>
+                          {e.zeilen.map((z, zi) => {
+                            const herkunft = zeileHerkunft(z);
+                            const weg =
+                              mehrere && z.vor ? (
                                 <button
                                   type="button"
                                   className="btn-icon"
-                                  title="Ursprungstext korrigieren"
-                                  aria-label="Ursprungstext korrigieren"
-                                  onClick={() => {
-                                    setKorrektur((k) => new Set(k).add(e.id));
-                                    setFokus(`ps-e-${e.id}`);
-                                  }}
+                                  title="Zeile löschen"
+                                  aria-label={`Zeile ${zi + 1} von Eintrag ${nr} löschen`}
+                                  onClick={() => zeileLoeschen(z, zi)}
                                 >
-                                  <Icon name="bearbeiten" size={13} />
+                                  <Icon name="loeschen" size={13} />
                                 </button>
+                              ) : null;
+                            return (
+                              <div key={z.id} className={`ps-zeile ${z.entfaellt ? 'ps-zeile-gestrichen' : ''}`}>
+                                {z.vor && !korrektur.has(z.id) ? (
+                                  <div className="ps-orig">
+                                    <div className="ps-orig-text">{z.text || <span className="tertiary">ohne Text</span>}</div>
+                                    <button
+                                      type="button"
+                                      className="btn-icon"
+                                      title="Zeile korrigieren"
+                                      aria-label={`Zeile ${zi + 1} von Eintrag ${nr} korrigieren`}
+                                      onClick={() => {
+                                        setKorrektur((k) => new Set(k).add(z.id));
+                                        setFokus(`ps-z-${z.id}`);
+                                      }}
+                                    >
+                                      <Icon name="bearbeiten" size={13} />
+                                    </button>
+                                    {weg}
+                                  </div>
+                                ) : (
+                                  <div className="ps-zeile-feld">
+                                    <Textfeld
+                                      id={`ps-z-${z.id}`}
+                                      className={!z.vor && uebernommen ? 'ps-zusatz' : ''}
+                                      value={z.text}
+                                      onChange={(v) => zeileAendern(top.id, e.id, z.id, { text: v })}
+                                      placeholder={uebernommen ? 'Ergänzung eintragen' : `${EINTRAG_TYP_LABEL[e.typ]} eintragen`}
+                                      aria-label={uebernommen ? `Ergänzung ${nr}` : `Inhalt ${nr}`}
+                                    />
+                                    {weg}
+                                  </div>
+                                )}
+                                {herkunft || z.entfaellt ? (
+                                  <span className="ps-herkunft">
+                                    {herkunft}
+                                    {herkunft && z.entfaellt ? ' · ' : ''}
+                                    {z.entfaellt ? (
+                                      <button
+                                        type="button"
+                                        className="ps-link"
+                                        onClick={() => zeileAendern(top.id, e.id, z.id, { entfaellt: false })}
+                                      >
+                                        Wiederherstellen
+                                      </button>
+                                    ) : null}
+                                  </span>
+                                ) : null}
                               </div>
-                              {zusatz}
-                            </>
-                          ) : (
-                            <>
-                              <Textfeld
-                                id={`ps-e-${e.id}`}
-                                value={e.text}
-                                onChange={(v) => patch({ text: v })}
-                                placeholder={`${EINTRAG_TYP_LABEL[e.typ]} eintragen`}
-                                aria-label={`Inhalt ${nr}`}
-                              />
-                              {e.vor ? <div style={{ marginTop: 6 }}>{zusatz}</div> : null}
-                            </>
-                          )}
-                          {e.herkunft ? (
-                            <span className="ps-herkunft">{gross(herkunftText(e))}</span>
-                          ) : (
-                            <span className="ps-neu">Neu in diesem Protokoll</span>
-                          )}
-                          {gestrichen ? (
-                            <span className="ps-streich-hinweis">
-                              {e.entfaellt ? 'Gestrichen' : 'Erledigt'} –{' '}
-                              {letztmalig(e)
-                                ? 'hier letztmalig aufgeführt, im Folgeprotokoll entfällt der Eintrag'
-                                : 'im Druck blau durchgestrichen, im Folgeprotokoll noch einmal aufgeführt, danach entfällt er'}
-                              {e.entfaellt ? (
-                                <>
-                                  {' · '}
-                                  <button type="button" className="ps-link" onClick={() => patch({ entfaellt: false })}>
-                                    Wiederherstellen
-                                  </button>
-                                </>
-                              ) : null}
-                            </span>
+                            );
+                          })}
+                          {ergaenzen ? (
+                            <Textfeld
+                              id={`ps-zneu-${e.id}`}
+                              className="ps-zusatz"
+                              value=""
+                              onChange={(v) => {
+                                // Kennung vorab, damit die neue Zeile den Fokus übernehmen kann.
+                                const id = newId('z');
+                                eintragAendern(top.id, e.id, (x) => ({ ...x, zeilen: [...x.zeilen, neueZeile(v, id)] }));
+                                setFokus(`ps-z-${id}`);
+                              }}
+                              placeholder="Ergänzung eintragen"
+                              aria-label={`Ergänzung ${nr}`}
+                            />
+                          ) : null}
+                          {e.entfaellt ? (
+                            <button type="button" className="ps-link ps-wieder" onClick={() => patch({ entfaellt: false })}>
+                              Wiederherstellen
+                            </button>
                           ) : null}
                           {e.lopPunktId ? (
                             <span className="ps-lop-hinweis">
-                              In die LOP übernommen (Nr. {lopNr(e.lopPunktId)}) – nur intern, nicht im Druck ·{' '}
+                              In die LOP übernommen (Nr. {lopNr(e.lopPunktId)}) ·{' '}
                               <button
                                 type="button"
                                 className="ps-link"
@@ -688,14 +759,21 @@ export function ProtokollEditor({
                           ) : null}
                         </div>
                         <div className="ps-wer">
-                          <input
-                            className="input ps-kompakt"
-                            list={listeId}
-                            value={e.wer}
+                          <select
+                            className={`select ps-kompakt ${wer ? '' : 'ps-leer-wahl'}`}
+                            value={wer}
                             onChange={(ev) => patch({ wer: ev.target.value })}
-                            placeholder={istA ? 'Verantw.' : 'Wer'}
                             aria-label={istA ? 'Verantwortlich' : 'Beteiligt'}
-                          />
+                            title={zuordenbar.find((t) => zuordnung(t) === wer)?.name || undefined}
+                          >
+                            <option value="">{istA ? 'Verantw.' : 'Wer'}</option>
+                            {zuordenbar.map((t) => (
+                              <option key={t.id} value={zuordnung(t)}>
+                                {[t.kuerzel.trim(), t.name.trim()].filter(Boolean).join(' – ')}
+                              </option>
+                            ))}
+                            {werBekannt ? null : <option value={wer}>{wer}</option>}
+                          </select>
                         </div>
                         {istA ? (
                           <>
@@ -708,7 +786,7 @@ export function ProtokollEditor({
                                 aria-label="Termin"
                               />
                             </div>
-                            {e.entfaellt ? (
+                            {e.entfaellt || top.entfaellt ? (
                               <span className="ps-haken ps-st">entfällt</span>
                             ) : (
                               <label
@@ -727,19 +805,39 @@ export function ProtokollEditor({
                         ) : (
                           <>
                             <div className="ps-termin" />
-                            {e.entfaellt ? <span className="ps-haken ps-st">entfällt</span> : <div className="ps-st" />}
+                            {e.entfaellt || top.entfaellt ? (
+                              <span className="ps-haken ps-st">entfällt</span>
+                            ) : (
+                              <div className="ps-st" />
+                            )}
                           </>
                         )}
                         <button
                           type="button"
                           className="btn-icon ps-weg"
-                          title="Aus dem Protokoll löschen"
+                          title="Eintrag löschen"
                           aria-label={`Eintrag ${nr} löschen`}
-                          onClick={() =>
-                            e.text.trim() || e.zusatz.trim()
-                              ? setEintragLoeschen({ top, eintrag: e, nr })
-                              : topAendern(top.id, (t) => ({ ...t, eintraege: t.eintraege.filter((x) => x.id !== e.id) }))
-                          }
+                          onClick={() => {
+                            const entfernen = () =>
+                              topAendern(top.id, (t) => ({ ...t, eintraege: t.eintraege.filter((x) => x.id !== e.id) }));
+                            // Ein leerer neuer Eintrag hinterlässt nichts, was durchzustreichen wäre.
+                            if (!e.vor && !e.zeilen.some((z) => z.text.trim())) {
+                              entfernen();
+                              return;
+                            }
+                            setLoeschen({
+                              was: `Eintrag ${nr}`,
+                              schonGestrichen: e.entfaellt,
+                              streichen: () => {
+                                patch({ entfaellt: true });
+                                toast(`Eintrag ${nr} durchgestrichen.`);
+                              },
+                              sofort: () => {
+                                entfernen();
+                                toast(`Eintrag ${nr} gelöscht.`);
+                              },
+                            });
+                          }}
                         >
                           <Icon name="loeschen" size={14} />
                         </button>
@@ -757,7 +855,7 @@ export function ProtokollEditor({
                       onClick={() => {
                         const e = neuerEintrag(k);
                         topAendern(top.id, (t) => ({ ...t, eintraege: [...t.eintraege, e] }));
-                        setFokus(`ps-e-${e.id}`);
+                        setFokus(`ps-z-${e.zeilen[0].id}`);
                       }}
                     >
                       <Icon name="plus" size={12} /> {EINTRAG_TYP_LABEL[k]}
@@ -829,35 +927,7 @@ export function ProtokollEditor({
         />
       ) : null}
 
-      {topLoeschen ? (
-        <ConfirmDialog
-          titel="TOP löschen?"
-          text={`„${topLoeschen.titel || 'Ohne Titel'}“ mit ${topLoeschen.eintraege.length} ${
-            topLoeschen.eintraege.length === 1 ? 'Eintrag' : 'Einträgen'
-          } wird aus diesem Protokoll entfernt.`}
-          onConfirm={() => aendern((x) => ({ ...x, tops: x.tops.filter((t) => t.id !== topLoeschen.id) }))}
-          onClose={() => setTopLoeschen(null)}
-        />
-      ) : null}
-
-      {eintragLoeschen ? (
-        <EintragLoeschenDialog
-          nr={eintragLoeschen.nr}
-          schonGestrichen={eintragLoeschen.eintrag.entfaellt}
-          onStreichen={() => {
-            eintragAendern(eintragLoeschen.top.id, eintragLoeschen.eintrag.id, { entfaellt: true });
-            toast(`Eintrag ${eintragLoeschen.nr} durchgestrichen.`);
-          }}
-          onSofort={() => {
-            topAendern(eintragLoeschen.top.id, (t) => ({
-              ...t,
-              eintraege: t.eintraege.filter((x) => x.id !== eintragLoeschen.eintrag.id),
-            }));
-            toast(`Eintrag ${eintragLoeschen.nr} gelöscht.`);
-          }}
-          onClose={() => setEintragLoeschen(null)}
-        />
-      ) : null}
+      {loeschen ? <LoeschenDialog auftrag={loeschen} onClose={() => setLoeschen(null)} /> : null}
     </div>
   );
 }
@@ -1033,15 +1103,15 @@ function LopUebernahmeDialog({
       <div className="stack" style={{ gap: 10 }}>
         <p className="small muted">
           Die Aufgaben bleiben im Protokoll unverändert und gehen wie gewohnt in Folgeprotokolle über. Der Verweis auf die
-          LOP ist nur intern sichtbar – nicht im Druck, in der Live-Druckansicht oder im kopierten Text. „Erledigt“ wird
-          zwischen Protokoll und LOP abgeglichen.
+          LOP ist nur intern sichtbar – nicht im Druck oder in der Live-Druckansicht. „Erledigt“ wird zwischen Protokoll
+          und LOP abgeglichen.
         </p>
         <div className="ps-auswahl">
           {aufgaben.map((a) => (
             <label key={a.eintrag.id}>
               <input type="checkbox" checked={gewaehlt.has(a.eintrag.id)} onChange={() => umschalten(a.eintrag.id)} />
               <span className="ps-auswahl-text">
-                <strong>{a.nr}</strong> <span className="ps-zweizeilig">{volltext(a.eintrag) || 'ohne Text'}</span>
+                <strong>{a.nr}</strong> <span className="ps-zweizeilig">{eintragText(a.eintrag) || 'ohne Text'}</span>
                 <span className="small tertiary">
                   {a.eintrag.wer ? `${a.eintrag.wer} · ` : ''}
                   {a.eintrag.termin ? `${formatDate(a.eintrag.termin)} · ` : ''}
@@ -1057,26 +1127,16 @@ function LopUebernahmeDialog({
 }
 
 /**
- * Eintrag aus dem Protokoll löschen. Standard ist das Durchstreichen: Der
- * Eintrag steht in diesem Protokoll blau durchgestrichen, im Folgeprotokoll
- * noch einmal und entfällt danach. „Sofort löschen“ entfernt ihn ohne Spur.
+ * TOP, Eintrag oder Zeile aus dem Protokoll löschen. Standard ist das
+ * Durchstreichen: Es steht in diesem Protokoll blau durchgestrichen, im
+ * Folgeprotokoll noch einmal und entfällt danach. „Sofort löschen“ entfernt es
+ * ohne Spur.
  */
-function EintragLoeschenDialog({
-  nr,
-  schonGestrichen,
-  onStreichen,
-  onSofort,
-  onClose,
-}: {
-  nr: string;
-  schonGestrichen: boolean;
-  onStreichen: () => void;
-  onSofort: () => void;
-  onClose: () => void;
-}) {
+function LoeschenDialog({ auftrag, onClose }: { auftrag: Loeschen; onClose: () => void }) {
+  const { was, umfang, schonGestrichen } = auftrag;
   return (
     <Modal
-      titel={schonGestrichen ? `Eintrag ${nr} sofort löschen?` : `Eintrag ${nr} aus dem Protokoll löschen?`}
+      titel={schonGestrichen ? `${was} sofort löschen?` : `${was} aus dem Protokoll löschen?`}
       onClose={onClose}
       footer={
         <>
@@ -1085,7 +1145,7 @@ function EintragLoeschenDialog({
             className={schonGestrichen ? 'btn btn-primary' : 'btn btn-danger'}
             style={schonGestrichen ? { background: 'var(--red)' } : undefined}
             onClick={() => {
-              onSofort();
+              auftrag.sofort();
               onClose();
             }}
           >
@@ -1100,7 +1160,7 @@ function EintragLoeschenDialog({
               type="button"
               className="btn btn-primary"
               onClick={() => {
-                onStreichen();
+                auftrag.streichen();
                 onClose();
               }}
             >
@@ -1111,15 +1171,14 @@ function EintragLoeschenDialog({
       }
     >
       {schonGestrichen ? (
-        <p className="muted">Der Eintrag ist bereits durchgestrichen. „Sofort löschen“ entfernt ihn ohne Spur aus diesem Protokoll.</p>
+        <p className="muted">Bereits durchgestrichen. „Sofort löschen“ entfernt es ohne Spur aus diesem Protokoll.</p>
       ) : (
         <div className="stack" style={{ gap: 10 }}>
           <p className="muted">
-            <strong>Durchstreichen</strong> (Standard): Der Eintrag bleibt stehen und wird im Druck dieses Protokolls blau
-            durchgestrichen – der Text bleibt schwarz. Im Folgeprotokoll wird er noch einmal durchgestrichen aufgeführt
-            und danach nicht mehr.
+            <strong>Durchstreichen</strong> (Standard): bleibt im Druck dieses Protokolls blau durchgestrichen stehen, im
+            Folgeprotokoll noch einmal, danach entfällt es.{umfang ? ` ${umfang}` : ''}
           </p>
-          <p className="small tertiary">„Sofort löschen“ entfernt ihn ohne Spur aus diesem Protokoll.</p>
+          <p className="small tertiary">„Sofort löschen“ entfernt es ohne Spur aus diesem Protokoll.</p>
         </div>
       )}
     </Modal>

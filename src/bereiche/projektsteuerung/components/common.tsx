@@ -170,26 +170,3 @@ export function KuerzelListe({ id, beteiligte, funktionen }: { id: string; betei
     </datalist>
   );
 }
-
-/** Kopiert Text in die Zwischenablage; liefert, ob es gelang. */
-export async function kopieren(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const feld = document.createElement('textarea');
-    feld.value = text;
-    feld.style.position = 'fixed';
-    feld.style.opacity = '0';
-    document.body.appendChild(feld);
-    feld.select();
-    let ok = false;
-    try {
-      ok = document.execCommand('copy');
-    } catch {
-      ok = false;
-    }
-    feld.remove();
-    return ok;
-  }
-}

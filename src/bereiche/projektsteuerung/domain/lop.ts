@@ -5,16 +5,21 @@
  * abgeschlossenen Stand erledigt waren, wandern ins Archiv.
  */
 import { today } from '../../../shared/dates';
-import { volltext } from './protokoll';
 import { newId, type ID, type ISODate, type Lop, type LopPunkt, type LopThema, type Vorstand } from './types';
+
+/** Text und Ergänzung eines Punkts als ein Text. */
+export function volltext(p: { text: string; zusatz: string }): string {
+  return [p.text, p.zusatz]
+    .map((x) => (x || '').trim())
+    .filter(Boolean)
+    .join('\n');
+}
 
 export function leereLop(projektId: ID): Lop {
   return {
     projektId,
     stand: 1,
     standDatum: today(),
-    aufgestelltVon: null,
-    hinweis: '',
     themen: [neuesThema('Allgemeines')],
     punkte: [],
     naechsteNr: 1,
@@ -38,6 +43,7 @@ export function punktAnfuegen(lop: Lop, themaId: ID, werte: Partial<LopPunkt> = 
     termin: '',
     status: 'offen',
     erledigtAm: '',
+    bemerkung: '',
     herkunft: '',
     erfasst: today(),
     vor: null,
@@ -79,7 +85,7 @@ export const insArchiv = (lop: Lop): number =>
   lop.punkte.filter((p) => p.archiviertAb === null && p.status === 'erledigt').length;
 
 /**
- * Schließt den aktuellen Stand ab und beginnt den nächsten: Ergänzungen gehen
+ * Schließt den aktuellen Stand ab und beginnt den nächsten: Fortschreibungen gehen
  * in den Text über, jeder Punkt merkt sich seinen Stand als Vergleich für den
  * Druck, erledigte Punkte wandern ins Archiv.
  */
@@ -92,7 +98,7 @@ export function fortschreiben(lop: Lop, datum: ISODate): Lop {
       ...p,
       text,
       zusatz: '',
-      vor: { text, wer: p.wer, termin: p.termin, status: p.status },
+      vor: { text, wer: p.wer, termin: p.termin, status: p.status, bemerkung: p.bemerkung },
       archiviertAb: p.status === 'erledigt' ? neuerStand : null,
     };
   });

@@ -4,7 +4,7 @@
  */
 import { addDays, today } from '../../../shared/dates';
 import { erledigen, leereLop, neuesThema } from './lop';
-import { folgeprotokoll, neuerEintrag, neuerTop, neueReihe, teilnehmerAus } from './protokoll';
+import { folgeprotokoll, neuerEintrag, neuerTop, neueReihe, neueZeile, teilnehmerAus } from './protokoll';
 import {
   DATEN_VERSION,
   STANDARD_BEARBEITER,
@@ -107,7 +107,7 @@ function person(
 }
 
 function eintrag(typ: EintragTyp, text: string, werte: Partial<Eintrag> = {}): Eintrag {
-  return { ...neuerEintrag(typ), text, ...werte };
+  return { ...neuerEintrag(typ), zeilen: [neueZeile(text)], ...werte };
 }
 
 function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokoll[] {
@@ -167,12 +167,14 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
   zweites.tops = zweites.tops.map((top) => ({
     ...top,
     eintraege: top.eintraege.map((e) => {
-      if (e.text.startsWith('Ausführungsplanung')) {
-        return { ...e, zusatz: 'Teil 1 übergeben, Teil 2 folgt.', termin: tag(4) };
+      const text = e.zeilen[0]?.text ?? '';
+      // Ergänzung als neue Zeile: im Druck blau, in Nr. 3 „aus Prot. 2“
+      if (text.startsWith('Ausführungsplanung')) {
+        return { ...e, zeilen: [...e.zeilen, neueZeile('Teil 1 übergeben, Teil 2 folgt.')], termin: tag(4) };
       }
-      if (e.text.startsWith('Bauzeitenplan')) return { ...e, status: 'erledigt' as const };
+      if (text.startsWith('Bauzeitenplan')) return { ...e, status: 'erledigt' as const };
       // Gestrichen: steht im Druck von Nr. 2 blau durchgestrichen, in Nr. 3 noch einmal
-      if (e.text.startsWith('Die Baustelleneinrichtung')) return { ...e, entfaellt: true };
+      if (text.startsWith('Die Baustelleneinrichtung')) return { ...e, entfaellt: true };
       return e;
     }),
   }));
@@ -182,7 +184,7 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
   return [vorher, zweites];
 }
 
-function demoLop(projektId: ID, aufgestelltVon: ID): Lop {
+function demoLop(projektId: ID): Lop {
   const planung = neuesThema('Planung');
   const genehmigung = neuesThema('Genehmigungen');
   const bau = neuesThema('Bauablauf');
@@ -198,6 +200,7 @@ function demoLop(projektId: ID, aufgestelltVon: ID): Lop {
       termin: '',
       status: 'offen',
       erledigtAm: '',
+      bemerkung: '',
       herkunft: '',
       erfasst: tag(-28),
       vor: null,
@@ -205,7 +208,7 @@ function demoLop(projektId: ID, aufgestelltVon: ID): Lop {
       ...werte,
     };
     return p.vor === null && werte.vor === undefined
-      ? { ...p, vor: { text: p.text, wer: p.wer, termin: p.termin, status: p.status } }
+      ? { ...p, vor: { text: p.text, wer: p.wer, termin: p.termin, status: p.status, bemerkung: p.bemerkung } }
       : p;
   };
   const punkte: LopPunkt[] = [
@@ -228,7 +231,11 @@ function demoLop(projektId: ID, aufgestelltVon: ID): Lop {
       termin: tag(-2),
       vor: { text: 'Ausführungsplanung Leit- und Sicherungstechnik vorlegen.', wer: 'LST', termin: tag(-9), status: 'offen' },
     }),
-    punkt(4, bau.id, 'Betra für den Einhub des Überbaus beantragen.', { wer: 'TPL', termin: tag(6) }),
+    punkt(4, bau.id, 'Betra für den Einhub des Überbaus beantragen.', {
+      wer: 'TPL',
+      termin: tag(6),
+      bemerkung: 'Vorlauf von sechs Wochen vor der Sperrpause beachten.',
+    }),
     {
       ...erledigen(
         punkt(5, bau.id, 'Umleitung des Straßenverkehrs mit der Stadt abstimmen.', { wer: 'AN', termin: tag(-1) }),
@@ -247,7 +254,6 @@ function demoLop(projektId: ID, aufgestelltVon: ID): Lop {
     ...leereLop(projektId),
     stand: 3,
     standDatum: tag(0),
-    aufgestelltVon,
     themen: [planung, genehmigung, bau],
     punkte,
     naechsteNr: 7,
@@ -293,7 +299,6 @@ export function seedDaten(): ProjektsteuerungDaten {
     person(p2.id, 'fn-op', 'Stefan', 'Braun', 'Planungsgruppe Nord', 'Herr'),
   ];
   const lop2 = leereLop(p2.id);
-  lop2.aufgestelltVon = zweite[1].id;
   lop2.punkte = [
     { text: 'Bestandsvermessung des Bahnsteigs beauftragen.', wer: 'PS', termin: tag(10) },
     { text: 'Leitungsbestand mit den Versorgern abstimmen.', wer: 'OP', termin: tag(-4) },
@@ -304,6 +309,7 @@ export function seedDaten(): ProjektsteuerungDaten {
     zusatz: '',
     status: 'offen' as const,
     erledigtAm: '',
+    bemerkung: '',
     herkunft: '',
     erfasst: tag(-6),
     vor: null,
@@ -320,6 +326,6 @@ export function seedDaten(): ProjektsteuerungDaten {
     projekte: [p1, p2],
     beteiligte: [...Object.values(b), ...zweite],
     protokolle: demoProtokolle(p1.id, b),
-    lops: [demoLop(p1.id, b.ps.id), lop2],
+    lops: [demoLop(p1.id), lop2],
   };
 }

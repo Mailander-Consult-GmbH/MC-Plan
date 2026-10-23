@@ -4,8 +4,8 @@
  * Zähler in der Seitenleiste.
  */
 import { diffDays, today } from '../../../shared/dates';
-import { aktivePunkte } from './lop';
-import { bezeichnung, protokollAufgaben, volltext } from './protokoll';
+import { aktivePunkte, volltext } from './lop';
+import { bezeichnung, eintragText, protokollAufgaben } from './protokoll';
 import {
   VORLAUF_TAGE,
   type Erledigung,
@@ -93,7 +93,7 @@ export function allePunkte(d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[]
         id: a.eintrag.id,
         protokollId: a.protokoll.id,
         fundstelle: `${bezeichnung(a.protokoll)}, Pkt. ${a.nr}`,
-        text: volltext(a.eintrag),
+        text: eintragText(a.eintrag),
         wer: a.eintrag.wer,
         termin: a.eintrag.termin,
         status: a.eintrag.status,
