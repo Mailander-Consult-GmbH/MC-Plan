@@ -624,7 +624,10 @@ function PlanDialog({
    * Ein abgebrochener Verzeichnislauf startet dagegen nicht von selbst neu.
    */
   const verzeichnisOhneLauf =
-    form.kind === 'plan' && eltern && verzeichnisGebuendelt(eltern) && !data.runs.some((r) => r.documentId === eltern.id)
+    form.kind === 'plan' &&
+    eltern &&
+    verzeichnisGebuendelt(eltern) &&
+    !data.runs.some((r) => r.documentId === eltern.id && !laufUeberfuehrt(r))
       ? eltern
       : undefined;
   const braucheLauf = Boolean(verzeichnisOhneLauf) || (!vorhandenerLauf && !laeuftMit && !verzeichnisEinzeln);

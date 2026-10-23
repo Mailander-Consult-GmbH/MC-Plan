@@ -111,14 +111,18 @@ export function PlanlaufDetail({
   const vorlauf = project.settings.erinnerungVorlaufTage;
   const abweichungen = run.steps.filter((s) => s.abweichung).length;
   const beendet = run.status !== 'laufend';
-  /** Frühere Läufe des Eintrags, die mit geändertem Workflow neu gestartet wurden. */
-  const vorherige = data.runs.filter(
-    (r) =>
-      r.documentId === run.documentId &&
-      r.id !== run.id &&
-      r.status === 'abgebrochen' &&
-      r.abbruchArt === 'neu_gestartet',
-  );
+  /**
+   * Die Kette der Neustarts vor diesem Lauf: rückwärts die neu gestarteten
+   * Läufe desselben Eintrags bis zum ersten anderen Lauf. Neue Läufe werden
+   * stets angehängt, die Reihenfolge im Bestand ist also die zeitliche.
+   */
+  const vorherige: PlanRun[] = [];
+  const position = data.runs.findIndex((x) => x.id === run.id);
+  for (const r of (position < 0 ? [] : data.runs.slice(0, position)).reverse()) {
+    if (r.documentId !== run.documentId) continue;
+    if (r.status !== 'abgebrochen' || r.abbruchArt !== 'neu_gestartet') break;
+    vorherige.unshift(r);
+  }
   /** Der Lauf, der nach einem Neustart an die Stelle dieses Laufs getreten ist. */
   const nachfolger =
     run.abbruchArt === 'neu_gestartet'
@@ -791,7 +795,10 @@ function NeustartDialog({
   const [steps, setSteps] = useState<ProcessTemplateStep[]>(() => vorlagenSchritte(anfang, newId));
   const [start, setStart] = useState(today());
   const [grund, setGrund] = useState('');
-  const [eingangSoll, setEingangSoll] = useState(doc?.eingangSoll ?? '');
+  // Ein vergangenes Eingang Soll machte den neuen Lauf sofort überfällig – dann leer lassen
+  const [eingangSoll, setEingangSoll] = useState(
+    doc?.eingangSoll && doc.eingangSoll >= today() ? doc.eingangSoll : '',
+  );
 
   const vorlage = vorlagen.find((t) => t.id === templateId);
   const fertig = run.steps.filter((s) => s.status === 'erledigt' || s.status === 'uebersprungen').length;
@@ -863,7 +870,10 @@ function NeustartDialog({
             <TextInput value={start} onChange={setStart} type="date" />
           </Field>
           {doc ? (
-            <Field label="Eingang Soll" hint="Soll-Termin des ersten Schritts; gilt für den Eintrag">
+            <Field
+              label="Eingang Soll"
+              hint="Soll-Termin des ersten Schritts; gilt für den Eintrag – leer: Termine ab dem Start"
+            >
               <TextInput value={eingangSoll} onChange={setEingangSoll} type="date" />
             </Field>
           ) : null}

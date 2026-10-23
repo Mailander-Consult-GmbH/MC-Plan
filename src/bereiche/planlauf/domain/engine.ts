@@ -171,6 +171,9 @@ export function recalcRun(
   project: Project | undefined,
   doc?: { eingangSoll: ISODate | null },
 ): PlanRun {
+  // Ein neu gestarteter Lauf bleibt zum Nachschlagen so stehen, wie er endete –
+  // ein neues Eingang Soll des Eintrags gilt nur noch für den neuen Lauf.
+  if (run.status === 'abgebrochen' && run.abbruchArt === 'neu_gestartet') return run;
   const arbeitstage = project?.settings.fristenInArbeitstagen ?? true;
   const feiertage = project?.settings.feiertage ?? [];
   return {
@@ -516,13 +519,16 @@ export function vorlagenSchritte(
 ): ProcessTemplateStep[] {
   if (!vorlage) return [];
   const idMap = new Map(vorlage.steps.map((s) => [s.id, neueId('ts')]));
+  const umbiegen = (ziel: ID | 'ende' | null) => (ziel === 'ende' || ziel === null ? ziel : (idMap.get(ziel) ?? null));
   return vorlage.steps.map((s) => ({
     ...s,
     id: idMap.get(s.id)!,
+    // „Weiter mit“ und Antwortziele zeigen auf die neuen IDs – sonst gingen Sprünge verloren
+    naechster: umbiegen(s.naechster),
     antworten: s.antworten.map((a) => ({
       ...a,
       id: neueId('ant'),
-      ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
+      ziel: umbiegen(a.ziel),
     })),
   }));
 }

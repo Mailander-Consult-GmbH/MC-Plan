@@ -380,6 +380,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       planlaufNeuStarten: (runId, neu) => {
         const alt = data.runs.find((r) => r.id === runId);
         if (!alt || alt.status !== 'laufend') return null;
+        const eintrag = data.documents.find((x) => x.id === alt.documentId);
         const id = newId('run');
         const heute = today();
         const grund = neu.grund.trim();
@@ -389,8 +390,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           documentId: alt.documentId,
           templateId: neu.templateId,
           templateName: neu.templateName,
-          name: alt.name,
-          index: alt.index,
+          name: eintrag ? planlaufName(eintrag) : alt.name,
+          index: eintrag ? eintrag.index : alt.index,
           start: neu.start,
           status: 'laufend',
           abbruchGrund: null,
