@@ -167,7 +167,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
       <Card>
         <CardHeader
           titel="Anmeldebedarf aus den Projekten"
-          sub={`Fristen laut Richtlinie für SKM, PzE und N-x in den nächsten ${data.einstellungen.bedarfVorschauTage} Tagen ohne Eintrag`}
+          sub={`Fristen laut Richtlinie für SKM, MKM und KM in den nächsten ${data.einstellungen.bedarfVorschauTage} Tagen ohne Eintrag`}
         />
         {bedarf.length === 0 ? (
           <EmptyState icon="check" titel="Kein Anmeldebedarf" text="In der Vorschau steht keine Anmeldung ohne Eintrag an." />

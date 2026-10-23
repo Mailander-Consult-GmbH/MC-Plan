@@ -4,12 +4,12 @@
  * direkt in der Zeile. Eine Zeile umfasst höchstens zwei Textzeilen; längere
  * Angaben werden gekürzt und stehen vollständig im Tooltip.
  */
-import { useState } from 'react';
-import { formatDate } from '../../../shared/dates';
+import { Fragment, useState } from 'react';
+import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Search } from '../../../shared/ui';
-import { AnmeldungDialog, type AnmeldungVorgabe } from '../components/AnmeldungDialog';
+import { AnmeldungDialog } from '../components/AnmeldungDialog';
 import { NachfolgerAuswahl, StatusBadge, TerminKompakt } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import { monitorExportieren } from '../domain/export';
@@ -17,22 +17,23 @@ import {
   ampelFuer,
   anmeldebedarf,
   bauzeitraumText,
+  naechsterMittwoch,
   terminfrist,
-  type BedarfPhase,
   type BedarfZelle,
+  type KkmZelle,
 } from '../domain/fristen';
 import {
   ANNEX_VII_LABEL,
   ERSTE_PHASE_LABEL,
+  PHASE_LABEL,
   PROJEKT_STATUS_LABEL,
   RIL_LABEL,
   type Anmeldung,
-  type AnmeldungsArt,
   type Projekt,
   type StatusZiel,
   type Workflow,
 } from '../domain/types';
-import { istAenderung, statusInfo, statusVon, workflowFuerArt } from '../domain/workflow';
+import { istAenderung, statusInfo, statusText, statusVon } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { ProjektDialog, PROJEKT_STATUS_TON } from './Projekte';
@@ -40,20 +41,12 @@ import { ProjektDialog, PROJEKT_STATUS_TON } from './Projekte';
 /** Kürzt einzeilig mit Auslassungspunkten – so bleibt jede Tabellenzeile bei höchstens zwei Textzeilen. */
 const EINZEILIG = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
 
-/** Neuanlage aus dem Anmeldebedarf: Art je Phase – der Workflow ergibt sich aus der Art. */
-const BEDARF_ART: Record<BedarfPhase, AnmeldungsArt> = {
-  skm: 'SKM',
-  pze: 'PzE',
-  'N-2': 'A_Vor_N-2',
-  'N-1': 'A_Vor_N-1',
-};
-
 export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigate: (r: Route) => void }) {
   const { data, deleteProjekt, toggleMarkiert } = useStore();
   const toast = useToast();
   const [bearbeiten, setBearbeiten] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
-  const [neu, setNeu] = useState<AnmeldungVorgabe | null>(null);
+  const [neu, setNeu] = useState(false);
   const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusZiel } | null>(null);
   const [suche, setSuche] = useState('');
 
@@ -144,10 +137,8 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
                 {projekt.ersterAnmeldetermin ? `ca. ${formatDate(projekt.ersterAnmeldetermin)}` : '–'}
                 <span className="tertiary small"> · {ERSTE_PHASE_LABEL[projekt.erstePhase]}</span>
               </dd>
-              <dt>Geplante Sperrzeit</dt>
-              <dd>
-                {formatDate(projekt.bauzeitVon)} – {formatDate(projekt.bauzeitBis)}
-              </dd>
+              <dt>Betroffene Fahrplanjahre</dt>
+              <dd>{projekt.fahrplanjahre.length > 0 ? projekt.fahrplanjahre.join(', ') : '–'}</dd>
               <dt>Inbetriebnahme</dt>
               <dd>{formatDate(projekt.inbetriebnahme)}</dd>
               {projekt.bemerkung ? (
@@ -164,10 +155,14 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
       <Card>
         <CardHeader
           titel="Anmeldebedarf je Fahrplanjahr"
-          sub="Aus Sperrzeit und erstem Anmeldetermin: ob eine Anmeldung zum nächsten SKM, PzE oder N-x fällig ist"
+          sub={`Je betroffenem Fahrplanjahr: ob eine Anmeldung zum nächsten SKM, MKM oder KM fällig ist; KKM: frühester Sperrbeginn bei Anmeldung zum nächsten Stichtag (Mittwoch, ${formatDate(naechsterMittwoch(today()))})`}
         />
         {bedarf.length === 0 ? (
-          <EmptyState icon="kalender" titel="Ohne Sperrzeit" text="Mit einer geplanten Sperrzeit lässt sich der Anmeldebedarf ablesen." />
+          <EmptyState
+            icon="kalender"
+            titel="Keine Fahrplanjahre gewählt"
+            text="Mit den betroffenen Fahrplanjahren des Projekts lässt sich der Anmeldebedarf ablesen."
+          />
         ) : (
           <div className="table-scroll">
             <table className="table">
@@ -177,6 +172,9 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
                   {bedarf[0].zellen.map((z) => (
                     <th key={z.phase}>{RIL_LABEL[z.phase]}</th>
                   ))}
+                  <th title="Frühester Sperrbeginn je Maßnahmenart bei Anmeldung zum nächsten Stichtag (Mittwoch)">
+                    {PHASE_LABEL.kkm}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -187,19 +185,12 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
                     </td>
                     {zeile.zellen.map((zelle) => (
                       <td key={zelle.phase}>
-                        <BedarfInhalt
-                          zelle={zelle}
-                          onOeffnen={oeffne}
-                          onAnlegen={() =>
-                            setNeu({
-                              workflowId: workflowFuerArt(data.workflows, BEDARF_ART[zelle.phase])?.id,
-                              art: BEDARF_ART[zelle.phase],
-                              fahrplanjahr: zelle.fahrplanjahr,
-                            })
-                          }
-                        />
+                        <BedarfInhalt zelle={zelle} onOeffnen={oeffne} />
                       </td>
                     ))}
+                    <td>
+                      <KkmInhalt zellen={zeile.kkm} onOeffnen={oeffne} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -215,7 +206,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
         </div>
         <div className="row wrap">
           <Search value={suche} onChange={setSuche} placeholder="ID, Bf/Strecke, Gewerk, Status …" />
-          <button type="button" className="btn btn-primary" onClick={() => setNeu({})}>
+          <button type="button" className="btn btn-primary" onClick={() => setNeu(true)}>
             <Icon name="plus" size={14} /> Neue Anmeldung
           </button>
         </div>
@@ -226,7 +217,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
           <EmptyState
             icon="kalender"
             titel="Noch keine Anmeldung"
-            text="Neu angelegt wird im ersten Status eines Workflows – SKM, PzE, Vorprozess oder unterjährig."
+            text="Neu angelegt wird im ersten Status eines Workflows – SKM, MKM, KM oder KKM."
           />
         </Card>
       ) : (
@@ -240,7 +231,6 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
               zeilen={zeilen}
               onOeffnen={oeffne}
               onWechsel={(anmeldung, nach) => setWechsel({ anmeldung, nach })}
-              onNeu={workflow.status.length > 0 ? () => setNeu({ workflowId: workflow.id }) : undefined}
             />
           ),
         )
@@ -252,9 +242,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
       ) : null}
 
       {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
-      {neu ? (
-        <AnmeldungDialog projekt={projekt} vorgabe={neu} onClose={() => setNeu(null)} />
-      ) : null}
+      {neu ? <AnmeldungDialog projekt={projekt} onClose={() => setNeu(false)} /> : null}
       {wechsel ? (
         <StatusWechselDialog anmeldung={wechsel.anmeldung} nach={wechsel.nach} onClose={() => setWechsel(null)} />
       ) : null}
@@ -277,15 +265,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
 }
 
 /** Inhalt einer Zelle des Anmeldebedarfs. */
-function BedarfInhalt({
-  zelle,
-  onOeffnen,
-  onAnlegen,
-}: {
-  zelle: BedarfZelle;
-  onOeffnen: (a: Anmeldung) => void;
-  onAnlegen: () => void;
-}) {
+function BedarfInhalt({ zelle, onOeffnen }: { zelle: BedarfZelle; onOeffnen: (a: Anmeldung) => void }) {
   const { data } = useStore();
   const datum = zelle.frist ? formatDate(zelle.frist) : '–';
   switch (zelle.zustand) {
@@ -293,7 +273,7 @@ function BedarfInhalt({
       return (
         <button type="button" className="link-btn small" onClick={() => onOeffnen(zelle.durch!)} title="Eintrag öffnen">
           <Badge ton="green">✓ {zelle.durch!.art}</Badge>
-          <div className="tertiary small">{statusVon(data.workflows, zelle.durch!.statusId).status.name}</div>
+          <div className="tertiary small">{statusText(statusVon(data.workflows, zelle.durch!.statusId))}</div>
         </button>
       );
     case 'faellig':
@@ -304,9 +284,6 @@ function BedarfInhalt({
           <div>
             bis <b>{datum}</b>
           </div>
-          <button type="button" className="btn btn-sm btn-outline" style={{ marginTop: 4 }} onClick={onAnlegen}>
-            <Icon name="plus" size={11} /> Anlegen
-          </button>
         </span>
       );
     case 'verstrichen':
@@ -328,6 +305,54 @@ function BedarfInhalt({
   }
 }
 
+/**
+ * KKM im Anmeldebedarf: je Maßnahmenart eine Zeile – ab wann die Sperrpause
+ * bei Anmeldung zum nächsten Stichtag frühestens sein kann, dahinter die
+ * vorhandenen unterjährigen Anmeldungen (abgelehnte ohne Haken).
+ */
+function KkmInhalt({ zellen, onOeffnen }: { zellen: KkmZelle[]; onOeffnen: (a: Anmeldung) => void }) {
+  const { data } = useStore();
+  return (
+    <div className="small" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 8, rowGap: 2 }}>
+      {zellen.map((z) => (
+        <Fragment key={z.art}>
+          <b>{z.art}</b>
+          <span>
+            {z.zustand === 'ganzesJahr' ? (
+              <span className="muted">ganzes Jahr</span>
+            ) : z.zustand === 'ab' ? (
+              <span>
+                ab <b>{formatDate(z.fruehestens)}</b>
+              </span>
+            ) : (
+              <span className="tertiary" title="Bei Anmeldung zum nächsten Stichtag ist in diesem Fahrplanjahr keine Sperrpause mehr möglich">
+                nicht mehr
+              </span>
+            )}
+            {z.eintraege.map((a) => {
+              const status = statusVon(data.workflows, a.statusId).status;
+              return (
+                <Fragment key={a.id}>
+                  <span className="tertiary"> · </span>
+                  <button
+                    type="button"
+                    className="link-btn small"
+                    onClick={() => onOeffnen(a)}
+                    title={`${a.anmeldeId || 'ohne ID'} – Eintrag öffnen`}
+                  >
+                    {status.art === 'abgelehnt' ? '' : '✓ '}
+                    {status.name}
+                  </button>
+                </Fragment>
+              );
+            })}
+          </span>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
 /** Anmeldungen eines Workflows – Spalten Anmeldung, Maßnahmenart, Sperrzeitraum, Status, Terminfrist. */
 function AnmeldungenTabelle({
   titel,
@@ -335,14 +360,12 @@ function AnmeldungenTabelle({
   zeilen,
   onOeffnen,
   onWechsel,
-  onNeu,
 }: {
   titel: string;
   anzahl: number;
   zeilen: Anmeldung[];
   onOeffnen: (a: Anmeldung) => void;
   onWechsel: (a: Anmeldung, nach: StatusZiel) => void;
-  onNeu?: () => void;
 }) {
   const { data } = useStore();
   return (
@@ -350,13 +373,6 @@ function AnmeldungenTabelle({
       <CardHeader
         titel={titel}
         sub={anzahl === 0 ? 'keine Anmeldung' : `${anzahl} ${anzahl === 1 ? 'Anmeldung' : 'Anmeldungen'}`}
-        actions={
-          onNeu ? (
-            <button type="button" className="btn btn-sm btn-outline" onClick={onNeu} title={`Neue Anmeldung in ${titel}`}>
-              <Icon name="plus" size={13} /> Anmeldung
-            </button>
-          ) : null
-        }
       />
       {/* Ohne Anmeldung bleibt es bei der Kopfzeile, damit leere Workflows wenig Platz brauchen. */}
       {zeilen.length === 0 ? null : (

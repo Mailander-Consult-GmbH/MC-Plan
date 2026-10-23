@@ -2,10 +2,18 @@
  * Einstellungen des Bereichs: Fristen laut Richtlinie, Ampel, Nachhak-Termin
  * und Vorschau des Anmeldebedarfs. Änderungen gelten sofort.
  */
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Badge, Callout, Card, CardHeader, Field, Select } from '../../../shared/ui';
 import { rilFristText } from '../domain/fristen';
-import { RIL_LABEL, RIL_SCHLUESSEL, type RilFrist } from '../domain/types';
+import {
+  PHASE_LABEL,
+  RIL_KUERZEL,
+  RIL_LABEL,
+  RIL_PHASE_HINWEIS,
+  RIL_SCHLUESSEL,
+  rilFristenNachPhase,
+  type RilFrist,
+} from '../domain/types';
 import { useStore } from '../store/store';
 
 /** Zahlenfeld, das erst gültige Werte übernimmt – so lässt es sich auch leeren und neu tippen. */
@@ -61,7 +69,7 @@ export function Einstellungen() {
       <Card>
         <CardHeader
           titel="Fristen laut Richtlinie"
-          sub="Grundlage der Terminfristen: Ril_skm, Ril_pze, Ril_Nx (N-2/N-1), Ril_A und Ril_X je Maßnahme"
+          sub="Grundlage der Terminfristen „Frist laut Richtlinie“ in den Workflows – gegliedert nach Phase"
         />
         {platzhalter > 0 ? (
           <div className="card-pad" style={{ paddingBottom: 0 }}>
@@ -83,69 +91,79 @@ export function Einstellungen() {
               </tr>
             </thead>
             <tbody>
-              {RIL_SCHLUESSEL.map((s) => {
-                const f = e.rilFristen[s];
-                const setze = (patch: Partial<RilFrist>) => setRilFrist(s, patch);
-                return (
-                  <tr key={s}>
-                    <td>
-                      <strong>{RIL_LABEL[s]}</strong>
-                    </td>
-                    <td>
-                      <Select
-                        value={f.bezug}
-                        onChange={(v) => setze({ bezug: v as RilFrist['bezug'] })}
-                        options={[
-                          { value: 'stichtag', label: 'Stichtag im Fahrplanjahr' },
-                          { value: 'baubeginn', label: 'Wochen vor Sperrbeginn' },
-                        ]}
-                      />
-                    </td>
-                    <td>
-                      {f.bezug === 'stichtag' ? (
-                        <span className="row wrap" style={{ gap: 6 }}>
-                          <ZahlFeld label="Tag" wert={f.tag} min={1} max={31} breite={60} onChange={(n) => setze({ tag: n })} />
-                          <span className="tertiary">.</span>
-                          <ZahlFeld label="Monat" wert={f.monat} min={1} max={12} breite={60} onChange={(n) => setze({ monat: n })} />
-                          <span className="small muted">. im Jahr N −</span>
-                          <ZahlFeld
-                            label="Jahre vor dem Fahrplanjahr"
-                            wert={f.jahreVorher}
-                            min={0}
-                            max={10}
-                            breite={60}
-                            onChange={(n) => setze({ jahreVorher: n })}
-                          />
-                        </span>
-                      ) : (
-                        <span className="row" style={{ gap: 6 }}>
-                          <ZahlFeld
-                            label="Wochen vor Sperrbeginn"
-                            wert={f.wochenVorher}
-                            min={0}
-                            max={260}
-                            onChange={(n) => setze({ wochenVorher: n })}
-                          />
-                          <span className="small muted">Wochen</span>
-                        </span>
-                      )}
-                    </td>
-                    <td className="small muted">{rilFristText(f)}</td>
-                    <td className="actions">
-                      {f.platzhalter ? (
-                        <span className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
-                          <Badge ton="orange">Platzhalter</Badge>
-                          <button type="button" className="btn btn-sm btn-outline" onClick={() => setze({ platzhalter: false })}>
-                            Geprüft
-                          </button>
-                        </span>
-                      ) : (
-                        <Badge ton="green">geprüft</Badge>
-                      )}
+              {rilFristenNachPhase().map(({ phase, schluessel }) => (
+                <Fragment key={phase}>
+                  <tr className="gruppe-zeile">
+                    <td colSpan={5}>
+                      <strong>{PHASE_LABEL[phase]}</strong>
+                      <span className="small muted"> · {RIL_PHASE_HINWEIS[phase]}</span>
                     </td>
                   </tr>
-                );
-              })}
+                  {schluessel.map((s) => {
+                    const f = e.rilFristen[s];
+                    const setze = (patch: Partial<RilFrist>) => setRilFrist(s, patch);
+                    return (
+                      <tr key={s}>
+                        <td title={RIL_LABEL[s]}>
+                          <strong>{RIL_KUERZEL[s]}</strong>
+                        </td>
+                        <td>
+                          <Select
+                            value={f.bezug}
+                            onChange={(v) => setze({ bezug: v as RilFrist['bezug'] })}
+                            options={[
+                              { value: 'stichtag', label: 'Stichtag im Fahrplanjahr' },
+                              { value: 'baubeginn', label: 'Wochen vor Sperrbeginn' },
+                            ]}
+                          />
+                        </td>
+                        <td>
+                          {f.bezug === 'stichtag' ? (
+                            <span className="row wrap" style={{ gap: 6 }}>
+                              <ZahlFeld label="Tag" wert={f.tag} min={1} max={31} breite={60} onChange={(n) => setze({ tag: n })} />
+                              <span className="tertiary">.</span>
+                              <ZahlFeld label="Monat" wert={f.monat} min={1} max={12} breite={60} onChange={(n) => setze({ monat: n })} />
+                              <span className="small muted">. im Jahr N −</span>
+                              <ZahlFeld
+                                label="Jahre vor dem Fahrplanjahr"
+                                wert={f.jahreVorher}
+                                min={0}
+                                max={10}
+                                breite={60}
+                                onChange={(n) => setze({ jahreVorher: n })}
+                              />
+                            </span>
+                          ) : (
+                            <span className="row" style={{ gap: 6 }}>
+                              <ZahlFeld
+                                label="Wochen vor Sperrbeginn"
+                                wert={f.wochenVorher}
+                                min={0}
+                                max={260}
+                                onChange={(n) => setze({ wochenVorher: n })}
+                              />
+                              <span className="small muted">Wochen</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="small muted">{rilFristText(f)}</td>
+                        <td className="actions">
+                          {f.platzhalter ? (
+                            <span className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
+                              <Badge ton="orange">Platzhalter</Badge>
+                              <button type="button" className="btn btn-sm btn-outline" onClick={() => setze({ platzhalter: false })}>
+                                Geprüft
+                              </button>
+                            </span>
+                          ) : (
+                            <Badge ton="green">geprüft</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>
@@ -166,7 +184,7 @@ export function Einstellungen() {
             </Field>
             <Field
               label="Anmeldebedarf – Vorschau (Tage)"
-              hint="So weit im Voraus erscheinen Fristen für SKM, PzE und N-x ohne Eintrag in Übersicht und Terminen."
+              hint="So weit im Voraus erscheinen Fristen für SKM, MKM und KM ohne Eintrag in Übersicht und Terminen."
             >
               <ZahlFeld
                 label="Tage"

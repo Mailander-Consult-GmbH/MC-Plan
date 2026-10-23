@@ -1,12 +1,13 @@
 /**
  * Anlegen und Bearbeiten einer baubetrieblichen Anmeldung. Neu angelegt wird
- * immer im ersten Status eines Workflows; der Status selbst ändert sich danach
- * nur noch über den Workflow.
+ * immer im ersten Status eines Workflows; ein Auswahlfeld, nach Phase
+ * gegliedert, legt Workflow und Maßnahmenart zugleich fest. Der Status ändert
+ * sich danach nur noch über den Workflow.
  */
 import { useState } from 'react';
 import { formatDate, today } from '../../../shared/dates';
 import { useToast } from '../../../shared/toast';
-import { Callout, Field, Modal, Segmented, Select, TextArea, TextInput } from '../../../shared/ui';
+import { Callout, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
 import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon, ganzesFahrplanjahr } from '../domain/fristen';
 import {
   ANNEX_VII,
@@ -15,9 +16,8 @@ import {
   type AnnexVIIGrund,
   type ID,
   type Projekt,
-  type Workflow,
 } from '../domain/types';
-import { istAenderung, startbareWorkflows, statusVon, workflowFuerArt } from '../domain/workflow';
+import { NEUANLAGE_WORKFLOW, istAenderung, startbareWorkflows, statusVon } from '../domain/workflow';
 import { useStore } from '../store/store';
 import { StatusBadge } from './common';
 
@@ -41,54 +41,35 @@ export const ANNEX_OPTIONEN = ANNEX_VII.map((a) => ({
   label: a.selten ? `${a.label} (selten)` : a.label,
 }));
 
-/** Vorbelegung einer Neuanlage, etwa aus dem Anmeldebedarf des Projekts. */
-export interface AnmeldungVorgabe {
-  workflowId?: ID;
-  art?: AnmeldungsArt;
-  fahrplanjahr?: number;
-}
-
-/**
- * Sperrbeginn einer vorbelegten tagesscharfen Anmeldung: der Beginn der Sperrzeit
- * im vorgegebenen Fahrplanjahr, damit sich die Frist gleich berechnen lässt.
- */
-function vorgabeBaubeginn(projekt: Projekt, workflow: Workflow | undefined, vorgabe?: AnmeldungVorgabe): string {
-  if (!vorgabe?.fahrplanjahr || !workflow || ganzesFahrplanjahr(workflow)) return '';
-  const beginn = fahrplanjahrBeginn(vorgabe.fahrplanjahr);
-  return projekt.bauzeitVon && projekt.bauzeitVon > beginn ? projekt.bauzeitVon : beginn;
+/** Vorgabe für das Fahrplanjahr: das erste noch laufende betroffene, sonst das aktuelle. */
+function vorgabeFahrplanjahr(projekt: Projekt): number | null {
+  const jetzt = fahrplanjahrVon(today());
+  return projekt.fahrplanjahre.find((n) => !jetzt || n >= jetzt) ?? jetzt;
 }
 
 export function AnmeldungDialog({
   projekt,
   anmeldung,
-  vorgabe,
   onClose,
   onAngelegt,
 }: {
   projekt: Projekt;
   anmeldung?: Anmeldung;
-  vorgabe?: AnmeldungVorgabe;
   onClose: () => void;
   onAngelegt?: (id: ID) => void;
 }) {
   const { data, addAnmeldung, updateAnmeldung } = useStore();
   const toast = useToast();
   const startbar = startbareWorkflows(data.workflows);
-  // Neuanlage: vorgegebener Workflow, sonst der der unterjährigen Anmeldung (Art A_unterjahr)
-  const startWorkflow =
-    startbar.find((w) => w.id === vorgabe?.workflowId) ??
-    workflowFuerArt(startbar, 'A_unterjahr') ??
-    startbar[startbar.length - 1];
+  // Neuanlage: vorbelegt ist KKM (unterjährig)
+  const startWorkflow = startbar.find((w) => w.id === NEUANLAGE_WORKFLOW) ?? startbar[startbar.length - 1];
   const [form, setForm] = useState({
     workflowId: anmeldung ? statusVon(data.workflows, anmeldung.statusId).workflow.id : (startWorkflow?.id ?? ''),
     statusSeit: anmeldung?.statusSeit ?? today(),
-    art: (anmeldung?.art ??
-      (vorgabe?.art && startWorkflow?.arten.includes(vorgabe.art) ? vorgabe.art : startWorkflow?.arten[0]) ??
-      'A_unterjahr') as AnmeldungsArt,
+    art: (anmeldung?.art ?? startWorkflow?.arten[0] ?? 'A') as AnmeldungsArt,
     anmeldeId: anmeldung?.anmeldeId ?? '',
-    fahrplanjahr:
-      anmeldung?.fahrplanjahr ?? vorgabe?.fahrplanjahr ?? fahrplanjahrVon(projekt.bauzeitVon) ?? fahrplanjahrVon(today()),
-    bauVon: anmeldung?.bauVon ?? vorgabeBaubeginn(projekt, startWorkflow, vorgabe),
+    fahrplanjahr: anmeldung?.fahrplanjahr ?? vorgabeFahrplanjahr(projekt),
+    bauVon: anmeldung?.bauVon ?? '',
     bauBis: anmeldung?.bauBis ?? '',
     bfStrecke: anmeldung?.bfStrecke ?? '',
     gewerk: anmeldung?.gewerk ?? '',
@@ -104,10 +85,12 @@ export function AnmeldungDialog({
   const arten = [...new Set([...(workflow?.arten ?? []), ...(anmeldung ? [anmeldung.art] : [])])];
   const aenderung = !!anmeldung && istAenderung(data.workflows, anmeldung.statusId);
 
-  const workflowWaehlen = (id: ID) => {
-    const neu = data.workflows.find((w) => w.id === id);
+  /** Phase (Workflow) und Maßnahmenart aus einem Auswahlfeld: Wert „Workflow-ID|Art“. */
+  const phaseUndArtWaehlen = (wert: string) => {
+    const trenner = wert.lastIndexOf('|');
+    const neu = data.workflows.find((w) => w.id === wert.slice(0, trenner));
     if (!neu) return;
-    setForm((f) => ({ ...f, workflowId: id, art: neu.arten.includes(f.art) ? f.art : (neu.arten[0] ?? f.art) }));
+    setForm((f) => ({ ...f, workflowId: neu.id, art: wert.slice(trenner + 1) as AnmeldungsArt }));
   };
 
   const speichern = () => {
@@ -181,27 +164,29 @@ export function AnmeldungDialog({
         ) : (
           <>
             <Field
-              label="Workflow"
-              full
+              label="Phase und Maßnahmenart"
               hint={
                 workflow?.status[0]
-                  ? `Neu angelegt wird im ersten Status des Workflows: ${workflow.status[0].name}.`
+                  ? `Neu angelegt wird im ersten Status: ${workflow.kurz || workflow.name} · ${workflow.status[0].name}.`
                   : 'Der Workflow hat noch keinen Status.'
               }
             >
-              {startbar.length <= 5 ? (
-                <Segmented<ID>
-                  value={form.workflowId}
-                  onChange={workflowWaehlen}
-                  options={startbar.map((w) => ({ value: w.id, label: w.kurz || w.name }))}
-                />
-              ) : (
-                <Select
-                  value={form.workflowId}
-                  onChange={workflowWaehlen}
-                  options={startbar.map((w) => ({ value: w.id, label: w.name }))}
-                />
-              )}
+              <select
+                className="select"
+                value={`${form.workflowId}|${form.art}`}
+                aria-label="Phase und Maßnahmenart"
+                onChange={(e) => phaseUndArtWaehlen(e.target.value)}
+              >
+                {startbar.map((w) => (
+                  <optgroup key={w.id} label={w.name}>
+                    {w.arten.map((a) => (
+                      <option key={a} value={`${w.id}|${a}`}>
+                        {w.kurz || w.name} · {a}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
             </Field>
             <Field label="Im ersten Status seit">
               <TextInput type="date" value={form.statusSeit} onChange={(v) => set('statusSeit', v)} />
@@ -209,21 +194,23 @@ export function AnmeldungDialog({
           </>
         )}
 
-        <Field label="Maßnahmenart">
-          {arten.length <= 1 ? (
-            <TextInput value={arten[0] ?? form.art} onChange={() => undefined} disabled />
-          ) : (
-            <Select
-              value={form.art}
-              onChange={(v) => set('art', v as AnmeldungsArt)}
-              options={arten.map((a) => ({ value: a, label: a }))}
-            />
-          )}
-        </Field>
+        {anmeldung ? (
+          <Field label="Maßnahmenart">
+            {arten.length <= 1 ? (
+              <TextInput value={arten[0] ?? form.art} onChange={() => undefined} disabled />
+            ) : (
+              <Select
+                value={form.art}
+                onChange={(v) => set('art', v as AnmeldungsArt)}
+                options={arten.map((a) => ({ value: a, label: a }))}
+              />
+            )}
+          </Field>
+        ) : null}
 
         <Field
           label={ganzesJahr ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}
-          hint={ganzesJahr ? 'Vor dem Vorprozess gibt es noch keine Anmeldungen – Sammeleintrag nach Begriffen bzw. tVE-Nr.' : undefined}
+          hint={ganzesJahr ? 'Vor dem KM gibt es noch keine Anmeldungen – Sammeleintrag nach Begriffen bzw. tVE-Nr.' : undefined}
         >
           <TextInput
             value={form.anmeldeId}
