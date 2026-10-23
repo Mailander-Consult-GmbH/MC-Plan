@@ -1,0 +1,293 @@
+/**
+ * Datenmodell des Bereichs „Projektsteuerung“. Flache Listen, Verweise über
+ * IDs – wie im Planlaufmanagement, aber vollständig davon getrennt.
+ *
+ * Funktionen gelten projektübergreifend. Ein Projekt führt seine
+ * Projektbeteiligten (je Person eine Funktion), seine Protokolle und genau
+ * eine Liste offener Punkte (LOP).
+ */
+export type ID = string;
+/** Datum als JJJJ-MM-TT; leer = ohne Datum. */
+export type ISODate = string;
+
+/**
+ * Fassung des gespeicherten Bestands. Neue Felder sind optional oder werden in
+ * `migriere()` (store/storage.ts) nachgetragen – dann diese Zahl erhöhen.
+ */
+export const DATEN_VERSION = 1;
+
+/** Vorgabe für „Angemeldet als“. */
+export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
+
+/** So viele Tage vor dem Termin gilt ein offener Punkt als „demnächst fällig“. */
+export const VORLAUF_TAGE = 7;
+
+export type Farbmodus = 'standard' | 'kontrast';
+
+export interface Einstellungen {
+  /** Angemeldete Person; schlägt sich als Protokollführung neuer Protokollreihen nieder. */
+  bearbeiter: string;
+  farbmodus: Farbmodus;
+}
+
+/* ------------------------------------------------------------------ */
+/* Projekte, Funktionen, Projektbeteiligte                             */
+/* ------------------------------------------------------------------ */
+
+export type ProjektStatus = 'aktiv' | 'pausiert' | 'abgeschlossen';
+
+export const PROJEKT_STATUS_LABEL: Record<ProjektStatus, string> = {
+  aktiv: 'Aktiv',
+  pausiert: 'Pausiert',
+  abgeschlossen: 'Abgeschlossen',
+};
+
+/** Logo im Kopf von Protokoll und LOP. */
+export interface Logo {
+  id: ID;
+  name: string;
+  /** Bilddaten (data:…) oder ein Pfad unter `public/`, etwa `logos/Druck_DB_InfraGO.png`. */
+  src: string;
+}
+
+export interface Projekt {
+  id: ID;
+  nummer: string;
+  name: string;
+  status: ProjektStatus;
+  /** Markierte Projekte erscheinen in der Übersicht und in der Seitenleiste. */
+  markiert: boolean;
+  beschreibung: string;
+  /** Logos im Druckkopf; null = Standardlogos (`STANDARD_LOGOS`). */
+  logos: Logo[] | null;
+}
+
+/** Projektübergreifende Funktion, etwa „Bauüberwachung“. */
+export interface Funktion {
+  id: ID;
+  name: string;
+  kuerzel: string;
+  farbe: string;
+  beschreibung: string;
+}
+
+/** Person in der Projektbeteiligtenliste eines Projekts. */
+export interface Beteiligter {
+  id: ID;
+  projektId: ID;
+  /** Verweis auf eine projektübergreifende Funktion. */
+  funktionId: ID | null;
+  anrede: string;
+  vorname: string;
+  nachname: string;
+  firma: string;
+  /** Kürzel für Protokoll und LOP („Verantwortlich“); leer = Kürzel der Funktion. */
+  kuerzel: string;
+  email: string;
+  telefon: string;
+  mobil: string;
+  /** Straße, PLZ und Ort – mehrzeilig. */
+  anschrift: string;
+  notiz: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Protokolle                                                          */
+/* ------------------------------------------------------------------ */
+
+export const TEILNAHME = ['anwesend', 'entschuldigt', 'abwesend', 'nur Verteiler'] as const;
+export type Teilnahme = (typeof TEILNAHME)[number];
+
+/**
+ * Teilnehmende eines Protokolls. Kommt die Person aus der
+ * Projektbeteiligtenliste, verweist `beteiligterId` auf sie; Name, Funktion,
+ * Firma und Kürzel zieht der Store dann nach jeder Änderung nach. Ohne Verweis
+ * (Gast, gelöschte Person) bleiben die Angaben, wie sie sind.
+ */
+export interface Teilnehmer {
+  id: ID;
+  beteiligterId: ID | null;
+  name: string;
+  funktion: string;
+  firma: string;
+  kuerzel: string;
+  status: Teilnahme;
+}
+
+export type EintragTyp = 'I' | 'F' | 'A';
+
+export const EINTRAG_TYP_LABEL: Record<EintragTyp, string> = {
+  I: 'Information',
+  F: 'Festlegung',
+  A: 'Aufgabe',
+};
+
+export type Erledigung = 'offen' | 'erledigt';
+
+/** Stand eines Eintrags im Vorprotokoll bzw. in der letzten Fortschreibung der LOP. */
+export interface Vorstand {
+  typ?: EintragTyp;
+  text: string;
+  wer: string;
+  termin: ISODate;
+  status: Erledigung;
+}
+
+export interface Eintrag {
+  id: ID;
+  typ: EintragTyp;
+  text: string;
+  /** Ergänzung zu einem übernommenen Eintrag – im Druck blau. */
+  zusatz: string;
+  /** Verantwortlich (Aufgabe) bzw. Beteiligt; Kürzel oder Name. */
+  wer: string;
+  termin: ISODate;
+  status: Erledigung;
+  /** Fundstelle im Ursprungsprotokoll, z. B. „Prot. 2, Pkt. 1.3“; leer = neu. */
+  herkunft: string;
+  /** Folgeprotokoll, das diese Aufgabe weiterführt. */
+  uebernommenIn: ID | null;
+  /** Stand im Vorprotokoll; null = neu in diesem Protokoll. */
+  vor: Vorstand | null;
+}
+
+/** Tagesordnungspunkt. */
+export interface Top {
+  id: ID;
+  titel: string;
+  /** Titel im Vorprotokoll; null = neuer Punkt. */
+  vorTitel: string | null;
+  eintraege: Eintrag[];
+}
+
+export interface Protokoll {
+  id: ID;
+  projektId: ID;
+  /** Eine Reihe umfasst das erste Protokoll und alle Folgeprotokolle. */
+  reiheId: ID;
+  /** Besprechung, etwa „Baubesprechung“ oder „Jour fixe“. */
+  art: string;
+  nr: number;
+  datum: ISODate;
+  beginn: string;
+  ende: string;
+  ort: string;
+  /** Teilnehmende Person, die das Protokoll führt. */
+  fuehrerId: ID | null;
+  naechster: ISODate;
+  /** Zusätzlicher Verteiler (Freitext). */
+  verteiler: string;
+  /** Hinweis am Protokollende. */
+  hinweis: string;
+  teilnehmer: Teilnehmer[];
+  tops: Top[];
+  /** Zeitpunkt der letzten Änderung (ISO). */
+  geaendert: string;
+}
+
+/** Vorschläge für die Art der Besprechung. */
+export const BESPRECHUNG_VORSCHLAEGE = [
+  'Baubesprechung',
+  'Jour fixe',
+  'Planungsbesprechung',
+  'Projektbesprechung',
+  'Baustellenbegehung',
+  'BIM-Koordination',
+  'Abnahme',
+];
+
+export const STANDARD_HINWEIS =
+  'Einwände oder Ergänzungen zu diesem Protokoll bitte innerhalb von 7 Kalendertagen nach Erhalt schriftlich mitteilen. Andernfalls gilt das Protokoll als anerkannt.';
+
+/* ------------------------------------------------------------------ */
+/* Liste offener Punkte (LOP)                                          */
+/* ------------------------------------------------------------------ */
+
+export interface LopThema {
+  id: ID;
+  titel: string;
+  /** Titel bei der letzten Fortschreibung; null = neues Thema. */
+  vorTitel: string | null;
+}
+
+export interface LopPunkt {
+  id: ID;
+  /** Fortlaufende Nummer innerhalb der LOP – wird nie neu vergeben. */
+  nr: number;
+  themaId: ID;
+  text: string;
+  /** Ergänzung seit der letzten Fortschreibung – im Druck blau. */
+  zusatz: string;
+  wer: string;
+  termin: ISODate;
+  status: Erledigung;
+  erledigtAm: ISODate;
+  /** Woher der Punkt stammt, etwa „Baubesprechung Nr. 3“. */
+  herkunft: string;
+  /** Tag der Aufnahme in die LOP. */
+  erfasst: ISODate;
+  /** Stand bei der letzten Fortschreibung; null = seitdem neu. */
+  vor: Vorstand | null;
+  /** Stand, ab dem der erledigte Punkt im Archiv steht; null = in der Liste. */
+  archiviertAb: number | null;
+}
+
+export interface Lop {
+  projektId: ID;
+  /** Laufende Nummer des aktuellen Stands. */
+  stand: number;
+  standDatum: ISODate;
+  /** Projektbeteiligter, der die LOP aufstellt. */
+  aufgestelltVon: ID | null;
+  hinweis: string;
+  themen: LopThema[];
+  punkte: LopPunkt[];
+  /** Nummer, die der nächste neue Punkt erhält. */
+  naechsteNr: number;
+  /** Abgeschlossene Stände mit ihrem Datum. */
+  fortschreibungen: { stand: number; datum: ISODate }[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Gesamtbestand                                                       */
+/* ------------------------------------------------------------------ */
+
+export interface ProjektsteuerungDaten {
+  version: number;
+  einstellungen: Einstellungen;
+  funktionen: Funktion[];
+  projekte: Projekt[];
+  beteiligte: Beteiligter[];
+  protokolle: Protokoll[];
+  lops: Lop[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Hilfen                                                              */
+/* ------------------------------------------------------------------ */
+
+export function newId(prefix = 'id'): ID {
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Kürzel aus einer Bezeichnung: Anfangsbuchstaben der Wörter, bei einem
+ * einzelnen Wort dessen erste drei Buchstaben – höchstens vier Zeichen.
+ */
+export function kuerzelAus(name: string): string {
+  const woerter = name.trim().split(/[\s-]+/).filter(Boolean);
+  if (woerter.length === 0) return '';
+  const roh = woerter.length > 1 ? woerter.map((w) => w[0]).join('') : woerter[0].slice(0, 3);
+  return roh.slice(0, 4).toUpperCase();
+}
+
+/** „Vorname Nachname“ einer Person. */
+export function personName(b: { vorname: string; nachname: string }): string {
+  return `${b.vorname} ${b.nachname}`.trim();
+}
+
+/** Kürzel, unter dem eine Person in Protokoll und LOP geführt wird. */
+export function kuerzelVon(b: Beteiligter, funktionen: Funktion[]): string {
+  if (b.kuerzel.trim()) return b.kuerzel.trim();
+  return funktionen.find((f) => f.id === b.funktionId)?.kuerzel ?? '';
+}
