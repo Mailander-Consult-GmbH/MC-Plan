@@ -30,6 +30,8 @@ const paths: Record<string, string> = {
   hoch: 'M12 19V5M6 11l6-6 6 6',
   runter: 'M12 5v14M6 13l6 6 6-6',
   kopieren: 'M9 9h11v11H9zM15 9V4H4v11h5',
+  // Klemmbrett mit Textzeilen – Protokolle und Projektsteuerung
+  protokoll: 'M9 4.5H6.5v16h11v-16H15M9 3h6v3H9zM9.5 11h5M9.5 14.5h5M9.5 18h3',
 };
 
 export type IconName = keyof typeof paths;

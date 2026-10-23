@@ -1,6 +1,6 @@
 # KaPlan
 
-KaPlan gliedert sich in zwei getrennte Bereiche, zwischen denen der Startbildschirm wählt:
+KaPlan gliedert sich in drei getrennte Bereiche, zwischen denen der Startbildschirm wählt:
 
 * **Planlaufmanagement** – Verwaltungssoftware für Planläufe: Projekte,
   Planpakete/Pläne/Planverzeichnisse und die Prozessketten, die diese durchlaufen – mit
@@ -9,12 +9,16 @@ KaPlan gliedert sich in zwei getrennte Bereiche, zwischen denen der Startbildsch
   Sperrpausen: Projekte mit ihren Anmeldungen, die anpassbare Workflows je Phase durchlaufen –
   SKM, MKM, KM (n-2 & n-1) und KKM (unterjährig) – mit Terminfristen laut Richtlinie,
   Nachhak-Terminen und dem Anmeldebedarf je Fahrplanjahr.
+* **Projektsteuerung** (erster Entwurf) – je Projekt die Projektbeteiligtenliste mit
+  projektübergreifenden Funktionen, Besprechungsprotokolle mit Folgeprotokollen und eine laufend
+  fortgeschriebene Liste offener Punkte (LOP).
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
-Browser, eigene Einstellungen, eigener Router. Der Startbildschirm zeigt beide als Kacheln; in einem
+Browser, eigene Einstellungen, eigener Router. Der Startbildschirm zeigt sie als Kacheln; in einem
 Bereich führt **Bereich wechseln** unten in der Seitenleiste zurück. Der Abschnitt
-**Funktionsumfang** beschreibt das Planlaufmanagement, der Abschnitt
-[**Baubetriebsplanung**](#baubetriebsplanung) den zweiten Bereich.
+**Funktionsumfang** beschreibt das Planlaufmanagement, die Abschnitte
+[**Baubetriebsplanung**](#baubetriebsplanung) und [**Projektsteuerung**](#projektsteuerung) die
+beiden anderen Bereiche.
 
 Dieser Stand ist ein **lauffähiger Prototyp ohne Datenbank**: Alle Daten liegen lokal im Browser
 (`localStorage`). Die Anwendung ist responsiv und als PWA installierbar.
@@ -35,6 +39,8 @@ Die Logos von KaPlan liegen unter `public/logos/`:
 | `Logo_Startseite.png` | Startbildschirm (Bereichsauswahl), oben links |
 | `Logo_Planlaufmanagement.png` | Kopf der Menüleiste im Planlaufmanagement |
 | `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
+| `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
+| `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll, LOP und Beteiligtenliste der Projektsteuerung |
 | `Logo.png` | Symbol; daraus sind Favicons und App-Symbole unter `public/icons/` erzeugt |
 
 Zum Austauschen genügt es, die Datei unter gleichem Namen zu ersetzen; die Logos werden nur über
@@ -580,14 +586,113 @@ A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A. Aus der bisherigen geplanten Sper
 Projekts werden seine betroffenen Fahrplanjahre. Name unter „Angemeldet als“ und Farbmodus gelten
 nur in diesem Bereich.
 
+## Projektsteuerung
+
+Erster Entwurf für die externe Projektsteuerung. Aufbau und Gestaltung folgen dem
+Planlaufmanagement: Seitenleiste mit **Übersicht**, **Projekte** und **Funktionen**, darunter die
+markierten Projekte; im Projekt drei Seiten – **Projektbeteiligte**, **Protokolle** und **LOP**.
+Die Protokolle übernehmen die Funktionen des bisherigen eigenständigen Protokoll-Tools
+(HTML-Datei), in der Optik von KaPlan.
+
+### Funktionen
+Projektübergreifende Funktionen (Bezeichnung, Gewerk, Kürzel, Farbe, Beschreibung) – die Auswahl,
+aus der jede Person der Projektbeteiligtenliste ihre Funktion erhält. Gegliedert wie im
+Planlaufmanagement: eine Seite **Übergreifend** und je **Gewerk** eine eigene; „Fachplanung“ im
+Gewerk LST ist eine andere Funktion als „Fachplanung“ in OLA und erscheint überall als
+„Fachplanung LST“. Über das **+** an den Reitern entsteht ein Gewerk, **Vorhandene Funktion**
+übernimmt eine Funktion aus einem anderen Gewerk, **Gewerk … löschen** entfernt ein Gewerk samt
+seinen Funktionen. Mitgeliefert sind typische Funktionen einer DB-Baumaßnahme (übergreifend etwa
+Auftraggeber, Projektleitung, Teilprojektleitung, Projektsteuerung, Objektplanung, Bauüberwachung,
+Bauunternehmen, Prüfsachverständiger, Eisenbahn-Bundesamt; je Gewerk 50 Hz, KIB, LST, OLA und TK
+die Fachplanung, für LST und OLA zusätzlich die Bauüberwachung). Funktionen und Gewerke, die noch
+Projektbeteiligten zugeordnet sind, lassen sich nicht löschen.
+
+### Projektbeteiligte
+Aufgebaut wie die Seite **Funktion** im Planlaufmanagement, aber ohne leere Funktionen: Es stehen
+nur Personen in der Liste, je Person mit ihrer Funktion, Firma/Büro, Kürzel und Kontaktdaten.
+Beim Hinzufügen wird die Funktion aus einem Auswahlfeld gewählt, nach Gewerk gruppiert;
+**+ Neue Funktion anlegen …** legt dort gleich eine neue projektübergreifende Funktion an. Ohne
+eigenes Kürzel gilt das der Funktion. Reiter gliedern die Liste nach den Gewerken, die im Projekt
+vorkommen. Die Liste lässt sich drucken (PDF) und als Excel-Datei herunterladen.
+
+**Excel-Import** liest eine Liste (.xlsx oder .csv) mit den Spalten Funktion, Gewerk, Kürzel,
+Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift, Notiz; zwingend ist nur
+der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen). Die Vorschau nennt je Zeile, ob die
+Person neu ist oder aktualisiert wird (gleicher Name im Projekt) und ob Funktion oder Gewerk neu
+angelegt werden. **Vorlage** lädt eine leere Datei mit diesen Spalten; die Excel-Ausgabe der
+Beteiligtenliste hat dieselben Spalten und lässt sich so in ein anderes Projekt übernehmen.
+
+### Protokolle
+Je Besprechung (z. B. Baubesprechung, Jour fixe) eine **Protokollreihe**. Ein Protokoll besteht
+aus Kopfdaten (Besprechung, Nr., Datum, Beginn, Ende, Ort, nächster Termin, Protokollführung,
+zusätzlicher Verteiler), den **Teilnehmenden**, der **Tagesordnung** mit Einträgen vom Typ
+**I** (Information), **F** (Festlegung) und **A** (Aufgabe, mit Verantwortlich, Termin und
+Erledigt) und einem Hinweis am Ende.
+
+* **Teilnehmende** kommen aus der Projektbeteiligtenliste (**Aus Beteiligtenliste …**, auch mit
+  **Neue Person …**); Name, Funktion, Firma und Kürzel werden dort gepflegt und im Protokoll
+  nachgezogen. **Weitere Person** nimmt Gäste ohne Eintrag auf; über das Personensymbol lassen
+  sie sich nachträglich in die Projektbeteiligtenliste übernehmen. Die Protokollführung wird aus
+  den Teilnehmenden oder der Projektbeteiligtenliste gewählt; bei einer neuen Reihe übernimmt sie
+  die angemeldete Person, sofern ihr Name in der Projektbeteiligtenliste steht.
+* **Folgeprotokoll anlegen** übernimmt Kopfdaten, Teilnehmende und Tagesordnung, alle
+  Informationen und Festlegungen und die offenen Aufgaben (außer denen in der LOP); Datum ist der
+  „nächste Termin“. Der
+  Ursprungstext übernommener Einträge steht fest (✎ korrigiert ihn), Ergänzungen kommen in ein
+  eigenes Feld. Im Druck erscheinen neue und gegenüber dem Vorprotokoll geänderte Angaben **blau**.
+* **Druckansicht**, **Drucken / PDF** (Druckdialog des Browsers, „Als PDF speichern“), **Als Text
+  kopieren** und **Live-Druckansicht ↗** – ein eigenes Fenster, etwa für den zweiten Bildschirm in
+  der Besprechung, das jeder Eingabe folgt.
+* **In die LOP übernehmen**: Offene Aufgaben werden einzeln („→ In die LOP übernehmen“ am
+  Eintrag) oder gesammelt („Aufgaben in die LOP …“ über der Tagesordnung) zu neuen LOP-Punkten –
+  im Thema, das wie ihr Tagesordnungspunkt heißt (fehlt es, entsteht es), mit der Herkunft
+  „<Besprechung> Nr. n, Pkt. x.y“. Von da an verfolgt die LOP die Aufgabe: Sie geht nicht mehr in
+  Folgeprotokolle über und zählt in Übersicht und Aufgabenliste nur einmal. Im Protokoll und im
+  Druck steht „In die LOP übernommen (Nr. …)“; **Verknüpfung lösen** holt sie zurück ins Protokoll,
+  ebenso das Löschen des LOP-Punkts.
+* **Aufgaben aus den Protokollen**: alle Aufgaben des Projekts (je Aufgabe ihr jüngstes Vorkommen)
+  mit Filter nach Status, Verantwortlich und „nur überfällige“; abhaken direkt in der Liste.
+* **Logos im Druckkopf** je Projekt – Standard sind DB InfraGO und Mailänder Consult; eigene
+  Bilder werden verkleinert im Bestand gespeichert.
+* **Aus Protokoll-Tool** übernimmt Dateien des bisherigen Protokoll-Tools (`.protokoll` oder
+  dessen Sicherung `.json`) in das Projekt. Teilnehmende, deren Name in der
+  Projektbeteiligtenliste steht, werden mit ihr verknüpft; ein erneuter Import ersetzt die
+  Protokolle, statt sie zu verdoppeln.
+
+### LOP (Liste offener Punkte)
+Eine To-do-Liste je Projekt, die immer fortgeschrieben wird – aufgebaut wie ein Protokoll, mit
+Themen statt Tagesordnungspunkten. Jeder Punkt behält seine **Nummer** (sie wird nie neu
+vergeben) und führt Inhalt, Verantwortlich, Termin, Erledigt (mit Datum), Herkunft und Tag der
+Aufnahme. **Fortschreiben …** schließt den aktuellen Stand ab und beginnt den nächsten:
+Fortschreibungen gehen in den Text über, Punkte, die erledigt waren, wandern ins **Archiv** (von
+dort **Wieder aufnehmen**), und was sich danach ändert, erscheint im Druck **blau**. Ältere Stände
+werden nicht aufbewahrt – wer sie behalten will, druckt sie vorher. Dazu Filter (Suche, Status,
+Verantwortlich, nur überfällige), Druckansicht, Live-Druckansicht, Drucken / PDF und Excel (Blätter
+„LOP“ und „Archiv“).
+
+### Übersicht
+Kennzahlen (aktive Projekte, offene Punkte, überfällig, demnächst fällig – 7 Tage vorher) und die
+offenen Punkte aller markierten Projekte aus LOP und Protokollen, Überfälliges zuerst, mit
+**Erledigt** je Zeile; dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
+nächstem Termin und offenen bzw. überfälligen Punkten. Die Seitenleiste zählt die überfälligen
+Punkte je Projekt.
+
+### Daten
+Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
+mit Projektbeteiligten, zwei Protokollen und LOP), **Sicherung**/**Einspielen** (JSON mit dem
+Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
+Protokoll-Tools werden mit Hinweis abgewiesen) und **Zurücksetzen**. Stände der ersten Fassung
+erhalten beim Laden die mitgelieferten Gewerke; ihre Funktionen gelten als übergreifend. Name unter „Angemeldet als“
+und Farbmodus gelten nur in diesem Bereich.
+
 ## Aufbau des Codes
 
 Hinweise für die Arbeit am Code – was nach jeder Änderung nachzuziehen ist, wie gebaut und
 veröffentlicht wird und welche Randbedingungen gelten – stehen in [`CLAUDE.md`](CLAUDE.md).
 
-KaPlan besteht aus zwei getrennten Bereichen. Jeder Bereich bringt seinen eigenen Datenbestand,
+KaPlan besteht aus drei getrennten Bereichen. Jeder Bereich bringt seinen eigenen Datenbestand,
 seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen eigenen Router mit;
-die beiden greifen nicht aufeinander zu. Die Shell wählt anhand der ersten Wegmarke der Adresse
+die Bereiche greifen nicht aufeinander zu. Die Shell wählt anhand der ersten Wegmarke der Adresse
 aus, welcher Bereich geladen wird, und hängt ihn erst beim Betreten ein.
 
 ```
@@ -597,7 +702,7 @@ src/
     Shell.tsx    Wählt Bereichsauswahl oder Bereich
     Start.tsx    Startbildschirm mit den Bereichskacheln
     bereiche.ts  Verzeichnis der Bereiche
-    router.ts    #/ · #/planlauf/… · #/baubetrieb/…
+    router.ts    #/ · #/planlauf/… · #/baubetrieb/… · #/projektsteuerung/…
     BereichWechsel.tsx  Rückweg aus einem Bereich zur Bereichsauswahl
   shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
     ui.tsx       Karten, Felder, Dialoge, Segmented Controls …
@@ -645,6 +750,26 @@ src/
       lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
       pages/         Übersicht, Termine, Projekte, Projekt, Anmeldung, Workflows (mit Editor), Einstellungen
       components/    Status- und Fristanzeigen, Dialoge (Anmeldung, Statuswechsel, Nachhaken), Sicherung
+    projektsteuerung/  Bereich „Projektsteuerung“ (erster Entwurf)
+      index.tsx  Einstiegspunkt samt Datenbestand und Stylesheet des Bereichs
+      App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
+      projektsteuerung.css  Gestaltung des Bereichs (Klassen mit Präfix ps-, nur Design-Tokens)
+      domain/
+        types.ts     Datenmodell (Projekt, Funktion mit Gewerk, Beteiligter, Protokoll mit TOPs und Einträgen, LOP)
+        protokoll.ts Reihen, Folgeprotokoll, Aufgaben, Teilnehmende und LOP-Verweise nachziehen,
+                     Übernahme aus dem Protokoll-Tool
+        lop.ts       Punkte, Fortschreibung in Ständen, Archiv
+        lopUebernahme.ts  Aufgaben eines Protokolls als LOP-Punkte übernehmen
+        beteiligteImport.ts  Excel-/CSV-Import der Projektbeteiligten (Spalten, Abgleich von Funktionen)
+        punkte.ts    Offene Punkte aus LOP und Protokollen mit Ampel
+        druck.ts     Druckfassungen (Protokoll, LOP, Beteiligtenliste) samt Gestaltung und Live-Fenster
+        export.ts    Excel-Ausgaben (Projektbeteiligte, LOP)
+        seed.ts      Standard-Funktionen, Standardlogos und Demodaten
+      store/         storage.ts (Laden, Aufbereiten, Sicherung) und store.tsx (alle Schreibzugriffe)
+      lib/router.ts  Hash-Adressen unterhalb von #/projektsteuerung
+      pages/         Übersicht, Projekte, Funktionen, Projekt mit Projektbeteiligten, Protokollen
+                     (Liste und Editor) und LOP
+      components/    Dialoge (Person, Funktion, Gewerk), Excel-Import, Logos, Sicherung, Ampel, Live-Druckansicht
 ```
 
 Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden

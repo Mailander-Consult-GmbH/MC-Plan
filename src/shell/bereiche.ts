@@ -5,7 +5,7 @@
  */
 import type { IconName } from '../shared/icons';
 
-export type BereichId = 'planlauf' | 'baubetrieb';
+export type BereichId = 'planlauf' | 'baubetrieb' | 'projektsteuerung';
 
 export interface Bereich {
   id: BereichId;
@@ -33,6 +33,15 @@ export const BEREICHE: Bereich[] = [
     beschreibung:
       'Baubetriebliche Anmeldungen je Projekt durch anpassbare Workflows – SKM, MKM, KM und KKM – verfolgen, mit Terminfristen und Nachhak-Terminen.',
     icon: 'kalender',
+    marke: 'Erster Entwurf',
+  },
+  {
+    id: 'projektsteuerung',
+    titel: 'Projektsteuerung',
+    untertitel: 'Beteiligte, Protokolle und LOP',
+    beschreibung:
+      'Projektbeteiligte mit projektübergreifenden Funktionen führen, Besprechungen protokollieren und offene Punkte in einer fortgeschriebenen Liste verfolgen.',
+    icon: 'protokoll',
     marke: 'Erster Entwurf',
   },
 ];

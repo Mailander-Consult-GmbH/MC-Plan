@@ -2,8 +2,9 @@
 
 KaPlan ist eine React-19-/TypeScript-/Vite-Anwendung **ohne Server**; alle Daten liegen im
 `localStorage` des Browsers. Installierbar als PWA, veröffentlicht über GitHub Pages. Sie besteht
-aus zwei getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`) und
-**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, erster Entwurf). Überblick über Aufbau und
+aus drei getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`),
+**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, erster Entwurf) und **Projektsteuerung**
+(`src/bereiche/projektsteuerung/`, erster Entwurf). Überblick über Aufbau und
 Funktionen: `README.md`; belegtes Inventar aller Routen, Aktionen und Meldungen: `docs/INVENTAR.md`.
 
 ## Nach jeder Änderung nachziehen
@@ -43,7 +44,7 @@ ignoriert.
 ## Aufbau
 
 * `src/shell/` – Startbildschirm und Bereichswahl; die erste Wegmarke der Hash-Adresse
-  (`#/planlauf/…`, `#/baubetrieb/…`) bestimmt den Bereich. Ein neuer Bereich braucht einen
+  (`#/planlauf/…`, `#/baubetrieb/…`, `#/projektsteuerung/…`) bestimmt den Bereich. Ein neuer Bereich braucht einen
   Eintrag in `BereichId`/`BEREICHE` (`src/shell/bereiche.ts`) und in `src/shell/Shell.tsx`.
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
   `localStorage`-Schlüssel, eigenen Einstellungen und eigenem Router.
@@ -65,6 +66,19 @@ ignoriert.
   eigenem Schlüssel `baubetrieb-planung.data.v1`. Neue Felder dort über `DATEN_VERSION`
   (`baubetrieb/domain/types.ts`) und `migriere()` (`baubetrieb/store/storage.ts`). Die festen IDs
   der Standard-Status nicht ändern – `STATUS_AUS_NUMMER` ordnet ihnen ältere Stände zu.
+* `src/bereiche/projektsteuerung/` – gleich aufgebaut, Schlüssel `projektsteuerung.data.v1`:
+  `domain/types.ts` Datenmodell (projektübergreifende `Funktion`, `Beteiligter` mit `funktionId`,
+  `Protokoll`, je Projekt eine `Lop`), `domain/protokoll.ts` Reihen, Folgeprotokoll, Übernahme aus
+  dem Protokoll-Tool und `teilnehmerNachziehen` (läuft nach jedem `mutate()` und hält
+  Teilnehmende auf dem Stand der Projektbeteiligtenliste; ebenso `lopVerweiseNachziehen` für
+  Aufgaben, die in die LOP übernommen wurden), `domain/lop.ts` Fortschreibung und Archiv,
+  `domain/lopUebernahme.ts` Aufgaben als LOP-Punkte, `domain/beteiligteImport.ts` Excel-Import,
+  `domain/punkte.ts` offene Punkte und Ampel, `domain/druck.ts` Druckfassungen. Funktionen tragen
+  ein Gewerk (`null` = übergreifend); angezeigt wird stets `funktionsName`. Eigene
+  Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens). Neue Felder
+  über `DATEN_VERSION` (`projektsteuerung/domain/types.ts`) und `migriere()`
+  (`projektsteuerung/store/storage.ts`). IDs, die die Oberfläche braucht (Fokus, Navigation),
+  vor `mutate()` erzeugen – im StrictMode läuft die Änderungsfunktion doppelt.
 
 ## Randbedingungen
 
