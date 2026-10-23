@@ -93,8 +93,8 @@ export function Einstellungen() {
             <tbody>
               {rilFristenNachPhase().map(({ phase, schluessel }) => (
                 <Fragment key={phase}>
-                  <tr>
-                    <td colSpan={5} style={{ background: 'var(--fill-gruppe)' }}>
+                  <tr className="gruppe-zeile">
+                    <td colSpan={5}>
                       <strong>{PHASE_LABEL[phase]}</strong>
                       <span className="small muted"> · {RIL_PHASE_HINWEIS[phase]}</span>
                     </td>

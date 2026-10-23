@@ -32,7 +32,7 @@ import {
   type StatusZiel,
   type Workflow,
 } from '../domain/types';
-import { istAenderung, statusInfo, statusVon, workflowFuerArt } from '../domain/workflow';
+import { STANDARD_WORKFLOW_ID, istAenderung, statusInfo, statusText, statusVon, workflowFuerArt } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { ProjektDialog, PROJEKT_STATUS_TON } from './Projekte';
@@ -40,15 +40,18 @@ import { ProjektDialog, PROJEKT_STATUS_TON } from './Projekte';
 /** Kürzt einzeilig mit Auslassungspunkten – so bleibt jede Tabellenzeile bei höchstens zwei Textzeilen. */
 const EINZEILIG = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
 
-/**
- * Neuanlage aus dem Anmeldebedarf: Art je Phase – der Workflow ergibt sich aus
- * der Art (A: der erste Workflow, der sie führt, in den Standard-Workflows KM).
- */
+/** Neuanlage aus dem Anmeldebedarf: Art und Standard-Workflow je Phase. */
 const BEDARF_ART: Record<BedarfPhase, AnmeldungsArt> = {
   skm: 'SKM',
   mkm: 'MKM',
   'N-2': 'A',
   'N-1': 'A',
+};
+const BEDARF_WORKFLOW: Record<BedarfPhase, string> = {
+  skm: STANDARD_WORKFLOW_ID.skm,
+  mkm: STANDARD_WORKFLOW_ID.mkm,
+  'N-2': STANDARD_WORKFLOW_ID.km,
+  'N-1': STANDARD_WORKFLOW_ID.km,
 };
 
 export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigate: (r: Route) => void }) {
@@ -193,13 +196,18 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
                         <BedarfInhalt
                           zelle={zelle}
                           onOeffnen={oeffne}
-                          onAnlegen={() =>
+                          onAnlegen={() => {
+                            const art = BEDARF_ART[zelle.phase];
+                            // Der Standard-Workflow der Phase, sofern er die Art führt – sonst der erste, der sie führt
+                            const standard = data.workflows.find(
+                              (w) => w.id === BEDARF_WORKFLOW[zelle.phase] && w.status.length > 0 && w.arten.includes(art),
+                            );
                             setNeu({
-                              workflowId: workflowFuerArt(data.workflows, BEDARF_ART[zelle.phase])?.id,
-                              art: BEDARF_ART[zelle.phase],
+                              workflowId: (standard ?? workflowFuerArt(data.workflows, art))?.id,
+                              art,
                               fahrplanjahr: zelle.fahrplanjahr,
-                            })
-                          }
+                            });
+                          }}
                         />
                       </td>
                     ))}
@@ -296,7 +304,7 @@ function BedarfInhalt({
       return (
         <button type="button" className="link-btn small" onClick={() => onOeffnen(zelle.durch!)} title="Eintrag öffnen">
           <Badge ton="green">✓ {zelle.durch!.art}</Badge>
-          <div className="tertiary small">{statusVon(data.workflows, zelle.durch!.statusId).status.name}</div>
+          <div className="tertiary small">{statusText(statusVon(data.workflows, zelle.durch!.statusId))}</div>
         </button>
       );
     case 'faellig':

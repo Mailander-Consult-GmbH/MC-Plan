@@ -14,6 +14,7 @@ import {
   MASSNAHMENARTEN,
   PHASE_LABEL,
   type AnmeldungsArt,
+  type Phase,
   type FristRegel,
   type ID,
   type RilBezug,
@@ -317,8 +318,16 @@ export function workflowFuerArt(workflows: Workflow[], art: AnmeldungsArt): Work
   return workflows.find((w) => w.status.length > 0 && w.arten.includes(art));
 }
 
+/** Feste IDs der Standard-Workflows je Phase. */
+export const STANDARD_WORKFLOW_ID: Record<Phase, ID> = {
+  skm: 'wf-skm',
+  mkm: 'wf-pze',
+  km: 'wf-vorprozess',
+  kkm: 'wf-unterjahr',
+};
+
 /** Workflow, in dem „Neue Anmeldung“ ohne Vorgabe anlegt: KKM (unterjährig). */
-export const NEUANLAGE_WORKFLOW = 'wf-unterjahr';
+export const NEUANLAGE_WORKFLOW = STANDARD_WORKFLOW_ID.kkm;
 
 /** Workflows, in denen neu angelegt werden kann – jeder mit mindestens einem Status. */
 export function startbareWorkflows(workflows: Workflow[]): Workflow[] {

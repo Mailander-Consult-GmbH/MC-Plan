@@ -106,7 +106,8 @@ export const STATUS_ART_LABEL: Record<StatusArt, string> = {
 /**
  * Bezug einer Terminfrist auf die Richtlinie: Ril_SKM, Ril_MKM, Ril_KM N-2,
  * Ril_KM (N-2 oder N-1 – die N-2-Frist, solange sie am Tag des Statuswechsels
- * nicht verstrichen ist), Ril_KKM A und Ril_KKM (je Maßnahmenart). Im
+ * nicht verstrichen ist und nicht vor dem ersten Anmeldetermin liegt),
+ * Ril_KKM A und Ril_KKM (je Maßnahmenart). Im
  * Lastenheft hießen sie Ril_skm, Ril_pze, Ril_N-2, Ril_Nx, Ril_A und Ril_X.
  */
 export type RilBezug = 'skm' | 'mkm' | 'N-2' | 'Nx' | 'A' | 'X';
@@ -298,8 +299,8 @@ export const PROJEKT_STATUS_LABEL: Record<ProjektStatus, string> = {
 export const RIL_PHASE_HINWEIS: Record<Phase, string> = {
   skm: 'Stichtag je Fahrplanjahr',
   mkm: 'Stichtag je Fahrplanjahr',
-  km: 'Es gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist, sonst die N-1-Frist (Ril_KM).',
-  kkm: 'Frist je Maßnahmenart (Ril_KKM); SKM und MKM rechnen wie A.',
+  km: 'Es gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt, sonst die N-1-Frist (Ril_KM).',
+  kkm: 'Frist je Maßnahmenart (Ril_KKM).',
 };
 
 /** Richtlinienfristen gegliedert nach Phase, in der Reihenfolge der Phasen. */

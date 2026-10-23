@@ -410,12 +410,12 @@ function ausFassung5(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
     erstePhase: ERSTE_PHASE_BIS_FASSUNG5[p.erstePhase as string] ?? p.erstePhase,
   }));
 
-  // Die Richtlinienfrist „pze“ heißt „mkm“.
-  const gespeichert = roh.einstellungen?.rilFristen as Record<string, RilFrist> | undefined;
+  // Die Richtlinienfrist „pze“ heißt „mkm“ – bis Fassung 5 galt allein „pze“.
+  const gespeichert: unknown = roh.einstellungen?.rilFristen;
   const einstellungen =
-    roh.einstellungen && gespeichert && 'pze' in gespeichert && !('mkm' in gespeichert)
+    roh.einstellungen && gespeichert && typeof gespeichert === 'object' && 'pze' in gespeichert
       ? (() => {
-          const { pze, ...rest } = gespeichert;
+          const { pze, ...rest } = gespeichert as Record<string, RilFrist>;
           return { ...roh.einstellungen, rilFristen: { ...rest, mkm: pze } as Einstellungen['rilFristen'] };
         })()
       : roh.einstellungen;
