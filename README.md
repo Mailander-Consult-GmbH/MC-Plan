@@ -627,7 +627,8 @@ Je Besprechung (z. B. Baubesprechung, Jour fixe) eine **Protokollreihe**. Ein Pr
 aus Kopfdaten (Besprechung, Nr., Datum, Beginn, Ende, Ort, nächster Termin, Protokollführung,
 zusätzlicher Verteiler), den **Teilnehmenden**, der **Tagesordnung** mit Einträgen vom Typ
 **I** (Information), **F** (Festlegung) und **A** (Aufgabe, mit Verantwortlich, Termin und
-Erledigt) und einem Hinweis am Ende.
+Erledigt) und einem Hinweis am Ende. **Verantwortlich** wird aus den Teilnehmenden des Protokolls
+gewählt und erscheint mit ihrem Kürzel.
 
 * **Teilnehmende** kommen aus der Projektbeteiligtenliste (**Aus Beteiligtenliste …**, auch mit
   **Neue Person …**); Name, Funktion, Firma und Kürzel werden dort gepflegt und im Protokoll
@@ -636,30 +637,30 @@ Erledigt) und einem Hinweis am Ende.
   den Teilnehmenden oder der Projektbeteiligtenliste gewählt; bei einer neuen Reihe übernimmt sie
   die angemeldete Person, sofern ihr Name in der Projektbeteiligtenliste steht.
 * **Folgeprotokoll anlegen** übernimmt Kopfdaten, Teilnehmende und Tagesordnung mit allen
-  Einträgen; Datum ist der „nächste Termin“. Der Ursprungstext übernommener Einträge steht fest
-  (✎ korrigiert ihn), Ergänzungen kommen in ein eigenes Feld. Im Druck erscheinen neue und
+  Einträgen; Datum ist der „nächste Termin“. Ein Eintrag besteht aus **Zeilen**: Übernommene
+  Zeilen stehen fest (✎ korrigiert sie), eine Ergänzung kommt als neue Zeile in ein eigenes Feld.
+  Unter jeder übernommenen Zeile steht ihr Ursprung – in Protokoll Nr. 3 etwa unter der ersten
+  Zeile „aus Prot. 1“ und unter der in Nr. 2 ergänzten „aus Prot. 2“. Im Druck erscheinen neue und
   gegenüber dem Vorprotokoll geänderte Angaben **blau**.
-* **Löschen heißt Durchstreichen** (Standard, für Informationen, Festlegungen und Aufgaben): Der
-  Papierkorb am Eintrag bietet **Durchstreichen** und **Sofort löschen**. Ein gestrichener Eintrag
-  steht im Druck und in der Live-Druckansicht dieses Protokolls mit **blauer Linie**
-  durchgestrichen – der Text bleibt schwarz –, im Folgeprotokoll noch einmal (schwarze Linie) und
-  entfällt im übernächsten Protokoll. Ebenso erledigte Aufgaben. Die Termin-Spalte nennt
-  „entfällt“ bzw. „erledigt“. **Wiederherstellen** hebt das Streichen auf; **Sofort löschen**
-  entfernt einen Eintrag ohne Spur.
-* **Druckansicht**, **Drucken / PDF** (Druckdialog des Browsers, „Als PDF speichern“), **Als Text
-  kopieren** und **Live-Druckansicht ↗** – ein eigenes Fenster, etwa für den zweiten Bildschirm in
-  der Besprechung, das jeder Eingabe folgt.
+* **Löschen heißt Durchstreichen** (Standard) – für Tagesordnungspunkte, Einträge und einzelne
+  Zeilen (sobald ein Eintrag mehr als eine hat): Der Papierkorb bietet **Durchstreichen** und
+  **Sofort löschen**. Gestrichenes steht im Druck und in der Live-Druckansicht dieses Protokolls
+  mit **blauer Linie** durchgestrichen – der Text bleibt schwarz –, im Folgeprotokoll noch einmal
+  (schwarze Linie) und entfällt im übernächsten Protokoll; ein gestrichener Tagesordnungspunkt
+  nimmt seine Einträge mit. Ebenso erledigte Aufgaben. Die Termin-Spalte nennt „entfällt“ bzw.
+  „erledigt“. **Wiederherstellen** hebt das Streichen auf; **Sofort löschen** entfernt ohne Spur.
+* **Druckansicht**, **Drucken / PDF** (Druckdialog des Browsers, „Als PDF speichern“) und
+  **Live-Druckansicht ↗** – ein eigenes Fenster, etwa für den zweiten Bildschirm in der
+  Besprechung, das jeder Eingabe folgt.
 * **In die LOP übernehmen**: Offene Aufgaben werden einzeln („→ In die LOP übernehmen“ am
   Eintrag) oder gesammelt („Aufgaben in die LOP …“ über der Tagesordnung) zu neuen LOP-Punkten –
   im Thema, das wie ihr Tagesordnungspunkt heißt (fehlt es, entsteht es), mit der Herkunft
-  „<Besprechung> Nr. n, Pkt. x.y“. Die LOP ist für den **internen Gebrauch**: Druck,
-  Live-Druckansicht und kopierter Text des Protokolls zeigen keinen Vermerk; die Aufgabe läuft im
+  „<Besprechung> Nr. n, Pkt. x.y“. Die LOP ist für den **internen Gebrauch**: Druck und
+  Live-Druckansicht des Protokolls zeigen keinen Vermerk; die Aufgabe läuft im
   Protokoll weiter wie jede andere, auch in Folgeprotokolle. „Erledigt“ wird zwischen der Aufgabe
   im jüngsten Protokoll ihrer Reihe und dem LOP-Punkt in beide Richtungen abgeglichen; die
   Übersicht zählt sie nur einmal. Nur der Editor zeigt den Verweis; **Verknüpfung lösen** hebt ihn
   auf, ebenso das Löschen des LOP-Punkts.
-* **Aufgaben aus den Protokollen**: alle Aufgaben des Projekts (je Aufgabe ihr jüngstes Vorkommen)
-  mit Filter nach Status, Verantwortlich und „nur überfällige“; abhaken direkt in der Liste.
 * **Logos im Druckkopf** je Projekt – Standard sind DB InfraGO und Mailänder Consult; eigene
   Bilder werden verkleinert im Bestand gespeichert.
 * **Aus Protokoll-Tool** übernimmt Dateien des bisherigen Protokoll-Tools (`.protokoll` oder
@@ -668,10 +669,12 @@ Erledigt) und einem Hinweis am Ende.
   Protokolle, statt sie zu verdoppeln.
 
 ### LOP (Liste offener Punkte)
-Eine To-do-Liste je Projekt, die immer fortgeschrieben wird – aufgebaut wie ein Protokoll, mit
-Themen statt Tagesordnungspunkten. Jeder Punkt behält seine **Nummer** (sie wird nie neu
-vergeben) und führt Inhalt, Verantwortlich, Termin, Erledigt (mit Datum), Herkunft und Tag der
-Aufnahme. **Fortschreiben …** schließt den aktuellen Stand ab und beginnt den nächsten:
+Eine To-do-Liste je Projekt, die immer fortgeschrieben wird – die Seite besteht aus
+**Themenblöcken** mit ihren Punkten, aufgebaut wie die Tagesordnung eines Protokolls. Jeder Punkt
+behält seine **Nummer** (sie wird nie neu vergeben) und führt Inhalt, Verantwortlich, Termin,
+Erledigt (mit Datum), **Bemerkung**, Herkunft und Tag der Aufnahme. Die Bemerkung steht im Druck
+und in Excel in einer eigenen Spalte. **Fortschreiben …** schließt den aktuellen Stand ab und
+beginnt den nächsten; Nummer und Datum des Stands nennt der Druck:
 Fortschreibungen gehen in den Text über, Punkte, die erledigt waren, wandern ins **Archiv** (von
 dort **Wieder aufnehmen**), und was sich danach ändert, erscheint im Druck **blau**. Ältere Stände
 werden nicht aufbewahrt – wer sie behalten will, druckt sie vorher. Dazu Filter (Suche, Status,
@@ -691,8 +694,11 @@ mit Projektbeteiligten, zwei Protokollen und LOP), **Sicherung**/**Einspielen** 
 Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
 Protokoll-Tools werden mit Hinweis abgewiesen) und **Zurücksetzen**. Stände der ersten Fassung
 erhalten beim Laden die mitgelieferten Gewerke; ihre Funktionen gelten als übergreifend. Ältere
-Stände kennen keine gestrichenen Einträge – ihre Einträge gelten als nicht gestrichen. Name unter „Angemeldet als“
-und Farbmodus gelten nur in diesem Bereich.
+Stände kennen keine gestrichenen Einträge – ihre Einträge gelten als nicht gestrichen. Bis
+Fassung 3 bestand ein Eintrag aus Text und Ergänzung: Beim Laden wird der Text eine Zeile aus dem
+Protokoll seiner Fundstelle („Prot. 2, Pkt. 1.3“ → „aus Prot. 2“), die Ergänzung eine neue Zeile;
+LOP-Punkte erhalten eine leere Bemerkung, Ersteller und Hinweis der LOP entfallen. Name unter
+„Angemeldet als“ und Farbmodus gelten nur in diesem Bereich.
 
 ## Aufbau des Codes
 
@@ -764,9 +770,10 @@ src/
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
       projektsteuerung.css  Gestaltung des Bereichs (Klassen mit Präfix ps-, nur Design-Tokens)
       domain/
-        types.ts     Datenmodell (Projekt, Funktion mit Gewerk, Beteiligter, Protokoll mit TOPs und Einträgen, LOP)
-        protokoll.ts Reihen, Folgeprotokoll, Aufgaben, Teilnehmende und LOP-Verweise nachziehen,
-                     Übernahme aus dem Protokoll-Tool
+        types.ts     Datenmodell (Projekt, Funktion mit Gewerk, Beteiligter, Protokoll mit TOPs, Einträgen
+                     und Zeilen, LOP)
+        protokoll.ts Reihen, Folgeprotokoll, Zeilen und Streichen, Aufgaben, Teilnehmende und
+                     LOP-Verweise nachziehen, Übernahme aus dem Protokoll-Tool
         lop.ts       Punkte, Fortschreibung in Ständen, Archiv
         lopUebernahme.ts  Aufgaben eines Protokolls als LOP-Punkte übernehmen
         beteiligteImport.ts  Excel-/CSV-Import der Projektbeteiligten (Spalten, Abgleich von Funktionen)
