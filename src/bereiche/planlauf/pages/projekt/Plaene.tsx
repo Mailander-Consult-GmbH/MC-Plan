@@ -16,7 +16,8 @@ import {
   funktionenFuerGewerk,
   kontaktFuerRolleUndGewerk,
   planlaufName,
-  stepsAusTemplate,
+  laufSchritteAusVorlage,
+  vorlagenSchritte,
 } from '../../domain/engine';
 import { formatDate, tageLabel, today } from '../../../../shared/dates';
 import {
@@ -575,7 +576,9 @@ function PlanDialog({
   const vorlagen = data.templates.filter((t) => t.projectId === null || t.projectId === project.id);
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
   const rollen = data.roles.filter((r) => r.projectId === project.id);
-  const vorhandenerLauf = doc ? data.runs.find((r) => r.documentId === doc.id) : undefined;
+  // Ein überführter Lauf (aufgeteilt, gebündelt, neu gestartet) zählt nicht – sonst
+  // ließe sich nach dem Löschen seines Nachfolgers kein Lauf mehr starten.
+  const vorhandenerLauf = doc ? data.runs.find((r) => r.documentId === doc.id && !laufUeberfuehrt(r)) : undefined;
 
   const [form, setForm] = useState({
     kind: doc?.kind ?? ('plan' as DocumentKind),
@@ -698,20 +701,7 @@ function PlanDialog({
   };
 
   /** Bearbeitbare Kopie der Vorlagenschritte. */
-  const kopie = (id: string): ProcessTemplateStep[] => {
-    const t = vorlagen.find((v) => v.id === id);
-    if (!t) return [];
-    const idMap = new Map(t.steps.map((s) => [s.id, newId('ts')]));
-    return t.steps.map((s) => ({
-      ...s,
-      id: idMap.get(s.id)!,
-      antworten: s.antworten.map((a) => ({
-        ...a,
-        id: newId('ant'),
-        ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
-      })),
-    }));
-  };
+  const kopie = (id: string): ProcessTemplateStep[] => vorlagenSchritte(vorlagen.find((v) => v.id === id), newId);
 
   const [templateId, setTemplateId] = useState(vorlagen[0]?.id ?? '');
   const [steps, setSteps] = useState<ProcessTemplateStep[]>(() => kopie(vorlagen[0]?.id ?? ''));
@@ -782,23 +772,7 @@ function PlanDialog({
     }
 
     const template = vorlagen.find((t) => t.id === templateId);
-    const runSteps = stepsAusTemplate(
-      { id: templateId, projectId: null, name: '', beschreibung: '', herkunft: 'manuell', steps },
-      kontaktFuerRolle,
-      () => newId('rs'),
-    );
-    const original = template?.steps ?? [];
-    const markiert = runSteps.map((s, i) => {
-      const vorlage = original[i];
-      const abweichend =
-        !vorlage ||
-        original.length !== runSteps.length ||
-        vorlage.name !== s.name ||
-        vorlage.fristTage !== s.fristTage ||
-        vorlage.roleName !== s.roleName ||
-        vorlage.typ !== s.typ;
-      return abweichend ? { ...s, abweichung: true } : s;
-    });
+    const markiert = laufSchritteAusVorlage(template, steps, kontaktFuerRolle, () => newId('rs'));
 
     const runId = addRun({
       projectId: project.id,

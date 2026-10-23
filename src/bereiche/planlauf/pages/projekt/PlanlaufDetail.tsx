@@ -8,9 +8,11 @@ import {
   ampelFuerSchritt,
   funktionenFuerGewerk,
   kontaktFuerRolleUndGewerk,
+  laufSchritteAusVorlage,
   massgeblicheAntwort,
   nichtImPfad,
   verlaufDerKette,
+  vorlagenSchritte,
   type Ampel,
 } from '../../domain/engine';
 import { formatDate, tageLabel, today } from '../../../../shared/dates';
@@ -26,6 +28,7 @@ import {
   type Nachweis,
   type PlanDocument,
   type PlanRun,
+  type ProcessTemplateStep,
   type Project,
   type RunStep,
   type StepStatus,
@@ -49,6 +52,7 @@ import {
 import { BuendelnDialog, planeMitEigenemLauf } from '../../components/BuendelnDialog';
 import { EmailDialog } from '../../components/EmailDialog';
 import { useSchrittStatus } from '../../components/SchrittStatus';
+import { SchrittListe } from '../Workflows';
 import { Icon } from '../../../../shared/icons';
 
 export function PlanlaufDetail({
@@ -80,6 +84,7 @@ export function PlanlaufDetail({
   const [neuerSchritt, setNeuerSchritt] = useState(false);
   const [laufLoeschen, setLaufLoeschen] = useState(false);
   const [abbrechen, setAbbrechen] = useState(false);
+  const [neustart, setNeustart] = useState(false);
   const { setzeStatus: statusSetzen, nachweisDialog } = useSchrittStatus();
   const [aufgeklappt, setAufgeklappt] = useState<string[]>([]);
   /** Die Pläne eines Verzeichnisses sind zunächst zugeklappt. */
@@ -106,6 +111,20 @@ export function PlanlaufDetail({
   const vorlauf = project.settings.erinnerungVorlaufTage;
   const abweichungen = run.steps.filter((s) => s.abweichung).length;
   const beendet = run.status !== 'laufend';
+  /** Frühere Läufe des Eintrags, die mit geändertem Workflow neu gestartet wurden. */
+  const vorherige = data.runs.filter(
+    (r) =>
+      r.documentId === run.documentId &&
+      r.id !== run.id &&
+      r.status === 'abgebrochen' &&
+      r.abbruchArt === 'neu_gestartet',
+  );
+  /** Der Lauf, der nach einem Neustart an die Stelle dieses Laufs getreten ist. */
+  const nachfolger =
+    run.abbruchArt === 'neu_gestartet'
+      ? (data.runs.find((r) => r.documentId === run.documentId && r.status === 'laufend') ??
+        data.runs.find((r) => r.documentId === run.documentId && r.status === 'abgeschlossen'))
+      : undefined;
 
   /** Klappt einen erledigten oder künftigen Schritt auf bzw. wieder zu. */
   const klappen = (stepId: string) =>
@@ -182,11 +201,21 @@ export function PlanlaufDetail({
         <button type="button" className="btn btn-ghost" onClick={onZurueck}>
           <Icon name="zurueck" size={14} /> Planläufe
         </button>
-        <div className="row">
+        <div className="row wrap">
           {run.status === 'laufend' ? (
-            <button type="button" className="btn btn-outline" onClick={() => setAbbrechen(true)}>
-              Planlauf abbrechen
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setNeustart(true)}
+                title="Anderen Workflow wählen und den Planlauf von vorn beginnen"
+              >
+                Workflow ändern …
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => setAbbrechen(true)}>
+                Planlauf abbrechen
+              </button>
+            </>
           ) : null}
           <button type="button" className="btn btn-danger" onClick={() => setLaufLoeschen(true)}>
             <Icon name="loeschen" size={14} /> Lauf löschen
@@ -200,6 +229,22 @@ export function PlanlaufDetail({
             In Einzelläufe der Pläne aufgeteilt{run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}.
           </strong>
           <div>Jeder Plan des Verzeichnisses führt den Planlauf seither mit dem übernommenen Stand selbst fort.</div>
+        </Callout>
+      ) : run.status === 'abgebrochen' && run.abbruchArt === 'neu_gestartet' ? (
+        <Callout>
+          <div className="row-between wrap" style={{ gap: 10 }}>
+            <span>
+              <strong>
+                Mit geändertem Workflow neu gestartet{run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}.
+              </strong>
+              <div>{run.abbruchGrund}</div>
+            </span>
+            {nachfolger ? (
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneLauf?.(nachfolger.id)}>
+                Aktuellen Planlauf öffnen
+              </button>
+            ) : null}
+          </div>
         </Callout>
       ) : run.status === 'abgebrochen' && run.abbruchArt === 'gebuendelt' ? (
         <Callout>
@@ -232,7 +277,7 @@ export function PlanlaufDetail({
           }
           actions={<RunStatusBadge status={run.status} />}
         />
-        {abweichungen > 0 || run.bemerkung ? (
+        {abweichungen > 0 || run.bemerkung || vorherige.length > 0 ? (
           <div className="card-pad">
             {abweichungen > 0 ? (
               <Callout ton="warn" icon="!">
@@ -241,6 +286,22 @@ export function PlanlaufDetail({
               </Callout>
             ) : null}
             {run.bemerkung ? <p className="small muted" style={{ marginTop: 10 }}>{run.bemerkung}</p> : null}
+            {vorherige.length > 0 ? (
+              <div className="row wrap" style={{ gap: 6, marginTop: 10 }}>
+                <span className="small muted">Frühere Läufe vor dem Neustart:</span>
+                {vorherige.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => oeffneLauf?.(r.id)}
+                    title="Bisherigen Lauf zum Nachschlagen öffnen"
+                  >
+                    Workflow „{r.templateName}“{r.abbruchDatum ? ` · bis ${formatDate(r.abbruchDatum)}` : ''}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </Card>
@@ -613,6 +674,16 @@ export function PlanlaufDetail({
         />
       ) : null}
 
+      {neustart ? (
+        <NeustartDialog
+          project={project}
+          run={run}
+          doc={doc}
+          onClose={() => setNeustart(false)}
+          onNeuGestartet={(id) => oeffneLauf?.(id)}
+        />
+      ) : null}
+
       {abbrechen ? (
         <AbbruchDialog
           run={run}
@@ -685,6 +756,136 @@ export function PlanlaufDetail({
         />
       ) : null}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Workflow eines laufenden Planlaufs ändern: Workflow wählen, seine Schritte
+ * für diesen Lauf anpassen und von vorn beginnen. Der bisherige Lauf endet als
+ * „neu gestartet“ und bleibt zum Nachschlagen erhalten.
+ */
+function NeustartDialog({
+  project,
+  run,
+  doc,
+  onClose,
+  onNeuGestartet,
+}: {
+  project: Project;
+  run: PlanRun;
+  doc: PlanDocument | undefined;
+  onClose: () => void;
+  onNeuGestartet: (runId: string) => void;
+}) {
+  const { data, planlaufNeuStarten } = useStore();
+  const toast = useToast();
+  const vorlagen = data.templates.filter((t) => t.projectId === null || t.projectId === project.id);
+  const kontakte = data.contacts.filter((c) => c.projectId === project.id);
+  const rollen = data.roles.filter((r) => r.projectId === project.id);
+  const gewerk = doc?.gewerk ?? '';
+
+  const anfang = vorlagen.find((t) => t.id === run.templateId) ?? vorlagen[0];
+  const [templateId, setTemplateId] = useState(anfang?.id ?? '');
+  const [steps, setSteps] = useState<ProcessTemplateStep[]>(() => vorlagenSchritte(anfang, newId));
+  const [start, setStart] = useState(today());
+  const [grund, setGrund] = useState('');
+  const [eingangSoll, setEingangSoll] = useState(doc?.eingangSoll ?? '');
+
+  const vorlage = vorlagen.find((t) => t.id === templateId);
+  const fertig = run.steps.filter((s) => s.status === 'erledigt' || s.status === 'uebersprungen').length;
+  const dauer = steps.reduce((summe, s) => summe + s.fristTage, 0);
+
+  const wechseln = (id: string) => {
+    setTemplateId(id);
+    setSteps(vorlagenSchritte(vorlagen.find((t) => t.id === id), newId));
+  };
+
+  const starten = () => {
+    if (steps.length === 0 || steps.some((s) => !s.name.trim())) {
+      toast('Bitte jeden Schritt der Workflow benennen.');
+      return;
+    }
+    const name = vorlage?.name ?? 'Individuelle Kette';
+    const id = planlaufNeuStarten(run.id, {
+      templateId: vorlage?.id ?? null,
+      templateName: name,
+      steps: laufSchritteAusVorlage(
+        vorlage,
+        steps,
+        (rolle) => kontaktFuerRolleUndGewerk(kontakte, rollen, rolle, gewerk),
+        () => newId('rs'),
+      ),
+      start,
+      grund,
+      // Nur ein geändertes Eingang Soll wird am Eintrag nachgetragen
+      eingangSoll: doc && eingangSoll !== (doc.eingangSoll ?? '') ? eingangSoll || null : undefined,
+    });
+    if (!id) return;
+    toast(`Planlauf mit Workflow „${name}“ neu gestartet.`);
+    onClose();
+    onNeuGestartet(id);
+  };
+
+  return (
+    <Modal
+      titel="Workflow ändern und neu starten"
+      sub={run.name}
+      wide
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button type="button" className="btn btn-primary" onClick={starten}>
+            Neu starten
+          </button>
+        </>
+      }
+    >
+      <div className="stack" style={{ gap: 16 }}>
+        <Callout ton="warn" icon="!">
+          Der Planlauf beginnt von vorn – alle Schritte starten neu. Der bisherige Lauf mit Workflow „
+          {run.templateName}“ ({fertig} von {run.steps.length} Schritten abgeschlossen) bleibt zum Nachschlagen
+          erhalten und ist über den neuen Planlauf erreichbar.
+        </Callout>
+        <div className="form-grid">
+          <Field label="Workflow" full hint={vorlage?.beschreibung}>
+            <Select
+              value={templateId}
+              onChange={wechseln}
+              options={vorlagen.map((t) => ({ value: t.id, label: `${t.name} (${t.steps.length} Schritte)` }))}
+            />
+          </Field>
+          <Field label="Start des Planlaufs">
+            <TextInput value={start} onChange={setStart} type="date" />
+          </Field>
+          {doc ? (
+            <Field label="Eingang Soll" hint="Soll-Termin des ersten Schritts; gilt für den Eintrag">
+              <TextInput value={eingangSoll} onChange={setEingangSoll} type="date" />
+            </Field>
+          ) : null}
+          <Field label="Grund" hint="optional – steht am bisherigen und am neuen Lauf">
+            <TextInput value={grund} onChange={setGrund} placeholder="z.B. Prüfstatik erforderlich" />
+          </Field>
+        </div>
+        <div>
+          <div className="row-between wrap" style={{ marginBottom: 8 }}>
+            <h3>Schritte des neuen Planlaufs</h3>
+            <span className="small tertiary">
+              {steps.length} Schritte · {tageLabel(dauer)}
+              {project.settings.fristenInArbeitstagen ? ' (Arbeitstage)' : ''}
+            </span>
+          </div>
+          <p className="small muted" style={{ marginBottom: 10 }}>
+            Schritte lassen sich hier hinzufügen, ändern oder entfernen. Der Workflow selbst bleibt davon unberührt.
+          </p>
+          <SchrittListe steps={steps} setSteps={setSteps} rollen={funktionenFuerGewerk(rollen, gewerk)} />
+        </div>
+      </div>
+    </Modal>
   );
 }
 

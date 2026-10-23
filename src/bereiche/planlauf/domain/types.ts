@@ -410,7 +410,7 @@ export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
 };
 
 /** Grundform des Abbruchs: ersatzlos oder mit neuem Index bzw. neuer Ausgabe. */
-export type AbbruchArt = 'ersatzlos' | 'neuer_index' | 'aufgeteilt' | 'gebuendelt';
+export type AbbruchArt = 'ersatzlos' | 'neuer_index' | 'aufgeteilt' | 'gebuendelt' | 'neu_gestartet';
 
 export const ABBRUCH_ART_LABEL: Record<AbbruchArt, string> = {
   ersatzlos: 'ersatzlos',
@@ -421,6 +421,9 @@ export const ABBRUCH_ART_LABEL: Record<AbbruchArt, string> = {
   // Ebenso kein Abbruch: der Einzellauf eines Plans ging wieder im gebündelten
   // Lauf seines Verzeichnisses auf.
   gebuendelt: 'wieder im Planlauf des Verzeichnisses gebündelt',
+  // Ebenso kein Abbruch: der Planlauf begann mit einem (anderen) Workflow von
+  // vorn; der bisherige Lauf bleibt zum Nachschlagen erhalten.
+  neu_gestartet: 'mit geändertem Workflow neu gestartet',
 };
 
 export interface PlanRun {

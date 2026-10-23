@@ -222,6 +222,7 @@ export function abbruchHinweis(run: PlanRun, kind: DocumentKind = 'plan'): strin
   if (run.status !== 'abgebrochen') return '';
   if (run.abbruchArt === 'aufgeteilt') return 'in Einzelläufe der Pläne aufgeteilt';
   if (run.abbruchArt === 'gebuendelt') return 'wieder im Planlauf des Verzeichnisses gebündelt';
+  if (run.abbruchArt === 'neu_gestartet') return 'mit geändertem Workflow neu gestartet';
   if (run.abbruchArt !== 'neuer_index') return 'ersatzlos abgebrochen';
   const label = INDEX_LABEL[kind];
   return run.abbruchNeuerIndex ? `ersetzt durch ${label} ${run.abbruchNeuerIndex}` : `ersetzt durch neuen ${label}`;
@@ -373,11 +374,15 @@ export function planlaufAusWorkflow(
  */
 /**
  * Lauf, der nicht abgebrochen, sondern in eine andere Form überführt wurde:
- * aufgeteilt in Einzelläufe oder wieder im Verzeichnis gebündelt. Solche Läufe
- * zählen nicht als Abbruch des Eintrags.
+ * aufgeteilt in Einzelläufe, wieder im Verzeichnis gebündelt oder mit
+ * geändertem Workflow neu gestartet. Solche Läufe zählen nicht als Abbruch
+ * des Eintrags.
  */
 export function laufUeberfuehrt(run: Pick<PlanRun, 'status' | 'abbruchArt'>): boolean {
-  return run.status === 'abgebrochen' && (run.abbruchArt === 'aufgeteilt' || run.abbruchArt === 'gebuendelt');
+  return (
+    run.status === 'abgebrochen' &&
+    (run.abbruchArt === 'aufgeteilt' || run.abbruchArt === 'gebuendelt' || run.abbruchArt === 'neu_gestartet')
+  );
 }
 
 export function eigenstaendigeLaeufe(documents: PlanDocument[], runs: PlanRun[]): PlanRun[] {
@@ -498,6 +503,58 @@ export function stepsAusTemplate(
     mailFrage: s.mailFrage,
     mailVorlageId: s.mailVorlageId,
   }));
+}
+
+/**
+ * Bearbeitbare Kopie der Schritte eines Workflows für einen neuen Planlauf –
+ * mit neuen IDs und umgebogenen Antwortzielen. Die Vorlage selbst bleibt
+ * unberührt.
+ */
+export function vorlagenSchritte(
+  vorlage: ProcessTemplate | undefined,
+  neueId: (prefix: string) => string,
+): ProcessTemplateStep[] {
+  if (!vorlage) return [];
+  const idMap = new Map(vorlage.steps.map((s) => [s.id, neueId('ts')]));
+  return vorlage.steps.map((s) => ({
+    ...s,
+    id: idMap.get(s.id)!,
+    antworten: s.antworten.map((a) => ({
+      ...a,
+      id: neueId('ant'),
+      ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
+    })),
+  }));
+}
+
+/**
+ * Schritte eines neuen Planlaufs aus den für ihn bearbeiteten Workflow-
+ * Schritten. Was vom Workflow abweicht – andere Zahl, Bezeichnung, Frist,
+ * Funktion oder Art –, wird als Abweichung gekennzeichnet.
+ */
+export function laufSchritteAusVorlage(
+  vorlage: ProcessTemplate | undefined,
+  bearbeitet: ProcessTemplateStep[],
+  kontaktFuerRolle: (roleName: string) => ID | null,
+  neueId: () => string,
+): RunStep[] {
+  const schritte = stepsAusTemplate(
+    { id: vorlage?.id ?? '', projectId: null, name: '', beschreibung: '', herkunft: 'manuell', steps: bearbeitet },
+    kontaktFuerRolle,
+    neueId,
+  );
+  const original = vorlage?.steps ?? [];
+  return schritte.map((s, i) => {
+    const o = original[i];
+    const abweichend =
+      !o ||
+      original.length !== schritte.length ||
+      o.name !== s.name ||
+      o.fristTage !== s.fristTage ||
+      o.roleName !== s.roleName ||
+      o.typ !== s.typ;
+    return abweichend ? { ...s, abweichung: true } : s;
+  });
 }
 
 /**
