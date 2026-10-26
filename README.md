@@ -215,8 +215,11 @@ auch Name, Kurzzeichen und Gewerk des Pakets. Frühere Adressen der eigenen Seit
 führen auf die Planliste.
 
 **Zu jedem Eintrag mit eigenem Lauf gehört genau ein laufender Planlauf – er startet immer
-automatisch.** Er entsteht zusammen mit dem Eintrag: Im selben Dialog werden der Workflow gewählt und
-seine Schritte für diesen Lauf angepasst. Ein Planverzeichnis, das beim Anlegen eines Plans über
+automatisch.** Er entsteht zusammen mit dem Eintrag: Im selben Dialog wird der Workflow gewählt; der
+Abschnitt *Ablauf dieses Planlaufs* zeigt seinen Standardverlauf als Punktkette. Über **Individueller
+Workflow** öffnet sich derselbe Workflow-Editor wie unter *Workflows*, um die Schritte nur für
+diesen Lauf anzupassen (Kennzeichen *Individuell angepasst*, zurück über *Auf Workflow
+zurücksetzen*); der Workflow selbst bleibt unverändert. Ein Planverzeichnis, das beim Anlegen eines Plans über
 *+ Neues Planverzeichnis anlegen …* entsteht, fragt Codierung und Titel ab; sein Planlauf startet
 mit dem Speichern des Plans (**Anlegen und Planlauf starten**) nach dem Workflow im Dialog, und der
 Plan läuft darin mit. Wird der Plan nicht gespeichert oder ein anderes Verzeichnis gewählt, entfällt
@@ -313,15 +316,30 @@ Bereits erledigte Schritte behalten ihre Person, ebenso Schritte, in denen im Pl
 von Hand gewählt wurde.
 
 ### Prozessketten
-Ein Schritt ist eine **Aufgabe**, eine **Entscheidung** oder **Sonstiges**, hat eine Frist in Tagen und
+Ein Schritt ist eine **Aufgabe** oder eine **Entscheidung**, hat eine Frist in Tagen und
 einen Verantwortlichen (Rolle). Entscheidungen erhalten zwei Antwortmöglichkeiten („Ja“/„Nein“ als
 Vorbelegung, frei überschreibbar); weitere lassen sich ergänzen. Je Antwort wird festgelegt, mit
 welchem Schritt es weitergeht – mit dem nächsten Schritt, einem beliebigen anderen oder dem Ende des
-Laufs.
+Laufs. Die erste Antwort bildet den **Standardverlauf**, die übrigen die **Abweichungen**.
 
-Zeigt eine Antwort auf einen bereits durchlaufenen Schritt zurück, entsteht eine **Schleife**
-(z.B. Überarbeitung nach einer Prüfung): Der Ablauf endet dort nicht, sondern nimmt den genannten
-Schritt in einem weiteren Durchlauf erneut auf.
+Zeigt eine Antwort oder das „Weiter mit“ einer Aufgabe auf einen bereits durchlaufenen Schritt
+zurück, entsteht eine **Schleife** (z.B. Überarbeitung nach einer Prüfung): Der Ablauf endet dort
+nicht, sondern nimmt den genannten Schritt in einem weiteren Durchlauf erneut auf.
+
+**Workflow-Editor.** Workflows werden in einem bildschirmfüllenden Editor bearbeitet – projektübergreifend
+unter *Workflows*, als Projektvariante im Reiter *Workflows* des Projekts und für einen einzelnen
+Planlauf über *Individueller Workflow*. Links steht der Ablauf als Bild: in der Spalte
+*Standardverlauf* die Karten des Regelwegs von *Planlauf starten* bis *Planlauf beenden*, rechts
+daneben unter *Abweichungen* die Schritte, die nur über eine andere Antwort erreicht werden, mit
+farbigen Linien und Antwortbeschriftungen; Rücksprünge sind eigens gekennzeichnet. Jede Karte zeigt
+Art, Nummer, Bezeichnung, Funktion und Frist. Ein Klick öffnet rechts die *Schrittdetails*
+(Bezeichnung, Art, verantwortliche Funktion, Frist, Nachweis, „Weiter mit“ bzw. die Antworten mit
+*Als Standardverlauf*, *E-Mail nach Abschluss*, Verschieben im Standardverlauf, Duplizieren,
+Entfernen). „+“ zwischen zwei Karten fügt dort eine Aufgabe ein, *Schritt hinzufügen* hängt einen
+Schritt an. Änderungen lassen sich rückgängig machen (Strg+Z / Strg+Y); die Fußzeile meldet
+Unvollständiges (fehlende Bezeichnung, Entscheidung ohne Antwort, nie erreichte Schritte), und
+erst *Speichern* bzw. *Übernehmen* schreibt den Stand. Auf schmalen Bildschirmen stehen die
+Schrittdetails in einem Blatt von unten, bei mittlerer Breite in einer Schublade.
 
 Mitgeliefert sind die drei vorgegebenen Ketten **VVBau ohne Prüfstatik**, **VVBau mit Prüfstatik**
 und **VVBau STE** mit ihren Verzweigungen und Rücksprüngen. Die Fristen sind dort nicht vorgegeben
@@ -360,8 +378,8 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   in Arbeitstagen (Mo–Fr, ohne hinterlegte Feiertage) oder Kalendertagen.
 * Ein Soll-Termin kann **manuell festgesetzt** werden und bildet dann die Basis für alle folgenden
   Schritte.
-* Führt eine Antwort zurück auf einen früheren Schritt, beginnt mit dem Erledigen der Entscheidung
-  ein **weiterer Durchlauf** ab diesem Schritt; die betroffenen Schritte werden erneut geöffnet und
+* Führt eine Antwort oder das „Weiter mit“ einer Aufgabe zurück auf einen früheren Schritt, beginnt
+  mit dem Erledigen dieses Schritts ein **weiterer Durchlauf** ab dem Ziel; die betroffenen Schritte werden erneut geöffnet und
   als „2. Durchlauf“ gekennzeichnet.
 * **Ist-Termine** dokumentieren die Erledigung; Schritte lassen sich auch **überspringen**. Der
   jeweils nächste Schritt wird automatisch aktiv, der Lauf schließt sich, wenn alle Schritte des
@@ -376,7 +394,7 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   Index bzw. neuer Ausgabe**. Im zweiten Fall erhält der Eintrag den angegebenen Index, und der
   Planlauf beginnt mit denselben Schritten von vorn.
 * Über **Workflow ändern …** lässt sich ein laufender Planlauf mit einem anderen (oder demselben)
-  Workflow **von vorn beginnen**: Workflow wählen, Schritte für diesen Lauf anpassen, Start und
+  Workflow **von vorn beginnen**: Workflow wählen, Schritte bei Bedarf über *Individueller Workflow* anpassen, Start und
   *Eingang Soll* setzen, optional einen Grund angeben, dann **Neu starten**. Der bisherige Lauf gilt
   nicht als Abbruch – er erscheint nicht unter *Abgebrochen*, bleibt aber mit dem Hinweis „Mit
   geändertem Workflow neu gestartet am …“ zum Nachschlagen erhalten. Der neue Lauf vermerkt den
@@ -724,6 +742,7 @@ src/
       domain/    Fachlogik ohne UI-Bezug
         types.ts     Datenmodell (Projekt, Rolle, Kontakt, Plan, Vorlage, Planlauf …)
         engine.ts    Verlauf durch die Kette, Fristenrechnung, Ampelstatus, To-Dos
+        workflowGraph.ts  Gliederung und Bearbeitung eines Workflows für den Editor
         abschluss.ts Statuswechsel eines Schritts samt Nachweis
         email.ts     Platzhalter und Aufbereitung der Vorlagen
         uebersicht.ts  Gliederung und Zeilenwerte der Planlaufliste – auch für den Export
@@ -735,8 +754,8 @@ src/
         store.tsx    Zentraler Zustand, alle Schreibzugriffe
       lib/router.ts  Hash-Adressen unterhalb von #/planlauf
       pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen, Projektreiter)
-      components/    Fachliche Bausteine (common.tsx, EmailDialog, PlanlaufListe, PaketDialog, BuendelnDialog,
-                     SicherungEinspielen …)
+      components/    Fachliche Bausteine (common.tsx, WorkflowEditor, AblaufVorschau, EmailDialog,
+                     PlanlaufListe, PaketDialog, BuendelnDialog, SicherungEinspielen …)
     baubetrieb/  Bereich „Baubetriebsplanung“ (erster Entwurf)
       index.tsx  Einstiegspunkt samt Datenbestand des Bereichs
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht

@@ -61,8 +61,7 @@ export function DocKindIcon({ kind }: { kind: DocumentKind }) {
 }
 
 export function StepTypBadge({ typ }: { typ: StepType }) {
-  const ton = typ === 'entscheidung' ? 'purple' : typ === 'sonstiges' ? 'blue' : '';
-  return <Badge ton={ton}>{STEP_TYPE_LABEL[typ]}</Badge>;
+  return <Badge ton={typ === 'entscheidung' ? 'purple' : ''}>{STEP_TYPE_LABEL[typ]}</Badge>;
 }
 
 export function RollenChips({ roles }: { roles: Role[] }) {

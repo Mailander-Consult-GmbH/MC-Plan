@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 11;
+export const DATEN_VERSION = 12;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -320,12 +320,15 @@ export function verzeichnisGebuendelt(doc: Pick<PlanDocument, 'planlaufModus'>):
 /* Workflows                                                       */
 /* ------------------------------------------------------------------ */
 
-export type StepType = 'aufgabe' | 'entscheidung' | 'sonstiges';
+/**
+ * Art eines Schritts. Früher gab es zusätzlich „Sonstiges“ (davor „Versand“);
+ * solche Schritte sind Aufgaben (`migriereTyp` in store/storage.ts).
+ */
+export type StepType = 'aufgabe' | 'entscheidung';
 
 export const STEP_TYPE_LABEL: Record<StepType, string> = {
   aufgabe: 'Aufgabe',
   entscheidung: 'Entscheidung',
-  sonstiges: 'Sonstiges',
 };
 
 /**
@@ -381,8 +384,8 @@ export interface ProcessTemplateStep {
   /** Nur bei Entscheidungen gefüllt. */
   antworten: Antwort[];
   /**
-   * Nachfolger bei Aufgaben und sonstigen Schritten: eine Schritt-ID,
-   * `'ende'` oder `null` für den unmittelbar folgenden Schritt.
+   * Nachfolger einer Aufgabe: eine Schritt-ID – auch ein früherer Schritt
+   * (Rücksprung) –, `'ende'` oder `null` für den nächsten Schritt der Liste.
    * Bei Entscheidungen bestimmen die Antworten den Verlauf.
    */
   naechster: ID | 'ende' | null;

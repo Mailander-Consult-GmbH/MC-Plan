@@ -52,7 +52,7 @@ import {
 import { BuendelnDialog, planeMitEigenemLauf } from '../../components/BuendelnDialog';
 import { EmailDialog } from '../../components/EmailDialog';
 import { useSchrittStatus } from '../../components/SchrittStatus';
-import { SchrittListe } from '../Workflows';
+import { LaufSchritte } from '../../components/AblaufVorschau';
 import { Icon } from '../../../../shared/icons';
 
 export function PlanlaufDetail({
@@ -591,8 +591,8 @@ export function PlanlaufDetail({
                 <Badge ton="purple">Schleife</Badge>
               </div>
               <p className="small muted">
-                Die gewählte Antwort führt zurück. Sobald die Entscheidung erledigt wird, beginnt ab diesem
-                Schritt ein weiterer Durchlauf.
+                Der Ablauf führt hier zurück. Sobald der Schritt davor erledigt wird, beginnt ab diesem Schritt
+                ein weiterer Durchlauf.
               </p>
             </div>
           </div>
@@ -793,6 +793,8 @@ function NeustartDialog({
   const anfang = vorlagen.find((t) => t.id === run.templateId) ?? vorlagen[0];
   const [templateId, setTemplateId] = useState(anfang?.id ?? '');
   const [steps, setSteps] = useState<ProcessTemplateStep[]>(() => vorlagenSchritte(anfang, newId));
+  /** Die Schritte wurden über „Individueller Workflow“ für den neuen Lauf angepasst. */
+  const [angepasst, setAngepasst] = useState(false);
   const [start, setStart] = useState(today());
   const [grund, setGrund] = useState('');
   // Ein vergangenes Eingang Soll machte den neuen Lauf sofort überfällig – dann leer lassen
@@ -802,11 +804,10 @@ function NeustartDialog({
 
   const vorlage = vorlagen.find((t) => t.id === templateId);
   const fertig = run.steps.filter((s) => s.status === 'erledigt' || s.status === 'uebersprungen').length;
-  const dauer = steps.reduce((summe, s) => summe + s.fristTage, 0);
-
   const wechseln = (id: string) => {
     setTemplateId(id);
     setSteps(vorlagenSchritte(vorlagen.find((t) => t.id === id), newId));
+    setAngepasst(false);
   };
 
   const starten = () => {
@@ -881,19 +882,19 @@ function NeustartDialog({
             <TextInput value={grund} onChange={setGrund} placeholder="z.B. Prüfstatik erforderlich" />
           </Field>
         </div>
-        <div>
-          <div className="row-between wrap" style={{ marginBottom: 8 }}>
-            <h3>Schritte des neuen Planlaufs</h3>
-            <span className="small tertiary">
-              {steps.length} Schritte · {tageLabel(dauer)}
-              {project.settings.fristenInArbeitstagen ? ' (Arbeitstage)' : ''}
-            </span>
-          </div>
-          <p className="small muted" style={{ marginBottom: 10 }}>
-            Schritte lassen sich hier hinzufügen, ändern oder entfernen. Der Workflow selbst bleibt davon unberührt.
-          </p>
-          <SchrittListe steps={steps} setSteps={setSteps} rollen={funktionenFuerGewerk(rollen, gewerk)} />
-        </div>
+        <LaufSchritte
+          vorlage={vorlage}
+          steps={steps}
+          angepasst={angepasst}
+          rollen={funktionenFuerGewerk(rollen, gewerk)}
+          arbeitstage={project.settings.fristenInArbeitstagen}
+          onUebernehmen={(neu) => {
+            setSteps(neu);
+            setAngepasst(true);
+          }}
+          onZuruecksetzen={() => wechseln(templateId)}
+          neuerLauf
+        />
       </div>
     </Modal>
   );
