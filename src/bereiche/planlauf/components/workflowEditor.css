@@ -1,13 +1,13 @@
 /* ------------------------------------------------------------------ */
 /* Workflow-Editor (WorkflowEditor.tsx) – Klassen mit Präfix „wf-“,     */
-/* Farben nur aus den Design-Tokens in src/shared/global.css            */
+/* Farben aus den Design-Tokens in src/shared/global.css                */
 /* ------------------------------------------------------------------ */
 
 .wf-overlay {
   position: fixed;
   inset: 0;
   z-index: 150;
-  background: rgba(0, 0, 0, 0.32);
+  background: var(--schleier);
   padding: 18px;
   display: flex;
   animation: fade 0.15s ease;
@@ -122,7 +122,20 @@
 .wf-typ-zeichen.entscheidung { background: var(--purple-soft); color: var(--purple); }
 
 /* Rumpf: Fläche und Details ------------------------------------------- */
-.wf-rumpf { display: grid; grid-template-columns: minmax(0, 1fr) 372px; min-height: 0; }
+.wf-rumpf { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 372px; min-height: 0; }
+.wf-rumpf.mittel { grid-template-columns: minmax(0, 1fr); }
+.wf-schublade-schatten { position: absolute; inset: 0; z-index: 3; background: var(--schleier); }
+.wf-panel.schublade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  width: min(380px, 100%);
+  box-shadow: var(--shadow-lg);
+  animation: pop 0.16s ease;
+}
+.wf-panel:focus { outline: none; }
 .wf-rumpf.schmal { grid-template-columns: minmax(0, 1fr); }
 
 .wf-flaeche {
@@ -136,7 +149,7 @@
 }
 .wf-banner {
   font-size: 12.5px;
-  background: var(--orange-soft);
+  background: linear-gradient(var(--orange-soft), var(--orange-soft)), var(--bg-elev);
   border-radius: var(--radius);
   padding: 9px 12px;
   margin-bottom: 14px;
@@ -158,8 +171,8 @@
   grid-template-columns: minmax(250px, 330px) minmax(110px, 140px) minmax(230px, 300px);
   column-gap: 0;
   align-items: stretch;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: min-content;
   padding-right: 70px;
 }
 .wf-messleiste { pointer-events: none; }
@@ -176,7 +189,7 @@
   padding-bottom: 14px;
 }
 .wf-spaltenkopf::after { content: ''; flex: 1; max-width: 80px; height: 1px; background: var(--separator-strong); }
-.wf-spaltenkopf.abw { color: var(--orange); }
+.wf-spaltenkopf.abw { color: var(--orange-text); }
 .wf-spaltenkopf.weg { color: var(--text-tertiary); padding-top: 18px; }
 
 .wf-zelle { display: flex; flex-direction: column; align-items: stretch; position: relative; z-index: 1; }
@@ -249,7 +262,7 @@
 }
 .wf-verbinder:hover .wf-einfuegen,
 .wf-einfuegen:focus-visible { opacity: 1; transform: none; }
-.wf-einfuegen:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.wf-einfuegen:hover { background: var(--accent); border-color: var(--accent); color: var(--bg-elev); }
 @media (hover: none) {
   .wf-einfuegen { opacity: 0.85; transform: none; }
 }
@@ -264,13 +277,16 @@
   padding: 3px 7px;
   border-radius: 6px;
   white-space: nowrap;
+  max-width: 104px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   pointer-events: none;
   background: var(--bg-elev);
   border: 1px solid var(--separator-strong);
   color: var(--text-secondary);
 }
 .wf-antwort.standard { color: var(--accent); border-color: var(--accent-soft); background: var(--bg-elev); }
-.wf-antwort.abw { color: var(--orange); border-color: var(--orange); }
+.wf-antwort.abw { color: var(--orange-text); border-color: var(--orange); }
 .wf-antwort.rueck { color: var(--purple); border-color: var(--purple); }
 .wf-antwort.aktiv { box-shadow: 0 0 0 2px var(--accent-soft); }
 
@@ -294,7 +310,7 @@
 .wf-karte.hervor { border-color: var(--separator-strong); }
 .wf-karte.aktiv { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
 .wf-karte.fehlt { border-color: var(--red); border-style: dashed; }
-.wf-karte:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.wf-karte:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .wf-karte.abweichung::before {
   content: '';
   position: absolute;
@@ -323,7 +339,7 @@
 .wf-typ.entscheidung { color: var(--purple); }
 .wf-nr { font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--text-tertiary); }
 .wf-karte-titel { font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; color: var(--text); }
-.wf-karte-titel.leer { color: var(--red); font-weight: 500; font-style: italic; }
+.wf-karte-titel.leer { color: var(--rot-text); font-weight: 500; font-style: italic; }
 .wf-karte-fuss {
   display: flex;
   align-items: center;
@@ -356,7 +372,7 @@
   color: var(--accent);
 }
 .wf-zweige { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--separator); padding-top: 6px; }
-.wf-zweig { font-size: 11.5px; color: var(--orange); }
+.wf-zweig { font-size: 11.5px; color: var(--orange-text); }
 .wf-zweig.rueck { color: var(--purple); }
 .wf-zweig b { font-weight: 600; }
 
@@ -531,7 +547,7 @@
   cursor: pointer;
 }
 .wf-hinweis-knopf.sperrt { background: var(--red-soft); }
-.wf-ok { display: inline-flex; align-items: center; gap: 5px; color: var(--green); font-weight: 600; }
+.wf-ok { display: inline-flex; align-items: center; gap: 5px; color: var(--gruen-text); font-weight: 600; }
 
 /* Ablauf-Vorschau (AblaufVorschau.tsx) -------------------------------- */
 .wf-vorschau { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; min-width: 0; }
@@ -546,7 +562,7 @@
 .wf-vorschau-knoten.entscheidung { border-radius: 2px; transform: rotate(45deg) scale(0.9); background: var(--purple); }
 .wf-vorschau-strich { flex: none; width: 10px; height: 2px; background: var(--separator-strong); }
 .wf-vorschau-ende { flex: none; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--separator-strong); }
-.wf-vorschau-zusatz { margin-left: 10px; font-size: 11.5px; color: var(--orange); white-space: nowrap; }
+.wf-vorschau-zusatz { margin-left: 10px; font-size: 11.5px; color: var(--orange-text); white-space: nowrap; }
 
 /* Lauf-Schritte im Eintrags- und Neustart-Dialog */
 .wf-lauf {
@@ -597,15 +613,15 @@
   .wf-overlay { padding: 0; }
   .wf-dialog { border-radius: 0; }
   .wf-kopf { padding: 10px 12px 10px 14px; flex-wrap: wrap; gap: 8px; }
-  .wf-kopf-titel { flex-basis: 100%; }
+  .wf-kopf-titel { flex-basis: 100%; padding-right: 36px; }
   .wf-kennzahl { display: none; }
   .wf-werkzeuge { flex: 1; justify-content: flex-start; }
   .wf-zu { position: absolute; top: 8px; right: 8px; }
   .wf-dialog { position: relative; }
   .wf-flaeche { padding: 16px 14px 32px; }
-  .wf-menu { right: auto; left: 0; }
+  .wf-menu { right: 0; left: auto; width: min(290px, calc(100vw - 24px)); }
 
-  .wf-blatt-schatten { position: fixed; inset: 0; z-index: 3; background: rgba(0, 0, 0, 0.25); }
+  .wf-blatt-schatten { position: fixed; inset: 0; z-index: 3; background: var(--schleier); }
   .wf-panel.blatt {
     position: fixed;
     left: 0;

@@ -384,8 +384,8 @@ export interface ProcessTemplateStep {
   /** Nur bei Entscheidungen gefüllt. */
   antworten: Antwort[];
   /**
-   * Nachfolger bei Aufgaben und sonstigen Schritten: eine Schritt-ID,
-   * `'ende'` oder `null` für den unmittelbar folgenden Schritt.
+   * Nachfolger einer Aufgabe: eine Schritt-ID – auch ein früherer Schritt
+   * (Rücksprung) –, `'ende'` oder `null` für den nächsten Schritt der Liste.
    * Bei Entscheidungen bestimmen die Antworten den Verlauf.
    */
   naechster: ID | 'ende' | null;

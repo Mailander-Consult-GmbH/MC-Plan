@@ -175,6 +175,28 @@ export function dauerImStandardverlauf(steps: ProcessTemplateStep[]): number {
 /* Bearbeiten                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Schreibt jedes „nächster Schritt der Liste“ (null) als feste ID bzw. Ende
+ * fest. Danach darf die Liste umgestellt werden, ohne dass sich der Ablauf
+ * ändert; `vereinfachen` macht daraus wieder kurze Verweise.
+ */
+function festschreiben(steps: ProcessTemplateStep[]): ProcessTemplateStep[] {
+  return steps.map((s, i) => ({
+    ...s,
+    naechster: s.naechster === null ? zielAufloesen(steps, i, null) : s.naechster,
+    antworten: s.antworten.map((a) => (a.ziel === null ? { ...a, ziel: zielAufloesen(steps, i, null) } : a)),
+  }));
+}
+
+/** Feste Verweise auf den nächsten Schritt der Liste werden wieder zu null. */
+function vereinfachen(steps: ProcessTemplateStep[]): ProcessTemplateStep[] {
+  return steps.map((s, i) => {
+    const folge = steps[i + 1]?.id;
+    const kurz = (z: ID | 'ende' | null) => (z !== null && z === folge ? null : z);
+    return { ...s, naechster: kurz(s.naechster), antworten: s.antworten.map((a) => ({ ...a, ziel: kurz(a.ziel) })) };
+  });
+}
+
 /** Setzt das Ziel eines Übergangs (Antwort oder „weiter mit“). */
 export function zielSetzen(
   steps: ProcessTemplateStep[],
@@ -199,6 +221,8 @@ export function einfuegen(
   vonId: ID,
   antwortId: ID | null,
   neu: ProcessTemplateStep,
+  /** Neue Entscheidung: alle Antworten führen zunächst zum bisherigen Ziel. */
+  alleAntworten = false,
 ): ProcessTemplateStep[] {
   const i = steps.findIndex((s) => s.id === vonId);
   if (i < 0) return [...steps, neu];
@@ -211,7 +235,11 @@ export function einfuegen(
   const weiter: ID | 'ende' | null = bisher === 'ende' ? 'ende' : bisher === alterNachfolger ? null : bisher;
   const eingefuegt: ProcessTemplateStep =
     neu.typ === 'entscheidung' && neu.antworten.length > 0
-      ? { ...neu, naechster: null, antworten: neu.antworten.map((a, n) => (n === 0 ? { ...a, ziel: weiter } : a)) }
+      ? {
+          ...neu,
+          naechster: null,
+          antworten: neu.antworten.map((a, n) => (n === 0 || alleAntworten ? { ...a, ziel: weiter } : a)),
+        }
       : { ...neu, naechster: weiter };
 
   // „Nächster Schritt“ meint nach dem Einfügen den neuen Schritt. Übergänge,
@@ -244,32 +272,53 @@ export function einfuegenAmAnfang(steps: ProcessTemplateStep[], neu: ProcessTemp
 /**
  * Entfernt einen Schritt. Übergänge, die zu ihm führten, führen danach dorthin
  * weiter, wohin er im Standardverlauf geführt hat – der Ablauf reißt nicht ab.
+ * War er der erste Schritt, beginnt der Ablauf bei seinem Ziel.
  */
 export function entfernen(steps: ProcessTemplateStep[], id: ID): ProcessTemplateStep[] {
   const i = steps.findIndex((s) => s.id === id);
   if (i < 0) return steps;
-  const weiterZu = standardKante(steps, i).nach;
-  // Ein Schritt, der auf sich selbst zeigt, hinterlässt das Ende
+  const fest = festschreiben(steps);
+  const weiterZu = standardKante(fest, i).nach;
   const ersatz: ID | 'ende' = weiterZu === id ? 'ende' : weiterZu;
-  // Der Listennachfolger des Vorgängers wird nach dem Entfernen dieser Schritt hier
-  const nachfolgerDanach: ID | 'ende' = steps[i + 1]?.id ?? 'ende';
-
-  const umbiegen = (ziel: ID | 'ende' | null, istVorgaenger: boolean): ID | 'ende' | null => {
-    if (ziel === id) return ersatz;
-    if (ziel === null && istVorgaenger && ersatz !== nachfolgerDanach) return ersatz;
-    return ziel;
-  };
-
-  return steps
+  let rest = fest
     .filter((s) => s.id !== id)
     .map((s) => {
-      const vorgaenger = steps.indexOf(s) === i - 1;
-      return {
-        ...s,
-        naechster: umbiegen(s.naechster, vorgaenger),
-        antworten: s.antworten.map((a) => ({ ...a, ziel: umbiegen(a.ziel, vorgaenger) })),
-      };
+      // Ein Verweis, der nun auf den Schritt selbst zeigte, führt zum nächsten der Liste
+      const umbiegen = (z: ID | 'ende' | null) => (z === id ? (ersatz === s.id ? null : ersatz) : z);
+      return { ...s, naechster: umbiegen(s.naechster), antworten: s.antworten.map((a) => ({ ...a, ziel: umbiegen(a.ziel) })) };
     });
+  if (i === 0 && ersatz !== 'ende') {
+    const start = rest.find((s) => s.id === ersatz);
+    if (start) rest = [start, ...rest.filter((s) => s !== start)];
+  }
+  return vereinfachen(rest);
+}
+
+/**
+ * Verschiebt einen Schritt des Standardverlaufs um eine Stelle nach vorn bzw.
+ * hinten – im Ablauf, nicht nur in der Liste. Abweichungen bleiben, wo sie sind.
+ */
+export function imVerlaufVerschieben(steps: ProcessTemplateStep[], id: ID, richtung: -1 | 1): ProcessTemplateStep[] {
+  const { haupt } = gliedern(steps);
+  const k = haupt.indexOf(id);
+  if (k < 0 || (richtung === -1 && k === 0) || (richtung === 1 && k >= haupt.length - 1)) return steps;
+  const schritt = festschreiben(steps).find((s) => s.id === id)!;
+  const ohne = festschreiben(entfernen(steps, id));
+  // Einfügen hinter dem Schritt, der danach unmittelbar davor stehen soll
+  const vor = richtung === -1 ? (k >= 2 ? haupt[k - 2] : null) : haupt[k + 1];
+  let ergebnis: ProcessTemplateStep[];
+  if (vor === null) {
+    const erster = ohne[0]?.id ?? 'ende';
+    const neu =
+      schritt.typ === 'entscheidung' && schritt.antworten.length > 0
+        ? { ...schritt, antworten: schritt.antworten.map((a, n) => (n === 0 ? { ...a, ziel: erster } : a)) }
+        : { ...schritt, naechster: erster };
+    ergebnis = [neu, ...ohne];
+  } else {
+    const vi = ohne.findIndex((s) => s.id === vor);
+    ergebnis = einfuegen(ohne, vor, standardKante(ohne, vi).antwortId, schritt);
+  }
+  return vereinfachen(festschreiben(ergebnis));
 }
 
 /** Kopie eines Schritts, eingefügt direkt hinter ihm im Standardverlauf. */
@@ -297,10 +346,11 @@ export function artSetzen(step: ProcessTemplateStep, typ: StepType, neueId: Neue
       ...step,
       typ,
       naechster: null,
-      antworten: antworten.map((a, n) => (n === 0 ? { ...a, ziel: step.naechster } : a)),
+      // Bisher vorhandene Antworten behalten ihr Ziel, neue führen dorthin, wohin die Aufgabe führte
+      antworten: step.antworten.length > 0 ? antworten : antworten.map((a) => ({ ...a, ziel: step.naechster })),
     };
   }
-  return { ...step, typ, naechster: step.antworten[0]?.ziel ?? step.naechster, antworten: [] };
+  return { ...step, typ, naechster: step.antworten.length > 0 ? step.antworten[0].ziel : step.naechster, antworten: [] };
 }
 
 /** Prüfende Funktionen verlangen regelmäßig einen Prüfbericht. */
@@ -310,16 +360,6 @@ export function funktionSetzen(step: ProcessTemplateStep, roleName: string): Pro
     roleName,
     nachweis: step.nachweis === 'keine' && istPrueferRolle(roleName) ? 'pruefbericht' : step.nachweis,
   };
-}
-
-/** Verschiebt einen Schritt in der Liste um eine Stelle. */
-export function verschieben(steps: ProcessTemplateStep[], id: ID, richtung: -1 | 1): ProcessTemplateStep[] {
-  const i = steps.findIndex((s) => s.id === id);
-  const ziel = i + richtung;
-  if (i < 0 || ziel < 0 || ziel >= steps.length) return steps;
-  const neu = [...steps];
-  [neu[i], neu[ziel]] = [neu[ziel], neu[i]];
-  return neu;
 }
 
 /** Macht eine Antwort zur ersten – ihr Weg wird damit zum Standardverlauf. */
@@ -372,6 +412,8 @@ export function bereinigen(steps: ProcessTemplateStep[]): ProcessTemplateStep[] 
     ...s,
     name: s.name.trim(),
     roleName: s.roleName.trim(),
+    // Bei Entscheidungen bestimmen die Antworten den Verlauf
+    naechster: s.typ === 'entscheidung' && s.antworten.length > 0 ? null : s.naechster,
     antworten:
       s.typ === 'entscheidung'
         ? s.antworten.map((a, i) => ({ ...a, text: a.text.trim() || STANDARD_ANTWORTEN[i] || `Antwort ${i + 1}` }))

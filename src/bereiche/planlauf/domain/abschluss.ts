@@ -37,9 +37,10 @@ export function braucheNachweis(step: RunStep, status: StepStatus): boolean {
 }
 
 /**
- * Setzt den Status eines Schritts und rückt den Lauf ggf. weiter. Führt die
- * Antwort einer Entscheidung zu einem bereits durchlaufenen Schritt zurück,
- * beginnt dort ein weiterer Durchlauf.
+ * Setzt den Status eines Schritts und rückt den Lauf ggf. weiter. Führt der
+ * Schritt – über die Antwort einer Entscheidung oder das „Weiter mit“ einer
+ * Aufgabe – zu einem bereits durchlaufenen Schritt zurück, beginnt dort ein
+ * weiterer Durchlauf.
  */
 export function schrittStatusSetzen(
   run: PlanRun,
@@ -57,38 +58,29 @@ export function schrittStatusSetzen(
     step = { ...step, nachweisNummer };
   }
 
-  const verlauf = verlaufDerKette(run.steps).schritte;
+  const patch: Partial<RunStep> = { status };
+  if ((status === 'erledigt' || status === 'uebersprungen') && !step.istDatum) patch.istDatum = today();
+  if (status === 'offen' || status === 'laufend') patch.istDatum = null;
 
-  if (step.typ === 'entscheidung' && status === 'erledigt') {
-    const antwort = massgeblicheAntwort(step);
-    const ziel = antwort?.ziel && antwort.ziel !== 'ende' ? antwort.ziel : null;
-    const zielIndex = ziel ? verlauf.findIndex((s) => s.id === ziel) : -1;
-    const zielIstFrueher = zielIndex >= 0 && zielIndex < verlauf.findIndex((s) => s.id === step.id);
-    if (zielIstFrueher && ziel) {
-      const erledigt = run.steps.map((s) =>
-        s.id === step.id
-          ? {
-              ...s,
-              status: 'erledigt' as const,
-              istDatum: s.istDatum ?? today(),
-              nachweisNummer: step.nachweisNummer,
-            }
-          : s,
-      );
-      aenderungen.push({ art: 'run', patch: { steps: rueckSprungAnwenden(erledigt, step.id, ziel) } });
-      const zielName = run.steps.find((s) => s.id === ziel)?.name ?? '';
+  if (status === 'erledigt' || status === 'uebersprungen') {
+    // Führt der Schritt – Entscheidung wie Aufgabe – zu einem bereits
+    // durchlaufenen Schritt zurück, beginnt dort ein weiterer Durchlauf
+    const erledigt = run.steps.map((s) =>
+      s.id === step.id ? { ...s, ...patch, nachweisNummer: step.nachweisNummer } : s,
+    );
+    const v = verlaufDerKette(erledigt);
+    if (v.rueckSprungZu && v.schritte[v.schritte.length - 1]?.id === step.id) {
+      const ziel = v.rueckSprungZu;
+      aenderungen.push({ art: 'run', patch: { steps: rueckSprungAnwenden(erledigt, step.id, ziel.id) } });
       return {
         art: 'aenderung',
         aenderungen,
-        meldung: `Rücksprung zu „${zielName}“ – weiterer Durchlauf gestartet.`,
-        naechster: run.steps.find((s) => s.id === ziel) ?? null,
+        meldung: `Rücksprung zu „${ziel.name}“ – weiterer Durchlauf gestartet.`,
+        naechster: ziel,
       };
     }
   }
 
-  const patch: Partial<RunStep> = { status };
-  if ((status === 'erledigt' || status === 'uebersprungen') && !step.istDatum) patch.istDatum = today();
-  if (status === 'offen' || status === 'laufend') patch.istDatum = null;
   aenderungen.push({ art: 'step', stepId: step.id, patch });
 
   if (status === 'erledigt' || status === 'uebersprungen') {

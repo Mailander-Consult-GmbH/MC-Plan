@@ -41,6 +41,11 @@
   --gelb-text: #8a6100;
   /* Abgeschlossen – grüne Bezeichnung */
   --gruen-text: #1f7a37;
+  /* Orange und Rot als Schrift (lesbarer als --orange/--red auf Weiß) */
+  --orange-text: #9a5b00;
+  --rot-text: #c4211a;
+  /* Abdunklung hinter Dialogen */
+  --schleier: rgba(0, 0, 0, 0.28);
 
   --radius-sm: 6px;
   --radius: 10px;
@@ -730,7 +735,7 @@ a:hover { text-decoration: underline; }
 /* ------------------------------------------------------------------ */
 .overlay {
   position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--schleier);
   backdrop-filter: blur(2px);
   display: grid; place-items: center;
   padding: 24px;
@@ -1096,6 +1101,8 @@ a:hover { text-decoration: underline; }
   --gelb-soft-stark: rgba(255, 214, 51, 0.5);
   --gelb-text: #5c4100;
   --gruen-text: #00594c;
+  --orange-text: #7d4d00;
+  --rot-text: #8a0060;
 }
 
 /* Status wird zusätzlich durch Rahmen und kräftigere Schrift unterscheidbar */

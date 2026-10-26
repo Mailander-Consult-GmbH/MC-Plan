@@ -575,10 +575,10 @@ export function laufSchritteAusVorlage(
  * einen weiteren Durchlauf geöffnet. Bereits erfasste Ist-Termine der
  * betroffenen Schritte entfallen, der Durchlaufzähler wird erhöht.
  */
-export function rueckSprungAnwenden(steps: RunStep[], entscheidungId: ID, zielId: ID): RunStep[] {
+export function rueckSprungAnwenden(steps: RunStep[], ausloeserId: ID, zielId: ID): RunStep[] {
   const reihenfolge = pfad(steps);
   const vonIndex = reihenfolge.findIndex((s) => s.id === zielId);
-  const bisIndex = reihenfolge.findIndex((s) => s.id === entscheidungId);
+  const bisIndex = reihenfolge.findIndex((s) => s.id === ausloeserId);
   if (vonIndex < 0 || bisIndex < 0 || vonIndex > bisIndex) return steps;
 
   const betroffen = new Set(reihenfolge.slice(vonIndex, bisIndex + 1).map((s) => s.id));
@@ -593,11 +593,6 @@ export function rueckSprungAnwenden(steps: RunStep[], entscheidungId: ID, zielId
       gewaehlteAntwortId: s.typ === 'entscheidung' ? null : s.gewaehlteAntwortId,
     };
   });
-}
-
-/** Gesamtdauer einer Vorlage entlang des Standardverlaufs. */
-export function templateDauer(template: ProcessTemplate): number {
-  return pfad(template.steps).reduce((sum, s) => sum + s.fristTage, 0);
 }
 
 /**

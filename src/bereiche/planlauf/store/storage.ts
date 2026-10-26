@@ -14,6 +14,7 @@ import {
   type ProcessTemplate,
   type ProcessTemplateStep,
   type Role,
+  type RunStep,
   type StandardRolle,
   type StepType,
 } from '../domain/types';
@@ -215,18 +216,44 @@ function migriereTyp(alt: string): StepType {
 }
 
 /**
+ * Ziele, die auf keinen Schritt (mehr) zeigen – der frühere Editor entfernte
+ * Schritte, ohne Verweise umzubiegen –, werden zu „nächster Schritt“. So
+ * verhielten sich daraus gestartete Planläufe schon bisher.
+ */
+function zieleBereinigen<T extends ProcessTemplateStep | RunStep>(steps: T[]): T[] {
+  const ids = new Set(steps.map((s) => s.id));
+  const pruefe = (z: string | null) => (z === null || z === 'ende' || ids.has(z) ? z : null);
+  return steps.map((s) => ({ ...s, naechster: pruefe(s.naechster), antworten: s.antworten.map((a) => ({ ...a, ziel: pruefe(a.ziel) })) }));
+}
+
+/**
  * Bis Fassung 11 fehlte in den mitgelieferten Workflows der Übergang von
  * „Rückmeldung an Planer“ zu „Erneute Vorlage von Planer“: Die Rückmeldung
- * führte zum nächsten Schritt der Liste (der Freigabe), die erneute Vorlage
- * wurde nie erreicht. Workflows mit genau diesem Muster – auch Kopien –
- * erhalten den Übergang. Laufende Planläufe bleiben, wie sie sind.
+ * führte zum nächsten Schritt der Liste – einer Entscheidung, deren „Nein“
+ * selbst zur Rückmeldung führt –, die erneute Vorlage wurde nie erreicht.
+ * Genau dieses Muster erhält den Übergang, auch in Kopien und in laufenden
+ * Planläufen, solange die Rückmeldung dort noch nicht erledigt ist.
  */
-function rueckmeldungVerbinden(steps: ProcessTemplateStep[]): ProcessTemplateStep[] {
-  const rueckmeldung = steps.find((s) => s.name === 'Rückmeldung an Planer');
+/** Nur laufende Planläufe erhalten den Übergang der Rückmeldung. */
+function laufVerbinden(status: string | undefined, steps: RunStep[]): RunStep[] {
+  return status === 'laufend' || status === undefined ? rueckmeldungVerbinden(steps) : steps;
+}
+
+function rueckmeldungVerbinden<T extends ProcessTemplateStep | RunStep>(steps: T[]): T[] {
+  const i = steps.findIndex((s) => s.name === 'Rückmeldung an Planer');
   const vorlage = steps.find((s) => s.name === 'Erneute Vorlage von Planer');
+  const rueckmeldung = steps[i];
   if (!rueckmeldung || !vorlage || rueckmeldung.typ === 'entscheidung' || rueckmeldung.naechster !== null) return steps;
-  if (!gliedern(steps).unerreichbar.includes(vorlage.id)) return steps;
-  return steps.map((s) => (s === rueckmeldung ? { ...s, naechster: vorlage.id } : s));
+  if ('status' in rueckmeldung && (rueckmeldung.status === 'erledigt' || rueckmeldung.status === 'uebersprungen')) return steps;
+  const folge = steps[i + 1];
+  const altesMuster =
+    folge?.typ === 'entscheidung' && folge.antworten.some((a) => a.ziel === rueckmeldung.id);
+  const vorher = gliedern(steps as ProcessTemplateStep[]).unerreichbar;
+  if (!altesMuster || !vorher.includes(vorlage.id)) return steps;
+  const neu = steps.map((s) => (s === rueckmeldung ? { ...s, naechster: vorlage.id } : s));
+  const nachher = gliedern(neu as ProcessTemplateStep[]).unerreichbar;
+  // Kein anderer Schritt darf dadurch unerreichbar werden
+  return nachher.every((id) => vorher.includes(id)) ? neu : steps;
 }
 
 /**
@@ -351,7 +378,7 @@ function migriere(daten: AppData): AppData {
     templates: (daten.templates ?? []).map((t) => ({
       ...t,
       herkunft: t.herkunft === 'standard' ? 'standard' : 'manuell',
-      steps: rueckmeldungVerbinden(
+      steps: rueckmeldungVerbinden(zieleBereinigen(
         (t.steps ?? []).map((s) => {
         const typ = migriereTyp(s.typ as unknown as string);
         return {
@@ -364,7 +391,7 @@ function migriere(daten: AppData): AppData {
           mailFrage: s.mailFrage ?? false,
           mailVorlageId: s.mailVorlageId ?? null,
         };
-      })),
+      }))),
     })),
     runs: (daten.runs ?? []).map((r) => ({
       ...r,
@@ -374,7 +401,7 @@ function migriere(daten: AppData): AppData {
       abbruchDatum: r.abbruchDatum ?? null,
       abbruchArt: r.abbruchArt ?? (r.status === 'abgebrochen' ? 'ersatzlos' : null),
       abbruchNeuerIndex: r.abbruchNeuerIndex ?? null,
-      steps: (r.steps ?? []).map((s) => {
+      steps: laufVerbinden(r.status, zieleBereinigen((r.steps ?? []).map((s) => {
         const typ = migriereTyp(s.typ as unknown as string);
         return {
           ...s,
@@ -391,7 +418,7 @@ function migriere(daten: AppData): AppData {
           mailFrage: s.mailFrage ?? false,
           mailVorlageId: s.mailVorlageId ?? null,
         };
-      }),
+      }))),
     })),
   };
 }

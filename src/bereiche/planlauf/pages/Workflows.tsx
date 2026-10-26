@@ -77,13 +77,13 @@ export function Workflows({ projectId }: { projectId?: string }) {
         <AblaufVorschau steps={t.steps} />
         <div className="wf-liste-zahlen">
           <span>
-            <b>{z.schritte}</b> Schritte
+            <b>{z.schritte}</b> {z.schritte === 1 ? 'Schritt' : 'Schritte'}
           </span>
           <span>
             <b>{z.entscheidungen}</b> {z.entscheidungen === 1 ? 'Entscheidung' : 'Entscheidungen'}
           </span>
           <span>
-            <b>{z.tage}</b> Tage im Standardverlauf
+            <b>{z.tage}</b> {z.tage === 1 ? 'Tag' : 'Tage'} im Standardverlauf
           </span>
         </div>
         <div className="wf-liste-fuss" onClick={(e) => e.stopPropagation()}>

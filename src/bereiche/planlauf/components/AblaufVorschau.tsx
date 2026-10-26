@@ -67,6 +67,7 @@ export function LaufSchritte({
   arbeitstage,
   onUebernehmen,
   onZuruecksetzen,
+  neuerLauf = false,
 }: {
   vorlage: ProcessTemplate | undefined;
   steps: ProcessTemplateStep[];
@@ -75,19 +76,22 @@ export function LaufSchritte({
   arbeitstage: boolean;
   onUebernehmen: (steps: ProcessTemplateStep[]) => void;
   onZuruecksetzen: () => void;
+  /** Beim Neustart: Die Schritte gehören zum neuen Planlauf, nicht zum laufenden. */
+  neuerLauf?: boolean;
 }) {
   const [offen, setOffen] = useState(false);
   const z = ablaufZahlen(steps);
+  const bezug = neuerLauf ? 'den neuen Planlauf' : 'diesen Planlauf';
   return (
     <div className="wf-lauf">
       <div className="wf-lauf-kopf">
         <div style={{ minWidth: 0 }}>
           <div className="row wrap" style={{ gap: 8 }}>
-            <strong>Ablauf dieses Planlaufs</strong>
+            <strong>{neuerLauf ? 'Ablauf des neuen Planlaufs' : 'Ablauf dieses Planlaufs'}</strong>
             {angepasst ? <Badge ton="orange">Individuell angepasst</Badge> : null}
           </div>
           <div className="small tertiary">
-            {z.schritte} Schritte · {z.entscheidungen} {z.entscheidungen === 1 ? 'Entscheidung' : 'Entscheidungen'} ·{' '}
+            {z.schritte} {z.schritte === 1 ? 'Schritt' : 'Schritte'} · {z.entscheidungen} {z.entscheidungen === 1 ? 'Entscheidung' : 'Entscheidungen'} ·{' '}
             {z.tage} Tage im Standardverlauf{arbeitstage ? ' (Arbeitstage)' : ''}
           </div>
         </div>
@@ -105,20 +109,21 @@ export function LaufSchritte({
       <AblaufVorschau steps={steps} />
       <p className="small muted">
         {angepasst
-          ? `Die Schritte weichen für diesen Planlauf vom Workflow „${vorlage?.name ?? '–'}“ ab; der Workflow selbst bleibt unverändert.`
-          : `Die Schritte folgen dem Workflow „${vorlage?.name ?? '–'}“. „Individueller Workflow“ passt sie nur für diesen Planlauf an.`}
+          ? `Die Schritte weichen für ${bezug} vom Workflow „${vorlage?.name ?? '–'}“ ab; der Workflow selbst bleibt unverändert.`
+          : `Die Schritte folgen dem Workflow „${vorlage?.name ?? '–'}“. „Individueller Workflow“ passt sie nur für ${bezug} an.`}
       </p>
 
       {offen ? (
         <WorkflowEditor
           titel="Individueller Workflow"
-          untertitel={`Nur für diesen Planlauf – Grundlage: „${vorlage?.name ?? 'ohne Workflow'}“, der Workflow selbst bleibt unverändert`}
+          untertitel={`Nur für ${bezug} – Grundlage: „${vorlage?.name ?? 'ohne Workflow'}“, der Workflow selbst bleibt unverändert`}
           steps={steps}
           rollen={rollen}
           arbeitstage={arbeitstage}
           speichernLabel="Übernehmen"
           onSpeichern={(e) => {
-            onUebernehmen(e.steps);
+            // Ohne Änderung bleibt es beim Workflow
+            if (e.geaendert) onUebernehmen(e.steps);
             setOffen(false);
           }}
           onClose={() => setOffen(false)}

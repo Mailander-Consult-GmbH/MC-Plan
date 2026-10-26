@@ -42,7 +42,7 @@ import {
   neuerSchritt,
   pruefen,
   standardKante,
-  verschieben,
+  imVerlaufVerschieben,
   zielSetzen,
   type Gliederung,
   type Kante,
@@ -58,6 +58,8 @@ export interface WorkflowErgebnis {
   steps: ProcessTemplateStep[];
   name: string;
   beschreibung: string;
+  /** Im Editor wurde etwas geändert. */
+  geaendert: boolean;
 }
 
 interface Stand {
@@ -76,6 +78,7 @@ interface Verlauf {
 
 const nr = (i: number) => String(i + 1).padStart(2, '0');
 const tage = (n: number) => `${n} ${n === 1 ? 'Tag' : 'Tage'}`;
+const schritteText = (n: number) => `${n} ${n === 1 ? 'Schritt' : 'Schritte'}`;
 
 /** Bildschirm schmaler als die Arbeitsfläche mit zwei Spalten. */
 function useSchmal(grenze = 820): boolean {
@@ -89,9 +92,6 @@ function useSchmal(grenze = 820): boolean {
   }, [abfrage]);
   return schmal;
 }
-
-const istEingabe = (el: EventTarget | null) =>
-  el instanceof HTMLElement && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
 
 export function WorkflowEditor({
   titel,
@@ -125,6 +125,8 @@ export function WorkflowEditor({
   const { data } = useStore();
   const toast = useToast();
   const schmal = useSchmal();
+  // Bis zu dieser Breite liegen die Details als Schublade über der Fläche
+  const mittel = useSchmal(1279) && !schmal;
   const mitStammdaten = anfangsName !== undefined;
 
   const [verlauf, setVerlauf] = useState<Verlauf>(() => ({
@@ -144,6 +146,20 @@ export function WorkflowEditor({
   const [verwerfenFrage, setVerwerfenFrage] = useState(false);
   const [hover, setHover] = useState<ID | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+
+  // Solange der Editor offen ist, bleibt die Seite dahinter unbedienbar
+  useEffect(() => {
+    const vorher = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const root = document.getElementById('root');
+    root?.setAttribute('inert', '');
+    (nameRef.current ?? dialogRef.current)?.focus();
+    return () => {
+      root?.removeAttribute('inert');
+      vorher?.focus();
+    };
+  }, []);
 
   /** Übernimmt eine Änderung in den Verlauf; `feld` fasst Tippen zusammen. */
   const aendern = useCallback((f: (s: Stand) => Stand, feld: string | null = null) => {
@@ -204,7 +220,7 @@ export function WorkflowEditor({
 
   const einfuegenIn = (vonId: ID | null, antwortId: ID | null, typ: StepType = 'aufgabe') => {
     const neu = neuerSchritt(typ, newId);
-    aendernSchritte((alle) => (vonId === null ? einfuegenAmAnfang(alle, neu) : einfuegen(alle, vonId, antwortId, neu)));
+    aendernSchritte((alle) => (vonId === null ? einfuegenAmAnfang(alle, neu) : einfuegen(alle, vonId, antwortId, neu, true)));
     setAuswahl(neu.id);
     setMenuOffen(false);
   };
@@ -241,7 +257,7 @@ export function WorkflowEditor({
       if (sperrend.stepId) setAuswahl(sperrend.stepId);
       return;
     }
-    onSpeichern({ steps: bereinigen(steps), name: name.trim(), beschreibung });
+    onSpeichern({ steps: bereinigen(steps), name: name.trim(), beschreibung, geaendert });
   };
 
   const schliessen = useCallback(() => {
@@ -265,7 +281,8 @@ export function WorkflowEditor({
         return;
       }
       const mod = e.ctrlKey || e.metaKey;
-      if (!mod || istEingabe(e.target) || verwerfenFrage) return;
+      // Tippen ist je Feld zu einem Schritt zusammengefasst – Rückgängig gilt daher auch in Feldern
+      if (!mod || verwerfenFrage) return;
       const k = e.key.toLowerCase();
       if (k === 'z' && !e.shiftKey) {
         e.preventDefault();
@@ -294,7 +311,7 @@ export function WorkflowEditor({
     [rollen],
   );
 
-  const detailsSichtbar = !schmal || auswahl !== null;
+  const detailsSichtbar = (!schmal && !mittel) || auswahl !== null;
   const panel =
     gewaehlt ? (
       <SchrittDetails
@@ -309,7 +326,7 @@ export function WorkflowEditor({
         onSchritteAendern={aendernSchritte}
         onEntfernen={entfernenMitMeldung}
         onSchliessen={() => setAuswahl(null)}
-        schmal={schmal}
+        schmal={schmal || mittel}
       />
     ) : (
       <Uebersicht
@@ -322,13 +339,13 @@ export function WorkflowEditor({
         dauer={dauer}
         arbeitstage={arbeitstage}
         onAuswahl={setAuswahl}
-        onSchliessen={schmal ? () => setAuswahl(null) : undefined}
+        onSchliessen={schmal || mittel ? () => setAuswahl(null) : undefined}
       />
     );
 
   return createPortal(
     <div className="wf-overlay" onMouseDown={(e) => e.target === e.currentTarget && schliessen()}>
-      <div className="wf-dialog" role="dialog" aria-modal="true" aria-label={titel}>
+      <div className="wf-dialog" role="dialog" aria-modal="true" aria-label={titel} ref={dialogRef} tabIndex={-1}>
         <header className="wf-kopf">
           <div className="wf-kopf-titel">
             <div className="wf-kopf-oben">{titel}</div>
@@ -346,7 +363,7 @@ export function WorkflowEditor({
           </div>
           <div className="wf-werkzeuge">
             <span className="wf-kennzahl">
-              {steps.length} Schritte · {tage(dauer)} im Standardverlauf
+              {schritteText(steps.length)} · {tage(dauer)} im Standardverlauf
             </span>
             <div className="wf-knopfgruppe">
               <button
@@ -370,7 +387,7 @@ export function WorkflowEditor({
                 <Icon name="wiederholen" size={17} />
               </button>
             </div>
-            {schmal ? (
+            {schmal || mittel ? (
               <button type="button" className="btn btn-sm btn-outline" onClick={() => setAuswahl('uebersicht')}>
                 <Icon name="info" size={13} /> Übersicht
               </button>
@@ -419,8 +436,12 @@ export function WorkflowEditor({
           </div>
         </header>
 
-        <div className={`wf-rumpf ${schmal ? 'schmal' : ''}`}>
-          <div className="wf-flaeche" onMouseDown={(e) => e.target === e.currentTarget && setAuswahl(null)}>
+        <div className={`wf-rumpf ${schmal ? 'schmal' : mittel ? 'mittel' : ''}`}>
+          <div
+            className="wf-flaeche"
+            inert={(schmal || mittel) && auswahl !== null}
+            onMouseDown={(e) => e.target === e.currentTarget && setAuswahl(null)}
+          >
             {hinweis ? <div className="wf-banner">{hinweis}</div> : null}
             {steps.length === 0 ? (
               <div className="wf-leer">
@@ -445,7 +466,10 @@ export function WorkflowEditor({
                 fehlend={fehlend}
                 schmal={schmal}
                 kuerzel={kuerzel}
-                onAuswahl={(id) => setAuswahl(id)}
+                onAuswahl={(id, perTastatur) => {
+                  setAuswahl(id);
+                  if (perTastatur) setTimeout(() => panelRef.current?.focus(), 0);
+                }}
                 onHover={setHover}
                 onEinfuegen={einfuegenIn}
               />
@@ -453,8 +477,12 @@ export function WorkflowEditor({
           </div>
           {detailsSichtbar ? (
             <>
-              {schmal ? <div className="wf-blatt-schatten" onMouseDown={() => setAuswahl(null)} /> : null}
-              <aside className={`wf-panel ${schmal ? 'blatt' : ''}`}>{panel}</aside>
+              {schmal || mittel ? (
+                <div className={schmal ? 'wf-blatt-schatten' : 'wf-schublade-schatten'} onMouseDown={() => setAuswahl(null)} />
+              ) : null}
+              <aside ref={panelRef} tabIndex={-1} className={`wf-panel ${schmal ? 'blatt' : mittel ? 'schublade' : ''}`}>
+                {panel}
+              </aside>
             </>
           ) : null}
         </div>
@@ -547,7 +575,7 @@ function Ablaufbild({
   fehlend: Set<ID>;
   schmal: boolean;
   kuerzel: (rolle: string) => string;
-  onAuswahl: (id: ID) => void;
+  onAuswahl: (id: ID, perTastatur: boolean) => void;
   onHover: (id: ID | null) => void;
   onEinfuegen: (vonId: ID | null, antwortId: ID | null) => void;
 }) {
@@ -565,9 +593,17 @@ function Ablaufbild({
     const raster = rasterRef.current;
     if (!raster || schmal) return;
     const basis = raster.getBoundingClientRect();
+    // Während der Öffnungsanimation ist der Dialog skaliert – Maßstab herausrechnen
+    const mx = basis.width ? raster.offsetWidth / basis.width : 1;
+    const my = basis.height ? raster.offsetHeight / basis.height : 1;
     const box = (el: Element): Box => {
       const r = el.getBoundingClientRect();
-      return { l: r.left - basis.left, t: r.top - basis.top, r: r.right - basis.left, b: r.bottom - basis.top };
+      return {
+        l: (r.left - basis.left) * mx,
+        t: (r.top - basis.top) * my,
+        r: (r.right - basis.left) * mx,
+        b: (r.bottom - basis.top) * my,
+      };
     };
     const neu: Geometrie = {
       breite: raster.offsetWidth,
@@ -632,7 +668,7 @@ function Ablaufbild({
           rueck: istRueck(id, k.nach),
         }))}
         refFn={merke(id)}
-        onClick={() => onAuswahl(id)}
+        onClick={(perTastatur) => onAuswahl(id, perTastatur)}
         onHover={onHover}
       />
     );
@@ -649,6 +685,7 @@ function Ablaufbild({
         <button
           type="button"
           className="wf-einfuegen"
+          tabIndex={-1}
           title="Schritt hier einfügen"
           aria-label="Schritt hier einfügen"
           onClick={() => onEinfuegen(vonId, std?.antwortId ?? null)}
@@ -796,7 +833,7 @@ function KarteAnzeige({
   kuerzel: string;
   zweige: { text: string | null; ziel: string; rueck: boolean }[];
   refFn: (el: HTMLElement | null) => void;
-  onClick: () => void;
+  onClick: (perTastatur: boolean) => void;
   onHover: (id: ID | null) => void;
 }) {
   const entscheidung = step.typ === 'entscheidung';
@@ -805,7 +842,7 @@ function KarteAnzeige({
       type="button"
       ref={refFn}
       className={`wf-karte ${step.typ} ${ort} ${aktiv ? 'aktiv' : ''} ${hervor ? 'hervor' : ''} ${fehlt ? 'fehlt' : ''}`}
-      onClick={onClick}
+      onClick={(e) => onClick(e.detail === 0)}
       onMouseEnter={() => onHover(step.id)}
       onMouseLeave={() => onHover(null)}
       aria-pressed={aktiv}
@@ -908,7 +945,7 @@ function Linien({
   const versetzt = (schluessel: string) => {
     const n = ausgang.get(schluessel) ?? 0;
     ausgang.set(schluessel, n + 1);
-    return n * 8;
+    return n * 22;
   };
 
   const gezeichnet = kanten
@@ -924,7 +961,7 @@ function Linien({
       // Direkt darunter gestapelte Abweichung: senkrecht von Karte zu Karte
       const gestapelt = art === 'abwAbw' && z.t >= q.b && z.t - q.b < 40 && Math.abs(z.l - q.l) < 2;
       const sx = linksRaus ? q.l : q.r;
-      const sy = q.t + Y + versetzt(`${k.von}:${linksRaus ? 'l' : 'r'}`);
+      const sy = Math.min(q.t + Y + versetzt(`${k.von}:${linksRaus ? 'l' : 'r'}`), q.b - 8);
       // Rücksprung: führt zu einem Schritt des Standardverlaufs, der nicht später kommt
       const rueck = nachHaupt && rang.get(nach)! <= rang.get(k.von)!;
       // Linien zum selben Ziel teilen sich Bahn und Anschluss (Bündel)
@@ -1059,6 +1096,7 @@ function SchrittDetails({
       ? 'nicht erreichbar'
       : 'Abweichung';
   const entscheidung = step.typ === 'entscheidung';
+  const hauptPos = gliederung.haupt.indexOf(step.id);
   const aendern = (patch: Partial<ProcessTemplateStep>, feld: string | null = null) =>
     onSchrittAendern(step.id, (s) => ({ ...s, ...patch }), feld);
   const folge = steps[i + 1];
@@ -1082,6 +1120,9 @@ function SchrittDetails({
         ),
       )}
       <option value="ende">Planlauf beenden</option>
+      {wert !== null && wert !== 'ende' && (wert === step.id || !steps.some((z) => z.id === wert)) ? (
+        <option value={wert}>{wert === step.id ? `${nr(i)} · dieser Schritt (Wiederholung)` : 'Unbekannter Schritt – bitte wählen'}</option>
+      ) : null}
     </select>
   );
 
@@ -1101,7 +1142,7 @@ function SchrittDetails({
             <Icon name="zurueck" size={14} />
           </button>
           <span className="tertiary">
-            {nr(i)} / {String(steps.length).padStart(2, '0')}
+            {pos + 1} von {bildFolge.length}
           </span>
           <button
             type="button"
@@ -1321,24 +1362,24 @@ function SchrittDetails({
 
       <section className="wf-abschnitt wf-aktionen">
         <div className="wf-position">
-          <span className="small tertiary">Position in der Liste</span>
+          <span className="small tertiary">Im Standardverlauf</span>
           <button
             type="button"
             className="btn-icon"
-            disabled={i === 0}
-            onClick={() => onSchritteAendern((alle) => verschieben(alle, step.id, -1))}
-            aria-label="Nach vorn"
-            title="Nach vorn"
+            disabled={hauptPos <= 0}
+            onClick={() => onSchritteAendern((alle) => imVerlaufVerschieben(alle, step.id, -1))}
+            aria-label="Früher im Ablauf"
+            title="Früher im Ablauf"
           >
             <Icon name="hoch" size={14} />
           </button>
           <button
             type="button"
             className="btn-icon"
-            disabled={i === steps.length - 1}
-            onClick={() => onSchritteAendern((alle) => verschieben(alle, step.id, 1))}
-            aria-label="Nach hinten"
-            title="Nach hinten"
+            disabled={hauptPos < 0 || hauptPos >= gliederung.haupt.length - 1}
+            onClick={() => onSchritteAendern((alle) => imVerlaufVerschieben(alle, step.id, 1))}
+            aria-label="Später im Ablauf"
+            title="Später im Ablauf"
           >
             <Icon name="runter" size={14} />
           </button>

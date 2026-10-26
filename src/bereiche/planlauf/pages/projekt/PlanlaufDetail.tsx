@@ -591,8 +591,8 @@ export function PlanlaufDetail({
                 <Badge ton="purple">Schleife</Badge>
               </div>
               <p className="small muted">
-                Die gewählte Antwort führt zurück. Sobald die Entscheidung erledigt wird, beginnt ab diesem
-                Schritt ein weiterer Durchlauf.
+                Der Ablauf führt hier zurück. Sobald der Schritt davor erledigt wird, beginnt ab diesem Schritt
+                ein weiterer Durchlauf.
               </p>
             </div>
           </div>
@@ -893,6 +893,7 @@ function NeustartDialog({
             setAngepasst(true);
           }}
           onZuruecksetzen={() => wechseln(templateId)}
+          neuerLauf
         />
       </div>
     </Modal>
