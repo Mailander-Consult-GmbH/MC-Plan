@@ -63,8 +63,8 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
     <div className="stack">
       <div className="row-between wrap">
         <p className="small muted" style={{ maxWidth: 620 }}>
-          Ein Folgeprotokoll übernimmt Teilnehmende und Tagesordnung mit allen Einträgen. Erledigtes und Gestrichenes steht
-          darin noch einmal durchgestrichen und entfällt danach. Neue und geänderte Einträge erscheinen im Druck blau.
+          Ein Folgeprotokoll übernimmt Teilnehmende und Tagesordnung mit allen Einträgen. Gestrichenes entfällt darin,
+          erledigte Aufgaben stehen noch einmal durchgestrichen. Neue und geänderte Einträge erscheinen im Druck blau.
         </p>
         <div className="row wrap">
           <button

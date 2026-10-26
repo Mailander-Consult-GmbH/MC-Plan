@@ -1,7 +1,6 @@
 /**
- * Projektarbeitsbereich mit drei Seiten: Projektbeteiligte, Protokolle und
- * die Liste offener Punkte (LOP). Darüber Projektnummer, Status sowie
- * „Bearbeiten“ und „Löschen“.
+ * Projektarbeitsbereich mit zwei Seiten: Projektbeteiligte und Protokolle.
+ * Darüber Projektnummer, Status sowie „Bearbeiten“ und „Löschen“.
  */
 import { useState } from 'react';
 import { Icon } from '../../../shared/icons';
@@ -11,14 +10,12 @@ import { PROJEKT_STATUS_LABEL, type Projekt } from '../domain/types';
 import type { ProjektTab, Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { Beteiligte } from './projekt/Beteiligte';
-import { LopSeite } from './projekt/Lop';
 import { Protokolle } from './projekt/Protokolle';
 import { ProjektDialog, STATUS_TON } from './Projekte';
 
 const TABS: { id: ProjektTab; label: string; titel: string }[] = [
   { id: 'beteiligte', label: 'Projektbeteiligte', titel: 'Projektbeteiligtenliste' },
   { id: 'protokolle', label: 'Protokolle', titel: 'Besprechungsprotokolle' },
-  { id: 'lop', label: 'LOP', titel: 'Liste offener Punkte' },
 ];
 
 export function ProjektDetail({
@@ -75,14 +72,13 @@ export function ProjektDetail({
 
       {tab === 'beteiligte' ? <Beteiligte projekt={projekt} /> : null}
       {tab === 'protokolle' ? <Protokolle projekt={projekt} navigate={navigate} /> : null}
-      {tab === 'lop' ? <LopSeite projekt={projekt} /> : null}
 
       {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
 
       {loeschen ? (
         <ConfirmDialog
           titel="Projekt löschen?"
-          text={`„${projekt.name}“ wird mit ${umfang.beteiligte} Projektbeteiligten, ${umfang.protokolle} Protokollen und der LOP endgültig gelöscht.`}
+          text={`„${projekt.name}“ wird mit ${umfang.beteiligte} Projektbeteiligten und ${umfang.protokolle} Protokollen endgültig gelöscht.`}
           onConfirm={() => {
             deleteProjekt(projekt.id);
             toast('Projekt gelöscht.');

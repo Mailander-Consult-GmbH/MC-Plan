@@ -1,6 +1,6 @@
 /**
- * Startseite des Bereichs: Kennzahlen, die offenen Punkte aus LOP und
- * Protokollen nach Dringlichkeit und die Projekte mit ihren Besprechungen.
+ * Startseite des Bereichs: Kennzahlen, die offenen Aufgaben der Protokolle
+ * nach Dringlichkeit und die Projekte mit ihren Besprechungen.
  * Angezeigt werden die markierten Projekte; ohne Markierung alle.
  */
 import { useState } from 'react';
@@ -26,11 +26,9 @@ const ANZAHL_PUNKTE = 10;
 
 type Filter = 'alle' | 'ueberfaellig' | 'faellig';
 
-/** Ziel eines Punkts: die LOP des Projekts bzw. das Protokoll der Aufgabe. */
+/** Ziel eines Punkts: das Protokoll der Aufgabe. */
 export function punktZiel(p: Punkt): Route {
-  return p.quelle === 'protokoll' && p.protokollId
-    ? { view: 'protokoll', projektId: p.projekt.id, protokollId: p.protokollId }
-    : { view: 'projekt', projektId: p.projekt.id, tab: 'lop' };
+  return { view: 'protokoll', projektId: p.projekt.id, protokollId: p.protokollId };
 }
 
 export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
@@ -82,7 +80,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
       <Card>
         <CardHeader
           titel="Offene Punkte"
-          sub="Aus den Listen offener Punkte und den Aufgaben der Protokolle – Überfälliges zuerst"
+          sub="Aufgaben aus den Protokollen – Überfälliges zuerst"
           actions={
             <Segmented<Filter>
               value={filter}
@@ -232,10 +230,10 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                           className="btn btn-ghost btn-sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate({ view: 'projekt', projektId: projekt.id, tab: 'lop' });
+                            navigate({ view: 'projekt', projektId: projekt.id, tab: 'protokolle' });
                           }}
                         >
-                          LOP <Icon name="chevron" size={13} />
+                          Protokolle <Icon name="chevron" size={13} />
                         </button>
                       </td>
                     </tr>

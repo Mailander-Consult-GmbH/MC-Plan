@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import type { ID } from '../domain/types';
 
 /** Seiten im Projekt. */
-export type ProjektTab = 'beteiligte' | 'protokolle' | 'lop';
+export type ProjektTab = 'beteiligte' | 'protokolle';
 
 export type Route =
   | { view: 'uebersicht' }
@@ -16,7 +16,7 @@ export type Route =
   | { view: 'projekt'; projektId: ID; tab: ProjektTab }
   | { view: 'protokoll'; projektId: ID; protokollId: ID };
 
-export const TABS: ProjektTab[] = ['beteiligte', 'protokolle', 'lop'];
+export const TABS: ProjektTab[] = ['beteiligte', 'protokolle'];
 
 /** Präfix aller Adressen dieses Bereichs. */
 export const PREFIX = 'projektsteuerung';
@@ -40,7 +40,9 @@ export function hashToRoute(hash: string): Route {
     if (teile[2] === 'protokoll' && teile[3]) {
       return { view: 'protokoll', projektId: teile[1], protokollId: teile[3] };
     }
-    const tab = (TABS as string[]).includes(teile[2] ?? '') ? (teile[2] as ProjektTab) : 'beteiligte';
+    // Die frühere Seite „lop“ (Liste offener Punkte) führt zu den Protokollen.
+    const seite = teile[2] === 'lop' ? 'protokolle' : (teile[2] ?? '');
+    const tab = (TABS as string[]).includes(seite) ? (seite as ProjektTab) : 'beteiligte';
     return { view: 'projekt', projektId: teile[1], tab };
   }
   if (teile[0] === 'projekte') return { view: 'projekte' };

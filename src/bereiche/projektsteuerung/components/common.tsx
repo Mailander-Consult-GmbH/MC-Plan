@@ -5,7 +5,6 @@ import { useToast } from '../../../shared/toast';
 import { Badge } from '../../../shared/ui';
 import { DRUCK_STIL, liveDokument } from '../domain/druck';
 import { AMPEL_LABEL, type Ampel } from '../domain/punkte';
-import { funktionsName, kuerzelVon, personName, type Beteiligter, type Funktion } from '../domain/types';
 
 const AMPEL_TON: Record<Ampel, '' | 'green' | 'orange' | 'red' | 'blue'> = {
   erledigt: 'green',
@@ -70,9 +69,9 @@ export function Blatt({ inhalt }: { inhalt: string }) {
 }
 
 /**
- * Das eine Live-Fenster des Bereichs. Die jeweils geöffnete Ansicht –
- * Protokoll oder LOP – schreibt hinein; so bleibt das Fenster auch beim
- * Wechsel in ein Folgeprotokoll verbunden.
+ * Das eine Live-Fenster des Bereichs. Das jeweils geöffnete Protokoll schreibt
+ * hinein; so bleibt das Fenster auch beim Wechsel in ein Folgeprotokoll
+ * verbunden.
  */
 const live: { fenster: Window | null; titel: string; inhalt: string } = { fenster: null, titel: '', inhalt: '' };
 
@@ -145,28 +144,4 @@ export function useLiveDruck(titel: string, inhalt: string): () => void {
     liveSchreiben(titel, inhalt, true);
     w.focus();
   };
-}
-
-/** Vorschläge für „Verantwortlich“: Kürzel der Projektbeteiligten mit Namen. */
-export function KuerzelListe({ id, beteiligte, funktionen }: { id: string; beteiligte: Beteiligter[]; funktionen: Funktion[] }) {
-  const gesehen = new Set<string>();
-  const optionen: { wert: string; text: string }[] = [];
-  for (const b of beteiligte) {
-    const k = kuerzelVon(b, funktionen);
-    for (const wert of [k, personName(b)]) {
-      if (!wert || gesehen.has(wert)) continue;
-      gesehen.add(wert);
-      const f = funktionen.find((x) => x.id === b.funktionId);
-      optionen.push({ wert, text: wert === k ? personName(b) : f ? funktionsName(f) : '' });
-    }
-  }
-  return (
-    <datalist id={id}>
-      {optionen.map((o) => (
-        <option key={o.wert} value={o.wert}>
-          {o.text}
-        </option>
-      ))}
-    </datalist>
-  );
 }

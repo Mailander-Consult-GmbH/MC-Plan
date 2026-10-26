@@ -4,7 +4,6 @@
  * geschrieben.
  */
 import { today } from '../../../shared/dates';
-import { leereLop } from '../domain/lop';
 import { zeilenAusAltform } from '../domain/protokoll';
 import { STANDARD_GEWERKE, seedDaten } from '../domain/seed';
 import {
@@ -17,16 +16,12 @@ import {
   type EintragTyp,
   type Funktion,
   type Logo,
-  type Lop,
-  type LopPunkt,
-  type LopThema,
   type Projekt,
   type ProjektsteuerungDaten,
   type Protokoll,
   type Teilnahme,
   type Teilnehmer,
   type Top,
-  type Vorstand,
   type Zeile,
 } from '../domain/types';
 
@@ -48,29 +43,32 @@ const zufallsId = (prefix: string) => `${prefix}-${Math.random().toString(36).sl
 const erledigung = (w: unknown) => (w === 'erledigt' ? 'erledigt' : 'offen') as 'erledigt' | 'offen';
 
 const typVon = (w: unknown): EintragTyp => (w === 'F' || w === 'A' ? w : 'I');
+/** Eigene Art einer Zeile; fehlt sie (Fassung 4), läuft die Zeile unter dem Ursprung mit. */
+const artVon = (w: unknown): EintragTyp | null => (w === 'I' || w === 'F' || w === 'A' ? w : null);
 const objekt = (w: unknown): Roh | null => (w && typeof w === 'object' ? (w as Roh) : null);
-
-/** Stand eines LOP-Punkts bei der letzten Fortschreibung. */
-function vorstand(w: unknown): Vorstand | null {
-  const v = objekt(w);
-  if (!v) return null;
-  return {
-    text: text(v.text),
-    wer: text(v.wer),
-    termin: datum(v.termin),
-    status: erledigung(v.status),
-    ...(typeof v.bemerkung === 'string' ? { bemerkung: v.bemerkung } : {}),
-  };
-}
 
 function zeileAufbereiten(z: Roh): Zeile {
   const vor = objekt(z.vor);
+  const typ = artVon(z.typ);
   return {
     id: text(z.id) || zufallsId('z'),
     text: text(z.text),
     herkunft: typeof z.herkunft === 'number' && z.herkunft >= 1 ? Math.round(z.herkunft) : null,
+    typ,
+    wer: typ ? text(z.wer) : '',
+    termin: typ === 'A' ? datum(z.termin) : '',
+    status: typ === 'A' ? erledigung(z.status) : 'offen',
     entfaellt: z.entfaellt === true,
-    vor: vor ? { text: text(vor.text), entfaellt: vor.entfaellt === true } : null,
+    vor: vor
+      ? {
+          text: text(vor.text),
+          typ: artVon(vor.typ),
+          wer: text(vor.wer),
+          termin: datum(vor.termin),
+          status: erledigung(vor.status),
+          entfaellt: vor.entfaellt === true,
+        }
+      : null,
   };
 }
 
@@ -95,7 +93,6 @@ function eintragAufbereiten(e: Roh, nr: number): Eintrag {
     termin: datum(e.termin),
     status: erledigung(e.status),
     uebernommenIn: idOderNull(e.uebernommenIn),
-    lopPunktId: idOderNull(e.lopPunktId),
     entfaellt: e.entfaellt === true,
     vor: vor
       ? {
@@ -149,52 +146,6 @@ function protokollAufbereiten(p: Roh): Protokoll {
       }),
     ),
     geaendert: text(p.geaendert) || new Date().toISOString(),
-  };
-}
-
-function lopAufbereiten(l: Roh, projektId: string): Lop {
-  const leer = leereLop(projektId);
-  const themen = liste(l.themen).map(
-    (t): LopThema => ({
-      id: text(t.id) || zufallsId('th'),
-      titel: text(t.titel),
-      vorTitel: typeof t.vorTitel === 'string' ? t.vorTitel : null,
-    }),
-  );
-  const punkte = liste(l.punkte).map(
-    (p): LopPunkt => ({
-      id: text(p.id) || zufallsId('lp'),
-      nr: Math.max(1, Math.round(zahl(p.nr, 1))),
-      themaId: text(p.themaId),
-      text: text(p.text),
-      zusatz: text(p.zusatz),
-      wer: text(p.wer),
-      termin: datum(p.termin),
-      status: erledigung(p.status),
-      erledigtAm: datum(p.erledigtAm),
-      bemerkung: text(p.bemerkung),
-      herkunft: text(p.herkunft),
-      erfasst: datum(p.erfasst) || today(),
-      vor: vorstand(p.vor),
-      archiviertAb: typeof p.archiviertAb === 'number' ? p.archiviertAb : null,
-    }),
-  );
-  const themenListe = themen.length > 0 ? themen : leer.themen;
-  // Punkte ohne gültiges Thema landen im ersten Thema.
-  const themaIds = new Set(themenListe.map((t) => t.id));
-  const punkteListe = punkte.map((p) => (themaIds.has(p.themaId) ? p : { ...p, themaId: themenListe[0].id }));
-  const hoechste = punkteListe.reduce((m, p) => Math.max(m, p.nr), 0);
-  return {
-    projektId,
-    stand: Math.max(1, Math.round(zahl(l.stand, 1))),
-    standDatum: datum(l.standDatum) || today(),
-    themen: themenListe,
-    punkte: punkteListe,
-    naechsteNr: Math.max(hoechste + 1, Math.round(zahl(l.naechsteNr, 1))),
-    fortschreibungen: liste(l.fortschreibungen).map((f) => ({
-      stand: Math.round(zahl(f.stand, 1)),
-      datum: datum(f.datum) || today(),
-    })),
   };
 }
 
@@ -259,12 +210,6 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
   const protokolle = liste(roh.protokolle)
     .filter((p) => projektIds.has(text(p.projektId)))
     .map(protokollAufbereiten);
-  // Je Projekt genau eine LOP
-  const lopRoh = liste(roh.lops);
-  const lops = projekte.map((p) => {
-    const l = lopRoh.find((x) => text(x.projektId) === p.id);
-    return l ? lopAufbereiten(l, p.id) : leereLop(p.id);
-  });
   return {
     version: DATEN_VERSION,
     einstellungen: {
@@ -276,19 +221,19 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
     projekte,
     beteiligte,
     protokolle,
-    lops,
   };
 }
 
 /**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
- * für Schritt. Fassung 1 kannte weder Gewerke noch Verweise auf LOP-Punkte:
- * Sie erhält die mitgelieferten Gewerke; ihre Funktionen gelten als
- * übergreifend, ihre Aufgaben als nicht übernommen (beides ergänzt
- * `aufbereiten`). Fassung 2 kannte keine gestrichenen Einträge; `aufbereiten`
- * setzt `entfaellt` auf false. Bis Fassung 3 bestanden Einträge aus Text und
- * Ergänzung; `aufbereiten` bildet daraus Zeilen, gibt LOP-Punkten eine leere
- * Bemerkung und lässt Ersteller und Hinweis der LOP fallen.
+ * für Schritt. Fassung 1 kannte keine Gewerke: Sie erhält die mitgelieferten
+ * Gewerke; ihre Funktionen gelten als übergreifend (ergänzt `aufbereiten`).
+ * Fassung 2 kannte keine gestrichenen Einträge; `aufbereiten` setzt
+ * `entfaellt` auf false. Bis Fassung 3 bestanden Einträge aus Text und
+ * Ergänzung; `aufbereiten` bildet daraus Zeilen. Bis Fassung 4 führte jedes
+ * Projekt eine Liste offener Punkte (LOP); `aufbereiten` lässt sie samt den
+ * Verweisen der Aufgaben fallen, Zeilen ohne eigene Art laufen unter dem
+ * Ursprung mit.
  */
 function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   let stand = roh;

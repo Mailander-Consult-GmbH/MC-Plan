@@ -1,13 +1,18 @@
 /**
  * Fachlogik der Protokolle: Reihen und Folgeprotokolle, Zeilen mit ihrem
- * Ursprungsprotokoll, Kennzeichnung neuer, geänderter und gestrichener
- * Angaben, Aufgaben aus den Protokollen, Teilnehmende aus der
+ * Ursprungsprotokoll und ihrer Art, Kennzeichnung neuer, geänderter und
+ * gestrichener Angaben, Aufgaben aus den Protokollen, Teilnehmende aus der
  * Projektbeteiligtenliste und die Übernahme von Dateien des Protokoll-Tools.
  * Alle Funktionen sind rein; geschrieben wird nur über den Store.
  *
  * Gestrichen werden kann auf drei Ebenen – Tagesordnungspunkt, Eintrag und
- * Zeile. Gestrichenes steht im Protokoll der Änderung durchgestrichen, im
- * Folgeprotokoll noch einmal und entfällt danach; ebenso erledigte Aufgaben.
+ * Zeile. Gestrichenes steht im Protokoll der Änderung durchgestrichen und
+ * entfällt im Folgeprotokoll. Erledigte Aufgaben stehen im Folgeprotokoll
+ * noch einmal durchgestrichen und entfallen danach.
+ *
+ * Eine Ergänzung mit eigener Art (`Zeile.typ`) ist ein eigener Punkt unter
+ * dem Eintrag – mit eigenem Verantwortlich, Termin und Erledigung. Ohne
+ * eigene Art läuft sie unter dem Ursprung mit.
  */
 import { today } from '../../../shared/dates';
 import {
@@ -30,16 +35,20 @@ import {
   type Teilnehmer,
   type Top,
   type Zeile,
+  type ZeileVorstand,
 } from './types';
 
 /* ------------------------------------------------------------------ */
 /* Zeilen und Kennzeichnung                                            */
 /* ------------------------------------------------------------------ */
 
-/** Text eines Eintrags ohne gestrichene Zeilen – etwa für die LOP. */
+/** Ergänzung mit eigener Art – ein eigener Punkt unter dem Eintrag. */
+export const eigeneArt = (z: Zeile): boolean => z.typ !== null;
+
+/** Text des Ursprungs: die mitlaufenden, nicht gestrichenen Zeilen. */
 export function eintragText(e: Eintrag): string {
   return e.zeilen
-    .filter((z) => !z.entfaellt)
+    .filter((z) => !eigeneArt(z) && !z.entfaellt)
     .map((z) => z.text.trim())
     .filter(Boolean)
     .join('\n');
@@ -53,39 +62,57 @@ export function feldNeu(e: Eintrag, k: Exclude<keyof EintragVorstand, 'entfaellt
   return e.vor ? e[k] !== e.vor[k] : eintragNeu(e);
 }
 
+/** Angabe einer Ergänzung mit eigener Art gegenüber dem Vorprotokoll geändert bzw. neu. */
+export function zeileFeldNeu(z: Zeile, k: Exclude<keyof ZeileVorstand, 'text' | 'entfaellt'>): boolean {
+  return z.vor ? z[k] !== z.vor[k] : true;
+}
+
 export const topNeu = (top: Top): boolean => top.vorTitel === null || top.titel !== top.vorTitel;
 
 /** „aus Prot. 1“ – Ursprung einer übernommenen Zeile; leer bei neuen Zeilen. */
 export const zeileHerkunft = (z: Zeile): string => (z.herkunft !== null ? `aus Prot. ${z.herkunft}` : '');
 
 /** Erledigt (Aufgabe) oder gestrichen. */
-export function abgeschlossen(x: { typ?: EintragTyp; status: Erledigung; entfaellt?: boolean }): boolean {
+export function abgeschlossen(x: { typ?: EintragTyp | null; status: Erledigung; entfaellt?: boolean }): boolean {
   return !!x.entfaellt || (x.typ === 'A' && x.status === 'erledigt');
 }
-
-/** Eintrag erscheint durchgestrichen: erledigt, gestrichen oder in einem gestrichenen Punkt. */
-export const eintragGestrichen = (top: Top, e: Eintrag): boolean => top.entfaellt || abgeschlossen(e);
 
 /** Gestrichen – über den Punkt oder den Eintrag –, aber nicht bloß erledigt. */
 export const eintragEntfaellt = (top: Top, e: Eintrag): boolean => top.entfaellt || e.entfaellt;
 
-/** Zeile erscheint durchgestrichen. */
-export const zeileGestrichen = (top: Top, e: Eintrag, z: Zeile): boolean => z.entfaellt || eintragGestrichen(top, e);
+/** Gestrichen – über Punkt, Eintrag oder die Zeile selbst –, aber nicht bloß erledigt. */
+export const zeileEntfaellt = (top: Top, e: Eintrag, z: Zeile): boolean => eintragEntfaellt(top, e) || z.entfaellt;
+
+/**
+ * Zeile erscheint durchgestrichen. Eine Ergänzung mit eigener Art folgt ihrer
+ * eigenen Erledigung, eine mitlaufende der des Ursprungs.
+ */
+export function zeileGestrichen(top: Top, e: Eintrag, z: Zeile): boolean {
+  if (zeileEntfaellt(top, e, z)) return true;
+  return eigeneArt(z) ? abgeschlossen(z) : abgeschlossen(e);
+}
 
 /** Zeile war schon im Vorprotokoll durchgestrichen. */
 function zeileVorherGestrichen(top: Top, e: Eintrag, z: Zeile): boolean {
   if (!z.vor) return false;
-  return z.vor.entfaellt || (!!e.vor && abgeschlossen(e.vor)) || (top.vorTitel !== null && top.vorEntfaellt);
+  const erledigt = z.vor.typ !== null ? abgeschlossen(z.vor) : !!e.vor && abgeschlossen(e.vor);
+  return erledigt || z.vor.entfaellt || !!e.vor?.entfaellt || (top.vorTitel !== null && top.vorEntfaellt);
 }
 
 /** In diesem Protokoll gestrichen bzw. erledigt – die Linie wird blau, der Text bleibt schwarz. */
 export const zeileNeuGestrichen = (top: Top, e: Eintrag, z: Zeile): boolean =>
   zeileGestrichen(top, e, z) && !zeileVorherGestrichen(top, e, z);
 
-/** Gestrichen-Stand gegenüber dem Vorprotokoll gewechselt (gestrichen oder wiederhergestellt). */
+/** Gestrichen-Stand des Eintrags gegenüber dem Vorprotokoll gewechselt (gestrichen oder wiederhergestellt). */
 export function entfallenGeaendert(top: Top, e: Eintrag): boolean {
   const vorher = !!e.vor && (e.vor.entfaellt || (top.vorTitel !== null && top.vorEntfaellt));
   return eintragEntfaellt(top, e) !== vorher;
+}
+
+/** Gestrichen-Stand einer Zeile gegenüber dem Vorprotokoll gewechselt. */
+export function zeileEntfallenGeaendert(top: Top, e: Eintrag, z: Zeile): boolean {
+  const vorher = !!z.vor && (z.vor.entfaellt || !!e.vor?.entfaellt || (top.vorTitel !== null && top.vorEntfaellt));
+  return zeileEntfaellt(top, e, z) !== vorher;
 }
 
 /** Punkt in diesem Protokoll gestrichen – die Linie wird blau. */
@@ -109,9 +136,9 @@ export function fuehrerVon(p: Protokoll): Teilnehmer | undefined {
 /* Anlegen                                                             */
 /* ------------------------------------------------------------------ */
 
-/** Neue Zeile dieses Protokolls. */
-export function neueZeile(text = '', id: ID = newId('z')): Zeile {
-  return { id, text, herkunft: null, entfaellt: false, vor: null };
+/** Neue Zeile dieses Protokolls; mit `typ` eine Ergänzung mit eigener Art. */
+export function neueZeile(text = '', id: ID = newId('z'), typ: EintragTyp | null = null): Zeile {
+  return { id, text, herkunft: null, typ, wer: '', termin: '', status: 'offen', entfaellt: false, vor: null };
 }
 
 export function neuerEintrag(typ: EintragTyp): Eintrag {
@@ -123,7 +150,6 @@ export function neuerEintrag(typ: EintragTyp): Eintrag {
     termin: '',
     status: 'offen',
     uebernommenIn: null,
-    lopPunktId: null,
     entfaellt: false,
     vor: null,
   };
@@ -190,65 +216,79 @@ export function neueReihe(
 /* Folgeprotokoll                                                      */
 /* ------------------------------------------------------------------ */
 
-/** Schon im Vorprotokoll gestrichen: Der Punkt steht hier zum letzten Mal. */
-const topLetztmalig = (t: Top): boolean => t.entfaellt && t.vorTitel !== null && t.vorEntfaellt;
+/** Erledigt und schon im Vorprotokoll erledigt: Der Ursprung steht hier zum letzten Mal. */
+const letztmalig = (e: Eintrag): boolean => abgeschlossen(e) && !!e.vor && abgeschlossen(e.vor);
 
-/** Schon im Vorprotokoll abgeschlossen: In diesem Protokoll steht der Eintrag zum letzten Mal. */
-export const letztmalig = (e: Eintrag): boolean => abgeschlossen(e) && !!e.vor && abgeschlossen(e.vor);
+/** Ergänzung mit eigener Art, erledigt und schon im Vorprotokoll erledigt. */
+const zeileLetztmalig = (z: Zeile): boolean =>
+  eigeneArt(z) && abgeschlossen(z) && !!z.vor && z.vor.typ !== null && abgeschlossen(z.vor);
 
-/** Schon im Vorprotokoll gestrichen: Die Zeile steht hier zum letzten Mal. */
-const zeileLetztmalig = (z: Zeile): boolean => z.entfaellt && !!z.vor?.entfaellt;
+/** Enthält der Eintrag eine Aufgabe – als Art des Ursprungs oder einer Ergänzung? */
+const mitAufgabe = (e: Eintrag): boolean => e.typ === 'A' || e.zeilen.some((z) => z.typ === 'A');
 
 /**
- * Geht der Eintrag in ein Folgeprotokoll über? Ja – außer er war schon im
- * Vorprotokoll erledigt bzw. gestrichen (dann ist er hier zum letzten Mal
- * aufgeführt) oder die Aufgabe wurde bereits in ein Folgeprotokoll
- * weitergeführt. Dazu muss ihm eine Zeile bleiben (`uebernahme`).
+ * Eintrag im Folgeprotokoll – oder null, wenn nichts von ihm bleibt.
+ * Gestrichenes (Eintrag oder Zeile) bleibt zurück, ebenso leere Zeilen,
+ * Aufgaben, die schon im Vorprotokoll erledigt waren, und Einträge, die
+ * bereits in ein Folgeprotokoll weitergeführt wurden. Ist der Ursprung
+ * erledigt, laufen nur noch offene Ergänzungen mit eigener Art weiter; ohne
+ * mitlaufende Zeile wird die erste von ihnen zum Eintrag selbst.
  */
-export const mitgehen = (e: Eintrag): boolean => !letztmalig(e) && !(e.typ === 'A' && e.uebernommenIn);
+function eintragUebernehmen(e: Eintrag, vorherNr: number): Eintrag | null {
+  if (e.entfaellt || e.uebernommenIn) return null;
+  let zeilen = e.zeilen.filter((z) => z.text.trim() && !z.entfaellt && !zeileLetztmalig(z));
+  if (letztmalig(e)) zeilen = zeilen.filter(eigeneArt);
+  if (zeilen.length === 0) return null;
+  const neu = zeilen.map(
+    (z): Zeile => ({
+      ...z,
+      id: newId('z'),
+      herkunft: z.herkunft ?? vorherNr,
+      vor: { text: z.text, typ: z.typ, wer: z.wer, termin: z.termin, status: z.status, entfaellt: false },
+    }),
+  );
+  const eintrag: Eintrag = {
+    ...e,
+    id: newId('e'),
+    zeilen: neu,
+    uebernommenIn: null,
+    vor: { typ: e.typ, wer: e.wer, termin: e.termin, status: e.status, entfaellt: false },
+  };
+  if (neu.some((z) => !eigeneArt(z))) return eintrag;
+  const [erste, ...rest] = neu;
+  const art = { typ: erste.typ!, wer: erste.wer, termin: erste.termin, status: erste.status };
+  const mitlaufend = { typ: null, wer: '', termin: '', status: 'offen' as const };
+  return {
+    ...eintrag,
+    ...art,
+    vor: { ...art, entfaellt: false },
+    zeilen: [{ ...erste, ...mitlaufend, vor: { ...erste.vor!, ...mitlaufend } }, ...rest],
+  };
+}
 
 /**
- * Tagesordnung eines Folgeprotokolls: Punkte, Einträge und Zeilen, die zum
- * letzten Mal gestrichen bzw. erledigt dastanden, bleiben zurück, ebenso
- * leere Zeilen und Einträge ohne Zeile. Jede übernommene Zeile behält ihr
- * Ursprungsprotokoll; neue Zeilen erhalten die Nummer des Vorprotokolls.
- * `mitgenommen` nennt die übernommenen Einträge des Vorprotokolls.
+ * Tagesordnung eines Folgeprotokolls: gestrichene Punkte bleiben zurück, die
+ * übrigen mit ihren Einträgen (`eintragUebernehmen`). Jede übernommene Zeile
+ * behält ihr Ursprungsprotokoll; neue Zeilen erhalten die Nummer des
+ * Vorprotokolls. `mitgenommen` nennt die übernommenen Einträge des
+ * Vorprotokolls.
  */
 function uebernahme(vorher: Protokoll): { tops: Top[]; mitgenommen: Set<ID> } {
   const mitgenommen = new Set<ID>();
   const tops = vorher.tops
-    .filter((top) => !topLetztmalig(top))
+    .filter((top) => !top.entfaellt)
     .map(
       (top): Top => ({
         id: newId('top'),
         titel: top.titel,
         vorTitel: top.titel,
-        entfaellt: top.entfaellt,
-        vorEntfaellt: top.entfaellt,
-        eintraege: top.eintraege.filter(mitgehen).flatMap((e): Eintrag[] => {
-          const zeilen = e.zeilen
-            .filter((z) => z.text.trim() && !zeileLetztmalig(z))
-            .map(
-              (z): Zeile => ({
-                id: newId('z'),
-                text: z.text,
-                herkunft: z.herkunft ?? vorher.nr,
-                entfaellt: z.entfaellt,
-                vor: { text: z.text, entfaellt: z.entfaellt },
-              }),
-            );
-          if (zeilen.length === 0) return [];
+        entfaellt: false,
+        vorEntfaellt: false,
+        eintraege: top.eintraege.flatMap((e): Eintrag[] => {
+          const neu = eintragUebernehmen(e, vorher.nr);
+          if (!neu) return [];
           mitgenommen.add(e.id);
-          return [
-            {
-              ...e,
-              id: newId('e'),
-              zeilen,
-              uebernommenIn: null,
-              lopPunktId: e.typ === 'A' ? e.lopPunktId : null,
-              vor: { typ: e.typ, wer: e.wer, termin: e.termin, status: e.status, entfaellt: e.entfaellt },
-            },
-          ];
+          return [neu];
         }),
       }),
     );
@@ -257,9 +297,8 @@ function uebernahme(vorher: Protokoll): { tops: Top[]; mitgenommen: Set<ID> } {
 
 /**
  * Folgeprotokoll: übernimmt Kopfdaten, Teilnehmende und Tagesordnung mit
- * allen Einträgen (`uebernahme`). Das Vorprotokoll vermerkt bei Aufgaben,
- * wohin sie übernommen wurden; in die LOP übernommene Aufgaben behalten
- * ihren Verweis.
+ * allen Einträgen (`uebernahme`). Das Vorprotokoll vermerkt bei Einträgen mit
+ * Aufgaben, wohin sie übernommen wurden.
  */
 export function folgeprotokoll(
   vorher: Protokoll,
@@ -297,7 +336,7 @@ export function folgeprotokoll(
     ...vorher,
     tops: vorher.tops.map((top) => ({
       ...top,
-      eintraege: top.eintraege.map((e) => (e.typ === 'A' && mitgenommen.has(e.id) ? { ...e, uebernommenIn: id } : e)),
+      eintraege: top.eintraege.map((e) => (mitgenommen.has(e.id) && mitAufgabe(e) ? { ...e, uebernommenIn: id } : e)),
     })),
   };
   return { neu, vorher: vorherNeu };
@@ -341,22 +380,31 @@ export interface ProtokollAufgabe {
   protokoll: Protokoll;
   top: Top;
   eintrag: Eintrag;
+  /** Ergänzung mit eigener Art „Aufgabe“; null = der Eintrag selbst ist die Aufgabe. */
+  zeile: Zeile | null;
   /** Punktnummer im Protokoll, z. B. „2.1“. */
   nr: string;
 }
 
 /**
- * Aufgaben aus Protokollen – je Aufgabe nur ihr jüngstes Vorkommen: Wurde sie
- * in ein Folgeprotokoll übernommen, zählt sie dort. Gestrichene Aufgaben und
- * Aufgaben gestrichener Punkte zählen nicht.
+ * Aufgaben aus Protokollen – Einträge vom Typ A und Ergänzungen mit eigener
+ * Art „Aufgabe“, je Aufgabe nur ihr jüngstes Vorkommen: Wurde der Eintrag in
+ * ein Folgeprotokoll übernommen, zählt er dort. Gestrichenes zählt nicht.
  */
 export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
   const aufgaben: ProtokollAufgabe[] = [];
   for (const protokoll of protokolle) {
     protokoll.tops.forEach((top, ti) =>
       top.eintraege.forEach((eintrag, ei) => {
-        if (eintrag.typ === 'A' && !eintrag.uebernommenIn && !eintragEntfaellt(top, eintrag)) {
-          aufgaben.push({ protokoll, top, eintrag, nr: `${ti + 1}.${ei + 1}` });
+        if (eintrag.uebernommenIn || eintragEntfaellt(top, eintrag)) return;
+        const nr = `${ti + 1}.${ei + 1}`;
+        if (eintrag.typ === 'A' && eintrag.zeilen.some((z) => !eigeneArt(z))) {
+          aufgaben.push({ protokoll, top, eintrag, zeile: null, nr });
+        }
+        for (const zeile of eintrag.zeilen) {
+          if (zeile.typ === 'A' && !zeile.entfaellt && zeile.text.trim()) {
+            aufgaben.push({ protokoll, top, eintrag, zeile, nr });
+          }
         }
       }),
     );
@@ -399,30 +447,6 @@ export function teilnehmerNachziehen(d: ProjektsteuerungDaten): Projektsteuerung
   return geaendert ? { ...d, protokolle } : d;
 }
 
-/**
- * Löst Verweise auf LOP-Punkte, die es in der LOP des Projekts nicht mehr gibt
- * – die Aufgabe wird dann wieder im Protokoll verfolgt. Läuft nach jeder
- * Änderung im Store.
- */
-export function lopVerweiseNachziehen(d: ProjektsteuerungDaten): ProjektsteuerungDaten {
-  const punkte = new Map(d.lops.map((l) => [l.projektId, new Set(l.punkte.map((p) => p.id))]));
-  let geaendert = false;
-  const protokolle = d.protokolle.map((p) => {
-    const vorhanden = punkte.get(p.projektId);
-    const veraltet = (e: Eintrag) => !!e.lopPunktId && !vorhanden?.has(e.lopPunktId);
-    if (!p.tops.some((t) => t.eintraege.some(veraltet))) return p;
-    geaendert = true;
-    return {
-      ...p,
-      tops: p.tops.map((t) => ({
-        ...t,
-        eintraege: t.eintraege.map((e) => (veraltet(e) ? { ...e, lopPunktId: null } : e)),
-      })),
-    };
-  });
-  return geaendert ? { ...d, protokolle } : d;
-}
-
 /* ------------------------------------------------------------------ */
 /* Frühere Form der Einträge                                           */
 /* ------------------------------------------------------------------ */
@@ -431,8 +455,8 @@ export function lopVerweiseNachziehen(d: ProjektsteuerungDaten): Projektsteuerun
  * Zeilen aus der früheren Form eines Eintrags – ein Text, eine Ergänzung und
  * eine Fundstelle wie „Prot. 2, Pkt. 1.3“ – für ältere Bestände und Dateien
  * des Protokoll-Tools. Der Text wird eine Zeile aus dem Protokoll der
- * Fundstelle, die Ergänzung eine neue Zeile. `nr` ist die Nummer des
- * Protokolls, in dem der Eintrag steht.
+ * Fundstelle, die Ergänzung eine neue Zeile; beide laufen unter dem Ursprung
+ * mit. `nr` ist die Nummer des Protokolls, in dem der Eintrag steht.
  */
 export function zeilenAusAltform(
   alt: { text: string; zusatz: string; herkunft: string; vorText: string | null },
@@ -443,11 +467,12 @@ export function zeilenAusAltform(
   const zeilen: Zeile[] = [];
   if (alt.text.trim() || !alt.zusatz.trim()) {
     zeilen.push({
-      id: newId('z'),
-      text: alt.text,
+      ...neueZeile(alt.text),
       herkunft: uebernommen ? (fundstelle ? Number(fundstelle[1]) : Math.max(1, nr - 1)) : null,
-      entfaellt: false,
-      vor: alt.vorText !== null ? { text: alt.vorText, entfaellt: false } : null,
+      vor:
+        alt.vorText !== null
+          ? { text: alt.vorText, typ: null, wer: '', termin: '', status: 'offen', entfaellt: false }
+          : null,
     });
   }
   if (alt.zusatz.trim()) zeilen.push(neueZeile(alt.zusatz));
@@ -547,7 +572,6 @@ export function ausProtokollTool(
         wer: text(e.wer),
         termin: datum(e.termin),
         status: e.status === 'erledigt' ? 'erledigt' : 'offen',
-        lopPunktId: null,
         entfaellt: false,
         uebernommenIn: e.carriedTo
           ? (kennung.get(text(e.carriedTo)) ?? (imProjekt.has(text(e.carriedTo)) ? text(e.carriedTo) : null))

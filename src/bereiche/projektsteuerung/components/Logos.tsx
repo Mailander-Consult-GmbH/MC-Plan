@@ -1,5 +1,5 @@
 /**
- * Logos im Kopf von Protokoll und LOP eines Projekts. Ohne eigene Auswahl
+ * Logos im Kopf von Protokollen und Projektbeteiligtenliste eines Projekts. Ohne eigene Auswahl
  * gelten die Standardlogos; hinzugefügte Bilder werden verkleinert und als
  * Bilddaten im Bestand gespeichert.
  */
@@ -68,7 +68,7 @@ export function LogoVerwaltung({ projekt }: { projekt: Projekt }) {
     <Card>
       <CardHeader
         titel="Logos im Druckkopf"
-        sub={`Oben rechts in Protokollen, LOP und Beteiligtenliste dieses Projekts – in dieser Reihenfolge${
+        sub={`Oben rechts in Protokollen und Beteiligtenliste dieses Projekts – in dieser Reihenfolge${
           projekt.logos === null ? ' (Standardlogos)' : ''
         }`}
         actions={

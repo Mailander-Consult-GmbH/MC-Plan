@@ -1,35 +1,36 @@
 /**
- * Druckfassungen von Protokoll, LOP und Projektbeteiligtenliste als
- * HTML-Text. Derselbe Text erscheint in der Druckansicht der Seite, in der
+ * Druckfassungen von Protokoll und Projektbeteiligtenliste als HTML-Text.
+ * Derselbe Text erscheint in der Druckansicht der Seite, in der
  * Live-Druckansicht (eigenes Fenster, etwa auf dem zweiten Bildschirm) und im
  * Druckdialog des Browsers – dort lässt sich „Als PDF sichern“ wählen.
  *
- * Neue und geänderte Angaben stehen blau: im Protokoll gegenüber dem
- * Vorprotokoll, in der LOP gegenüber der letzten Fortschreibung. Im Protokoll
- * steht unter jeder übernommenen Zeile ihr Ursprung („aus Prot. 1“).
- * Erledigtes und Gestrichenes – Tagesordnungspunkt, Eintrag oder Zeile – steht
+ * Im Protokoll stehen neue und gegenüber dem Vorprotokoll geänderte Angaben
+ * blau, unter jeder übernommenen Zeile ihr Ursprung („aus Prot. 1“).
+ * Ergänzungen mit eigener Art stehen in einer eigenen Tabellenzeile unter
+ * ihrem Eintrag – mit Typ, Verantwortlich und Termin. Erledigtes und
+ * Gestrichenes – Tagesordnungspunkt, Eintrag oder Zeile – steht
  * durchgestrichen, mit blauer Linie in dem Protokoll, in dem es erledigt bzw.
- * gestrichen wurde; der Text bleibt dabei schwarz. Verweise auf die LOP sind
- * intern und erscheinen nicht.
+ * gestrichen wurde; der Text bleibt dabei schwarz.
  */
 import { druckeHtml } from '../../../shared/print';
-import { ampelFuer } from './punkte';
-import { aktivePunkte, punktNeu, themaNeu } from './lop';
 import {
+  eigeneArt,
   eintragEntfaellt,
-  eintragGestrichen,
   eintragNeu,
   entfallenGeaendert,
   feldNeu,
   fuehrerVon,
   topNeu,
   topNeuGestrichen,
+  zeileEntfaellt,
+  zeileEntfallenGeaendert,
+  zeileFeldNeu,
   zeileGestrichen,
   zeileHerkunft,
   zeileNeuGestrichen,
   zeitText,
 } from './protokoll';
-import type { Eintrag, Logo, Lop, Projekt, Protokoll, Top, Vorstand, Zeile } from './types';
+import type { Eintrag, Logo, Projekt, Protokoll, Top, Zeile } from './types';
 
 /** Maskiert Text für HTML – auch in Attributen. */
 export function esc(wert: string | number | null | undefined): string {
@@ -61,19 +62,16 @@ function logosHtml(logos: Logo[]): string {
 const projektText = (p: Projekt) => [p.nummer, p.name].filter(Boolean).join(' ');
 
 /**
- * Inhalt einer Zeile: Ursprung schwarz, Neues und Ergänztes blau. Setzt sich
- * der Text aus dem früheren Text und einem Nachtrag zusammen, wird nur der
- * Nachtrag blau.
+ * Text einer Zeile: Übernommenes schwarz, Neues blau. Setzt sich der Text aus
+ * dem früheren Text und einem Nachtrag zusammen, wird nur der Nachtrag blau.
  */
-function inhaltHtml(text: string, zusatz: string, vorText: string | null, ganzNeu: boolean): string {
-  let aus: string;
-  if (ganzNeu) aus = `<span class="ps-txt ps-n">${esc(text)}</span>`;
-  else if (vorText === null || text === vorText) aus = `<span class="ps-txt">${esc(text)}</span>`;
-  else if (vorText && text.startsWith(vorText)) {
-    aus = `<span class="ps-txt">${esc(vorText)}</span><span class="ps-txt ps-n">${esc(text.slice(vorText.length))}</span>`;
-  } else aus = `<span class="ps-txt ps-n">${esc(text)}</span>`;
-  if (zusatz.trim()) aus += `${text.trim() ? '<br>' : ''}<span class="ps-txt ps-n">${esc(zusatz.trim())}</span>`;
-  return aus;
+function inhaltHtml(text: string, vorText: string | null, ganzNeu: boolean): string {
+  if (ganzNeu) return `<span class="ps-txt ps-n">${esc(text)}</span>`;
+  if (vorText === null || text === vorText) return `<span class="ps-txt">${esc(text)}</span>`;
+  if (vorText && text.startsWith(vorText)) {
+    return `<span class="ps-txt">${esc(vorText)}</span><span class="ps-txt ps-n">${esc(text.slice(vorText.length))}</span>`;
+  }
+  return `<span class="ps-txt ps-n">${esc(text)}</span>`;
 }
 
 const blau = (neu: boolean) => (neu ? ' ps-n' : '');
@@ -86,28 +84,77 @@ const gestrichen = (html: string, neu: boolean) =>
 /* Protokoll                                                           */
 /* ------------------------------------------------------------------ */
 
-function terminText(top: Top, e: Eintrag): string {
-  if (eintragEntfaellt(top, e)) return 'entfällt';
-  if (e.typ !== 'A') return '';
-  return e.status === 'erledigt' ? 'erledigt' : fmt(e.termin) || 'offen';
+/** Termin-Spalte: „entfällt“, „erledigt“, das Datum oder „offen“; leer bei I und F. */
+function terminText(x: { typ: Eintrag['typ'] | null; termin: string; status: Eintrag['status'] }, entfaellt: boolean): string {
+  if (entfaellt) return 'entfällt';
+  if (x.typ !== 'A') return '';
+  return x.status === 'erledigt' ? 'erledigt' : fmt(x.termin) || 'offen';
 }
 
 /** Eine Zeile: Text, darunter der Ursprung, wenn sie aus einem früheren Protokoll stammt. */
 function zeileHtml(top: Top, e: Eintrag, z: Zeile): string {
-  const text = inhaltHtml(z.text, '', z.vor?.text ?? null, z.herkunft === null);
+  const text = inhaltHtml(z.text, z.vor?.text ?? null, z.herkunft === null);
   const herkunft = zeileHerkunft(z);
   return `<div class="ps-zeile">${
     zeileGestrichen(top, e, z) ? gestrichen(text, zeileNeuGestrichen(top, e, z)) : text
   }${herkunft ? `<span class="ps-from">${herkunft}</span>` : ''}</div>`;
 }
 
+/**
+ * Tabellenzeilen eines Eintrags: zuerst der Ursprung mit den mitlaufenden
+ * Ergänzungen, darunter je Ergänzung mit eigener Art eine eigene Zeile.
+ */
+function eintragHtml(top: Top, e: Eintrag, nr: string): string {
+  const zeilen = e.zeilen.filter((z) => z.text.trim());
+  const mit = zeilen.filter((z) => !eigeneArt(z));
+  const reihen: { nr: boolean; inhalt: string; typ: string; wer: string; termin: string; neu: Record<'typ' | 'wer' | 'termin', boolean> }[] = [];
+  if (mit.length > 0 || zeilen.length === mit.length) {
+    reihen.push({
+      nr: true,
+      inhalt: mit.map((z) => zeileHtml(top, e, z)).join(''),
+      typ: e.typ,
+      wer: e.wer,
+      termin: terminText(e, eintragEntfaellt(top, e)),
+      // Blau: Termin oder Status geändert, neu gestrichen oder wiederhergestellt
+      neu: {
+        typ: feldNeu(e, 'typ'),
+        wer: feldNeu(e, 'wer'),
+        termin: feldNeu(e, 'termin') || feldNeu(e, 'status') || entfallenGeaendert(top, e),
+      },
+    });
+  }
+  for (const z of zeilen.filter(eigeneArt)) {
+    reihen.push({
+      nr: reihen.length === 0,
+      inhalt: zeileHtml(top, e, z),
+      typ: z.typ ?? '',
+      wer: z.wer,
+      termin: terminText(z, zeileEntfaellt(top, e, z)),
+      neu: {
+        typ: zeileFeldNeu(z, 'typ'),
+        wer: zeileFeldNeu(z, 'wer'),
+        termin: zeileFeldNeu(z, 'termin') || zeileFeldNeu(z, 'status') || zeileEntfallenGeaendert(top, e, z),
+      },
+    });
+  }
+  return reihen
+    .map(
+      (r, i) => `<tr${i < reihen.length - 1 ? ' class="ps-teil"' : ''}>
+              <td class="ps-no${blau(r.nr && eintragNeu(e))}">${r.nr ? nr : ''}</td>
+              <td>${r.inhalt}</td>
+              <td class="ps-ty${blau(r.neu.typ)}">${r.typ}</td>
+              <td class="ps-w${blau(r.neu.wer)}">${esc(r.wer)}</td>
+              <td class="ps-d${blau(r.neu.termin)}">${r.termin}</td>
+            </tr>`,
+    )
+    .join('');
+}
+
 export function protokollHtml(p: Protokoll, projekt: Projekt, logos: Logo[]): string {
   const tn = p.teilnehmer.filter((t) => t.name || t.firma || t.funktion);
   const fuehrer = fuehrerVon(p);
   const pt = projektText(projekt);
-  const mitStrich = p.tops.some(
-    (t) => t.entfaellt || t.eintraege.some((e) => eintragGestrichen(t, e) || e.zeilen.some((z) => z.entfaellt)),
-  );
+  const mitStrich = p.tops.some((t) => t.eintraege.some((e) => e.zeilen.some((z) => zeileGestrichen(t, e, z))) || t.entfaellt);
   const zeilen = p.tops
     .map((top, ti) => {
       const titel = esc(top.titel) || 'Ohne Titel';
@@ -117,26 +164,7 @@ export function protokollHtml(p: Protokoll, projekt: Projekt, logos: Logo[]): st
       if (top.eintraege.length === 0) {
         return `${kopf}<tr><td></td><td colspan="4" class="ps-leer">keine Einträge</td></tr>`;
       }
-      return (
-        kopf +
-        top.eintraege
-          .map((e, ei) => {
-            const n = (k: 'typ' | 'wer') => blau(feldNeu(e, k));
-            // Blau: Termin oder Status geändert, neu gestrichen oder wiederhergestellt
-            const terminNeu = feldNeu(e, 'termin') || feldNeu(e, 'status') || entfallenGeaendert(top, e);
-            return `<tr>
-              <td class="ps-no${blau(eintragNeu(e))}">${ti + 1}.${ei + 1}</td>
-              <td>${e.zeilen
-                .filter((z) => z.text.trim())
-                .map((z) => zeileHtml(top, e, z))
-                .join('')}</td>
-              <td class="ps-ty${n('typ')}">${e.typ}</td>
-              <td class="ps-w${n('wer')}">${esc(e.wer)}</td>
-              <td class="ps-d${blau(terminNeu)}">${terminText(top, e)}</td>
-            </tr>`;
-          })
-          .join('')
-      );
+      return kopf + top.eintraege.map((e, ei) => eintragHtml(top, e, `${ti + 1}.${ei + 1}`)).join('');
     })
     .join('');
 
@@ -183,68 +211,6 @@ export function protokollHtml(p: Protokoll, projekt: Projekt, logos: Logo[]): st
       }
       ${p.hinweis ? `<p class="ps-hinweis">${esc(p.hinweis)}</p>` : ''}
     </div>
-  </article>`;
-}
-
-/* ------------------------------------------------------------------ */
-/* Liste offener Punkte                                                */
-/* ------------------------------------------------------------------ */
-
-export function lopHtml(lop: Lop, projekt: Projekt, logos: Logo[]): string {
-  const punkte = aktivePunkte(lop);
-  const offen = punkte.filter((p) => p.status !== 'erledigt');
-  const spaet = offen.filter((p) => ampelFuer(p.termin, p.status) === 'ueberfaellig').length;
-  const letzte = lop.fortschreibungen[lop.fortschreibungen.length - 1];
-  const pt = projektText(projekt);
-
-  const zeilen = lop.themen
-    .map((thema) => {
-      const liste = punkte.filter((p) => p.themaId === thema.id);
-      if (liste.length === 0) return '';
-      return (
-        `<tr class="ps-topr"><td colspan="6" class="${themaNeu(thema) ? 'ps-n' : ''}">${esc(thema.titel) || 'Ohne Titel'}</td></tr>` +
-        liste
-          .map((p) => {
-            const n = (...felder: (keyof Vorstand)[]) => blau(punktNeu(p, ...felder));
-            const ueber = p.status !== 'erledigt' && ampelFuer(p.termin, p.status) === 'ueberfaellig';
-            const herkunft = [`aufgenommen am ${fmt(p.erfasst)}`, p.herkunft ? `aus ${esc(p.herkunft)}` : '']
-              .filter(Boolean)
-              .join(' · ');
-            return `<tr>
-              <td class="ps-no${n()}">${p.nr}</td>
-              <td>${inhaltHtml(p.text, p.zusatz, p.vor?.text ?? null, !p.vor)}<span class="ps-from">${herkunft}</span></td>
-              <td class="ps-w${n('wer')}">${esc(p.wer)}</td>
-              <td class="ps-d${n('termin')}${ueber ? ' ps-spaet' : ''}">${fmt(p.termin) || '–'}</td>
-              <td class="ps-st${n('status')}">${
-                p.status === 'erledigt' ? `erledigt${p.erledigtAm ? `<br>${fmt(p.erledigtAm)}` : ''}` : 'offen'
-              }</td>
-              <td class="ps-bem${n('bemerkung')}"><span class="ps-txt">${esc(p.bemerkung.trim())}</span></td>
-            </tr>`;
-          })
-          .join('')
-      );
-    })
-    .join('');
-
-  return `<article class="ps-doc">
-    <div class="ps-kopf">
-      <div><h1>Liste offener Punkte</h1>
-      <div class="ps-sub">${pt ? esc(pt) : 'Projekt'}</div></div>
-      ${logosHtml(logos)}
-    </div>
-    <div class="ps-meta">
-      <div><span>Stand</span>Nr. ${lop.stand}</div>
-      <div><span>Datum</span>${fmt(lop.standDatum) || '–'}</div>
-      <div><span>Offene Punkte</span>${offen.length}</div>
-      <div><span>Überfällig</span>${spaet}</div>
-    </div>
-    <div class="ps-legende"><span class="ps-n">Neue und geänderte Einträge sind blau dargestellt${
-      letzte ? ` – gegenüber Stand Nr. ${letzte.stand} vom ${fmt(letzte.datum)}` : ''
-    }.</span> Überschrittene Termine sind fett gesetzt.</div>
-    <table class="ps-pt">
-      <thead><tr><th class="ps-no">Nr.</th><th>Inhalt</th><th class="ps-w">Verantwortlich</th><th class="ps-d">Termin</th><th class="ps-st">Status</th><th class="ps-bem">Bemerkung</th></tr></thead>
-      <tbody>${zeilen || '<tr><td colspan="6" class="ps-leer">Keine Punkte in der Liste.</td></tr>'}</tbody>
-    </table>
   </article>`;
 }
 
@@ -320,20 +286,18 @@ export const DRUCK_STIL = `
 .ps-doc .ps-pt th { font-size: 11px; font-weight: 500; color: #5b6672; text-align: left; padding: 6px; border-bottom: 2px solid #000; }
 .ps-doc .ps-pt td { padding: 7px 6px; border-bottom: 1px solid #c9cfd4; vertical-align: top; font-size: 12px; color: #000; }
 .ps-doc .ps-pt tr { page-break-inside: avoid; break-inside: avoid; }
+.ps-doc .ps-pt tr.ps-teil td { border-bottom: 1px dashed #dfe3e6; }
 .ps-doc .ps-pt .ps-topr td { background: #eef1ee; font-weight: 600; padding-top: 8px; font-size: 13px; }
 .ps-doc .ps-pt .ps-no { width: 44px; font-weight: 600; white-space: nowrap; }
 .ps-doc .ps-pt .ps-ty { width: 40px; text-align: center; }
 .ps-doc .ps-pt td.ps-ty { font-weight: 600; }
 .ps-doc .ps-pt .ps-w { width: 104px; }
 .ps-doc .ps-pt .ps-d { width: 82px; white-space: nowrap; }
-.ps-doc .ps-pt .ps-st { width: 78px; }
-.ps-doc .ps-pt .ps-bem { width: 24%; }
 .ps-doc .ps-pt td.ps-leer { color: #5b6672; }
 .ps-doc .ps-txt { white-space: pre-wrap; }
 .ps-doc .ps-from { display: block; color: #5b6672; font-size: 11px; margin-top: 2px; }
 .ps-doc .ps-zeile + .ps-zeile { margin-top: 5px; }
 .ps-doc .ps-n, .ps-doc .ps-pt td.ps-n, .ps-doc .ps-legende .ps-n { color: #1846c4; }
-.ps-doc .ps-spaet { font-weight: 700; }
 .ps-doc .ps-gestrichen { text-decoration: line-through; text-decoration-color: #000; text-decoration-thickness: 1px; }
 .ps-doc .ps-gestrichen-neu { text-decoration-color: #1846c4; text-decoration-thickness: 1.5px; }
 .ps-doc .ps-fuss { margin-top: 24px; display: grid; gap: 10px; color: #000; font-size: inherit; padding: 0; }

@@ -1,18 +1,13 @@
 /**
  * Datenbestand des Bereichs „Projektsteuerung“. Alle Schreibzugriffe laufen
  * über `mutate()`; danach werden die Teilnehmenden der Protokolle mit der
- * Projektbeteiligtenliste abgeglichen (`teilnehmerNachziehen`), „erledigt“
- * zwischen Aufgaben und ihren LOP-Punkten abgeglichen (`lopStatusAbgleichen`),
- * Verweise auf gelöschte LOP-Punkte gelöst (`lopVerweiseNachziehen`) und der
- * Bestand lokal gespeichert. Der Aufbau entspricht dem des Planlaufmanagements, ist
- * davon aber vollständig getrennt.
+ * Projektbeteiligtenliste abgeglichen (`teilnehmerNachziehen`) und der
+ * Bestand lokal gespeichert. Der Aufbau entspricht dem des
+ * Planlaufmanagements, ist davon aber vollständig getrennt.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { erledigen, fortschreiben, leereLop } from '../domain/lop';
-import { aufgabenInLop, lopStatusAbgleichen } from '../domain/lopUebernahme';
-import { folgeprotokoll, lopVerweiseNachziehen, naechsteNr, teilnehmerNachziehen } from '../domain/protokoll';
-import { today } from '../../../shared/dates';
+import { folgeprotokoll, naechsteNr, teilnehmerNachziehen } from '../domain/protokoll';
 import { seedDaten } from '../domain/seed';
 import {
   newId,
@@ -20,8 +15,6 @@ import {
   type Einstellungen,
   type Funktion,
   type ID,
-  type ISODate,
-  type Lop,
   type Projekt,
   type ProjektsteuerungDaten,
   type Protokoll,
@@ -45,10 +38,9 @@ interface StoreValue {
   /** Löscht eine Funktion; ob sie noch Projektbeteiligten zugeordnet ist, prüft die Oberfläche vorher. */
   deleteFunktion: (id: ID) => void;
   /* Projekte */
-  /** Legt das Projekt samt leerer LOP an. */
   addProjekt: (p: Omit<Projekt, 'id'>) => ID;
   updateProjekt: (id: ID, patch: Partial<Omit<Projekt, 'id'>>) => void;
-  /** Löscht das Projekt mit Beteiligten, Protokollen und LOP. */
+  /** Löscht das Projekt mit Beteiligten und Protokollen. */
   deleteProjekt: (id: ID) => void;
   toggleMarkiert: (id: ID) => void;
   /* Projektbeteiligte */
@@ -64,18 +56,10 @@ interface StoreValue {
   deleteProtokoll: (id: ID) => void;
   /** Legt das Folgeprotokoll an (Nummer: höchste der Reihe + 1) und liefert seine Kennung. */
   folgeprotokollAnlegen: (id: ID) => ID | null;
-  /**
-   * Übernimmt offene Aufgaben eines Protokolls als neue Punkte in die LOP des
-   * Projekts; die Aufgaben verweisen danach (intern) auf ihren Punkt.
-   */
-  aufgabenInLopUebernehmen: (protokollId: ID, eintragIds: ID[]) => void;
   /** Übernimmt Protokolle (etwa aus dem Protokoll-Tool); gleiche Kennungen werden ersetzt. */
   protokolleUebernehmen: (liste: Protokoll[]) => void;
-  /* LOP */
-  updateLop: (projektId: ID, fn: (l: Lop) => Lop) => void;
-  /** Schließt den aktuellen Stand ab und beginnt den nächsten. */
-  lopFortschreiben: (projektId: ID, datum: ISODate) => void;
-  /* Punkte aus LOP und Protokollen */
+  /* Aufgaben aus den Protokollen */
+  /** Setzt „erledigt“ an einer Aufgabe – Eintrag oder Ergänzung mit eigener Art. */
   punktErledigen: (punkt: Punkt, erledigt: boolean) => void;
   /* Verwaltung */
   ersetzeDaten: (d: ProjektsteuerungDaten) => void;
@@ -93,7 +77,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   /** Jede Änderung läuft hierüber – die Funktion muss rein sein. */
   const mutate = useCallback((fn: (d: ProjektsteuerungDaten) => ProjektsteuerungDaten) => {
-    setData((alt) => teilnehmerNachziehen(lopVerweiseNachziehen(lopStatusAbgleichen(alt, fn(alt)))));
+    setData((alt) => teilnehmerNachziehen(fn(alt)));
   }, []);
 
   const protokollAendern = useCallback(
@@ -101,17 +85,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       mutate((d) => ({
         ...d,
         protokolle: d.protokolle.map((p) => (p.id === id ? { ...fn(p), id, geaendert: new Date().toISOString() } : p)),
-      })),
-    [mutate],
-  );
-
-  const lopAendern = useCallback(
-    (projektId: ID, fn: (l: Lop) => Lop) =>
-      mutate((d) => ({
-        ...d,
-        lops: d.lops.some((l) => l.projektId === projektId)
-          ? d.lops.map((l) => (l.projektId === projektId ? { ...fn(l), projektId } : l))
-          : [...d.lops, { ...fn(leereLop(projektId)), projektId }],
       })),
     [mutate],
   );
@@ -163,7 +136,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       addProjekt: (p) => {
         const id = newId('pr');
-        mutate((d) => ({ ...d, projekte: [...d.projekte, { ...p, id }], lops: [...d.lops, leereLop(id)] }));
+        mutate((d) => ({ ...d, projekte: [...d.projekte, { ...p, id }] }));
         return id;
       },
       updateProjekt: (id, patch) =>
@@ -174,7 +147,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           projekte: d.projekte.filter((p) => p.id !== id),
           beteiligte: d.beteiligte.filter((b) => b.projektId !== id),
           protokolle: d.protokolle.filter((p) => p.projektId !== id),
-          lops: d.lops.filter((l) => l.projektId !== id),
         })),
       toggleMarkiert: (id) =>
         mutate((d) => ({
@@ -226,44 +198,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         });
         return neueId;
       },
-      aufgabenInLopUebernehmen: (protokollId, eintragIds) => {
-        // Kennungen vorab, damit die Änderung im StrictMode rein bleibt.
-        const punktIds = new Map(eintragIds.map((id) => [id, newId('lp')]));
-        const heute = today();
-        mutate((d) => aufgabenInLop(d, protokollId, punktIds, heute));
-      },
       protokolleUebernehmen: (liste) =>
         mutate((d) => {
           const ids = new Set(liste.map((p) => p.id));
           return { ...d, protokolle: [...d.protokolle.filter((p) => !ids.has(p.id)), ...liste] };
         }),
 
-      updateLop: lopAendern,
-      lopFortschreiben: (projektId, datum) => lopAendern(projektId, (l) => fortschreiben(l, datum)),
-
       punktErledigen: (punkt, erledigt) => {
-        if (punkt.quelle === 'lop') {
-          lopAendern(punkt.projekt.id, (l) => ({
-            ...l,
-            punkte: l.punkte.map((p) => (p.id === punkt.id ? erledigen(p, erledigt) : p)),
-          }));
-        } else if (punkt.protokollId) {
-          protokollAendern(punkt.protokollId, (p) => ({
-            ...p,
-            tops: p.tops.map((t) => ({
-              ...t,
-              eintraege: t.eintraege.map((e) =>
-                e.id === punkt.id ? { ...e, status: erledigt ? 'erledigt' : 'offen' } : e,
-              ),
-            })),
-          }));
-        }
+        const status = erledigt ? ('erledigt' as const) : ('offen' as const);
+        protokollAendern(punkt.protokollId, (p) => ({
+          ...p,
+          tops: p.tops.map((t) => ({
+            ...t,
+            eintraege: t.eintraege.map((e) =>
+              e.id === punkt.id
+                ? { ...e, status }
+                : { ...e, zeilen: e.zeilen.map((z) => (z.id === punkt.id ? { ...z, status } : z)) },
+            ),
+          })),
+        }));
       },
 
       ersetzeDaten: (d) => mutate(() => d),
       zuruecksetzen: () => mutate(() => seedDaten()),
     }),
-    [data, mutate, protokollAendern, lopAendern],
+    [data, mutate, protokollAendern],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
