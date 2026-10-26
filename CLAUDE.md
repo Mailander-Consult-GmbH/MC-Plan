@@ -68,18 +68,18 @@ ignoriert.
   der Standard-Status nicht ändern – `STATUS_AUS_NUMMER` ordnet ihnen ältere Stände zu.
 * `src/bereiche/projektsteuerung/` – gleich aufgebaut, Schlüssel `projektsteuerung.data.v1`:
   `domain/types.ts` Datenmodell (projektübergreifende `Funktion`, `Beteiligter` mit `funktionId`,
-  `Protokoll`, je Projekt eine `Lop`), `domain/protokoll.ts` Reihen, Folgeprotokoll, Übernahme aus
-  dem Protokoll-Tool und `teilnehmerNachziehen` (läuft nach jedem `mutate()` und hält
-  Teilnehmende auf dem Stand der Projektbeteiligtenliste; ebenso `lopVerweiseNachziehen` und
-  `lopStatusAbgleichen` für Aufgaben, die in die LOP übernommen wurden – der Verweis ist intern
-  und erscheint nie in Druck oder Live-Druckansicht), `domain/lop.ts` Fortschreibung und Archiv,
-  `domain/lopUebernahme.ts` Aufgaben als LOP-Punkte, `domain/beteiligteImport.ts` Excel-Import,
-  `domain/punkte.ts` offene Punkte und Ampel, `domain/druck.ts` Druckfassungen. Funktionen tragen
-  ein Gewerk (`null` = übergreifend); angezeigt wird stets `funktionsName`. Ein Eintrag besteht aus
-  `zeilen`; jede Zeile merkt sich ihr Ursprungsprotokoll (`herkunft`, im Druck „aus Prot. 1“).
-  TOPs, Einträge und Zeilen werden standardmäßig gestrichen statt gelöscht (`entfaellt`); was ins
-  Folgeprotokoll geht, entscheidet allein `uebernahme` (`domain/protokoll.ts`, für Einträge mit
-  `mitgehen`). Eigene
+  `Protokoll`), `domain/protokoll.ts` Reihen, Folgeprotokoll, Übernahme aus dem Protokoll-Tool und
+  `teilnehmerNachziehen` (läuft nach jedem `mutate()` und hält Teilnehmende auf dem Stand der
+  Projektbeteiligtenliste), `domain/beteiligteImport.ts` Excel-Import, `domain/punkte.ts` offene
+  Aufgaben und Ampel, `domain/druck.ts` Druckfassungen. Eine Liste offener Punkte (LOP) gibt es
+  nicht mehr; ältere Bestände verlieren sie beim Laden. Funktionen tragen ein Gewerk (`null` =
+  übergreifend); angezeigt wird stets `funktionsName`. Ein Eintrag besteht aus `zeilen`; jede
+  Zeile merkt sich ihr Ursprungsprotokoll (`herkunft`, im Druck „aus Prot. 1“). Eine Ergänzung mit
+  eigener Art (`Zeile.typ` ≠ `null`) ist ein eigener Punkt unter dem Eintrag mit eigenem `wer`,
+  `termin` und `status`; ohne Art läuft sie unter dem Ursprung mit. TOPs, Einträge und Zeilen
+  werden standardmäßig gestrichen statt gelöscht (`entfaellt`) und entfallen im Folgeprotokoll;
+  erledigte Aufgaben gehen noch einmal mit. Was ins Folgeprotokoll geht, entscheidet allein
+  `uebernahme` mit `eintragUebernehmen` (`domain/protokoll.ts`). Eigene
   Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens). Neue Felder
   über `DATEN_VERSION` (`projektsteuerung/domain/types.ts`) und `migriere()`
   (`projektsteuerung/store/storage.ts`). IDs, die die Oberfläche braucht (Fokus, Navigation),
