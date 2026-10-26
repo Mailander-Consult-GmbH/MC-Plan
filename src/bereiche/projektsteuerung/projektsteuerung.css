@@ -51,7 +51,7 @@
   .table-stack.ps-tn td.actions { padding-top: 0; margin-left: auto; }
 }
 
-/* Tagesordnungspunkte und LOP-Themen */
+/* Tagesordnungspunkte */
 .ps-top-kopf {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 14px;
@@ -78,13 +78,12 @@
 }
 .ps-eintrag + .ps-eintrag { border-top: 1px solid var(--separator); }
 .ps-eintrag.ps-gestrichen { opacity: 0.62; }
-/* Erledigt oder gestrichen – Eintrag, Zeile oder ganzer TOP: Text durchgestrichen wie im Druck */
-.ps-eintrag.ps-gestrichen .ps-orig-text,
-.ps-eintrag.ps-gestrichen .ps-text .textarea:not(:placeholder-shown),
+/* Erledigt oder gestrichen – Zeile, Eintrag oder ganzer TOP: Text durchgestrichen wie im Druck */
 .ps-zeile-gestrichen .ps-orig-text,
-.ps-zeile-gestrichen .textarea:not(:placeholder-shown),
+.ps-zeile-gestrichen > .ps-zeile-feld .textarea:not(:placeholder-shown),
 .ps-top-gestrichen .ps-top-kopf .input { text-decoration: line-through; text-decoration-color: #1846c4; }
-.ps-zeile-gestrichen .ps-orig, .ps-zeile-gestrichen .textarea { opacity: 0.62; }
+.ps-eintrag:not(.ps-gestrichen) .ps-zeile-gestrichen > .ps-orig,
+.ps-eintrag:not(.ps-gestrichen) .ps-zeile-gestrichen > .ps-zeile-feld { opacity: 0.62; }
 .ps-link.ps-wieder { display: inline-block; margin-top: 4px; }
 .ps-nr { font-weight: 600; padding-top: 7px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 
@@ -100,45 +99,35 @@
 
 /* Zeilen eines Eintrags: übernommene stehen fest, die Ergänzung dieses Protokolls im Feld (im Druck blau) */
 .ps-text > .ps-zeile + .ps-zeile, .ps-text > .ps-zeile + .textarea { margin-top: 8px; }
-.ps-zeile .ps-orig { margin-bottom: 0; }
 .ps-zeile .ps-herkunft { margin-top: 3px; }
 .ps-zeile-feld { display: flex; gap: 6px; align-items: flex-start; }
 .ps-zeile-feld .textarea { flex: 1; min-width: 0; }
 .select.ps-leer-wahl { color: var(--text-tertiary); }
+/* Ergänzung mit eigener Art: Randlinie in der Farbe ihres Typs, darunter Art, Verantwortlich, Termin */
+.ps-zeile-eigen { border-left: 3px solid var(--ps-typ); padding-left: 8px; }
+.ps-zeile-art { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; }
+.ps-zeile-art .select { width: auto; min-width: 140px; max-width: 220px; }
+.ps-zeile-art .input[type='date'] { width: auto; }
+.ps-zeile-art .ps-haken { padding-top: 0; }
+.ps-typwahl.ps-typwahl-klein { height: 28px; width: 90px; flex: none; }
+.ps-typwahl.ps-typwahl-klein button { font-size: 12px; }
 
-/* Ursprungstext eines übernommenen Eintrags bzw. LOP-Punkts und Ergänzung (im Druck blau) */
+/* Übernommene Zeile und Ergänzung (im Druck blau) */
 .ps-orig {
   display: flex; gap: 6px; align-items: flex-start;
   background: var(--fill-gruppe);
   border: 1px solid var(--separator);
   border-radius: var(--radius-sm);
   padding: 6px 6px 6px 10px;
-  margin-bottom: 6px;
 }
 .ps-orig-text { flex: 1; white-space: pre-wrap; font-size: 13.5px; padding-top: 1px; }
 .textarea.ps-zusatz { border-style: dashed; color: #1846c4; }
 .ps-herkunft { display: block; color: var(--text-tertiary); font-size: 11.5px; margin-top: 4px; }
-.ps-neu { display: block; color: var(--accent); font-size: 11.5px; margin-top: 4px; }
-/* Herkunft eines LOP-Punkts: wirkt wie Text, wird beim Klicken zum Feld */
-.ps-herkunft-eingabe {
-  display: block; width: 100%;
-  margin-top: 2px; padding: 2px 6px; margin-left: -6px;
-  border: 1px solid transparent; border-radius: var(--radius-sm);
-  background: transparent;
-  font-size: 11.5px; color: var(--text-secondary);
-}
-.ps-herkunft-eingabe::placeholder { color: var(--text-tertiary); }
-.ps-herkunft-eingabe:hover { border-color: var(--separator); }
-.ps-herkunft-eingabe:focus { outline: none; border-color: var(--accent); background: #fff; }
-/* Aufgabe in der LOP: Hinweis und Schaltflächen im Textstil */
-.ps-lop-hinweis { display: block; margin-top: 4px; font-size: 11.5px; color: var(--accent); }
 .ps-link {
   border: none; background: none; padding: 0; cursor: pointer;
   font: inherit; font-size: 11.5px; color: var(--accent); text-decoration: underline; text-underline-offset: 2px;
 }
 .ps-link:hover { color: var(--accent-hover); }
-button.ps-link.ps-lop-hinweis { display: inline-block; text-decoration: none; }
-button.ps-link.ps-lop-hinweis:hover { text-decoration: underline; }
 .ps-haken { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); padding-top: 8px; cursor: pointer; white-space: nowrap; }
 .ps-haken input { width: 16px; height: 16px; accent-color: var(--green); }
 .input.ps-spaet { border-color: var(--red); color: var(--red); }
@@ -159,38 +148,6 @@ button.ps-link.ps-lop-hinweis:hover { text-decoration: underline; }
 @media (max-width: 640px) {
   .ps-eintrag { grid-template-areas: 'nr typ . weg' 'text text text text' 'wer wer wer wer' 'termin termin haken haken'; }
 }
-
-/* Punkte der LOP */
-.ps-punkt {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) 130px 144px 118px minmax(0, 0.7fr) 32px;
-  gap: 10px;
-  align-items: start;
-  padding: 10px 14px;
-}
-.ps-punkt + .ps-punkt { border-top: 1px solid var(--separator); }
-.ps-punkt.ps-erledigt { opacity: 0.62; }
-.ps-punkt .ps-erledigt-am { display: block; font-size: 11.5px; color: var(--text-tertiary); padding-left: 22px; }
-@media (max-width: 900px) {
-  .ps-punkt {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-    grid-template-areas: 'nr . weg' 'text text text' 'wer termin haken' 'bem bem bem';
-  }
-  .ps-punkt > .ps-nr { grid-area: nr; }
-  .ps-punkt > .ps-text { grid-area: text; }
-  .ps-punkt > .ps-wer { grid-area: wer; }
-  .ps-punkt > .ps-termin { grid-area: termin; }
-  .ps-punkt > .ps-st { grid-area: haken; }
-  .ps-punkt > .ps-bem { grid-area: bem; }
-  .ps-punkt > .ps-weg { grid-area: weg; justify-self: end; }
-}
-@media (max-width: 640px) {
-  .ps-punkt { grid-template-areas: 'nr . weg' 'text text text' 'wer wer wer' 'termin termin haken' 'bem bem bem'; }
-}
-
-/* Filterzeile */
-.ps-filter { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.ps-filter .select { width: auto; min-width: 170px; }
 
 /* Druckansicht in der Seite */
 .ps-blatt-huelle { overflow-x: auto; padding: 4px 2px 12px; }

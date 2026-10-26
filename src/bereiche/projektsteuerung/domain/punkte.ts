@@ -1,10 +1,9 @@
 /**
- * Offene Punkte über alle Quellen: die Punkte der LOP und die Aufgaben aus
- * den Protokollen – mit Ampel nach Termin. Grundlage der Übersicht und der
- * Zähler in der Seitenleiste.
+ * Offene Punkte: die Aufgaben aus den Protokollen – Einträge vom Typ A und
+ * Ergänzungen mit eigener Art „Aufgabe“ – mit Ampel nach Termin. Grundlage
+ * der Übersicht und der Zähler in der Seitenleiste.
  */
 import { diffDays, today } from '../../../shared/dates';
-import { aktivePunkte, volltext } from './lop';
 import { bezeichnung, eintragText, protokollAufgaben } from './protokoll';
 import {
   VORLAUF_TAGE,
@@ -34,17 +33,16 @@ export function ampelFuer(termin: ISODate, status: Erledigung, heute: ISODate = 
   return 'geplant';
 }
 
-/** Ein Punkt aus der LOP oder eine Aufgabe aus einem Protokoll. */
+/** Eine Aufgabe aus einem Protokoll. */
 export interface Punkt {
-  /** Eindeutig über beide Quellen. */
+  /** Eindeutig über alle Protokolle. */
   schluessel: string;
-  quelle: 'lop' | 'protokoll';
   projekt: Projekt;
-  /** Kennung des LOP-Punkts bzw. des Protokolleintrags. */
+  /** Kennung des Eintrags bzw. der Ergänzung mit eigener Art. */
   id: ID;
   /** Protokoll der Aufgabe. */
-  protokollId?: ID;
-  /** „LOP Nr. 12“ bzw. „Baubesprechung Nr. 3, Pkt. 2.1“. */
+  protokollId: ID;
+  /** „Baubesprechung Nr. 3, Pkt. 2.1“. */
   fundstelle: string;
   text: string;
   wer: string;
@@ -66,38 +64,19 @@ export function allePunkte(d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[]
   const projekte = d.projekte.filter((p) => !projektIds || projektIds.includes(p.id));
   const punkte: Punkt[] = [];
   for (const projekt of projekte) {
-    const lop = d.lops.find((l) => l.projektId === projekt.id);
-    for (const p of lop ? aktivePunkte(lop) : []) {
+    for (const a of protokollAufgaben(d.protokolle.filter((p) => p.projektId === projekt.id))) {
+      const quelle = a.zeile ?? a.eintrag;
       punkte.push({
-        schluessel: `lop:${p.id}`,
-        quelle: 'lop',
+        schluessel: `pt:${quelle.id}`,
         projekt,
-        id: p.id,
-        fundstelle: `LOP Nr. ${p.nr}`,
-        text: volltext(p),
-        wer: p.wer,
-        termin: p.termin,
-        status: p.status,
-        ampel: ampelFuer(p.termin, p.status, heute),
-      });
-    }
-    // Aufgaben, die in die LOP übernommen wurden, zählen dort – nicht doppelt.
-    const aufgaben = protokollAufgaben(d.protokolle.filter((p) => p.projektId === projekt.id)).filter(
-      (a) => !a.eintrag.lopPunktId,
-    );
-    for (const a of aufgaben) {
-      punkte.push({
-        schluessel: `pt:${a.eintrag.id}`,
-        quelle: 'protokoll',
-        projekt,
-        id: a.eintrag.id,
+        id: quelle.id,
         protokollId: a.protokoll.id,
         fundstelle: `${bezeichnung(a.protokoll)}, Pkt. ${a.nr}`,
-        text: eintragText(a.eintrag),
-        wer: a.eintrag.wer,
-        termin: a.eintrag.termin,
-        status: a.eintrag.status,
-        ampel: ampelFuer(a.eintrag.termin, a.eintrag.status, heute),
+        text: a.zeile ? a.zeile.text.trim() : eintragText(a.eintrag),
+        wer: quelle.wer,
+        termin: quelle.termin,
+        status: quelle.status,
+        ampel: ampelFuer(quelle.termin, quelle.status, heute),
       });
     }
   }

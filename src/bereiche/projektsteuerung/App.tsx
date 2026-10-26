@@ -170,7 +170,7 @@ export function App() {
       {zuruecksetzenDialog ? (
         <ConfirmDialog
           titel="Daten zurücksetzen?"
-          text="Alle lokal gespeicherten Projekte, Projektbeteiligten, Protokolle und Listen offener Punkte der Projektsteuerung werden verworfen und der Demodatenbestand samt Standard-Funktionen wird neu geladen. Die anderen Bereiche bleiben unberührt."
+          text="Alle lokal gespeicherten Projekte, Projektbeteiligten und Protokolle der Projektsteuerung werden verworfen und der Demodatenbestand samt Standard-Funktionen wird neu geladen. Die anderen Bereiche bleiben unberührt."
           bestaetigenLabel="Zurücksetzen"
           onConfirm={() => {
             zuruecksetzen();

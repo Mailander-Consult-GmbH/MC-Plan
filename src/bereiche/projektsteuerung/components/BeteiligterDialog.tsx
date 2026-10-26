@@ -167,7 +167,7 @@ export function BeteiligterDialog({
           <Field label="Firma / Büro">
             <TextInput value={form.firma} onChange={(v) => set('firma', v)} placeholder="z. B. DB InfraGO AG" />
           </Field>
-          <Field label="Kürzel" hint={`Für Protokoll und LOP; leer = ${gewaehlt?.kuerzel || 'Kürzel der Funktion'}`}>
+          <Field label="Kürzel" hint={`Für Protokolle; leer = ${gewaehlt?.kuerzel || 'Kürzel der Funktion'}`}>
             <TextInput value={form.kuerzel} onChange={(v) => set('kuerzel', v)} />
           </Field>
           <Field label="E-Mail">

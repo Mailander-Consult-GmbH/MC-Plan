@@ -133,7 +133,7 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
           titel="Projektbeteiligte"
           sub={`${alle.length} ${alle.length === 1 ? 'Person' : 'Personen'} · ${funktionenImProjekt} ${
             funktionenImProjekt === 1 ? 'Funktion' : 'Funktionen'
-          } · Grundlage für Teilnehmende und Verantwortliche in Protokollen und LOP`}
+          } · Grundlage für Teilnehmende und Verantwortliche in Protokollen`}
         />
         {sichtbar.length === 0 ? (
           <EmptyState

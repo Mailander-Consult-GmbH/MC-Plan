@@ -10,8 +10,7 @@ KaPlan gliedert sich in drei getrennte Bereiche, zwischen denen der Startbildsch
   SKM, MKM, KM (n-2 & n-1) und KKM (unterjährig) – mit Terminfristen laut Richtlinie,
   Nachhak-Terminen und dem Anmeldebedarf je Fahrplanjahr.
 * **Projektsteuerung** (erster Entwurf) – je Projekt die Projektbeteiligtenliste mit
-  projektübergreifenden Funktionen, Besprechungsprotokolle mit Folgeprotokollen und eine laufend
-  fortgeschriebene Liste offener Punkte (LOP).
+  projektübergreifenden Funktionen und Besprechungsprotokolle mit Folgeprotokollen.
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
 Browser, eigene Einstellungen, eigener Router. Der Startbildschirm zeigt sie als Kacheln; in einem
@@ -40,7 +39,7 @@ Die Logos von KaPlan liegen unter `public/logos/`:
 | `Logo_Planlaufmanagement.png` | Kopf der Menüleiste im Planlaufmanagement |
 | `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
 | `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
-| `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll, LOP und Beteiligtenliste der Projektsteuerung |
+| `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
 | `Logo.png` | Symbol; daraus sind Favicons und App-Symbole unter `public/icons/` erzeugt |
 
 Zum Austauschen genügt es, die Datei unter gleichem Namen zu ersetzen; die Logos werden nur über
@@ -590,7 +589,7 @@ nur in diesem Bereich.
 
 Erster Entwurf für die externe Projektsteuerung. Aufbau und Gestaltung folgen dem
 Planlaufmanagement: Seitenleiste mit **Übersicht**, **Projekte** und **Funktionen**, darunter die
-markierten Projekte; im Projekt drei Seiten – **Projektbeteiligte**, **Protokolle** und **LOP**.
+markierten Projekte; im Projekt zwei Seiten – **Projektbeteiligte** und **Protokolle**.
 Die Protokolle übernehmen die Funktionen des bisherigen eigenständigen Protokoll-Tools
 (HTML-Datei), in der Optik von KaPlan.
 
@@ -642,25 +641,24 @@ gewählt und erscheint mit ihrem Kürzel.
   Unter jeder übernommenen Zeile steht ihr Ursprung – in Protokoll Nr. 3 etwa unter der ersten
   Zeile „aus Prot. 1“ und unter der in Nr. 2 ergänzten „aus Prot. 2“. Im Druck erscheinen neue und
   gegenüber dem Vorprotokoll geänderte Angaben **blau**.
+* **Ergänzungen mit eigener Art**: Unter einer Ergänzung lässt sich **I**, **F** oder **A** wählen
+  – mit eigenem Verantwortlich, bei einer Aufgabe auch Termin und Erledigt. Im Druck steht sie in
+  einer eigenen Tabellenzeile unter ihrem Eintrag. Ohne Auswahl läuft sie **unter dem Ursprung
+  mit** und teilt dessen Art, Verantwortlich und Termin; ein zweiter Klick auf die gewählte Art hebt
+  die Auswahl auf. Aufgaben aus Ergänzungen erscheinen in der Übersicht. Ist der Ursprung erledigt,
+  laufen offene Ergänzungen mit eigener Art weiter; sobald der Ursprung entfällt, wird die erste
+  von ihnen zum Eintrag.
 * **Löschen heißt Durchstreichen** (Standard) – für Tagesordnungspunkte, Einträge und einzelne
   Zeilen (sobald ein Eintrag mehr als eine hat): Der Papierkorb bietet **Durchstreichen** und
   **Sofort löschen**. Gestrichenes steht im Druck und in der Live-Druckansicht dieses Protokolls
-  mit **blauer Linie** durchgestrichen – der Text bleibt schwarz –, im Folgeprotokoll noch einmal
-  (schwarze Linie) und entfällt im übernächsten Protokoll; ein gestrichener Tagesordnungspunkt
-  nimmt seine Einträge mit. Ebenso erledigte Aufgaben. Die Termin-Spalte nennt „entfällt“ bzw.
-  „erledigt“. **Wiederherstellen** hebt das Streichen auf; **Sofort löschen** entfernt ohne Spur.
+  mit **blauer Linie** durchgestrichen – der Text bleibt schwarz – und **entfällt im
+  Folgeprotokoll**; ein gestrichener Tagesordnungspunkt nimmt seine Einträge mit. Erledigte
+  Aufgaben stehen im Protokoll der Erledigung blau, im Folgeprotokoll noch einmal schwarz
+  durchgestrichen und entfallen danach. Die Termin-Spalte nennt „entfällt“ bzw. „erledigt“.
+  **Wiederherstellen** hebt das Streichen auf; **Sofort löschen** entfernt ohne Spur.
 * **Druckansicht**, **Drucken / PDF** (Druckdialog des Browsers, „Als PDF speichern“) und
   **Live-Druckansicht ↗** – ein eigenes Fenster, etwa für den zweiten Bildschirm in der
   Besprechung, das jeder Eingabe folgt.
-* **In die LOP übernehmen**: Offene Aufgaben werden einzeln („→ In die LOP übernehmen“ am
-  Eintrag) oder gesammelt („Aufgaben in die LOP …“ über der Tagesordnung) zu neuen LOP-Punkten –
-  im Thema, das wie ihr Tagesordnungspunkt heißt (fehlt es, entsteht es), mit der Herkunft
-  „<Besprechung> Nr. n, Pkt. x.y“. Die LOP ist für den **internen Gebrauch**: Druck und
-  Live-Druckansicht des Protokolls zeigen keinen Vermerk; die Aufgabe läuft im
-  Protokoll weiter wie jede andere, auch in Folgeprotokolle. „Erledigt“ wird zwischen der Aufgabe
-  im jüngsten Protokoll ihrer Reihe und dem LOP-Punkt in beide Richtungen abgeglichen; die
-  Übersicht zählt sie nur einmal. Nur der Editor zeigt den Verweis; **Verknüpfung lösen** hebt ihn
-  auf, ebenso das Löschen des LOP-Punkts.
 * **Logos im Druckkopf** je Projekt – Standard sind DB InfraGO und Mailänder Consult; eigene
   Bilder werden verkleinert im Bestand gespeichert.
 * **Aus Protokoll-Tool** übernimmt Dateien des bisherigen Protokoll-Tools (`.protokoll` oder
@@ -668,37 +666,26 @@ gewählt und erscheint mit ihrem Kürzel.
   Projektbeteiligtenliste steht, werden mit ihr verknüpft; ein erneuter Import ersetzt die
   Protokolle, statt sie zu verdoppeln.
 
-### LOP (Liste offener Punkte)
-Eine To-do-Liste je Projekt, die immer fortgeschrieben wird – die Seite besteht aus
-**Themenblöcken** mit ihren Punkten, aufgebaut wie die Tagesordnung eines Protokolls. Jeder Punkt
-behält seine **Nummer** (sie wird nie neu vergeben) und führt Inhalt, Verantwortlich, Termin,
-Erledigt (mit Datum), **Bemerkung**, Herkunft und Tag der Aufnahme. Die Bemerkung steht im Druck
-und in Excel in einer eigenen Spalte. **Fortschreiben …** schließt den aktuellen Stand ab und
-beginnt den nächsten; Nummer und Datum des Stands nennt der Druck:
-Fortschreibungen gehen in den Text über, Punkte, die erledigt waren, wandern ins **Archiv** (von
-dort **Wieder aufnehmen**), und was sich danach ändert, erscheint im Druck **blau**. Ältere Stände
-werden nicht aufbewahrt – wer sie behalten will, druckt sie vorher. Dazu Filter (Suche, Status,
-Verantwortlich, nur überfällige), Druckansicht, Live-Druckansicht, Drucken / PDF und Excel (Blätter
-„LOP“ und „Archiv“).
-
 ### Übersicht
 Kennzahlen (aktive Projekte, offene Punkte, überfällig, demnächst fällig – 7 Tage vorher) und die
-offenen Punkte aller markierten Projekte aus LOP und Protokollen, Überfälliges zuerst, mit
-**Erledigt** je Zeile; dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
+offenen Aufgaben der Protokolle aller markierten Projekte – Einträge vom Typ A und Ergänzungen mit
+eigener Art „Aufgabe“ –, Überfälliges zuerst, mit **Erledigt** je Zeile; dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
 nächstem Termin und offenen bzw. überfälligen Punkten. Die Seitenleiste zählt die überfälligen
 Punkte je Projekt.
 
 ### Daten
 Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
-mit Projektbeteiligten, zwei Protokollen und LOP), **Sicherung**/**Einspielen** (JSON mit dem
+mit Projektbeteiligten und zwei Protokollen), **Sicherung**/**Einspielen** (JSON mit dem
 Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
 Protokoll-Tools werden mit Hinweis abgewiesen) und **Zurücksetzen**. Stände der ersten Fassung
 erhalten beim Laden die mitgelieferten Gewerke; ihre Funktionen gelten als übergreifend. Ältere
 Stände kennen keine gestrichenen Einträge – ihre Einträge gelten als nicht gestrichen. Bis
 Fassung 3 bestand ein Eintrag aus Text und Ergänzung: Beim Laden wird der Text eine Zeile aus dem
-Protokoll seiner Fundstelle („Prot. 2, Pkt. 1.3“ → „aus Prot. 2“), die Ergänzung eine neue Zeile;
-LOP-Punkte erhalten eine leere Bemerkung, Ersteller und Hinweis der LOP entfallen. Name unter
-„Angemeldet als“ und Farbmodus gelten nur in diesem Bereich.
+Protokoll seiner Fundstelle („Prot. 2, Pkt. 1.3“ → „aus Prot. 2“), die Ergänzung eine neue Zeile.
+Bis Fassung 4 führte jedes Projekt eine Liste offener Punkte (LOP); sie entfällt beim Laden samt
+den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die frühere Adresse
+`#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Name unter „Angemeldet als“ und
+Farbmodus gelten nur in diesem Bereich.
 
 ## Aufbau des Codes
 
@@ -771,20 +758,18 @@ src/
       projektsteuerung.css  Gestaltung des Bereichs (Klassen mit Präfix ps-, nur Design-Tokens)
       domain/
         types.ts     Datenmodell (Projekt, Funktion mit Gewerk, Beteiligter, Protokoll mit TOPs, Einträgen
-                     und Zeilen, LOP)
-        protokoll.ts Reihen, Folgeprotokoll, Zeilen und Streichen, Aufgaben, Teilnehmende und
-                     LOP-Verweise nachziehen, Übernahme aus dem Protokoll-Tool
-        lop.ts       Punkte, Fortschreibung in Ständen, Archiv
-        lopUebernahme.ts  Aufgaben eines Protokolls als LOP-Punkte übernehmen
+                     und Zeilen)
+        protokoll.ts Reihen, Folgeprotokoll, Zeilen mit eigener Art und Streichen, Aufgaben,
+                     Teilnehmende nachziehen, Übernahme aus dem Protokoll-Tool
         beteiligteImport.ts  Excel-/CSV-Import der Projektbeteiligten (Spalten, Abgleich von Funktionen)
-        punkte.ts    Offene Punkte aus LOP und Protokollen mit Ampel
-        druck.ts     Druckfassungen (Protokoll, LOP, Beteiligtenliste) samt Gestaltung und Live-Fenster
-        export.ts    Excel-Ausgaben (Projektbeteiligte, LOP)
+        punkte.ts    Offene Aufgaben der Protokolle mit Ampel
+        druck.ts     Druckfassungen (Protokoll, Beteiligtenliste) samt Gestaltung und Live-Fenster
+        export.ts    Excel-Ausgabe und -Vorlage der Projektbeteiligten
         seed.ts      Standard-Funktionen, Standardlogos und Demodaten
       store/         storage.ts (Laden, Aufbereiten, Sicherung) und store.tsx (alle Schreibzugriffe)
       lib/router.ts  Hash-Adressen unterhalb von #/projektsteuerung
-      pages/         Übersicht, Projekte, Funktionen, Projekt mit Projektbeteiligten, Protokollen
-                     (Liste und Editor) und LOP
+      pages/         Übersicht, Projekte, Funktionen, Projekt mit Projektbeteiligten und Protokollen
+                     (Liste und Editor)
       components/    Dialoge (Person, Funktion, Gewerk), Excel-Import, Logos, Sicherung, Ampel, Live-Druckansicht
 ```
 

@@ -3,8 +3,7 @@
  * IDs – wie im Planlaufmanagement, aber vollständig davon getrennt.
  *
  * Funktionen gelten projektübergreifend. Ein Projekt führt seine
- * Projektbeteiligten (je Person eine Funktion), seine Protokolle und genau
- * eine Liste offener Punkte (LOP).
+ * Projektbeteiligten (je Person eine Funktion) und seine Protokolle.
  */
 export type ID = string;
 /** Datum als JJJJ-MM-TT; leer = ohne Datum. */
@@ -17,8 +16,9 @@ export type ISODate = string;
  * Fassung 3: gestrichene Einträge (`entfaellt`).
  * Fassung 4: Einträge aus Zeilen mit Ursprungsprotokoll, gestrichene
  * Tagesordnungspunkte, Bemerkung der LOP-Punkte; die LOP ohne Kopfangaben.
+ * Fassung 5: ohne LOP; Ergänzungen mit eigener Art (`Zeile.typ`).
  */
-export const DATEN_VERSION = 4;
+export const DATEN_VERSION = 5;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
@@ -46,7 +46,7 @@ export const PROJEKT_STATUS_LABEL: Record<ProjektStatus, string> = {
   abgeschlossen: 'Abgeschlossen',
 };
 
-/** Logo im Kopf von Protokoll und LOP. */
+/** Logo im Kopf von Protokoll und Projektbeteiligtenliste. */
 export interface Logo {
   id: ID;
   name: string;
@@ -98,7 +98,7 @@ export interface Beteiligter {
   vorname: string;
   nachname: string;
   firma: string;
-  /** Kürzel für Protokoll und LOP („Verantwortlich“); leer = Kürzel der Funktion. */
+  /** Kürzel für Protokolle („Verantwortlich“); leer = Kürzel der Funktion. */
   kuerzel: string;
   email: string;
   telefon: string;
@@ -141,67 +141,70 @@ export const EINTRAG_TYP_LABEL: Record<EintragTyp, string> = {
 
 export type Erledigung = 'offen' | 'erledigt';
 
-/** Stand eines LOP-Punkts bei der letzten Fortschreibung. */
-export interface Vorstand {
-  text: string;
-  wer: string;
-  termin: ISODate;
-  status: Erledigung;
-  bemerkung?: string;
-}
-
 /** Stand eines Protokolleintrags im Vorprotokoll. */
 export interface EintragVorstand {
   typ: EintragTyp;
   wer: string;
   termin: ISODate;
   status: Erledigung;
-  /** Im Vorprotokoll gestrichen. */
+  /** Im Vorprotokoll gestrichen (nur Bestände, in denen Gestrichenes noch einmal mitging). */
+  entfaellt: boolean;
+}
+
+/** Stand einer Zeile im Vorprotokoll. */
+export interface ZeileVorstand {
+  text: string;
+  typ: EintragTyp | null;
+  wer: string;
+  termin: ISODate;
+  status: Erledigung;
+  /** Im Vorprotokoll gestrichen (nur ältere Bestände). */
   entfaellt: boolean;
 }
 
 /**
  * Zeile eines Eintrags: der Text, der in einem Protokoll hinzukam. Ein
- * Eintrag beginnt mit einer Zeile; jedes Folgeprotokoll kann eine Ergänzung
- * als weitere Zeile anfügen. Übernommene Zeilen nennen im Druck ihr
- * Ursprungsprotokoll („aus Prot. 1“).
+ * Eintrag beginnt mit einer Zeile, dem Ursprung; jedes Folgeprotokoll kann
+ * eine Ergänzung als weitere Zeile anfügen. Übernommene Zeilen nennen im
+ * Druck ihr Ursprungsprotokoll („aus Prot. 1“).
+ *
+ * Eine Ergänzung kann eine eigene Art haben – Information, Festlegung oder
+ * Aufgabe – mit eigenem Verantwortlich, Termin und Erledigung. Ohne eigene
+ * Art (`typ` = null) läuft sie unter dem Ursprung mit und teilt dessen Art,
+ * Verantwortlich, Termin und Erledigung.
  */
 export interface Zeile {
   id: ID;
   text: string;
   /** Nummer des Protokolls, in dem die Zeile entstand; null = neu in diesem Protokoll. */
   herkunft: number | null;
-  /**
-   * Gestrichen: Die Zeile steht in diesem Protokoll durchgestrichen, im
-   * Folgeprotokoll noch einmal und danach nicht mehr.
-   */
+  /** Eigene Art der Ergänzung; null = läuft unter dem Ursprung mit. */
+  typ: EintragTyp | null;
+  /** Nur bei eigener Art: Verantwortlich bzw. Beteiligt. */
+  wer: string;
+  /** Nur bei eigener Art „Aufgabe“. */
+  termin: ISODate;
+  status: Erledigung;
+  /** Gestrichen: Die Zeile steht in diesem Protokoll durchgestrichen und entfällt im Folgeprotokoll. */
   entfaellt: boolean;
   /** Stand im Vorprotokoll; null = neu in diesem Protokoll. */
-  vor: { text: string; entfaellt: boolean } | null;
+  vor: ZeileVorstand | null;
 }
 
 export interface Eintrag {
   id: ID;
   typ: EintragTyp;
-  /** Ursprungstext und Ergänzungen der Folgeprotokolle, je eine Zeile. */
+  /** Ursprung und Ergänzungen der Folgeprotokolle, je eine Zeile. */
   zeilen: Zeile[];
   /** Verantwortlich (Aufgabe) bzw. Beteiligt; Kürzel einer teilnehmenden Person. */
   wer: string;
   termin: ISODate;
   status: Erledigung;
-  /** Folgeprotokoll, das diese Aufgabe weiterführt. */
+  /** Folgeprotokoll, das diesen Eintrag mit seinen Aufgaben weiterführt. */
   uebernommenIn: ID | null;
   /**
-   * LOP-Punkt, in den die Aufgabe übernommen wurde – ein interner Verweis:
-   * Druck und Live-Druckansicht des Protokolls zeigen ihn nicht. Die Aufgabe
-   * läuft im Protokoll weiter wie jede andere; „erledigt“ wird mit dem
-   * LOP-Punkt abgeglichen.
-   */
-  lopPunktId: ID | null;
-  /**
    * Gestrichen („aus dem Protokoll löschen“): Der Eintrag erscheint in diesem
-   * Protokoll durchgestrichen, im Folgeprotokoll noch einmal und danach nicht
-   * mehr – wie eine erledigte Aufgabe.
+   * Protokoll durchgestrichen und entfällt im Folgeprotokoll.
    */
   entfaellt: boolean;
   /** Stand im Vorprotokoll; null = neu in diesem Protokoll. */
@@ -215,11 +218,11 @@ export interface Top {
   /** Titel im Vorprotokoll; null = neuer Punkt. */
   vorTitel: string | null;
   /**
-   * Gestrichen: Der Punkt steht mit allen Einträgen durchgestrichen, im
-   * Folgeprotokoll noch einmal und danach nicht mehr.
+   * Gestrichen: Der Punkt steht mit allen Einträgen durchgestrichen und
+   * entfällt im Folgeprotokoll.
    */
   entfaellt: boolean;
-  /** Im Vorprotokoll gestrichen. */
+  /** Im Vorprotokoll gestrichen (nur Bestände, in denen Gestrichenes noch einmal mitging). */
   vorEntfaellt: boolean;
   eintraege: Eintrag[];
 }
@@ -264,54 +267,6 @@ export const STANDARD_HINWEIS =
   'Einwände oder Ergänzungen zu diesem Protokoll bitte innerhalb von 7 Kalendertagen nach Erhalt schriftlich mitteilen. Andernfalls gilt das Protokoll als anerkannt.';
 
 /* ------------------------------------------------------------------ */
-/* Liste offener Punkte (LOP)                                          */
-/* ------------------------------------------------------------------ */
-
-export interface LopThema {
-  id: ID;
-  titel: string;
-  /** Titel bei der letzten Fortschreibung; null = neues Thema. */
-  vorTitel: string | null;
-}
-
-export interface LopPunkt {
-  id: ID;
-  /** Fortlaufende Nummer innerhalb der LOP – wird nie neu vergeben. */
-  nr: number;
-  themaId: ID;
-  text: string;
-  /** Ergänzung seit der letzten Fortschreibung – im Druck blau. */
-  zusatz: string;
-  wer: string;
-  termin: ISODate;
-  status: Erledigung;
-  erledigtAm: ISODate;
-  /** Bemerkung zum Punkt (Freitext). */
-  bemerkung: string;
-  /** Woher der Punkt stammt, etwa „Baubesprechung Nr. 3“. */
-  herkunft: string;
-  /** Tag der Aufnahme in die LOP. */
-  erfasst: ISODate;
-  /** Stand bei der letzten Fortschreibung; null = seitdem neu. */
-  vor: Vorstand | null;
-  /** Stand, ab dem der erledigte Punkt im Archiv steht; null = in der Liste. */
-  archiviertAb: number | null;
-}
-
-export interface Lop {
-  projektId: ID;
-  /** Laufende Nummer des aktuellen Stands. */
-  stand: number;
-  standDatum: ISODate;
-  themen: LopThema[];
-  punkte: LopPunkt[];
-  /** Nummer, die der nächste neue Punkt erhält. */
-  naechsteNr: number;
-  /** Abgeschlossene Stände mit ihrem Datum. */
-  fortschreibungen: { stand: number; datum: ISODate }[];
-}
-
-/* ------------------------------------------------------------------ */
 /* Gesamtbestand                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -324,7 +279,6 @@ export interface ProjektsteuerungDaten {
   projekte: Projekt[];
   beteiligte: Beteiligter[];
   protokolle: Protokoll[];
-  lops: Lop[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -351,7 +305,7 @@ export function personName(b: { vorname: string; nachname: string }): string {
   return `${b.vorname} ${b.nachname}`.trim();
 }
 
-/** Kürzel, unter dem eine Person in Protokoll und LOP geführt wird. */
+/** Kürzel, unter dem eine Person in Protokollen geführt wird. */
 export function kuerzelVon(b: Beteiligter, funktionen: Funktion[]): string {
   if (b.kuerzel.trim()) return b.kuerzel.trim();
   return funktionen.find((f) => f.id === b.funktionId)?.kuerzel ?? '';

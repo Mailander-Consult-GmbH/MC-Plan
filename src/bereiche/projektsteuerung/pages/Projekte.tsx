@@ -47,7 +47,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
           <EmptyState
             icon="projekt"
             titel="Kein Projekt gefunden"
-            text="Legen Sie ein Projekt an, um Projektbeteiligte, Protokolle und die Liste offener Punkte zu führen."
+            text="Legen Sie ein Projekt an, um Projektbeteiligte und Protokolle zu führen."
             action={
               <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
                 <Icon name="plus" size={14} /> Neues Projekt
@@ -169,7 +169,7 @@ export function ProjektDialog({
   return (
     <Modal
       titel={projekt ? 'Projekt bearbeiten' : 'Neues Projekt'}
-      sub={projekt ? projekt.nummer : 'Grunddaten erfassen – Beteiligte, Protokolle und LOP folgen im Projekt'}
+      sub={projekt ? projekt.nummer : 'Grunddaten erfassen – Beteiligte und Protokolle folgen im Projekt'}
       onClose={onClose}
       footer={
         <>

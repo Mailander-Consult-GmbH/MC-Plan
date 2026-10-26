@@ -3,7 +3,6 @@
  * der Demodatenbestand. Alle Termine liegen relativ zum heutigen Tag.
  */
 import { addDays, today } from '../../../shared/dates';
-import { erledigen, leereLop, neuesThema } from './lop';
 import { folgeprotokoll, neuerEintrag, neuerTop, neueReihe, neueZeile, teilnehmerAus } from './protokoll';
 import {
   DATEN_VERSION,
@@ -15,8 +14,6 @@ import {
   type Funktion,
   type ID,
   type Logo,
-  type Lop,
-  type LopPunkt,
   type Projekt,
   type Protokoll,
   type ProjektsteuerungDaten,
@@ -62,8 +59,8 @@ export const STANDARD_FUNKTIONEN: Funktion[] = [
 ];
 
 /**
- * Logos im Kopf von Protokoll und LOP, solange ein Projekt keine eigenen
- * führt. Die Dateien liegen unter `public/logos/`.
+ * Logos im Kopf von Protokoll und Beteiligtenliste, solange ein Projekt keine
+ * eigenen führt. Die Dateien liegen unter `public/logos/`.
  */
 export const STANDARD_LOGOS: Logo[] = [
   { id: 'logo-db-infrago', name: 'DB InfraGO', src: 'logos/Druck_DB_InfraGO.png' },
@@ -172,8 +169,13 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
       if (text.startsWith('Ausführungsplanung')) {
         return { ...e, zeilen: [...e.zeilen, neueZeile('Teil 1 übergeben, Teil 2 folgt.')], termin: tag(4) };
       }
+      // Ergänzung mit eigener Art: eine Aufgabe unter der Information
+      if (text.startsWith('Die Sperrpause')) {
+        const betra = neueZeile('Betra für den Einhub des Überbaus beantragen.', newId('z'), 'A');
+        return { ...e, zeilen: [...e.zeilen, { ...betra, wer: 'TPL', termin: tag(6) }] };
+      }
       if (text.startsWith('Bauzeitenplan')) return { ...e, status: 'erledigt' as const };
-      // Gestrichen: steht im Druck von Nr. 2 blau durchgestrichen, in Nr. 3 noch einmal
+      // Gestrichen: steht im Druck von Nr. 2 blau durchgestrichen und entfällt in Nr. 3
       if (text.startsWith('Die Baustelleneinrichtung')) return { ...e, entfaellt: true };
       return e;
     }),
@@ -182,86 +184,6 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
     eintrag('A', 'Verkehrsrechtliche Anordnung für die Umleitung beantragen.', { wer: 'AN', termin: tag(10) }),
   );
   return [vorher, zweites];
-}
-
-function demoLop(projektId: ID): Lop {
-  const planung = neuesThema('Planung');
-  const genehmigung = neuesThema('Genehmigungen');
-  const bau = neuesThema('Bauablauf');
-  for (const t of [planung, genehmigung, bau]) t.vorTitel = t.titel;
-  const punkt = (nr: number, themaId: ID, text: string, werte: Partial<LopPunkt>): LopPunkt => {
-    const p: LopPunkt = {
-      id: newId('lp'),
-      nr,
-      themaId,
-      text,
-      zusatz: '',
-      wer: '',
-      termin: '',
-      status: 'offen',
-      erledigtAm: '',
-      bemerkung: '',
-      herkunft: '',
-      erfasst: tag(-28),
-      vor: null,
-      archiviertAb: null,
-      ...werte,
-    };
-    return p.vor === null && werte.vor === undefined
-      ? { ...p, vor: { text: p.text, wer: p.wer, termin: p.termin, status: p.status, bemerkung: p.bemerkung } }
-      : p;
-  };
-  const punkte: LopPunkt[] = [
-    punkt(1, planung.id, 'Ergänzendes Baugrundgutachten Achse 20 beauftragen.', {
-      wer: 'PL',
-      termin: tag(-35),
-      status: 'erledigt',
-      erledigtAm: tag(-30),
-      erfasst: tag(-42),
-      archiviertAb: 3,
-    }),
-    punkt(2, genehmigung.id, 'Planrechtliche Entscheidung beim Eisenbahn-Bundesamt einholen.', {
-      wer: 'PL',
-      termin: tag(21),
-      herkunft: 'Baubesprechung Nr. 1',
-      zusatz: `Unterlagen eingereicht am ${tag(-2).split('-').reverse().join('.')}.`,
-    }),
-    punkt(3, planung.id, 'Ausführungsplanung Leit- und Sicherungstechnik vorlegen.', {
-      wer: 'LST',
-      termin: tag(-2),
-      vor: { text: 'Ausführungsplanung Leit- und Sicherungstechnik vorlegen.', wer: 'LST', termin: tag(-9), status: 'offen' },
-    }),
-    punkt(4, bau.id, 'Betra für den Einhub des Überbaus beantragen.', {
-      wer: 'TPL',
-      termin: tag(6),
-      bemerkung: 'Vorlauf von sechs Wochen vor der Sperrpause beachten.',
-    }),
-    {
-      ...erledigen(
-        punkt(5, bau.id, 'Umleitung des Straßenverkehrs mit der Stadt abstimmen.', { wer: 'AN', termin: tag(-1) }),
-        true,
-      ),
-      erledigtAm: tag(-1),
-    },
-    punkt(6, genehmigung.id, 'Wasserrechtliche Erlaubnis für die Bauwasserhaltung beantragen.', {
-      wer: 'OP',
-      termin: tag(30),
-      erfasst: tag(-1),
-      vor: null,
-    }),
-  ];
-  return {
-    ...leereLop(projektId),
-    stand: 3,
-    standDatum: tag(0),
-    themen: [planung, genehmigung, bau],
-    punkte,
-    naechsteNr: 7,
-    fortschreibungen: [
-      { stand: 1, datum: tag(-28) },
-      { stand: 2, datum: tag(-14) },
-    ],
-  };
 }
 
 export function seedDaten(): ProjektsteuerungDaten {
@@ -298,25 +220,6 @@ export function seedDaten(): ProjektsteuerungDaten {
     person(p2.id, 'fn-ps', 'Lena', 'Roth', 'Mailänder Consult GmbH', 'Frau'),
     person(p2.id, 'fn-op', 'Stefan', 'Braun', 'Planungsgruppe Nord', 'Herr'),
   ];
-  const lop2 = leereLop(p2.id);
-  lop2.punkte = [
-    { text: 'Bestandsvermessung des Bahnsteigs beauftragen.', wer: 'PS', termin: tag(10) },
-    { text: 'Leitungsbestand mit den Versorgern abstimmen.', wer: 'OP', termin: tag(-4) },
-  ].map((w, i) => ({
-    id: newId('lp'),
-    nr: i + 1,
-    themaId: lop2.themen[0].id,
-    zusatz: '',
-    status: 'offen' as const,
-    erledigtAm: '',
-    bemerkung: '',
-    herkunft: '',
-    erfasst: tag(-6),
-    vor: null,
-    archiviertAb: null,
-    ...w,
-  }));
-  lop2.naechsteNr = 3;
 
   return {
     version: DATEN_VERSION,
@@ -326,6 +229,5 @@ export function seedDaten(): ProjektsteuerungDaten {
     projekte: [p1, p2],
     beteiligte: [...Object.values(b), ...zweite],
     protokolle: demoProtokolle(p1.id, b),
-    lops: [demoLop(p1.id), lop2],
   };
 }

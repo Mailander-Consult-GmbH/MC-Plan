@@ -1,8 +1,8 @@
 /**
  * Einstiegspunkt des Bereichs „Projektsteuerung“: Projektbeteiligte mit
- * projektübergreifenden Funktionen, Besprechungsprotokolle und die Liste
- * offener Punkte (LOP) je Projekt. Eigener Speicherort, eigene Einstellungen,
- * eigener Router – unabhängig von den anderen Bereichen.
+ * projektübergreifenden Funktionen und Besprechungsprotokolle je Projekt.
+ * Eigener Speicherort, eigene Einstellungen, eigener Router – unabhängig von
+ * den anderen Bereichen.
  */
 import { App } from './App';
 import { StoreProvider } from './store/store';

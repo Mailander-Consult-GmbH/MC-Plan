@@ -38,7 +38,7 @@ export const BEREICHE: Bereich[] = [
   {
     id: 'projektsteuerung',
     titel: 'Projektsteuerung',
-    untertitel: 'Beteiligte, Protokolle und LOP',
+    untertitel: 'Beteiligte und Protokolle',
     beschreibung:
       'Projektbeteiligte mit projektübergreifenden Funktionen führen, Besprechungen protokollieren und offene Punkte in einer fortgeschriebenen Liste verfolgen.',
     icon: 'protokoll',
