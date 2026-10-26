@@ -1,127 +1,199 @@
 /**
- * Verwaltung der Workflow-Vorlagen: Standard-Workflows und projektspezifische
- * Varianten. Ein Schritt ist eine Aufgabe, eine Entscheidung oder Sonstiges;
- * Entscheidungen bestimmen über ihre Antworten den weiteren Verlauf.
+ * Verwaltung der Workflows: projektübergreifende (mitgelieferte Standard-
+ * Workflows und eigene) und Projektvarianten. Jede Karte zeigt den
+ * Standardverlauf als Punktkette; „Öffnen“ führt in den grafischen
+ * Workflow-Editor (components/WorkflowEditor.tsx).
  */
 import { useState } from 'react';
-import { pfad, templateDauer } from '../domain/engine';
-import {
-  NACHWEIS_LABEL,
-  STANDARD_ANTWORTEN,
-  STEP_TYPE_LABEL,
-  istPrueferRolle,
-  type Antwort,
-  type Nachweis,
-  type ProcessTemplate,
-  type ProcessTemplateStep,
-  type StepType,
-} from '../domain/types';
+import { vorlagenSchritte } from '../domain/engine';
+import { neuerSchritt } from '../domain/workflowGraph';
+import { EIGENE_ROLLE, type ProcessTemplate, type ProcessTemplateStep } from '../domain/types';
 import { newId, useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
-import {
-  Badge,
-  Callout,
-  Card,
-  CardHeader,
-  ConfirmDialog,
-  EmptyState,
-  Field,
-  Modal,
-  TextArea,
-  TextInput,
-} from '../../../shared/ui';
+import { Badge, Card, CardHeader, ConfirmDialog, EmptyState } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
+import { AblaufVorschau, ablaufZahlen } from '../components/AblaufVorschau';
+import { WorkflowEditor } from '../components/WorkflowEditor';
 
 export function Workflows({ projectId }: { projectId?: string }) {
-  const { data, addTemplate, deleteTemplate } = useStore();
+  const { data, addTemplate, updateTemplate, deleteTemplate } = useStore();
   const toast = useToast();
-  const [editor, setEditor] = useState<{ template?: ProcessTemplate } | null>(null);
+  const [editor, setEditor] = useState<{ template?: ProcessTemplate; steps: ProcessTemplateStep[] } | null>(null);
   const [loeschen, setLoeschen] = useState<ProcessTemplate | null>(null);
 
   const vorlagen = data.templates.filter((t) => (projectId ? t.projectId === null || t.projectId === projectId : true));
-  const standard = vorlagen.filter((t) => t.projectId === null);
-  const eigene = vorlagen.filter((t) => t.projectId !== null);
+  const uebergreifend = vorlagen.filter((t) => t.projectId === null);
+  const varianten = vorlagen.filter((t) => t.projectId !== null);
+
+  /** Vorschläge für die verantwortliche Funktion – im Projekt dessen Funktionen. */
+  const rollen = [
+    EIGENE_ROLLE,
+    ...data.standardRollen.map((r) => r.name),
+    ...data.roles.filter((r) => !projectId || r.projectId === projectId).map((r) => r.name),
+  ];
 
   const duplizieren = (t: ProcessTemplate) => {
-    const idMap = new Map(t.steps.map((s) => [s.id, newId('ts')]));
     addTemplate({
-      ...t,
-      id: newId('tpl'),
       projectId: projectId ?? null,
       name: `${t.name} (Kopie)`,
+      beschreibung: t.beschreibung,
       herkunft: 'manuell',
-      steps: t.steps.map((s) => ({
-        ...s,
-        id: idMap.get(s.id)!,
-        antworten: s.antworten.map((a) => ({
-          ...a,
-          id: newId('ant'),
-          ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
-        })),
-      })),
+      // Neue IDs; „weiter mit“ und Antwortziele zeigen auf die Kopien
+      steps: vorlagenSchritte(t, newId),
     });
-    toast('Workflow dupliziert – jetzt individuell anpassbar.');
+    toast(projectId ? 'Workflow als Projektvariante dupliziert.' : 'Workflow dupliziert – jetzt individuell anpassbar.');
   };
 
-  const liste = (titel: string, eintraege: ProcessTemplate[], sub: string) => (
+  const projektName = (id: string | null) => {
+    const p = data.projects.find((x) => x.id === id);
+    return p ? (p.nummer ? `${p.nummer} ${p.name}` : p.name) : '';
+  };
+
+  const karte = (t: ProcessTemplate) => {
+    const z = ablaufZahlen(t.steps);
+    const mitgeliefert = t.herkunft === 'standard' && t.projectId === null;
+    return (
+      // Die ganze Karte öffnet den Editor; per Tastatur über „Öffnen“
+      <div key={t.id} className="wf-liste-karte" onClick={() => setEditor({ template: t, steps: t.steps })}>
+        <div className="wf-liste-kopf">
+          <span className="wf-typ-zeichen">
+            <Icon name="kette" size={16} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <strong>{t.name}</strong>
+            <div className="row wrap" style={{ gap: 6, marginTop: 3 }}>
+              {mitgeliefert ? (
+                <Badge>Standard</Badge>
+              ) : t.projectId === null ? (
+                <Badge ton="blue">Eigener Workflow</Badge>
+              ) : (
+                <Badge ton="blue">Projektvariante</Badge>
+              )}
+              {!projectId && t.projectId ? <span className="small tertiary">{projektName(t.projectId)}</span> : null}
+            </div>
+          </div>
+        </div>
+        {t.beschreibung ? <p className="wf-liste-text">{t.beschreibung}</p> : null}
+        <AblaufVorschau steps={t.steps} />
+        <div className="wf-liste-zahlen">
+          <span>
+            <b>{z.schritte}</b> Schritte
+          </span>
+          <span>
+            <b>{z.entscheidungen}</b> {z.entscheidungen === 1 ? 'Entscheidung' : 'Entscheidungen'}
+          </span>
+          <span>
+            <b>{z.tage}</b> Tage im Standardverlauf
+          </span>
+        </div>
+        <div className="wf-liste-fuss" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => setEditor({ template: t, steps: t.steps })}>
+            <Icon name="bearbeiten" size={13} /> Öffnen
+          </button>
+          <button type="button" className="btn btn-sm" onClick={() => duplizieren(t)}>
+            <Icon name="kopieren" size={13} /> Duplizieren
+          </button>
+          <span className="spacer" />
+          {!mitgeliefert ? (
+            <button
+              type="button"
+              className="btn-icon"
+              onClick={() => setLoeschen(t)}
+              aria-label="Workflow löschen"
+              title="Workflow löschen"
+            >
+              <Icon name="loeschen" size={15} />
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
+  const abschnitt = (titel: string, sub: string, eintraege: ProcessTemplate[], leer: string) => (
     <Card>
       <CardHeader titel={titel} sub={sub} />
-      {eintraege.length === 0 ? (
-        <EmptyState icon="kette" titel="Keine Workflow" text="Legen Sie eine Kette an oder duplizieren Sie einen Standard-Workflow." />
-      ) : (
-        eintraege.map((t) => {
-          const entscheidungen = t.steps.filter((s) => s.typ === 'entscheidung').length;
-          return (
-            <div className="list-row" key={t.id}>
-              <span className="tertiary" style={{ display: 'flex' }}>
-                <Icon name="kette" size={17} />
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="row" style={{ gap: 8 }}>
-                  <strong>{t.name}</strong>
-                  {t.projectId === null ? <Badge>Standard</Badge> : <Badge ton="blue">Projektvariante</Badge>}
-                  {entscheidungen > 0 ? <Badge ton="purple">{entscheidungen} Entscheidung(en)</Badge> : null}
-                </div>
-                <div className="small tertiary truncate">
-                  {t.steps.length} Schritte · {templateDauer(t)} Tage im Standardverlauf
-                  {t.beschreibung ? ` · ${t.beschreibung}` : ''}
-                </div>
-              </div>
-              <button type="button" className="btn btn-sm btn-outline" onClick={() => setEditor({ template: t })}>
-                Öffnen
-              </button>
-              <button type="button" className="btn btn-sm" onClick={() => duplizieren(t)}>
-                <Icon name="kopieren" size={13} /> Duplizieren
-              </button>
-              {t.projectId !== null ? (
-                <button type="button" className="btn-icon" onClick={() => setLoeschen(t)} aria-label="Löschen">
-                  <Icon name="loeschen" size={15} />
-                </button>
-              ) : null}
-            </div>
-          );
-        })
-      )}
+      <div className="card-pad">
+        {eintraege.length === 0 ? (
+          <EmptyState icon="kette" titel="Noch kein Workflow" text={leer} />
+        ) : (
+          <div className="wf-liste">{eintraege.map(karte)}</div>
+        )}
+      </div>
     </Card>
   );
 
+  const offen = editor?.template;
   return (
     <div className="stack">
       <div className="row-between wrap">
-        <p className="muted small" style={{ maxWidth: 640 }}>
-          Standard-Workflows gelten projektübergreifend. Für Abweichungen duplizieren Sie eine Kette als Projektvariante –
-          einzelne Planläufe lassen sich zusätzlich individuell anpassen.
+        <p className="muted small" style={{ maxWidth: 680 }}>
+          Ein Workflow legt die Schritte eines Planlaufs fest. Projektübergreifende Workflows sind in allen Projekten
+          wählbar; für Abweichungen in einem Projekt duplizieren Sie einen Workflow im Projekt als Projektvariante. Einzelne
+          Planläufe lassen sich beim Anlegen zusätzlich individuell anpassen.
         </p>
-        <button type="button" className="btn btn-primary" onClick={() => setEditor({})}>
-          <Icon name="plus" size={14} /> Neue Kette
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => setEditor({ steps: [neuerSchritt('aufgabe', newId)] })}
+        >
+          <Icon name="plus" size={14} /> Neuer Workflow
         </button>
       </div>
 
-      {liste('Standard-Workflows', standard, 'Projektübergreifend verfügbar')}
-      {liste(projectId ? 'Projektvarianten' : 'Projektspezifische Ketten', eigene, 'Nur im jeweiligen Projekt wählbar')}
+      {abschnitt(
+        'Projektübergreifende Workflows',
+        'Mitgelieferte Standard-Workflows und eigene – in allen Projekten wählbar',
+        uebergreifend,
+        'Legen Sie einen Workflow an oder duplizieren Sie einen vorhandenen.',
+      )}
+      {abschnitt(
+        'Projektvarianten',
+        projectId ? 'Nur in diesem Projekt wählbar' : 'Nur im jeweiligen Projekt wählbar',
+        varianten,
+        projectId
+          ? 'Duplizieren Sie hier einen Workflow, um eine Variante nur für dieses Projekt anzulegen.'
+          : 'Projektvarianten entstehen im Projekt, Reiter „Workflows“, über „Duplizieren“ oder „Neuer Workflow“.',
+      )}
 
       {editor ? (
-        <KettenEditor template={editor.template} projectId={projectId ?? null} onClose={() => setEditor(null)} />
+        <WorkflowEditor
+          titel={offen ? 'Workflow bearbeiten' : projectId ? 'Neue Projektvariante' : 'Neuer Workflow'}
+          untertitel={
+            offen?.projectId
+              ? `Projektvariante · ${projektName(offen.projectId)}`
+              : offen
+                ? 'Projektübergreifend – in allen Projekten wählbar'
+                : projectId
+                  ? `Nur in diesem Projekt wählbar · ${projektName(projectId)}`
+                  : 'Projektübergreifend – in allen Projekten wählbar'
+          }
+          hinweis={
+            offen && offen.projectId === null
+              ? `Projektübergreifender Workflow: Änderungen gelten für alle künftigen Planläufe aller Projekte; laufende Planläufe bleiben unverändert.${
+                  offen.herkunft === 'standard'
+                    ? ' Mitgelieferte Standard-Workflows ersetzt eine neue Fassung von KaPlan samt Änderungen – eigene Anpassungen daher besser als Kopie („Duplizieren“).'
+                    : ''
+                }`
+              : undefined
+          }
+          steps={editor.steps}
+          name={offen?.name ?? ''}
+          beschreibung={offen?.beschreibung ?? ''}
+          rollen={rollen}
+          speichernLabel="Speichern"
+          onSpeichern={({ steps, name, beschreibung }) => {
+            if (offen) {
+              updateTemplate(offen.id, { name, beschreibung, steps });
+              toast('Workflow gespeichert.');
+            } else {
+              addTemplate({ projectId: projectId ?? null, name, beschreibung, herkunft: 'manuell', steps });
+              toast('Workflow angelegt.');
+            }
+            setEditor(null);
+          }}
+          onClose={() => setEditor(null)}
+        />
       ) : null}
       {loeschen ? (
         <ConfirmDialog
@@ -134,410 +206,6 @@ export function Workflows({ projectId }: { projectId?: string }) {
           onClose={() => setLoeschen(null)}
         />
       ) : null}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Editor                                                              */
-/* ------------------------------------------------------------------ */
-
-/** Legt einen neuen Schritt an – Entscheidungen mit zwei Standardantworten. */
-export function neuerSchritt(typ: StepType = 'aufgabe'): ProcessTemplateStep {
-  return {
-    id: newId('ts'),
-    name: '',
-    typ,
-    roleName: '',
-    fristTage: typ === 'entscheidung' ? 0 : 5,
-    beschreibung: '',
-    antworten: typ === 'entscheidung' ? standardAntworten() : [],
-    naechster: null,
-    nachweis: 'keine',
-    mailFrage: false,
-    mailVorlageId: null,
-  };
-}
-
-export function standardAntworten(): Antwort[] {
-  return STANDARD_ANTWORTEN.map((text) => ({ id: newId('ant'), text, ziel: null }));
-}
-
-function KettenEditor({
-  template,
-  projectId,
-  onClose,
-}: {
-  template?: ProcessTemplate;
-  projectId: string | null;
-  onClose: () => void;
-}) {
-  const { data, addTemplate, updateTemplate } = useStore();
-  const toast = useToast();
-  const rollen = [...new Set(data.roles.map((r) => r.name))].sort((a, b) => a.localeCompare(b, 'de'));
-
-  const [name, setName] = useState(template?.name ?? '');
-  const [beschreibung, setBeschreibung] = useState(template?.beschreibung ?? '');
-  const [steps, setSteps] = useState<ProcessTemplateStep[]>(
-    template?.steps.map((s) => ({ ...s, antworten: s.antworten.map((a) => ({ ...a })) })) ?? [neuerSchritt()],
-  );
-
-  const istStandard = template !== undefined && template.projectId === null;
-
-  const speichern = () => {
-    if (!name.trim()) {
-      toast('Bitte einen Namen angeben.');
-      return;
-    }
-    if (steps.some((s) => !s.name.trim())) {
-      toast('Bitte jeden Schritt benennen.');
-      return;
-    }
-    const bereinigt = steps.map((s) => ({
-      ...s,
-      antworten:
-        s.typ === 'entscheidung'
-          ? s.antworten.map((a, i) => ({ ...a, text: a.text.trim() || STANDARD_ANTWORTEN[i] || `Antwort ${i + 1}` }))
-          : [],
-    }));
-    if (template) {
-      updateTemplate(template.id, { name, beschreibung, steps: bereinigt });
-      toast('Workflow gespeichert.');
-    } else {
-      addTemplate({ projectId, name, beschreibung, herkunft: 'manuell', steps: bereinigt });
-      toast('Workflow angelegt.');
-    }
-    onClose();
-  };
-
-  return (
-    <Modal
-      titel={template ? 'Workflow bearbeiten' : 'Neue Workflow'}
-      sub={`${steps.length} Schritte · ${pfad(steps).reduce((s, x) => s + x.fristTage, 0)} Tage im Standardverlauf`}
-      wide
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onClose}>
-            Abbrechen
-          </button>
-          <button type="button" className="btn btn-primary" onClick={speichern}>
-            Speichern
-          </button>
-        </>
-      }
-    >
-      <div className="stack" style={{ gap: 16 }}>
-        {istStandard ? (
-          <Callout icon="i">
-            Dies ist eine projektübergreifende Standard-Workflow. Änderungen wirken sich auf alle künftigen Planläufe aus –
-            für einmalige Abweichungen besser duplizieren.
-          </Callout>
-        ) : null}
-
-        <div className="form-grid">
-          <Field label="Name" full>
-            <TextInput value={name} onChange={setName} placeholder="z.B. Planlauf Ausführungsplanung" />
-          </Field>
-          <Field label="Beschreibung" full>
-            <TextArea value={beschreibung} onChange={setBeschreibung} rows={2} />
-          </Field>
-        </div>
-
-        <SchrittListe steps={steps} setSteps={setSteps} rollen={rollen} />
-      </div>
-    </Modal>
-  );
-}
-
-/**
- * Bearbeitbare Schrittliste – wird im Ketteneditor und beim Start eines
- * Planlaufs verwendet.
- */
-export function SchrittListe({
-  steps,
-  setSteps,
-  rollen,
-}: {
-  steps: ProcessTemplateStep[];
-  setSteps: (s: ProcessTemplateStep[]) => void;
-  rollen: string[];
-}) {
-  const { data } = useStore();
-  const mailVorlagen = data.emailVorlagen;
-
-  const setStep = (id: string, patch: Partial<ProcessTemplateStep>) =>
-    setSteps(steps.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-
-  /**
-   * Mögliche Ziele für „weiter mit“. Die Nummer ist die Nummer des Schritts im
-   * Workflow – nicht die Position in dieser Auswahl, aus der der bearbeitete
-   * Schritt herausfällt.
-   */
-  const ziele = (ausser: string) =>
-    steps.map((z, i) => ({ ziel: z, nummer: i + 1 })).filter((x) => x.ziel.id !== ausser);
-
-  /** Rollen ohne Dubletten: dieselbe Funktion gibt es je Gewerk einmal. */
-  const rollenListe = [...new Set(rollen.map((r) => r.trim()).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b, 'de'),
-  );
-
-  const verschieben = (idx: number, richtung: -1 | 1) => {
-    const ziel = idx + richtung;
-    if (ziel < 0 || ziel >= steps.length) return;
-    const neu = [...steps];
-    [neu[idx], neu[ziel]] = [neu[ziel], neu[idx]];
-    setSteps(neu);
-  };
-
-  /** Prüfende Rollen verlangen regelmäßig einen Prüfbericht. */
-  const rolleWechseln = (step: ProcessTemplateStep, roleName: string) =>
-    setStep(step.id, {
-      roleName,
-      nachweis:
-        step.nachweis === 'keine' && istPrueferRolle(roleName) ? 'pruefbericht' : step.nachweis,
-    });
-
-  const typWechseln = (step: ProcessTemplateStep, typ: StepType) =>
-    setStep(step.id, {
-      typ,
-      antworten: typ === 'entscheidung' ? (step.antworten.length ? step.antworten : standardAntworten()) : [],
-      fristTage: typ === 'entscheidung' ? 0 : step.fristTage,
-    });
-
-  const setAntwort = (step: ProcessTemplateStep, antwortId: string, patch: Partial<Antwort>) =>
-    setStep(step.id, { antworten: step.antworten.map((a) => (a.id === antwortId ? { ...a, ...patch } : a)) });
-
-  return (
-    <div className="stack" style={{ gap: 10 }}>
-      {steps.map((step, i) => (
-        <div className="card" key={step.id}>
-          <div className="card-pad" style={{ padding: '12px 14px' }}>
-            <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
-              <span className="step-num" style={{ marginTop: 6 }}>{i + 1}</span>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="form-grid" style={{ gap: 10 }}>
-                  <Field label="Bezeichnung" full>
-                    <TextInput
-                      value={step.name}
-                      onChange={(v) => setStep(step.id, { name: v })}
-                      placeholder={step.typ === 'entscheidung' ? 'z.B. Prüfung ohne Mängel?' : 'z.B. Planerstellung'}
-                    />
-                  </Field>
-                  <Field label="Art">
-                    <select
-                      className="select"
-                      value={step.typ}
-                      onChange={(e) => typWechseln(step, e.target.value as StepType)}
-                    >
-                      {Object.entries(STEP_TYPE_LABEL).map(([v, l]) => (
-                        <option key={v} value={v}>
-                          {l}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Verantwortlicher">
-                    <input
-                      className="input"
-                      value={step.roleName}
-                      list="rollen-liste"
-                      placeholder="Rolle, z.B. PLM"
-                      onChange={(e) => rolleWechseln(step, e.target.value)}
-                    />
-                  </Field>
-                  <Field label="Frist (Tage)">
-                    <input
-                      className="input"
-                      value={step.fristTage}
-                      inputMode="numeric"
-                      onChange={(e) => setStep(step.id, { fristTage: Number(e.target.value.replace(/\D/g, '')) || 0 })}
-                    />
-                  </Field>
-                  <Field label="Nachweis bei Abschluss" hint="wird beim Erledigen abgefragt">
-                    <select
-                      className="select"
-                      value={step.nachweis}
-                      onChange={(e) => setStep(step.id, { nachweis: e.target.value as Nachweis })}
-                    >
-                      {Object.entries(NACHWEIS_LABEL).map(([v, l]) => (
-                        <option key={v} value={v}>
-                          {l}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  {step.typ !== 'entscheidung' ? (
-                    <Field label="Weiter mit">
-                      <select
-                        className="select"
-                        value={step.naechster ?? ''}
-                        onChange={(e) =>
-                          setStep(step.id, {
-                            naechster: e.target.value === '' ? null : (e.target.value as ProcessTemplateStep['naechster']),
-                          })
-                        }
-                      >
-                        <option value="">nächstem Schritt</option>
-                        {ziele(step.id).map(({ ziel, nummer }) => (
-                          <option key={ziel.id} value={ziel.id}>
-                            {nummer}. {ziel.name || 'ohne Namen'}
-                          </option>
-                        ))}
-                        <option value="ende">Planlauf beenden</option>
-                      </select>
-                    </Field>
-                  ) : null}
-
-                  <Field
-                    label="E-Mail nach Abschluss"
-                    full
-                    hint="Fragt nach dem Erledigen, ob die für den nächsten Schritt zuständige Person informiert werden soll."
-                  >
-                    <div className="row wrap" style={{ gap: 10 }}>
-                      <label className="checkbox">
-                        <input
-                          type="checkbox"
-                          checked={step.mailFrage}
-                          onChange={(e) => setStep(step.id, { mailFrage: e.target.checked })}
-                        />
-                        Nach einer E-Mail fragen
-                      </label>
-                      {step.mailFrage ? (
-                        <select
-                          className="select"
-                          style={{ flex: '1 1 220px' }}
-                          value={step.mailVorlageId ?? ''}
-                          onChange={(e) => setStep(step.id, { mailVorlageId: e.target.value || null })}
-                        >
-                          <option value="">Vorlage automatisch wählen</option>
-                          {mailVorlagen.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              {v.name}
-                            </option>
-                          ))}
-                        </select>
-                      ) : null}
-                    </div>
-                  </Field>
-                </div>
-
-                {step.typ === 'entscheidung' ? (
-                  <div style={{ marginTop: 12 }}>
-                    <div className="small muted" style={{ marginBottom: 6 }}>
-                      Antwortmöglichkeiten – je Antwort legt „weiter mit“ den nächsten Schritt fest.
-                    </div>
-                    <div className="stack" style={{ gap: 6 }}>
-                      {step.antworten.map((a, ai) => (
-                        <div className="row wrap" key={a.id} style={{ gap: 6 }}>
-                          <input
-                            className="input"
-                            style={{ flex: '1 1 150px' }}
-                            value={a.text}
-                            placeholder={STANDARD_ANTWORTEN[ai] ?? `Antwort ${ai + 1}`}
-                            onChange={(e) => setAntwort(step, a.id, { text: e.target.value })}
-                          />
-                          <select
-                            className="select"
-                            style={{ flex: '1 1 190px' }}
-                            value={a.ziel ?? ''}
-                            onChange={(e) =>
-                              setAntwort(step, a.id, {
-                                ziel: e.target.value === '' ? null : (e.target.value as Antwort['ziel']),
-                              })
-                            }
-                          >
-                            <option value="">weiter mit: nächstem Schritt</option>
-                            {ziele(step.id).map(({ ziel, nummer }) => (
-                              <option key={ziel.id} value={ziel.id}>
-                                weiter mit: {nummer}. {ziel.name || 'ohne Namen'}
-                              </option>
-                            ))}
-                            <option value="ende">Planlauf beenden</option>
-                          </select>
-                          <button
-                            type="button"
-                            className="btn-icon"
-                            aria-label="Antwort entfernen"
-                            disabled={step.antworten.length <= 1}
-                            onClick={() =>
-                              setStep(step.id, { antworten: step.antworten.filter((x) => x.id !== a.id) })
-                            }
-                          >
-                            <Icon name="loeschen" size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline"
-                      style={{ marginTop: 8 }}
-                      onClick={() =>
-                        setStep(step.id, {
-                          antworten: [...step.antworten, { id: newId('ant'), text: '', ziel: null }],
-                        })
-                      }
-                    >
-                      <Icon name="plus" size={13} /> Antwortmöglichkeit
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="row" style={{ gap: 2 }}>
-                <button type="button" className="btn-icon" onClick={() => verschieben(i, -1)} disabled={i === 0} aria-label="Nach oben">
-                  <Icon name="hoch" size={14} />
-                </button>
-                <button
-                  type="button"
-                  className="btn-icon"
-                  onClick={() => verschieben(i, 1)}
-                  disabled={i === steps.length - 1}
-                  aria-label="Nach unten"
-                >
-                  <Icon name="runter" size={14} />
-                </button>
-                <button
-                  type="button"
-                  className="btn-icon"
-                  onClick={() => setSteps(steps.filter((x) => x.id !== step.id))}
-                  aria-label="Schritt entfernen"
-                >
-                  <Icon name="loeschen" size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-
-      <datalist id="rollen-liste">
-        {rollenListe.map((r) => (
-          <option key={r} value={r} />
-        ))}
-      </datalist>
-
-      <div className="row">
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => setSteps([...steps, neuerSchritt()])}>
-          <Icon name="plus" size={13} /> Aufgabe
-        </button>
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          onClick={() => setSteps([...steps, neuerSchritt('entscheidung')])}
-        >
-          <Icon name="plus" size={13} /> Entscheidung
-        </button>
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          onClick={() => setSteps([...steps, neuerSchritt('sonstiges')])}
-        >
-          <Icon name="plus" size={13} /> Sonstiges
-        </button>
-      </div>
     </div>
   );
 }

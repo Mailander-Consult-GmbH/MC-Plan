@@ -12,12 +12,14 @@ import {
   type AppData,
   type EmailTemplate,
   type ProcessTemplate,
+  type ProcessTemplateStep,
   type Role,
   type StandardRolle,
   type StepType,
 } from '../domain/types';
 import { STANDARD_ROLLEN, STANDARD_TEMPLATES, seedData, standardVorlagen } from '../domain/seed';
 import { eigeneKontakteSichern, recalcRun, zustaendigkeitenNachziehen } from '../domain/engine';
+import { gliedern } from '../domain/workflowGraph';
 
 /** Frühere Bezeichnung der eigenen Rolle. */
 const ALTE_EIGENE_ROLLE = 'PLM';
@@ -202,11 +204,29 @@ function stammdatenAktualisieren(daten: AppData): AppData {
   return { ...daten, stammdatenVersion: STAMMDATEN_VERSION, standardRollen, templates, roles };
 }
 
-/** Ordnet die früheren Schrittarten den drei aktuellen Arten zu. */
+/**
+ * Ordnet die früheren Schrittarten den beiden aktuellen zu: Entscheidungen
+ * bleiben Entscheidungen, alles andere – auch „Sonstiges“ und „Versand“ –
+ * wird zur Aufgabe.
+ */
 function migriereTyp(alt: string): StepType {
   if (alt === 'gateway' || alt === 'entscheidung') return 'entscheidung';
-  if (alt === 'versand' || alt === 'sonstiges') return 'sonstiges';
   return 'aufgabe';
+}
+
+/**
+ * Bis Fassung 11 fehlte in den mitgelieferten Workflows der Übergang von
+ * „Rückmeldung an Planer“ zu „Erneute Vorlage von Planer“: Die Rückmeldung
+ * führte zum nächsten Schritt der Liste (der Freigabe), die erneute Vorlage
+ * wurde nie erreicht. Workflows mit genau diesem Muster – auch Kopien –
+ * erhalten den Übergang. Laufende Planläufe bleiben, wie sie sind.
+ */
+function rueckmeldungVerbinden(steps: ProcessTemplateStep[]): ProcessTemplateStep[] {
+  const rueckmeldung = steps.find((s) => s.name === 'Rückmeldung an Planer');
+  const vorlage = steps.find((s) => s.name === 'Erneute Vorlage von Planer');
+  if (!rueckmeldung || !vorlage || rueckmeldung.typ === 'entscheidung' || rueckmeldung.naechster !== null) return steps;
+  if (!gliedern(steps).unerreichbar.includes(vorlage.id)) return steps;
+  return steps.map((s) => (s === rueckmeldung ? { ...s, naechster: vorlage.id } : s));
 }
 
 /**
@@ -331,7 +351,8 @@ function migriere(daten: AppData): AppData {
     templates: (daten.templates ?? []).map((t) => ({
       ...t,
       herkunft: t.herkunft === 'standard' ? 'standard' : 'manuell',
-      steps: (t.steps ?? []).map((s) => {
+      steps: rueckmeldungVerbinden(
+        (t.steps ?? []).map((s) => {
         const typ = migriereTyp(s.typ as unknown as string);
         return {
           ...s,
@@ -343,7 +364,7 @@ function migriere(daten: AppData): AppData {
           mailFrage: s.mailFrage ?? false,
           mailVorlageId: s.mailVorlageId ?? null,
         };
-      }),
+      })),
     })),
     runs: (daten.runs ?? []).map((r) => ({
       ...r,

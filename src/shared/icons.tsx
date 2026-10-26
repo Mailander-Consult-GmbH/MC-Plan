@@ -32,6 +32,15 @@ const paths: Record<string, string> = {
   kopieren: 'M9 9h11v11H9zM15 9V4H4v11h5',
   // Klemmbrett mit Textzeilen – Protokolle und Projektsteuerung
   protokoll: 'M9 4.5H6.5v16h11v-16H15M9 3h6v3H9zM9.5 11h5M9.5 14.5h5M9.5 18h3',
+  // Workflow-Editor: Rückgängig/Wiederholen, Schrittarten, Start und Ende
+  rueckgaengig: 'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+  wiederholen: 'M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13',
+  aufgabe: 'M5 5h14v14H5zM8.5 12l2.5 2.5 4.5-5',
+  raute: 'M12 3.5 20.5 12 12 20.5 3.5 12z',
+  start: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10 8.5l5.5 3.5-5.5 3.5z',
+  ziel: 'M5 21V4M5 4.5h11.5l-2.5 4 2.5 4H5',
+  schleife: 'M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 20v-4.5h4.5',
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5.5M12 7.5h.01',
 };
 
 export type IconName = keyof typeof paths;

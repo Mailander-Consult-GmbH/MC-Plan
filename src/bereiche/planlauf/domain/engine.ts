@@ -100,6 +100,12 @@ export function verlaufDerKette<T extends ProcessTemplateStep | RunStep>(steps: 
       continue;
     }
     index += 1;
+    // Auch der Weg zum nächsten Schritt der Liste kann zu einem bereits
+    // durchlaufenen Schritt führen – nach einem Sprung zurück. Dann ist auch
+    // das ein Rücksprung, sonst stünde der Schritt zweimal im Verlauf.
+    if (index < steps.length && besucht.has(steps[index].id)) {
+      return { schritte, rueckSprungZu: steps[index], beendet: false };
+    }
   }
   return { schritte, rueckSprungZu: null, beendet: false };
 }

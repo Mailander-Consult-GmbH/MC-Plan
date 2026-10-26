@@ -19,7 +19,7 @@ import {
   laufSchritteAusVorlage,
   vorlagenSchritte,
 } from '../../domain/engine';
-import { formatDate, tageLabel, today } from '../../../../shared/dates';
+import { formatDate, today } from '../../../../shared/dates';
 import {
   DOCUMENT_KIND_LABEL,
   INDEX_LABEL,
@@ -38,7 +38,7 @@ import {
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
 import { DocKindIcon } from '../../components/common';
-import { SchrittListe } from '../Workflows';
+import { LaufSchritte } from '../../components/AblaufVorschau';
 import { PlaeneImport } from './PlaeneImport';
 import { BuendelnDialog, planeMitEigenemLauf } from '../../components/BuendelnDialog';
 import { PaketDialog } from '../../components/PaketDialog';
@@ -708,11 +708,14 @@ function PlanDialog({
 
   const [templateId, setTemplateId] = useState(vorlagen[0]?.id ?? '');
   const [steps, setSteps] = useState<ProcessTemplateStep[]>(() => kopie(vorlagen[0]?.id ?? ''));
+  /** Die Schritte wurden über „Individueller Workflow“ für diesen Planlauf angepasst. */
+  const [angepasst, setAngepasst] = useState(false);
   const [start, setStart] = useState(today());
 
   const vorlageWechseln = (id: string) => {
     setTemplateId(id);
     setSteps(kopie(id));
+    setAngepasst(false);
   };
 
   /**
@@ -804,8 +807,6 @@ function PlanDialog({
     schliessen(werte.parentId);
     onLaufGestartet(runId);
   };
-
-  const dauer = steps.reduce((s, x) => s + x.fristTage, 0);
 
   return (
     <>
@@ -1004,20 +1005,18 @@ function PlanDialog({
                 </Field>
               </div>
 
-              <div>
-                <div className="row-between wrap" style={{ marginBottom: 8 }}>
-                  <h3>Schritte dieses Planlaufs</h3>
-                  <span className="small tertiary">
-                    {steps.length} Schritte · {tageLabel(dauer)}
-                    {project.settings.fristenInArbeitstagen ? ' (Arbeitstage)' : ''}
-                  </span>
-                </div>
-                <p className="small muted" style={{ marginBottom: 10 }}>
-                  Schritte lassen sich hier hinzufügen, ändern oder entfernen. Die Workflow selbst bleibt davon
-                  unberührt.
-                </p>
-                <SchrittListe steps={steps} setSteps={setSteps} rollen={funktionenFuerGewerk(rollen, laufZiel.gewerk)} />
-              </div>
+              <LaufSchritte
+                vorlage={vorlagen.find((t) => t.id === templateId)}
+                steps={steps}
+                angepasst={angepasst}
+                rollen={funktionenFuerGewerk(rollen, laufZiel.gewerk)}
+                arbeitstage={project.settings.fristenInArbeitstagen}
+                onUebernehmen={(neu) => {
+                  setSteps(neu);
+                  setAngepasst(true);
+                }}
+                onZuruecksetzen={() => vorlageWechseln(templateId)}
+              />
             </>
           ) : verzeichnisEinzeln ? (
             <Callout icon="i">
