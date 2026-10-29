@@ -293,6 +293,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                     bemerkung: `Stand von „${quelle.name}“ übernommen – Planverzeichnis gelöscht`,
                   },
                   newId,
+                  { bearbeiter: data.bearbeiter.name, zeitpunkt: new Date().toISOString() },
                 ),
                 status: quelle.status,
                 id: newId('run'),
@@ -445,6 +446,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             bemerkung: `Aus „${quelle.name}“ herausgelöst`,
           },
           newId,
+          { bearbeiter: data.bearbeiter.name, zeitpunkt: new Date().toISOString() },
         );
         mutate((d) => ({
           ...d,
@@ -476,6 +478,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   bemerkung: `Aus „${quelle.name}“ aufgeteilt`,
                 },
                 newId,
+                { bearbeiter: data.bearbeiter.name, zeitpunkt: new Date().toISOString() },
               ),
               id: newId('run'),
             }))
@@ -523,6 +526,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 bemerkung: `Pläne wieder gebündelt – Stand von „${quelle.name}“ übernommen`,
               },
               newId,
+              { bearbeiter: data.bearbeiter.name, zeitpunkt: new Date().toISOString() },
             ),
             id: newId('run'),
           };

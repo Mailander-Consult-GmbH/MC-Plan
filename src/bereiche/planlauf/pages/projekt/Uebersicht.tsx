@@ -1,6 +1,7 @@
 /** Reiter „Planläufe“ eines Projekts: Kennzahlen und die Liste der Planläufe. */
 import { useState } from 'react';
 import {
+  aktuelleSchritte,
   aktuellerSchritt,
   ampelFuerSchritt,
   eigenstaendigeLaeufe,
@@ -63,25 +64,26 @@ export function Uebersicht({
   const statusVon = (r: (typeof laeufe)[number]) => {
     if (r.status !== 'laufend') return r.status;
     const step = aktuellerSchritt(r);
-    const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'neutral';
+    const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage, true) : 'neutral';
     // Ein überfälliger Eingang zählt als überfällig, nicht als angekündigt.
     if (ampel === 'ueberfaellig') return ampel;
     if (step && istEingangPLM(step.name)) return 'angekuendigt';
     return ampel;
   };
 
+  // Suche und Personenauswahl über alle anstehenden Schritte (parallele Zweige)
   const gefiltert = massgeblich.filter((r) => {
     const doc = data.documents.find((d) => d.id === r.documentId);
-    const step = aktuellerSchritt(r);
+    const anstehend = aktuelleSchritte(r);
     const paket = doc?.paketId ? dokumente.find((d) => d.id === doc.paketId) : undefined;
-    const text = [doc?.nummer, doc?.titel, doc?.index, r.name, step?.name, paket?.titel]
+    const text = [doc?.nummer, doc?.titel, doc?.index, r.name, ...anstehend.map((s) => s.name), paket?.titel]
       .join(' ')
       .toLowerCase();
     return (
       (!suche || text.includes(suche.toLowerCase())) &&
       (!gewerkFilter || (doc?.gewerk ?? '') === gewerkFilter) &&
       (!statusFilter || statusVon(r) === statusFilter) &&
-      (!personFilter || step?.contactId === personFilter)
+      (!personFilter || anstehend.some((s) => s.contactId === personFilter))
     );
   });
 
@@ -91,7 +93,9 @@ export function Uebersicht({
   );
   const personenIds = [
     ...new Set(
-      massgeblich.map((r) => aktuellerSchritt(r)?.contactId).filter((id): id is string => Boolean(id)),
+      massgeblich
+        .flatMap((r) => aktuelleSchritte(r).map((s) => s.contactId))
+        .filter((id): id is string => Boolean(id)),
     ),
   ];
   const personen = personenIds

@@ -14,9 +14,10 @@ import {
   eigenstaendigeLaeufe,
   fortschritt,
   laufUeberfuehrt,
-  pfad,
+  verlaufDerKette,
   type Ampel,
 } from './engine';
+import { istErledigt } from './ablauf';
 import {
   RUN_STATUS_LABEL,
   hatEigenenPlanlauf,
@@ -88,14 +89,36 @@ export function paketVon(documents: PlanDocument[], doc: PlanDocument | undefine
  * Der „aktuelle Stand“ eines Laufs: der zuletzt erledigte Schritt vor dem
  * offenen. Übersprungene Schritte zählen nicht – es gilt der erledigte davor.
  * Ist ein früherer Schritt wieder geöffnet, zählen die erledigten Schritte
- * dahinter nicht – der Stand liegt nie hinter dem nächsten Schritt.
+ * dahinter nicht – der Stand liegt nie hinter dem nächsten Schritt. In einem
+ * parallelen Block zählt je Zweig, was vor seinem offenen Schritt erledigt ist;
+ * von diesen Schritten aller Zweige gilt der mit dem spätesten Ist.
  */
 export function letzterAbgeschlossenerSchritt(run: PlanRun | undefined): RunStep | undefined {
   if (!run) return undefined;
-  const verlauf = pfad(run.steps);
-  const offen = verlauf.findIndex((s) => s.status !== 'erledigt' && s.status !== 'uebersprungen');
-  const bisher = offen === -1 ? verlauf : verlauf.slice(0, offen);
-  return [...bisher].reverse().find((s) => s.status === 'erledigt');
+  const spaeter = (a: RunStep | undefined, b: RunStep) => (!a || (b.istDatum ?? '') >= (a.istDatum ?? '') ? b : a);
+  let stand: RunStep | undefined;
+  for (const a of verlaufDerKette(run.steps).abschnitte) {
+    if (a.art === 'schritt') {
+      if (!istErledigt(a.step)) return stand;
+      if (a.step.status === 'erledigt') stand = a.step;
+      continue;
+    }
+    let imBlock: RunStep | undefined;
+    let offen = false;
+    for (const z of a.zweige) {
+      for (const s of z.schritte) {
+        if (!istErledigt(s)) {
+          offen = true;
+          break;
+        }
+        if (s.status === 'erledigt') imBlock = spaeter(imBlock, s);
+      }
+      if (z.rueckSprungZu) offen = true;
+    }
+    if (imBlock) stand = imBlock;
+    if (offen) return stand;
+  }
+  return stand;
 }
 
 /** Zeilen der Übersicht zu den gegebenen Läufen. */
@@ -189,7 +212,7 @@ export function standVon(zugehoerig: PlanDocument[], basis: PlanRun[], vorlaufTa
     .filter((r) => r.status === 'laufend')
     .map((r) => {
       const step = aktuellerSchritt(r);
-      return step ? ampelFuerSchritt(step, vorlaufTage) : 'neutral';
+      return step ? ampelFuerSchritt(step, vorlaufTage, true) : 'neutral';
     });
   const ampel = rang.find((a) => ampeln.includes(a)) ?? null;
   return { pct, status, ampel };
@@ -252,7 +275,7 @@ export function statusAnzeige(
   vorlaufTage: number,
 ): { text: string; ton: StatusTon } {
   if (run.status !== 'laufend') return { text: RUN_STATUS_LABEL[run.status], ton: RUN_STATUS_TON[run.status] };
-  const ampel = step ? ampelFuerSchritt(step, vorlaufTage) : 'erledigt';
+  const ampel = step ? ampelFuerSchritt(step, vorlaufTage, true) : 'erledigt';
   if (wartetAufEingang(run, step) && ampel !== 'ueberfaellig') return { text: 'Angekündigt', ton: 'gelb' };
   return { text: AMPEL_LABEL[ampel], ton: AMPEL_TON[ampel] };
 }

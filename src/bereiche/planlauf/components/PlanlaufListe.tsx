@@ -171,7 +171,7 @@ export function PlanlaufListe({
         return fortschritt(e.run);
       case 'status': {
         if (e.run.status !== 'laufend') return STATUS_RANG[e.run.status];
-        const ampel = e.step ? ampelFuerSchritt(e.step, project.settings.erinnerungVorlaufTage) : 'neutral';
+        const ampel = e.step ? ampelFuerSchritt(e.step, project.settings.erinnerungVorlaufTage, true) : 'neutral';
         // Ein angekündigter Eintrag, dessen Eingang überfällig ist, zählt als
         // überfällig – sonst verschwände die Dringlichkeit hinter „angekündigt“.
         if (ampel === 'ueberfaellig') return STATUS_RANG.ueberfaellig;
@@ -353,7 +353,7 @@ export function PlanlaufListe({
     // Farbe der Zeile: angekündigt (gelb) bzw. abgeschlossen (grün)
     const wartetAufEingang = Boolean(step && istEingangPLM(step.name));
     const fertig = run.status === 'abgeschlossen';
-    const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
+    const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage, true) : 'erledigt';
     const pct = fortschritt(run);
     const kontakt = data.contacts.find((c) => c.id === step?.contactId);
     // Aktueller Stand: der zuletzt erledigte Schritt des Verlaufs (übersprungene zählen nicht)

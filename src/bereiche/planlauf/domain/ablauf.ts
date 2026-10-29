@@ -260,6 +260,17 @@ function bloeckeInOrdnung(steps: readonly AblaufSchritt[], st: Struktur): boolea
   return true;
 }
 
+/** Ergebnis von `bloeckeOrdnenMitHinweis`. */
+export interface Ordnung<T> {
+  steps: T[];
+  /**
+   * Blöcke, hinter denen es nach dem Ordnen anders weitergeht als vorher –
+   * dann ließ sich die Liste nicht umstellen, ohne den Ablauf zu ändern (siehe
+   * bloeckeOrdnenMitHinweis). Leer, wenn der Ablauf erhalten bleibt.
+   */
+  anschlussGeaendert: ID[];
+}
+
 /**
  * Stellt die Blockregeln her: Schritte eines Blocks stehen zusammen (an der
  * Stelle seines ersten Schritts), nach Zweig sortiert, Zweige sind 0 … n−1
@@ -268,28 +279,61 @@ function bloeckeInOrdnung(steps: readonly AblaufSchritt[], st: Struktur): boolea
  * Ablauf nicht ändert: Beginn und Anschluss jedes Blocks bleiben erhalten,
  * soweit sich das widerspruchsfrei herstellen lässt. Ist alles schon in
  * Ordnung, bleibt die Liste unverändert.
+ *
+ * Beim Auflösen eines Ein-Zweig-Blocks führt ein Sprung von außen in seine
+ * Mitte – wie bisher – zu seinem ersten Schritt (ein Ziel in einem Block
+ * betritt ihn als Ganzes).
+ *
+ * Nicht widerspruchsfrei herstellbar ist der Anschluss in zwei Fällen; dann
+ * ändert sich der Ablauf hinter dem Block, und `anschlussGeaendert` nennt ihn:
+ * * Ein Block steht am Listenanfang und reicht bis ans Listenende, dazwischen
+ *   liegen fremde Schritte (etwa nach „Aus dem Block lösen“). Bisher endete
+ *   der Ablauf hinter dem Block; die fremden Schritte müssen aber vor oder
+ *   hinter ihn – davor änderten sie den Beginn, dahinter laufen sie nun nach
+ *   dem Block. Sie rücken dahinter.
+ * * Ineinander verschränkte Blöcke (ein Block liegt zwischen den Schritten
+ *   eines anderen): Bedingungen, die sich widersprechen, entfallen einzeln –
+ *   der Beginn geht vor.
  */
 export function bloeckeOrdnen<T extends AblaufSchritt>(steps: T[]): T[] {
-  if (!steps.some((s) => s.parallel)) return steps;
+  return bloeckeOrdnenMitHinweis(steps).steps;
+}
+
+/** Wie `bloeckeOrdnen`, dazu die Blöcke, hinter denen sich der Ablauf ändern musste. */
+export function bloeckeOrdnenMitHinweis<T extends AblaufSchritt>(steps: T[]): Ordnung<T> {
+  if (!steps.some((s) => s.parallel)) return { steps, anschlussGeaendert: [] };
   const st = strukturVon(steps);
-  if (bloeckeInOrdnung(steps, st)) return steps;
+  if (bloeckeInOrdnung(steps, st)) return { steps, anschlussGeaendert: [] };
   const fest = zieleFestschreiben(steps);
 
   // Ein-Zweig-Blöcke auflösen: „Zweig beendet“ (auch über ein unbekanntes Ziel)
   // heißt dann „weiter am Anschluss“
   const aufloesen = new Set([...st.bloecke.values()].filter((b) => b.zweige.length < 2).map((b) => b.id));
+  /**
+   * Ein Ziel in einem aufgelösten Block betrat ihn bisher an seinem ersten
+   * Schritt – auch wenn es auf einen späteren zeigte. Das bleibt so; nur
+   * Sprünge innerhalb des Blocks selbst behalten ihr Ziel.
+   */
+  const eintritt = (z: ID | 'ende' | null, eigenerBlock: ID | null): ID | 'ende' | null => {
+    if (z === null || z === 'ende') return z;
+    const k = st.index.get(z);
+    const lage = k === undefined ? null : st.lage[k];
+    if (!lage || !aufloesen.has(lage.block.id) || lage.block.id === eigenerBlock) return z;
+    return steps[lage.block.start].id;
+  };
   const geloest = fest.map((s) => {
     const p = s.parallel ?? null;
-    if (!p || !aufloesen.has(p.block)) return s;
-    const block = st.bloecke.get(p.block)!;
-    const anschluss: ID | 'ende' = steps[block.ende]?.id ?? 'ende';
-    const umbiegen = (z: ID | 'ende' | null) => (z === 'ende' || (z !== null && !st.index.has(z)) ? anschluss : z);
-    return {
-      ...s,
-      parallel: null,
-      naechster: umbiegen(s.naechster),
-      antworten: s.antworten.map((a) => ({ ...a, ziel: umbiegen(a.ziel) })),
-    };
+    const eigener = p && aufloesen.has(p.block) ? st.bloecke.get(p.block)! : null;
+    const anschluss: ID | 'ende' | null = eigener ? eintritt(steps[eigener.ende]?.id ?? 'ende', null) : null;
+    const umbiegen = (z: ID | 'ende' | null) =>
+      eintritt(eigener && (z === 'ende' || (z !== null && !st.index.has(z))) ? anschluss : z, eigener?.id ?? null);
+    const naechster = umbiegen(s.naechster);
+    const antworten = s.antworten.map((a) => {
+      const ziel = umbiegen(a.ziel);
+      return ziel === a.ziel ? a : { ...a, ziel };
+    });
+    if (!eigener && naechster === s.naechster && antworten.every((a, n) => a === s.antworten[n])) return s;
+    return { ...s, parallel: eigener ? null : p, naechster, antworten };
   });
 
   // Einheiten: Einzelschritte und ganze Blöcke (zusammenhängend, nach Zweig sortiert, neu nummeriert)
@@ -322,7 +366,7 @@ export function bloeckeOrdnen<T extends AblaufSchritt>(steps: T[]): T[] {
       .filter(({ x }) => x.parallel?.block === p.block)
       .sort((a, b) => r.get(a.x.parallel!.zweig)! - r.get(b.x.parallel!.zweig)! || a.k - b.k)
       .map(({ x }) => ({ ...x, parallel: { block: p.block, zweig: r.get(x.parallel!.zweig)! } }));
-    const e: Einheit = { schritte, anschluss: steps[st.bloecke.get(p.block)!.ende]?.id ?? 'ende' };
+    const e: Einheit = { schritte, anschluss: eintritt(steps[st.bloecke.get(p.block)!.ende]?.id ?? 'ende', null) };
     einheiten.push(e);
     blockEinheit.set(p.block, e);
     for (const x of schritte) einheitVon.set(x.id, e);
@@ -370,7 +414,15 @@ export function bloeckeOrdnen<T extends AblaufSchritt>(steps: T[]): T[] {
     ...ketten.filter((k) => k !== ersteKette && k !== schlussKette),
     ...(schlussKette && schlussKette !== ersteKette ? [schlussKette] : []),
   ].flat();
-  return zieleVereinfachen(reihe.flatMap((e) => e.schritte));
+  // Blöcke, hinter denen nun eine andere Einheit steht als ihr bisheriger Anschluss
+  const anschlussGeaendert: ID[] = [];
+  reihe.forEach((e, k) => {
+    if (e.anschluss === null) return;
+    const bisher = e.anschluss === 'ende' ? 'ende' : (einheitVon.get(e.anschluss) ?? 'ende');
+    const jetzt = reihe[k + 1] ?? 'ende';
+    if (bisher !== jetzt) anschlussGeaendert.push(e.schritte[0].parallel!.block);
+  });
+  return { steps: zieleVereinfachen(reihe.flatMap((e) => e.schritte)), anschlussGeaendert };
 }
 
 /* ------------------------------------------------------------------ */
@@ -422,6 +474,13 @@ export interface Verlauf<T> {
    * sonst der vorige Schritt.
    */
   vorgaenger: Map<ID, ID[]>;
+  /**
+   * Die Schritte am Ende des Verlaufs – ihr Abschluss bildet den Eingang
+   * dessen, was danach kommt (etwa des Ziels eines Rücksprungs): der letzte
+   * Einzelschritt bzw., endet der Verlauf mit einem Block, die letzten
+   * Schritte aller seiner Zweige (wie bei `vorgaenger` für den Anschluss).
+   */
+  schluss: ID[];
   /** Zuletzt genommener Ausstieg aus einem Block. */
   ausstieg?: { von: ID; nach: ID | 'ende' };
 }
@@ -576,7 +635,7 @@ export function verfolgen<T extends AblaufSchritt>(
     i = f.index;
   }
 
-  return { schritte, abschnitte, rueckSprungZu, beendet, vorgaenger, ...(ausstieg ? { ausstieg } : {}) };
+  return { schritte, abschnitte, rueckSprungZu, beendet, vorgaenger, schluss: letzte, ...(ausstieg ? { ausstieg } : {}) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -692,10 +751,15 @@ export type EinfuegePosition = 'danach' | 'zweigende' | 'nach_block';
  * * `nach_block`: hinter den Block von `nachId`, vor den Anschluss.
  *
  * Außerhalb eines Blocks wirken `zweigende` und `nach_block` wie `danach`.
- * Kanten anderer Zweige bleiben unberührt. Direkt hinter Erledigtem läuft der
- * neue Schritt sofort; steht er danach an, wird er „laufend“ mit Eingang
- * `heute`; Schritte, die dadurch nicht mehr anstehen, werden wieder „offen“.
+ * Kanten anderer Zweige bleiben unberührt; im Zweig übernimmt der neue Schritt
+ * Block, Zweig und Blockdurchgang. Direkt hinter Erledigtem läuft der neue
+ * Schritt sofort; steht er danach an, wird er „laufend“ mit Eingang `heute`.
+ * Anstehende Schritte, die nun auf ihn warten, werden wieder „offen“ (wie bei
+ * einer Korrektur; ihr Eingang ergibt sich neu aus seinem Abschluss).
  * Ohne `nachId` wird er erster Schritt.
+ *
+ * Zulässig ist das Einfügen nur, wo es nichts Erledigtes überholt (siehe
+ * `einfuegenMoeglich`); sonst bleibt die Liste unverändert.
  */
 export function schrittImLaufEinfuegen(
   steps: RunStep[],
@@ -704,11 +768,59 @@ export function schrittImLaufEinfuegen(
   position: EinfuegePosition = 'danach',
   heute?: ISODate,
 ): RunStep[] {
+  const ergebnis = einfuegen(steps, nachId, neu, position, heute);
+  return einfuegenZulaessig(steps, ergebnis, neu.id) ? ergebnis : steps;
+}
+
+/**
+ * Lässt sich an dieser Stelle ein Schritt einfügen? Nein, wenn im Verlauf
+ * hinter dem neuen Schritt schon etwas erledigt ist (bzw. ein Ist hat) – er
+ * käme vor bereits geleistete Arbeit –, oder wenn ein begonnener Schritt dadurch
+ * aus dem Verlauf fiele (etwa in einem Zweig, der nach einem Ausstieg nichts
+ * Neues mehr beginnt). Hinter dem anstehenden Schritt bzw. weiter hinten geht
+ * es immer.
+ */
+export function einfuegenMoeglich(steps: RunStep[], nachId: ID | null, position: EinfuegePosition = 'danach'): boolean {
+  if (steps.length === 0) return true;
+  const probe: RunStep = {
+    ...steps[0],
+    id: '\u0000probe',
+    typ: 'aufgabe',
+    antworten: [],
+    naechster: null,
+    parallel: null,
+    status: 'offen',
+    istDatum: null,
+    eingangIst: null,
+    gewaehlteAntwortId: null,
+  };
+  return einfuegenZulaessig(steps, einfuegen(steps, nachId, probe, position), probe.id);
+}
+
+/** Prüft das Ergebnis eines Einfügens (siehe einfuegenMoeglich). */
+function einfuegenZulaessig(vorher: RunStep[], nachher: RunStep[], neuId: ID): boolean {
+  const neuVerlauf = verfolgen(nachher);
+  const drin = new Set(neuVerlauf.schritte.map((s) => s.id));
+  if (verfolgen(vorher).schritte.some((s) => istBegonnen(s) && !drin.has(s.id))) return false;
+  const folge = folgeImVerlauf(neuVerlauf, neuId) ?? [];
+  return !folge.some((s) => s.id !== neuId && (istErledigt(s) || Boolean(s.istDatum)));
+}
+
+function einfuegen(
+  steps: RunStep[],
+  nachId: ID | null,
+  neu: RunStep,
+  position: EinfuegePosition,
+  heute?: ISODate,
+): RunStep[] {
   const st = strukturVon(steps);
   const i = nachId === null ? -1 : (st.index.get(nachId) ?? -1);
   let ergebnis: RunStep[];
   /** Ist der Schritt, hinter dem eingefügt wird, schon erledigt, beginnt der neue sofort. */
   let direktNachErledigtem = false;
+  /** Im Zweig gehört der neue Schritt zum laufenden Blockdurchgang. */
+  const imZweigVon = (bezug: RunStep): Pick<RunStep, 'parallel' | 'blockDurchgang'> =>
+    bezug.parallel ? { parallel: bezug.parallel, blockDurchgang: bezug.blockDurchgang ?? 1 } : { parallel: null, blockDurchgang: neu.blockDurchgang };
 
   if (i < 0) {
     ergebnis = [{ ...neu, parallel: null, naechster: neu.typ === 'entscheidung' && neu.antworten.length > 0 ? null : neu.naechster }, ...steps];
@@ -720,7 +832,7 @@ export function schrittImLaufEinfuegen(
       direktNachErledigtem = istErledigt(vorgaenger);
       const antwort = vorgaenger.typ === 'entscheidung' ? massgeblicheAntwort(vorgaenger) : undefined;
       const bisher = antwort ? antwort.ziel : vorgaenger.naechster;
-      const eingefuegt = mitZiel({ ...neu, parallel: vorgaenger.parallel ?? null }, bisher);
+      const eingefuegt = mitZiel({ ...neu, ...imZweigVon(vorgaenger) }, bisher);
       // Übrige Übergänge des Vorgängers ohne Ziel behalten ihre Bedeutung
       const angepasst: RunStep = antwort
         ? {
@@ -736,7 +848,7 @@ export function schrittImLaufEinfuegen(
       const zweig = lage!.block.zweige[lage!.zweig];
       const letzter = zweig[zweig.length - 1];
       direktNachErledigtem = zweig.every((k) => istErledigt(steps[k]));
-      const eingefuegt: RunStep = mitZiel({ ...neu, parallel: steps[i].parallel ?? null }, null);
+      const eingefuegt: RunStep = mitZiel({ ...neu, ...imZweigVon(steps[i]) }, null);
       const imZweig = new Set(zweig);
       // Was den Zweig bisher beendete, führt nun zum neuen Schritt
       const umbiegen = (k: number, z: ID | 'ende' | null) => {
@@ -764,7 +876,7 @@ export function schrittImLaufEinfuegen(
 
   // Direkt hinter Erledigtem läuft der neue Schritt sofort – auch in einem Zweig,
   // der nach einem Ausstieg nichts Neues mehr beginnt. Steht er an, beginnt er
-  // heute; Verdrängte warten wieder.
+  // heute; wer nun auf ihn wartet, wird wieder „offen“.
   if (direktNachErledigtem) ergebnis = ergebnis.map((s) => (s.id === neu.id ? { ...s, status: 'laufend' as const } : s));
   const anstehend = new Set(aktuelleSchritte({ steps: ergebnis }).map((s) => s.id));
   return statusAbgleichen(

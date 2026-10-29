@@ -111,7 +111,8 @@ function spaetestes(daten: (ISODate | null | undefined)[]): ISODate | null {
  *    anstehende Schritte haben keinen festen Eingang.
  * 2. Soll = Eingang + Frist (bei Arbeitstagen mindestens der nächste
  *    Arbeitstag). Ein von Hand gesetztes Soll bleibt; der erste Schritt im
- *    ersten Durchlauf erhält das Eingang Soll des Eintrags, falls hinterlegt.
+ *    ersten Durchlauf erhält das Eingang Soll des Eintrags, falls hinterlegt –
+ *    nicht aber ein Zweiganfang, dessen Eingang aus einem Rücksprung stammt.
  * 3. Künftige Schritte rechnen mit dem voraussichtlichen Eingang: erledigte
  *    Vorgänger mit ihrem Abschluss, offene mit ihrem Soll, frühestens heute.
  *    Diese Prognose liegt nie in der Vergangenheit.
@@ -167,7 +168,9 @@ export function recalcSollDaten(
     // 3. Soll
     let soll: ISODate;
     if (step.sollManuell && step.sollDatum) soll = step.sollDatum;
-    else if (ohneVorgaenger && (step.durchlauf ?? 1) <= 1 && eingangSoll) soll = eingangSoll;
+    // Eingang Soll gilt nur im ersten Durchlauf und nicht für einen Zweiganfang,
+    // der erst beim erneuten Betreten seines Blocks beginnt (Eingang aus dem Rücksprung)
+    else if (ohneVorgaenger && (step.durchlauf ?? 1) <= 1 && (step.blockDurchgang ?? 1) <= 1 && eingangSoll) soll = eingangSoll;
     else {
       soll = addDays(eingang, step.fristTage, arbeitstage, feiertage);
       if (arbeitstage) soll = naechsterArbeitstag(soll, feiertage);
@@ -218,9 +221,11 @@ export function recalcRun(
 
 /**
  * Ampel eines Schritts. Nur anstehende Schritte können fällig oder überfällig
- * sein; künftige Schritte (`anstehend = false`) stehen höchstens „Im Plan“.
+ * sein; künftige Schritte (`anstehend = false`) stehen höchstens „Im Plan“ –
+ * ihr Soll ist eine Prognose. Ob ein Schritt ansteht, weiß nur der Aufrufer
+ * (siehe aktuelleSchritte); deshalb gibt es dafür keine Vorgabe.
  */
-export function ampelFuerSchritt(step: RunStep, vorlaufTage: number, anstehend = true, heute: ISODate = today()): Ampel {
+export function ampelFuerSchritt(step: RunStep, vorlaufTage: number, anstehend: boolean, heute: ISODate = today()): Ampel {
   if (step.status === 'erledigt' || step.status === 'uebersprungen') return 'erledigt';
   if (!step.sollDatum) return 'neutral';
   if (!anstehend) return 'geplant';
@@ -262,9 +267,11 @@ const fortschrittSpeicher = new WeakMap<PlanRun, number>();
  * laufenden Durchlauf erledigten Verlaufsschritte ÷ (diese + Fristen aller
  * laut Prognose noch ausstehenden Ausführungen, Rücksprünge und Wiederholungen
  * eingeschlossen). Ohne Fristen zählen die Schritte. Ein Rücksprung senkt den
- * Fortschritt also, weil die Wiederholung aussteht. Das Ergebnis wird je
- * Lauf-Objekt zwischengespeichert – jede Änderung erzeugt ein neues Objekt.
- * Pakete und Projekte bilden das Mittel der Lauf-Werte.
+ * Fortschritt also, weil die Wiederholung aussteht. 100 % hat nur ein
+ * abgeschlossener Lauf; ein laufender bleibt höchstens bei 99 % – auch wenn nur
+ * noch Schritte ohne Frist ausstehen. Das Ergebnis wird je Lauf-Objekt
+ * zwischengespeichert – jede Änderung erzeugt ein neues Objekt. Pakete und
+ * Projekte bilden das Mittel der Lauf-Werte.
  */
 export function fortschritt(
   run: PlanRun,
@@ -284,6 +291,7 @@ export function fortschritt(
     if (fertig + offen > 0) wert = Math.round((fertig / (fertig + offen)) * 100);
     else if (erledigt.length + rest.length > 0) wert = Math.round((erledigt.length / (erledigt.length + rest.length)) * 100);
     else wert = 0;
+    wert = Math.min(99, wert);
   }
   fortschrittSpeicher.set(run, wert);
   return wert;
@@ -336,7 +344,7 @@ export function offeneFristen(data: AppData, projectIds?: ID[]): FristEintrag[] 
     const project = data.projects.find((p) => p.id === run.projectId);
     if (!project) continue;
     for (const step of aktuelleSchritte(run)) {
-      const ampel = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage);
+      const ampel = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage, true);
       if (ampel === 'erledigt') continue;
       eintraege.push({
         run,

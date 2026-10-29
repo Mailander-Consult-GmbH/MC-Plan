@@ -4,7 +4,7 @@
  * weiterführen“. Welche Pläne zurückkehren, wird je Plan angekreuzt.
  */
 import { useState } from 'react';
-import { aktuellerSchritt, fortschritt } from '../domain/engine';
+import { aktuelleSchritte, aktuellerSchritt, fortschritt } from '../domain/engine';
 import { INDEX_LABEL, type PlanDocument, type PlanRun } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -45,7 +45,11 @@ export function BuendelnDialog({
   // Schritt als erledigt gilt, der es nicht ist.
   const vorschlag = [...auswahl].sort((a, b) => fortschritt(a.lauf) - fortschritt(b.lauf))[0];
   const quelleWirksam = auswahl.some((k) => k.lauf.id === quelle) ? quelle : (vorschlag?.lauf.id ?? '');
-  const schrittVon = (lauf: PlanRun) => aktuellerSchritt(lauf)?.name ?? 'ohne offenen Schritt';
+  const schrittVon = (lauf: PlanRun) => {
+    const fuehrend = aktuellerSchritt(lauf);
+    const weitere = aktuelleSchritte(lauf).length - 1;
+    return fuehrend ? `${fuehrend.name}${weitere > 0 ? ` (+${weitere} parallel)` : ''}` : 'ohne offenen Schritt';
+  };
 
   const umschalten = (id: string) =>
     setGewaehlt((g) => (g.includes(id) ? g.filter((x) => x !== id) : [...g, id]));

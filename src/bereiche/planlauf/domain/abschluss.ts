@@ -10,12 +10,16 @@ import { today } from '../../../shared/dates';
 import {
   aktuelleSchritte,
   anstehendeSchritte,
+  einfuegenMoeglich,
   folgeImVerlauf,
   istErledigt,
   massgeblicheAntwort,
   ortImVerlauf,
+  schrittImLaufEinfuegen,
   statusAbgleichen,
   verfolgen,
+  type EinfuegePosition,
+  type Verlauf,
 } from './ablauf';
 import { kontaktName, rueckSprungAnwenden, seiteFuerSchritt, type AbschlussKontext } from './engine';
 import {
@@ -39,8 +43,17 @@ export interface Ruecksprung {
   /** `zweig`: innerhalb eines parallelen Zweigs; `oben`: im Hauptablauf; `wieder_geoeffnet`: erneute Bearbeitung. */
   art: 'zweig' | 'oben' | 'wieder_geoeffnet';
   zielId: ID;
-  /** Schritt, der zurückführte (null beim Wieder öffnen). */
+  /**
+   * Schritt, der zurückführte (null beim Wieder öffnen). Endet der Verlauf mit
+   * einem Block, ist es von den letzten Schritten seiner Zweige der mit dem
+   * spätesten Ist – sein Ist ist der Wiedereingang.
+   */
   ausloeserId: ID | null;
+  /**
+   * Alle Schritte, deren Abschluss den Wiedereingang bildet: der Auslöser bzw.
+   * bei einem Block die letzten Schritte aller Zweige (leer beim Wieder öffnen).
+   */
+  vorgaengerIds: ID[];
   /** Schritte, mit denen der neue Durchlauf beginnt. */
   eintritte: ID[];
 }
@@ -115,21 +128,47 @@ interface RueckKontext {
   kontext?: AbschlussKontext;
 }
 
+/** Ist eines Schritts als Vergleichswert (ohne Ist ganz vorn). */
+const istVon = (s: RunStep) => s.istDatum ?? '';
+
 /**
- * Sicherung gegen Stillstand: Steht nichts mehr an, obwohl der Ablauf noch
- * zurückführt – etwa weil ein Zweig-Rücksprung erst wieder gilt, nachdem eine
- * Korrektur den Ausstieg eines anderen Zweigs aufgehoben hat –, wird der
- * ausstehende Rücksprung jetzt ausgeführt (Auslöser: der letzte Schritt des
- * Zweigs bzw. der zuletzt erledigte Schritt des Verlaufs).
+ * Auslöser eines Rücksprungs im Hauptablauf: von den Schritten am Ende des
+ * Verlaufs (bei einem Block die letzten Schritte aller Zweige, auch der
+ * Ausstieg) der mit dem spätesten Ist – bei Gleichstand `bevorzugt`, sonst der
+ * erste. Der Wiedereingang liegt damit nie vor dem Abschluss eines Zweigs.
  */
-function stillstandAufloesen(steps: RunStep[], rk: RueckKontext): { steps: RunStep[]; ruecksprung: Ruecksprung | null } {
+function ausloeserImHauptablauf(
+  steps: RunStep[],
+  verlauf: Verlauf<RunStep>,
+  bevorzugt: RunStep | null,
+): { ausloeser: RunStep; vorgaenger: RunStep[] } | null {
+  const vorgaenger = verlauf.schluss
+    .map((id) => (bevorzugt && id === bevorzugt.id ? bevorzugt : steps.find((s) => s.id === id)))
+    .filter((s): s is RunStep => Boolean(s));
+  let ausloeser: RunStep | null = null;
+  for (const s of vorgaenger) {
+    if (!ausloeser || istVon(s) > istVon(ausloeser) || (istVon(s) === istVon(ausloeser) && s.id === bevorzugt?.id)) ausloeser = s;
+  }
+  return ausloeser ? { ausloeser, vorgaenger } : null;
+}
+
+/**
+ * Holt Rücksprünge nach, die fällig sind, aber noch nicht ausgeführt wurden –
+ * etwa weil eine Korrektur den Ausstieg eines anderen Zweigs aufgehoben hat
+ * und ein Zweig nun wieder zu seiner Nachreichung zurückführt:
+ * * jeder Zweig mit Rücksprung, dessen Schritte alle erledigt sind – sein Ziel
+ *   ist sofort an der Reihe, auch wenn andere Zweige noch laufen;
+ * * ein Rücksprung im Hauptablauf, wenn kein Verlaufsschritt mehr offen ist.
+ * Weil der Rücksprung erst jetzt wirksam wird, ist der Wiedereingang heute
+ * (frühestens das Ist des Auslösers).
+ */
+function ausstehendeRuecksprunge(steps: RunStep[], rk: RueckKontext): { steps: RunStep[]; ruecksprung: Ruecksprung | null } {
   let ruecksprung: Ruecksprung | null = null;
-  const opt = { heute: rk.heute, kontext: rk.kontext };
   for (let n = 0; n < steps.length; n++) {
     const verlauf = verfolgen(steps);
-    if (anstehendeSchritte(verlauf).length > 0) break;
     let ziel: RunStep | null = null;
     let ausloeser: RunStep | null = null;
+    let vorgaenger: RunStep[] = [];
     let art: Ruecksprung['art'] = 'zweig';
     for (const a of verlauf.abschnitte) {
       if (a.art !== 'parallel') continue;
@@ -137,18 +176,31 @@ function stillstandAufloesen(steps: RunStep[], rk: RueckKontext): { steps: RunSt
       if (z) {
         ziel = z.rueckSprungZu;
         ausloeser = z.schritte[z.schritte.length - 1];
+        vorgaenger = [ausloeser];
         break;
       }
     }
     if (!ziel && verlauf.rueckSprungZu && verlauf.schritte.every(istErledigt)) {
+      const ende = ausloeserImHauptablauf(steps, verlauf, null);
+      if (ende) ({ ausloeser, vorgaenger } = ende);
       ziel = verlauf.rueckSprungZu;
       art = 'oben';
-      for (const s of verlauf.schritte) if (!ausloeser || (s.istDatum ?? '') >= (ausloeser.istDatum ?? '')) ausloeser = s;
     }
     if (!ziel || !ausloeser) break;
     const alt = steps;
-    steps = rueckSprungAnwenden(steps, ziel.id, ausloeser, 'ruecksprung', rk.zeitpunkt, opt);
-    ruecksprung = { art, zielId: ziel.id, ausloeserId: ausloeser.id, eintritte: eintritteVon(steps, alt) };
+    const eingang = istVon(ausloeser) > rk.heute ? istVon(ausloeser) : rk.heute;
+    steps = rueckSprungAnwenden(steps, ziel.id, ausloeser, 'ruecksprung', rk.zeitpunkt, {
+      eingang,
+      heute: rk.heute,
+      kontext: rk.kontext,
+    });
+    ruecksprung = {
+      art,
+      zielId: ziel.id,
+      ausloeserId: ausloeser.id,
+      vorgaengerIds: vorgaenger.map((s) => s.id),
+      eintritte: eintritteVon(steps, alt),
+    };
   }
   return { steps, ruecksprung };
 }
@@ -163,7 +215,7 @@ function ergebnis(
   rk: RueckKontext,
   extra: Partial<PlanRun> = {},
 ): Abschluss {
-  const aufgeloest = stillstandAufloesen(roh, rk);
+  const aufgeloest = ausstehendeRuecksprunge(roh, rk);
   const steps = aufgeloest.steps;
   const ruecksprung = ruecksprungBisher ?? aufgeloest.ruecksprung;
   const verlauf = verfolgen(steps);
@@ -188,12 +240,15 @@ function ergebnis(
  * Bearbeiter, Zeitpunkt). Eine Entscheidung mit Nacharbeit-Antwort erhält die
  * Ursache „Planer“ als Vorbelegung. Danach wird – nur für den Zweig bzw. den
  * Verlauf des abgeschlossenen Schritts – geprüft:
- * * Zweig-Rücksprung, wenn der Zweig zurückführt und alle seine Schritte erledigt sind;
- * * Rücksprung im Hauptablauf, wenn er zurückführt und kein Verlaufsschritt mehr offen ist;
+ * * Zweig-Rücksprung, wenn der Zweig zurückführt und alle seine Schritte erledigt
+ *   sind – Wiedereingang ist das Ist des Schritts;
+ * * Rücksprung im Hauptablauf, wenn er zurückführt und kein Verlaufsschritt mehr
+ *   offen ist – Wiedereingang ist das späteste Ist am Ende des Verlaufs (bei
+ *   einem Block über alle Zweigenden);
  * * sonst: nichts mehr offen → Lauf abgeschlossen; andernfalls werden alle jetzt
  *   anstehenden Schritte „laufend“.
- * Stünde danach nichts an, obwohl der Ablauf noch zurückführt, wird der
- * ausstehende Rücksprung ausgeführt (siehe stillstandAufloesen).
+ * Danach werden Rücksprünge anderer Zweige nachgeholt, die fällig geworden sind
+ * (siehe ausstehendeRuecksprunge).
  * „Offen“ bzw. „laufend“ an einem erledigten Schritt heißt Wieder öffnen.
  */
 export function schrittStatusSetzen(
@@ -243,21 +298,32 @@ export function schrittStatusSetzen(
       vorher,
       steps,
       `Rücksprung zu „${ziel.name}“ – weiterer Durchlauf gestartet.`,
-      { art: 'zweig', zielId: ziel.id, ausloeserId: ausloeser.id, eintritte: eintritteVon(steps, run.steps) },
+      { art: 'zweig', zielId: ziel.id, ausloeserId: ausloeser.id, vorgaengerIds: [ausloeser.id], eintritte: eintritteVon(steps, run.steps) },
       rk,
     );
   }
 
-  // Rücksprung im Hauptablauf: der Verlauf führt zurück und nichts ist mehr offen
-  if (ort && verlauf.rueckSprungZu && verlauf.schritte.every(istErledigt)) {
+  // Rücksprung im Hauptablauf: der Verlauf führt zurück und nichts ist mehr offen.
+  // Auslöser ist der Schritt am Ende des Verlaufs mit dem spätesten Ist – endet
+  // er mit einem Block, nicht unbedingt der gerade erledigte Schritt.
+  const ende = ort && verlauf.rueckSprungZu && verlauf.schritte.every(istErledigt)
+    ? ausloeserImHauptablauf(steps, verlauf, abgeschlossenerSchritt)
+    : null;
+  if (ende && verlauf.rueckSprungZu) {
     const ziel = verlauf.rueckSprungZu;
-    steps = rueckSprungAnwenden(steps, ziel.id, abgeschlossenerSchritt, 'ruecksprung', zeitpunkt, optRueck);
+    steps = rueckSprungAnwenden(steps, ziel.id, ende.ausloeser, 'ruecksprung', zeitpunkt, optRueck);
     return ergebnis(
       run,
       vorher,
       steps,
       `Rücksprung zu „${ziel.name}“ – weiterer Durchlauf gestartet.`,
-      { art: 'oben', zielId: ziel.id, ausloeserId: abgeschlossenerSchritt.id, eintritte: eintritteVon(steps, run.steps) },
+      {
+        art: 'oben',
+        zielId: ziel.id,
+        ausloeserId: ende.ausloeser.id,
+        vorgaengerIds: ende.vorgaenger.map((s) => s.id),
+        eintritte: eintritteVon(steps, run.steps),
+      },
       rk,
     );
   }
@@ -267,14 +333,17 @@ export function schrittStatusSetzen(
 
 /**
  * Die Schritte, mit denen nach einem Rücksprung der neue Durchlauf beginnt:
- * anstehend und entweder zurückgesetzt (anderer Durchlauf) oder bisher ohne Eingang.
+ * anstehend und zurückgesetzt (anderer Durchlauf) bzw. – noch nie begonnene
+ * Zweiganfänge eines erneut betretenen Blocks – mit neuem Blockdurchgang.
+ * Schritte, die nur nebenher an die Reihe kommen (etwa in einem Zweig, der
+ * nach aufgehobenem Ausstieg weiterläuft), gehören nicht dazu.
  */
 function eintritteVon(steps: RunStep[], alt: RunStep[]): ID[] {
   const vorher = new Map(alt.map((s) => [s.id, s]));
   return aktuelleSchritte({ steps })
     .filter((s) => {
       const a = vorher.get(s.id);
-      return !a || a.durchlauf !== s.durchlauf || !a.eingangIst;
+      return !a || a.durchlauf !== s.durchlauf || (a.blockDurchgang ?? 1) !== (s.blockDurchgang ?? 1);
     })
     .map((s) => s.id);
 }
@@ -340,8 +409,41 @@ export function wiederOeffnen(
     vorher,
     steps,
     `„${aktuell.name}“ wieder geöffnet – neuer Durchlauf begonnen.`,
-    { art: 'wieder_geoeffnet', zielId: aktuell.id, ausloeserId: null, eintritte: eintritteVon(steps, run.steps) },
+    { art: 'wieder_geoeffnet', zielId: aktuell.id, ausloeserId: null, vorgaengerIds: [], eintritte: eintritteVon(steps, run.steps) },
     rk,
     wieder,
   );
+}
+
+/**
+ * Ergänzt einen Schritt im laufenden Lauf (Einfügen siehe
+ * `schrittImLaufEinfuegen` in ablauf.ts) und rückt den Lauf weiter wie jeder
+ * Statuswechsel: Übernimmt der neue Schritt etwa den Ausstieg aus einem Block,
+ * laufen die übrigen Zweige wieder weiter – ein dort entfallener Rücksprung
+ * wird dann jetzt fällig und gleich ausgeführt (siehe ausstehendeRuecksprunge).
+ * `naechste` nennt die neu anstehenden Schritte. Ist das Einfügen an dieser
+ * Stelle unzulässig (siehe einfuegenMoeglich), bleibt der Lauf unverändert.
+ */
+export function schrittErgaenzen(
+  run: PlanRun,
+  nachId: ID | null,
+  neu: RunStep,
+  position: EinfuegePosition = 'danach',
+  optionen: StatusOptionen = {},
+): Abschluss {
+  const heute = optionen.heute ?? today();
+  const zeitpunkt = optionen.zeitpunkt ?? new Date().toISOString();
+  if (!einfuegenMoeglich(run.steps, nachId, position)) {
+    return {
+      art: 'aenderung',
+      aenderungen: [],
+      meldung: 'Dort lässt sich kein Schritt einfügen – dahinter ist schon etwas erledigt.',
+      naechste: [],
+      ruecksprung: null,
+      abgeschlossen: false,
+    };
+  }
+  const vorher = new Set(aktuelleSchritte(run).map((s) => s.id));
+  const steps = schrittImLaufEinfuegen(run.steps, nachId, neu, position, heute);
+  return ergebnis(run, vorher, steps, `„${neu.name}“ eingefügt.`, null, { zeitpunkt, heute, kontext: optionen.kontext });
 }

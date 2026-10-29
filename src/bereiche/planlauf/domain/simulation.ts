@@ -8,7 +8,7 @@
  * auf einer Kopie der Schritte; deren IDs bleiben erhalten.
  */
 import { addDays, diffArbeitstage, diffDays, istArbeitstag, today } from '../../../shared/dates';
-import { anstehendeSchritte, istErledigt, massgeblicheAntwort, verfolgen } from './ablauf';
+import { anstehendeSchritte, istErledigt, massgeblicheAntwort, statusAbgleichen, verfolgen } from './ablauf';
 import { aenderungenAufLauf, schrittStatusSetzen } from './abschluss';
 import { neueLaufFelder, recalcSollDaten } from './engine';
 import type {
@@ -91,6 +91,10 @@ export interface Simulation {
  * zweiten Durchlauf die erste Regel-Antwort (ohne Nacharbeit). Gibt es keine
  * oder wiederholt sich ein Rücksprung, ohne dass sich dazwischen etwas an den
  * Antworten geändert hat, endet die Simulation mit dem Fehler `schleife`.
+ *
+ * Wie beim Start eines Laufs werden die anstehenden Schritte zuerst „laufend“
+ * (statusAbgleichen) – sonst beendete ein früher Ausstieg aus einem Block am
+ * Anfang Zweige, die in Wirklichkeit schon laufen.
  */
 export function simulieren(steps: RunStep[], lauf: SimulationsLauf, antwortFuer?: AntwortFuer): Simulation {
   const heute = lauf.heute ?? null;
@@ -111,7 +115,7 @@ export function simulieren(steps: RunStep[], lauf: SimulationsLauf, antwortFuer?
     abbruchDatum: null,
     abbruchArt: null,
     abbruchNeuerIndex: null,
-    steps: rechnen(steps),
+    steps: rechnen(statusAbgleichen(steps)),
     bemerkung: '',
     protokoll: [],
     basis: null,
@@ -119,8 +123,11 @@ export function simulieren(steps: RunStep[], lauf: SimulationsLauf, antwortFuer?
 
   const ausfuehrungen: Ausfuehrung[] = [];
   const letzteAusfuehrung = new Map<ID, number>();
-  /** Eintritte eines Rücksprungs: ihr Eingang stammt vom Auslöser. */
-  const quelle = new Map<ID, number>();
+  /**
+   * Eintritte eines Rücksprungs: ihr Eingang stammt vom Auslöser – bei einem
+   * Block am Ende des Verlaufs von den letzten Schritten aller Zweige.
+   */
+  const quelle = new Map<ID, number[]>();
   /** Je Rücksprung (Auslöser → Ziel) der Stand der Antwortwechsel beim letzten Mal. */
   const ruecksprungStand = new Map<string, number>();
   let wechsel = 0;
@@ -174,7 +181,7 @@ export function simulieren(steps: RunStep[], lauf: SimulationsLauf, antwortFuer?
 
     const vorgaengerAusfuehrungen =
       quelle.has(s.id)
-        ? [quelle.get(s.id)!]
+        ? quelle.get(s.id)!
         : (verlauf.vorgaenger.get(s.id) ?? [])
             .map((id) => letzteAusfuehrung.get(id))
             .filter((i): i is number => i !== undefined);
@@ -218,7 +225,10 @@ export function simulieren(steps: RunStep[], lauf: SimulationsLauf, antwortFuer?
         break;
       }
       ruecksprungStand.set(schluessel, wechsel);
-      for (const id of erg.ruecksprung.eintritte) quelle.set(id, ausfuehrungen.length - 1);
+      const von = erg.ruecksprung.vorgaengerIds
+        .map((id) => letzteAusfuehrung.get(id))
+        .filter((i): i is number => i !== undefined);
+      for (const id of erg.ruecksprung.eintritte) quelle.set(id, von.length > 0 ? von : [ausfuehrungen.length - 1]);
     }
     run = { ...run, steps: rechnen(run.steps) };
     if (erg.abgeschlossen) {
@@ -385,6 +395,8 @@ export interface Rueckwaerts {
  * dessen Simulation bis `zielEnde` fertig ist – geschätzt über die Dauer,
  * dann tageweise nachgeführt. Dazu je Ausführung der späteste Abschluss
  * (CPM-Rückwärtslauf über die Abhängigkeiten der Ausführungen) und der Puffer.
+ * Bei Arbeitstagen zählt als spätestes Ende der letzte Arbeitstag bis
+ * `zielEnde` – an einem Wochenende bzw. Feiertag endet kein Schritt.
  */
 export function rueckwaerts(steps: RunStep[], zielEnde: ISODate, optionen: RueckwaertsOptionen): Rueckwaerts {
   const leer: Rueckwaerts = { anker: null, simulation: null, ende: null, spaetestens: [], puffer: [], kritisch: [] };
@@ -418,21 +430,24 @@ export function rueckwaerts(steps: RunStep[], zielEnde: ISODate, optionen: Rueck
     return { sim, ende };
   };
 
-  let anker = aufArbeitstag(zielEnde);
+  // Bei Arbeitstagen endet jeder Schritt an einem Arbeitstag: Ein Ziel am
+  // Wochenende bzw. Feiertag heißt „spätestens am Arbeitstag davor“.
+  const spaetestesEnde = aufArbeitstag(zielEnde);
+  let anker = spaetestesEnde;
   let probe = rechnen(anker);
   if (probe.sim.fehler) return { ...leer, simulation: probe.sim, fehler: probe.sim.fehler };
   if (!probe.ende) return { ...leer, simulation: probe.sim, fehler: 'ziel' };
   // Schätzung über die Dauer, dann tageweise nachführen
-  anker = aufArbeitstag(schieben(zielEnde, -tage(anker, probe.ende)));
+  anker = aufArbeitstag(schieben(spaetestesEnde, -tage(anker, probe.ende)));
   probe = rechnen(anker);
-  for (let i = 0; i < 1000 && probe.ende && probe.ende > zielEnde; i++) {
+  for (let i = 0; i < 1000 && probe.ende && probe.ende > spaetestesEnde; i++) {
     anker = schieben(anker, -1);
     probe = rechnen(anker);
   }
   for (let i = 0; i < 1000; i++) {
     const weiter = schieben(anker, 1);
     const naechste = rechnen(weiter);
-    if (!naechste.ende || naechste.ende > zielEnde) break;
+    if (!naechste.ende || naechste.ende > spaetestesEnde) break;
     anker = weiter;
     probe = naechste;
   }
@@ -462,7 +477,7 @@ export function rueckwaerts(steps: RunStep[], zielEnde: ISODate, optionen: Rueck
     if (!relevant[i]) continue;
     const folgende = i === zielIndex ? [] : nachfolgende[i].filter((j) => relevant[j] && spaetestens[j]);
     if (folgende.length === 0) {
-      spaetestens[i] = zielEnde;
+      spaetestens[i] = spaetestesEnde;
       continue;
     }
     let frueheste: ISODate | null = null;

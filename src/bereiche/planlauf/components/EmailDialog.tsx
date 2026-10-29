@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { EMAIL_ANLASS_LABEL, type PlanRun, type Project, type RunStep } from '../domain/types';
 import { mailLinks, mailVorbereiten, vorlageVorschlagen } from '../domain/email';
-import { ampelFuerSchritt } from '../domain/engine';
+import { aktuelleSchritte, ampelFuerSchritt } from '../domain/engine';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
@@ -29,7 +29,8 @@ export function EmailDialog({
   const toast = useToast();
 
   const kontakt = data.contacts.find((c) => c.id === step.contactId) ?? null;
-  const ueberfaellig = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) === 'ueberfaellig';
+  const anstehend = aktuelleSchritte(run).some((s) => s.id === step.id);
+  const ueberfaellig = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage, anstehend) === 'ueberfaellig';
   const vorlagen = data.emailVorlagen;
 
   const [templateId, setTemplateId] = useState(() => {

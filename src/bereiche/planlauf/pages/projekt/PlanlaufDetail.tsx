@@ -4,7 +4,7 @@
  */
 import { useState } from 'react';
 import {
-  aktuellerSchritt,
+  aktuelleSchritte,
   ampelFuerSchritt,
   funktionenFuerGewerk,
   kontaktFuerRolleUndGewerk,
@@ -17,7 +17,8 @@ import {
   vorlagenSchritte,
   type Ampel,
 } from '../../domain/engine';
-import { schrittImLaufEinfuegen } from '../../domain/ablauf';
+import { einfuegenMoeglich } from '../../domain/ablauf';
+import { aenderungenAufLauf, schrittErgaenzen } from '../../domain/abschluss';
 import { formatDate, tageLabel, today } from '../../../../shared/dates';
 import {
   INDEX_LABEL,
@@ -110,7 +111,8 @@ export function PlanlaufDetail({
   const buendelbar = doc?.kind === 'verzeichnis' ? planeMitEigenemLauf(data.documents, data.runs, doc.id).length : 0;
   const { schritte: verlauf, rueckSprungZu } = verlaufDerKette(run.steps);
   const abseits = nichtImPfad(run.steps);
-  const aktiv = aktuellerSchritt(run);
+  // In parallelen Zweigen stehen mehrere Schritte zugleich an – jeder ist bedienbar
+  const anstehend = new Set(aktuelleSchritte(run).map((s) => s.id));
   const vorlauf = project.settings.erinnerungVorlaufTage;
   const abweichungen = run.steps.filter((s) => s.abweichung).length;
   const beendet = run.status !== 'laufend';
@@ -145,9 +147,10 @@ export function PlanlaufDetail({
    * (blockbewusst, siehe `schrittImLaufEinfuegen` in ablauf.ts): Der neue
    * Schritt übernimmt den bisherigen Übergang und den Zweig des Vorgängers, der
    * Vorgänger zeigt auf den neuen Schritt. So bleibt der Verlauf lückenlos;
-   * steht der neue Schritt sofort an, gilt heute als Eingang.
+   * steht der neue Schritt sofort an, gilt heute als Eingang. Vor bereits
+   * Erledigtem wird nicht eingefügt (Rückgabe false).
    */
-  const schrittEinfuegen = (werte: SchrittWerte, nachStepId: string | null) => {
+  const schrittEinfuegen = (werte: SchrittWerte, nachStepId: string | null): boolean => {
     const neu: RunStep = {
       ...neueLaufFelder(),
       id: newId('rs'),
@@ -166,7 +169,13 @@ export function PlanlaufDetail({
       mailVorlageId: null,
       parallel: null,
     };
-    updateRun(run.id, { steps: schrittImLaufEinfuegen(run.steps, nachStepId, neu, 'danach', today()) });
+    if (!einfuegenMoeglich(run.steps, nachStepId)) return false;
+    // Wie ein Statuswechsel: wieder fällig gewordene Rücksprünge werden nachgeholt
+    const ergebnis = schrittErgaenzen(run, nachStepId, neu, 'danach', { heute: today() });
+    if (ergebnis.art !== 'aenderung') return false;
+    const neuerStand = aenderungenAufLauf(run, ergebnis.aenderungen);
+    updateRun(run.id, { steps: neuerStand.steps, status: neuerStand.status });
+    return true;
   };
 
   const waehleAntwort = (step: RunStep, antwortId: string) => {
@@ -381,9 +390,9 @@ export function PlanlaufDetail({
           }
         />
         {verlauf.map((step, i) => {
-          const ampel: Ampel = ampelFuerSchritt(step, vorlauf);
+          const istAktiv = anstehend.has(step.id);
+          const ampel: Ampel = ampelFuerSchritt(step, vorlauf, istAktiv);
           const kontakt = data.contacts.find((c) => c.id === step.contactId);
-          const istAktiv = step.id === aktiv?.id;
           const erledigt = step.status === 'erledigt' || step.status === 'uebersprungen';
           // Erledigte und künftige Schritte bleiben auf Titel und Nummer
           // reduziert; per Klick auf den Titel lassen sie sich aufklappen.
@@ -604,8 +613,11 @@ export function PlanlaufDetail({
           verlauf={verlauf}
           onClose={() => setNeuerSchritt(false)}
           onAnlegen={(werte, nachStepId) => {
-            schrittEinfuegen(werte, nachStepId);
-            toast('Schritt eingefügt – als Abweichung markiert.');
+            toast(
+              schrittEinfuegen(werte, nachStepId)
+                ? 'Schritt eingefügt – als Abweichung markiert.'
+                : 'Dort lässt sich kein Schritt einfügen – dahinter ist schon etwas erledigt.',
+            );
           }}
         />
       ) : null}
@@ -1028,8 +1040,11 @@ function SchrittDialog({
     ? `${automatischKontakt.vorname} ${automatischKontakt.nachname}`
     : '';
 
-  // Einfügeposition: hinter welchem Schritt des Verlaufs der neue Schritt steht
-  const [nachStepId, setNachStepId] = useState<string>(() => verlauf?.[verlauf.length - 1]?.id ?? '');
+  // Einfügeposition: hinter welchem Schritt des Verlaufs der neue Schritt steht –
+  // nur dort, wo er nichts Erledigtes überholt (siehe einfuegenMoeglich)
+  const anfangMoeglich = einfuegenMoeglich(run.steps, null);
+  const positionen = (verlauf ?? []).map((s, i) => ({ s, i })).filter(({ s }) => einfuegenMoeglich(run.steps, s.id));
+  const [nachStepId, setNachStepId] = useState<string>(() => positionen[positionen.length - 1]?.s.id ?? '');
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -1130,13 +1145,17 @@ function SchrittDialog({
           />
         </Field>
         {!step ? (
-          <Field label="Einfügen nach" full hint="Der Schritt wird in den laufenden Verlauf eingehängt.">
+          <Field
+            label="Einfügen nach"
+            full
+            hint="Der Schritt wird in den laufenden Verlauf eingehängt – nicht vor Schritten, die schon erledigt sind."
+          >
             <Select
               value={nachStepId}
               onChange={setNachStepId}
               options={[
-                { value: '', label: '– an den Anfang –' },
-                ...(verlauf ?? []).map((s, i) => ({ value: s.id, label: `${i + 1}. ${s.name}` })),
+                ...(anfangMoeglich ? [{ value: '', label: '– an den Anfang –' }] : []),
+                ...positionen.map(({ s, i }) => ({ value: s.id, label: `${i + 1}. ${s.name}` })),
               ]}
             />
           </Field>

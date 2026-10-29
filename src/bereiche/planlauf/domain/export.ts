@@ -19,7 +19,7 @@ import { formatDate, relativeLabel, today } from '../../../shared/dates';
 import { iconSvg } from '../../../shared/icons';
 import { html } from '../../../shared/print';
 import type { Blatt, Stil, Zelle } from '../../../shared/xlsx';
-import { AMPEL_LABEL, abbruchHinweis, ampelFuerSchritt, fortschritt, pfad } from './engine';
+import { AMPEL_LABEL, abbruchHinweis, aktuelleSchritte, ampelFuerSchritt, fortschritt, pfad } from './engine';
 import {
   DOCUMENT_KIND_LABEL,
   INDEX_LABEL,
@@ -386,7 +386,7 @@ export function kurzBlatt(data: AppData, project: Project, auswahl?: Set<ID>): B
         datum = fertig?.istDatum ?? null;
         const step = zeile.eintrag.step;
         if (run.status === 'laufend' && step) {
-          const ampel = ampelFuerSchritt(step, vorlauf);
+          const ampel = ampelFuerSchritt(step, vorlauf, true);
           naechster = step.name;
           frist = zelle(step.sollDatum, ampel === 'ueberfaellig' ? EXCEL.ueberfaellig : ampel === 'faellig' ? EXCEL.faellig : grund, true);
         }
@@ -495,6 +495,7 @@ export function langZeilen(data: AppData, project: Project, auswahl?: Set<ID>): 
         continue;
       }
       const run = zeile.eintrag.run;
+      const anstehend = new Set(aktuelleSchritte(run).map((s) => s.id));
       pfad(run.steps).forEach((step, i) => {
         const antwort = step.antworten.find((a) => a.id === step.gewaehlteAntwortId);
         ausgabe.push([
@@ -503,7 +504,7 @@ export function langZeilen(data: AppData, project: Project, auswahl?: Set<ID>): 
           i + 1,
           step.name,
           STEP_TYPE_LABEL[step.typ],
-          schrittStatus(step, vorlauf),
+          schrittStatus(step, vorlauf, anstehend.has(step.id)),
           step.roleName,
           personText(data, step),
           step.fristTage,
@@ -521,10 +522,11 @@ export function langZeilen(data: AppData, project: Project, auswahl?: Set<ID>): 
   return ausgabe;
 }
 
-function schrittStatus(step: RunStep, vorlauf: number): string {
+/** Status eines Schritts im Export: erledigt bzw. übersprungen, sonst die Ampel (künftige höchstens „Im Plan“). */
+function schrittStatus(step: RunStep, vorlauf: number, anstehend: boolean): string {
   return step.status === 'erledigt' || step.status === 'uebersprungen'
     ? STEP_STATUS_LABEL[step.status]
-    : AMPEL_LABEL[ampelFuerSchritt(step, vorlauf)];
+    : AMPEL_LABEL[ampelFuerSchritt(step, vorlauf, anstehend)];
 }
 
 /* ------------------------------- PDF ------------------------------ */
@@ -678,15 +680,16 @@ function langHtml(data: AppData, project: Project, bericht: Bericht): string {
                 ? `<br>Pläne in diesem Planlauf: ${mitlaufend.map((m) => html(`${m.plan.nummer} ${m.plan.titel}`.trim())).join(', ')}`
                 : ''
             }</div>`;
+          const anstehend = new Set(aktuelleSchritte(run).map((s) => s.id));
           const schritte = pfad(run.steps)
             .map((step, i) => {
-              const ampel = ampelFuerSchritt(step, vorlauf);
+              const ampel = ampelFuerSchritt(step, vorlauf, anstehend.has(step.id));
               const erledigt = step.status === 'erledigt' || step.status === 'uebersprungen';
               const antwort = step.antworten.find((a) => a.id === step.gewaehlteAntwortId);
               return `<tr>
                 <td class="num">${i + 1}</td>
                 <td>${html(step.name)}${antwort ? ` <span class="grau">→ ${html(antwort.text)}</span>` : ''}</td>
-                <td class="${erledigt ? 'erledigt' : ampel === 'ueberfaellig' ? 'ueberfaellig' : ''}">${html(schrittStatus(step, vorlauf))}</td>
+                <td class="${erledigt ? 'erledigt' : ampel === 'ueberfaellig' ? 'ueberfaellig' : ''}">${html(schrittStatus(step, vorlauf, anstehend.has(step.id)))}</td>
                 <td>${html(step.roleName)}</td>
                 <td>${html(personText(data, step))}</td>
                 <td class="num">${step.fristTage}</td>
