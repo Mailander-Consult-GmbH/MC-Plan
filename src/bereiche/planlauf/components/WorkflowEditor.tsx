@@ -1253,7 +1253,7 @@ function SchrittDetails({
           </label>
         </div>
         <p className="wf-hilfe">
-          Die Frist zählt ab dem Soll-Termin des vorherigen Schritts. Ein Nachweis wird beim Erledigen abgefragt.
+          Die Frist zählt ab dem tatsächlichen Eingang – dem Abschluss des vorherigen Schritts. Ein Nachweis wird beim Erledigen abgefragt.
         </p>
       </div>
 

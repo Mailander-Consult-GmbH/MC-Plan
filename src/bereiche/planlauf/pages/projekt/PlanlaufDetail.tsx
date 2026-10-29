@@ -1160,7 +1160,7 @@ function SchrittDialog({
             options={kontakte.map((c) => ({ value: c.id, label: `${c.vorname} ${c.nachname} (${c.firma})` }))}
           />
         </Field>
-        <Field label="Frist in Tagen" hint="ab Soll-Termin des Vorgängers">
+        <Field label="Frist in Tagen" hint="ab dem tatsächlichen Eingang">
           <TextInput
             value={String(form.fristTage)}
             onChange={(v) => set('fristTage', Number(v.replace(/\D/g, '')) || 0)}

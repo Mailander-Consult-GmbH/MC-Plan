@@ -245,18 +245,34 @@ export function zieleVereinfachen<T extends AblaufSchritt>(steps: T[]): T[] {
   });
 }
 
+/** Alle Blöcke zusammenhängend, nach Zweig sortiert, Zweige 0 … n−1 und mindestens zwei. */
+function bloeckeInOrdnung(steps: readonly AblaufSchritt[], st: Struktur): boolean {
+  for (const b of st.bloecke.values()) {
+    if (b.zweige.length < 2) return false;
+    let k = b.start;
+    for (const [nr, zweig] of b.zweige.entries()) {
+      for (const i of zweig) {
+        if (i !== k++ || steps[i].parallel!.zweig !== nr) return false;
+      }
+    }
+    if (k !== b.ende) return false;
+  }
+  return true;
+}
+
 /**
  * Stellt die Blockregeln her: Schritte eines Blocks stehen zusammen (an der
  * Stelle seines ersten Schritts), nach Zweig sortiert, Zweige sind 0 … n−1
  * nummeriert; Blöcke mit nur einem Zweig werden aufgelöst. Die Ziele werden
  * vorher festgeschrieben und danach vereinfacht, damit das Umstellen den
- * Ablauf nicht ändert. Fremde Schritte, die zwischen den Schritten eines
- * Blocks lagen, rücken vor den Block – so bleibt sein Anschluss derselbe (bei
- * einem Block am Listenanfang hinter ihn, damit der Ablauf dort beginnt).
+ * Ablauf nicht ändert: Beginn und Anschluss jedes Blocks bleiben erhalten,
+ * soweit sich das widerspruchsfrei herstellen lässt. Ist alles schon in
+ * Ordnung, bleibt die Liste unverändert.
  */
 export function bloeckeOrdnen<T extends AblaufSchritt>(steps: T[]): T[] {
   if (!steps.some((s) => s.parallel)) return steps;
   const st = strukturVon(steps);
+  if (bloeckeInOrdnung(steps, st)) return steps;
   const fest = zieleFestschreiben(steps);
 
   // Ein-Zweig-Blöcke auflösen: „Zweig beendet“ (auch über ein unbekanntes Ziel)
@@ -276,42 +292,85 @@ export function bloeckeOrdnen<T extends AblaufSchritt>(steps: T[]): T[] {
     };
   });
 
-  // Zusammenhängend und nach Zweig sortiert anordnen, Zweige neu nummerieren
+  // Einheiten: Einzelschritte und ganze Blöcke (zusammenhängend, nach Zweig sortiert, neu nummeriert)
   const rang = new Map<ID, Map<number, number>>();
   for (const b of st.bloecke.values()) {
     if (aufloesen.has(b.id)) continue;
     const nummern = [...new Set(b.zweige.map((idx) => steps[idx[0]].parallel!.zweig))].sort((x, y) => x - y);
     rang.set(b.id, new Map(nummern.map((n, k) => [n, k])));
   }
-  // Je Eintrag: ein Einzelschritt oder ein ganzer Block (Platzhalter mit seinen Schritten)
-  const eintraege: { block: ID | null; schritte: T[] }[] = [];
-  const platz = new Map<ID, { block: ID | null; schritte: T[] }>();
-  geloest.forEach((s, i) => {
+  interface Einheit {
+    schritte: T[];
+    /** Nur Blöcke: der Schritt, der bisher hinter dem Block stand (sein Anschluss); 'ende' = Listenende. */
+    anschluss: ID | 'ende' | null;
+  }
+  const einheiten: Einheit[] = [];
+  const einheitVon = new Map<ID, Einheit>();
+  const blockEinheit = new Map<ID, Einheit>();
+  geloest.forEach((s) => {
     const p = s.parallel ?? null;
     if (!p) {
-      // Lag der Schritt zwischen Schritten eines Blocks, rückt er vor diesen Block
-      const umschliessend = [...st.bloecke.values()]
-        .filter((b) => !aufloesen.has(b.id) && b.start < i && i < b.ende)
-        .sort((a, b) => a.start - b.start)[0];
-      const eintrag = { block: null, schritte: [s] };
-      // Ausnahme: Ein Block am Listenanfang bleibt der erste Schritt (Beginn des Ablaufs)
-      const vor = umschliessend && umschliessend.start > 0 ? platz.get(umschliessend.id) : undefined;
-      if (vor) eintraege.splice(eintraege.indexOf(vor), 0, eintrag);
-      else eintraege.push(eintrag);
+      const e: Einheit = { schritte: [s], anschluss: null };
+      einheiten.push(e);
+      einheitVon.set(s.id, e);
       return;
     }
-    if (platz.has(p.block)) return;
+    if (blockEinheit.has(p.block)) return;
     const r = rang.get(p.block)!;
     const schritte = geloest
       .map((x, k) => ({ x, k }))
       .filter(({ x }) => x.parallel?.block === p.block)
       .sort((a, b) => r.get(a.x.parallel!.zweig)! - r.get(b.x.parallel!.zweig)! || a.k - b.k)
       .map(({ x }) => ({ ...x, parallel: { block: p.block, zweig: r.get(x.parallel!.zweig)! } }));
-    const eintrag = { block: p.block, schritte };
-    platz.set(p.block, eintrag);
-    eintraege.push(eintrag);
+    const e: Einheit = { schritte, anschluss: steps[st.bloecke.get(p.block)!.ende]?.id ?? 'ende' };
+    einheiten.push(e);
+    blockEinheit.set(p.block, e);
+    for (const x of schritte) einheitVon.set(x.id, e);
   });
-  return zieleVereinfachen(eintraege.flatMap((e) => e.schritte));
+
+  /*
+   * Reihenfolge der Einheiten: Nach dem Festschreiben hängt die Bedeutung nur
+   * noch an zwei Stellen von der Lage ab – am ersten Schritt (Beginn) und am
+   * Anschluss jedes Blocks („Zweig beendet“). Deshalb Ketten bilden: Block →
+   * Einheit mit seinem bisherigen Anschluss; die Kette mit dem bisherigen
+   * ersten Schritt beginnt, ein Block am Listenende schließt ab, übrige Ketten
+   * in bisheriger Reihenfolge. Bedingungen, die sich widersprechen (ineinander
+   * verschränkte Blöcke), entfallen einzeln – der Beginn geht vor.
+   */
+  const erste = einheitVon.get(geloest[0].id)!;
+  const nach = new Map<Einheit, Einheit>();
+  const vor = new Map<Einheit, Einheit>();
+  let schluss: Einheit | null = null;
+  for (const e of einheiten) {
+    if (e.anschluss === null) continue;
+    if (e.anschluss === 'ende') {
+      schluss ??= e;
+      continue;
+    }
+    const f = einheitVon.get(e.anschluss);
+    if (!f || f === e || f === erste || vor.has(f)) continue;
+    // Kein Ring: f darf nicht schon (über Nachfolger) vor e stehen
+    let ring = false;
+    for (let x: Einheit | undefined = f; x; x = nach.get(x)) if (x === e) ring = true;
+    if (ring) continue;
+    nach.set(e, f);
+    vor.set(f, e);
+  }
+  const ketten: Einheit[][] = [];
+  for (const kopf of einheiten) {
+    if (vor.has(kopf)) continue;
+    const kette: Einheit[] = [];
+    for (let e: Einheit | undefined = kopf; e; e = nach.get(e)) kette.push(e);
+    ketten.push(kette);
+  }
+  const ersteKette = ketten.find((k) => k[0] === erste)!;
+  const schlussKette = schluss ? ketten.find((k) => k[k.length - 1] === schluss) : undefined;
+  const reihe = [
+    ersteKette,
+    ...ketten.filter((k) => k !== ersteKette && k !== schlussKette),
+    ...(schlussKette && schlussKette !== ersteKette ? [schlussKette] : []),
+  ].flat();
+  return zieleVereinfachen(reihe.flatMap((e) => e.schritte));
 }
 
 /* ------------------------------------------------------------------ */
@@ -633,9 +692,10 @@ export type EinfuegePosition = 'danach' | 'zweigende' | 'nach_block';
  * * `nach_block`: hinter den Block von `nachId`, vor den Anschluss.
  *
  * Außerhalb eines Blocks wirken `zweigende` und `nach_block` wie `danach`.
- * Kanten anderer Zweige bleiben unberührt. Steht der neue Schritt danach an,
- * wird er „laufend“ mit Eingang `heute`; Schritte, die dadurch nicht mehr
- * anstehen, werden wieder „offen“. Ohne `nachId` wird er erster Schritt.
+ * Kanten anderer Zweige bleiben unberührt. Direkt hinter Erledigtem läuft der
+ * neue Schritt sofort; steht er danach an, wird er „laufend“ mit Eingang
+ * `heute`; Schritte, die dadurch nicht mehr anstehen, werden wieder „offen“.
+ * Ohne `nachId` wird er erster Schritt.
  */
 export function schrittImLaufEinfuegen(
   steps: RunStep[],

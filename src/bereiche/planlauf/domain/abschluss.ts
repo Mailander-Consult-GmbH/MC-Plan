@@ -108,15 +108,64 @@ function abschlussInfoVon(step: RunStep, kontext: AbschlussKontext | undefined, 
   };
 }
 
+/** Was ein Rücksprung zum Festhalten der Historie braucht. */
+interface RueckKontext {
+  zeitpunkt: string;
+  heute: ISODate;
+  kontext?: AbschlussKontext;
+}
+
+/**
+ * Sicherung gegen Stillstand: Steht nichts mehr an, obwohl der Ablauf noch
+ * zurückführt – etwa weil ein Zweig-Rücksprung erst wieder gilt, nachdem eine
+ * Korrektur den Ausstieg eines anderen Zweigs aufgehoben hat –, wird der
+ * ausstehende Rücksprung jetzt ausgeführt (Auslöser: der letzte Schritt des
+ * Zweigs bzw. der zuletzt erledigte Schritt des Verlaufs).
+ */
+function stillstandAufloesen(steps: RunStep[], rk: RueckKontext): { steps: RunStep[]; ruecksprung: Ruecksprung | null } {
+  let ruecksprung: Ruecksprung | null = null;
+  const opt = { heute: rk.heute, kontext: rk.kontext };
+  for (let n = 0; n < steps.length; n++) {
+    const verlauf = verfolgen(steps);
+    if (anstehendeSchritte(verlauf).length > 0) break;
+    let ziel: RunStep | null = null;
+    let ausloeser: RunStep | null = null;
+    let art: Ruecksprung['art'] = 'zweig';
+    for (const a of verlauf.abschnitte) {
+      if (a.art !== 'parallel') continue;
+      const z = a.zweige.find((x) => x.rueckSprungZu && x.schritte.every(istErledigt));
+      if (z) {
+        ziel = z.rueckSprungZu;
+        ausloeser = z.schritte[z.schritte.length - 1];
+        break;
+      }
+    }
+    if (!ziel && verlauf.rueckSprungZu && verlauf.schritte.every(istErledigt)) {
+      ziel = verlauf.rueckSprungZu;
+      art = 'oben';
+      for (const s of verlauf.schritte) if (!ausloeser || (s.istDatum ?? '') >= (ausloeser.istDatum ?? '')) ausloeser = s;
+    }
+    if (!ziel || !ausloeser) break;
+    const alt = steps;
+    steps = rueckSprungAnwenden(steps, ziel.id, ausloeser, 'ruecksprung', rk.zeitpunkt, opt);
+    ruecksprung = { art, zielId: ziel.id, ausloeserId: ausloeser.id, eintritte: eintritteVon(steps, alt) };
+  }
+  return { steps, ruecksprung };
+}
+
 /** Ergebnis einer Änderung der Schrittliste: neu anstehende Schritte und ggf. Abschluss des Laufs. */
 function ergebnis(
   run: PlanRun,
   vorher: Set<ID>,
-  steps: RunStep[],
+  roh: RunStep[],
   meldung: string,
-  ruecksprung: Ruecksprung | null,
+  ruecksprungBisher: Ruecksprung | null,
+  rk: RueckKontext,
   extra: Partial<PlanRun> = {},
 ): Abschluss {
+  const aufgeloest = stillstandAufloesen(roh, rk);
+  const steps = aufgeloest.steps;
+  const ruecksprung = ruecksprungBisher ?? aufgeloest.ruecksprung;
   const verlauf = verfolgen(steps);
   const anstehend = anstehendeSchritte(verlauf);
   const abgeschlossen =
@@ -143,6 +192,8 @@ function ergebnis(
  * * Rücksprung im Hauptablauf, wenn er zurückführt und kein Verlaufsschritt mehr offen ist;
  * * sonst: nichts mehr offen → Lauf abgeschlossen; andernfalls werden alle jetzt
  *   anstehenden Schritte „laufend“.
+ * Stünde danach nichts an, obwohl der Ablauf noch zurückführt, wird der
+ * ausstehende Rücksprung ausgeführt (siehe stillstandAufloesen).
  * „Offen“ bzw. „laufend“ an einem erledigten Schritt heißt Wieder öffnen.
  */
 export function schrittStatusSetzen(
@@ -159,11 +210,12 @@ export function schrittStatusSetzen(
   const heute = optionen.heute ?? today();
   const zeitpunkt = optionen.zeitpunkt ?? new Date().toISOString();
   const vorher = new Set(aktuelleSchritte(run).map((s) => s.id));
+  const rk: RueckKontext = { zeitpunkt, heute, kontext: optionen.kontext };
 
   if (status === 'offen' || status === 'laufend') {
     if (istErledigt(aktuell)) return wiederOeffnen(run, aktuell, undefined, optionen);
     const steps = run.steps.map((s) => (s.id === aktuell.id ? { ...s, status } : s));
-    return ergebnis(run, vorher, steps, `„${aktuell.name}“: ${STEP_STATUS_LABEL[status]}`, null);
+    return ergebnis(run, vorher, steps, `„${aktuell.name}“: ${STEP_STATUS_LABEL[status]}`, null, rk);
   }
 
   const antwort = aktuell.typ === 'entscheidung' ? massgeblicheAntwort(aktuell) : undefined;
@@ -186,27 +238,31 @@ export function schrittStatusSetzen(
     const ziel = ort.zweig.rueckSprungZu;
     const ausloeser = ort.zweig.schritte[ort.zweig.schritte.length - 1];
     steps = rueckSprungAnwenden(steps, ziel.id, ausloeser, 'ruecksprung', zeitpunkt, optRueck);
-    return ergebnis(run, vorher, steps, `Rücksprung zu „${ziel.name}“ – weiterer Durchlauf gestartet.`, {
-      art: 'zweig',
-      zielId: ziel.id,
-      ausloeserId: ausloeser.id,
-      eintritte: eintritteVon(steps, run.steps),
-    });
+    return ergebnis(
+      run,
+      vorher,
+      steps,
+      `Rücksprung zu „${ziel.name}“ – weiterer Durchlauf gestartet.`,
+      { art: 'zweig', zielId: ziel.id, ausloeserId: ausloeser.id, eintritte: eintritteVon(steps, run.steps) },
+      rk,
+    );
   }
 
   // Rücksprung im Hauptablauf: der Verlauf führt zurück und nichts ist mehr offen
   if (ort && verlauf.rueckSprungZu && verlauf.schritte.every(istErledigt)) {
     const ziel = verlauf.rueckSprungZu;
     steps = rueckSprungAnwenden(steps, ziel.id, abgeschlossenerSchritt, 'ruecksprung', zeitpunkt, optRueck);
-    return ergebnis(run, vorher, steps, `Rücksprung zu „${ziel.name}“ – weiterer Durchlauf gestartet.`, {
-      art: 'oben',
-      zielId: ziel.id,
-      ausloeserId: abgeschlossenerSchritt.id,
-      eintritte: eintritteVon(steps, run.steps),
-    });
+    return ergebnis(
+      run,
+      vorher,
+      steps,
+      `Rücksprung zu „${ziel.name}“ – weiterer Durchlauf gestartet.`,
+      { art: 'oben', zielId: ziel.id, ausloeserId: abgeschlossenerSchritt.id, eintritte: eintritteVon(steps, run.steps) },
+      rk,
+    );
   }
 
-  return ergebnis(run, vorher, statusAbgleichen(steps), `„${aktuell.name}“: ${STEP_STATUS_LABEL[status]}`, null);
+  return ergebnis(run, vorher, statusAbgleichen(steps), `„${aktuell.name}“: ${STEP_STATUS_LABEL[status]}`, null, rk);
 }
 
 /**
@@ -257,7 +313,12 @@ export function wiederOeffnen(
   const vorher = new Set(aktuelleSchritte(run).map((s) => s.id));
   const wieder: Partial<PlanRun> = run.status === 'abgeschlossen' ? { status: 'laufend' } : {};
   const laufend = { ...run, status: 'laufend' as const };
-  if (!istErledigt(aktuell)) return ergebnis(laufend, vorher, run.steps, `„${aktuell.name}“ ist nicht abgeschlossen.`, null, wieder);
+  const heute = optionen.heute ?? today();
+  const zeitpunkt = optionen.zeitpunkt ?? new Date().toISOString();
+  const rk: RueckKontext = { zeitpunkt, heute, kontext: optionen.kontext };
+  if (!istErledigt(aktuell)) {
+    return ergebnis(laufend, vorher, run.steps, `„${aktuell.name}“ ist nicht abgeschlossen.`, null, rk, wieder);
+  }
 
   const art: WiederOeffnenArt = modus === 'erneut' ? 'erneut' : wiederOeffnenArt(run, aktuell);
   if (art === 'korrektur') {
@@ -266,11 +327,9 @@ export function wiederOeffnen(
         s.id === aktuell.id ? { ...s, status: 'laufend' as const, istDatum: null, abschlussInfo: null, nacharbeitSeite: null } : s,
       ),
     );
-    return ergebnis(laufend, vorher, steps, `„${aktuell.name}“ wieder geöffnet.`, null, wieder);
+    return ergebnis(laufend, vorher, steps, `„${aktuell.name}“ wieder geöffnet.`, null, rk, wieder);
   }
 
-  const heute = optionen.heute ?? today();
-  const zeitpunkt = optionen.zeitpunkt ?? new Date().toISOString();
   const steps = rueckSprungAnwenden(run.steps, aktuell.id, null, 'wieder_geoeffnet', zeitpunkt, {
     eingang: optionen.eingang ?? heute,
     heute,
@@ -282,6 +341,7 @@ export function wiederOeffnen(
     steps,
     `„${aktuell.name}“ wieder geöffnet – neuer Durchlauf begonnen.`,
     { art: 'wieder_geoeffnet', zielId: aktuell.id, ausloeserId: null, eintritte: eintritteVon(steps, run.steps) },
+    rk,
     wieder,
   );
 }

@@ -220,11 +220,11 @@ export function recalcRun(
  * Ampel eines Schritts. Nur anstehende Schritte können fällig oder überfällig
  * sein; künftige Schritte (`anstehend = false`) stehen höchstens „Im Plan“.
  */
-export function ampelFuerSchritt(step: RunStep, vorlaufTage: number, anstehend = true): Ampel {
+export function ampelFuerSchritt(step: RunStep, vorlaufTage: number, anstehend = true, heute: ISODate = today()): Ampel {
   if (step.status === 'erledigt' || step.status === 'uebersprungen') return 'erledigt';
   if (!step.sollDatum) return 'neutral';
   if (!anstehend) return 'geplant';
-  const delta = diffDays(today(), step.sollDatum);
+  const delta = diffDays(heute, step.sollDatum);
   if (delta < 0) return 'ueberfaellig';
   if (delta <= vorlaufTage) return 'faellig';
   return 'geplant';
@@ -245,11 +245,11 @@ export function aktuellerSchritt(run: Pick<PlanRun, 'steps'>): RunStep | undefin
 }
 
 /** Verzug des Laufs in Kalendertagen (>0 = überfällig): der größte unter den anstehenden Schritten. */
-export function verzugTage(run: Pick<PlanRun, 'steps'>): number {
+export function verzugTage(run: Pick<PlanRun, 'steps'>, heute: ISODate = today()): number {
   let verzug = 0;
   for (const step of aktuelleSchritte(run)) {
     if (!step.sollDatum) continue;
-    const delta = diffDays(today(), step.sollDatum);
+    const delta = diffDays(heute, step.sollDatum);
     if (delta < 0) verzug = Math.max(verzug, -delta);
   }
   return verzug;
@@ -767,6 +767,65 @@ export function laufSchritteAusVorlage(
       Boolean(o.parallel) !== Boolean(s.parallel);
     return abweichend ? { ...s, abweichung: true } : s;
   });
+}
+
+/**
+ * „Erledigte Schritte übernehmen“ beim Neustart mit geändertem Workflow:
+ * Entlang des neuen Verlaufs ab Beginn erhält jeder anstehende Schritt den
+ * Stand des erledigten (bzw. übersprungenen) Schritts gleicher Bezeichnung und
+ * Funktion aus dem laufenden Durchlauf des alten Laufs – Status, Ist, Eingang,
+ * Antwort (über ihren Text), Nachweis-Nr., Momentaufnahme und Nacharbeit-
+ * Ursache. Beim ersten anstehenden Schritt ohne Gegenstück (in einem Block:
+ * sobald kein anstehender mehr eines hat) endet die Übernahme; ebenso, bevor
+ * eine übernommene Antwort einen Rücksprung auslösen würde. Jeder alte
+ * Schritt wird höchstens einmal verwendet.
+ */
+export function erledigteUebernehmen(alt: RunStep[], neu: RunStep[]): RunStep[] {
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const verwendet = new Set<ID>();
+  let steps = neu;
+  for (let runde = 0; runde < neu.length; runde++) {
+    let uebernommen = false;
+    for (const s of aktuelleSchritte({ steps })) {
+      const vorlage = alt.find(
+        (a) => !verwendet.has(a.id) && istErledigt(a) && gleich(a.name, s.name) && gleich(a.roleName, s.roleName),
+      );
+      if (!vorlage) continue;
+      let gewaehlteAntwortId: ID | null = null;
+      if (s.typ === 'entscheidung' && s.antworten.length > 0) {
+        const text = massgeblicheAntwort(vorlage)?.text ?? '';
+        const antwort = s.antworten.find((a) => gleich(a.text, text));
+        if (!antwort) continue;
+        gewaehlteAntwortId = antwort.id;
+      }
+      const kandidat = steps.map((x) =>
+        x.id === s.id
+          ? {
+              ...x,
+              status: vorlage.status,
+              istDatum: vorlage.istDatum,
+              eingangIst: vorlage.eingangIst,
+              eingangGeschaetzt: vorlage.eingangGeschaetzt,
+              gewaehlteAntwortId: gewaehlteAntwortId ?? x.gewaehlteAntwortId,
+              nachweisNummer: vorlage.nachweisNummer,
+              abschlussInfo: vorlage.abschlussInfo,
+              nacharbeitSeite: vorlage.nacharbeitSeite,
+            }
+          : x,
+      );
+      // Würde die übernommene Antwort zurückführen, endet die Übernahme davor
+      const verlauf = verfolgen(kandidat);
+      const ort = ortImVerlauf(verlauf, s.id);
+      const zweigZurueck = ort?.art === 'zweig' && ort.zweig.rueckSprungZu && ort.zweig.schritte.every(istErledigt);
+      const obenZurueck = verlauf.rueckSprungZu && verlauf.schritte.every(istErledigt);
+      if (!ort || zweigZurueck || obenZurueck) continue;
+      verwendet.add(vorlage.id);
+      steps = statusAbgleichen(kandidat);
+      uebernommen = true;
+    }
+    if (!uebernommen) break;
+  }
+  return steps;
 }
 
 /** Text und Art der maßgeblichen Antwort eines Schritts (nur Entscheidungen). */
