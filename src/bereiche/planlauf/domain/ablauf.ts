@@ -647,6 +647,8 @@ export function schrittImLaufEinfuegen(
   const st = strukturVon(steps);
   const i = nachId === null ? -1 : (st.index.get(nachId) ?? -1);
   let ergebnis: RunStep[];
+  /** Ist der Schritt, hinter dem eingefügt wird, schon erledigt, beginnt der neue sofort. */
+  let direktNachErledigtem = false;
 
   if (i < 0) {
     ergebnis = [{ ...neu, parallel: null, naechster: neu.typ === 'entscheidung' && neu.antworten.length > 0 ? null : neu.naechster }, ...steps];
@@ -655,6 +657,7 @@ export function schrittImLaufEinfuegen(
     const art: EinfuegePosition = lage ? position : 'danach';
     if (art === 'danach') {
       const vorgaenger = steps[i];
+      direktNachErledigtem = istErledigt(vorgaenger);
       const antwort = vorgaenger.typ === 'entscheidung' ? massgeblicheAntwort(vorgaenger) : undefined;
       const bisher = antwort ? antwort.ziel : vorgaenger.naechster;
       const eingefuegt = mitZiel({ ...neu, parallel: vorgaenger.parallel ?? null }, bisher);
@@ -672,6 +675,7 @@ export function schrittImLaufEinfuegen(
     } else if (art === 'zweigende') {
       const zweig = lage!.block.zweige[lage!.zweig];
       const letzter = zweig[zweig.length - 1];
+      direktNachErledigtem = zweig.every((k) => istErledigt(steps[k]));
       const eingefuegt: RunStep = mitZiel({ ...neu, parallel: steps[i].parallel ?? null }, null);
       const imZweig = new Set(zweig);
       // Was den Zweig bisher beendete, führt nun zum neuen Schritt
@@ -693,11 +697,15 @@ export function schrittImLaufEinfuegen(
     } else {
       const ende = lage!.block.ende;
       const eingefuegt = mitZiel({ ...neu, parallel: null }, null);
+      direktNachErledigtem = lage!.block.zweige.flat().every((k) => istErledigt(steps[k]));
       ergebnis = [...steps.slice(0, ende), eingefuegt, ...steps.slice(ende)];
     }
   }
 
-  // Steht der neue Schritt an, beginnt er heute; Verdrängte warten wieder
+  // Direkt hinter Erledigtem läuft der neue Schritt sofort – auch in einem Zweig,
+  // der nach einem Ausstieg nichts Neues mehr beginnt. Steht er an, beginnt er
+  // heute; Verdrängte warten wieder.
+  if (direktNachErledigtem) ergebnis = ergebnis.map((s) => (s.id === neu.id ? { ...s, status: 'laufend' as const } : s));
   const anstehend = new Set(aktuelleSchritte({ steps: ergebnis }).map((s) => s.id));
   return statusAbgleichen(
     ergebnis.map((s) =>

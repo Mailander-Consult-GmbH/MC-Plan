@@ -18,6 +18,7 @@ import {
   verfolgen,
   zielVon,
   type Verlauf,
+  type Zweigverlauf,
 } from './ablauf';
 import { prognose } from './simulation';
 import {
@@ -892,10 +893,14 @@ export function rueckSprungAnwenden(
     basis.push(...zweigRueck.schritte);
     for (const s of zweigRueck.schritte) if (s.parallel) nurZweig.add(s.parallel.block);
   } else {
-    const ort = ortImVerlauf(verlauf, zielId);
+    // Ein Ziel in einem Block, dessen Zweig im Verlauf abgeschnitten ist, liegt über seinen Block im Verlauf
+    const zielBlockId = steps[zielIndex].parallel?.block;
+    const blockAbschnitt = verlauf.abschnitte.findIndex((a) => a.art === 'parallel' && a.block === zielBlockId);
+    const ort: { art: 'oben' | 'zweig'; abschnitt: number; zweig?: Zweigverlauf<RunStep>; pos?: number } | null =
+      ortImVerlauf(verlauf, zielId) ?? (blockAbschnitt >= 0 ? { art: 'zweig', abschnitt: blockAbschnitt } : null);
     if (ort) {
       let k = ort.abschnitt;
-      if (ort.art === 'zweig' && grund === 'wieder_geoeffnet') {
+      if (ort.art === 'zweig' && ort.zweig && grund === 'wieder_geoeffnet') {
         basis.push(...ort.zweig.schritte.slice(ort.pos));
         const block = verlauf.abschnitte[k];
         if (block.art === 'parallel') nurZweig.add(block.block);
@@ -959,7 +964,11 @@ export function rueckSprungAnwenden(
   const zielBlock = steps[zielIndex].parallel?.block;
   if (zielBlock && bloeckeWieder.has(zielBlock)) {
     const block = strukturVon(steps).bloecke.get(zielBlock);
-    for (const zweig of block?.zweige ?? []) eintritte.add(steps[zweig[0]].id);
+    for (const zweig of block?.zweige ?? []) {
+      // Zurückgesetzte bzw. noch nicht begonnene Zweiganfänge – Erledigtes bleibt unberührt
+      const anfang = steps[zweig[0]];
+      if (bereich.has(anfang.id) || !istBegonnen(anfang)) eintritte.add(anfang.id);
+    }
   }
   return statusAbgleichen(
     zurueckgesetzt.map((s) => (eintritte.has(s.id) ? { ...s, status: 'laufend' as const, eingangIst: datum } : s)),
