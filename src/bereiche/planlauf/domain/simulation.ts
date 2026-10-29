@@ -348,6 +348,7 @@ export function basisplanFestlegen(
   return {
     festgelegtAm,
     anker: doc?.eingangSoll ?? run.start,
+    eingangSoll: doc?.eingangSoll ?? null,
     planEnde: sim.fehler ? null : sim.ende,
     arbeitstage,
     fristen: Object.fromEntries(run.steps.map((s) => [s.id, s.fristTage])),

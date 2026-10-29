@@ -706,6 +706,11 @@ export interface Basisplan {
   festgelegtAm: string;
   /** Eingang Soll des Eintrags bzw. Start des Laufs. */
   anker: ISODate;
+  /**
+   * Eingang Soll des Eintrags bei der Festlegung (null = keiner, der Anker ist
+   * der Start). Fehlt bei älteren Basisplänen – dann gilt: Anker ≠ Start.
+   */
+  eingangSoll?: ISODate | null;
   /** Ende im Regelweg; null, wenn es sich nicht berechnen ließ (Schleife). */
   planEnde: ISODate | null;
   arbeitstage: boolean;

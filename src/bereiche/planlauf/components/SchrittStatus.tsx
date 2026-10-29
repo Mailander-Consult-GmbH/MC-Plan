@@ -7,7 +7,9 @@
  * der anstehende Schritt direkt aus einer Liste heraus erledigen lässt.
  */
 import { useState } from 'react';
-import { schrittStatusSetzen } from '../domain/abschluss';
+import { schrittStatusSetzen, type Abschluss } from '../domain/abschluss';
+import { istErledigt } from '../domain/ablauf';
+import { kontextFuer } from '../domain/bestand';
 import { NACHWEIS_LABEL, type PlanRun, type RunStep, type StepStatus } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -16,7 +18,7 @@ import { EmailDialog } from './EmailDialog';
 import { Icon } from '../../../shared/icons';
 
 export function useSchrittStatus() {
-  const { data, updateRun, updateStep } = useStore();
+  const { data, aenderungenAnwenden, schritteAbschliessen, wiederOeffnen } = useStore();
   const toast = useToast();
   const [nachweisFuer, setNachweisFuer] = useState<{ run: PlanRun; step: RunStep } | null>(null);
   const [frage, setFrage] = useState<{ run: PlanRun; step: RunStep; vorlageId: string | null } | null>(
@@ -27,21 +29,24 @@ export function useSchrittStatus() {
   );
 
   const setzeStatus = (run: PlanRun, step: RunStep, status: StepStatus, nachweisNummer?: string) => {
-    // Kontext für die Momentaufnahme beim Abschluss (Funktion, Seite, Person, Bearbeiter)
-    const kontext = {
-      rollen: data.roles.filter((r) => r.projectId === run.projectId),
-      kontakte: data.contacts.filter((c) => c.projectId === run.projectId),
-      gewerk: data.documents.find((d) => d.id === run.documentId)?.gewerk ?? '',
-      bearbeiter: data.bearbeiter?.name ?? '',
-    };
-    const ergebnis = schrittStatusSetzen(run, step, status, nachweisNummer, { kontext });
+    // Abschließen und Wieder öffnen rechnet der Store auf dem aktuellen Stand (ein Schritt je Aktion)
+    let ergebnis: Abschluss | null;
+    if (status === 'erledigt' || status === 'uebersprungen') {
+      ergebnis =
+        schritteAbschliessen([
+          { runId: run.id, stepId: step.id, status, nachweisNummer, antwortId: step.gewaehlteAntwortId ?? undefined },
+        ])[0]?.ergebnis ?? null;
+    } else if (istErledigt(step)) {
+      ergebnis = wiederOeffnen(run.id, step.id);
+    } else {
+      ergebnis = schrittStatusSetzen(run, step, status, nachweisNummer, { kontext: kontextFuer(data, run) });
+      if (ergebnis.art === 'aenderung') aenderungenAnwenden(run.id, ergebnis.aenderungen);
+    }
+    if (!ergebnis) return;
     if (ergebnis.art === 'nachweis') {
       setNachweisFuer({ run, step: ergebnis.step });
       return;
     }
-    ergebnis.aenderungen.forEach((a) =>
-      a.art === 'run' ? updateRun(run.id, a.patch) : updateStep(run.id, a.stepId, a.patch),
-    );
     toast(ergebnis.meldung);
 
     // Sieht der Workflow es für diesen Schritt vor, anbieten, die für den

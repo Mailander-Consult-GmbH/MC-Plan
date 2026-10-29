@@ -6,10 +6,11 @@
  * als Erfahrungswerte vorbelegt – sie lassen sich je Kette und je Planlauf
  * anpassen.
  */
-import { addDays, today } from '../../../shared/dates';
-import { aktuellerSchritt, kontaktFuerRolleUndGewerk, recalcSollDaten, stepsAusTemplate } from './engine';
+import { addDays, istArbeitstag, today } from '../../../shared/dates';
+import { aktuelleSchritte, kontaktFuerRolleUndGewerk, kontaktName, planlaufName, recalcRun, stepsAusTemplate } from './engine';
 import { aenderungenAufLauf, braucheNachweis, schrittStatusSetzen } from './abschluss';
 import { basisplanFestlegen } from './simulation';
+import { laufAenderungenProtokollieren } from './protokoll';
 import {
   DATEN_VERSION,
   EIGENE_ROLLE,
@@ -17,20 +18,24 @@ import {
   STANDARD_BEARBEITER,
   type AppData,
   type Antwort,
+  type Contact,
+  type EmailAnlass,
   type EmailTemplate,
+  type Erinnerung,
   type ID,
+  type ISODate,
   type Nachweis,
+  type PlanDocument,
   type PlanRun,
   type ProcessTemplate,
   type ProcessTemplateStep,
+  type Project,
   GEWERKE,
   type Role,
   type Seite,
   type StandardRolle,
   type StepType,
 } from './types';
-
-const heute = today();
 
 /* ------------------------------------------------------------------ */
 /* Funktionen                                                      */
@@ -368,10 +373,10 @@ Vielen Dank und freundliche Grüße
       id: 'mail-ueberfaellig',
       name: 'Mahnung bei Fristüberschreitung',
       anlass: 'ueberfaellig',
-      betreff: '[{{projekt.nummer}}] Überfällig seit {{verzug}} Tagen: {{schritt}} – {{plan.nummer}}',
+      betreff: '[{{projekt.nummer}}] Überfällig ({{verzug}} Verzug): {{schritt}} – {{plan.nummer}}',
       text: `{{anrede}}
 
-der Prozessschritt „{{schritt}}“ im Projekt „{{projekt}}“ ({{projekt.nummer}}) ist seit {{verzug}} Tagen überfällig.
+der Prozessschritt „{{schritt}}“ im Projekt „{{projekt}}“ ({{projekt.nummer}}) ist überfällig – Verzug: {{verzug}}.
 
   Plan:        {{plan.nummer}} – {{plan}}
   Gewerk:      {{plan.gewerk}}
@@ -409,17 +414,49 @@ Wir bitten um Rückmeldung bis zum {{soll}}.
 Mit freundlichen Grüßen
 {{absender}}`,
     },
+    sammelVorlage(),
   ];
+}
+
+/**
+ * Vorlage der Sammelerinnerung: eine E-Mail je Person mit allen Plänen, deren
+ * Schritt bei ihr ansteht ({{liste}}, siehe domain/email.ts).
+ */
+export function sammelVorlage(): EmailTemplate {
+  return {
+    id: 'mail-sammel',
+    name: 'Sammelerinnerung',
+    anlass: 'erinnerung',
+    betreff: '[{{projekt.nummer}}] Offene Prozessschritte ({{anzahl}})',
+    text: `{{anrede}}
+
+im Projekt „{{projekt}}“ ({{projekt.nummer}}) stehen bei Ihnen folgende Prozessschritte aus:
+
+{{liste}}
+
+Bitte geben Sie uns bis zu den genannten Terminen eine kurze Rückmeldung, damit der weitere Planlauf eingehalten werden kann.
+
+Vielen Dank und freundliche Grüße
+{{absender}}`,
+  };
 }
 
 /* ------------------------------------------------------------------ */
 /* Demodaten                                                           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Kennungen der Demodaten sind zufällig – zwei Geräte, die beide mit den
+ * Demodaten begonnen haben, verwechseln deren Inhalte beim Abgleich nicht.
+ * Fest bleiben nur Stammdaten (Funktionen srol-…, E-Mail-Vorlagen mail-…,
+ * Standard-Workflows tpl-…).
+ */
+const zufallsId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+
 /** Legt die Funktionen als Projektfunktionen an. */
 function projektRollen(projectId: string): Role[] {
   return STANDARD_ROLLEN.map((r) => ({
-    id: `rol-${projectId}-${r.id.replace('srol-', '')}`,
+    id: zufallsId('rol'),
     projectId,
     name: r.name,
     kuerzel: r.kuerzel,
@@ -430,11 +467,95 @@ function projektRollen(projectId: string): Role[] {
   }));
 }
 
+/** Ein Schritt, den die Demodaten erledigen: Name, Antwort, Verzug gegenüber dem Soll in Arbeitstagen. */
+interface DemoSchritt {
+  name: string;
+  antwort?: string;
+  verzug?: number;
+}
+
+/** Eine vorbereitete Erinnerung der Demodaten: Arbeitstage relativ zu heute. */
+interface DemoErinnerung {
+  schritt: string;
+  tage: number;
+  anlass: EmailAnlass;
+  weg: Erinnerung['weg'];
+}
+
 export function seedData(): AppData {
-  const rollen = projektRollen('prj-1');
+  const heute = today();
+  /** Arbeitstage relativ zu einem Datum. */
+  const at = (d: ISODate, n: number) => addDays(d, n, true);
+  const projectId = zufallsId('prj');
+  const rollen = projektRollen(projectId);
   /** Funktion eines Gewerks (bzw. die übergreifende Funktion) im Projekt. */
   const rolle = (kuerzel: string, gewerk: string | null = null) =>
     rollen.find((r) => r.kuerzel === kuerzel && r.gewerk === gewerk)!.id;
+
+  // Starttermine der Planläufe – so gewählt, dass die Läufe heute an der gewünschten Stelle stehen
+  // (gezählt ab dem letzten Arbeitstag, damit die Überfälligkeit auch am Wochenende stimmt)
+  const bezug = istArbeitstag(heute) ? heute : at(heute, -1);
+  const start = {
+    pruefblock: at(bezug, -47),
+    nachreichung: at(bezug, -33),
+    zweiterDurchlauf: at(bezug, -30),
+    abgeschlossen: at(bezug, -52),
+  };
+
+  const project: Project = {
+    id: projectId,
+    nummer: '2026-014',
+    name: 'Ausbaustrecke Nordkreuz',
+    status: 'aktiv',
+    markiert: true,
+    beschreibung: 'Streckenausbau mit Anpassung von Oberleitung, LST und Verkehrsanlagen.',
+    settings: {
+      erinnerungVorlaufTage: 5,
+      fristenInArbeitstagen: true,
+      feiertage: [],
+      absenderName: 'Planlaufmanagement Nordkreuz',
+      absenderEmail: 'planlauf@example.de',
+    },
+  };
+
+  const kontakt = (c: Omit<Contact, 'id' | 'projectId' | 'eigen' | 'notiz'> & { notiz?: string; eigen?: boolean }): Contact => ({
+    id: zufallsId('con'),
+    projectId,
+    notiz: '',
+    eigen: false,
+    ...c,
+  });
+  const jeGewerk = (kuerzel: string) => ['KIB', 'LST', 'OLA', 'VA'].map((g) => ({ roleId: rolle(kuerzel, g), gewerk: g }));
+  const contacts: Contact[] = [
+    // Eigener Eintrag: die angemeldete Person führt das Planlaufmanagement
+    kontakt({ anrede: '', vorname: 'Max', nachname: 'Mustermann', firma: EIGENE_ROLLE, email: '', telefon: '', anschrift: '', zuordnungen: [{ roleId: rolle('PLM'), gewerk: null }], eigen: true }),
+    kontakt({ anrede: 'Frau', vorname: 'Sabine', nachname: 'Ortmann', firma: 'Projektleitung', email: 's.ortmann@example.de', telefon: '+49 40 123456-01', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle('PL'), gewerk: null }] }),
+    kontakt({ anrede: 'Frau', vorname: 'Katrin', nachname: 'Berger', firma: 'Ingenieurbüro Berger', email: 'k.berger@example.de', telefon: '+49 40 998877-12', anschrift: 'Billstraße 88\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachplanung Ingenieurbau' }),
+    kontakt({ anrede: 'Herr', vorname: 'Ali', nachname: 'Sarikaya', firma: 'LST Nord Ingenieure', email: 'sarikaya@example.de', telefon: '+49 40 998877-30', anschrift: 'Billstraße 90\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'LST'), gewerk: 'LST' }], notiz: 'Fachplanung Leit- und Sicherungstechnik' }),
+    kontakt({ anrede: 'Herr', vorname: 'Piet', nachname: 'Osterkamp', firma: 'Osterkamp Fahrleitungsbau', email: 'p.osterkamp@example.de', telefon: '+49 4101 7788-0', anschrift: 'Industriering 9\n25436 Tornesch', zuordnungen: [{ roleId: rolle('FP', 'OLA'), gewerk: 'OLA' }], notiz: 'Fachplanung Oberleitung' }),
+    kontakt({ anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'KIB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags' }),
+    kontakt({ anrede: 'Frau', vorname: 'Marlene', nachname: 'Hoffstedt', firma: 'Bauvorlageberechtigung Nord', email: 'm.hoffstedt@example.de', telefon: '+49 40 224466-4', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'LST'), gewerk: 'LST' }, { roleId: rolle('BVB', 'OLA'), gewerk: 'OLA' }] }),
+    kontakt({ anrede: 'Herr', vorname: 'Dietmar', nachname: 'Krause', firma: 'Prüfstelle Krause', email: 'd.krause@example.de', telefon: '+49 4131 309-0', anschrift: 'Am Ochsenmarkt 1\n21335 Lüneburg', zuordnungen: [{ roleId: rolle('PSV', 'LST'), gewerk: 'LST' }], notiz: 'Fachtechnische Prüfung LST' }),
+    kontakt({ anrede: 'Frau', vorname: 'Yuki', nachname: 'Tanaka', firma: 'Prüfstelle Tanaka', email: 'y.tanaka@example.de', telefon: '+49 40 556677-1', anschrift: 'Alsterdorfer Damm 4\n22297 Hamburg', zuordnungen: [{ roleId: rolle('PSV', 'KIB'), gewerk: 'KIB' }, { roleId: rolle('PrSt', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachtechnische Prüfung und Prüfstatik KIB' }),
+    kontakt({ anrede: 'Herr', vorname: 'Tobias', nachname: 'Reinhold', firma: 'Prüfstelle Erdung', email: 't.reinhold@example.de', telefon: '+49 40 445566-8', anschrift: 'Wandsbeker Chaussee 3\n22089 Hamburg', zuordnungen: [{ roleId: rolle('ErP', 'OLA'), gewerk: 'OLA' }], notiz: 'Erdungsprüfung' }),
+    kontakt({ anrede: 'Herr', vorname: 'Sven', nachname: 'Dallmann', firma: 'Dallmann Bau GmbH', email: 's.dallmann@example.de', telefon: '+49 4101 5566-0', anschrift: 'Gewerbepark 4\n25469 Halstenbek', zuordnungen: jeGewerk('AN') }),
+    kontakt({ anrede: 'Frau', vorname: 'Heike', nachname: 'Petersen', firma: 'Bauüberwachung Nord', email: 'h.petersen@example.de', telefon: '+49 40 334455-2', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: jeGewerk('BÜW') }),
+  ];
+
+  const eintrag = (d: Omit<PlanDocument, 'id' | 'projectId'>): PlanDocument => ({ id: zufallsId('doc'), projectId, ...d });
+  // Planpaket – reines Ordnungsmerkmal, ohne eigenen Planlauf
+  const paket = eintrag({ kind: 'paket', parentId: null, paketId: null, nummer: 'PP-Nordkanal', titel: 'Eisenbahnüberführung Nordkanal', index: '', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: null, datum: null, bemerkung: 'Bündelt die Unterlagen zum Bauwerk' });
+  // Planverzeichnis mit eigenem Planlauf; die Pläne laufen darin mit
+  const verzeichnis = eintrag({ kind: 'verzeichnis', parentId: null, paketId: paket.id, nummer: 'NK-KIB-PV-001', titel: 'Planverzeichnis Überbau', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: at(start.pruefblock, 10), datum: start.pruefblock, bemerkung: '' });
+  const plan = (nummer: string, titel: string, d: Partial<PlanDocument>) =>
+    eintrag({ kind: 'plan', parentId: null, paketId: null, nummer, titel, index: '', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: null, datum: null, bemerkung: '', ...d });
+  const grundriss = plan('NK-KIB-EÜ-001-GR', 'Grundriss Überbau', { parentId: verzeichnis.id, paketId: paket.id, index: 'C', eingangSoll: verzeichnis.eingangSoll });
+  const schnitt = plan('NK-KIB-EÜ-001-SC', 'Längsschnitt', { parentId: verzeichnis.id, paketId: paket.id, index: 'C', eingangSoll: verzeichnis.eingangSoll });
+  // Einzelpläne mit eigenem Planlauf
+  const signallageplan = plan('NK-LST-SP-102', 'Signallageplan Bereich Nord', { paketId: paket.id, index: 'B', gewerk: 'LST', eingangSoll: at(start.nachreichung, 10) });
+  const fahrleitung = plan('NK-OLA-FL-210', 'Fahrleitungsplan km 12,4 – 13,8', { gewerk: 'OLA', eingangSoll: at(start.zweiterDurchlauf, 10) });
+  const widerlager = plan('NK-KIB-EÜ-002', 'Widerlager Nord', { paketId: paket.id, index: 'A', eingangSoll: at(start.abgeschlossen, 10) });
+  const verkehrsanlagen = eintrag({ kind: 'verzeichnis', parentId: null, paketId: null, nummer: 'NK-VA-PV-001', titel: 'Planverzeichnis Verkehrsanlagen', index: '02', gewerk: 'VA', planungsphase: 'Entwurfsplanung', eingangSoll: at(heute, 22), datum: null, bemerkung: 'Eingang angekündigt' });
 
   const data: AppData = {
     version: DATEN_VERSION,
@@ -443,93 +564,47 @@ export function seedData(): AppData {
     gewerke: [...GEWERKE],
     standardRollen: STANDARD_ROLLEN.map((r) => ({ ...r })),
     emailVorlagen: standardVorlagen(),
-    projects: [
-      {
-        id: 'prj-1',
-        nummer: '2026-014',
-        name: 'Ausbaustrecke Nordkreuz',
-        status: 'aktiv',
-        markiert: true,
-        beschreibung: 'Streckenausbau mit Anpassung von Oberleitung, LST und Verkehrsanlagen.',
-        settings: {
-          erinnerungVorlaufTage: 5,
-          fristenInArbeitstagen: true,
-          feiertage: [],
-          absenderName: 'Planlaufmanagement Nordkreuz',
-          absenderEmail: 'planlauf@example.de',
-        },
-      },
-    ],
+    projects: [project],
     roles: rollen,
-    contacts: [
-      // Eigener Eintrag: die angemeldete Person führt das Planlaufmanagement
-      { id: 'con-plm', projectId: 'prj-1', anrede: '', vorname: 'Max', nachname: 'Mustermann', firma: EIGENE_ROLLE, email: '', telefon: '', anschrift: '', zuordnungen: [{ roleId: rolle('PLM'), gewerk: null }], notiz: '', eigen: true },
-      { id: 'con-pl', projectId: 'prj-1', anrede: 'Frau', vorname: 'Sabine', nachname: 'Ortmann', firma: 'Projektleitung', email: 's.ortmann@example.de', telefon: '+49 40 123456-01', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle('PL'), gewerk: null }], notiz: '' , eigen: false },
-      { id: 'con-fp-kib', projectId: 'prj-1', anrede: 'Frau', vorname: 'Katrin', nachname: 'Berger', firma: 'Ingenieurbüro Berger', email: 'k.berger@example.de', telefon: '+49 40 998877-12', anschrift: 'Billstraße 88\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachplanung Ingenieurbau' , eigen: false },
-      { id: 'con-fp-lst', projectId: 'prj-1', anrede: 'Herr', vorname: 'Ali', nachname: 'Sarikaya', firma: 'LST Nord Ingenieure', email: 'sarikaya@example.de', telefon: '+49 40 998877-30', anschrift: 'Billstraße 90\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'LST'), gewerk: 'LST' }], notiz: 'Fachplanung Leit- und Sicherungstechnik' , eigen: false },
-      { id: 'con-fp-ola', projectId: 'prj-1', anrede: 'Herr', vorname: 'Piet', nachname: 'Osterkamp', firma: 'Osterkamp Fahrleitungsbau', email: 'p.osterkamp@example.de', telefon: '+49 4101 7788-0', anschrift: 'Industriering 9\n25436 Tornesch', zuordnungen: [{ roleId: rolle('FP', 'OLA'), gewerk: 'OLA' }], notiz: 'Fachplanung Oberleitung' , eigen: false },
-      { id: 'con-bvb-kib', projectId: 'prj-1', anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'KIB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags' , eigen: false },
-      { id: 'con-bvb-lst', projectId: 'prj-1', anrede: 'Frau', vorname: 'Marlene', nachname: 'Hoffstedt', firma: 'Bauvorlageberechtigung Nord', email: 'm.hoffstedt@example.de', telefon: '+49 40 224466-4', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'LST'), gewerk: 'LST' }, { roleId: rolle('BVB', 'OLA'), gewerk: 'OLA' }], notiz: '' , eigen: false },
-      { id: 'con-psv-lst', projectId: 'prj-1', anrede: 'Herr', vorname: 'Dietmar', nachname: 'Krause', firma: 'Prüfstelle Krause', email: 'd.krause@example.de', telefon: '+49 4131 309-0', anschrift: 'Am Ochsenmarkt 1\n21335 Lüneburg', zuordnungen: [{ roleId: rolle('PSV', 'LST'), gewerk: 'LST' }], notiz: 'Fachtechnische Prüfung LST' , eigen: false },
-      { id: 'con-psv-kib', projectId: 'prj-1', anrede: 'Frau', vorname: 'Yuki', nachname: 'Tanaka', firma: 'Prüfstelle Tanaka', email: 'y.tanaka@example.de', telefon: '+49 40 556677-1', anschrift: 'Alsterdorfer Damm 4\n22297 Hamburg', zuordnungen: [{ roleId: rolle('PSV', 'KIB'), gewerk: 'KIB' }, { roleId: rolle('PrSt', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachtechnische Prüfung und Prüfstatik KIB' , eigen: false },
-      { id: 'con-erp', projectId: 'prj-1', anrede: 'Herr', vorname: 'Tobias', nachname: 'Reinhold', firma: 'Prüfstelle Erdung', email: 't.reinhold@example.de', telefon: '+49 40 445566-8', anschrift: 'Wandsbeker Chaussee 3\n22089 Hamburg', zuordnungen: [{ roleId: rolle('ErP', 'OLA'), gewerk: 'OLA' }], notiz: 'Erdungsprüfung' , eigen: false },
-      { id: 'con-an', projectId: 'prj-1', anrede: 'Herr', vorname: 'Sven', nachname: 'Dallmann', firma: 'Dallmann Bau GmbH', email: 's.dallmann@example.de', telefon: '+49 4101 5566-0', anschrift: 'Gewerbepark 4\n25469 Halstenbek', zuordnungen: ['KIB', 'LST', 'OLA', 'VA'].map((g) => ({ roleId: rolle('AN', g), gewerk: g })), notiz: '' , eigen: false },
-      { id: 'con-buew', projectId: 'prj-1', anrede: 'Frau', vorname: 'Heike', nachname: 'Petersen', firma: 'Bauüberwachung Nord', email: 'h.petersen@example.de', telefon: '+49 40 334455-2', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: ['KIB', 'LST', 'OLA', 'VA'].map((g) => ({ roleId: rolle('BÜW', g), gewerk: g })), notiz: '' , eigen: false },
-    ],
-    documents: [
-      // Planpaket – reines Ordnungsmerkmal, ohne eigenen Planlauf
-      { id: 'doc-p1', projectId: 'prj-1', kind: 'paket', parentId: null, paketId: null, nummer: 'PP-Nordkanal', titel: 'Eisenbahnüberführung Nordkanal', index: '', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: null, datum: null, bemerkung: 'Bündelt die Unterlagen zum Bauwerk' },
-      // Planverzeichnis mit eigenem Planlauf; die Pläne laufen darin mit
-      { id: 'doc-1', projectId: 'prj-1', kind: 'verzeichnis', parentId: null, paketId: 'doc-p1', nummer: 'NK-KIB-PV-001', titel: 'Planverzeichnis Überbau', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), datum: addDays(heute, -45), bemerkung: '' },
-      { id: 'doc-1a', projectId: 'prj-1', kind: 'plan', parentId: 'doc-1', paketId: 'doc-p1', nummer: 'NK-KIB-EÜ-001-GR', titel: 'Grundriss Überbau', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), datum: null, bemerkung: '' },
-      { id: 'doc-1b', projectId: 'prj-1', kind: 'plan', parentId: 'doc-1', paketId: 'doc-p1', nummer: 'NK-KIB-EÜ-001-SC', titel: 'Längsschnitt', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), datum: null, bemerkung: '' },
-      // Einzelpläne mit eigenem Planlauf
-      { id: 'doc-2', projectId: 'prj-1', kind: 'plan', parentId: null, paketId: 'doc-p1', nummer: 'NK-LST-SP-102', titel: 'Signallageplan Bereich Nord', index: 'B', gewerk: 'LST', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -12), datum: null, bemerkung: '' },
-      { id: 'doc-3', projectId: 'prj-1', kind: 'plan', parentId: null, paketId: null, nummer: 'NK-OLA-FL-210', titel: 'Fahrleitungsplan km 12,4 – 13,8', index: '', gewerk: 'OLA', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, 14), datum: null, bemerkung: '' },
-      { id: 'doc-4', projectId: 'prj-1', kind: 'verzeichnis', parentId: null, paketId: null, nummer: 'NK-VA-PV-001', titel: 'Planverzeichnis Verkehrsanlagen', index: '02', gewerk: 'VA', planungsphase: 'Entwurfsplanung', eingangSoll: addDays(heute, 30), datum: null, bemerkung: 'Eingang angekündigt' },
-    ],
+    contacts,
+    documents: [paket, verzeichnis, grundriss, schnitt, signallageplan, fahrleitung, widerlager, verkehrsanlagen],
     templates: STANDARD_TEMPLATES,
     runs: [],
     geloescht: [],
   };
 
   /*
-   * Planläufe aus den Workflows erzeugen – je Gewerk mit eigenen
-   * Verantwortlichen. Der Stand entsteht über die Ablauflogik selbst: die
-   * jeweils anstehenden Schritte werden nacheinander mit festen Ist-Daten
-   * erledigt (alle zwei Tage einer, im Regelweg). So passen Status, Eingänge
-   * und Soll-Termine immer zum Workflow.
+   * Planläufe aus den Workflows – je Gewerk mit eigenen Verantwortlichen. Der
+   * Stand entsteht über die Ablauflogik selbst: Die genannten Schritte werden
+   * nacheinander mit festen Ist-Daten erledigt (Soll + Verzug in Arbeitstagen),
+   * das Protokoll entsteht wie im Store. So passen Status, Eingänge,
+   * Soll-Termine, Historie und Protokoll immer zum Workflow.
    */
-  const project = data.projects[0];
-  const laufAus = (template: ProcessTemplate, runId: string, documentId: string, start: string, erledigt: number) => {
-    const doc = data.documents.find((d) => d.id === documentId)!;
-    const kontext = { rollen, kontakte: data.contacts, gewerk: doc.gewerk, bearbeiter: STANDARD_BEARBEITER };
-    const rechnen = (r: PlanRun): PlanRun => ({
-      ...r,
-      steps: recalcSollDaten(
-        r.steps,
-        r.start,
-        project.settings.fristenInArbeitstagen,
-        project.settings.feiertage,
-        doc.eingangSoll,
-        heute,
-      ),
-    });
-    // Feste Kennungen: Schritte „<Lauf>-s1“ …, Antworten „<Lauf>-a1“ …
-    let n = 0;
-    const kennung = () => {
-      n += 1;
-      return n <= template.steps.length ? `${runId}-s${n}` : `${runId}-a${n - template.steps.length}`;
-    };
+  const rahmen = (zeitpunkt: string) => ({ bearbeiter: STANDARD_BEARBEITER, zeitpunkt, kontakte: contacts });
+  /** Zeitpunkt an einem Tag (UTC-Uhrzeit), höchstens jetzt – kein Vermerk liegt in der Zukunft. */
+  const jetzt = new Date().toISOString();
+  const zeitpunktAm = (datum: ISODate, uhrzeit: string) => {
+    const z = `${datum}T${uhrzeit}:00.000Z`;
+    return z < jetzt ? z : jetzt;
+  };
+  const laufAus = (
+    template: ProcessTemplate,
+    doc: PlanDocument,
+    beginn: ISODate,
+    schritte: DemoSchritt[],
+    erinnerungen: DemoErinnerung[] = [],
+  ): PlanRun => {
+    const kontext = { rollen, kontakte: contacts, gewerk: doc.gewerk, bearbeiter: STANDARD_BEARBEITER };
+    const rechnen = (r: PlanRun): PlanRun => recalcRun(r, project, doc, heute);
     let run: PlanRun = rechnen({
-      id: runId,
-      projectId: project.id,
-      documentId,
+      id: zufallsId('run'),
+      projectId,
+      documentId: doc.id,
       templateId: template.id,
       templateName: template.name,
-      name: `Planlauf ${doc.nummer}`,
+      name: planlaufName(doc),
       index: doc.index,
-      start,
+      start: beginn,
       status: 'laufend',
       abbruchGrund: null,
       abbruchDatum: null,
@@ -537,41 +612,128 @@ export function seedData(): AppData {
       abbruchNeuerIndex: null,
       steps: stepsAusTemplate(
         template,
-        (roleName) => kontaktFuerRolleUndGewerk(data.contacts, rollen, roleName, doc.gewerk),
-        kennung,
+        (roleName) => kontaktFuerRolleUndGewerk(contacts, rollen, roleName, doc.gewerk),
+        () => zufallsId('rs'),
       ),
       bemerkung: '',
       protokoll: [],
       basis: null,
     });
-    run = { ...run, basis: basisplanFestlegen(run, project, doc, 'beim Anlegen festgelegt', `${start}T08:00:00.000Z`) };
+    const gestartet = zeitpunktAm(beginn, '08:00');
+    run = {
+      ...run,
+      basis: basisplanFestlegen(run, project, doc, 'beim Start festgelegt', gestartet),
+      protokoll: laufAenderungenProtokollieren(undefined, run, rahmen(gestartet)),
+    };
 
-    for (let k = 0; k < erledigt; k++) {
-      const step = aktuellerSchritt(run);
+    let nr = 0;
+    for (const { name, antwort, verzug = 0 } of schritte) {
+      let step = aktuelleSchritte(run).find((s) => s.name === name);
       if (!step) break;
-      const ist = addDays(start, (k + 1) * 2);
+      if (antwort && step.typ === 'entscheidung') {
+        const gewaehlt = step.antworten.find((a) => a.text === antwort);
+        step = { ...step, gewaehlteAntwortId: gewaehlt?.id ?? null };
+        run = { ...run, steps: run.steps.map((s) => (s.id === step!.id ? step! : s)) };
+      }
+      const ist = at(step.sollDatum ?? beginn, verzug);
       const nummer = braucheNachweis(step, 'erledigt')
-        ? `${step.nachweis === 'freigabe' ? 'FG' : 'PB'}-2026-${String(k + 1).padStart(4, '0')}`
+        ? `${step.nachweis === 'freigabe' ? 'FG' : 'PB'}-2026-${String(++nr).padStart(4, '0')}`
         : undefined;
-      const ergebnis = schrittStatusSetzen(run, step, 'erledigt', nummer, {
-        istDatum: ist,
-        heute: ist,
-        zeitpunkt: `${ist}T09:00:00.000Z`,
-        kontext,
-      });
+      const zeitpunkt = zeitpunktAm(ist, '09:00');
+      const ergebnis = schrittStatusSetzen(run, step, 'erledigt', nummer, { istDatum: ist, heute: ist, zeitpunkt, kontext });
       if (ergebnis.art !== 'aenderung') break;
-      run = rechnen(aenderungenAufLauf(run, ergebnis.aenderungen));
+      const neu = rechnen(aenderungenAufLauf(run, ergebnis.aenderungen));
+      run = { ...neu, protokoll: [...neu.protokoll, ...laufAenderungenProtokollieren(run, neu, rahmen(zeitpunkt))] };
+    }
+
+    for (const e of erinnerungen) {
+      const step = aktuelleSchritte(run).find((s) => s.name === e.schritt);
+      const person = contacts.find((c) => c.id === step?.contactId);
+      if (!step || !person) continue;
+      const zeitpunkt = zeitpunktAm(at(heute, e.tage), '10:00');
+      const vorlage = data.emailVorlagen.find((v) => v.anlass === e.anlass);
+      const erinnerung: Erinnerung = {
+        zeitpunkt,
+        contactId: person.id,
+        kontaktName: kontaktName(person),
+        an: person.email,
+        betreff: vorlage ? `${vorlage.name}: ${step.name}` : step.name,
+        anlass: e.anlass,
+        weg: e.weg,
+        durchlauf: step.durchlauf,
+      };
+      const neu: PlanRun = {
+        ...run,
+        steps: run.steps.map((s) =>
+          s.id === step.id ? { ...s, erinnerungen: [...s.erinnerungen, erinnerung], letzteErinnerung: zeitpunkt } : s,
+        ),
+      };
+      run = { ...neu, protokoll: [...neu.protokoll, ...laufAenderungenProtokollieren(run, neu, rahmen(zeitpunkt))] };
     }
     return run;
   };
 
+  const [ohne, mit, ste] = ['tpl-vvbau-ohne', 'tpl-vvbau-mit', 'tpl-vvbau-ste'].map(
+    (id) => STANDARD_TEMPLATES.find((t) => t.id === id)!,
+  );
+
   data.runs = [
-    // Im parallelen Prüfblock: Fachprüfung und Prüfstatik laufen (überfällig)
-    laufAus(STANDARD_TEMPLATES[1], 'run-1', 'doc-1', addDays(heute, -45), 5),
-    laufAus(STANDARD_TEMPLATES[2], 'run-2', 'doc-2', addDays(heute, -18), 3),
-    laufAus(STANDARD_TEMPLATES[0], 'run-3', 'doc-3', addDays(heute, -4), 1),
+    // Im parallelen Prüfblock: Prüfstatik früh erledigt, Fachprüfung 5 Arbeitstage überfällig (Verzug beim Prüfer)
+    laufAus(
+      mit,
+      verzeichnis,
+      start.pruefblock,
+      [
+        { name: 'Eingang PLM' },
+        { name: 'Formale Prüfung', antwort: 'Ja' },
+        { name: 'PLM an BVB zur Freigabe zur fachtechnischen Prüfung' },
+        { name: 'BVB-Freigabe zur fachtechnischen Prüfung', antwort: 'Ja', verzug: 2 },
+        { name: 'PLM an Fachprüfer und Prüfstatiker' },
+        { name: 'Prüfstatik', antwort: 'Ja', verzug: -2 },
+      ],
+      [
+        { schritt: 'Fachprüfung', tage: -8, anlass: 'erinnerung', weg: 'outlook' },
+        { schritt: 'Fachprüfung', tage: -1, anlass: 'ueberfaellig', weg: 'web' },
+      ],
+    ),
+    // Nachreichung: die Fachprüfung verlangt Unterlagen nach
+    laufAus(
+      ste,
+      signallageplan,
+      start.nachreichung,
+      [
+        { name: 'Eingang PLM', verzug: 1 },
+        { name: 'Formale Prüfung', antwort: 'Ja' },
+        { name: 'PLM an Planprüfer' },
+        { name: 'Fachprüfung', antwort: 'Nachreichung', verzug: 1 },
+      ],
+      [{ schritt: 'Nachreichung an Fachprüfer', tage: 0, anlass: 'erinnerung', weg: 'kopie' }],
+    ),
+    // Zweiter Durchlauf: die formale Prüfung wies die Unterlagen zurück
+    laufAus(ohne, fahrleitung, start.zweiterDurchlauf, [
+      { name: 'Eingang PLM' },
+      { name: 'Formale Prüfung', antwort: 'Nein' },
+      { name: 'Rückmeldung an Planer' },
+      { name: 'Erneute Vorlage von Planer', verzug: 3 },
+    ]),
+    // Abgeschlossen – mit etwas Verzug bei Freigabe, Genehmigung und Plot
+    laufAus(ohne, widerlager, start.abgeschlossen, [
+      { name: 'Eingang PLM' },
+      { name: 'Formale Prüfung', antwort: 'Ja' },
+      { name: 'PLM an BVB zur Freigabe' },
+      { name: 'BVB-Freigabe', antwort: 'Ja', verzug: 3 },
+      { name: 'PLM an PL zur Genehmigung' },
+      { name: 'Genehmigung zur Bauausführung', verzug: 1 },
+      { name: 'Digitaler Versand an Bau AN' },
+      { name: 'Digitaler Versand an BVB' },
+      { name: 'Digitaler Versand an BÜW' },
+      { name: 'Plotauftrag einreichen' },
+      { name: 'Plotauftrag abholen', verzug: 1 },
+      { name: 'Postversand an Bau AN' },
+      { name: 'Postversand an BÜW' },
+    ]),
     // Planläufe starten immer mit dem Eintrag – dieser wartet noch auf den Eingang
-    laufAus(STANDARD_TEMPLATES[0], 'run-4', 'doc-4', heute, 0),
+    laufAus(ohne, verkehrsanlagen, heute, []),
   ];
 
   return data;

@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { EMAIL_ANLASS_LABEL, type PlanRun, type Project, type RunStep } from '../domain/types';
 import { mailLinks, mailVorbereiten, vorlageVorschlagen } from '../domain/email';
-import { aktuelleSchritte, ampelFuerSchritt } from '../domain/engine';
+import { aktuelleSchritte, ampelFuerSchritt, kontaktName } from '../domain/engine';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
@@ -25,7 +25,7 @@ export function EmailDialog({
   vorlageId?: string | null;
   onClose: () => void;
 }) {
-  const { data, updateStep } = useStore();
+  const { data, erinnerungVermerken } = useStore();
   const toast = useToast();
 
   const kontakt = data.contacts.find((c) => c.id === step.contactId) ?? null;
@@ -60,14 +60,22 @@ export function EmailDialog({
 
   const { mailto, outlookWeb } = mailLinks(an, betreff, text);
 
-  const merkeVersand = () => {
-    updateStep(run.id, step.id, { letzteErinnerung: new Date().toISOString() });
+  /** Vermerkt die vorbereitete E-Mail am Schritt (Erinnerungen, Protokoll). */
+  const merkeVersand = (weg: 'outlook' | 'web' | 'kopie') => {
+    erinnerungVermerken(run.id, step.id, {
+      contactId: kontakt?.id ?? null,
+      kontaktName: kontaktName(kontakt ?? undefined),
+      an,
+      betreff,
+      anlass: template?.anlass ?? null,
+      weg,
+    });
   };
 
   /** Öffnet Outlook auf dem Rechner (Standard-Mailprogramm). */
   const inOutlook = () => {
     window.location.href = mailto;
-    merkeVersand();
+    merkeVersand('outlook');
     toast('Outlook wird mit der vorbereiteten E-Mail geöffnet.');
     onClose();
   };
@@ -75,7 +83,7 @@ export function EmailDialog({
   /** Öffnet ein neues Fenster in Outlook im Web. */
   const imWeb = () => {
     window.open(outlookWeb, '_blank', 'noopener,noreferrer');
-    merkeVersand();
+    merkeVersand('web');
     toast('Outlook im Web wird geöffnet.');
     onClose();
   };
@@ -83,7 +91,7 @@ export function EmailDialog({
   const kopieren = async () => {
     try {
       await navigator.clipboard.writeText(`An: ${an}\nBetreff: ${betreff}\n\n${text}`);
-      merkeVersand();
+      merkeVersand('kopie');
       toast('E-Mail in die Zwischenablage kopiert.');
     } catch {
       toast('Kopieren nicht möglich – bitte Text manuell markieren.');

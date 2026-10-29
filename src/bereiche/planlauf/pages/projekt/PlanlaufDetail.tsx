@@ -18,7 +18,6 @@ import {
   type Ampel,
 } from '../../domain/engine';
 import { einfuegenMoeglich } from '../../domain/ablauf';
-import { aenderungenAufLauf, schrittErgaenzen } from '../../domain/abschluss';
 import { formatDate, tageLabel, today } from '../../../../shared/dates';
 import {
   INDEX_LABEL,
@@ -73,7 +72,7 @@ export function PlanlaufDetail({
 }) {
   const {
     data,
-    updateRun,
+    schrittImLaufEinfuegen,
     updateStep,
     updateDocument,
     deleteRun,
@@ -170,12 +169,9 @@ export function PlanlaufDetail({
       parallel: null,
     };
     if (!einfuegenMoeglich(run.steps, nachStepId)) return false;
-    // Wie ein Statuswechsel: wieder fällig gewordene Rücksprünge werden nachgeholt
-    const ergebnis = schrittErgaenzen(run, nachStepId, neu, 'danach', { heute: today() });
-    if (ergebnis.art !== 'aenderung') return false;
-    const neuerStand = aenderungenAufLauf(run, ergebnis.aenderungen);
-    updateRun(run.id, { steps: neuerStand.steps, status: neuerStand.status });
-    return true;
+    // Wie ein Statuswechsel: wieder fällig gewordene Rücksprünge werden nachgeholt (im Store, ein Schritt)
+    const ergebnis = schrittImLaufEinfuegen(run.id, nachStepId, neu, 'danach');
+    return ergebnis?.art === 'aenderung' && ergebnis.aenderungen.length > 0;
   };
 
   const waehleAntwort = (step: RunStep, antwortId: string) => {
