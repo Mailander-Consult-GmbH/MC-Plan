@@ -185,6 +185,7 @@ export function ProjektDialog({
         farbe: r.farbe,
         beschreibung: r.beschreibung,
         gewerk: r.gewerk,
+        seite: r.seite ?? null,
       }),
     );
     toast('Projekt angelegt – die Funktionen wurden übernommen.');

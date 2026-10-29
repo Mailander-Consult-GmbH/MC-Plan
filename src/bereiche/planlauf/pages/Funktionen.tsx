@@ -8,7 +8,7 @@
  * hier nicht – sie füllt stets die angemeldete Person aus.
  */
 import { useState } from 'react';
-import { EIGENE_ROLLE, UEBERGREIFEND, istEigeneFunktion, kuerzelAus, type StandardRolle } from '../domain/types';
+import { EIGENE_ROLLE, UEBERGREIFEND, istEigeneFunktion, kuerzelAus, seiteAusFunktion, type StandardRolle } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import {
@@ -282,6 +282,8 @@ function FunktionsDialog({
     const werte = {
       ...form,
       kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
+      // Seite im Terminnachweis: bleibt bestehen, neue Funktionen nach ihrer Bezeichnung
+      seite: funktion ? funktion.seite : seiteAusFunktion(form.name),
     };
     if (funktion) {
       updateStandardRolle(funktion.id, werte);

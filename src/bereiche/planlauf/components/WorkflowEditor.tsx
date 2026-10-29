@@ -1317,7 +1317,8 @@ function SchrittDetails({
               type="button"
               className="btn btn-sm btn-outline"
               onClick={() => {
-                const antwort = { id: newId('ant'), text: '', ziel: null };
+                // Jede weitere Antwort führt zunächst in Nacharbeit
+                const antwort = { id: newId('ant'), text: '', ziel: null, nacharbeit: step.antworten.length > 0 };
                 onSchrittAendern(step.id, (s) => ({ ...s, antworten: [...s.antworten, antwort] }));
               }}
             >

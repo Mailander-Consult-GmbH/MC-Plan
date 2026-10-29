@@ -27,7 +27,14 @@ export function useSchrittStatus() {
   );
 
   const setzeStatus = (run: PlanRun, step: RunStep, status: StepStatus, nachweisNummer?: string) => {
-    const ergebnis = schrittStatusSetzen(run, step, status, nachweisNummer);
+    // Kontext für die Momentaufnahme beim Abschluss (Funktion, Seite, Person, Bearbeiter)
+    const kontext = {
+      rollen: data.roles.filter((r) => r.projectId === run.projectId),
+      kontakte: data.contacts.filter((c) => c.projectId === run.projectId),
+      gewerk: data.documents.find((d) => d.id === run.documentId)?.gewerk ?? '',
+      bearbeiter: data.bearbeiter?.name ?? '',
+    };
+    const ergebnis = schrittStatusSetzen(run, step, status, nachweisNummer, { kontext });
     if (ergebnis.art === 'nachweis') {
       setNachweisFuer({ run, step: ergebnis.step });
       return;
@@ -38,15 +45,12 @@ export function useSchrittStatus() {
     toast(ergebnis.meldung);
 
     // Sieht der Workflow es für diesen Schritt vor, anbieten, die für den
-    // nächsten Schritt zuständige Person per E-Mail zu informieren.
-    if (
-      (data.bearbeiter?.mailNachfrage ?? true) &&
-      status === 'erledigt' &&
-      step.mailFrage &&
-      ergebnis.naechster &&
-      ergebnis.naechster.contactId
-    ) {
-      setFrage({ run, step: ergebnis.naechster, vorlageId: step.mailVorlageId });
+    // nächsten Schritt zuständige Person per E-Mail zu informieren. Stehen
+    // mehrere Schritte neu an (paralleler Block), gilt vorerst der erste mit
+    // zuständiger Person.
+    const naechster = ergebnis.naechste.find((s) => s.contactId);
+    if ((data.bearbeiter?.mailNachfrage ?? true) && status === 'erledigt' && step.mailFrage && naechster) {
+      setFrage({ run, step: naechster, vorlageId: step.mailVorlageId });
     }
   };
 

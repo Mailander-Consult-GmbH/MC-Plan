@@ -795,6 +795,8 @@ function PlanDialog({
       abbruchNeuerIndex: null,
       steps: markiert,
       bemerkung: '',
+      protokoll: [],
+      basis: null,
     });
 
     const ohneKontakt = markiert.filter((s) => !s.contactId).length;

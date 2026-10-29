@@ -7,7 +7,7 @@
  * besetzt anschließend die Funktion.
  */
 import { useRef, useState } from 'react';
-import { EIGENE_ROLLE, UEBERGREIFEND, istEigeneFunktion, kuerzelAus, type Contact, type ID, type Project, type Zuordnung } from '../../domain/types';
+import { EIGENE_ROLLE, UEBERGREIFEND, istEigeneFunktion, kuerzelAus, seiteAusFunktion, type Contact, type ID, type Project, type Zuordnung } from '../../domain/types';
 import { spaltenZuordnen, tabelleLesen } from '../../../../shared/xlsxLesen';
 import {
   ROLLEN_KOPFZEILE as KOPFZEILE,
@@ -188,6 +188,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         farbe: FARBEN[(rollen.length + neueRollen) % FARBEN.length],
         beschreibung: '',
         gewerk: z.gewerk,
+        seite: seiteAusFunktion(z.funktion),
       });
       rolleIds.set(schluessel, id);
       neueRollen += 1;

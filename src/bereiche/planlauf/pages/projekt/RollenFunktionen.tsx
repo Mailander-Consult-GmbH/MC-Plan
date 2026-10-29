@@ -16,6 +16,7 @@ import {
   funktionsName,
   istEigeneFunktion,
   kuerzelAus,
+  seiteAusFunktion,
   type Contact,
   type ID,
   type Project,
@@ -665,6 +666,8 @@ function FunktionsDialog({
       ...form,
       name: form.name.trim(),
       kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
+      // Seite im Terminnachweis: bleibt bestehen, neue Funktionen nach ihrer Bezeichnung
+      seite: rolle ? rolle.seite : seiteAusFunktion(form.name),
     };
     if (rolle) {
       updateRole(rolle.id, werte);

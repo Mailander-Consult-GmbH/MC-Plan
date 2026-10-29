@@ -2,7 +2,9 @@
  * Ein Workflow als Ablaufbild – Grundlage des grafischen Workflow-Editors.
  *
  * Die Schritte liegen als Liste vor; ein Übergang ohne Ziel (`null`) führt zum
- * nächsten Schritt der Liste. Daraus entsteht hier
+ * nächsten Schritt der Liste (im Zweig eines parallelen Blocks: des Zweigs).
+ * Aufgelöst werden Ziele ausschließlich über `nachfolger` in ablauf.ts.
+ * Daraus entsteht hier
  *  - der **Standardverlauf**: der Weg, den ein Planlauf nimmt, wenn jede
  *    Entscheidung mit ihrer ersten Antwort beantwortet wird (wie `pfad` in
  *    engine.ts),
@@ -16,6 +18,14 @@
  * werden von außen übergeben, damit die Funktionen auch im StrictMode
  * gefahrlos doppelt laufen können.
  */
+import {
+  bloeckeOrdnen,
+  nachfolger,
+  strukturVon,
+  zieleFestschreiben,
+  zieleVereinfachen,
+  type Struktur,
+} from './ablauf';
 import { verlaufDerKette } from './engine';
 import { STANDARD_ANTWORTEN, istPrueferRolle, type Antwort, type ID, type ProcessTemplateStep, type StepType } from './types';
 
@@ -28,8 +38,9 @@ export type Ziel = ID | 'ende';
 /* Neue Schritte                                                       */
 /* ------------------------------------------------------------------ */
 
+/** „Ja“ und „Nein“; jede Antwort außer der ersten führt in Nacharbeit. */
 export function standardAntworten(neueId: NeueId): Antwort[] {
-  return STANDARD_ANTWORTEN.map((text) => ({ id: neueId('ant'), text, ziel: null }));
+  return STANDARD_ANTWORTEN.map((text, i) => ({ id: neueId('ant'), text, ziel: null, nacharbeit: i > 0 }));
 }
 
 /** Leerer Schritt – Entscheidungen mit den Antworten „Ja“ und „Nein“. */
@@ -46,6 +57,7 @@ export function neuerSchritt(typ: StepType, neueId: NeueId): ProcessTemplateStep
     nachweis: 'keine',
     mailFrage: false,
     mailVorlageId: null,
+    parallel: null,
   };
 }
 
@@ -69,27 +81,42 @@ export interface Kante {
 }
 
 /**
- * Löst ein Ziel auf: `null` ist der nächste Schritt der Liste (am Listenende
- * das Ende), ein unbekanntes Ziel beendet den Ablauf wie in `verlaufDerKette`.
+ * Löst ein Ziel über `nachfolger` (ablauf.ts) auf: `null` ist der nächste
+ * Schritt der Liste bzw. des Zweigs, ein unbekanntes Ziel beendet den Ablauf
+ * wie in `verlaufDerKette`. Das Ende eines Zweigs („Zweig beendet“) führt zum
+ * Anschluss hinter dem Block, ein Ausstieg zu seinem Ziel.
  */
-export function zielAufloesen(steps: ProcessTemplateStep[], index: number, ziel: ID | 'ende' | null): Ziel {
-  if (ziel === 'ende') return 'ende';
-  if (ziel !== null) return steps.some((s) => s.id === ziel) ? ziel : 'ende';
-  return steps[index + 1]?.id ?? 'ende';
+export function zielAufloesen(
+  steps: ProcessTemplateStep[],
+  index: number,
+  ziel: ID | 'ende' | null,
+  struktur: Struktur = strukturVon(steps),
+): Ziel {
+  const f = nachfolger(steps, index, ziel, struktur);
+  if (f.art === 'schritt' || f.art === 'ausstieg') return steps[f.index].id;
+  if (f.art === 'zweigende') {
+    const lage = struktur.lage[index];
+    return lage ? (steps[lage.block.ende]?.id ?? 'ende') : 'ende';
+  }
+  return 'ende';
 }
 
 /** Alle Übergänge eines Schritts – bei Entscheidungen einer je Antwort. */
-export function kantenVon(steps: ProcessTemplateStep[], index: number): Omit<Kante, 'standard'>[] {
+export function kantenVon(
+  steps: ProcessTemplateStep[],
+  index: number,
+  struktur: Struktur = strukturVon(steps),
+): Omit<Kante, 'standard'>[] {
   const step = steps[index];
   if (step.typ === 'entscheidung' && step.antworten.length > 0) {
     return step.antworten.map((a) => ({
       von: step.id,
-      nach: zielAufloesen(steps, index, a.ziel),
+      nach: zielAufloesen(steps, index, a.ziel, struktur),
       antwortId: a.id,
       text: a.text,
     }));
   }
-  return [{ von: step.id, nach: zielAufloesen(steps, index, step.naechster), antwortId: null, text: null }];
+  return [{ von: step.id, nach: zielAufloesen(steps, index, step.naechster, struktur), antwortId: null, text: null }];
 }
 
 /** Der Übergang, dem der Standardverlauf folgt: die erste Antwort bzw. „weiter mit“. */
@@ -120,12 +147,13 @@ export function gliedern(steps: ProcessTemplateStep[]): Gliederung {
   if (steps.length === 0) return { haupt: [], rueckSprungZu: null, abweichungen: [], unerreichbar: [], kanten: [] };
 
   const verlauf = verlaufDerKette(steps);
+  const struktur = strukturVon(steps);
   const haupt = verlauf.schritte.map((s) => s.id);
   const position = new Map(haupt.map((id, k) => [id, k]));
   const index = new Map(steps.map((s, i) => [s.id, i]));
 
   const kanten: Kante[] = steps.flatMap((_, i) =>
-    kantenVon(steps, i).map((k, nr) => {
+    kantenVon(steps, i, struktur).map((k, nr) => {
       const p = position.get(k.von);
       // Standard ist nur der maßgebliche Übergang zum unmittelbar folgenden Schritt des
       // Standardverlaufs – beim letzten Schritt der zum Ende (nicht ein Rücksprung)
@@ -143,7 +171,7 @@ export function gliedern(steps: ProcessTemplateStep[]): Gliederung {
   while (warteschlange.length > 0) {
     const id = warteschlange.shift()!;
     const eigenerAnker = position.get(id) ?? anker.get(id) ?? 0;
-    for (const k of kantenVon(steps, index.get(id)!)) {
+    for (const k of kantenVon(steps, index.get(id)!, struktur)) {
       if (k.nach === 'ende' || bekannt.has(k.nach)) continue;
       bekannt.add(k.nach);
       anker.set(k.nach, eigenerAnker);
@@ -166,9 +194,14 @@ export function gliedern(steps: ProcessTemplateStep[]): Gliederung {
   };
 }
 
-/** Summe der Fristen im Standardverlauf. */
+/** Summe der Fristen im Standardverlauf; je paralleler Block zählt der längste Zweig. */
 export function dauerImStandardverlauf(steps: ProcessTemplateStep[]): number {
-  return verlaufDerKette(steps).schritte.reduce((summe, s) => summe + s.fristTage, 0);
+  const frist = (liste: ProcessTemplateStep[]) => liste.reduce((summe, s) => summe + s.fristTage, 0);
+  return verlaufDerKette(steps).abschnitte.reduce(
+    (summe, a) =>
+      summe + (a.art === 'schritt' ? a.step.fristTage : Math.max(0, ...a.zweige.map((z) => frist(z.schritte)))),
+    0,
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -176,25 +209,18 @@ export function dauerImStandardverlauf(steps: ProcessTemplateStep[]): number {
 /* ------------------------------------------------------------------ */
 
 /**
- * Schreibt jedes „nächster Schritt der Liste“ (null) als feste ID bzw. Ende
- * fest. Danach darf die Liste umgestellt werden, ohne dass sich der Ablauf
- * ändert; `vereinfachen` macht daraus wieder kurze Verweise.
+ * Schreibt jedes „nächster Schritt“ (null) als feste ID bzw. Ende fest (im
+ * Zweig: „Zweig beendet“ als `'ende'`). Danach darf die Liste umgestellt
+ * werden, ohne dass sich der Ablauf ändert; `vereinfachen` macht daraus wieder
+ * kurze Verweise. Beides über ablauf.ts.
  */
 function festschreiben(steps: ProcessTemplateStep[]): ProcessTemplateStep[] {
-  return steps.map((s, i) => ({
-    ...s,
-    naechster: s.naechster === null ? zielAufloesen(steps, i, null) : s.naechster,
-    antworten: s.antworten.map((a) => (a.ziel === null ? { ...a, ziel: zielAufloesen(steps, i, null) } : a)),
-  }));
+  return zieleFestschreiben(steps);
 }
 
-/** Feste Verweise auf den nächsten Schritt der Liste werden wieder zu null. */
+/** Feste Verweise auf den nächsten Schritt der Liste bzw. des Zweigs werden wieder zu null. */
 function vereinfachen(steps: ProcessTemplateStep[]): ProcessTemplateStep[] {
-  return steps.map((s, i) => {
-    const folge = steps[i + 1]?.id;
-    const kurz = (z: ID | 'ende' | null) => (z !== null && z === folge ? null : z);
-    return { ...s, naechster: kurz(s.naechster), antworten: s.antworten.map((a) => ({ ...a, ziel: kurz(a.ziel) })) };
-  });
+  return zieleVereinfachen(steps);
 }
 
 /** Setzt das Ziel eines Übergangs (Antwort oder „weiter mit“). */
@@ -213,8 +239,8 @@ export function zielSetzen(
 
 /**
  * Fügt einen neuen Schritt in einen Übergang ein: vorher → neu → bisheriges
- * Ziel. Der neue Schritt steht in der Liste direkt hinter dem Ausgangsschritt;
- * alle übrigen Übergänge behalten ihr Ziel.
+ * Ziel. Der neue Schritt steht in der Liste direkt hinter dem Ausgangsschritt
+ * und gehört zu dessen Zweig; alle übrigen Übergänge behalten ihr Ziel.
  */
 export function einfuegen(
   steps: ProcessTemplateStep[],
@@ -225,73 +251,83 @@ export function einfuegen(
   alleAntworten = false,
 ): ProcessTemplateStep[] {
   const i = steps.findIndex((s) => s.id === vonId);
-  if (i < 0) return [...steps, neu];
-  const von = steps[i];
-  const alterNachfolger = steps[i + 1]?.id ?? null;
-  const kante = kantenVon(steps, i).find((k) => k.antwortId === antwortId) ?? standardKante(steps, i);
-  const bisher = kante.nach;
-
+  if (i < 0) return [...steps, { ...neu, parallel: null }];
+  // Feste Ziele: das Einfügen ändert sonst die Bedeutung von „nächster Schritt“
+  const fest = festschreiben(steps);
+  const von = fest[i];
+  const antwort =
+    von.typ === 'entscheidung' && von.antworten.length > 0
+      ? (von.antworten.find((a) => a.id === antwortId) ?? von.antworten[0])
+      : undefined;
   // Der neue Schritt führt dorthin, wohin der Übergang bisher führte
-  const weiter: ID | 'ende' | null = bisher === 'ende' ? 'ende' : bisher === alterNachfolger ? null : bisher;
+  const bisher: ID | 'ende' = (antwort ? antwort.ziel : von.naechster) ?? 'ende';
+  const parallel = von.parallel ?? null;
   const eingefuegt: ProcessTemplateStep =
     neu.typ === 'entscheidung' && neu.antworten.length > 0
       ? {
           ...neu,
+          parallel,
           naechster: null,
-          antworten: neu.antworten.map((a, n) => (n === 0 || alleAntworten ? { ...a, ziel: weiter } : a)),
+          antworten: neu.antworten.map((a, n) => (n === 0 || alleAntworten ? { ...a, ziel: bisher } : a)),
         }
-      : { ...neu, naechster: weiter };
+      : { ...neu, parallel, naechster: bisher };
+  const angepasst: ProcessTemplateStep = antwort
+    ? { ...von, antworten: von.antworten.map((a) => (a.id === antwort.id ? { ...a, ziel: eingefuegt.id } : a)) }
+    : { ...von, naechster: eingefuegt.id };
 
-  // „Nächster Schritt“ meint nach dem Einfügen den neuen Schritt. Übergänge,
-  // die nicht eingefügt werden sollen, zeigen deshalb ausdrücklich auf den
-  // bisherigen Nachfolger.
-  const bisherigerNachfolger: ID | 'ende' = alterNachfolger ?? 'ende';
-  const istDieseKante = (aId: ID | null) => aId === kante.antwortId;
-  const angepasst: ProcessTemplateStep =
-    von.typ === 'entscheidung' && von.antworten.length > 0
-      ? {
-          ...von,
-          antworten: von.antworten.map((a) =>
-            istDieseKante(a.id) ? { ...a, ziel: null } : a.ziel === null ? { ...a, ziel: bisherigerNachfolger } : a,
-          ),
-        }
-      : { ...von, naechster: null };
-
-  return [...steps.slice(0, i), angepasst, eingefuegt, ...steps.slice(i + 1)];
+  return vereinfachen([...fest.slice(0, i), angepasst, eingefuegt, ...fest.slice(i + 1)]);
 }
 
 /** Fügt einen neuen ersten Schritt ein; er führt zum bisherigen ersten Schritt. */
 export function einfuegenAmAnfang(steps: ProcessTemplateStep[], neu: ProcessTemplateStep): ProcessTemplateStep[] {
   const eingefuegt =
     neu.typ === 'entscheidung' && neu.antworten.length > 0
-      ? { ...neu, naechster: null, antworten: neu.antworten.map((a) => ({ ...a, ziel: null })) }
-      : { ...neu, naechster: null };
+      ? { ...neu, parallel: null, naechster: null, antworten: neu.antworten.map((a) => ({ ...a, ziel: null })) }
+      : { ...neu, parallel: null, naechster: null };
   return [eingefuegt, ...steps];
 }
 
 /**
  * Entfernt einen Schritt. Übergänge, die zu ihm führten, führen danach dorthin
  * weiter, wohin er im Standardverlauf geführt hat – der Ablauf reißt nicht ab.
- * War er der erste Schritt, beginnt der Ablauf bei seinem Ziel.
+ * War er der erste Schritt, beginnt der Ablauf bei seinem Ziel. Bei einem
+ * Schritt eines Blocks gilt das innerhalb seines Zweigs; Verweise von außen
+ * führen weiter in den Block. Zuletzt werden die Blockregeln wiederhergestellt
+ * (ein Block mit nur noch einem Zweig wird aufgelöst).
  */
 export function entfernen(steps: ProcessTemplateStep[], id: ID): ProcessTemplateStep[] {
   const i = steps.findIndex((s) => s.id === id);
   if (i < 0) return steps;
+  const struktur = strukturVon(steps);
+  const lage = struktur.lage[i];
   const fest = festschreiben(steps);
-  const weiterZu = standardKante(fest, i).nach;
+  const entfernt = fest[i];
+  // Fest geschrieben: das Ziel des Standardübergangs (im Zweig: 'ende' = Zweig beendet)
+  const weiterZu: ID | 'ende' =
+    (entfernt.typ === 'entscheidung' && entfernt.antworten.length > 0 ? entfernt.antworten[0].ziel : entfernt.naechster) ??
+    'ende';
   const ersatz: ID | 'ende' = weiterZu === id ? 'ende' : weiterZu;
+  // Verweise von außerhalb des Blocks führen weiter in den Block
+  const blockErsatz = lage
+    ? (lage.block.zweige.flat().map((k) => steps[k].id).find((x) => x !== id) ?? ersatz)
+    : ersatz;
   let rest = fest
-    .filter((s) => s.id !== id)
-    .map((s) => {
+    .map((s, k) => ({ s, k }))
+    .filter(({ s }) => s.id !== id)
+    .map(({ s, k }) => {
+      const eigene = struktur.lage[k];
+      const gleicherZweig = Boolean(lage && eigene && eigene.block === lage.block && eigene.zweig === lage.zweig);
+      const andererZweig = Boolean(lage && eigene && eigene.block === lage.block && !gleicherZweig);
+      const ziel = !lage || gleicherZweig ? ersatz : andererZweig ? 'ende' : blockErsatz;
       // Ein Verweis, der nun auf den Schritt selbst zeigte, führt zum nächsten der Liste
-      const umbiegen = (z: ID | 'ende' | null) => (z === id ? (ersatz === s.id ? null : ersatz) : z);
+      const umbiegen = (z: ID | 'ende' | null) => (z === id ? (ziel === s.id ? null : ziel) : z);
       return { ...s, naechster: umbiegen(s.naechster), antworten: s.antworten.map((a) => ({ ...a, ziel: umbiegen(a.ziel) })) };
     });
-  if (i === 0 && ersatz !== 'ende') {
+  if (i === 0 && !lage && ersatz !== 'ende') {
     const start = rest.find((s) => s.id === ersatz);
     if (start) rest = [start, ...rest.filter((s) => s !== start)];
   }
-  return vereinfachen(rest);
+  return bloeckeOrdnen(vereinfachen(rest));
 }
 
 /**
@@ -406,9 +442,12 @@ export function pruefen(steps: ProcessTemplateStep[]): Hinweis[] {
   return hinweise;
 }
 
-/** Antworten ohne Text erhalten beim Speichern „Ja“, „Nein“ bzw. „Antwort n“. */
+/**
+ * Antworten ohne Text erhalten beim Speichern „Ja“, „Nein“ bzw. „Antwort n“;
+ * parallele Blöcke werden geordnet (siehe `bloeckeOrdnen` in ablauf.ts).
+ */
 export function bereinigen(steps: ProcessTemplateStep[]): ProcessTemplateStep[] {
-  return steps.map((s) => ({
+  return bloeckeOrdnen(steps.map((s) => ({
     ...s,
     name: s.name.trim(),
     roleName: s.roleName.trim(),
@@ -416,7 +455,12 @@ export function bereinigen(steps: ProcessTemplateStep[]): ProcessTemplateStep[] 
     naechster: s.typ === 'entscheidung' && s.antworten.length > 0 ? null : s.naechster,
     antworten:
       s.typ === 'entscheidung'
-        ? s.antworten.map((a, i) => ({ ...a, text: a.text.trim() || STANDARD_ANTWORTEN[i] || `Antwort ${i + 1}` }))
+        ? s.antworten.map((a, i) => ({
+            ...a,
+            text: a.text.trim() || STANDARD_ANTWORTEN[i] || `Antwort ${i + 1}`,
+            nacharbeit: a.nacharbeit ?? i > 0,
+          }))
         : [],
-  }));
+    parallel: s.parallel ?? null,
+  })));
 }

@@ -402,6 +402,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           bemerkung: `Neu gestartet am ${formatDate(heute)} – vorher Workflow „${alt.templateName}“${
             grund ? ` (${grund})` : ''
           }`,
+          protokoll: [],
+          basis: null,
         };
         mutate((d) => ({
           ...d,

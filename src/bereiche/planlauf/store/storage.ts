@@ -9,6 +9,7 @@ import {
   GEWERKE,
   STAMMDATEN_VERSION,
   STANDARD_BEARBEITER,
+  seiteAusFunktion,
   type AppData,
   type EmailTemplate,
   type ProcessTemplate,
@@ -198,6 +199,7 @@ function stammdatenAktualisieren(daten: AppData): AppData {
         farbe: standard.farbe,
         beschreibung: standard.beschreibung,
         gewerk: standard.gewerk,
+        seite: standard.seite,
       });
     }
   }
@@ -256,10 +258,22 @@ function rueckmeldungVerbinden<T extends ProcessTemplateStep | RunStep>(steps: T
   return nachher.every((id) => vorher.includes(id)) ? neu : steps;
 }
 
+/** Seite einer Funktion; ältere Bestände kennen sie nicht – Vorbelegung aus der Bezeichnung. */
+function mitSeite<T extends { name: string; seite?: StandardRolle['seite'] }>(rolle: T): T & { seite: StandardRolle['seite'] } {
+  return { ...rolle, seite: rolle.seite !== undefined ? rolle.seite : seiteAusFunktion(rolle.name) };
+}
+
+/** Antworten ab Fassung 13: jede Antwort außer der ersten führt (ohne Angabe) in Nacharbeit. */
+function mitNacharbeit(antworten: { nacharbeit?: boolean }[]): never {
+  return antworten.map((a, i) => ({ ...a, nacharbeit: a.nacharbeit ?? i > 0 })) as never;
+}
+
 /**
  * Hebt einen älteren Bestand auf die aktuelle Fassung. Fehlende Felder werden
  * mit sinnvollen Standardwerten ergänzt, damit vorhandene Eingaben erhalten
- * bleiben.
+ * bleiben. Die Felder der Fassung 13 (parallele Blöcke, fester Eingang,
+ * Historie, Erinnerungen, Protokoll …) erhalten hier zunächst nur leere
+ * Vorgaben.
  */
 function migriere(daten: AppData): AppData {
   if (daten.version === DATEN_VERSION) return daten;
@@ -299,7 +313,7 @@ function migriere(daten: AppData): AppData {
     },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0
-        ? rollenAufteilen(daten.standardRollen)
+        ? rollenAufteilen(daten.standardRollen).map(mitSeite)
         : STANDARD_ROLLEN.map((r) => ({ ...r })),
     // E-Mail-Vorlagen werden projektübergreifend gepflegt; frühere
     // Projektvorlagen wandern beim ersten Laden in die gemeinsame Liste.
@@ -323,7 +337,7 @@ function migriere(daten: AppData): AppData {
       };
       return { ...p, markiert: p.markiert ?? true, settings };
     }),
-    roles: rollenAufteilen(daten.roles ?? []),
+    roles: rollenAufteilen(daten.roles ?? []).map(mitSeite),
     contacts: (daten.contacts ?? []).map((c) => {
       const alt = c as unknown as { roleIds?: string[] };
       const alteRollen = daten.roles ?? [];
@@ -385,11 +399,12 @@ function migriere(daten: AppData): AppData {
           ...s,
           typ,
           roleName: rollenName(s.roleName),
-          antworten: alsAntworten(typ, s.antworten),
+          antworten: mitNacharbeit(alsAntworten(typ, s.antworten)),
           naechster: s.naechster ?? null,
           nachweis: s.nachweis ?? 'keine',
           mailFrage: s.mailFrage ?? false,
           mailVorlageId: s.mailVorlageId ?? null,
+          parallel: s.parallel ?? null,
         };
       }))),
     })),
@@ -401,13 +416,25 @@ function migriere(daten: AppData): AppData {
       abbruchDatum: r.abbruchDatum ?? null,
       abbruchArt: r.abbruchArt ?? (r.status === 'abgebrochen' ? 'ersatzlos' : null),
       abbruchNeuerIndex: r.abbruchNeuerIndex ?? null,
+      protokoll: r.protokoll ?? [],
+      basis: r.basis ?? null,
       steps: laufVerbinden(r.status, zieleBereinigen((r.steps ?? []).map((s) => {
         const typ = migriereTyp(s.typ as unknown as string);
         return {
           ...s,
           typ,
           roleName: rollenName(s.roleName),
-          antworten: alsAntworten(typ, s.antworten),
+          antworten: mitNacharbeit(alsAntworten(typ, s.antworten)),
+          parallel: s.parallel ?? null,
+          eingangIst: s.eingangIst ?? null,
+          eingangGeschaetzt: s.eingangGeschaetzt ?? false,
+          eingangDatum: s.eingangDatum ?? null,
+          abschlussInfo: s.abschlussInfo ?? null,
+          historie: s.historie ?? [],
+          erinnerungen: s.erinnerungen ?? [],
+          verzugZuordnung: s.verzugZuordnung ?? [],
+          nacharbeitSeite: s.nacharbeitSeite ?? null,
+          blockDurchgang: s.blockDurchgang ?? 1,
           naechster: s.naechster ?? null,
           gewaehlteAntwortId: s.gewaehlteAntwortId ?? null,
           durchlauf: s.durchlauf ?? 1,
@@ -420,6 +447,7 @@ function migriere(daten: AppData): AppData {
         };
       }))),
     })),
+    geloescht: daten.geloescht ?? [],
   };
 }
 

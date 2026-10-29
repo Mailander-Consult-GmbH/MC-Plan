@@ -10,11 +10,14 @@ import {
   kontaktFuerRolleUndGewerk,
   laufSchritteAusVorlage,
   massgeblicheAntwort,
+  neueLaufFelder,
   nichtImPfad,
+  schritteFuerNeuenLauf,
   verlaufDerKette,
   vorlagenSchritte,
   type Ampel,
 } from '../../domain/engine';
+import { schrittImLaufEinfuegen } from '../../domain/ablauf';
 import { formatDate, tageLabel, today } from '../../../../shared/dates';
 import {
   INDEX_LABEL,
@@ -138,12 +141,15 @@ export function PlanlaufDetail({
   const setzeStatus = (step: RunStep, status: StepStatus) => statusSetzen(run, step, status);
 
   /**
-   * Fügt einen Schritt hinter einem Schritt des Verlaufs ein und verkettet ihn:
-   * Der neue Schritt übernimmt den bisherigen Nachfolger, der Vorgänger zeigt
-   * auf den neuen Schritt. So bleibt der Verlauf lückenlos.
+   * Fügt einen Schritt hinter einem Schritt des Verlaufs ein und verkettet ihn
+   * (blockbewusst, siehe `schrittImLaufEinfuegen` in ablauf.ts): Der neue
+   * Schritt übernimmt den bisherigen Übergang und den Zweig des Vorgängers, der
+   * Vorgänger zeigt auf den neuen Schritt. So bleibt der Verlauf lückenlos;
+   * steht der neue Schritt sofort an, gilt heute als Eingang.
    */
   const schrittEinfuegen = (werte: SchrittWerte, nachStepId: string | null) => {
     const neu: RunStep = {
+      ...neueLaufFelder(),
       id: newId('rs'),
       name: werte.name,
       typ: werte.typ,
@@ -152,47 +158,15 @@ export function PlanlaufDetail({
       contactManuell: werte.contactManuell,
       fristTage: werte.fristTage,
       bemerkung: werte.bemerkung,
-      sollManuell: false,
-      sollDatum: null,
-      istDatum: null,
-      status: 'offen',
       abweichung: true,
-      letzteErinnerung: null,
       antworten: [],
       naechster: null,
-      gewaehlteAntwortId: null,
-      durchlauf: 1,
       nachweis: werte.nachweis,
-      nachweisNummer: null,
       mailFrage: false,
       mailVorlageId: null,
+      parallel: null,
     };
-
-    if (!nachStepId) {
-      updateRun(run.id, { steps: [neu, ...run.steps] });
-      return;
-    }
-
-    const index = run.steps.findIndex((s) => s.id === nachStepId);
-    const vorgaenger = run.steps[index];
-    const steps = [...run.steps];
-
-    if (vorgaenger.typ === 'entscheidung' && vorgaenger.antworten.length > 0) {
-      // Hinter einer Entscheidung bestimmt die maßgebliche Antwort den Verlauf.
-      const antwort = massgeblicheAntwort(vorgaenger)!;
-      neu.naechster = antwort.ziel ?? run.steps[index + 1]?.id ?? 'ende';
-      steps[index] = {
-        ...vorgaenger,
-        antworten: vorgaenger.antworten.map((a) => (a.id === antwort.id ? { ...a, ziel: neu.id } : a)),
-        abweichung: true,
-      };
-    } else {
-      neu.naechster = vorgaenger.naechster ?? run.steps[index + 1]?.id ?? 'ende';
-      steps[index] = { ...vorgaenger, naechster: neu.id, abweichung: true };
-    }
-
-    steps.splice(index + 1, 0, neu);
-    updateRun(run.id, { steps });
+    updateRun(run.id, { steps: schrittImLaufEinfuegen(run.steps, nachStepId, neu, 'danach', today()) });
   };
 
   const waehleAntwort = (step: RunStep, antwortId: string) => {
@@ -696,31 +670,10 @@ export function PlanlaufDetail({
           onAbbrechen={(grund, art, neuerIndex) => {
             abbrechenRun(run.id, grund, art, neuerIndex || null);
             if (art === 'neuer_index' && doc) {
-              // Eintrag auf den neuen Index heben und den Lauf von vorn beginnen
+              // Eintrag auf den neuen Index heben und den Lauf von vorn beginnen:
+              // gleiche Kette mit neuen Kennungen, alle Lauffelder zurückgesetzt
               updateDocument(doc.id, { index: neuerIndex });
-              const neueSchritte: RunStep[] = run.steps.map((s) => ({
-                ...s,
-                id: newId('rs'),
-                status: 'offen',
-                istDatum: null,
-                nachweisNummer: null,
-                gewaehlteAntwortId: null,
-                durchlauf: 1,
-                sollDatum: null,
-              }));
-              // Verweise (Antwortziele, Nachfolger) auf die neuen IDs umbiegen
-              const idMap = new Map(run.steps.map((s, i) => [s.id, neueSchritte[i].id]));
-              const verdrahtet = neueSchritte.map((s) => ({
-                ...s,
-                naechster:
-                  s.naechster === 'ende' || s.naechster === null ? s.naechster : (idMap.get(s.naechster) ?? null),
-                antworten: s.antworten.map((a) => ({
-                  ...a,
-                  id: newId('ant'),
-                  ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
-                })),
-              }));
-              verdrahtet[0] = { ...verdrahtet[0], status: 'laufend' };
+              const verdrahtet = schritteFuerNeuenLauf(run.steps, newId);
 
               const neuerLauf = addRun({
                 projectId: run.projectId,
@@ -737,6 +690,8 @@ export function PlanlaufDetail({
                 abbruchNeuerIndex: null,
                 steps: verdrahtet,
                 bemerkung: `Nachfolger von „${run.name}“ (${grund})`,
+                protokoll: [],
+                basis: null,
               });
               toast(`Neuer Planlauf mit ${INDEX_LABEL[doc.kind]} ${neuerIndex} gestartet.`);
               oeffneLauf?.(neuerLauf);
