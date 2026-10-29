@@ -12,6 +12,7 @@ import { Projekte } from './pages/Projekte';
 import { Workflows } from './pages/Workflows';
 import { Funktionen } from './pages/Funktionen';
 import { Vorlagen } from './pages/Vorlagen';
+import { Terminrechner } from './pages/Terminrechner';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../shared/ui';
 import { EIGENE_ROLLE, STANDARD_BEARBEITER } from './domain/types';
@@ -74,6 +75,12 @@ export function App() {
           label="Vorlagen"
           aktiv={route.view === 'vorlagen'}
           onClick={() => gehe({ view: 'vorlagen' })}
+        />
+        <NavItem
+          icon="kalender"
+          label="Terminrechner"
+          aktiv={route.view === 'terminrechner'}
+          onClick={() => gehe({ view: 'terminrechner' })}
         />
 
         <div className="nav-group-label">
@@ -145,6 +152,7 @@ export function App() {
             {route.view === 'ketten' ? <Workflows /> : null}
             {route.view === 'rollen' ? <Funktionen /> : null}
             {route.view === 'vorlagen' ? <Vorlagen /> : null}
+            {route.view === 'terminrechner' ? <Terminrechner /> : null}
             {route.view === 'projekt' ? (
               projekt ? (
                 <ProjektDetail project={projekt} tab={route.tab} navigate={gehe} />
@@ -339,6 +347,8 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
       return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Gewerken' };
     case 'vorlagen':
       return { titel: 'Vorlagen', sub: 'E-Mail-Texte und Excel-Vorlagen für den Upload' };
+    case 'terminrechner':
+      return { titel: 'Terminrechner', sub: 'Späteste Übergabe und Ende des Planlaufs aus den Fristen' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'planlauf':
