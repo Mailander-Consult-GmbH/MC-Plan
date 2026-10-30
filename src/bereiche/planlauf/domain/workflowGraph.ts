@@ -758,14 +758,14 @@ export function parallelBlockEinfuegen(
 }
 
 /** Fügt einem Block einen weiteren Zweig mit einem neuen Schritt hinzu („Zweig beendet“ am Ende). */
-export function zweigHinzufuegen(steps: ProcessTemplateStep[], blockId: ID, neu: ProcessTemplateStep): ProcessTemplateStep[] {
+export function zweigHinzufuegen(steps: ProcessTemplateStep[], blockId: ID, neu: ProcessTemplateStep): Bearbeitung {
   const st = strukturVon(steps);
   const b = st.bloecke.get(blockId);
-  if (!b) return steps;
+  if (!b) return { steps, hinweis: null };
   const nr = Math.max(...b.zweige.map((idx) => steps[idx[0]].parallel!.zweig)) + 1;
   const fest = festschreiben(steps);
   const eingefuegt = mitStandardZiel({ ...neu, parallel: { block: blockId, zweig: nr } }, 'ende', true);
-  return geordnet(vereinfachen([...fest.slice(0, b.ende), eingefuegt, ...fest.slice(b.ende)])).steps;
+  return geordnet(vereinfachen([...fest.slice(0, b.ende), eingefuegt, ...fest.slice(b.ende)]));
 }
 
 /**
@@ -862,11 +862,12 @@ export function verschiebbar(g: Gliederung, id: ID): { frueher: boolean; spaeter
  * eine Stelle. Im Zweig eines Blocks bewegt er sich im Standardweg des Zweigs.
  * Abweichungen bleiben, wo sie sind.
  */
-export function imVerlaufVerschieben(steps: ProcessTemplateStep[], id: ID, richtung: -1 | 1): ProcessTemplateStep[] {
+export function imVerlaufVerschieben(steps: ProcessTemplateStep[], id: ID, richtung: -1 | 1): Bearbeitung {
   const g = gliedern(steps);
   const l = lageImBild(g, id);
   const ok = verschiebbar(g, id);
-  if (!l || (richtung === -1 ? !ok.frueher : !ok.spaeter)) return steps;
+  const unveraendert: Bearbeitung = { steps, hinweis: null };
+  if (!l || (richtung === -1 ? !ok.frueher : !ok.spaeter)) return unveraendert;
   const schritt = festschreiben(steps).find((s) => s.id === id)!;
   const ohne = festschreiben(entfernen(steps, id));
   // Einfügen hinter der Stelle, die danach unmittelbar davor stehen soll
@@ -881,7 +882,7 @@ export function imVerlaufVerschieben(steps: ProcessTemplateStep[], id: ID, richt
       ergebnis = [mitStandardZiel(schritt, ohne[0]?.id ?? 'ende'), ...ohne];
     } else if (istBlockAnzeige(vor)) {
       const b = strukturVon(ohne).bloecke.get(vor.block);
-      if (!b) return steps;
+      if (!b) return unveraendert;
       ergebnis = hinterBlockSetzen(ohne, b, schritt);
     } else {
       ergebnis = hinter(vor);
@@ -890,7 +891,7 @@ export function imVerlaufVerschieben(steps: ProcessTemplateStep[], id: ID, richt
     const vor = richtung === -1 ? (l.j >= 2 ? l.z.standard[l.j - 2] : null) : l.z.standard[l.j + 1];
     ergebnis = vor === null ? einfuegenAmZweiganfang(ohne, l.b.block, l.z.zweig, schritt) : hinter(vor);
   }
-  return geordnet(vereinfachen(festschreiben(ergebnis))).steps;
+  return geordnet(vereinfachen(festschreiben(ergebnis)));
 }
 
 /** Kopie eines Schritts, eingefügt direkt hinter ihm im Standardverlauf (im selben Zweig). */

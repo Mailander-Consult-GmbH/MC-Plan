@@ -1483,7 +1483,7 @@ function SchrittDetails({
   const zweigDazu = () => {
     if (!lage) return;
     const neu = neuerSchritt('aufgabe', newId);
-    onBearbeitung({ steps: zweigHinzufuegen(steps, lage.block.id, neu), hinweis: null }, neu.id, 'Zweig hinzugefügt.');
+    onBearbeitung(zweigHinzufuegen(steps, lage.block.id, neu), neu.id, 'Zweig hinzugefügt.');
   };
 
   return (
@@ -1792,7 +1792,7 @@ function SchrittDetails({
             type="button"
             className="btn-icon"
             disabled={!bewegbar.frueher}
-            onClick={() => onSchritteAendern((alle) => imVerlaufVerschieben(alle, step.id, -1))}
+            onClick={() => onBearbeitung(imVerlaufVerschieben(steps, step.id, -1))}
             aria-label="Früher im Ablauf"
             title="Früher im Ablauf"
           >
@@ -1802,7 +1802,7 @@ function SchrittDetails({
             type="button"
             className="btn-icon"
             disabled={!bewegbar.spaeter}
-            onClick={() => onSchritteAendern((alle) => imVerlaufVerschieben(alle, step.id, 1))}
+            onClick={() => onBearbeitung(imVerlaufVerschieben(steps, step.id, 1))}
             aria-label="Später im Ablauf"
             title="Später im Ablauf"
           >
