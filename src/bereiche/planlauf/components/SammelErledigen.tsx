@@ -217,7 +217,7 @@ export function SammelErledigen({
     );
     return (
       <Modal
-        titel="Schritte erledigt"
+        titel={ergebnis.art === 'erledigt' ? 'Schritte erledigt' : 'Schritte übersprungen'}
         sub={`Ist-Datum ${formatDate(istDatum)}`}
         onClose={onClose}
         footer={
