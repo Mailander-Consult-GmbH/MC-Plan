@@ -566,12 +566,16 @@ function endendeLaeufe(b: Einheit, s: Einheit): PlanRun[] {
 }
 
 /** Was die Übernahme der Einheit am Bestand ändern würde. */
-function einheitUnterschiede(b: Einheit, s: Einheit): string[] {
+function einheitUnterschiede(b: Einheit, s: Einheit, vermerke: Map<string, Loeschvermerk>): string[] {
+  const geloescht = (art: 'eintrag' | 'lauf', id: ID) => {
+    const v = vermerke.get(`${art}:${id}`);
+    return v ? ` (im Bestand gelöscht am ${v.am.slice(8, 10)}.${v.am.slice(5, 7)}.${v.am.slice(0, 4)})` : '';
+  };
   const u: string[] = [];
   const bDocs = new Map(b.docs.map((d) => [d.id, d]));
   for (const d of s.docs) {
     const alt = bDocs.get(d.id);
-    if (!alt) u.push(`${eintragName(d)} nur in der Sicherung`);
+    if (!alt) u.push(`${eintragName(d)} nur in der Sicherung${geloescht('eintrag', d.id)}`);
     else {
       const felder = feldUnterschiede(formEintrag(alt), formEintrag(d));
       if (felder.length) u.push(`${d.id === s.oben.id ? DOCUMENT_KIND_LABEL[d.kind] : eintragName(d)}: ${felder.join(', ')}`);
@@ -580,7 +584,7 @@ function einheitUnterschiede(b: Einheit, s: Einheit): string[] {
   const bRuns = new Map(b.runs.map((r) => [r.id, r]));
   for (const r of s.runs) {
     const alt = bRuns.get(r.id);
-    if (!alt) u.push(`${laufName(r)} nur in der Sicherung`);
+    if (!alt) u.push(`${laufName(r)} nur in der Sicherung${geloescht('lauf', r.id)}`);
     else {
       const felder = laufUnterschiede(alt, r);
       if (felder.length) u.push(`${laufName(r)}: ${felder.join(', ')}`);
@@ -853,7 +857,7 @@ function ermitteln(bestand: AppData, sicherungRoh: AppData, getrennt: ReadonlySe
             zusatz: einheitZusatz((se ?? be)!),
             bestand: !!be,
             sicherung: !!se,
-            unterschiede: be && se ? einheitUnterschiede(be, se) : [],
+            unterschiede: be && se ? einheitUnterschiede(be, se, vermerke) : [],
             zuletztBestand: einheitZuletzt(be),
             zuletztSicherung: einheitZuletzt(se),
           },
@@ -906,6 +910,8 @@ function ermitteln(bestand: AppData, sicherungRoh: AppData, getrennt: ReadonlySe
   function verweise<T>(e: AbgleichElement, felder: Verweisfeld<T>[], objekte: T[]) {
     for (const o of objekte) {
       for (const f of felder) {
+        // „leeren“: fehlt das Ziel, wird der Verweis geleert – keine Abhängigkeit
+        if (f.regel === 'leeren') continue;
         for (const wert of f.werte(o)) {
           if (!wert) continue;
           const k = zielSchluessel(f.ziel, wert);
