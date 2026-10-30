@@ -1501,8 +1501,9 @@ function SchrittDetails({
           >
             <Icon name="zurueck" size={14} />
           </button>
-          <span className="tertiary">
-            {pos + 1} von {bildFolge.length}
+          {/* Zählt die Karten in der Reihenfolge der Zeichenfläche – nicht die Schrittnummer */}
+          <span className="tertiary" title="Position in der Reihenfolge der Zeichenfläche">
+            Karte {pos + 1} von {bildFolge.length}
           </span>
           <button
             type="button"
