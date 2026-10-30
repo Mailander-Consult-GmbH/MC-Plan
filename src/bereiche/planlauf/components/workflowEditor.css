@@ -653,6 +653,19 @@
   color: var(--gruen-text);
 }
 .wf-parallel-kopf-text { font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); }
+/* Der Kopf ist eine Schaltfläche: wählt den ersten Schritt des Blocks und öffnet „Name des Blocks“ */
+button.wf-parallel-kopf {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.wf-parallel-kopf:hover .wf-parallel-titel { text-decoration: underline; text-underline-offset: 2px; }
+.wf-parallel-titel { min-width: 0; overflow-wrap: anywhere; }
+.wf-parallel-namen { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 10px; margin-bottom: 10px; }
 /* Gabel- und Zusammenführungsbalken: nebeneinander von Zweigmitte zu Zweigmitte */
 .wf-parallel-balken { height: 3px; border-radius: 2px; background: var(--green); }
 .wf-parallel-nebeneinander .wf-parallel-balken { margin: 0 120px; }
@@ -672,7 +685,9 @@
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
-.wf-parallel-nebeneinander .wf-parallel-zweig-kopf { position: absolute; top: 8px; left: 2px; }
+.wf-parallel-zweig-kopf { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Nebeneinander links neben dem „+“ in der Zweigmitte */
+.wf-parallel-nebeneinander .wf-parallel-zweig-kopf { position: absolute; top: 8px; left: 2px; max-width: calc(50% - 18px); }
 .wf-parallel-zweig .wf-verbinder { flex: none; min-height: 40px; }
 .wf-parallel-zweig .wf-verbinder.wf-parallel-anfang { min-height: 34px; }
 .wf-parallel-zweig .wf-karte { width: 100%; }

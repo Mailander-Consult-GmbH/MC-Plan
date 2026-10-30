@@ -9,6 +9,7 @@
 import { Fragment, useState } from 'react';
 import { STEP_TYPE_LABEL, type ProcessTemplate, type ProcessTemplateStep } from '../domain/types';
 import { anzahlBloecke, dauerImStandardverlauf, gliedern, istBlockAnzeige } from '../domain/workflowGraph';
+import { blockTitel, zweigTitel } from '../domain/ablauf';
 import { Badge } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
 import { WorkflowEditor } from './WorkflowEditor';
@@ -26,13 +27,19 @@ export function AblaufVorschau({ steps }: { steps: ProcessTemplateStep[] }) {
       />
     );
   };
+  /** Tooltip eines Blocks: Name, Zahl der Zweige und – wenn benannt – die Zweige. */
+  const blockHinweis = (blockId: string) => {
+    const b = bloecke[blockId];
+    const zweige = b.zweige.some((z) => z.name) ? `: ${b.zweige.map((z) => zweigTitel(z.name, z.zweig)).join(', ')}` : '';
+    return `${blockTitel(b.name, b.zweige.length)}${zweige}`;
+  };
   return (
     <div className="wf-vorschau" aria-hidden="true">
       {hauptAnzeige.map((e, k) => (
         <span key={istBlockAnzeige(e) ? e.block : e} style={{ display: 'contents' }}>
           {k > 0 ? <span className="wf-vorschau-strich" /> : null}
           {istBlockAnzeige(e) ? (
-            <span className="wf-parallel-vorschau" title={`Paralleler Block · ${bloecke[e.block].zweige.length} Zweige`}>
+            <span className="wf-parallel-vorschau" title={blockHinweis(e.block)}>
               {bloecke[e.block].zweige.map((z) => (
                 <span key={z.zweig} className="wf-parallel-vorschau-zweig">
                   {z.standard.map((id, j) => (

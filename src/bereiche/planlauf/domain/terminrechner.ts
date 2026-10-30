@@ -58,6 +58,12 @@ export interface TerminrechnerEingabe {
   heute?: ISODate;
 }
 
+/** Zweigkennung einer Zeile: „Prüfstatik · Zweig 2 von 2“ bzw. „Zweig 2 von 2“ (ohne Escaping). */
+export function zweigKennung(z: Pick<TerminZeile, 'zweig' | 'zweige' | 'zweigName'>): string {
+  if (!z.zweig) return '';
+  return `${z.zweigName ? `${z.zweigName} · ` : ''}Zweig ${z.zweig}${z.zweige ? ` von ${z.zweige}` : ''}`;
+}
+
 /** Eine Zeile der Zwischenergebnisse – eine Ausführung der Simulation. */
 export interface TerminZeile {
   nr: number;
@@ -67,6 +73,8 @@ export interface TerminZeile {
   /** Zweig (ab 1) und Zahl der Zweige eines parallelen Blocks; null außerhalb. */
   zweig: number | null;
   zweige: number | null;
+  /** Name des Zweigs; null = ohne Namen bzw. außerhalb. */
+  zweigName: string | null;
   durchlauf: number;
   /** Antwort der Entscheidung in dieser Ausführung. */
   antwort: string | null;
@@ -319,6 +327,7 @@ export function terminBerechnen(e: TerminrechnerEingabe): TerminrechnerErgebnis 
       roleName: a.roleName,
       zweig: a.parallel ? a.parallel.zweig + 1 : null,
       zweige,
+      zweigName: a.parallel?.zweigName?.trim() || null,
       durchlauf: a.durchlauf,
       antwort: a.antwort,
       frist: a.frist,
@@ -434,7 +443,7 @@ export function terminDruckHtml(e: TerminrechnerEingabe, erg: TerminrechnerErgeb
     .map((z) => {
       const schritt = [
         `<strong>${html(z.name)}</strong>`,
-        z.zweig ? `<div class="klein">Zweig ${z.zweig}${z.zweige ? ` von ${z.zweige}` : ''}</div>` : '',
+        z.zweig ? `<div class="klein">${html(zweigKennung(z))}</div>` : '',
         z.durchlauf > 1 ? `<div class="klein">${z.durchlauf}. Durchlauf</div>` : '',
         z.antwort ? `<div class="klein">Antwort: ${html(z.antwort)}</div>` : '',
       ].join('');

@@ -421,6 +421,14 @@ export function istPrueferRolle(roleName: string): boolean {
 export interface Parallel {
   block: ID;
   zweig: number;
+  /**
+   * Name des Blocks (z. B. „Versand“); steht an jedem Schritt des Blocks
+   * gleich, es gilt der erste nicht leere (siehe `namenVereinheitlichen` in
+   * domain/ablauf.ts). Fehlt bzw. leer = ohne Namen.
+   */
+  name?: string;
+  /** Name des Zweigs (z. B. „Prüfstatik“); steht ebenso an jedem Schritt des Zweigs. */
+  zweigName?: string;
 }
 
 export interface ProcessTemplate {

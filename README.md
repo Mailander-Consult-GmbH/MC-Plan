@@ -390,7 +390,12 @@ Zweigen nebeneinander (bei Platzmangel untereinander), Gabel- und Zusammenführu
 Zweig, Abweichungen im Zweig gestrichelt darunter und Ausstiegen als Text; angelegt wird er über
 *Schritt hinzufügen* → *Parallele Zweige* oder in den Schrittdetails mit *Parallel dazu ausführen*,
 aufgelöst mit *Aus dem Block lösen*. Ändert sich dabei der Anschluss hinter einem Block, weist der
-Editor darauf hin. Änderungen lassen sich rückgängig machen (Strg+Z / Strg+Y); die Fußzeile meldet
+Editor darauf hin. Block und Zweige lassen sich **benennen**: im Abschnitt *Parallel* der
+Schrittdetails mit *Name des Blocks* und *Name des Zweigs*; ein Klick auf den Kopf der
+Containerkarte wählt den ersten Schritt des Blocks und setzt den Cursor in *Name des Blocks*. Die
+Karte heißt dann etwa „Versand · parallel, 4 Zweige“, die Zweigköpfe tragen ihren Namen statt
+„Zweig 1“ usw. Neue Schritte im Block bzw. Zweig übernehmen die Namen, ein neuer Block beginnt ohne;
+Planläufe übernehmen sie mit dem Workflow. Änderungen lassen sich rückgängig machen (Strg+Z / Strg+Y); die Fußzeile meldet
 Unvollständiges (fehlende Bezeichnung, Entscheidung ohne Antwort, nie erreichte Schritte), und
 erst *Speichern* bzw. *Übernehmen* schreibt den Stand. Auf schmalen Bildschirmen stehen die
 Schrittdetails in einem Blatt von unten, bei mittlerer Breite in einer Schublade.
@@ -404,6 +409,8 @@ weitere „Nachreichung“ zurück zur Nachreichung. In *VVBau mit Prüfstatik* 
 Prüfstatik als paralleler Block (jede mit eigener Nachreichung im Zweig, „Nein“ als Ausstieg zur
 Rückmeldung an den Planer); in allen drei Ketten laufen nach der Genehmigung der digitale Versand an
 Bau AN, BVB und BÜW sowie der Plotauftrag parallel, danach der Postversand an Bau AN und BÜW. Die
+Blöcke sind benannt: *Prüfung* (Zweige *Fachprüfung* und *Prüfstatik*), *Versand* (*Bau AN*,
+*BVB*, *BÜW*, *Plot*) und *Postversand* (*Bau AN*, *BÜW*). Die
 Fristen sind dort nicht vorgegeben und daher als Erfahrungswerte vorbelegt (z.B. 10 Tage
 Planerstellung, 3 Tage formale Prüfung, 10 Tage BVB-Freigabe, 15 Tage Fachprüfung, je 5 Tage für
 Nachreichung und Prüfung der Nachreichung); sie lassen sich je Kette und je Planlauf ändern.
@@ -462,8 +469,8 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   Block den ganzen Block. Der bisherige Stand bleibt als **früherer Durchlauf** in der Historie des
   Schritts erhalten (aufklappbar). Das Ziel erhält als **Wiedereingang** den Abschluss des
   Auslösers („Wiedereingang am … (aus Rücksprung)“), und seine Frist zählt ab dann neu.
-* **Parallele Blöcke** stehen in der Schrittliste als Gruppe, die Zweige nebeneinander (bei
-  Platzmangel untereinander), je Zweig mit Stand, Zweig-Rücksprung, Ausstieg und abgeschnittenen
+* **Parallele Blöcke** stehen in der Schrittliste als Gruppe mit dem Namen des Blocks, die Zweige
+  nebeneinander (bei Platzmangel untereinander), je Zweig mit Namen, Stand, Zweig-Rücksprung, Ausstieg und abgeschnittenen
   Schritten. Jeder anstehende Schritt – in parallelen Zweigen also mehrere zugleich – bietet die
   Aktionen.
 * **Ist-Termine** dokumentieren die Erledigung; Schritte lassen sich auch **überspringen**. Ein Ist
@@ -538,7 +545,8 @@ Feiertage; ohne Projekt Mo–Fr ohne Feiertage), Workflow (übergreifend und Pro
 Richtung, Datum, Fristen, ein **Szenario** (Antwort je Entscheidung im ersten Durchlauf, Vorgabe
 der Standardverlauf) und wahlweise ein **Zielschritt** statt des Endes. Die Zwischenergebnisse
 nennen je Schritt Eingang und Fristende, auf dem kritischen Weg „spätestens“, für die übrigen den
-Puffer. Das Ergebnis lässt sich drucken.
+Puffer; Schritte in parallelen Zweigen tragen den Zweig samt Namen („Prüfstatik · Zweig 2 von 2“).
+Das Ergebnis lässt sich drucken.
 
 ### Fristen & Erinnerungen
 Fristenübersicht über alle Projekte, sortiert nach Dringlichkeit und gefiltert nach
@@ -902,8 +910,9 @@ src/
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
       domain/    Fachlogik ohne UI-Bezug
         types.ts     Datenmodell (Projekt, Rolle, Kontakt, Plan, Vorlage, Planlauf …)
-        ablauf.ts    Ablaufverfolgung – die einzige Auflösung der Ziele, parallele Blöcke,
-                     Zweige, Ausstiege, Rücksprünge, anstehende Schritte, Einfügestellen
+        ablauf.ts    Ablaufverfolgung – die einzige Auflösung der Ziele, parallele Blöcke
+                     (samt Namen), Zweige, Ausstiege, Rücksprünge, anstehende Schritte,
+                     Einfügestellen
         engine.ts    Fristenrechnung ab dem tatsächlichen Eingang, Rücksprung mit Historie,
                      Ampel, Verzug, gewichteter Fortschritt, To-Dos, Zuständigkeiten
         simulation.ts  Simulation eines Laufs: Prognose, Basisplan, Rückwärtsrechnung

@@ -24,6 +24,7 @@ import {
   tageText,
   terminBerechnen,
   terminDruckHtml,
+  zweigKennung,
   type Richtung,
   type TerminZeile,
   type TerminrechnerEingabe,
@@ -443,7 +444,7 @@ function ZwischenTabelle({
                 <div className="tr-schritt-inhalt">
                   <strong>{z.name}</strong>
                   <span className="tr-schritt-zusatz">
-                    {z.zweig ? <span className="small muted">Zweig {z.zweig}{z.zweige ? ` von ${z.zweige}` : ''}</span> : null}
+                    {z.zweig ? <span className="small muted">{zweigKennung(z)}</span> : null}
                     {z.durchlauf > 1 ? <Badge ton="purple">{z.durchlauf}. Durchlauf</Badge> : null}
                     {z.antwort ? <span className="small muted">Antwort: {z.antwort}</span> : null}
                   </span>

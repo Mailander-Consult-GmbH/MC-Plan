@@ -119,6 +119,13 @@ interface RohSchritt {
   zweig?: number;
 }
 
+/** Namen der parallelen Blöcke (nach ihrer Kennung) und ihrer Zweige 0 … n−1. */
+const BLOCK_NAMEN: Record<string, { name: string; zweige: string[] }> = {
+  pruefung: { name: 'Prüfung', zweige: ['Fachprüfung', 'Prüfstatik'] },
+  versand: { name: 'Versand', zweige: ['Bau AN', 'BVB', 'BÜW', 'Plot'] },
+  post: { name: 'Postversand', zweige: ['Bau AN', 'BÜW'] },
+};
+
 /** Baut aus der Aufstellung einen Workflow mit eindeutigen IDs. */
 function kette(id: string, name: string, beschreibung: string, roh: RohSchritt[]): ProcessTemplate {
   const sid = (code: string | undefined): ID | 'ende' | null => {
@@ -151,7 +158,15 @@ function kette(id: string, name: string, beschreibung: string, roh: RohSchritt[]
       // Nachfrage nach einer E-Mail wird je Schritt im Workflow gesetzt
       mailFrage: false,
       mailVorlageId: null,
-      parallel: r.block !== undefined ? { block: `${id}-blk-${r.block}`, zweig: r.zweig ?? 0 } : null,
+      parallel:
+        r.block !== undefined
+          ? {
+              block: `${id}-blk-${r.block}`,
+              zweig: r.zweig ?? 0,
+              name: BLOCK_NAMEN[r.block].name,
+              zweigName: BLOCK_NAMEN[r.block].zweige[r.zweig ?? 0],
+            }
+          : null,
     };
   });
 
