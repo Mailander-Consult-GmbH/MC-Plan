@@ -31,7 +31,7 @@ import { formatDate, today } from '../../../shared/dates';
 import { dateiLaden, xlsxErzeugen, type Blatt, type Zelle } from '../../../shared/xlsx';
 import { Badge, Callout, Card, CardHeader, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
-import { SeiteBadge, WEG_LABEL, zeitpunktText } from './common';
+import { Kennzahl, SeiteBadge, WEG_LABEL, zeitpunktText } from './common';
 import './planlauf.css';
 
 const SEITEN = Object.keys(SEITE_LABEL) as Seite[];
@@ -253,15 +253,6 @@ export function TerminnachweisKarte({
       ) : null}
       {basis ? <BasisDialog run={run} onClose={() => setBasis(false)} /> : null}
     </Card>
-  );
-}
-
-function Kennzahl({ label, wert, ton = '' }: { label: string; wert: string; ton?: '' | 'rot' | 'orange' | 'gruen' }) {
-  return (
-    <div className={`pl-kennzahl ${ton}`}>
-      <span className="pl-kennzahl-label">{label}</span>
-      <span className="pl-kennzahl-wert">{wert}</span>
-    </div>
   );
 }
 

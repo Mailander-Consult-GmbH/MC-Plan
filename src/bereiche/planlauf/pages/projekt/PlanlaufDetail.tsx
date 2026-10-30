@@ -1,45 +1,74 @@
 /**
- * Detailansicht eines Planlaufs: Workflow als Verlauf, Soll-/Ist-Termine,
- * Entscheidungen mit Antwortmöglichkeiten und die Erinnerungsfunktion.
+ * Detailansicht eines Planlaufs: Kopf mit Fortschritt, voraussichtlichem Ende
+ * und Verzug; der Verlauf (domain/ablauf.ts) mit parallelen Blöcken als Gruppe,
+ * je Schritt Eingang, Frist, Soll, Ist, Verzug, Seite, Erinnerungen und frühere
+ * Durchläufe; Aktionen an jedem anstehenden Schritt; Wieder öffnen,
+ * Schritt anpassen bzw. einfügen; Terminnachweis und Protokoll.
+ *
+ * Dialoge merken sich nur IDs und lesen Lauf und Schritt nach jedem
+ * Store-Update frisch – der Lauf kommt bei jeder Änderung neu aus `data`.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  aktuelleSchritte,
   ampelFuerSchritt,
+  erledigteUebernehmen,
+  fortschritt,
   funktionenFuerGewerk,
   kontaktFuerRolleUndGewerk,
+  kontaktName,
   laufSchritteAusVorlage,
   massgeblicheAntwort,
   neueLaufFelder,
   nichtImPfad,
-  schritteFuerNeuenLauf,
+  seiteFuerSchritt,
   verlaufDerKette,
   vorlagenSchritte,
-  type Ampel,
+  type Verlauf,
 } from '../../domain/engine';
-import { einfuegenMoeglich } from '../../domain/ablauf';
+import {
+  aktuelleSchritte,
+  einfuegenMoeglich,
+  folgeImVerlauf,
+  istBegonnen,
+  istErledigt,
+  type Abschnitt,
+  type EinfuegePosition,
+} from '../../domain/ablauf';
+import { wiederOeffnenArt, type Aenderung, type WiederOeffnenArt } from '../../domain/abschluss';
+import { tage, tageText, terminnachweis, verzugBisHeute, zeitrahmen, type Zeitrahmen } from '../../domain/nachweis';
 import { formatDate, tageLabel, today } from '../../../../shared/dates';
 import {
   INDEX_LABEL,
   NACHWEIS_LABEL,
+  SEITE_LABEL,
   STEP_STATUS_LABEL,
   STEP_TYPE_LABEL,
   hatEigenenPlanlauf,
   istPrueferRolle,
   verzeichnisGebuendelt,
   type AbbruchArt,
+  type ID,
   type Nachweis,
   type PlanDocument,
   type PlanRun,
+  type ProcessTemplate,
   type ProcessTemplateStep,
   type Project,
   type RunStep,
-  type StepStatus,
   type StepType,
 } from '../../domain/types';
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
-import { AmpelBadge, DocKindIcon, RunStatusBadge, StepTypBadge } from '../../components/common';
+import {
+  AmpelBadge,
+  DocKindIcon,
+  Kennzahl,
+  RunStatusBadge,
+  SeiteBadge,
+  StepTypBadge,
+  erinnerungText,
+  zeitpunktText,
+} from '../../components/common';
 import {
   Badge,
   Callout,
@@ -48,6 +77,7 @@ import {
   ConfirmDialog,
   Field,
   Modal,
+  Progress,
   Select,
   TextArea,
   TextInput,
@@ -56,7 +86,49 @@ import { BuendelnDialog, planeMitEigenemLauf } from '../../components/BuendelnDi
 import { EmailDialog } from '../../components/EmailDialog';
 import { useSchrittStatus } from '../../components/SchrittStatus';
 import { LaufSchritte } from '../../components/AblaufVorschau';
+import { TerminnachweisKarte } from '../../components/Terminnachweis';
+import { ProtokollKarte } from '../../components/Protokoll';
 import { Icon } from '../../../../shared/icons';
+import '../../components/planlauf.css';
+
+/**
+ * Wie ein Schritt im laufenden Durchlauf einging: nach einem Rücksprung bzw.
+ * einer erneuten Bearbeitung (Wiedereingang) – null beim gewöhnlichen Eingang.
+ * Wiedereingang ist es, wenn der Schritt einen weiteren Durchlauf hat und seine
+ * Vorgänger im Verlauf nicht mit ihm wiederholt wurden.
+ */
+function wiedereingang(
+  step: RunStep,
+  verlauf: Verlauf<RunStep>,
+  steps: RunStep[],
+): 'ruecksprung' | 'wieder_geoeffnet' | null {
+  const historie = step.historie ?? [];
+  if ((step.durchlauf ?? 1) <= 1 || historie.length === 0) return null;
+  const vor = verlauf.vorgaenger.get(step.id) ?? [];
+  const neu = vor.every((id) => (steps.find((s) => s.id === id)?.durchlauf ?? 1) < (step.durchlauf ?? 1));
+  return neu ? historie[historie.length - 1].grund : null;
+}
+
+/**
+ * Folgt ein laufender Lauf noch einer früheren Fassung seines Workflows?
+ * Verglichen werden Bezeichnung, Funktion und Zugehörigkeit zu einem
+ * parallelen Block; im Lauf geänderte Schritte (Abweichung) zählen nicht.
+ */
+function alteFassung(run: PlanRun, vorlage: ProcessTemplate | undefined): boolean {
+  if (!vorlage || run.status !== 'laufend' || vorlage.steps.length === 0) return false;
+  const norm = (t: string) => t.trim().toLowerCase();
+  const merkmal = (s: { name: string; roleName: string; parallel?: unknown }) =>
+    `${norm(s.name)}|${norm(s.roleName)}|${s.parallel ? 'parallel' : ''}`;
+  const imWorkflow = new Set(vorlage.steps.map(merkmal));
+  if (run.steps.some((s) => !s.abweichung && !imWorkflow.has(merkmal(s)))) return true;
+  const namen = new Set(run.steps.map((s) => norm(s.name)));
+  return vorlage.steps.some((s) => !namen.has(norm(s.name)));
+}
+
+/** Abschluss eines Schritts: das spätere von Ist und Eingang (siehe recalcSollDaten). */
+function fertigAm(s: Pick<RunStep, 'istDatum' | 'eingangIst'>): string | null {
+  return [s.istDatum, s.eingangIst].filter((x): x is string => Boolean(x)).sort().pop() ?? null;
+}
 
 export function PlanlaufDetail({
   project,
@@ -72,24 +144,25 @@ export function PlanlaufDetail({
 }) {
   const {
     data,
-    schrittImLaufEinfuegen,
-    updateStep,
-    updateDocument,
+    aenderungenAnwenden,
     deleteRun,
-    addRun,
     abbrechenRun,
+    neuerIndexStarten,
     planHerausloesen,
     verzeichnisAufteilen,
   } = useStore();
   const toast = useToast();
-  const [mailStep, setMailStep] = useState<RunStep | null>(null);
-  const [bearbeiten, setBearbeiten] = useState<RunStep | null>(null);
+  const [mailStepId, setMailStepId] = useState<ID | null>(null);
+  const [bearbeitenId, setBearbeitenId] = useState<ID | null>(null);
+  const [wiederOeffnenId, setWiederOeffnenId] = useState<ID | null>(null);
   const [neuerSchritt, setNeuerSchritt] = useState(false);
   const [laufLoeschen, setLaufLoeschen] = useState(false);
   const [abbrechen, setAbbrechen] = useState(false);
-  const [neustart, setNeustart] = useState(false);
-  const { setzeStatus: statusSetzen, nachweisDialog } = useSchrittStatus();
+  /** Neustart: „neu“ – Workflow ändern; „umstellen“ – auf die aktuelle Fassung, erledigte Schritte übernehmen. */
+  const [neustart, setNeustart] = useState<'neu' | 'umstellen' | null>(null);
+  const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const [aufgeklappt, setAufgeklappt] = useState<string[]>([]);
+  const [durchlaeufeOffen, setDurchlaeufeOffen] = useState<string[]>([]);
   /** Die Pläne eines Verzeichnisses sind zunächst zugeklappt. */
   const [plaeneOffen, setPlaeneOffen] = useState(false);
   const [nachtrag, setNachtrag] = useState<
@@ -108,13 +181,36 @@ export function PlanlaufDetail({
   const nachtraeglich = doc?.kind === 'verzeichnis' && verzeichnisGebuendelt(doc) && run.status === 'laufend';
   /** Pläne mit eigenem Lauf lassen sich wieder bündeln – auch nach dem Aufteilen. */
   const buendelbar = doc?.kind === 'verzeichnis' ? planeMitEigenemLauf(data.documents, data.runs, doc.id).length : 0;
-  const { schritte: verlauf, rueckSprungZu } = verlaufDerKette(run.steps);
+
+  const rollen = useMemo(() => data.roles.filter((r) => r.projectId === project.id), [data.roles, project.id]);
+  const kontakte = useMemo(
+    () => data.contacts.filter((c) => c.projectId === project.id),
+    [data.contacts, project.id],
+  );
+  const gewerk = doc?.gewerk ?? '';
+  const rahmen = zeitrahmen(project);
+  const verlauf = verlaufDerKette(run.steps);
+  /** Laufende Nummer im Verlauf (Blöcke: Zweig 0, dann Zweig 1 …). */
+  const nummer = new Map(verlauf.schritte.map((s, i) => [s.id, i + 1]));
   const abseits = nichtImPfad(run.steps);
   // In parallelen Zweigen stehen mehrere Schritte zugleich an – jeder ist bedienbar
-  const anstehend = new Set(aktuelleSchritte(run).map((s) => s.id));
+  const anstehendeListe = aktuelleSchritte(run);
+  const anstehend = new Set(anstehendeListe.map((s) => s.id));
   const vorlauf = project.settings.erinnerungVorlaufTage;
   const abweichungen = run.steps.filter((s) => s.abweichung).length;
   const beendet = run.status !== 'laufend';
+  const nw = useMemo(() => terminnachweis(run, project, rollen, kontakte, doc), [run, project, rollen, kontakte, doc]);
+  const fortschrittWert = fortschritt(run, project, doc);
+  const erledigtImVerlauf = verlauf.schritte.filter(istErledigt).length;
+  const vorlage = data.templates.find((t) => t.id === run.templateId);
+  const veraltet = alteFassung(run, vorlage);
+  // Größter aktueller Verzug unter den anstehenden Schritten
+  let ueberfaellig: { step: RunStep; tage: number } | null = null;
+  for (const s of anstehendeListe) {
+    const n = verzugBisHeute(s, rahmen);
+    if (n > 0 && (!ueberfaellig || n > ueberfaellig.tage)) ueberfaellig = { step: s, tage: n };
+  }
+
   /**
    * Die Kette der Neustarts vor diesem Lauf: rückwärts die neu gestarteten
    * Läufe desselben Eintrags bis zum ersten anderen Lauf. Neue Läufe werden
@@ -137,46 +233,325 @@ export function PlanlaufDetail({
   /** Klappt einen erledigten oder künftigen Schritt auf bzw. wieder zu. */
   const klappen = (stepId: string) =>
     setAufgeklappt((a) => (a.includes(stepId) ? a.filter((x) => x !== stepId) : [...a, stepId]));
+  const durchlaeufeKlappen = (stepId: string) =>
+    setDurchlaeufeOffen((a) => (a.includes(stepId) ? a.filter((x) => x !== stepId) : [...a, stepId]));
 
-  /** Setzt den Status eines Schritts; die Ablauflogik liegt in `abschluss.ts`. */
-  const setzeStatus = (step: RunStep, status: StepStatus) => statusSetzen(run, step, status);
+  const waehleAntwort = (step: RunStep, antwortId: string) =>
+    aenderungenAnwenden(run.id, [{ art: 'step', stepId: step.id, patch: { gewaehlteAntwortId: antwortId } }]);
 
-  /**
-   * Fügt einen Schritt hinter einem Schritt des Verlaufs ein und verkettet ihn
-   * (blockbewusst, siehe `schrittImLaufEinfuegen` in ablauf.ts): Der neue
-   * Schritt übernimmt den bisherigen Übergang und den Zweig des Vorgängers, der
-   * Vorgänger zeigt auf den neuen Schritt. So bleibt der Verlauf lückenlos;
-   * steht der neue Schritt sofort an, gilt heute als Eingang. Vor bereits
-   * Erledigtem wird nicht eingefügt (Rückgabe false).
-   */
-  const schrittEinfuegen = (werte: SchrittWerte, nachStepId: string | null): boolean => {
-    const neu: RunStep = {
-      ...neueLaufFelder(),
-      id: newId('rs'),
-      name: werte.name,
-      typ: werte.typ,
-      roleName: werte.roleName,
-      contactId: werte.contactId,
-      contactManuell: werte.contactManuell,
-      fristTage: werte.fristTage,
-      bemerkung: werte.bemerkung,
-      abweichung: true,
-      antworten: [],
-      naechster: null,
-      nachweis: werte.nachweis,
-      mailFrage: false,
-      mailVorlageId: null,
-      parallel: null,
-    };
-    if (!einfuegenMoeglich(run.steps, nachStepId)) return false;
-    // Wie ein Statuswechsel: wieder fällig gewordene Rücksprünge werden nachgeholt (im Store, ein Schritt)
-    const ergebnis = schrittImLaufEinfuegen(run.id, nachStepId, neu, 'danach');
-    return ergebnis?.art === 'aenderung' && ergebnis.aenderungen.length > 0;
+  /* ---------------- Ein Schritt ---------------- */
+
+  const schrittDetails = (step: RunStep, istAktiv: boolean, imVerlauf: boolean) => {
+    const erledigt = istErledigt(step);
+    const dauerhaftOffen = istAktiv && !beendet;
+    const kontakt = data.contacts.find((c) => c.id === step.contactId);
+    // Abgeschlossene Schritte zeigen die Momentaufnahme beim Abschluss
+    const info = erledigt ? step.abschlussInfo : null;
+    const person = info ? info.kontaktName || 'nicht zugeordnet' : kontakt ? kontaktName(kontakt) : 'nicht zugeordnet';
+    const seite = info ? info.seite : seiteFuerSchritt(step.roleName, rollen, gewerk);
+    const wieder = imVerlauf ? wiedereingang(step, verlauf, run.steps) : null;
+    const ersterMitEingangSoll =
+      Boolean(doc?.eingangSoll) &&
+      imVerlauf &&
+      (verlauf.vorgaenger.get(step.id) ?? []).length === 0 &&
+      (step.durchlauf ?? 1) === 1;
+    const kuenftig = !erledigt && !istAktiv;
+    const verzugJetzt = istAktiv ? verzugBisHeute(step, rahmen) : 0;
+    const abweichung = erledigt && step.sollDatum && step.istDatum ? tage(step.sollDatum, step.istDatum, rahmen) : 0;
+    const erinnerungen = (step.erinnerungen ?? []).filter(
+      (e) => e.durchlauf === null || e.durchlauf === (step.durchlauf ?? 1),
+    );
+    const historie = step.historie ?? [];
+    const historieOffen = durchlaeufeOffen.includes(step.id);
+    return (
+      <>
+        <div className="pl-angaben">
+          <span>
+            Verantwortlich: <b>{info?.roleName || step.roleName || '–'}</b>
+          </span>
+          <span>
+            Person: <b>{person}</b>
+          </span>
+          <span>
+            Seite: <SeiteBadge seite={seite} />
+          </span>
+          {step.eingangIst ? (
+            <span>
+              {wieder ? (
+                <>
+                  Wiedereingang am <b>{formatDate(step.eingangIst)}</b>{' '}
+                  {wieder === 'ruecksprung' ? '(aus Rücksprung)' : '(wieder geöffnet)'}
+                </>
+              ) : (
+                <>
+                  Eingang: <b>{formatDate(step.eingangIst)}</b>
+                </>
+              )}
+              {step.eingangGeschaetzt ? (
+                <>
+                  {' '}
+                  <Badge ton="gelb">geschätzt</Badge>
+                </>
+              ) : null}
+            </span>
+          ) : step.eingangDatum ? (
+            <span className="pl-voraussichtlich">
+              Eingang: voraussichtlich <b>{formatDate(step.eingangDatum)}</b>
+            </span>
+          ) : null}
+          <span>
+            Frist: <b>{ersterMitEingangSoll ? 'Eingang laut Eintrag' : tageLabel(step.fristTage)}</b>
+          </span>
+          <span className={kuenftig ? 'pl-voraussichtlich' : ''}>
+            Soll: {kuenftig ? 'voraussichtlich ' : ''}
+            <b>{formatDate(step.sollDatum)}</b>
+            {step.sollManuell ? ' (von Hand)' : ''}
+          </span>
+          {erledigt || step.istDatum ? (
+            <span>
+              Ist: <b>{formatDate(step.istDatum)}</b>
+            </span>
+          ) : null}
+          {verzugJetzt > 0 ? (
+            <span className="pl-verzug">Verzug: {tageText(verzugJetzt, rahmen.arbeitstage)}</span>
+          ) : null}
+          {abweichung > 0 ? (
+            <span className="pl-verzug">{tageText(abweichung, rahmen.arbeitstage)} nach dem Soll</span>
+          ) : abweichung < 0 ? (
+            <span className="pl-frueher">{tageText(-abweichung, rahmen.arbeitstage)} vor dem Soll</span>
+          ) : null}
+          {step.nachweisNummer ? (
+            <span>
+              {NACHWEIS_LABEL[step.nachweis]} <b>{step.nachweisNummer}</b>
+            </span>
+          ) : step.nachweis !== 'keine' && !erledigt ? (
+            <span className="tertiary">{NACHWEIS_LABEL[step.nachweis]} wird beim Erledigen erfasst</span>
+          ) : null}
+        </div>
+
+        {step.typ === 'entscheidung' && step.antworten.length > 0 ? (
+          <div className="row wrap" style={{ gap: 6 }}>
+            <span className="small muted">Antwort:</span>
+            {step.antworten.map((a) => {
+              const gewaehlt = massgeblicheAntwort(step)?.id === a.id;
+              const gesetzt = step.gewaehlteAntwortId === a.id;
+              const ziel =
+                a.ziel === 'ende'
+                  ? 'beendet den Planlauf'
+                  : a.ziel
+                    ? `weiter mit „${run.steps.find((s) => s.id === a.ziel)?.name ?? '?'}“`
+                    : 'weiter mit dem nächsten Schritt';
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`antwort-chip ${gewaehlt ? 'gewaehlt' : ''}`}
+                  onClick={() => waehleAntwort(step, a.id)}
+                  disabled={!dauerhaftOffen}
+                  title={a.nacharbeit ? `${ziel} – führt zu Nacharbeit` : ziel}
+                >
+                  {a.text}
+                  {gesetzt ? ' ✓' : ''}
+                </button>
+              );
+            })}
+            {dauerhaftOffen && !step.gewaehlteAntwortId ? (
+              <span className="small tertiary">(Vorschau: erste Möglichkeit)</span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {step.bemerkung ? <p className="small tertiary">{step.bemerkung}</p> : null}
+
+        {erinnerungen.length > 0 ? (
+          <div className="pl-liste">
+            {erinnerungen.length > 3 ? <span>… {erinnerungen.length - 3} frühere Erinnerungen</span> : null}
+            {erinnerungen.slice(-3).map((e, i) => (
+              <span key={`${e.zeitpunkt}-${i}`}>{erinnerungText(e)}</span>
+            ))}
+          </div>
+        ) : null}
+
+        {historie.length > 0 ? (
+          <>
+            <button type="button" className="pl-link" onClick={() => durchlaeufeKlappen(step.id)}>
+              {historieOffen ? 'Frühere Durchläufe ausblenden' : `Frühere Durchläufe (${historie.length})`}
+            </button>
+            {historieOffen ? <FruehereDurchlaeufe step={step} rahmen={rahmen} /> : null}
+          </>
+        ) : null}
+
+        {dauerhaftOffen ? (
+          <div className="step-actions">
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => setzeStatus(run, step, 'erledigt')}>
+              <Icon name="check" size={13} /> Erledigt
+            </button>
+            <button type="button" className="btn btn-sm" onClick={() => setzeStatus(run, step, 'uebersprungen')}>
+              Überspringen
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setMailStepId(step.id)}
+              title="Vorbereitete E-Mail an die zuständige Person"
+            >
+              <Icon name="mail" size={13} /> Erinnern
+            </button>
+          </div>
+        ) : imVerlauf && erledigt && run.status !== 'abgebrochen' ? (
+          <div className="step-actions">
+            <button type="button" className="btn btn-sm" onClick={() => setWiederOeffnenId(step.id)}>
+              Wieder öffnen …
+            </button>
+          </div>
+        ) : null}
+      </>
+    );
   };
 
-  const waehleAntwort = (step: RunStep, antwortId: string) => {
-    updateStep(run.id, step.id, { gewaehlteAntwortId: antwortId });
+  const zeile = (step: RunStep, mitLinie: boolean, imVerlauf = true) => {
+    const istAktiv = anstehend.has(step.id);
+    const ampel = ampelFuerSchritt(step, vorlauf, istAktiv);
+    const erledigt = istErledigt(step);
+    // Anstehende Schritte sind stets offen; erledigte und künftige bleiben auf
+    // Titel und Nummer reduziert und lassen sich per Klick aufklappen.
+    const dauerhaftOffen = istAktiv && !beendet;
+    const details = dauerhaftOffen || aufgeklappt.includes(step.id);
+    const nr = nummer.get(step.id);
+    return (
+      <div
+        className={`step-row mit-aktion ${dauerhaftOffen ? 'aktiv' : ''} ${details ? '' : 'kompakt'}`}
+        key={step.id}
+      >
+        <div className="step-marker">
+          <div
+            className={`step-num ${
+              ampel === 'erledigt' ? 'done' : ampel === 'ueberfaellig' ? 'late' : istAktiv ? 'current' : ''
+            }`}
+          >
+            {erledigt ? <Icon name="check" size={12} strokeWidth={2.4} /> : (nr ?? '·')}
+          </div>
+          {mitLinie ? <div className="step-line" /> : null}
+        </div>
+
+        <div className="step-body">
+          <div className="step-title">
+            {dauerhaftOffen ? (
+              <strong>{step.name}</strong>
+            ) : (
+              <button
+                type="button"
+                className={`step-aufklappen ${details ? 'offen' : ''}`}
+                onClick={() => klappen(step.id)}
+                title={details ? 'Details ausblenden' : 'Details anzeigen'}
+              >
+                <strong>{step.name}</strong>
+                <span className="chev">
+                  <Icon name="chevron" size={13} />
+                </span>
+              </button>
+            )}
+            {details ? (
+              <>
+                <StepTypBadge typ={step.typ} />
+                {step.status === 'uebersprungen' ? <Badge>Übersprungen</Badge> : <AmpelBadge ampel={ampel} />}
+                {step.abweichung ? <Badge ton="orange">Abweichung</Badge> : null}
+                {(step.durchlauf ?? 1) > 1 ? <Badge ton="purple">{step.durchlauf}. Durchlauf</Badge> : null}
+              </>
+            ) : (
+              <span className="small tertiary">
+                {erledigt
+                  ? `Ist ${formatDate(step.istDatum)}`
+                  : imVerlauf && step.sollDatum
+                    ? `Soll voraussichtlich ${formatDate(step.sollDatum)}`
+                    : (step.historie ?? []).length > 0
+                      ? `${step.historie.length} frühere${step.historie.length === 1 ? 'r' : ''} Durchl${step.historie.length === 1 ? 'auf' : 'äufe'}`
+                      : ''}
+              </span>
+            )}
+          </div>
+          {details ? schrittDetails(step, istAktiv, imVerlauf) : null}
+        </div>
+
+        {!beendet ? (
+          <button
+            type="button"
+            className="btn-icon step-anpassen"
+            title="Schritt anpassen"
+            aria-label="Schritt anpassen"
+            onClick={() => setBearbeitenId(step.id)}
+          >
+            <Icon name="bearbeiten" size={15} />
+          </button>
+        ) : null}
+      </div>
+    );
   };
+
+  /* ---------------- Paralleler Block ---------------- */
+
+  const blockAnsicht = (a: Extract<Abschnitt<RunStep>, { art: 'parallel' }>) => {
+    const name = (id: ID | null) => (id ? (run.steps.find((s) => s.id === id)?.name ?? '?') : '');
+    const durchgang = a.zweige.flatMap((z) => z.schritte)[0]?.blockDurchgang ?? 1;
+    return (
+      <div className="pl-block" key={`${a.block}-${durchgang}`}>
+        <div className="pl-block-kopf">
+          <strong>Parallel · {a.zweige.length} Zweige</strong>
+          {durchgang > 1 ? <Badge ton="purple">{durchgang}. Durchgang</Badge> : null}
+          <span>Die Zweige laufen gleichzeitig.</span>
+        </div>
+        <div className="pl-zweige">
+          {a.zweige.map((z) => {
+            const fertig = z.schritte.filter(istErledigt).length;
+            return (
+              <div className="pl-zweig" key={z.zweig}>
+                <div className="pl-zweig-kopf">
+                  <span>Zweig {z.zweig + 1}</span>
+                  <span>
+                    {fertig} von {z.schritte.length} erledigt
+                  </span>
+                </div>
+                {z.schritte.length === 0 ? <div className="pl-zweig-leer">Keine Schritte in diesem Zweig.</div> : null}
+                {z.schritte.map((s, i) => zeile(s, i < z.schritte.length - 1))}
+                {z.rueckSprungZu ? (
+                  <div className="pl-hinweis schleife">
+                    ↺ Rücksprung im Zweig zu „{z.rueckSprungZu.name}“ – ist der Zweig bis hier erledigt, beginnt dort ein
+                    weiterer Durchlauf.
+                  </div>
+                ) : null}
+                {z.abgeschnitten ? (
+                  <div className="pl-hinweis">
+                    Der Block wird über einen anderen Zweig verlassen – hier wird Laufendes noch erledigt, Neues beginnt
+                    nicht mehr.
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+        {a.ausstiegVon && a.ausstiegNach ? (
+          <div className="pl-hinweis ausstieg">
+            Der Block wird über „{name(a.ausstiegVon)}“ verlassen – nach diesem Schritt geht es bei „
+            {name(a.ausstiegNach)}“ weiter.
+            {a.ausstiegWirksam ? ' Die übrigen Zweige beginnen nichts Neues mehr.' : ''}
+          </div>
+        ) : null}
+        <div className="pl-block-fuss">Weiter, wenn alle Zweige erledigt sind.</div>
+      </div>
+    );
+  };
+
+  /* ---------------- Kopf ---------------- */
+
+  const gv = nw.gesamtverzug;
+  const ende =
+    run.status === 'abgebrochen'
+      ? { label: 'Abgebrochen am', wert: formatDate(run.abbruchDatum) }
+      : run.status === 'abgeschlossen'
+        ? { label: 'Abgeschlossen am', wert: formatDate(nw.ende) }
+        : { label: 'Voraussichtliches Ende', wert: nw.ende ? formatDate(nw.ende) : '–' };
+  const abseitsMitVergangenheit = abseits.filter((s) => (s.historie ?? []).length > 0 || istBegonnen(s));
+  const abseitsUebrige = abseits.filter((s) => !abseitsMitVergangenheit.includes(s));
 
   return (
     <div className="stack">
@@ -190,7 +565,7 @@ export function PlanlaufDetail({
               <button
                 type="button"
                 className="btn btn-outline"
-                onClick={() => setNeustart(true)}
+                onClick={() => setNeustart('neu')}
                 title="Anderen Workflow wählen und den Planlauf von vorn beginnen"
               >
                 Workflow ändern …
@@ -260,8 +635,55 @@ export function PlanlaufDetail({
           }
           actions={<RunStatusBadge status={run.status} />}
         />
-        {abweichungen > 0 || run.bemerkung || vorherige.length > 0 ? (
-          <div className="card-pad">
+        <div className="pl-kennzahlen">
+          <Kennzahl
+            label="Fortschritt"
+            wert={`${fortschrittWert} %`}
+            sub={`${erledigtImVerlauf} von ${verlauf.schritte.length} Schritten im Verlauf erledigt`}
+          >
+            <Progress wert={fortschrittWert} />
+          </Kennzahl>
+          <Kennzahl
+            label={ende.label}
+            wert={ende.wert}
+            sub={nw.basisEnde ? `geplant ${formatDate(nw.basisEnde)}` : 'ohne Basisplan'}
+          />
+          <Kennzahl
+            label="Verzug gegenüber Basis"
+            wert={
+              gv === null
+                ? '–'
+                : gv > 0
+                  ? tageText(gv, rahmen.arbeitstage)
+                  : gv < 0
+                    ? `${tageText(-gv, rahmen.arbeitstage)} früher`
+                    : 'im Plan'
+            }
+            ton={gv === null ? '' : gv > 0 ? 'rot' : 'gruen'}
+            sub={
+              ueberfaellig
+                ? `„${ueberfaellig.step.name}“ ${tageText(ueberfaellig.tage, rahmen.arbeitstage)} überfällig`
+                : run.status === 'laufend' && nw.endeIstPrognose
+                  ? 'nach Prognose'
+                  : undefined
+            }
+          />
+        </div>
+        {abweichungen > 0 || run.bemerkung || vorherige.length > 0 || veraltet ? (
+          <div className="card-pad" style={{ borderTop: '1px solid var(--separator)' }}>
+            {veraltet && vorlage ? (
+              <Callout icon="i">
+                <div className="row-between wrap" style={{ gap: 10 }}>
+                  <span>
+                    Der Workflow „{vorlage.name}“ wurde seit dem Start dieses Planlaufs geändert – der Lauf folgt noch
+                    der früheren Fassung.
+                  </span>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setNeustart('umstellen')}>
+                    Auf aktuelle Fassung umstellen …
+                  </button>
+                </div>
+              </Callout>
+            ) : null}
             {abweichungen > 0 ? (
               <Callout ton="warn" icon="!">
                 {abweichungen} Schritt(e) weichen vom Standard-Workflow ab. Änderungen wirken nur in diesem
@@ -376,7 +798,7 @@ export function PlanlaufDetail({
       <Card>
         <CardHeader
           titel="Prozessschritte"
-          sub="Soll-Termine ergeben sich aus den Fristen; Ist-Termine dokumentieren die Erledigung"
+          sub="Die Frist zählt ab dem tatsächlichen Eingang – dem Abschluss des vorherigen Schritts."
           actions={
             !beendet ? (
               <button type="button" className="btn btn-outline btn-sm" onClick={() => setNeuerSchritt(true)}>
@@ -385,188 +807,22 @@ export function PlanlaufDetail({
             ) : null
           }
         />
-        {verlauf.map((step, i) => {
-          const istAktiv = anstehend.has(step.id);
-          const ampel: Ampel = ampelFuerSchritt(step, vorlauf, istAktiv);
-          const kontakt = data.contacts.find((c) => c.id === step.contactId);
-          const erledigt = step.status === 'erledigt' || step.status === 'uebersprungen';
-          // Erledigte und künftige Schritte bleiben auf Titel und Nummer
-          // reduziert; per Klick auf den Titel lassen sie sich aufklappen.
-          const dauerhaftOffen = istAktiv && !beendet;
-          const details = dauerhaftOffen || aufgeklappt.includes(step.id);
-          return (
-            <div
-              className={`step-row mit-aktion ${dauerhaftOffen ? 'aktiv' : ''} ${details ? '' : 'kompakt'}`}
-              key={step.id}
-            >
-              <div className="step-marker">
-                <div
-                  className={`step-num ${
-                    ampel === 'erledigt' ? 'done' : ampel === 'ueberfaellig' ? 'late' : istAktiv ? 'current' : ''
-                  }`}
-                >
-                  {erledigt ? <Icon name="check" size={12} strokeWidth={2.4} /> : i + 1}
-                </div>
-                {i < verlauf.length - 1 ? <div className="step-line" /> : null}
-              </div>
+        {verlauf.abschnitte.map((a, k) =>
+          a.art === 'schritt'
+            ? zeile(a.step, k < verlauf.abschnitte.length - 1 || Boolean(verlauf.rueckSprungZu))
+            : blockAnsicht(a),
+        )}
 
-              <div className="step-body">
-                <div className="step-title">
-                  {dauerhaftOffen ? (
-                    <strong>{step.name}</strong>
-                  ) : (
-                    <button
-                      type="button"
-                      className={`step-aufklappen ${details ? 'offen' : ''}`}
-                      onClick={() => klappen(step.id)}
-                      title={details ? 'Details ausblenden' : 'Details anzeigen'}
-                    >
-                      <strong>{step.name}</strong>
-                      <span className="chev">
-                        <Icon name="chevron" size={13} />
-                      </span>
-                    </button>
-                  )}
-                  {details ? (
-                    <>
-                      <StepTypBadge typ={step.typ} />
-                      {step.status === 'uebersprungen' ? <Badge>Übersprungen</Badge> : <AmpelBadge ampel={ampel} />}
-                      {step.abweichung ? <Badge ton="orange">Abweichung</Badge> : null}
-                      {(step.durchlauf ?? 1) > 1 ? <Badge ton="purple">{step.durchlauf}. Durchlauf</Badge> : null}
-                    </>
-                  ) : null}
-                </div>
-
-                {details ? (
-                  <>
-                    <div className="step-meta">
-                      <span>
-                        Verantwortlich: <b>{step.roleName || '–'}</b>
-                      </span>
-                      <span>
-                        Person: <b>{kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'nicht zugeordnet'}</b>
-                      </span>
-                      <span>
-                        {i === 0 && doc?.eingangSoll ? (
-                          <>
-                            Frist: <b>Eingang laut Eintrag</b>
-                          </>
-                        ) : (
-                          <>
-                            Frist: <b>{tageLabel(step.fristTage)}</b>
-                          </>
-                        )}
-                      </span>
-                      <span>
-                        Soll: <b>{formatDate(step.sollDatum)}</b>
-                        {step.sollManuell ? ' (fest)' : ''}
-                      </span>
-                      <span>
-                        Ist: <b>{formatDate(step.istDatum)}</b>
-                      </span>
-                      {step.nachweisNummer ? (
-                        <span>
-                          {NACHWEIS_LABEL[step.nachweis]} <b>{step.nachweisNummer}</b>
-                        </span>
-                      ) : step.nachweis !== 'keine' ? (
-                        <span className="tertiary">{NACHWEIS_LABEL[step.nachweis]} wird beim Erledigen erfasst</span>
-                      ) : null}
-                    </div>
-
-                    {step.typ === 'entscheidung' && step.antworten.length > 0 ? (
-                      <div className="row wrap" style={{ gap: 6 }}>
-                        <span className="small muted">Antwort:</span>
-                        {step.antworten.map((a) => {
-                          const gewaehlt = massgeblicheAntwort(step)?.id === a.id;
-                          const gesetzt = step.gewaehlteAntwortId === a.id;
-                          return (
-                            <button
-                              key={a.id}
-                              type="button"
-                              className={`antwort-chip ${gewaehlt ? 'gewaehlt' : ''}`}
-                              onClick={() => waehleAntwort(step, a.id)}
-                              disabled={beendet || !istAktiv}
-                              title={
-                                a.ziel === 'ende'
-                                  ? 'beendet den Planlauf'
-                                  : a.ziel
-                                    ? `weiter mit „${run.steps.find((s) => s.id === a.ziel)?.name ?? '?'}“`
-                                    : 'weiter mit dem nächsten Schritt'
-                              }
-                            >
-                              {a.text}
-                              {gesetzt ? ' ✓' : ''}
-                            </button>
-                          );
-                        })}
-                        {!step.gewaehlteAntwortId ? (
-                          <span className="small tertiary">(Vorschau: erste Möglichkeit)</span>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {step.bemerkung ? <p className="small tertiary">{step.bemerkung}</p> : null}
-
-                    {dauerhaftOffen ? (
-                      <div className="step-actions">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary"
-                          onClick={() => setzeStatus(step, 'erledigt')}
-                        >
-                          <Icon name="check" size={13} /> Erledigt
-                        </button>
-                        <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'uebersprungen')}>
-                          Überspringen
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          onClick={() => setMailStep(step)}
-                          title="Vorbereitete E-Mail an die zuständige Person"
-                        >
-                          <Icon name="mail" size={13} /> Erinnern
-                        </button>
-                        {step.letzteErinnerung ? (
-                          <span className="small tertiary">
-                            erinnert am {new Date(step.letzteErinnerung).toLocaleDateString('de-DE')}
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : !beendet && erledigt ? (
-                      <div className="step-actions">
-                        <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'laufend')}>
-                          Wieder öffnen
-                        </button>
-                      </div>
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
-
-              {!beendet ? (
-                <button
-                  type="button"
-                  className="btn-icon step-anpassen"
-                  title="Schritt anpassen"
-                  aria-label="Schritt anpassen"
-                  onClick={() => setBearbeiten(step)}
-                >
-                  <Icon name="bearbeiten" size={15} />
-                </button>
-              ) : null}
-            </div>
-          );
-        })}
-
-        {rueckSprungZu ? (
+        {verlauf.rueckSprungZu ? (
           <div className="step-row">
             <div className="step-marker">
-              <div className="step-num" title="Rücksprung">↺</div>
+              <div className="step-num" title="Rücksprung">
+                ↺
+              </div>
             </div>
             <div className="step-body">
               <div className="step-title">
-                <strong>Rücksprung zu „{rueckSprungZu.name}“</strong>
+                <strong>Rücksprung zu „{verlauf.rueckSprungZu.name}“</strong>
                 <Badge ton="purple">Schleife</Badge>
               </div>
               <p className="small muted">
@@ -578,28 +834,45 @@ export function PlanlaufDetail({
         ) : null}
 
         {abseits.length > 0 ? (
-          <div className="card-pad" style={{ borderTop: '1px solid var(--separator)' }}>
-            <div className="small muted" style={{ marginBottom: 6 }}>
+          <div className="pl-abseits">
+            <div className="small muted">
               Nicht im aktuellen Verlauf – werden bei anderer Entscheidung durchlaufen:
             </div>
-            <div className="row wrap" style={{ gap: 6 }}>
-              {abseits.map((s) => (
-                <span key={s.id} className="badge">
-                  {s.name}
-                  {s.roleName ? ` · ${s.roleName}` : ''}
-                </span>
-              ))}
-            </div>
+            {abseitsMitVergangenheit.length > 0 ? (
+              <div>{abseitsMitVergangenheit.map((s) => zeile(s, false, false))}</div>
+            ) : null}
+            {abseitsUebrige.length > 0 ? (
+              <div className="row wrap" style={{ gap: 6 }}>
+                {abseitsUebrige.map((s) => (
+                  <span key={s.id} className="badge">
+                    {s.name}
+                    {s.roleName ? ` · ${s.roleName}` : ''}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </Card>
 
-      {mailStep ? (
-        <EmailDialog project={project} run={run} step={mailStep} onClose={() => setMailStep(null)} />
+      <TerminnachweisKarte project={project} run={run} doc={doc} nw={nw} />
+
+      <ProtokollKarte run={run} />
+
+      {mailStepId && run.steps.some((s) => s.id === mailStepId) ? (
+        <EmailDialog project={project} runId={run.id} stepId={mailStepId} onClose={() => setMailStepId(null)} />
       ) : null}
 
-      {bearbeiten ? (
-        <SchrittDialog project={project} run={run} step={bearbeiten} onClose={() => setBearbeiten(null)} />
+      {bearbeitenId && run.steps.some((s) => s.id === bearbeitenId) ? (
+        <SchrittDialog
+          key={bearbeitenId}
+          project={project}
+          run={run}
+          stepId={bearbeitenId}
+          verlauf={verlauf}
+          nummer={nummer}
+          onClose={() => setBearbeitenId(null)}
+        />
       ) : null}
 
       {neuerSchritt ? (
@@ -607,15 +880,13 @@ export function PlanlaufDetail({
           project={project}
           run={run}
           verlauf={verlauf}
+          nummer={nummer}
           onClose={() => setNeuerSchritt(false)}
-          onAnlegen={(werte, nachStepId) => {
-            toast(
-              schrittEinfuegen(werte, nachStepId)
-                ? 'Schritt eingefügt – als Abweichung markiert.'
-                : 'Dort lässt sich kein Schritt einfügen – dahinter ist schon etwas erledigt.',
-            );
-          }}
         />
+      ) : null}
+
+      {wiederOeffnenId && run.steps.some((s) => s.id === wiederOeffnenId) ? (
+        <WiederOeffnenDialog run={run} stepId={wiederOeffnenId} onClose={() => setWiederOeffnenId(null)} />
       ) : null}
 
       {nachweisDialog}
@@ -665,7 +936,8 @@ export function PlanlaufDetail({
           project={project}
           run={run}
           doc={doc}
-          onClose={() => setNeustart(false)}
+          umstellen={neustart === 'umstellen'}
+          onClose={() => setNeustart(null)}
           onNeuGestartet={(id) => oeffneLauf?.(id)}
         />
       ) : null}
@@ -676,35 +948,16 @@ export function PlanlaufDetail({
           doc={doc}
           onClose={() => setAbbrechen(false)}
           onAbbrechen={(grund, art, neuerIndex) => {
-            abbrechenRun(run.id, grund, art, neuerIndex || null);
             if (art === 'neuer_index' && doc) {
-              // Eintrag auf den neuen Index heben und den Lauf von vorn beginnen:
-              // gleiche Kette mit neuen Kennungen, alle Lauffelder zurückgesetzt
-              updateDocument(doc.id, { index: neuerIndex });
-              const verdrahtet = schritteFuerNeuenLauf(run.steps, newId);
-
-              const neuerLauf = addRun({
-                projectId: run.projectId,
-                documentId: run.documentId,
-                templateId: run.templateId,
-                templateName: run.templateName,
-                name: `Planlauf ${doc.nummer} ${INDEX_LABEL[doc.kind]} ${neuerIndex}`,
-                index: neuerIndex,
-                start: today(),
-                status: 'laufend',
-                abbruchGrund: null,
-                abbruchDatum: null,
-                abbruchArt: null,
-                abbruchNeuerIndex: null,
-                steps: verdrahtet,
-                bemerkung: `Nachfolger von „${run.name}“ (${grund})`,
-                protokoll: [],
-                basis: null,
-              });
-              toast(`Neuer Planlauf mit ${INDEX_LABEL[doc.kind]} ${neuerIndex} gestartet.`);
-              oeffneLauf?.(neuerLauf);
+              // Abbrechen, Eintrag auf den neuen Index heben und neu beginnen – ein Schritt im Store
+              const id = neuerIndexStarten(run.id, grund, neuerIndex);
+              if (id) {
+                toast(`Neuer Planlauf mit ${INDEX_LABEL[doc.kind]} ${neuerIndex} gestartet.`);
+                oeffneLauf?.(id);
+              }
               return;
             }
+            abbrechenRun(run.id, grund, art, null);
             toast('Planlauf abgebrochen – er bleibt in der Projektansicht sichtbar.');
           }}
         />
@@ -728,21 +981,192 @@ export function PlanlaufDetail({
 
 /* ------------------------------------------------------------------ */
 
+/** Frühere Durchläufe eines Schritts (Historie), neueste zuerst. */
+function FruehereDurchlaeufe({ step, rahmen }: { step: RunStep; rahmen: Zeitrahmen }) {
+  return (
+    <div className="pl-durchlaeufe">
+      {[...(step.historie ?? [])].reverse().map((h, i) => {
+        const erinnerungen = (step.erinnerungen ?? []).filter((e) => e.durchlauf === h.durchlauf);
+        const abw = h.soll && h.ist ? tage(h.soll, h.ist, rahmen) : 0;
+        return (
+          <div className="pl-durchlauf" key={`${h.durchlauf}-${i}`}>
+            <div className="pl-durchlauf-titel">
+              {h.durchlauf}. Durchlauf
+              <Badge ton={h.status === 'erledigt' ? 'green' : ''}>{STEP_STATUS_LABEL[h.status]}</Badge>
+              <span className="small muted" style={{ fontWeight: 400 }}>
+                {h.grund === 'ruecksprung' ? 'beendet durch Rücksprung' : 'beendet durch Wieder öffnen'} am{' '}
+                {zeitpunktText(h.beendetAm)}
+              </span>
+            </div>
+            <div className="pl-angaben">
+              {h.name !== step.name ? (
+                <span>
+                  als <b>{h.name}</b>
+                </span>
+              ) : null}
+              <span>
+                Person: <b>{h.kontaktName || '–'}</b>
+                {h.roleName ? ` (${h.roleName})` : ''}
+              </span>
+              <span>
+                Seite: <b>{h.seite ? SEITE_LABEL[h.seite] : 'Seite fehlt'}</b>
+              </span>
+              <span>
+                Eingang: <b>{formatDate(h.eingang)}</b>
+                {h.eingangGeschaetzt ? ' (geschätzt)' : ''}
+              </span>
+              <span>
+                Frist: <b>{tageLabel(h.fristTage)}</b>
+              </span>
+              <span>
+                Soll: <b>{formatDate(h.soll)}</b>
+                {h.sollManuell ? ' (von Hand)' : ''}
+              </span>
+              <span>
+                Ist: <b>{formatDate(h.ist)}</b>
+              </span>
+              {abw > 0 ? (
+                <span className="pl-verzug">{tageText(abw, rahmen.arbeitstage)} nach dem Soll</span>
+              ) : null}
+              {h.antwort ? (
+                <span>
+                  Antwort: <b>{h.antwort}</b>
+                  {h.antwortNacharbeit ? ' (führt zu Nacharbeit)' : ''}
+                </span>
+              ) : null}
+              {h.nachweisNummer ? (
+                <span>
+                  Nachweis: <b>{h.nachweisNummer}</b>
+                </span>
+              ) : null}
+            </div>
+            {h.bemerkung ? <span className="small tertiary">{h.bemerkung}</span> : null}
+            {erinnerungen.map((e, k) => (
+              <span className="small muted" key={`${e.zeitpunkt}-${k}`}>
+                {erinnerungText(e)}
+              </span>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wieder öffnen mit Erklärung der beiden Fälle (abschluss.ts):
+ * Korrektur – solange kein Nachfolger ein Ist hat; sonst erneute Bearbeitung
+ * mit einem weiteren Durchlauf ab diesem Schritt.
+ */
+function WiederOeffnenDialog({ run, stepId, onClose }: { run: PlanRun; stepId: ID; onClose: () => void }) {
+  const { wiederOeffnen } = useStore();
+  const toast = useToast();
+  const step = run.steps.find((s) => s.id === stepId);
+  const moeglich: WiederOeffnenArt = step ? wiederOeffnenArt(run, step) : 'korrektur';
+  const [modus, setModus] = useState<WiederOeffnenArt>(moeglich);
+  const [eingang, setEingang] = useState(today());
+  if (!step) return null;
+
+  const folge = (folgeImVerlauf(verlaufDerKette(run.steps), step.id) ?? []).filter((s) => s.id !== step.id);
+  const mitIst = folge.filter((s) => s.istDatum);
+  const betroffen = folge.filter((s) => istBegonnen(s));
+  const namen = (liste: RunStep[]) => liste.map((s) => `„${s.name}“`).join(', ');
+
+  const bestaetigen = () => {
+    if (modus === 'erneut' && !eingang) {
+      toast('Bitte den Eingang des neuen Durchlaufs angeben.');
+      return;
+    }
+    const ergebnis = wiederOeffnen(run.id, step.id, modus, modus === 'erneut' ? eingang : undefined);
+    if (ergebnis?.art === 'aenderung') toast(ergebnis.meldung);
+    onClose();
+  };
+
+  return (
+    <Modal
+      titel="Schritt wieder öffnen"
+      sub={step.name}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button type="button" className="btn btn-primary" onClick={bestaetigen}>
+            {modus === 'korrektur' ? 'Als Korrektur wieder öffnen' : 'Erneut bearbeiten'}
+          </button>
+        </>
+      }
+    >
+      <div className="stack" style={{ gap: 14 }}>
+        {moeglich === 'korrektur' ? (
+          <Field label="Wie soll der Schritt wieder geöffnet werden?">
+            <div className="stack" style={{ gap: 10 }}>
+              <label className="checkbox">
+                <input type="radio" name="wiederoeffnen" checked={modus === 'korrektur'} onChange={() => setModus('korrektur')} />
+                <span>
+                  <strong>Korrektur</strong> – etwa nach einer Fehlbedienung: Das Ist-Datum wird entfernt, der Schritt
+                  läuft wieder, die nachfolgenden Schritte warten erneut auf ihn. Es entsteht kein neuer Durchlauf.
+                  Das geht, solange kein nachfolgender Schritt ein Ist-Datum hat.
+                </span>
+              </label>
+              <label className="checkbox">
+                <input type="radio" name="wiederoeffnen" checked={modus === 'erneut'} onChange={() => setModus('erneut')} />
+                <span>
+                  <strong>Erneute Bearbeitung</strong> – der Schritt wird noch einmal bearbeitet: Ab hier beginnt ein
+                  weiterer Durchlauf, der bisherige Stand bleibt unter „Frühere Durchläufe“ erhalten.
+                </span>
+              </label>
+            </div>
+          </Field>
+        ) : (
+          <Callout icon="i">
+            <strong>Erneute Bearbeitung.</strong> Eine Korrektur ist nicht mehr möglich, weil nachfolgende Schritte
+            schon ein Ist-Datum haben ({namen(mitIst)}). Ab diesem Schritt beginnt deshalb ein weiterer Durchlauf; der
+            bisherige Stand bleibt unter „Frühere Durchläufe“ erhalten.
+          </Callout>
+        )}
+        {modus === 'erneut' ? (
+          <>
+            {betroffen.length > 0 ? (
+              <p className="small muted" style={{ margin: 0 }}>
+                Zurückgesetzt und neu durchlaufen werden außerdem: {namen(betroffen)}.
+              </p>
+            ) : null}
+            <Field label="Eingang des neuen Durchlaufs" hint="Ab diesem Tag zählt die Frist des Schritts erneut.">
+              <TextInput value={eingang} onChange={setEingang} type="date" />
+            </Field>
+          </>
+        ) : null}
+      </div>
+    </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
 /**
  * Workflow eines laufenden Planlaufs ändern: Workflow wählen, seine Schritte
- * für diesen Lauf anpassen und von vorn beginnen. Der bisherige Lauf endet als
- * „neu gestartet“ und bleibt zum Nachschlagen erhalten.
+ * für diesen Lauf anpassen und von vorn beginnen – auf Wunsch mit den bereits
+ * erledigten Schritten (gleiche Bezeichnung und Funktion, siehe
+ * erledigteUebernehmen). Der bisherige Lauf endet als „neu gestartet“ und
+ * bleibt zum Nachschlagen erhalten.
  */
 function NeustartDialog({
   project,
   run,
   doc,
+  umstellen,
   onClose,
   onNeuGestartet,
 }: {
   project: Project;
   run: PlanRun;
   doc: PlanDocument | undefined;
+  /** Auf die aktuelle Fassung desselben Workflows umstellen (erledigte Schritte übernehmen). */
+  umstellen: boolean;
   onClose: () => void;
   onNeuGestartet: (runId: string) => void;
 }) {
@@ -758,20 +1182,38 @@ function NeustartDialog({
   const [steps, setSteps] = useState<ProcessTemplateStep[]>(() => vorlagenSchritte(anfang, newId));
   /** Die Schritte wurden über „Individueller Workflow“ für den neuen Lauf angepasst. */
   const [angepasst, setAngepasst] = useState(false);
-  const [start, setStart] = useState(today());
-  const [grund, setGrund] = useState('');
+  const [uebernehmen, setUebernehmen] = useState(umstellen);
+  const [start, setStart] = useState(umstellen ? run.start : today());
+  const [grund, setGrund] = useState(umstellen ? 'Auf die aktuelle Fassung des Workflows umgestellt' : '');
   // Ein vergangenes Eingang Soll machte den neuen Lauf sofort überfällig – dann leer lassen
   const [eingangSoll, setEingangSoll] = useState(
-    doc?.eingangSoll && doc.eingangSoll >= today() ? doc.eingangSoll : '',
+    doc?.eingangSoll && (umstellen || doc.eingangSoll >= today()) ? doc.eingangSoll : '',
   );
 
   const vorlage = vorlagen.find((t) => t.id === templateId);
-  const fertig = run.steps.filter((s) => s.status === 'erledigt' || s.status === 'uebersprungen').length;
+  const fertig = run.steps.filter(istErledigt).length;
   const wechseln = (id: string) => {
     setTemplateId(id);
     setSteps(vorlagenSchritte(vorlagen.find((t) => t.id === id), newId));
     setAngepasst(false);
   };
+
+  /** Laufschritte des neuen Laufs (IDs vor dem Store-Aufruf erzeugt). */
+  const laufSchritte = () => {
+    const neu = laufSchritteAusVorlage(
+      vorlage,
+      steps,
+      (rolle) => kontaktFuerRolleUndGewerk(kontakte, rollen, rolle, gewerk),
+      () => newId('rs'),
+    );
+    return uebernehmen ? erledigteUebernehmen(run.steps, neu) : neu;
+  };
+  // Vorschau: wie viele Schritte übernommen würden
+  const uebernommen = useMemo(
+    () => (uebernehmen ? laufSchritte().filter(istErledigt).length : 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [uebernehmen, steps, templateId, run.steps],
+  );
 
   const starten = () => {
     if (steps.length === 0 || steps.some((s) => !s.name.trim())) {
@@ -782,12 +1224,7 @@ function NeustartDialog({
     const id = planlaufNeuStarten(run.id, {
       templateId: vorlage?.id ?? null,
       templateName: name,
-      steps: laufSchritteAusVorlage(
-        vorlage,
-        steps,
-        (rolle) => kontaktFuerRolleUndGewerk(kontakte, rollen, rolle, gewerk),
-        () => newId('rs'),
-      ),
+      steps: laufSchritte(),
       start,
       grund,
       // Nur ein geändertes Eingang Soll wird am Eintrag nachgetragen
@@ -801,7 +1238,7 @@ function NeustartDialog({
 
   return (
     <Modal
-      titel="Workflow ändern und neu starten"
+      titel={umstellen ? 'Auf aktuelle Fassung umstellen' : 'Workflow ändern und neu starten'}
       sub={run.name}
       wide
       onClose={onClose}
@@ -818,9 +1255,11 @@ function NeustartDialog({
     >
       <div className="stack" style={{ gap: 16 }}>
         <Callout ton="warn" icon="!">
-          Der Planlauf beginnt von vorn – alle Schritte starten neu. Der bisherige Lauf mit Workflow „
-          {run.templateName}“ ({fertig} von {run.steps.length} Schritten abgeschlossen) bleibt zum Nachschlagen
-          erhalten und ist über den neuen Planlauf erreichbar.
+          {uebernehmen
+            ? `Der Planlauf beginnt mit dem gewählten Workflow neu; erledigte Schritte gleicher Bezeichnung und Funktion werden übernommen (${uebernommen} von ${fertig}) – ab dem ersten Schritt ohne Gegenstück geht es weiter.`
+            : 'Der Planlauf beginnt von vorn – alle Schritte starten neu.'}{' '}
+          Der bisherige Lauf mit Workflow „{run.templateName}“ ({fertig} von {run.steps.length} Schritten
+          abgeschlossen) bleibt zum Nachschlagen erhalten und ist über den neuen Planlauf erreichbar.
         </Callout>
         <div className="form-grid">
           <Field label="Workflow" full hint={vorlage?.beschreibung}>
@@ -829,6 +1268,23 @@ function NeustartDialog({
               onChange={wechseln}
               options={vorlagen.map((t) => ({ value: t.id, label: `${t.name} (${t.steps.length} Schritte)` }))}
             />
+          </Field>
+          <Field
+            label="Erledigte Schritte übernehmen"
+            full
+            hint="Entlang des neuen Ablaufs ab Beginn, solange der bisherige Lauf einen erledigten Schritt gleicher Bezeichnung und Funktion hat – mit Ist, Eingang, Antwort und Nachweis."
+          >
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={uebernehmen}
+                onChange={(e) => {
+                  setUebernehmen(e.target.checked);
+                  setStart(e.target.checked ? run.start : today());
+                }}
+              />
+              Erledigte Schritte übernehmen
+            </label>
           </Field>
           <Field label="Start des Planlaufs">
             <TextInput value={start} onChange={setStart} type="date" />
@@ -975,7 +1431,45 @@ function AbbruchDialog({
   );
 }
 
-type SchrittWerte = {
+/* ------------------------------------------------------------------ */
+
+/** Mögliche Stelle für einen eingefügten Schritt (siehe einfuegenMoeglich). */
+interface EinfuegeOrt {
+  wert: string;
+  label: string;
+  nachId: ID | null;
+  position: EinfuegePosition;
+}
+
+/**
+ * Zulässige Stellen zum Einfügen: hinter jedem Schritt des Verlaufs, in einem
+ * parallelen Block auch am Ende eines Zweigs bzw. nach dem Block – nur dort,
+ * wo der neue Schritt nichts Erledigtes überholt.
+ */
+function einfuegeOrte(run: PlanRun, verlauf: Verlauf<RunStep>, nummer: Map<ID, number>): EinfuegeOrt[] {
+  const orte: EinfuegeOrt[] = [];
+  const dazu = (nachId: ID | null, position: EinfuegePosition, label: string) => {
+    if (einfuegenMoeglich(run.steps, nachId, position)) orte.push({ wert: `${position}:${nachId ?? ''}`, label, nachId, position });
+  };
+  dazu(null, 'danach', '– an den Anfang –');
+  for (const a of verlauf.abschnitte) {
+    if (a.art === 'schritt') {
+      dazu(a.step.id, 'danach', `nach ${nummer.get(a.step.id)}. ${a.step.name}`);
+      continue;
+    }
+    for (const z of a.zweige) {
+      for (const s of z.schritte) dazu(s.id, 'danach', `nach ${nummer.get(s.id)}. ${s.name} (Zweig ${z.zweig + 1})`);
+      const letzter = z.schritte[z.schritte.length - 1];
+      // Endet der Zweig nicht einfach mit dem letzten Schritt (Rücksprung, Ausstieg), eigens ans Zweigende
+      if (letzter && (z.rueckSprungZu || z.ausstieg)) dazu(letzter.id, 'zweigende', `am Ende von Zweig ${z.zweig + 1}`);
+    }
+    const erster = a.zweige.flatMap((z) => z.schritte)[0];
+    if (erster) dazu(erster.id, 'nach_block', 'nach dem parallelen Block (bevor es weitergeht)');
+  }
+  return orte;
+}
+
+type SchrittForm = {
   name: string;
   typ: StepType;
   roleName: string;
@@ -983,34 +1477,47 @@ type SchrittWerte = {
   /** Person von Hand gewählt – sie bleibt trotz neuer Besetzung stehen. */
   contactManuell: boolean;
   fristTage: number;
+  sollManuell: boolean;
+  sollDatum: string;
+  istDatum: string;
+  eingangIst: string;
+  nachweisNummer: string;
   bemerkung: string;
   nachweis: Nachweis;
 };
 
+/**
+ * Schritt anpassen (mit `stepId`) bzw. einfügen. Kein Statusfeld – der Status
+ * ändert sich nur über Erledigt, Überspringen und Wieder öffnen. Das Ist ist
+ * nur bei erledigten Schritten änderbar, der Eingang bei anstehenden und
+ * erledigten. Alles in einem Schritt über `aenderungenAnwenden` bzw.
+ * `schrittImLaufEinfuegen`.
+ */
 function SchrittDialog({
   project,
   run,
-  step,
+  stepId,
   verlauf,
+  nummer,
   onClose,
-  onAnlegen,
 }: {
   project: Project;
   run: PlanRun;
-  step?: RunStep;
+  stepId?: ID;
+  /** Verlauf des Laufs – Grundlage der Einfügeposition und der Nachfolger. */
+  verlauf: Verlauf<RunStep>;
+  nummer: Map<ID, number>;
   onClose: () => void;
-  onAnlegen?: (werte: SchrittWerte, nachStepId: string | null) => void;
-  /** Schritte des aktuellen Verlaufs – Grundlage der Einfügeposition. */
-  verlauf?: RunStep[];
 }) {
-  const { data, updateStep } = useStore();
+  const { data, aenderungenAnwenden, schrittImLaufEinfuegen } = useStore();
   const toast = useToast();
+  const step = stepId ? run.steps.find((s) => s.id === stepId) : undefined;
   const rollen = data.roles.filter((r) => r.projectId === project.id);
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<SchrittForm>({
     name: step?.name ?? '',
-    typ: step?.typ ?? ('aufgabe' as StepType),
+    typ: step?.typ ?? 'aufgabe',
     roleName: step?.roleName ?? '',
     contactId: step?.contactId ?? null,
     contactManuell: step?.contactManuell ?? false,
@@ -1018,9 +1525,23 @@ function SchrittDialog({
     sollManuell: step?.sollManuell ?? false,
     sollDatum: step?.sollDatum ?? today(),
     istDatum: step?.istDatum ?? '',
-    status: step?.status ?? ('offen' as StepStatus),
+    eingangIst: step?.eingangIst ?? '',
+    nachweisNummer: step?.nachweisNummer ?? '',
     bemerkung: step?.bemerkung ?? '',
-    nachweis: step?.nachweis ?? ('keine' as Nachweis),
+    nachweis: step?.nachweis ?? 'keine',
+  });
+  const [frage, setFrage] = useState(false);
+
+  // Einfügeposition: Vorgabe direkt hinter dem (ersten) anstehenden Schritt
+  const orte = useMemo(() => (step ? [] : einfuegeOrte(run, verlauf, nummer)), [step, run, verlauf, nummer]);
+  const [ortWert, setOrtWert] = useState<string>(() => {
+    if (step) return '';
+    const erster = aktuelleSchritte(run)[0];
+    return (
+      orte.find((o) => o.position === 'danach' && erster && o.nachId === erster.id)?.wert ??
+      orte[orte.length - 1]?.wert ??
+      ''
+    );
   });
 
   // Wer die Funktion im Projekt ausfüllt – Grundlage der automatischen Zuordnung
@@ -1032,17 +1553,9 @@ function SchrittDialog({
     ...new Set([...funktionenFuerGewerk(rollen, gewerk), ...(form.roleName ? [form.roleName] : [])]),
   ];
   const automatischKontakt = kontakte.find((c) => c.id === automatischId);
-  const automatisch = automatischKontakt
-    ? `${automatischKontakt.vorname} ${automatischKontakt.nachname}`
-    : '';
+  const automatisch = automatischKontakt ? `${automatischKontakt.vorname} ${automatischKontakt.nachname}` : '';
 
-  // Einfügeposition: hinter welchem Schritt des Verlaufs der neue Schritt steht –
-  // nur dort, wo er nichts Erledigtes überholt (siehe einfuegenMoeglich)
-  const anfangMoeglich = einfuegenMoeglich(run.steps, null);
-  const positionen = (verlauf ?? []).map((s, i) => ({ s, i })).filter(({ s }) => einfuegenMoeglich(run.steps, s.id));
-  const [nachStepId, setNachStepId] = useState<string>(() => positionen[positionen.length - 1]?.s.id ?? '');
-
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const set = <K extends keyof SchrittForm>(k: K, v: SchrittForm[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   /** Prüfende Rollen verlangen regelmäßig einen Prüfbericht. */
   const rolleWechseln = (roleName: string) =>
@@ -1052,51 +1565,168 @@ function SchrittDialog({
       nachweis: f.nachweis === 'keine' && istPrueferRolle(roleName) ? 'pruefbericht' : f.nachweis,
     }));
 
+  const erledigt = step ? istErledigt(step) : false;
+  const eingangAenderbar = Boolean(step?.eingangIst);
+  const wieder = step ? wiedereingang(step, verlauf, run.steps) : null;
+  const eingangJetzt = form.eingangIst || step?.eingangIst || '';
+  const istVorEingang = erledigt && Boolean(form.istDatum) && Boolean(eingangJetzt) && form.istDatum < eingangJetzt;
+  // Nachfolger, deren Eingang dem bisherigen Ist entsprach (Rückfrage beim Ändern des Ist)
+  const nachfolgerMitAltemIst =
+    step && erledigt && step.istDatum
+      ? run.steps.filter(
+          (s) => (verlauf.vorgaenger.get(s.id) ?? []).includes(step.id) && s.eingangIst === step.istDatum,
+        )
+      : [];
+
+  /** Neuer Eingang eines Nachfolgers: das späteste Ende seiner Vorgänger, mit dem geänderten Schritt. */
+  const neuerEingangFuer = (n: RunStep, ich: Pick<RunStep, 'istDatum' | 'eingangIst'>): string | null =>
+    (verlauf.vorgaenger.get(n.id) ?? [])
+      .map((id) => (id === step?.id ? fertigAm(ich) : fertigAm(run.steps.find((s) => s.id === id) ?? ich)))
+      .filter((x): x is string => Boolean(x))
+      .sort()
+      .pop() ?? null;
+
+  const anwenden = (mitNachfolgern: boolean) => {
+    if (!step) return;
+    const veraendert =
+      form.name !== step.name ||
+      form.fristTage !== step.fristTage ||
+      form.roleName !== step.roleName ||
+      form.typ !== step.typ ||
+      form.sollManuell !== step.sollManuell;
+    const patch: Partial<RunStep> = {
+      name: form.name.trim(),
+      typ: form.typ,
+      roleName: form.roleName,
+      contactId: form.contactId,
+      contactManuell: form.contactManuell,
+      fristTage: Number(form.fristTage) || 0,
+      sollManuell: form.sollManuell,
+      sollDatum: form.sollManuell ? form.sollDatum : step.sollDatum,
+      bemerkung: form.bemerkung,
+      nachweis: form.nachweis,
+      abweichung: step.abweichung || veraendert,
+    };
+    if (erledigt && form.istDatum !== (step.istDatum ?? '')) patch.istDatum = form.istDatum;
+    if (erledigt && form.nachweisNummer.trim() !== (step.nachweisNummer ?? '')) {
+      patch.nachweisNummer = form.nachweisNummer.trim() || null;
+    }
+    if (eingangAenderbar && form.eingangIst && form.eingangIst !== step.eingangIst) {
+      patch.eingangIst = form.eingangIst;
+      patch.eingangGeschaetzt = false;
+    }
+    const aenderungen: Aenderung[] = [{ art: 'step', stepId: step.id, patch }];
+    if (mitNachfolgern) {
+      const ich = { istDatum: patch.istDatum ?? step.istDatum, eingangIst: patch.eingangIst ?? step.eingangIst };
+      for (const n of nachfolgerMitAltemIst) {
+        const eingang = neuerEingangFuer(n, ich);
+        if (eingang && eingang !== n.eingangIst) {
+          aenderungen.push({ art: 'step', stepId: n.id, patch: { eingangIst: eingang, eingangGeschaetzt: false } });
+        }
+      }
+    }
+    aenderungenAnwenden(run.id, aenderungen);
+    toast(
+      aenderungen.length > 1
+        ? `Schritt angepasst – Eingang von ${aenderungen.length - 1} Nachfolger${aenderungen.length > 2 ? 'n' : ''} nachgezogen.`
+        : 'Schritt angepasst.',
+    );
+    onClose();
+  };
+
+  const einfuegen = () => {
+    const ort = orte.find((o) => o.wert === ortWert);
+    if (!ort) {
+      toast('Bitte eine Stelle zum Einfügen wählen.');
+      return;
+    }
+    // Die ID entsteht vor dem Store-Aufruf (StrictMode)
+    const neu: RunStep = {
+      ...neueLaufFelder(),
+      id: newId('rs'),
+      name: form.name.trim(),
+      typ: form.typ,
+      roleName: form.roleName,
+      contactId: form.contactId,
+      contactManuell: form.contactManuell,
+      fristTage: Number(form.fristTage) || 0,
+      bemerkung: form.bemerkung,
+      abweichung: true,
+      antworten: [],
+      naechster: null,
+      nachweis: form.nachweis,
+      mailFrage: false,
+      mailVorlageId: null,
+      parallel: null,
+    };
+    const ergebnis = schrittImLaufEinfuegen(run.id, ort.nachId, neu, ort.position);
+    toast(
+      ergebnis?.art === 'aenderung' && ergebnis.aenderungen.length > 0
+        ? 'Schritt eingefügt – als Abweichung markiert.'
+        : ergebnis?.art === 'aenderung'
+          ? ergebnis.meldung
+          : 'Der Schritt ließ sich nicht einfügen.',
+    );
+    onClose();
+  };
+
   const speichern = () => {
     if (!form.name.trim()) {
       toast('Bitte einen Namen angeben.');
       return;
     }
-    if (step) {
-      const veraendert =
-        form.name !== step.name ||
-        form.fristTage !== step.fristTage ||
-        form.roleName !== step.roleName ||
-        form.typ !== step.typ ||
-        form.sollManuell !== step.sollManuell;
-      updateStep(run.id, step.id, {
-        name: form.name,
-        typ: form.typ,
-        roleName: form.roleName,
-        contactId: form.contactId,
-        contactManuell: form.contactManuell,
-        fristTage: Number(form.fristTage) || 0,
-        sollManuell: form.sollManuell,
-        sollDatum: form.sollManuell ? form.sollDatum : step.sollDatum,
-        istDatum: form.istDatum || null,
-        status: form.status,
-        bemerkung: form.bemerkung,
-        nachweis: form.nachweis,
-        abweichung: step.abweichung || veraendert,
-      });
-      toast('Schritt angepasst.');
-    } else {
-      onAnlegen?.(
-        {
-          name: form.name,
-          typ: form.typ,
-          roleName: form.roleName,
-          contactId: form.contactId,
-          contactManuell: form.contactManuell,
-          fristTage: Number(form.fristTage) || 0,
-          bemerkung: form.bemerkung,
-          nachweis: form.nachweis,
-        },
-        nachStepId || null,
-      );
+    if (form.sollManuell && !form.sollDatum) {
+      toast('Bitte den Soll-Termin angeben.');
+      return;
     }
-    onClose();
+    if (!step) {
+      einfuegen();
+      return;
+    }
+    if (erledigt && !form.istDatum) {
+      toast('Bitte ein Ist-Datum angeben – zum Zurücknehmen „Wieder öffnen“ verwenden.');
+      return;
+    }
+    if (erledigt && form.istDatum !== step.istDatum && nachfolgerMitAltemIst.length > 0) {
+      setFrage(true);
+      return;
+    }
+    anwenden(false);
   };
+
+  if (stepId && !step) return null;
+
+  if (frage && step) {
+    const n = nachfolgerMitAltemIst.length;
+    return (
+      <Modal
+        titel="Eingang der Nachfolger ebenfalls anpassen?"
+        sub={step.name}
+        onClose={() => setFrage(false)}
+        footer={
+          <>
+            <button type="button" className="btn" onClick={() => setFrage(false)}>
+              Zurück
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => anwenden(false)}>
+              Nein, nur diesen Schritt
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => anwenden(true)}>
+              Ja, Eingang anpassen
+            </button>
+          </>
+        }
+      >
+        <p style={{ margin: 0 }}>
+          Das Ist ändert sich von {formatDate(step.istDatum)} auf {formatDate(form.istDatum)}.{' '}
+          {n === 1 ? 'Der nachfolgende Schritt' : 'Die nachfolgenden Schritte'}{' '}
+          {nachfolgerMitAltemIst.map((s) => `„${s.name}“`).join(', ')} {n === 1 ? 'ging' : 'gingen'} am{' '}
+          {formatDate(step.istDatum)} ein. Soll {n === 1 ? 'sein Eingang' : 'ihr Eingang'} ebenfalls angepasst werden?
+          Davon hängen Fristen und Soll-Termine ab.
+        </p>
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -1142,18 +1772,19 @@ function SchrittDialog({
         </Field>
         {!step ? (
           <Field
-            label="Einfügen nach"
+            label="Einfügen"
             full
-            hint="Der Schritt wird in den laufenden Verlauf eingehängt – nicht vor Schritten, die schon erledigt sind."
+            hint="Der Schritt wird in den laufenden Verlauf eingehängt – nicht vor Schritten, die schon erledigt sind; im parallelen Block in den Zweig des gewählten Schritts."
           >
-            <Select
-              value={nachStepId}
-              onChange={setNachStepId}
-              options={[
-                ...(anfangMoeglich ? [{ value: '', label: '– an den Anfang –' }] : []),
-                ...positionen.map(({ s, i }) => ({ value: s.id, label: `${i + 1}. ${s.name}` })),
-              ]}
-            />
+            {orte.length > 0 ? (
+              <Select
+                value={ortWert}
+                onChange={setOrtWert}
+                options={orte.map((o) => ({ value: o.wert, label: o.label }))}
+              />
+            ) : (
+              <span className="small muted">Im Verlauf gibt es keine Stelle, an der sich noch ein Schritt einfügen lässt.</span>
+            )}
           </Field>
         ) : null}
         <Field
@@ -1168,9 +1799,7 @@ function SchrittDialog({
         >
           <Select
             value={form.contactManuell ? (form.contactId ?? '') : ''}
-            onChange={(v) =>
-              setForm((f) => ({ ...f, contactId: v || null, contactManuell: Boolean(v) }))
-            }
+            onChange={(v) => setForm((f) => ({ ...f, contactId: v || null, contactManuell: Boolean(v) }))}
             placeholder="– nach Besetzung der Funktion –"
             options={kontakte.map((c) => ({ value: c.id, label: `${c.vorname} ${c.nachname} (${c.firma})` }))}
           />
@@ -1182,34 +1811,60 @@ function SchrittDialog({
             inputMode="numeric"
           />
         </Field>
+        {step && eingangAenderbar ? (
+          <Field
+            label={
+              wieder === 'ruecksprung'
+                ? 'Wiedereingang (aus Rücksprung)'
+                : wieder === 'wieder_geoeffnet'
+                  ? 'Wiedereingang (wieder geöffnet)'
+                  : 'Eingang'
+            }
+            hint={
+              wieder
+                ? `Wiedereingang am ${formatDate(step.eingangIst)} (${wieder === 'ruecksprung' ? 'aus Rücksprung' : 'wieder geöffnet'}) – ab hier zählt die Frist des neuen Durchlaufs.`
+                : step.eingangGeschaetzt
+                  ? 'Bei der Umstellung geschätzt – bitte prüfen. Ab hier zählt die Frist.'
+                  : 'Tatsächlicher Eingang – ab hier zählt die Frist.'
+            }
+          >
+            <TextInput value={form.eingangIst} onChange={(v) => set('eingangIst', v)} type="date" />
+          </Field>
+        ) : null}
+        {step && erledigt ? (
+          <Field label="Ist-Termin" hint="Tag der Erledigung">
+            <TextInput value={form.istDatum} onChange={(v) => set('istDatum', v)} type="date" />
+          </Field>
+        ) : null}
+        {step && erledigt && step.nachweis !== 'keine' ? (
+          <Field label={NACHWEIS_LABEL[step.nachweis]}>
+            <TextInput value={form.nachweisNummer} onChange={(v) => set('nachweisNummer', v)} />
+          </Field>
+        ) : null}
+        {istVorEingang ? (
+          <div className="full">
+            <Callout ton="warn" icon="!">
+              Das Ist ({formatDate(form.istDatum)}) liegt vor dem Eingang ({formatDate(eingangJetzt)}). Für die
+              Nachfolger zählt dann der Eingang als Abschluss.
+            </Callout>
+          </div>
+        ) : null}
         {step ? (
-          <>
-            <Field label="Status">
-              <Select
-                value={form.status}
-                onChange={(v) => set('status', v as StepStatus)}
-                options={Object.entries(STEP_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
+          <Field label="Soll-Termin festsetzen" full hint="Überschreibt die Fristenrechnung ab diesem Schritt.">
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={form.sollManuell}
+                onChange={(e) => set('sollManuell', e.target.checked)}
               />
-            </Field>
-            <Field label="Ist-Termin" hint="leer = noch nicht erledigt">
-              <TextInput value={form.istDatum} onChange={(v) => set('istDatum', v)} type="date" />
-            </Field>
-            <Field label="Soll-Termin festsetzen" full hint="Überschreibt die Fristenrechnung ab diesem Schritt.">
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={form.sollManuell}
-                  onChange={(e) => set('sollManuell', e.target.checked)}
-                />
-                Soll-Termin manuell vorgeben
-              </label>
-              {form.sollManuell ? (
-                <div style={{ marginTop: 8 }}>
-                  <TextInput value={form.sollDatum ?? ''} onChange={(v) => set('sollDatum', v)} type="date" />
-                </div>
-              ) : null}
-            </Field>
-          </>
+              Soll-Termin manuell vorgeben
+            </label>
+            {form.sollManuell ? (
+              <div style={{ marginTop: 8 }}>
+                <TextInput value={form.sollDatum ?? ''} onChange={(v) => set('sollDatum', v)} type="date" />
+              </div>
+            ) : null}
+          </Field>
         ) : null}
         <Field label="Bemerkung" full>
           <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />

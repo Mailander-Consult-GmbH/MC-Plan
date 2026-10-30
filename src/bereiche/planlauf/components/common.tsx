@@ -1,4 +1,5 @@
 /** Fachliche Anzeige-Bausteine, die in mehreren Ansichten gebraucht werden. */
+import type { ReactNode } from 'react';
 import { AMPEL_LABEL, type Ampel } from '../domain/engine';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import {
@@ -124,4 +125,28 @@ export function erinnerungText(e: Pick<Erinnerung, 'zeitpunkt' | 'kontaktName' |
 /** Seite, der ein Verzug zugerechnet wird; ohne Seite der Hinweis „Seite fehlt“. */
 export function SeiteBadge({ seite }: { seite: Seite | null }) {
   return seite ? <Badge>{SEITE_LABEL[seite]}</Badge> : <Badge ton="gelb">Seite fehlt</Badge>;
+}
+
+/** Kennzahl im Kopf des Planlaufs bzw. im Terminnachweis (Gestaltung in planlauf.css). */
+export function Kennzahl({
+  label,
+  wert,
+  sub,
+  ton = '',
+  children,
+}: {
+  label: string;
+  wert: ReactNode;
+  sub?: ReactNode;
+  ton?: '' | 'rot' | 'orange' | 'gruen';
+  children?: ReactNode;
+}) {
+  return (
+    <div className={`pl-kennzahl ${ton}`}>
+      <span className="pl-kennzahl-label">{label}</span>
+      <span className="pl-kennzahl-wert">{wert}</span>
+      {children}
+      {sub ? <span className="pl-kennzahl-sub">{sub}</span> : null}
+    </div>
+  );
 }
