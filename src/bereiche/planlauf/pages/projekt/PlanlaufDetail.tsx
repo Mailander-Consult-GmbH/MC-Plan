@@ -1104,7 +1104,7 @@ function WiederOeffnenDialog({ run, stepId, onClose }: { run: PlanRun; stepId: I
         {moeglich === 'korrektur' ? (
           <Field label="Wie soll der Schritt wieder geöffnet werden?">
             <div className="stack" style={{ gap: 10 }}>
-              <label className="checkbox">
+              <label className="checkbox" style={{ alignItems: 'flex-start' }}>
                 <input type="radio" name="wiederoeffnen" checked={modus === 'korrektur'} onChange={() => setModus('korrektur')} />
                 <span>
                   <strong>Korrektur</strong> – etwa nach einer Fehlbedienung: Das Ist-Datum wird entfernt, der Schritt
@@ -1112,7 +1112,7 @@ function WiederOeffnenDialog({ run, stepId, onClose }: { run: PlanRun; stepId: I
                   Das geht, solange kein nachfolgender Schritt ein Ist-Datum hat.
                 </span>
               </label>
-              <label className="checkbox">
+              <label className="checkbox" style={{ alignItems: 'flex-start' }}>
                 <input type="radio" name="wiederoeffnen" checked={modus === 'erneut'} onChange={() => setModus('erneut')} />
                 <span>
                   <strong>Erneute Bearbeitung</strong> – der Schritt wird noch einmal bearbeitet: Ab hier beginnt ein
@@ -1209,11 +1209,7 @@ function NeustartDialog({
     return uebernehmen ? erledigteUebernehmen(run.steps, neu) : neu;
   };
   // Vorschau: wie viele Schritte übernommen würden
-  const uebernommen = useMemo(
-    () => (uebernehmen ? laufSchritte().filter(istErledigt).length : 0),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [uebernehmen, steps, templateId, run.steps],
-  );
+  const uebernommen = uebernehmen ? laufSchritte().filter(istErledigt).length : 0;
 
   const starten = () => {
     if (steps.length === 0 || steps.some((s) => !s.name.trim())) {

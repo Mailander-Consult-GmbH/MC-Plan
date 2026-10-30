@@ -223,5 +223,6 @@
   .pl-zuordnen { grid-template-columns: minmax(80px, 1fr) minmax(64px, 80px); }
   .pl-zuordnen > .pl-zuordnen-grund { grid-column: 1 / -1; }
   .pl-block { margin: 8px; }
+  .pl-posten-zeile { grid-template-columns: minmax(0, 1fr); }
   .pl-nachweis-abschnitt { padding: 12px 14px; }
 }
