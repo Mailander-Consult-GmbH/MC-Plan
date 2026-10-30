@@ -10,7 +10,8 @@
  * sich auf alle gleichen Schritte übertragen. Ein Ist vor dem Eingang ist nur
  * nach ausdrücklicher Bestätigung möglich. Die Vorschau rechnet den Abschluss
  * auf dem aktuellen Stand durch („führt zurück zu …“, „schließt Planlauf ab“);
- * danach meldet der Dialog das Ergebnis mit Zahlen.
+ * danach meldet der Dialog das Ergebnis mit Zahlen und bietet für die neu
+ * anstehenden Schritte den Dialog „Neu zuständig“ an.
  */
 import { useMemo, useState } from 'react';
 import { formatDate, today, type ISODate } from '../../../shared/dates';
@@ -21,6 +22,7 @@ import { NACHWEIS_LABEL, type ID, type PlanDocument, type PlanRun, type RunStep 
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Segmented, Select, TextInput } from '../../../shared/ui';
+import { NeuZustaendig, type NeuZustaendigEintrag } from './NeuZustaendig';
 import './auswahl.css';
 
 type Art = 'erledigt' | 'uebersprungen';
@@ -41,6 +43,8 @@ interface Zahlen {
   abgeschlossen: number;
   ausgelassen: number;
   neuAnstehend: number;
+  /** Neu anstehende Schritte je Lauf – für den Dialog „Neu zuständig“. */
+  neu: NeuZustaendigEintrag[];
   art: Art;
 }
 
@@ -68,6 +72,7 @@ export function SammelErledigen({
   const [nachweise, setNachweise] = useState<Record<string, string>>({});
   const [bestaetigt, setBestaetigt] = useState(false);
   const [ergebnis, setErgebnis] = useState<Zahlen | null>(null);
+  const [neuOffen, setNeuOffen] = useState(false);
 
   // Läufe und Schritte frisch aus dem Bestand
   const zeilen: Zeile[] = runIds.flatMap((id) => {
@@ -189,8 +194,8 @@ export function SammelErledigen({
   const ausfuehren = () => {
     if (sperre) return;
     const ergebnisse = schritteAbschliessen(eintraege);
-    const zahlen: Zahlen = { erledigt: 0, ruecksprung: 0, abgeschlossen: 0, ausgelassen: 0, neuAnstehend: 0, art };
-    for (const { ergebnis: e } of ergebnisse) {
+    const zahlen: Zahlen = { erledigt: 0, ruecksprung: 0, abgeschlossen: 0, ausgelassen: 0, neuAnstehend: 0, neu: [], art };
+    for (const { runId, ergebnis: e } of ergebnisse) {
       if (!e || e.art !== 'aenderung') {
         zahlen.ausgelassen += 1;
         continue;
@@ -199,6 +204,12 @@ export function SammelErledigen({
       if (e.ruecksprung) zahlen.ruecksprung += 1;
       if (e.abgeschlossen) zahlen.abgeschlossen += 1;
       zahlen.neuAnstehend += e.naechste.length;
+      if (e.naechste.length > 0) {
+        const eintrag = zahlen.neu.find((n) => n.runId === runId);
+        const ids = e.naechste.map((s) => s.id);
+        if (eintrag) eintrag.stepIds = [...new Set([...eintrag.stepIds, ...ids])];
+        else zahlen.neu.push({ runId, stepIds: ids });
+      }
     }
     setErgebnis(zahlen);
     toast(
@@ -207,6 +218,10 @@ export function SammelErledigen({
       }${zahlen.ausgelassen ? `, ${zahlen.ausgelassen} ausgelassen` : ''}.`,
     );
   };
+
+  if (ergebnis && neuOffen) {
+    return <NeuZustaendig eintraege={ergebnis.neu} onClose={() => setNeuOffen(false)} />;
+  }
 
   if (ergebnis) {
     const kachel = (wert: number, text: string) => (
@@ -221,9 +236,16 @@ export function SammelErledigen({
         sub={`Ist-Datum ${formatDate(istDatum)}`}
         onClose={onClose}
         footer={
-          <button type="button" className="btn btn-primary" onClick={onClose}>
-            Schließen
-          </button>
+          <>
+            {ergebnis.neu.length > 0 ? (
+              <button type="button" className="btn btn-outline" onClick={() => setNeuOffen(true)}>
+                Neu zuständig …
+              </button>
+            ) : null}
+            <button type="button" className="btn btn-primary" onClick={onClose}>
+              Schließen
+            </button>
+          </>
         }
       >
         <div className="stack" style={{ gap: 14 }}>
@@ -235,8 +257,8 @@ export function SammelErledigen({
           </div>
           {ergebnis.neuAnstehend > 0 ? (
             <p className="small muted">
-              {ergebnis.neuAnstehend === 1 ? 'Ein Schritt steht' : `${ergebnis.neuAnstehend} Schritte stehen`} jetzt neu an. Die
-              Zuständigen lassen sich über „Erinnern …“ gesammelt benachrichtigen.
+              {ergebnis.neuAnstehend === 1 ? 'Ein Schritt steht' : `${ergebnis.neuAnstehend} Schritte stehen`} jetzt neu an. Unter
+              „Neu zuständig …“ lassen sich die Zuständigen je Person per E-Mail informieren.
             </p>
           ) : null}
           {ergebnis.ausgelassen > 0 ? (
