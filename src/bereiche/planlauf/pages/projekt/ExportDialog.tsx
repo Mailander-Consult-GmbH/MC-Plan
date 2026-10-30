@@ -12,12 +12,11 @@
 import { useState } from 'react';
 import {
   EXPORT_STIL,
-  UMFANG_LABEL,
   berichtBilden,
   exportDateiname,
   exportHtml,
   kurzBlatt,
-  langZeilen,
+  langBlatt,
   zeilenSchluessel,
   type BerichtGruppe,
   type BerichtZeile,
@@ -49,11 +48,18 @@ function unterzeilen(zeilen: BerichtZeile[], index: number): BerichtZeile[] {
 export function ExportDialog({
   project,
   vorauswahl,
+  vorauswahlHinweis,
   onClose,
 }: {
   project: Project;
-  /** Planläufe, die die Liste gerade zeigt (gesetzter Filter) – sonst ist alles gewählt. */
+  /**
+   * Vorgewählte Zeilen – Schlüssel wie `zeilenSchluessel` (Lauf-ID bzw. ID eines
+   * mitlaufenden Plans), etwa die Auswahl oder die gefilterte Liste im Reiter
+   * „Planläufe“. Ohne Angabe ist alles gewählt.
+   */
   vorauswahl?: Set<ID>;
+  /** Erklärt, woher die Vorauswahl stammt. */
+  vorauswahlHinweis?: string;
   onClose: () => void;
 }) {
   const { data } = useStore();
@@ -65,13 +71,9 @@ export function ExportDialog({
   const alleIds = schluesselVon(alleZeilen);
 
   const [umfang, setUmfang] = useState<ExportUmfang>('kurz');
-  const [auswahl, setAuswahl] = useState<Set<ID>>(() => {
-    if (!vorauswahl) return new Set(alleIds);
-    // Wie in der Liste: ein gezeigtes Verzeichnis zeigt auch seine mitlaufenden Pläne
-    const laufId = (z: BerichtZeile) =>
-      z.art === 'lauf' ? z.eintrag.run.id : z.art === 'mitlaufend' ? z.verzeichnisLauf.id : '';
-    return new Set(schluesselVon(alleZeilen.filter((z) => vorauswahl.has(laufId(z)))));
-  });
+  const [auswahl, setAuswahl] = useState<Set<ID>>(() =>
+    vorauswahl ? new Set(alleIds.filter((id) => vorauswahl.has(id))) : new Set(alleIds),
+  );
 
   const gewaehlt = alleIds.filter((id) => auswahl.has(id)).length;
   // Gesperrt wird nach dem Ergebnis, nicht nach der Zahl der Haken
@@ -97,7 +99,7 @@ export function ExportDialog({
     const blatt =
       umfang === 'kurz'
         ? kurzBlatt(data, project, auswahl)
-        : { name: UMFANG_LABEL.lang, zeilen: langZeilen(data, project, auswahl) };
+        : langBlatt(data, project, auswahl);
     const blob = xlsxErzeugen([blatt]);
     dateiLaden(blob, `${exportDateiname(project, umfang)}.xlsx`);
     toast('Excel-Datei wurde erzeugt.');
@@ -177,7 +179,7 @@ export function ExportDialog({
           <span className="hint">
             {umfang === 'kurz'
               ? 'Als PDF genau die Angaben des Reiters „Planläufe“ wie im Programm: Aktueller Stand, Nächster Schritt, Zuständig, Fortschritt und Status. In Excel die Spalten Planpaket, Plancode, Index/Ausgabe, Titel, Gewerk, Aktueller Stand, Datum, Nächster Schritt und Frist; abgeschlossene Planläufe grün und abgebrochene grau gesondert am Ende.'
-              : 'Je Planlauf alle bereits durchlaufenen und alle ausstehenden Schritte mit Verantwortlichen – gegliedert nach Planpaketen.'}
+              : 'Je Planlauf alle bereits durchlaufenen und alle ausstehenden Schritte mit Durchlauf, Verantwortlichen, Seite, Eingang, Soll, Ist und Verzug – frühere Durchläufe als eigene Zeilen, gegliedert nach Planpaketen.'}
           </span>
         </Field>
 
@@ -193,7 +195,7 @@ export function ExportDialog({
 
           {vorauswahl ? (
             <p className="small tertiary" style={{ marginBottom: 6 }}>
-              Vorgewählt sind die Einträge, die der Filter im Reiter „Planläufe“ zeigt.
+              {vorauswahlHinweis ?? 'Vorgewählt sind die Einträge, die der Filter im Reiter „Planläufe“ zeigt.'}
             </p>
           ) : null}
 
