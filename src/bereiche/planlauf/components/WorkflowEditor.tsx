@@ -8,7 +8,9 @@
  * Kartenpositionen. Ein paralleler Block steht als eine Containerkarte im
  * Standardverlauf: seine Zweige nebeneinander (untereinander, wenn der Platz
  * nicht reicht), Abweichungen im Zweig gestrichelt darunter; Übergänge aus
- * einem Zweig heraus stehen als Text auf der Karte, nie als Linie.
+ * einem Zweig heraus stehen als Text auf der Karte, nie als Linie. Block und
+ * Zweige tragen ihren Namen im Kopf (bearbeitet im Abschnitt „Parallel“ der
+ * Schrittdetails; ein Klick auf den Kopf der Containerkarte führt dorthin).
  * Rechts stehen die Schrittdetails des gewählten Schritts,
  * ohne Auswahl die Übersicht über den Workflow. Auf schmalen Bildschirmen
  * stehen die Abweichungen unter dem Standardverlauf und die Details öffnen
@@ -39,6 +41,7 @@ import {
   ausBlockLoesen,
   bereinigen,
   blockAufloesen,
+  blockBenennen,
   dauerImStandardverlauf,
   duplizieren,
   einfuegenAn,
@@ -54,6 +57,7 @@ import {
   standardKante,
   verschiebbar,
   zielSetzen,
+  zweigBenennen,
   zweigHinzufuegen,
   type Anzeige,
   type Bearbeitung,
@@ -63,7 +67,7 @@ import {
   type Ziel,
   type ZweigGliederung,
 } from '../domain/workflowGraph';
-import { nachfolger, strukturVon } from '../domain/ablauf';
+import { blockTitel, nachfolger, strukturVon, zweigTitel } from '../domain/ablauf';
 import { newId, useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { ConfirmDialog } from '../../../shared/ui';
@@ -396,6 +400,15 @@ export function WorkflowEditor({
     [rollen],
   );
 
+  /** Nach einem Klick auf den Kopf einer Containerkarte: das Feld „Name des Blocks“ fokussieren. */
+  const [blockNameFokus, setBlockNameFokus] = useState(false);
+  const blockBenennenWaehlen = (blockId: ID) => {
+    const b = gliederung.bloecke[blockId];
+    if (!b) return;
+    setAuswahl(b.erster);
+    setBlockNameFokus(true);
+  };
+
   const detailsSichtbar = (!schmal && !mittel) || auswahl !== null;
   const panel =
     gewaehlt ? (
@@ -412,6 +425,8 @@ export function WorkflowEditor({
         onBearbeitung={bearbeitungUebernehmen}
         onEntfernen={entfernenMitMeldung}
         onSchliessen={() => setAuswahl(null)}
+        blockNameFokus={blockNameFokus}
+        onBlockNameFokussiert={() => setBlockNameFokus(false)}
         schmal={schmal || mittel}
       />
     ) : (
@@ -576,6 +591,7 @@ export function WorkflowEditor({
                   setAuswahl(id);
                   if (perTastatur) setTimeout(() => panelRef.current?.focus(), 0);
                 }}
+                onBlockBenennen={blockBenennenWaehlen}
                 onHover={setHover}
                 onEinfuegen={einfuegenIn}
               />
@@ -686,6 +702,7 @@ function Ablaufbild({
   schmal,
   kuerzel,
   onAuswahl,
+  onBlockBenennen,
   onHover,
   onEinfuegen,
 }: {
@@ -697,6 +714,8 @@ function Ablaufbild({
   schmal: boolean;
   kuerzel: (rolle: string) => string;
   onAuswahl: (id: ID, perTastatur: boolean) => void;
+  /** Kopf einer Containerkarte: ersten Schritt des Blocks wählen und den Blocknamen bearbeiten. */
+  onBlockBenennen: (blockId: ID) => void;
   onHover: (id: ID | null) => void;
   onEinfuegen: (stelle: Einfuegestelle) => void;
 }) {
@@ -912,22 +931,27 @@ function Ablaufbild({
         key={blockId}
         ref={merke(blockId)}
         role="group"
-        aria-label={`Paralleler Block mit ${n} Zweigen`}
+        aria-label={`Paralleler Block${b.name ? ` „${b.name}“` : ''} mit ${n} Zweigen`}
         className={`wf-parallel wf-parallel-${ort} ${seite ? 'wf-parallel-nebeneinander' : 'wf-parallel-gestapelt'} ${bezug ? 'wf-parallel-aktiv' : ''}`}
         style={stil}
       >
-        <div className="wf-parallel-kopf">
+        <button
+          type="button"
+          className="wf-parallel-kopf"
+          title={b.name ? 'Block umbenennen' : 'Block benennen'}
+          onClick={() => onBlockBenennen(blockId)}
+        >
           <span className="wf-parallel-zeichen">‖</span>
-          <span>
-            Parallel · {n} Zweige
-          </span>
+          <span className="wf-parallel-titel">{blockTitel(b.name, n)}</span>
           <span className="wf-parallel-kopf-text">laufen gleichzeitig</span>
-        </div>
+        </button>
         <div className="wf-parallel-balken" aria-hidden="true" />
         <div className="wf-parallel-zweige">
           {b.zweige.map((z) => (
             <div key={z.zweig} className="wf-parallel-zweig">
-              <div className="wf-parallel-zweig-kopf">Zweig {z.zweig + 1}</div>
+              <div className="wf-parallel-zweig-kopf" title={z.name ? `Zweig ${z.zweig + 1}: ${z.name}` : undefined}>
+                {zweigTitel(z.name, z.zweig)}
+              </div>
               {verbinder({ art: 'zweiganfang', block: blockId, zweig: z.zweig }, null, 'wf-parallel-anfang')}
               {z.standard.map((id) => (
                 <Fragment key={id}>
@@ -1366,6 +1390,8 @@ function SchrittDetails({
   onBearbeitung,
   onEntfernen,
   onSchliessen,
+  blockNameFokus,
+  onBlockNameFokussiert,
   schmal,
 }: {
   step: ProcessTemplateStep;
@@ -1380,17 +1406,35 @@ function SchrittDetails({
   onBearbeitung: (e: Bearbeitung, neueAuswahl?: ID | null, meldung?: string) => void;
   onEntfernen: (id: ID) => void;
   onSchliessen: () => void;
+  /** Das Feld „Name des Blocks“ fokussieren (nach einem Klick auf den Kopf der Containerkarte). */
+  blockNameFokus: boolean;
+  onBlockNameFokussiert: () => void;
   schmal: boolean;
 }) {
   const { data } = useStore();
+  const blockNameRef = useRef<HTMLInputElement>(null);
   const i = steps.indexOf(step);
   const pos = bildFolge.indexOf(step.id);
   const struktur = useMemo(() => strukturVon(steps), [steps]);
   /** Lage im parallelen Block; null = außerhalb von Blöcken. */
   const lage = struktur.lage[i] ?? null;
   const zweigG = lage ? gliederung.bloecke[lage.block.id]?.zweige[lage.zweig] : undefined;
+  /** Namen ungekürzt, wie getippt (der erste nicht leere im Block bzw. Zweig). */
+  const rohName = (feld: 'name' | 'zweigName', passt: (p: NonNullable<ProcessTemplateStep['parallel']>) => boolean) =>
+    steps.map((s) => s.parallel).find((p) => p && passt(p) && p[feld]?.trim())?.[feld] ?? '';
+  const blockNameRoh = lage ? rohName('name', (p) => p.block === lage.block.id) : '';
+  const zweigNameRoh =
+    lage && step.parallel ? rohName('zweigName', (p) => p.block === lage.block.id && p.zweig === step.parallel!.zweig) : '';
+  useEffect(() => {
+    if (!blockNameFokus) return;
+    onBlockNameFokussiert();
+    blockNameRef.current?.focus();
+    blockNameRef.current?.select();
+  }, [blockNameFokus, onBlockNameFokussiert]);
   const ort = lage
-    ? `Paralleler Block · Zweig ${lage.zweig + 1} von ${lage.block.zweige.length}${
+    ? `Paralleler Block${lage.block.name ? ` „${lage.block.name}“` : ''} · ${
+        lage.block.zweigNamen[lage.zweig] ? `${lage.block.zweigNamen[lage.zweig]} · ` : ''
+      }Zweig ${lage.zweig + 1} von ${lage.block.zweige.length}${
         zweigG?.standard.includes(step.id) ? '' : zweigG?.unerreichbar.includes(step.id) ? ' · im Zweig nicht erreichbar' : ' · Abweichung im Zweig'
       }`
     : gliederung.hauptAnzeige.includes(step.id)
@@ -1441,7 +1485,7 @@ function SchrittDetails({
           <>
             <option value="">{folge?.art === 'schritt' ? `Nächster Schritt im Zweig: ${titel(folge.index)}` : ZWEIG_BEENDET}</option>
             {folge?.art === 'schritt' || wert === 'ende' ? <option value="ende">{ZWEIG_BEENDET}</option> : null}
-            <optgroup label={`Im eigenen Zweig (Zweig ${lage.zweig + 1})`}>
+            <optgroup label={`Im eigenen Zweig (${zweigTitel(lage.block.zweigNamen[lage.zweig] ?? '', lage.zweig)})`}>
               {lage.block.zweige[lage.zweig]
                 .filter((n) => n !== i)
                 .map((n) => (
@@ -1727,6 +1771,34 @@ function SchrittDetails({
               </b>{' '}
               eines parallelen Blocks. Die Zweige laufen gleichzeitig; weiter geht es, wenn alle Zweige erledigt sind.
             </p>
+            <div className="wf-feld-reihe wf-parallel-namen">
+              <label className="wf-feld">
+                <span>Name des Blocks</span>
+                <input
+                  ref={blockNameRef}
+                  className="input"
+                  value={blockNameRoh}
+                  placeholder="z. B. Versand"
+                  onChange={(e) =>
+                    onSchritteAendern((alle) => blockBenennen(alle, lage.block.id, e.target.value), `${lage.block.id}:name`)
+                  }
+                />
+              </label>
+              <label className="wf-feld">
+                <span>Name des Zweigs</span>
+                <input
+                  className="input"
+                  value={zweigNameRoh}
+                  placeholder={`Zweig ${lage.zweig + 1}`}
+                  onChange={(e) =>
+                    onSchritteAendern(
+                      (alle) => (step.parallel ? zweigBenennen(alle, lage.block.id, step.parallel.zweig, e.target.value) : alle),
+                      `${lage.block.id}:${step.parallel?.zweig}:zweigName`,
+                    )
+                  }
+                />
+              </label>
+            </div>
             <div className="row wrap" style={{ gap: 6 }}>
               <button type="button" className="btn btn-sm btn-outline" onClick={zweigDazu}>
                 <Icon name="plus" size={13} /> Zweig hinzufügen
@@ -1980,6 +2052,7 @@ function Uebersicht({
           <li>Karte anklicken, um den Schritt zu bearbeiten.</li>
           <li>„+“ zwischen zwei Karten fügt dort eine Aufgabe ein – auch im Zweig eines parallelen Blocks.</li>
           <li>Parallele Zweige: „Schritt hinzufügen“ → „Parallele Zweige“ oder in den Schrittdetails „Parallel dazu ausführen“.</li>
+          <li>Ein Klick auf den Kopf eines Blocks führt zu „Name des Blocks“; Zweige erhalten in den Schrittdetails einen Namen.</li>
           <li>Strg+Z bzw. Strg+Y: Rückgängig und Wiederholen.</li>
         </ul>
       </section>

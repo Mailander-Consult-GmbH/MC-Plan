@@ -83,6 +83,10 @@ export interface Block {
   ende: number;
   /** Listenindizes je Zweig (nach Zweignummer sortiert), jeweils in Listenreihenfolge. */
   zweige: number[][];
+  /** Name des Blocks (siehe `Parallel.name`); '' = ohne Namen. */
+  name: string;
+  /** Name je Zweig in der Reihenfolge von `zweige`; '' = ohne Namen. */
+  zweigNamen: string[];
 }
 
 /**
@@ -107,9 +111,65 @@ export function bloeckeErmitteln(steps: readonly AblaufSchritt[]): Map<ID, Block
   const bloecke = new Map<ID, Block>();
   for (const [id, b] of roh) {
     const zweige = [...b.zweige.entries()].sort((x, y) => x[0] - y[0]).map(([, idx]) => idx);
-    bloecke.set(id, { id, start: b.start, ende: b.ende, zweige });
+    const name = (feld: 'name' | 'zweigName', idx: number[]) =>
+      idx.map((i) => steps[i].parallel?.[feld]?.trim() ?? '').find(Boolean) ?? '';
+    bloecke.set(id, {
+      id,
+      start: b.start,
+      ende: b.ende,
+      zweige,
+      name: name('name', zweige.flat().sort((x, y) => x - y)),
+      zweigNamen: zweige.map((idx) => name('zweigName', idx)),
+    });
   }
   return bloecke;
+}
+
+/** Bezeichnung eines Zweigs: sein Name, sonst „Zweig n“ (`zweig`: Position ab 0). */
+export function zweigTitel(name: string, zweig: number): string {
+  return name || `Zweig ${zweig + 1}`;
+}
+
+/** Bezeichnung eines Blocks mit n Zweigen: „Versand · parallel, 4 Zweige“ bzw. „Parallel · 4 Zweige“. */
+export function blockTitel(name: string, zweige: number): string {
+  return name ? `${name} · parallel, ${zweige} Zweige` : `Parallel · ${zweige} Zweige`;
+}
+
+/** Marker mit den angegebenen Namen; leere Namen entfallen. */
+export function markerMitNamen(p: Parallel, name: string | undefined, zweigName: string | undefined): Parallel {
+  const m: Parallel = { block: p.block, zweig: p.zweig };
+  if (name?.trim()) m.name = name;
+  if (zweigName?.trim()) m.zweigName = zweigName;
+  return m;
+}
+
+/**
+ * Namen gelten für den ganzen Block bzw. Zweig und stehen an jedem seiner
+ * Schritte: Je Block und je Zweig gilt der erste nicht leere Name in
+ * Listenreihenfolge. So bleibt ein Name erhalten, wenn der Schritt, der ihn
+ * trug, den Block verlässt, und neue Schritte im Block erhalten ihn. Ist das
+ * schon so, bleibt die Liste unverändert.
+ */
+export function namenVereinheitlichen<T extends AblaufSchritt>(steps: T[]): T[] {
+  const bloecke = new Map<ID, string>();
+  const zweige = new Map<string, string>();
+  for (const s of steps) {
+    const p = s.parallel;
+    if (!p) continue;
+    if (!bloecke.has(p.block) && p.name?.trim()) bloecke.set(p.block, p.name);
+    const k = `${p.block}#${p.zweig}`;
+    if (!zweige.has(k) && p.zweigName?.trim()) zweige.set(k, p.zweigName);
+  }
+  let geaendert = false;
+  const ergebnis = steps.map((s) => {
+    const p = s.parallel;
+    if (!p) return s;
+    const m = markerMitNamen(p, bloecke.get(p.block), zweige.get(`${p.block}#${p.zweig}`));
+    if (p.name === m.name && p.zweigName === m.zweigName && Object.keys(p).length === Object.keys(m).length) return s;
+    geaendert = true;
+    return { ...s, parallel: m };
+  });
+  return geaendert ? ergebnis : steps;
 }
 
 /** Lage eines Schritts in einem Block: Block, Position des Zweigs, Position im Zweig. */
@@ -274,7 +334,9 @@ export interface Ordnung<T> {
 /**
  * Stellt die Blockregeln her: Schritte eines Blocks stehen zusammen (an der
  * Stelle seines ersten Schritts), nach Zweig sortiert, Zweige sind 0 … n−1
- * nummeriert; Blöcke mit nur einem Zweig werden aufgelöst. Die Ziele werden
+ * nummeriert; Blöcke mit nur einem Zweig werden aufgelöst (samt Namen). Die
+ * Namen von Block und Zweigen stehen danach an jedem ihrer Schritte
+ * (`namenVereinheitlichen`). Die Ziele werden
  * vorher festgeschrieben und danach vereinfacht, damit das Umstellen den
  * Ablauf nicht ändert: Beginn und Anschluss jedes Blocks bleiben erhalten,
  * soweit sich das widerspruchsfrei herstellen lässt. Ist alles schon in
@@ -303,7 +365,7 @@ export function bloeckeOrdnen<T extends AblaufSchritt>(steps: T[]): T[] {
 export function bloeckeOrdnenMitHinweis<T extends AblaufSchritt>(steps: T[]): Ordnung<T> {
   if (!steps.some((s) => s.parallel)) return { steps, anschlussGeaendert: [] };
   const st = strukturVon(steps);
-  if (bloeckeInOrdnung(steps, st)) return { steps, anschlussGeaendert: [] };
+  if (bloeckeInOrdnung(steps, st)) return { steps: namenVereinheitlichen(steps), anschlussGeaendert: [] };
   const fest = zieleFestschreiben(steps);
 
   // Ein-Zweig-Blöcke auflösen: „Zweig beendet“ (auch über ein unbekanntes Ziel)
@@ -365,7 +427,7 @@ export function bloeckeOrdnenMitHinweis<T extends AblaufSchritt>(steps: T[]): Or
       .map((x, k) => ({ x, k }))
       .filter(({ x }) => x.parallel?.block === p.block)
       .sort((a, b) => r.get(a.x.parallel!.zweig)! - r.get(b.x.parallel!.zweig)! || a.k - b.k)
-      .map(({ x }) => ({ ...x, parallel: { block: p.block, zweig: r.get(x.parallel!.zweig)! } }));
+      .map(({ x }) => ({ ...x, parallel: { ...x.parallel!, zweig: r.get(x.parallel!.zweig)! } }));
     const e: Einheit = { schritte, anschluss: eintritt(steps[st.bloecke.get(p.block)!.ende]?.id ?? 'ende', null) };
     einheiten.push(e);
     blockEinheit.set(p.block, e);
@@ -422,7 +484,7 @@ export function bloeckeOrdnenMitHinweis<T extends AblaufSchritt>(steps: T[]): Or
     const jetzt = reihe[k + 1] ?? 'ende';
     if (bisher !== jetzt) anschlussGeaendert.push(e.schritte[0].parallel!.block);
   });
-  return { steps: zieleVereinfachen(reihe.flatMap((e) => e.schritte)), anschlussGeaendert };
+  return { steps: namenVereinheitlichen(zieleVereinfachen(reihe.flatMap((e) => e.schritte))), anschlussGeaendert };
 }
 
 /* ------------------------------------------------------------------ */
@@ -433,6 +495,8 @@ export function bloeckeOrdnenMitHinweis<T extends AblaufSchritt>(steps: T[]): Or
 export interface Zweigverlauf<T> {
   /** Position des Zweigs im Block (0 … n−1). */
   zweig: number;
+  /** Name des Zweigs; '' = ohne Namen (siehe `zweigTitel`). */
+  name: string;
   schritte: T[];
   /** Zweig-Rücksprung: ein schon durchlaufener Schritt dieses Zweigs (z. B. erneute Nachreichung). */
   rueckSprungZu: T | null;
@@ -447,6 +511,8 @@ export type Abschnitt<T> =
   | {
       art: 'parallel';
       block: ID;
+      /** Name des Blocks; '' = ohne Namen (siehe `blockTitel`). */
+      name: string;
       zweige: Zweigverlauf<T>[];
       /** Schritt, dessen Ausstieg nach dem Block gilt; null = weiter am Anschluss. */
       ausstiegVon: ID | null;
@@ -492,7 +558,14 @@ function zweigVerfolgen<T extends AblaufSchritt>(
   zweig: number,
   antwort: (step: T) => Antwort | undefined,
 ): Zweigverlauf<T> {
-  const ergebnis: Zweigverlauf<T> = { zweig, schritte: [], rueckSprungZu: null, ausstieg: null, abgeschnitten: false };
+  const ergebnis: Zweigverlauf<T> = {
+    zweig,
+    name: block.zweigNamen[zweig] ?? '',
+    schritte: [],
+    rueckSprungZu: null,
+    ausstieg: null,
+    abgeschnitten: false,
+  };
   const idx = block.zweige[zweig];
   if (idx.length === 0) return ergebnis;
   const besucht = new Set<number>();
@@ -591,6 +664,7 @@ export function verfolgen<T extends AblaufSchritt>(
       abschnitte.push({
         art: 'parallel',
         block: block.id,
+        name: block.name,
         zweige,
         ausstiegVon: von,
         ausstiegNach: massgeblich?.ausstieg ?? null,

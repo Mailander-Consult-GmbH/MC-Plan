@@ -27,10 +27,12 @@ import {
 } from '../../domain/engine';
 import {
   aktuelleSchritte,
+  blockTitel,
   einfuegenMoeglich,
   folgeImVerlauf,
   istBegonnen,
   istErledigt,
+  zweigTitel,
   type Abschnitt,
   type EinfuegePosition,
 } from '../../domain/ablauf';
@@ -497,7 +499,7 @@ export function PlanlaufDetail({
     return (
       <div className="pl-block" key={`${a.block}-${durchgang}`}>
         <div className="pl-block-kopf">
-          <strong>Parallel · {a.zweige.length} Zweige</strong>
+          <strong>{blockTitel(a.name, a.zweige.length)}</strong>
           {durchgang > 1 ? <Badge ton="purple">{durchgang}. Durchgang</Badge> : null}
           <span>Die Zweige laufen gleichzeitig.</span>
         </div>
@@ -507,7 +509,7 @@ export function PlanlaufDetail({
             return (
               <div className="pl-zweig" key={z.zweig}>
                 <div className="pl-zweig-kopf">
-                  <span>Zweig {z.zweig + 1}</span>
+                  <span title={z.name ? `Zweig ${z.zweig + 1}` : undefined}>{zweigTitel(z.name, z.zweig)}</span>
                   <span>
                     {fertig} von {z.schritte.length} erledigt
                   </span>
@@ -1455,13 +1457,21 @@ function einfuegeOrte(run: PlanRun, verlauf: Verlauf<RunStep>, nummer: Map<ID, n
       continue;
     }
     for (const z of a.zweige) {
-      for (const s of z.schritte) dazu(s.id, 'danach', `nach ${nummer.get(s.id)}. ${s.name} (Zweig ${z.zweig + 1})`);
+      for (const s of z.schritte) dazu(s.id, 'danach', `nach ${nummer.get(s.id)}. ${s.name} (${zweigTitel(z.name, z.zweig)})`);
       const letzter = z.schritte[z.schritte.length - 1];
       // Endet der Zweig nicht einfach mit dem letzten Schritt (Rücksprung, Ausstieg), eigens ans Zweigende
-      if (letzter && (z.rueckSprungZu || z.ausstieg)) dazu(letzter.id, 'zweigende', `am Ende von Zweig ${z.zweig + 1}`);
+      if (letzter && (z.rueckSprungZu || z.ausstieg)) {
+        dazu(letzter.id, 'zweigende', z.name ? `am Ende von „${z.name}“` : `am Ende von Zweig ${z.zweig + 1}`);
+      }
     }
     const erster = a.zweige.flatMap((z) => z.schritte)[0];
-    if (erster) dazu(erster.id, 'nach_block', 'nach dem parallelen Block (bevor es weitergeht)');
+    if (erster) {
+      dazu(
+        erster.id,
+        'nach_block',
+        a.name ? `nach dem parallelen Block „${a.name}“ (bevor es weitergeht)` : 'nach dem parallelen Block (bevor es weitergeht)',
+      );
+    }
   }
   return orte;
 }

@@ -23,6 +23,7 @@
  */
 import {
   bloeckeOrdnenMitHinweis,
+  markerMitNamen,
   nachfolger,
   strukturVon,
   zieleFestschreiben,
@@ -169,6 +170,8 @@ export type Anzeige = ID | { block: ID };
 export interface ZweigGliederung {
   /** Position des Zweigs im Block (0 … n−1). */
   zweig: number;
+  /** Name des Zweigs; '' = ohne Namen (siehe `zweigTitel` in ablauf.ts). */
+  name: string;
   /** Alle Schritte des Zweigs in Listenreihenfolge. */
   schritte: ID[];
   /** Standardweg im Zweig: ab seinem ersten Schritt mit der jeweils ersten Antwort. */
@@ -183,6 +186,8 @@ export interface ZweigGliederung {
 
 export interface BlockGliederung {
   block: ID;
+  /** Name des Blocks; '' = ohne Namen (siehe `blockTitel` in ablauf.ts). */
+  name: string;
   /** Erster Schritt des Blocks – über ihn wird der Block betreten. */
   erster: ID;
   zweige: ZweigGliederung[];
@@ -264,7 +269,15 @@ function zweigGliedern(
       schlange.push(k.nach);
     }
   }
-  return { zweig, schritte, standard, schluss, abweichungen, unerreichbar: schritte.filter((id) => !erreicht.has(id)) };
+  return {
+    zweig,
+    name: b.zweigNamen[zweig] ?? '',
+    schritte,
+    standard,
+    schluss,
+    abweichungen,
+    unerreichbar: schritte.filter((id) => !erreicht.has(id)),
+  };
 }
 
 export function gliedern(steps: ProcessTemplateStep[]): Gliederung {
@@ -297,6 +310,7 @@ export function gliedern(steps: ProcessTemplateStep[]): Gliederung {
   for (const b of st.bloecke.values()) {
     bloecke[b.id] = {
       block: b.id,
+      name: b.name,
       erster: steps[b.start].id,
       zweige: b.zweige.map((_, z) => zweigGliedern(steps, roh, st, b, z)),
       anschluss: steps[b.ende]?.id ?? 'ende',
@@ -543,7 +557,8 @@ export function einfuegenAmZweiganfang(
   if (!b || !idx || idx.length === 0) return steps;
   const fest = festschreiben(steps);
   const erster = fest[idx[0]];
-  const eingefuegt = mitStandardZiel({ ...neu, parallel: { block: blockId, zweig: erster.parallel!.zweig } }, erster.id, alleAntworten);
+  // Der neue Schritt übernimmt Block und Zweig samt ihren Namen
+  const eingefuegt = mitStandardZiel({ ...neu, parallel: { ...erster.parallel! } }, erster.id, alleAntworten);
   const angepasst =
     idx[0] === b.start
       ? fest.map((s, k) => (st.lage[k]?.block.id === blockId ? s : zieleUmbiegen(s, (z) => (z === erster.id ? eingefuegt.id : z))))
@@ -766,6 +781,25 @@ export function zweigHinzufuegen(steps: ProcessTemplateStep[], blockId: ID, neu:
   const fest = festschreiben(steps);
   const eingefuegt = mitStandardZiel({ ...neu, parallel: { block: blockId, zweig: nr } }, 'ende', true);
   return geordnet(vereinfachen([...fest.slice(0, b.ende), eingefuegt, ...fest.slice(b.ende)]));
+}
+
+/**
+ * Benennt einen Block (z. B. „Versand“); der Name steht an jedem Schritt des
+ * Blocks. Leer = ohne Namen. Getippt wird ungekürzt, `bereinigen` kürzt.
+ */
+export function blockBenennen(steps: ProcessTemplateStep[], blockId: ID, name: string): ProcessTemplateStep[] {
+  return steps.map((s) =>
+    s.parallel?.block === blockId ? { ...s, parallel: markerMitNamen(s.parallel, name, s.parallel.zweigName) } : s,
+  );
+}
+
+/** Benennt einen Zweig (`zweig`: die Zweignummer am Marker); der Name steht an jedem Schritt des Zweigs. */
+export function zweigBenennen(steps: ProcessTemplateStep[], blockId: ID, zweig: number, name: string): ProcessTemplateStep[] {
+  return steps.map((s) =>
+    s.parallel?.block === blockId && s.parallel.zweig === zweig
+      ? { ...s, parallel: markerMitNamen(s.parallel, s.parallel.name, name) }
+      : s,
+  );
 }
 
 /**
@@ -1008,7 +1042,7 @@ export function pruefen(steps: ProcessTemplateStep[]): Hinweis[] {
       if (z.schluss.art !== 'rueck') continue;
       hinweise.push({
         stepId: z.standard[z.standard.length - 1],
-        text: `Zweig ${z.zweig + 1} des Blocks ab Schritt ${nr(b.erster)}: Der Standardweg endet in einer Schleife – der Zweig käme mit den ersten Antworten nie zum Ende.`,
+        text: `Zweig ${z.zweig + 1}${z.name ? ` („${z.name}“)` : ''} des Blocks ${b.name ? `„${b.name}“ ` : ''}ab Schritt ${nr(b.erster)}: Der Standardweg endet in einer Schleife – der Zweig käme mit den ersten Antworten nie zum Ende.`,
         sperrt: false,
       });
     }
@@ -1030,7 +1064,8 @@ export function pruefen(steps: ProcessTemplateStep[]): Hinweis[] {
 
 /**
  * Antworten ohne Text erhalten beim Speichern „Ja“, „Nein“ bzw. „Antwort n“;
- * parallele Blöcke werden geordnet (siehe `bloeckeOrdnen` in ablauf.ts).
+ * Namen von Blöcken und Zweigen werden gekürzt; parallele Blöcke werden
+ * geordnet (siehe `bloeckeOrdnen` in ablauf.ts).
  */
 export function bereinigen(steps: ProcessTemplateStep[]): ProcessTemplateStep[] {
   return geordnet(
@@ -1048,7 +1083,7 @@ export function bereinigen(steps: ProcessTemplateStep[]): ProcessTemplateStep[] 
               nacharbeit: a.nacharbeit ?? i > 0,
             }))
           : [],
-      parallel: s.parallel ?? null,
+      parallel: s.parallel ? markerMitNamen(s.parallel, s.parallel.name?.trim(), s.parallel.zweigName?.trim()) : null,
     })),
   ).steps;
 }
