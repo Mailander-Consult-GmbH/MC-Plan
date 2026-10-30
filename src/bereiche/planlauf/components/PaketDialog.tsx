@@ -6,26 +6,36 @@
  * Fristen und Workflows bleiben davon unberührt. Beim Bearbeiten lassen sich
  * hier auch Einträge zuordnen und wieder entfernen; Pläne eines
  * Planverzeichnisses folgen dem Paket ihres Verzeichnisses.
+ *
+ * Mit `auswahl` entsteht das Paket aus den in der Planliste gewählten
+ * Einträgen („Neues Planpaket aus Auswahl …“, Store `paketAusAuswahl`).
  */
 import { useState } from 'react';
-import { DOCUMENT_KIND_LABEL, INDEX_LABEL, type PlanDocument, type Project } from '../domain/types';
+import { DOCUMENT_KIND_LABEL, INDEX_LABEL, type ID, type PlanDocument, type Project } from '../domain/types';
 import { gewerkeFuerProjekt } from '../domain/engine';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { DocKindIcon } from './common';
 import { ConfirmDialog, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
+import { plaeneOhneVerzeichnis } from './PlanlisteAktionen';
 
 export function PaketDialog({
   project,
   paket,
+  auswahl,
+  onAngelegt,
   onClose,
 }: {
   project: Project;
   paket?: PlanDocument;
+  /** Neues Paket aus diesen gewählten Einträgen anlegen. */
+  auswahl?: ID[];
+  /** Nach dem Anlegen aus der Auswahl. */
+  onAngelegt?: (id: ID) => void;
   onClose: () => void;
 }) {
-  const { data, addDocument, updateDocument, deleteDocument } = useStore();
+  const { data, addDocument, updateDocument, deleteDocument, dokumentePaketZuweisen, paketAusAuswahl } = useStore();
   const toast = useToast();
   const [loeschen, setLoeschen] = useState(false);
   const [form, setForm] = useState({
@@ -52,8 +62,14 @@ export function PaketDialog({
   const pakete = new Set(data.documents.filter((d) => d.kind === 'paket').map((d) => d.id));
   const ohnePaket = zuordenbar.filter((d) => !d.paketId || !pakete.has(d.paketId));
 
+  // Aus der Auswahl: Pläne eines nicht gewählten Verzeichnisses folgen dessen Paket
+  const ausAuswahl = !paket && auswahl !== undefined;
+  const folgen = auswahl ? plaeneOhneVerzeichnis(data, auswahl).length : 0;
+  const zuzuordnen = auswahl ? auswahl.filter((id) => data.documents.some((d) => d.id === id)).length - folgen : 0;
+
+  // Pläne eines Verzeichnisses ziehen mit ihm um (dokumentePaketZuweisen)
   const zuweisen = (docId: string, paketId: string | null) => {
-    updateDocument(docId, { paketId });
+    dokumentePaketZuweisen([docId], paketId);
     toast(paketId ? `Eintrag zu „${paket?.titel ?? 'Paket'}“ hinzugefügt.` : 'Eintrag aus dem Paket entfernt.');
   };
 
@@ -62,7 +78,17 @@ export function PaketDialog({
       toast('Bitte einen Namen für das Planpaket angeben.');
       return;
     }
-    if (paket) {
+    if (ausAuswahl) {
+      const id = paketAusAuswahl(form.titel, auswahl ?? []);
+      if (!id) {
+        toast('Die Auswahl enthält nichts zuzuordnen – Pläne eines Verzeichnisses folgen dessen Planpaket.');
+        return;
+      }
+      toast(
+        `Planpaket „${form.titel.trim()}“ angelegt – ${zuzuordnen} ${zuzuordnen === 1 ? 'Eintrag' : 'Einträge'} zugeordnet.`,
+      );
+      onAngelegt?.(id);
+    } else if (paket) {
       updateDocument(paket.id, form);
       toast('Planpaket gespeichert.');
     } else {
@@ -84,7 +110,7 @@ export function PaketDialog({
   return (
     <>
       <Modal
-        titel={paket ? 'Planpaket bearbeiten' : 'Neues Planpaket'}
+        titel={paket ? 'Planpaket bearbeiten' : ausAuswahl ? 'Neues Planpaket aus Auswahl' : 'Neues Planpaket'}
         sub="Ordnungsmerkmal ohne Einfluss auf Planläufe"
         onClose={onClose}
         footer={
@@ -98,8 +124,13 @@ export function PaketDialog({
             <button type="button" className="btn" onClick={onClose}>
               Abbrechen
             </button>
-            <button type="button" className="btn btn-primary" onClick={speichern}>
-              Speichern
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={speichern}
+              disabled={ausAuswahl && zuzuordnen <= 0}
+            >
+              {ausAuswahl ? 'Anlegen' : 'Speichern'}
             </button>
           </>
         }
@@ -113,26 +144,42 @@ export function PaketDialog({
                 placeholder="z.B. Eisenbahnüberführung Nordkanal"
               />
             </Field>
-            <Field label="Kurzzeichen" hint="optional, z.B. PP-Nordkanal">
-              <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} />
-            </Field>
-            <Field label="Gewerk" hint="Auswahl oder freie Eingabe">
-              <input
-                className="input"
-                list="paket-gewerke"
-                value={form.gewerk}
-                onChange={(e) => set('gewerk', e.target.value)}
-                placeholder="KIB, VA, OLA …"
-              />
-              <datalist id="paket-gewerke">
-                {gewerkeFuerProjekt(data, project.id).map((g) => (
-                  <option key={g} value={g} />
-                ))}
-              </datalist>
-            </Field>
-            <Field label="Bemerkung" full>
-              <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />
-            </Field>
+            {ausAuswahl ? (
+              <div className="field full small muted">
+                {zuzuordnen > 0
+                  ? `${zuzuordnen} ${zuzuordnen === 1 ? 'Eintrag wird' : 'Einträge werden'} dem neuen Paket zugeordnet; Pläne gewählter Planverzeichnisse ziehen mit. Gewerk und Planungsphase übernimmt das Paket, wenn alle Einträge sie teilen. Kurzzeichen und Bemerkung lassen sich danach am Paket ergänzen.`
+                  : 'Die Auswahl enthält nichts zuzuordnen.'}
+                {folgen > 0
+                  ? ` ${folgen} ${folgen === 1 ? 'Plan gehört' : 'Pläne gehören'} zu einem nicht gewählten Planverzeichnis und ${
+                      folgen === 1 ? 'folgt' : 'folgen'
+                    } dessen Planpaket.`
+                  : ''}
+              </div>
+            ) : null}
+            {ausAuswahl ? null : (
+              <>
+                <Field label="Kurzzeichen" hint="optional, z.B. PP-Nordkanal">
+                  <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} />
+                </Field>
+                <Field label="Gewerk" hint="Auswahl oder freie Eingabe">
+                  <input
+                    className="input"
+                    list="paket-gewerke"
+                    value={form.gewerk}
+                    onChange={(e) => set('gewerk', e.target.value)}
+                    placeholder="KIB, VA, OLA …"
+                  />
+                  <datalist id="paket-gewerke">
+                    {gewerkeFuerProjekt(data, project.id).map((g) => (
+                      <option key={g} value={g} />
+                    ))}
+                  </datalist>
+                </Field>
+                <Field label="Bemerkung" full>
+                  <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />
+                </Field>
+              </>
+            )}
           </div>
 
           {paket ? (

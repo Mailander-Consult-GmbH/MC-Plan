@@ -21,7 +21,9 @@ import {
   type ID,
   type Project,
   type Role,
+  type Seite,
 } from '../../domain/types';
+import { SeiteBadge, SeiteFeld } from '../../components/SeiteAuswahl';
 import { gewerkeFuerProjekt } from '../../domain/engine';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
@@ -167,7 +169,8 @@ export function RollenFunktionen({ project }: { project: Project }) {
                           <span className="dot" style={{ background: rolle.farbe }} />
                           <span style={{ minWidth: 0 }}>
                             <strong>{rolle.name}</strong>
-                            {rolle.kuerzel ? <span className="num tertiary"> · {rolle.kuerzel}</span> : null}
+                            {rolle.kuerzel ? <span className="num tertiary"> · {rolle.kuerzel}</span> : null}{' '}
+                            <SeiteBadge seite={rolle.seite} />
                             {rolle.beschreibung ? (
                               <div className="small tertiary truncate">{rolle.beschreibung}</div>
                             ) : null}
@@ -649,9 +652,14 @@ function FunktionsDialog({
     farbe: rolle?.farbe ?? FARBEN[anzahl % FARBEN.length],
     beschreibung: rolle?.beschreibung ?? '',
     gewerk: rolle?.gewerk ?? vorauswahl,
+    seite: rolle ? rolle.seite : (null as Seite | null),
   });
+  // Eine neue Funktion übernimmt die Seite aus ihrer Bezeichnung, bis sie von Hand gewählt wird
+  const [seiteVonHand, setSeiteVonHand] = useState(Boolean(rolle));
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const nameAendern = (name: string) =>
+    setForm((f) => ({ ...f, name, seite: seiteVonHand ? f.seite : seiteAusFunktion(name) }));
 
   const speichern = () => {
     if (!form.name.trim()) {
@@ -666,8 +674,6 @@ function FunktionsDialog({
       ...form,
       name: form.name.trim(),
       kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
-      // Seite im Terminnachweis: bleibt bestehen, neue Funktionen nach ihrer Bezeichnung
-      seite: rolle ? rolle.seite : seiteAusFunktion(form.name),
     };
     if (rolle) {
       updateRole(rolle.id, werte);
@@ -697,7 +703,7 @@ function FunktionsDialog({
     >
       <div className="form-grid">
         <Field label="Bezeichnung" full>
-          <TextInput value={form.name} onChange={(v) => set('name', v)} placeholder="z.B. Erdungsprüfer" />
+          <TextInput value={form.name} onChange={nameAendern} placeholder="z.B. Erdungsprüfer" />
         </Field>
         <Field label="Kürzel" hint="leer = aus der Bezeichnung gebildet">
           <TextInput value={form.kuerzel} onChange={(v) => set('kuerzel', v)} />
@@ -726,6 +732,14 @@ function FunktionsDialog({
             </button>
           </div>
         </Field>
+        <SeiteFeld
+          value={form.seite}
+          vorbelegt={!seiteVonHand}
+          onChange={(v) => {
+            setSeiteVonHand(true);
+            set('seite', v);
+          }}
+        />
         <Field label="Beschreibung" full>
           <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={2} />
         </Field>
