@@ -23,7 +23,7 @@ export function Hinweisleisten() {
 
   const ladefehler = ladeZustand === 'ladefehler';
   const neuereFassung = ladeZustand === 'neuere_fassung';
-  const speicherfehler = ladeZustand === 'ok' && speicherZustand === 'fehler';
+  const speicherfehler = ladeZustand === 'ok' && speicherZustand !== 'ok';
   const kopien = stammdatenKopien.length > 0;
   const leisten = ladefehler || neuereFassung || speicherfehler || kopien;
   if (!leisten && !neuBeginnen) return null;
@@ -68,8 +68,11 @@ export function Hinweisleisten() {
           {speicherfehler ? (
             <div className="ab-leiste fehler" role="alert">
               <span className="ab-leiste-text">
-                <strong>Nicht gespeichert – bitte Sicherung herunterladen.</strong> Der Speicher des Browsers ist voll; Änderungen
-                gehen beim Schließen der Seite verloren.
+                <strong>Nicht gespeichert – bitte Sicherung herunterladen.</strong>{' '}
+                {speicherZustand === 'voll'
+                  ? 'Der Speicher des Browsers ist voll'
+                  : 'Der Browser lässt das Speichern nicht zu (etwa durch Datenschutzeinstellungen)'}
+                ; Änderungen gehen beim Schließen der Seite verloren.
               </span>
               <span className="ab-leiste-knoepfe">
                 <button type="button" className="btn btn-sm btn-outline" onClick={() => exportiereDaten(data)}>

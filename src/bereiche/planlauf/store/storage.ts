@@ -644,20 +644,24 @@ function speicherVoll(err: unknown): boolean {
   return err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22 || err.code === 1014;
 }
 
+/** Ergebnis des Speicherns: gespeichert, Speicher voll oder Speicher nicht nutzbar (gesperrt). */
+export type SpeicherZustand = 'ok' | 'voll' | 'gesperrt';
+
 /**
  * Speichert den Bestand. Ist der Speicher voll, werden zuerst die Rohkopien
  * früherer Fassungen entfernt und das Speichern wiederholt. Liefert, ob der
- * Bestand gespeichert ist – sonst zeigt die Anwendung einen dauerhaften Hinweis.
+ * Bestand gespeichert ist bzw. warum nicht – dann zeigt die Anwendung einen
+ * dauerhaften Hinweis.
  */
-export function speichereDaten(daten: AppData): boolean {
+export function speichereDaten(daten: AppData): SpeicherZustand {
   const text = JSON.stringify(daten);
   try {
     localStorage.setItem(KEY, text);
-    return true;
+    return 'ok';
   } catch (err) {
     if (!speicherVoll(err)) {
       console.warn('Daten konnten nicht lokal gespeichert werden:', err);
-      return false;
+      return 'gesperrt';
     }
   }
   try {
@@ -666,13 +670,13 @@ export function speichereDaten(daten: AppData): boolean {
       const k = localStorage.key(i);
       if (k?.startsWith(VOR_FASSUNG)) alt.push(k);
     }
-    if (alt.length === 0) return false;
+    if (alt.length === 0) return 'voll';
     alt.forEach((k) => localStorage.removeItem(k));
     localStorage.setItem(KEY, text);
-    return true;
+    return 'ok';
   } catch (err) {
     console.warn('Daten konnten nicht lokal gespeichert werden:', err);
-    return false;
+    return speicherVoll(err) ? 'voll' : 'gesperrt';
   }
 }
 

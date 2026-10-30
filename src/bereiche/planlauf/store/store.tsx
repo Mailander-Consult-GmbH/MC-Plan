@@ -42,7 +42,7 @@ import {
 } from '../domain/bestand';
 import { basisplanFestlegen } from '../domain/simulation';
 import { seedData } from '../domain/seed';
-import { ladeDaten, speichereDaten, type LadeZustand } from './storage';
+import { ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 import { formatDate, today } from '../../../shared/dates';
 import { funktionsName } from '../domain/types';
 import type {
@@ -79,8 +79,8 @@ export type NeueErinnerung = Omit<Erinnerung, 'zeitpunkt' | 'durchlauf'> & Parti
 
 interface StoreValue {
   data: AppData;
-  /** `fehler`: der letzte Stand ließ sich nicht speichern (Speicher voll) – Hinweisleiste. */
-  speicherZustand: 'ok' | 'fehler';
+  /** Außer bei `ok` ließ sich der letzte Stand nicht speichern (Speicher voll bzw. gesperrt) – Hinweisleiste. */
+  speicherZustand: SpeicherZustand;
   /** Ergebnis des Ladens; außer bei `ok` wird nicht gespeichert (siehe store/storage.ts). */
   ladeZustand: LadeZustand;
   /** Beim Laden angelegte Kopien selbst geänderter Standard-Workflows – für einen einmaligen Hinweis. */
@@ -243,13 +243,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [geladen] = useState(ladeDaten);
   const [data, setData] = useState<AppData>(geladen.daten);
   const [ladeZustand, setLadeZustand] = useState<LadeZustand>(geladen.zustand);
-  const [speicherZustand, setSpeicherZustand] = useState<'ok' | 'fehler'>('ok');
+  const [speicherZustand, setSpeicherZustand] = useState<SpeicherZustand>('ok');
   const [stammdatenKopien, setStammdatenKopien] = useState<string[]>(geladen.stammdatenKopien);
 
   // Nach einem Ladefehler bzw. bei einer neueren Fassung bleibt der gespeicherte Stand unberührt
   useEffect(() => {
     if (ladeZustand !== 'ok') return;
-    setSpeicherZustand(speichereDaten(data) ? 'ok' : 'fehler');
+    setSpeicherZustand(speichereDaten(data));
   }, [data, ladeZustand]);
 
   /**
