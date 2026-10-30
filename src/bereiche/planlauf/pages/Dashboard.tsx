@@ -2,7 +2,8 @@
  * Startseite: Kennzahlen, eigene To-Dos und die laufenden Planläufe,
  * nach Projekten gegliedert. Angezeigt werden die markierten Projekte.
  */
-import { eigeneTodos, eigenstaendigeLaeufe, fortschritt, istAktiv, offeneFristen } from '../domain/engine';
+import { eigeneTodos, eigenstaendigeLaeufe, istAktiv, offeneFristen } from '../domain/engine';
+import { mittlererFortschritt } from '../domain/uebersicht';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { useState } from 'react';
 import { EIGENE_ROLLE, type PlanRun, type Project, type RunStep } from '../domain/types';
@@ -172,10 +173,8 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                     (r) => r.projectId === project.id,
                   );
                   const laufendeLaeufe = eigene.filter(istAktiv);
-                  const gezaehlt = eigene.filter((r) => r.status !== 'abgebrochen');
-                  const pct = gezaehlt.length
-                    ? Math.round(gezaehlt.reduce((summe, r) => summe + fortschritt(r), 0) / gezaehlt.length)
-                    : 0;
+                  // Mittel der nach Fristen gewichteten Lauf-Werte (ohne abgebrochene)
+                  const pct = mittlererFortschritt(data, eigene);
                   const projektFristen = fristen.filter((f) => f.project.id === project.id);
                   const bald = projektFristen.filter((f) => f.ampel === 'faellig').length;
                   const spaet = projektFristen.filter((f) => f.ampel === 'ueberfaellig').length;
