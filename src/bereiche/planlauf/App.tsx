@@ -20,6 +20,7 @@ import { Icon } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/SicherungEinspielen';
+import { Hinweisleisten } from './components/Hinweisleisten';
 import type { IconName } from '../../shared/icons';
 
 export function App() {
@@ -143,6 +144,8 @@ export function App() {
             <MailaenderLogo height={34} />
           </div>
         </header>
+
+        <Hinweisleisten />
 
         <div className="content">
           <div className="content-inner">
