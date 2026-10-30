@@ -4,7 +4,8 @@
  * weiterführen“. Welche Pläne zurückkehren, wird je Plan angekreuzt.
  */
 import { useState } from 'react';
-import { aktuelleSchritte, aktuellerSchritt, fortschritt } from '../domain/engine';
+import { aktuelleSchritte, aktuellerSchritt } from '../domain/engine';
+import { laufFortschritt } from '../domain/uebersicht';
 import { INDEX_LABEL, type PlanDocument, type PlanRun } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -40,6 +41,8 @@ export function BuendelnDialog({
   const [quelle, setQuelle] = useState<string>('');
 
   const auswahl = kandidaten.filter((k) => gewaehlt.includes(k.plan.id));
+  /** Fortschritt nach Fristen gewichtet – mit Arbeitstagen und Feiertagen des Projekts. */
+  const fortschritt = (lauf: PlanRun) => laufFortschritt(data, lauf);
   // Ohne laufenden Verzeichnislauf entsteht ein neuer; vorgeschlagen wird der
   // Stand des am wenigsten weit gediehenen Plans, damit für keinen Plan ein
   // Schritt als erledigt gilt, der es nicht ist.
