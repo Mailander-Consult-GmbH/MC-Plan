@@ -463,7 +463,8 @@ export function PlanlaufListe({
     const ampel = laufAmpel(schritte, vorlauf);
     const pct = laufFortschritt(data, run);
     const kontakt = data.contacts.find((c) => c.id === step?.contactId);
-    // Aktueller Stand: der zuletzt erledigte Schritt des Verlaufs (übersprungene zählen nicht)
+    // Aktueller Stand: der zuletzt erledigte Schritt des Verlaufs (übersprungene zählen nicht),
+    // nach einem Rücksprung der Schritt, der den Wiedereingang auslöste
     const stand = letzterAbgeschlossenerSchritt(run);
     // Pläne eines gebündelten Verzeichnisses stehen aufklappbar darunter –
     // mitlaufend oder, wenn herausgelöst, mit eigenem Stand.

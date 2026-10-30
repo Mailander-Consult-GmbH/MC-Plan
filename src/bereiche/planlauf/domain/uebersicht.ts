@@ -18,7 +18,7 @@ import {
   verlaufDerKette,
   type Ampel,
 } from './engine';
-import { istErledigt } from './ablauf';
+import { istErledigt, type Verlauf } from './ablauf';
 import {
   RUN_STATUS_LABEL,
   hatEigenenPlanlauf,
@@ -99,12 +99,57 @@ export function paketVon(documents: PlanDocument[], doc: PlanDocument | undefine
  * dahinter nicht – der Stand liegt nie hinter dem nächsten Schritt. In einem
  * parallelen Block zählt je Zweig, was vor seinem offenen Schritt erledigt ist;
  * von diesen Schritten aller Zweige gilt der mit dem spätesten Ist.
+ * Nach einem Rücksprung setzt der Lauf die Schleife zurück; der auslösende
+ * Schritt (etwa „Erneute Vorlage von Planer“) steht dann nur noch in der
+ * Historie. Er zählt trotzdem, wenn er bis zum Wiedereingang eines anstehenden
+ * Schritts erledigt wurde (siehe wiedereingangsStand).
  */
-export function letzterAbgeschlossenerSchritt(run: PlanRun | undefined): RunStep | undefined {
+export function letzterAbgeschlossenerSchritt(run: PlanRun | undefined): LaufStand | undefined {
   if (!run) return undefined;
-  const spaeter = (a: RunStep | undefined, b: RunStep) => (!a || (b.istDatum ?? '') >= (a.istDatum ?? '') ? b : a);
+  const verlauf = verlaufDerKette(run.steps);
+  return wiedereingangsStand(run, verlauf.schritte, standAufDemWeg(verlauf.abschnitte));
+}
+
+/** Aktueller Stand eines Laufs: Bezeichnung und Ist des zuletzt erledigten Schritts. */
+export interface LaufStand {
+  name: string;
+  istDatum: string | null;
+}
+
+/** Später erledigter von zwei Schritten (nach Ist). */
+const spaeter = <T extends LaufStand>(a: T | undefined, b: T) => (!a || (b.istDatum ?? '') >= (a.istDatum ?? '') ? b : a);
+
+/**
+ * Stand nach einem Wiedereingang: Ging ein anstehender Schritt im weiteren
+ * Durchlauf nach dem bisherigen Stand wieder ein, gilt der zuletzt erledigte
+ * Schritt bis zu diesem Wiedereingang – abseits des Wegs oder in der Historie
+ * eines zurückgesetzten Schritts.
+ */
+function wiedereingangsStand(run: PlanRun, aufDemWeg: RunStep[], stand: LaufStand | undefined): LaufStand | undefined {
+  if (run.status !== 'laufend') return stand;
+  const eingang = aktuelleSchritte(run)
+    .filter((s) => (s.durchlauf ?? 1) > 1 && s.eingangIst)
+    .map((s) => s.eingangIst as string)
+    .sort()
+    .pop();
+  if (!eingang || (stand?.istDatum && stand.istDatum >= eingang)) return stand;
+  const weg = new Set(aufDemWeg.map((s) => s.id));
+  const passt = (ist: string | null): ist is string =>
+    Boolean(ist) && (ist as string) <= eingang && (!stand?.istDatum || (ist as string) >= stand.istDatum);
+  let ausloeser: LaufStand | undefined;
+  for (const s of run.steps) {
+    for (const h of s.historie ?? []) {
+      if (h.status === 'erledigt' && passt(h.ist)) ausloeser = spaeter(ausloeser, { name: h.name, istDatum: h.ist });
+    }
+    if (!weg.has(s.id) && s.status === 'erledigt' && passt(s.istDatum)) ausloeser = spaeter(ausloeser, s);
+  }
+  return ausloeser ?? stand;
+}
+
+/** Der zuletzt erledigte Schritt auf dem Weg vor dem ersten offenen. */
+function standAufDemWeg(abschnitte: Verlauf<RunStep>['abschnitte']): RunStep | undefined {
   let stand: RunStep | undefined;
-  for (const a of verlaufDerKette(run.steps).abschnitte) {
+  for (const a of abschnitte) {
     if (a.art === 'schritt') {
       if (!istErledigt(a.step)) return stand;
       if (a.step.status === 'erledigt') stand = a.step;
