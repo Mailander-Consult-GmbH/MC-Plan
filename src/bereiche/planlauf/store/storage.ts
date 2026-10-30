@@ -9,18 +9,34 @@ import {
   GEWERKE,
   STAMMDATEN_VERSION,
   STANDARD_BEARBEITER,
+  seiteAusFunktion,
   type AppData,
   type EmailTemplate,
+  type Erinnerung,
+  type ID,
+  type PlanRun,
   type ProcessTemplate,
   type ProcessTemplateStep,
+  type ProtokollEintrag,
   type Role,
   type RunStep,
   type StandardRolle,
   type StepType,
 } from '../domain/types';
-import { STANDARD_ROLLEN, STANDARD_TEMPLATES, seedData, standardVorlagen } from '../domain/seed';
+import {
+  STANDARD_FASSUNG4_FINGERABDRUCK,
+  STANDARD_ROLLEN,
+  STANDARD_TEMPLATES,
+  sammelVorlage,
+  seedData,
+  standardVorlagen,
+  workflowFingerabdruck,
+} from '../domain/seed';
 import { eigeneKontakteSichern, recalcRun, zustaendigkeitenNachziehen } from '../domain/engine';
+import { anstehendeSchritte, istErledigt, statusAbgleichen, verfolgen } from '../domain/ablauf';
+import { basisplanFestlegen } from '../domain/simulation';
 import { gliedern } from '../domain/workflowGraph';
+import { formatDate, today } from '../../../shared/dates';
 
 /** Frühere Bezeichnung der eigenen Rolle. */
 const ALTE_EIGENE_ROLLE = 'PLM';
@@ -69,21 +85,67 @@ function rollenAufteilen<T extends { id: string; name: string }>(rollen: T[]): (
 
 const KEY = 'planlauf-management.data.v1';
 
-export function ladeDaten(): AppData {
+/** Präfix der Rohkopien vor einer Umstellung: `<KEY>.vor-fassung-<n>`. */
+const VOR_FASSUNG = `${KEY}.vor-fassung-`;
+
+/**
+ * Zustand nach dem Laden: `ladefehler` – der gespeicherte Stand ließ sich nicht
+ * lesen; `neuere_fassung` – er stammt aus einer neueren Fassung von KaPlan. In
+ * beiden Fällen zeigt die Anwendung Demodaten und speichert nicht, damit der
+ * gespeicherte Stand erhalten bleibt (siehe rohdatenHerunterladen).
+ */
+export type LadeZustand = 'ok' | 'ladefehler' | 'neuere_fassung';
+
+export interface Geladen {
+  daten: AppData;
+  zustand: LadeZustand;
+  /** Namen der Kopien selbst geänderter Standard-Workflows („… (eigene Fassung)“) – für einen einmaligen Hinweis. */
+  stammdatenKopien: string[];
+}
+
+export function ladeDaten(): Geladen {
+  const demo = (zustand: LadeZustand): Geladen => ({ daten: durchrechnen(seedData()), zustand, stammdatenKopien: [] });
+  let roh: string | null;
   try {
-    const roh = localStorage.getItem(KEY);
-    if (!roh) return durchrechnen(seedData());
-    const daten = JSON.parse(roh) as AppData;
-    if (!daten || !Array.isArray(daten.projects)) return durchrechnen(seedData());
-    return aufbereiten(daten);
+    roh = localStorage.getItem(KEY);
   } catch {
-    return durchrechnen(seedData());
+    return demo('ladefehler');
+  }
+  if (!roh) return demo('ok');
+  let daten: AppData;
+  try {
+    daten = JSON.parse(roh) as AppData;
+  } catch {
+    return demo('ladefehler');
+  }
+  if (!daten || typeof daten !== 'object' || !Array.isArray(daten.projects)) return demo('ladefehler');
+  if (typeof daten.version === 'number' && daten.version > DATEN_VERSION) return demo('neuere_fassung');
+  // Vor einer Umstellung den gespeicherten Text einmalig sichern – scheitert das, wird trotzdem umgestellt
+  if ((daten.version ?? 0) < DATEN_VERSION || (daten.stammdatenVersion ?? 0) < STAMMDATEN_VERSION) {
+    try {
+      const schluessel = `${VOR_FASSUNG}${daten.version ?? 0}`;
+      if (localStorage.getItem(schluessel) === null) localStorage.setItem(schluessel, roh);
+    } catch {
+      /* kein Platz für die Kopie – der Stand lässt sich weiterhin herunterladen */
+    }
+  }
+  try {
+    const { daten: aufbereitet, kopien } = aufbereitenMitKopien(daten);
+    return { daten: aufbereitet, zustand: 'ok', stammdatenKopien: kopien };
+  } catch {
+    return demo('ladefehler');
   }
 }
 
 /** Hebt einen gelesenen Bestand auf die aktuelle Fassung – beim Laden wie beim Einspielen einer Sicherung. */
+function aufbereitenMitKopien(daten: AppData): { daten: AppData; kopien: string[] } {
+  const gehoben = migriere(daten);
+  const { daten: stamm, kopien } = stammdatenAktualisieren({ ...gehoben, geloescht: gehoben.geloescht ?? [] });
+  return { daten: durchrechnen(zustaendigkeitenNachziehen(eigenerKontakt(stamm))), kopien };
+}
+
 function aufbereiten(daten: AppData): AppData {
-  return durchrechnen(zustaendigkeitenNachziehen(eigenerKontakt(stammdatenAktualisieren(migriere(daten)))));
+  return aufbereitenMitKopien(daten).daten;
 }
 
 /** Listen, die ein Bestand der aktuellen Fassung immer führt. */
@@ -161,8 +223,8 @@ const eigenerKontakt = (daten: AppData): AppData => eigeneKontakteSichern(daten,
  * gebracht und fehlende Rollen in jedes Projekt ergänzt. Eigene Rollen,
  * eigene Ketten, Projektvarianten und laufende Planläufe bleiben erhalten.
  */
-function stammdatenAktualisieren(daten: AppData): AppData {
-  if ((daten.stammdatenVersion ?? 0) >= STAMMDATEN_VERSION) return daten;
+function stammdatenAktualisieren(daten: AppData): { daten: AppData; kopien: string[] } {
+  if ((daten.stammdatenVersion ?? 0) >= STAMMDATEN_VERSION) return { daten, kopien: [] };
 
   const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
   /** Funktionen sind gleich, wenn Bezeichnung und Gewerk übereinstimmen. */
@@ -178,11 +240,23 @@ function stammdatenAktualisieren(daten: AppData): AppData {
     ...eigeneStandards,
   ];
 
-  // Standard-Workflows ersetzen, eigene Ketten und Projektvarianten behalten
+  // Standard-Workflows ersetzen, eigene Ketten und Projektvarianten behalten.
+  // Beim Wechsel von Fassung 4 bleibt ein selbst geänderter Standard-Workflow
+  // als eigene Kopie „<Name> (eigene Fassung)“ erhalten.
   const eigeneKetten = (daten.templates ?? []).filter(
     (t) => t.projectId !== null || t.herkunft !== 'standard',
   );
-  const templates: ProcessTemplate[] = [...STANDARD_TEMPLATES.map((t) => ({ ...t })), ...eigeneKetten];
+  const kopien: ProcessTemplate[] =
+    (daten.stammdatenVersion ?? 0) === 4
+      ? (daten.templates ?? [])
+          .filter((t) => t.projectId === null && t.herkunft === 'standard')
+          .filter((t) => {
+            const soll = STANDARD_FASSUNG4_FINGERABDRUCK[t.id];
+            return soll !== undefined && workflowFingerabdruck(t) !== soll;
+          })
+          .map(eigeneFassung)
+      : [];
+  const templates: ProcessTemplate[] = [...STANDARD_TEMPLATES.map((t) => ({ ...t })), ...kopien, ...eigeneKetten];
 
   // Fehlende Rollen in jedes Projekt ergänzen
   const roles: Role[] = [...(daten.roles ?? [])];
@@ -198,11 +272,33 @@ function stammdatenAktualisieren(daten: AppData): AppData {
         farbe: standard.farbe,
         beschreibung: standard.beschreibung,
         gewerk: standard.gewerk,
+        seite: standard.seite,
       });
     }
   }
 
-  return { ...daten, stammdatenVersion: STAMMDATEN_VERSION, standardRollen, templates, roles };
+  return {
+    daten: { ...daten, stammdatenVersion: STAMMDATEN_VERSION, standardRollen, templates, roles },
+    kopien: kopien.map((t) => t.name),
+  };
+}
+
+/** Kopie eines Standard-Workflows als eigener Workflow – neue Kennungen, Ziele umgebogen. */
+function eigeneFassung(t: ProcessTemplate): ProcessTemplate {
+  const ids = new Map(t.steps.map((s) => [s.id, neueId('ts')]));
+  const umbiegen = (z: ID | 'ende' | null) => (z === null || z === 'ende' ? z : (ids.get(z) ?? null));
+  return {
+    ...t,
+    id: neueId('tpl'),
+    name: `${t.name} (eigene Fassung)`,
+    herkunft: 'manuell',
+    steps: t.steps.map((s) => ({
+      ...s,
+      id: ids.get(s.id)!,
+      naechster: umbiegen(s.naechster),
+      antworten: s.antworten.map((a) => ({ ...a, id: neueId('ant'), ziel: umbiegen(a.ziel) })),
+    })),
+  };
 }
 
 /**
@@ -256,10 +352,92 @@ function rueckmeldungVerbinden<T extends ProcessTemplateStep | RunStep>(steps: T
   return nachher.every((id) => vorher.includes(id)) ? neu : steps;
 }
 
+/** Seite einer Funktion; ältere Bestände kennen sie nicht – Vorbelegung aus der Bezeichnung. */
+function mitSeite<T extends { name: string; seite?: StandardRolle['seite'] }>(rolle: T): T & { seite: StandardRolle['seite'] } {
+  return { ...rolle, seite: rolle.seite !== undefined ? rolle.seite : seiteAusFunktion(rolle.name) };
+}
+
+/** Antworten ab Fassung 13: jede Antwort außer der ersten führt (ohne Angabe) in Nacharbeit. */
+function mitNacharbeit(antworten: { nacharbeit?: boolean }[]): never {
+  return antworten.map((a, i) => ({ ...a, nacharbeit: a.nacharbeit ?? i > 0 })) as never;
+}
+
+/** Bearbeiter der Protokolleinträge, die die Umstellung selbst schreibt. */
+const UMSTELLUNG = 'KaPlan (Umstellung auf Fassung 13)';
+
+/**
+ * Erinnerungen ab Fassung 13: Aus der früheren „letzten Erinnerung“ wird ein
+ * Eintrag – ohne Person und Durchlauf, weil beides seitdem gewechselt haben
+ * kann. Zeitpunkte vor dem Start des Laufs stammen aus einem Vorgänger und
+ * entfallen.
+ */
+function erinnerungenAus(s: RunStep, start: string | undefined): Erinnerung[] {
+  if (Array.isArray(s.erinnerungen)) return s.erinnerungen;
+  if (!s.letzteErinnerung || (start && s.letzteErinnerung.slice(0, 10) < start)) return [];
+  return [
+    { zeitpunkt: s.letzteErinnerung, contactId: null, kontaktName: '', an: '', betreff: '', anlass: null, weg: 'outlook', durchlauf: null },
+  ];
+}
+
+/**
+ * Wiedereingang nach einem Rücksprung vor Fassung 13: Damals wurde das Ist des
+ * Auslösers gelöscht, der Eingang des neuen Durchlaufs ist unbekannt. Ein
+ * anstehender Schritt in einem weiteren Durchlauf, dessen Vorgänger einen
+ * früheren Durchlauf haben (bzw. der keinen Vorgänger hat), erhält das Datum
+ * der Umstellung als geschätzten Eingang und einen Protokolleintrag; ein
+ * erledigter solcher Schritt den Abschluss seiner Vorgänger (geschätzt).
+ */
+function wiedereingangSchaetzen(run: PlanRun, heute: string, zeitpunkt: string): PlanRun {
+  if (run.steps.every((s) => (s.durchlauf ?? 1) <= 1)) return run;
+  const verlauf = verfolgen(run.steps);
+  const anstehend = new Set(anstehendeSchritte(verlauf).map((s) => s.id));
+  const imVerlauf = new Set(verlauf.schritte.map((s) => s.id));
+  const nachId = new Map(run.steps.map((s) => [s.id, s]));
+  const protokoll: ProtokollEintrag[] = [];
+  const steps = run.steps.map((s) => {
+    if ((s.durchlauf ?? 1) <= 1 || s.eingangIst || !imVerlauf.has(s.id)) return s;
+    const vor = (verlauf.vorgaenger.get(s.id) ?? []).map((id) => nachId.get(id)).filter((v): v is RunStep => Boolean(v));
+    if (vor.length > 0 && vor.every((v) => (v.durchlauf ?? 1) >= s.durchlauf)) return s;
+    if (istErledigt(s)) {
+      const ist = vor.map((v) => v.istDatum).filter((d): d is string => Boolean(d)).sort().pop() ?? s.istDatum;
+      return { ...s, eingangIst: ist, eingangGeschaetzt: true };
+    }
+    if (run.status !== 'laufend' || !anstehend.has(s.id)) return s;
+    protokoll.push({
+      zeitpunkt,
+      bearbeiter: UMSTELLUNG,
+      stepId: s.id,
+      text: `Wiedereingang von „${s.name}“ war nicht gespeichert – auf ${formatDate(heute)} gesetzt, bitte prüfen`,
+    });
+    return { ...s, eingangIst: heute, eingangGeschaetzt: true, status: s.status === 'offen' ? ('laufend' as const) : s.status };
+  });
+  return protokoll.length > 0 || steps.some((s, k) => s !== run.steps[k])
+    ? { ...run, steps, protokoll: [...run.protokoll, ...protokoll] }
+    : run;
+}
+
+/**
+ * E-Mail-Vorlagen ab Fassung 13: {{verzug}} nennt die Einheit („5 Arbeitstage“).
+ * Wo eine Vorlage die Einheit selbst schreibt („seit {{verzug}} Tagen“), steht
+ * fortan die reine Zahl {{verzug.zahl}}; die Sammelerinnerung kommt hinzu.
+ */
+function vorlagenFassung13(vorlagen: EmailTemplate[]): EmailTemplate[] {
+  const zahl = (text: string) => text.replace(/\{\{\s*verzug\s*\}\}(\s+(?:Kalender|Arbeits)?[Tt]ag)/g, '{{verzug.zahl}}$1');
+  const liste = vorlagen.map((v) => {
+    const betreff = zahl(v.betreff);
+    const text = zahl(v.text);
+    return betreff === v.betreff && text === v.text ? v : { ...v, betreff, text };
+  });
+  return liste.some((v) => v.id === sammelVorlage().id) ? liste : [...liste, sammelVorlage()];
+}
+
 /**
  * Hebt einen älteren Bestand auf die aktuelle Fassung. Fehlende Felder werden
- * mit sinnvollen Standardwerten ergänzt, damit vorhandene Eingaben erhalten
- * bleiben.
+ * nur ergänzt (vorhandene bleiben), damit Eingaben erhalten bleiben. Ab
+ * Fassung 13: Antworten mit Nacharbeit (alle außer der ersten), Funktionen mit
+ * Seite, Erinnerungen aus der letzten Erinnerung, geschätzter Wiedereingang
+ * laufender Rücksprünge (siehe wiedereingangSchaetzen) und ein Basisplan für
+ * jeden Lauf.
  */
 function migriere(daten: AppData): AppData {
   if (daten.version === DATEN_VERSION) return daten;
@@ -286,7 +464,7 @@ function migriere(daten: AppData): AppData {
     ...new Set(quellen.filter((g): g is string => Boolean(g && g.trim()))),
   ].sort((a, b) => a.localeCompare(b, 'de'));
 
-  return {
+  return laeufeFassung13({
     version: DATEN_VERSION,
     stammdatenVersion: daten.stammdatenVersion ?? 0,
     gewerke: gewerkeBestand,
@@ -299,23 +477,23 @@ function migriere(daten: AppData): AppData {
     },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0
-        ? rollenAufteilen(daten.standardRollen)
+        ? rollenAufteilen(daten.standardRollen).map(mitSeite)
         : STANDARD_ROLLEN.map((r) => ({ ...r })),
     // E-Mail-Vorlagen werden projektübergreifend gepflegt; frühere
     // Projektvorlagen wandern beim ersten Laden in die gemeinsame Liste.
     emailVorlagen:
       daten.emailVorlagen && daten.emailVorlagen.length > 0
-        ? daten.emailVorlagen
+        ? vorlagenFassung13(daten.emailVorlagen)
         : ((daten.projects ?? []).flatMap(
             (p) => (p.settings as { emailTemplates?: EmailTemplate[] }).emailTemplates ?? [],
           ).length > 0
-            ? [
+            ? vorlagenFassung13([
                 ...new Map(
                   (daten.projects ?? [])
                     .flatMap((p) => (p.settings as { emailTemplates?: EmailTemplate[] }).emailTemplates ?? [])
                     .map((t) => [t.name, t]),
                 ).values(),
-              ]
+              ])
             : standardVorlagen()),
     projects: (daten.projects ?? []).map((p) => {
       const { emailTemplates: _alt, ...settings } = p.settings as typeof p.settings & {
@@ -323,7 +501,7 @@ function migriere(daten: AppData): AppData {
       };
       return { ...p, markiert: p.markiert ?? true, settings };
     }),
-    roles: rollenAufteilen(daten.roles ?? []),
+    roles: rollenAufteilen(daten.roles ?? []).map(mitSeite),
     contacts: (daten.contacts ?? []).map((c) => {
       const alt = c as unknown as { roleIds?: string[] };
       const alteRollen = daten.roles ?? [];
@@ -373,6 +551,7 @@ function migriere(daten: AppData): AppData {
         // Ohne Angabe gilt gebündelt – ältere Bestände bleiben unverändert.
         planlaufModus: d.planlaufModus,
         eigenerLauf: d.eigenerLauf,
+        ...(d.geaendertAm ? { geaendertAm: d.geaendertAm } : {}),
       };
     }),
     templates: (daten.templates ?? []).map((t) => ({
@@ -385,11 +564,12 @@ function migriere(daten: AppData): AppData {
           ...s,
           typ,
           roleName: rollenName(s.roleName),
-          antworten: alsAntworten(typ, s.antworten),
+          antworten: mitNacharbeit(alsAntworten(typ, s.antworten)),
           naechster: s.naechster ?? null,
           nachweis: s.nachweis ?? 'keine',
           mailFrage: s.mailFrage ?? false,
           mailVorlageId: s.mailVorlageId ?? null,
+          parallel: s.parallel ?? null,
         };
       }))),
     })),
@@ -401,13 +581,25 @@ function migriere(daten: AppData): AppData {
       abbruchDatum: r.abbruchDatum ?? null,
       abbruchArt: r.abbruchArt ?? (r.status === 'abgebrochen' ? 'ersatzlos' : null),
       abbruchNeuerIndex: r.abbruchNeuerIndex ?? null,
+      protokoll: r.protokoll ?? [],
+      basis: r.basis ?? null,
       steps: laufVerbinden(r.status, zieleBereinigen((r.steps ?? []).map((s) => {
         const typ = migriereTyp(s.typ as unknown as string);
         return {
           ...s,
           typ,
           roleName: rollenName(s.roleName),
-          antworten: alsAntworten(typ, s.antworten),
+          antworten: mitNacharbeit(alsAntworten(typ, s.antworten)),
+          parallel: s.parallel ?? null,
+          eingangIst: s.eingangIst ?? null,
+          eingangGeschaetzt: s.eingangGeschaetzt ?? false,
+          eingangDatum: s.eingangDatum ?? null,
+          abschlussInfo: s.abschlussInfo ?? null,
+          historie: s.historie ?? [],
+          erinnerungen: erinnerungenAus(s, r.start),
+          verzugZuordnung: s.verzugZuordnung ?? [],
+          nacharbeitSeite: s.nacharbeitSeite ?? null,
+          blockDurchgang: s.blockDurchgang ?? 1,
           naechster: s.naechster ?? null,
           gewaehlteAntwortId: s.gewaehlteAntwortId ?? null,
           durchlauf: s.durchlauf ?? 1,
@@ -420,14 +612,71 @@ function migriere(daten: AppData): AppData {
         };
       }))),
     })),
+    geloescht: daten.geloescht ?? [],
+  });
+}
+
+/**
+ * Nach dem Umbau der Felder: geschätzter Wiedereingang, Status passend zum Weg
+ * (anstehend = „laufend“) und Basisplan für jeden Lauf, der noch keinen hat
+ * (festgelegt mit dem Stand der Umstellung).
+ */
+function laeufeFassung13(daten: AppData): AppData {
+  const heute = today();
+  const zeitpunkt = new Date().toISOString();
+  return {
+    ...daten,
+    runs: daten.runs.map((r) => {
+      const geschaetzt = wiedereingangSchaetzen(r, heute, zeitpunkt);
+      const steps = geschaetzt.status === 'laufend' ? statusAbgleichen(geschaetzt.steps) : geschaetzt.steps;
+      const lauf = steps === geschaetzt.steps ? geschaetzt : { ...geschaetzt, steps };
+      if (lauf.basis) return lauf;
+      const project = daten.projects.find((p) => p.id === lauf.projectId);
+      const doc = daten.documents.find((d) => d.id === lauf.documentId);
+      return { ...lauf, basis: basisplanFestlegen(lauf, project, doc, 'bei Umstellung auf Fassung 13 festgelegt', zeitpunkt) };
+    }),
   };
 }
 
-export function speichereDaten(daten: AppData): void {
+/** Der Speicher des Browsers ist voll. */
+function speicherVoll(err: unknown): boolean {
+  if (!(err instanceof DOMException)) return false;
+  return err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22 || err.code === 1014;
+}
+
+/** Ergebnis des Speicherns: gespeichert, Speicher voll oder Speicher nicht nutzbar (gesperrt). */
+export type SpeicherZustand = 'ok' | 'voll' | 'gesperrt';
+
+/**
+ * Speichert den Bestand. Ist der Speicher voll, werden zuerst die Rohkopien
+ * früherer Fassungen entfernt und das Speichern wiederholt. Liefert, ob der
+ * Bestand gespeichert ist bzw. warum nicht – dann zeigt die Anwendung einen
+ * dauerhaften Hinweis.
+ */
+export function speichereDaten(daten: AppData): SpeicherZustand {
+  const text = JSON.stringify(daten);
   try {
-    localStorage.setItem(KEY, JSON.stringify(daten));
+    localStorage.setItem(KEY, text);
+    return 'ok';
+  } catch (err) {
+    if (!speicherVoll(err)) {
+      console.warn('Daten konnten nicht lokal gespeichert werden:', err);
+      return 'gesperrt';
+    }
+  }
+  try {
+    const alt: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(VOR_FASSUNG)) alt.push(k);
+    }
+    if (alt.length === 0) return 'voll';
+    alt.forEach((k) => localStorage.removeItem(k));
+    localStorage.setItem(KEY, text);
+    return 'ok';
   } catch (err) {
     console.warn('Daten konnten nicht lokal gespeichert werden:', err);
+    return speicherVoll(err) ? 'voll' : 'gesperrt';
   }
 }
 
@@ -435,12 +684,33 @@ export function loescheDaten(): void {
   localStorage.removeItem(KEY);
 }
 
-export function exportiereDaten(daten: AppData): void {
-  const blob = new Blob([JSON.stringify(daten, null, 2)], { type: 'application/json' });
+function herunterladen(text: string, dateiname: string): void {
+  const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `planlauf-export-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = dateiname;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function exportiereDaten(daten: AppData): void {
+  herunterladen(JSON.stringify(daten, null, 2), `planlauf-export-${new Date().toISOString().slice(0, 10)}.json`);
+}
+
+/**
+ * Lädt den gespeicherten Rohtext herunter – unverändert, auch wenn er sich
+ * nicht lesen lässt oder aus einer neueren Fassung stammt (Hinweisleiste nach
+ * einem Ladefehler). Liefert false, wenn nichts gespeichert ist.
+ */
+export function rohdatenHerunterladen(): boolean {
+  let roh: string | null = null;
+  try {
+    roh = localStorage.getItem(KEY);
+  } catch {
+    return false;
+  }
+  if (roh === null) return false;
+  herunterladen(roh, `planlauf-gespeicherter-stand-${new Date().toISOString().slice(0, 10)}.json`);
+  return true;
 }

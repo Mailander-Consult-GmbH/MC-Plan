@@ -1,20 +1,34 @@
-/** Reiter „Planläufe“ eines Projekts: Kennzahlen und die Liste der Planläufe. */
+/**
+ * Reiter „Planläufe“ eines Projekts: Kennzahlen und die Liste der Planläufe.
+ *
+ * Die Liste hat eine Mehrfachauswahl (Menge von Zeilenschlüsseln wie im
+ * Export: Lauf-ID bzw. ID eines mitlaufenden Plans). Sie wird bei jedem
+ * Filterwechsel auf die angezeigten Einträge beschnitten. Solange etwas gewählt
+ * ist, bietet eine Aktionsleiste Sammelaktionen an; vor „Schritte erledigen …“
+ * und „Erinnern …“ wird die Auswahl in Planläufe aufgelöst (ohne Dubletten,
+ * gewählte mitlaufende Pläne wirken auf den Lauf ihres Verzeichnisses).
+ */
 import { useState } from 'react';
+import { eigenstaendigeLaeufe, offeneFristen } from '../../domain/engine';
 import {
-  aktuellerSchritt,
-  ampelFuerSchritt,
-  eigenstaendigeLaeufe,
-  fortschritt,
-  offeneFristen,
-} from '../../domain/engine';
-import { massgeblicheLaeufe } from '../../domain/uebersicht';
+  anstehendeSchritte,
+  auswahlAufloesen,
+  massgeblicheLaeufe,
+  mitlaufendHinweis,
+  mittlererFortschritt,
+  statusWerte,
+  waehlbareSchluessel,
+} from '../../domain/uebersicht';
 import { ExportDialog } from './ExportDialog';
 import { Icon } from '../../../../shared/icons';
-import { istEingangPLM, type Contact, type DocumentKind, type Project } from '../../domain/types';
+import { type Contact, type DocumentKind, type ID, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { Card, CardHeader, EmptyState, Progress, Search, Segmented, Stat } from '../../../../shared/ui';
 import { PlanlaufListe } from '../../components/PlanlaufListe';
+import { SammelErledigen } from '../../components/SammelErledigen';
+import { SammelErinnern } from '../../components/SammelErinnern';
+import '../../components/auswahl.css';
 
 /** Auswahl der Statusspalte – laufende Läufe nach ihrer Ampel. */
 const STATUS_FILTER = [
@@ -45,6 +59,14 @@ export function Uebersicht({
   const [statusFilter, setStatusFilter] = useState('');
   const [personFilter, setPersonFilter] = useState('');
   const [exportOffen, setExportOffen] = useState(false);
+  /** Gewählte Zeilen der Liste (Lauf-ID bzw. ID eines mitlaufenden Plans). */
+  const [auswahl, setAuswahl] = useState<Set<ID>>(() => new Set());
+  /** Offene Sammelaktion – die Läufe werden beim Öffnen festgehalten. */
+  const [aktion, setAktion] = useState<
+    | { art: 'erledigen' | 'erinnern'; runIds: ID[]; hinweise: string[] }
+    | { art: 'export' }
+    | null
+  >(null);
   const dokumente = data.documents.filter((d) => d.projectId === project.id);
   // Ohne die Läufe von Plänen, die in einem Planverzeichnis mitlaufen
   const laeufe = eigenstaendigeLaeufe(data.documents, data.runs).filter(
@@ -57,31 +79,30 @@ export function Uebersicht({
   // abgebrochene Läufe stehen gesammelt am Ende (dieselbe Auswahl wie im Export).
   const massgeblich = massgeblicheLaeufe(data, project.id);
   /**
-   * Status eines Laufs als Filterwert – laufende nach ihrer Ampel, solange der
-   * Eingang beim Planlaufmanagement aussteht dagegen „angekündigt“.
+   * Status eines Laufs als Filterwerte – je anstehendem Schritt seine Ampel,
+   * solange der Eingang beim Planlaufmanagement aussteht „angekündigt“ (ein
+   * überfälliger Eingang zählt als überfällig). Der Filter trifft einen Lauf,
+   * sobald einer seiner Schritte passt.
    */
-  const statusVon = (r: (typeof laeufe)[number]) => {
-    if (r.status !== 'laufend') return r.status;
-    const step = aktuellerSchritt(r);
-    const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'neutral';
-    // Ein überfälliger Eingang zählt als überfällig, nicht als angekündigt.
-    if (ampel === 'ueberfaellig') return ampel;
-    if (step && istEingangPLM(step.name)) return 'angekuendigt';
-    return ampel;
-  };
+  const statusVon = (r: (typeof laeufe)[number]) =>
+    statusWerte(r, anstehendeSchritte(r), project.settings.erinnerungVorlaufTage);
 
+  // Suche, Status und Personenauswahl über alle anstehenden Schritte (parallele Zweige)
   const gefiltert = massgeblich.filter((r) => {
     const doc = data.documents.find((d) => d.id === r.documentId);
-    const step = aktuellerSchritt(r);
-    const paket = doc?.paketId ? dokumente.find((d) => d.id === doc.paketId) : undefined;
-    const text = [doc?.nummer, doc?.titel, doc?.index, r.name, step?.name, paket?.titel]
+    const anstehend = anstehendeSchritte(r);
+    // Pläne eines Verzeichnisses gehören zu dessen Paket
+    const elternId = doc?.kind === 'plan' ? doc.parentId : null;
+    const paketId = (elternId ? dokumente.find((d) => d.id === elternId)?.paketId : undefined) ?? doc?.paketId;
+    const paket = paketId ? dokumente.find((d) => d.id === paketId) : undefined;
+    const text = [doc?.nummer, doc?.titel, doc?.index, r.name, ...anstehend.map((s) => s.name), paket?.titel]
       .join(' ')
       .toLowerCase();
     return (
       (!suche || text.includes(suche.toLowerCase())) &&
       (!gewerkFilter || (doc?.gewerk ?? '') === gewerkFilter) &&
-      (!statusFilter || statusVon(r) === statusFilter) &&
-      (!personFilter || step?.contactId === personFilter)
+      (!statusFilter || (statusVon(r) as string[]).includes(statusFilter)) &&
+      (!personFilter || anstehend.some((s) => s.contactId === personFilter))
     );
   });
 
@@ -91,7 +112,9 @@ export function Uebersicht({
   );
   const personenIds = [
     ...new Set(
-      massgeblich.map((r) => aktuellerSchritt(r)?.contactId).filter((id): id is string => Boolean(id)),
+      massgeblich
+        .flatMap((r) => anstehendeSchritte(r).map((s) => s.contactId))
+        .filter((id): id is string => Boolean(id)),
     ),
   ];
   const personen = personenIds
@@ -100,6 +123,31 @@ export function Uebersicht({
     .sort((a, b) => a.nachname.localeCompare(b.nachname, 'de'));
 
   const filterAktiv = Boolean(suche || gewerkFilter || statusFilter || personFilter);
+
+  // Auswahl: nur angezeigte, nicht abgebrochene Einträge sind wählbar. Bei
+  // jedem Filterwechsel wird sie auf das Angezeigte beschnitten.
+  const waehlbar = waehlbareSchluessel(data.documents, gefiltert);
+  const filterSchluessel = [suche, gewerkFilter, statusFilter, personFilter].join('\u0000');
+  const [zuletztGefiltert, setZuletztGefiltert] = useState(filterSchluessel);
+  if (zuletztGefiltert !== filterSchluessel) {
+    setZuletztGefiltert(filterSchluessel);
+    setAuswahl((alt) => new Set([...alt].filter((id) => waehlbar.has(id))));
+  }
+  const gewaehlt = new Set([...auswahl].filter((id) => waehlbar.has(id)));
+  const auswahlAendern = (ids: string[], an: boolean) =>
+    setAuswahl((alt) => {
+      const neu = new Set(alt);
+      ids.forEach((id) => (an ? neu.add(id) : neu.delete(id)));
+      return neu;
+    });
+  const aufgeloest = auswahlAufloesen(data.documents, gefiltert, gewaehlt);
+  const laufendGewaehlt = aufgeloest.laeufe.filter((r) => r.status === 'laufend');
+  const sammelAktion = (art: 'erledigen' | 'erinnern') =>
+    setAktion({
+      art,
+      runIds: laufendGewaehlt.map((r) => r.id),
+      hinweise: aufgeloest.mitlaufend.filter((m) => m.lauf.status === 'laufend').map(mitlaufendHinweis),
+    });
   const filterLoeschen = () => {
     setSuche('');
     setGewerkFilter('');
@@ -112,11 +160,8 @@ export function Uebersicht({
   const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig').length;
   const anzahl = (art: DocumentKind) => dokumente.filter((d) => d.kind === art).length;
 
-  // Gesamtfortschritt: Mittel über alle eigenständigen Läufe ohne abgebrochene
-  const gezaehlt = laeufe.filter((r) => r.status !== 'abgebrochen');
-  const gesamt = gezaehlt.length
-    ? Math.round(gezaehlt.reduce((summe, r) => summe + fortschritt(r), 0) / gezaehlt.length)
-    : 0;
+  // Gesamtfortschritt: Mittel der (nach Fristen gewichteten) Lauf-Werte ohne abgebrochene
+  const gesamt = mittlererFortschritt(data, laeufe);
 
   return (
     <div className="stack">
@@ -169,6 +214,36 @@ export function Uebersicht({
             </span>
           }
         />
+        {gewaehlt.size > 0 ? (
+          <div className="pll-leiste" role="toolbar" aria-label="Aktionen für die Auswahl">
+            <span className="pll-anzahl">{gewaehlt.size} ausgewählt</span>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              disabled={laufendGewaehlt.length === 0}
+              title={laufendGewaehlt.length === 0 ? 'Keiner der gewählten Planläufe läuft noch' : undefined}
+              onClick={() => sammelAktion('erledigen')}
+            >
+              <Icon name="check" size={13} /> Schritte erledigen …
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              disabled={laufendGewaehlt.length === 0}
+              title={laufendGewaehlt.length === 0 ? 'Keiner der gewählten Planläufe läuft noch' : undefined}
+              onClick={() => sammelAktion('erinnern')}
+            >
+              <Icon name="mail" size={13} /> Erinnern …
+            </button>
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => setAktion({ art: 'export' })}>
+              <Icon name="export" size={13} /> Exportieren …
+            </button>
+            <span className="pll-leiste-rest" />
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setAuswahl(new Set())}>
+              Auswahl aufheben
+            </button>
+          </div>
+        ) : null}
         {massgeblich.length === 0 ? (
           <EmptyState
             icon="kette"
@@ -205,6 +280,8 @@ export function Uebersicht({
             }}
             alleRuns={laeufe}
             ebene={Number(ebene) as 1 | 2}
+            auswahl={gewaehlt}
+            onAuswahl={auswahlAendern}
             oeffneLauf={oeffneLauf}
           />
         )}
@@ -213,10 +290,29 @@ export function Uebersicht({
       {exportOffen ? (
         <ExportDialog
           project={project}
-          // Bei gesetztem Filter sind die Einträge vorgewählt, die die Liste zeigt
-          vorauswahl={filterAktiv ? new Set(gefiltert.map((r) => r.id)) : undefined}
+          // Bei gesetztem Filter sind die Einträge vorgewählt, die die Liste zeigt –
+          // mit den Plänen gebündelter Verzeichnisse und den abgebrochenen Läufen
+          vorauswahl={
+            filterAktiv
+              ? new Set([...waehlbar, ...gefiltert.filter((r) => r.status === 'abgebrochen').map((r) => r.id)])
+              : undefined
+          }
           onClose={() => setExportOffen(false)}
         />
+      ) : null}
+      {aktion?.art === 'export' ? (
+        <ExportDialog
+          project={project}
+          vorauswahl={gewaehlt}
+          vorauswahlHinweis="Vorgewählt ist Ihre Auswahl im Reiter „Planläufe“."
+          onClose={() => setAktion(null)}
+        />
+      ) : null}
+      {aktion?.art === 'erledigen' ? (
+        <SammelErledigen runIds={aktion.runIds} hinweise={aktion.hinweise} onClose={() => setAktion(null)} />
+      ) : null}
+      {aktion?.art === 'erinnern' ? (
+        <SammelErinnern runIds={aktion.runIds} hinweise={aktion.hinweise} onClose={() => setAktion(null)} />
       ) : null}
     </div>
   );

@@ -1,55 +1,79 @@
 /**
  * Kompakte Darstellung eines Workflows: die Schritte des Standardverlaufs als
- * Punktkette (Entscheidungen als Raute) und die Zahl der Abweichungen – in der
+ * Punktkette (Entscheidungen als Raute; ein paralleler Block als Punktgruppe
+ * mit einer Reihe je Zweig) und die Zahl der Abweichungen – in der
  * Workflow-Liste und beim Start eines Planlaufs. Dazu der Baustein, mit dem
  * sich die Schritte eines einzelnen Planlaufs im Workflow-Editor anpassen
  * lassen („Individueller Workflow“).
  */
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { STEP_TYPE_LABEL, type ProcessTemplate, type ProcessTemplateStep } from '../domain/types';
-import { dauerImStandardverlauf, gliedern } from '../domain/workflowGraph';
+import { anzahlBloecke, dauerImStandardverlauf, gliedern, istBlockAnzeige } from '../domain/workflowGraph';
 import { Badge } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
 import { WorkflowEditor } from './WorkflowEditor';
 import './workflowEditor.css';
 
 export function AblaufVorschau({ steps }: { steps: ProcessTemplateStep[] }) {
-  const { haupt, abweichungen, rueckSprungZu } = gliedern(steps);
+  const { hauptAnzeige, bloecke, abweichungenGesamt, rueckSprungZu } = gliedern(steps);
   const nachId = new Map(steps.map((s, i) => [s.id, { s, i }]));
+  const punkt = (id: string) => {
+    const { s, i } = nachId.get(id)!;
+    return (
+      <span
+        className={`wf-vorschau-knoten ${s.typ}`}
+        title={`${String(i + 1).padStart(2, '0')} · ${s.name || 'ohne Bezeichnung'} (${STEP_TYPE_LABEL[s.typ]})`}
+      />
+    );
+  };
   return (
     <div className="wf-vorschau" aria-hidden="true">
-      {haupt.map((id, k) => {
-        const { s, i } = nachId.get(id)!;
-        return (
-          <span key={id} style={{ display: 'contents' }}>
-            {k > 0 ? <span className="wf-vorschau-strich" /> : null}
-            <span
-              className={`wf-vorschau-knoten ${s.typ}`}
-              title={`${String(i + 1).padStart(2, '0')} · ${s.name || 'ohne Bezeichnung'} (${STEP_TYPE_LABEL[s.typ]})`}
-            />
-          </span>
-        );
-      })}
-      {haupt.length > 0 ? (
+      {hauptAnzeige.map((e, k) => (
+        <span key={istBlockAnzeige(e) ? e.block : e} style={{ display: 'contents' }}>
+          {k > 0 ? <span className="wf-vorschau-strich" /> : null}
+          {istBlockAnzeige(e) ? (
+            <span className="wf-parallel-vorschau" title={`Paralleler Block · ${bloecke[e.block].zweige.length} Zweige`}>
+              {bloecke[e.block].zweige.map((z) => (
+                <span key={z.zweig} className="wf-parallel-vorschau-zweig">
+                  {z.standard.map((id, j) => (
+                    <Fragment key={id}>
+                      {j > 0 ? <span className="wf-vorschau-strich" /> : null}
+                      {punkt(id)}
+                    </Fragment>
+                  ))}
+                </span>
+              ))}
+            </span>
+          ) : (
+            punkt(e)
+          )}
+        </span>
+      ))}
+      {hauptAnzeige.length > 0 ? (
         <>
           <span className="wf-vorschau-strich" />
           {rueckSprungZu ? <Icon name="schleife" size={12} /> : <span className="wf-vorschau-ende" />}
         </>
       ) : null}
-      {abweichungen.length > 0 ? (
+      {abweichungenGesamt > 0 ? (
         <span className="wf-vorschau-zusatz">
-          + {abweichungen.length} {abweichungen.length === 1 ? 'Abweichung' : 'Abweichungen'}
+          + {abweichungenGesamt} {abweichungenGesamt === 1 ? 'Abweichung' : 'Abweichungen'}
         </span>
       ) : null}
     </div>
   );
 }
 
-/** Zahlen zu einem Workflow: Schritte, Entscheidungen, Tage im Standardverlauf. */
+/**
+ * Zahlen zu einem Workflow: Schritte und Entscheidungen (alle, auch in
+ * parallelen Blöcken), parallele Blöcke, Tage im Standardverlauf (je Block
+ * der längste Zweig).
+ */
 export function ablaufZahlen(steps: ProcessTemplateStep[]) {
   return {
     schritte: steps.length,
     entscheidungen: steps.filter((s) => s.typ === 'entscheidung').length,
+    bloecke: anzahlBloecke(steps),
     tage: dauerImStandardverlauf(steps),
   };
 }
@@ -92,6 +116,7 @@ export function LaufSchritte({
           </div>
           <div className="small tertiary">
             {z.schritte} {z.schritte === 1 ? 'Schritt' : 'Schritte'} · {z.entscheidungen} {z.entscheidungen === 1 ? 'Entscheidung' : 'Entscheidungen'} ·{' '}
+            {z.bloecke > 0 ? `${z.bloecke} ${z.bloecke === 1 ? 'paralleler Block' : 'parallele Blöcke'} · ` : ''}
             {z.tage} Tage im Standardverlauf{arbeitstage ? ' (Arbeitstage)' : ''}
           </div>
         </div>

@@ -1,9 +1,11 @@
 /**
- * Fristenübersicht mit Erinnerungsfunktion: offene Prozessschritte über alle
- * Projekte, gefiltert nach Dringlichkeit, mit Button für die vorbereitete E-Mail.
+ * Fristenübersicht mit Erinnerungsfunktion: anstehende Prozessschritte über
+ * alle Projekte – je anstehendem Schritt eine Zeile, in parallelen Zweigen also
+ * mehrere je Planlauf –, gefiltert nach Dringlichkeit, mit Button für die
+ * vorbereitete E-Mail.
  */
 import { Fragment, useMemo, useState } from 'react';
-import { offeneFristen, type Ampel } from '../domain/engine';
+import { aktuelleSchritte, offeneFristen, type Ampel } from '../domain/engine';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import type { PlanRun, Project, RunStep } from '../domain/types';
 import type { Route } from '../lib/router';
@@ -72,7 +74,7 @@ export function Fristen({
       <Card>
         <CardHeader
           titel="Anstehende Prozessschritte"
-          sub="Je Planlauf der aktuell anstehende Schritt; Erinnerungen aus den Vorlagen des Projekts"
+          sub="Alle anstehenden Schritte – bei parallelen Zweigen mehrere je Planlauf; Erinnerungen aus den E-Mail-Vorlagen"
         />
         {eintraege.length === 0 ? (
           <EmptyState icon="check" titel="Nichts offen" text="Für diese Auswahl gibt es keine offenen Fristen." />
@@ -113,6 +115,8 @@ export function Fristen({
                 ) : null}
                 {gruppe.zeilen.map((f) => {
                 const kontakt = data.contacts.find((c) => c.id === f.step.contactId);
+                // Weitere Schritte desselben Laufs, die parallel anstehen
+                const parallel = aktuelleSchritte(f.run).filter((s) => s.id !== f.step.id);
                 return (
                   <tr key={`${f.run.id}-${f.step.id}`}>
                     <td className="col-optional"><AmpelPunkt ampel={f.ampel} /></td>
@@ -124,6 +128,14 @@ export function Fristen({
                       >
                         <strong>{f.step.name}</strong>
                       </button>
+                      {parallel.length > 0 ? (
+                        <span
+                          className="badge zusatz"
+                          title={`Parallel dazu: ${parallel.map((s) => s.name).join(', ')}`}
+                        >
+                          +{parallel.length} parallel
+                        </span>
+                      ) : null}
                       <div className="small tertiary">
                         {(() => {
                           const doc = data.documents.find((d) => d.id === f.run.documentId);
@@ -146,7 +158,7 @@ export function Fristen({
                       <AmpelBadge ampel={f.ampel} />
                       {f.step.letzteErinnerung ? (
                         <div className="tertiary small" title={new Date(f.step.letzteErinnerung).toLocaleString('de-DE')}>
-                          erinnert am {new Date(f.step.letzteErinnerung).toLocaleDateString('de-DE')}
+                          E-Mail vorbereitet am {new Date(f.step.letzteErinnerung).toLocaleDateString('de-DE')}
                         </div>
                       ) : null}
                     </td>

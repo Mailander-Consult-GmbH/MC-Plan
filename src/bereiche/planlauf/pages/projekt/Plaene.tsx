@@ -6,10 +6,16 @@
  * ohne Paket. Die Liste führt die Stammdaten – Art, Bezeichnung, Gewerk,
  * Zugehörigkeit und den Soll-Termin des Eingangs. Der Stand der Planläufe
  * steht im Reiter „Planläufe“. Planpakete werden hier angelegt und gepflegt.
+ *
+ * Mehrfachauswahl: Die Kästchen-Spalte wählt Einträge für die Sammelaktionen
+ * (Planpaket zuweisen, neues Planpaket, Gewerk/Planungsphase, Löschen). Das
+ * Kästchen eines Planverzeichnisses steht für das Verzeichnis samt seinen
+ * Plänen („teilweise“, wenn die Auswahl davon abweicht); Planpaket, „Ohne
+ * Planpaket“ und Kopfzeile wählen ihren Inhalt. Gewählt bleiben nur sichtbare
+ * Einträge – Suche und Filter beschneiden die Auswahl.
  */
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import {
-  aktuellerSchritt,
   gewerkeFuerProjekt,
   laufUeberfuehrt,
   lfdNummern,
@@ -43,6 +49,9 @@ import { PlaeneImport } from './PlaeneImport';
 import { BuendelnDialog, planeMitEigenemLauf } from '../../components/BuendelnDialog';
 import { PaketDialog } from '../../components/PaketDialog';
 import { paketVon } from '../../domain/uebersicht';
+import { aktuelleSchritte } from '../../domain/ablauf';
+import { EintraegeAendernDialog, EintraegeLoeschenDialog, PaketZuweisenDialog } from '../../components/PlanlisteAktionen';
+import '../../components/planliste.css';
 import {
   Callout,
   Card,
@@ -68,6 +77,38 @@ type SortFeld = 'lfd' | 'kind' | 'nummer' | 'titel' | 'gewerk' | 'parent' | 'ein
 /** Kennung der Gruppe „ohne Planpaket“ beim Auf- und Zuklappen. */
 const OHNE_PAKET = '__ohne-paket__';
 
+type Kaestchenzustand = 'an' | 'aus' | 'teilweise';
+type Sammelaktion = 'paket' | 'neues-paket' | 'aendern' | 'loeschen';
+
+/** Kästchen der Auswahl mit Zwischenstand „teilweise“. */
+function Kaestchen({
+  zustand,
+  onChange,
+  label,
+  disabled = false,
+}: {
+  zustand: Kaestchenzustand;
+  onChange: () => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="pli-flaeche" title={label}>
+      <input
+        type="checkbox"
+        className="pli-kaestchen"
+        checked={zustand === 'an'}
+        disabled={disabled}
+        ref={(el) => {
+          if (el) el.indeterminate = zustand === 'teilweise';
+        }}
+        onChange={onChange}
+        aria-label={label}
+      />
+    </label>
+  );
+}
+
 export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: (runId: ID) => void }) {
   const { data } = useStore();
   const [suche, setSuche] = useState('');
@@ -79,6 +120,9 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   const [importOffen, setImportOffen] = useState(false);
   /** Zugeklappte Planverzeichnisse und Planpakete – zunächst ist alles offen. */
   const [zugeklappt, setZugeklappt] = useState<string[]>([]);
+  /** Gewählte Pläne und Planverzeichnisse (Kennungen). */
+  const [auswahl, setAuswahl] = useState<ID[]>([]);
+  const [sammel, setSammel] = useState<{ aktion: Sammelaktion; ids: ID[] } | null>(null);
   const projektDokumente = data.documents.filter((d) => d.projectId === project.id);
   // Planpakete gliedern die Liste; die Einträge sind Pläne und Planverzeichnisse.
   const alle = projektDokumente.filter((d) => d.kind !== 'paket');
@@ -152,6 +196,37 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   const klappen = (id: string) =>
     setZugeklappt((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
 
+  /*
+   * Auswahl: nur sichtbare Einträge (Suche und Filter) – was dabei
+   * herausfällt, wird abgewählt; ebenso gelöschte Einträge.
+   */
+  const sichtbar = new Set(zeilen.map((d) => d.id));
+  const gewaehlt = auswahl.filter((id) => sichtbar.has(id));
+  useEffect(() => {
+    if (gewaehlt.length !== auswahl.length) setAuswahl(gewaehlt);
+  });
+  const gewaehltMenge = new Set(gewaehlt);
+  const zustandVon = (ids: ID[]): Kaestchenzustand => {
+    const n = ids.filter((id) => gewaehltMenge.has(id)).length;
+    return n === 0 ? 'aus' : n === ids.length ? 'an' : 'teilweise';
+  };
+  /** Wählt alle `ids` – oder wählt sie ab, wenn schon alle gewählt sind. */
+  const umschalten = (ids: ID[]) => {
+    const alleAn = ids.length > 0 && ids.every((id) => gewaehltMenge.has(id));
+    setAuswahl(alleAn ? gewaehlt.filter((id) => !ids.includes(id)) : [...new Set([...gewaehlt, ...ids])]);
+  };
+  /** Ein Planverzeichnis steht für sich und seine (sichtbaren) Pläne. */
+  const idsVon = (d: PlanDocument): ID[] =>
+    d.kind === 'verzeichnis' ? [d.id, ...kinderVon(d.id).map((k) => k.id)] : [d.id];
+  /** Inhalt einer Gruppe: ihre Einträge samt den Plänen ihrer Verzeichnisse. */
+  const gruppenIds = (oben: PlanDocument[]): ID[] => oben.flatMap(idsVon);
+  /** Zelle mit dem Auswahlkästchen – ein Klick darauf öffnet keinen Dialog. */
+  const wahlZelle = (ids: ID[], label: string) => (
+    <td className="pli-wahl" onClick={(e) => e.stopPropagation()}>
+      <Kaestchen zustand={zustandVon(ids)} onChange={() => umschalten(ids)} label={label} disabled={ids.length === 0} />
+    </td>
+  );
+
   /**
    * Gruppen der Liste: je Planpaket seine Einträge, danach die Einträge ohne
    * Paket. Leere Pakete erscheinen, solange weder Suche noch Filter gesetzt
@@ -205,8 +280,8 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
    */
   const wartetAufEingang = (d: PlanDocument) => {
     const lauf = laufVon(d);
-    const step = lauf ? aktuellerSchritt(lauf) : undefined;
-    return Boolean(step && istEingangPLM(step.name));
+    // Bei parallelen Zweigen können mehrere Schritte zugleich anstehen
+    return lauf?.status === 'laufend' && aktuelleSchritte(lauf).some((s) => istEingangPLM(s.name));
   };
   const anzahlEingang = alle.filter(wartetAufEingang).length;
 
@@ -259,7 +334,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
         key={doc.id}
         className={`clickable ${eingerueckt ? 'unterzeile' : ''} ${
           abgeschlossen(doc) ? 'zeile-fertig' : wartetAufEingang(doc) ? 'zeile-eingang' : ''
-        }`}
+        } ${gewaehltMenge.has(doc.id) ? 'pli-gewaehlt' : ''}`}
         onClick={() => setDialog({ doc })}
         title={
           abgeschlossen(doc)
@@ -269,6 +344,12 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
               : undefined
         }
       >
+        {wahlZelle(
+          idsVon(doc),
+          doc.kind === 'verzeichnis' && kinder.length > 0
+            ? `Planverzeichnis „${doc.titel}“ samt Plänen wählen`
+            : `${DOCUMENT_KIND_LABEL[doc.kind]} „${doc.titel}“ wählen`,
+        )}
         <td className="num tertiary" style={{ paddingLeft: imPaket ? 24 : undefined }}>
           {nummern.get(doc.id) ?? '–'}
         </td>
@@ -381,6 +462,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     const leer = !alle.some((d) => paketIdVon(d) === paket.id);
     return (
       <tr key={paket.id} className="paket-zeile clickable" onClick={() => setPaketDialog({ paket })}>
+        {wahlZelle(gruppenIds(oben), `Einträge des Planpakets „${paket.titel}“ wählen`)}
         <td colSpan={4}>
           <span className="row" style={{ gap: 9 }}>
             <button
@@ -469,6 +551,42 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
             anzahlEingang > 0 ? ` · ${anzahlEingang} vor dem Eingang beim PLM` : ''
           } · Spaltenüberschrift klicken zum Sortieren`}
         />
+        {gewaehlt.length > 0 ? (
+          <div className="pli-leiste" role="toolbar" aria-label="Aktionen für die Auswahl">
+            <span className="pli-anzahl">{eintraegeText(gewaehlt.length)} ausgewählt</span>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setSammel({ aktion: 'paket', ids: gewaehlt })}
+            >
+              <Icon name="paket" size={13} /> Planpaket zuweisen …
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setSammel({ aktion: 'neues-paket', ids: gewaehlt })}
+            >
+              <Icon name="plus" size={13} /> Neues Planpaket aus Auswahl …
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setSammel({ aktion: 'aendern', ids: gewaehlt })}
+            >
+              <Icon name="bearbeiten" size={13} /> Gewerk/Planungsphase …
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-danger"
+              onClick={() => setSammel({ aktion: 'loeschen', ids: gewaehlt })}
+            >
+              <Icon name="loeschen" size={13} /> Löschen …
+            </button>
+            <button type="button" className="btn btn-sm" onClick={() => setAuswahl([])}>
+              Auswahl aufheben
+            </button>
+          </div>
+        ) : null}
         {alle.length === 0 && pakete.length === 0 ? (
           <EmptyState
             icon="plan"
@@ -487,6 +605,14 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
             <table className="table">
               <thead>
                 <tr>
+                  <th className="pli-wahl">
+                    <Kaestchen
+                      zustand={zustandVon(zeilen.map((d) => d.id))}
+                      onChange={() => umschalten(zeilen.map((d) => d.id))}
+                      label="Alle sichtbaren Einträge wählen"
+                      disabled={zeilen.length === 0}
+                    />
+                  </th>
                   <Kopf feld="lfd">Nr.</Kopf>
                   <Kopf feld="kind">Art</Kopf>
                   <Kopf feld="nummer">Bezeichnung / Titel</Kopf>
@@ -506,6 +632,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
 
                 {ohnePaket.length > 0 && paketGruppen.length > 0 ? (
                   <tr className="paket-zeile ohne-paket">
+                    {wahlZelle(gruppenIds(ohnePaket), 'Einträge ohne Planpaket wählen')}
                     <td colSpan={4}>
                       <button
                         type="button"
@@ -546,6 +673,34 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
 
       {paketDialog ? (
         <PaketDialog project={project} paket={paketDialog.paket} onClose={() => setPaketDialog(null)} />
+      ) : null}
+
+      {sammel?.aktion === 'paket' ? (
+        <PaketZuweisenDialog
+          project={project}
+          ids={sammel.ids}
+          onClose={() => setSammel(null)}
+          onFertig={() => setAuswahl([])}
+        />
+      ) : null}
+      {sammel?.aktion === 'neues-paket' ? (
+        <PaketDialog
+          project={project}
+          auswahl={sammel.ids}
+          onAngelegt={() => setAuswahl([])}
+          onClose={() => setSammel(null)}
+        />
+      ) : null}
+      {sammel?.aktion === 'aendern' ? (
+        <EintraegeAendernDialog
+          project={project}
+          ids={sammel.ids}
+          onClose={() => setSammel(null)}
+          onFertig={() => setAuswahl([])}
+        />
+      ) : null}
+      {sammel?.aktion === 'loeschen' ? (
+        <EintraegeLoeschenDialog ids={sammel.ids} onClose={() => setSammel(null)} onFertig={() => setAuswahl([])} />
       ) : null}
     </div>
   );
@@ -795,6 +950,8 @@ function PlanDialog({
       abbruchNeuerIndex: null,
       steps: markiert,
       bemerkung: '',
+      protokoll: [],
+      basis: null,
     });
 
     const ohneKontakt = markiert.filter((s) => !s.contactId).length;
@@ -934,7 +1091,14 @@ function PlanDialog({
                 ))}
               </datalist>
             </Field>
-            <Field label="Eingang Soll" hint="Soll-Termin des ersten Prozessschritts">
+            <Field
+              label="Eingang Soll"
+              hint={
+                laeuftMit && !verzeichnisOhneLauf
+                  ? 'Der Plan läuft im Planlauf seines Verzeichnisses mit – maßgeblich ist das Eingang Soll des Verzeichnisses.'
+                  : 'Soll-Termin des ersten Schritts (bei „Eingang PLM“ die Übergabe durch den Planer), solange er im ersten Durchlauf ist. Alle weiteren Fristen zählen ab dem tatsächlichen Eingang – dem Abschluss des vorherigen Schritts.'
+              }
+            >
               <TextInput value={form.eingangSoll} onChange={(v) => set('eingangSoll', v)} type="date" />
             </Field>
             {form.kind === 'verzeichnis' ? (

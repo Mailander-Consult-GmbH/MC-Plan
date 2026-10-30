@@ -76,6 +76,51 @@ export function addDays(
   return toISO(d);
 }
 
+/** Ist der Tag ein Arbeitstag (Mo–Fr und kein Feiertag)? */
+export function istArbeitstag(iso: ISODate, feiertage: ISODate[] = []): boolean {
+  const d = parseISO(iso);
+  if (!d) return false;
+  return !isWeekend(d) && !feiertage.includes(toISO(d));
+}
+
+/** Der Tag selbst, wenn er ein Arbeitstag ist, sonst der nächste Arbeitstag. */
+export function naechsterArbeitstag(iso: ISODate, feiertage: ISODate[] = []): ISODate {
+  const d = parseISO(iso);
+  if (!d) return iso;
+  const holidays = new Set(feiertage);
+  // Höchstens ein paar Wochen weit – eine Liste nur aus Feiertagen wäre ein Datenfehler
+  for (let i = 0; i < 400 && (isWeekend(d) || holidays.has(toISO(d))); i++) d.setDate(d.getDate() + 1);
+  return toISO(d);
+}
+
+/**
+ * Zahl der Arbeitstage im Zeitraum (a, b] – a selbst zählt nicht, b schon.
+ * Liegt b vor a, ist das Ergebnis negativ: −(Arbeitstage in (b, a]).
+ * Für n ≥ 0 gilt `diffArbeitstage(a, addDays(a, n, true, f), f) === n`.
+ */
+export function diffArbeitstage(a: ISODate, b: ISODate, feiertage: ISODate[] = []): number {
+  const da = parseISO(a);
+  const db = parseISO(b);
+  if (!da || !db) return 0;
+  if (db.getTime() < da.getTime()) return -diffArbeitstage(b, a, feiertage);
+  const holidays = new Set(feiertage);
+  let anzahl = 0;
+  const d = new Date(da);
+  while (d.getTime() < db.getTime()) {
+    d.setDate(d.getDate() + 1);
+    if (!isWeekend(d) && !holidays.has(toISO(d))) anzahl++;
+  }
+  return anzahl;
+}
+
+const WOCHENTAGE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] as const;
+
+/** Kurzer Wochentag eines Datums: "Mo" … "So" (leer bei ungültigem Datum). */
+export function wochentag(iso: ISODate | null | undefined): string {
+  const d = iso ? parseISO(iso) : null;
+  return d ? WOCHENTAGE[d.getDay()] : '';
+}
+
 /** "1 Tag" / "5 Tage" */
 export function tageLabel(anzahl: number): string {
   return `${anzahl} ${Math.abs(anzahl) === 1 ? 'Tag' : 'Tage'}`;

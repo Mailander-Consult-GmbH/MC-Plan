@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 12;
+export const DATEN_VERSION = 13;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -20,7 +20,7 @@ export const DATEN_VERSION = 12;
  * Laden die neuen Stammdaten – eigene Rollen, Varianten und laufende Planläufe
  * bleiben dabei unangetastet.
  */
-export const STAMMDATEN_VERSION = 4;
+export const STAMMDATEN_VERSION = 5;
 
 /* ------------------------------------------------------------------ */
 /* Bearbeiter                                                          */
@@ -87,6 +87,8 @@ export interface Project {
   markiert: boolean;
   beschreibung: string;
   settings: ProjectSettings;
+  /** Zeitpunkt der letzten Änderung (ISO-Zeitstempel), vom Store gesetzt. */
+  geaendertAm?: string;
 }
 
 export interface ProjectSettings {
@@ -125,6 +127,34 @@ export const EMAIL_ANLASS_LABEL: Record<EmailAnlass, string> = {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Seite, der eine Funktion im Terminnachweis zugerechnet wird: Wer einen
+ * Verzug verursacht, steht auf einer dieser Seiten. `null` = nicht festgelegt.
+ */
+export type Seite = 'planer' | 'pruefer' | 'auftraggeber' | 'plm';
+
+export const SEITE_LABEL: Record<Seite, string> = {
+  planer: 'Planer',
+  pruefer: 'Prüfer',
+  auftraggeber: 'Auftraggeber',
+  plm: 'PLM',
+};
+
+/**
+ * Vorbelegung der Seite aus der Bezeichnung einer Funktion: das
+ * Planlaufmanagement ist PLM, Planer und Fachspezialisten sind Planer,
+ * prüfende Funktionen Prüfer, Bauvorlageberechtigte, Projektleitung und
+ * Bauüberwachung der Auftraggeber. Alles andere bleibt offen (`null`).
+ */
+export function seiteAusFunktion(name: string): Seite | null {
+  const n = name.trim();
+  if (n.toLowerCase() === EIGENE_ROLLE.toLowerCase() || n.toLowerCase() === 'plm') return 'plm';
+  if (/planer|fachspezialist/i.test(n)) return 'planer';
+  if (istPrueferRolle(n)) return 'pruefer';
+  if (/bauvorlage|projektleitung|bauüberwachung|bauueberwachung|auftraggeber/i.test(n)) return 'auftraggeber';
+  return null;
+}
+
+/**
  * Projektübergreifend gepflegte Rolle. Beim Anlegen eines Projekts werden
  * diese Rollen als Projektfunktionen übernommen.
  */
@@ -140,6 +170,8 @@ export interface StandardRolle {
    * `null` steht für übergreifende Funktionen, die einmal besetzt werden.
    */
   gewerk: string | null;
+  /** Seite im Terminnachweis; null = nicht festgelegt (siehe seiteAusFunktion). */
+  seite: Seite | null;
 }
 
 /** Übergreifende Funktionen gelten für alle Gewerke. */
@@ -175,6 +207,10 @@ export interface Role {
   beschreibung: string;
   /** Gewerk der Funktion; null = übergreifend (siehe StandardRolle). */
   gewerk: string | null;
+  /** Seite im Terminnachweis; null = nicht festgelegt (siehe StandardRolle). */
+  seite: Seite | null;
+  /** Zeitpunkt der letzten Änderung (ISO-Zeitstempel), vom Store gesetzt. */
+  geaendertAm?: string;
 }
 
 /**
@@ -205,6 +241,8 @@ export interface Contact {
    * automatisch geführt und besetzt dort das Planlaufmanagement.
    */
   eigen: boolean;
+  /** Zeitpunkt der letzten Änderung (ISO-Zeitstempel), vom Store gesetzt. */
+  geaendertAm?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -281,6 +319,8 @@ export interface PlanDocument {
   /** Datum der Ausgabe – nur bei Planverzeichnissen geführt. */
   datum: ISODate | null;
   bemerkung: string;
+  /** Zeitpunkt der letzten Änderung (ISO-Zeitstempel), vom Store gesetzt. */
+  geaendertAm?: string;
 }
 
 /**
@@ -335,12 +375,20 @@ export const STEP_TYPE_LABEL: Record<StepType, string> = {
  * Antwortmöglichkeit einer Entscheidung.
  * `ziel` bestimmt, mit welchem Schritt weitergemacht wird:
  * eine Schritt-ID, `'ende'` für das Ende des Laufs oder `null` für den
- * unmittelbar folgenden Schritt.
+ * unmittelbar folgenden Schritt. In einem Zweig eines parallelen Blocks heißt
+ * `'ende'` „Zweig beendet“ und `null` „nächster Schritt dieses Zweigs“
+ * (siehe `nachfolger` in domain/ablauf.ts).
  */
 export interface Antwort {
   id: ID;
   text: string;
   ziel: ID | 'ende' | null;
+  /**
+   * Die Antwort führt in Nacharbeit (z. B. „Nein“, „Nachreichung“): Der Weg
+   * gilt im Terminnachweis als Nacharbeit, nicht als Regelablauf. Vorgabe:
+   * die erste Antwort nicht, alle weiteren schon.
+   */
+  nacharbeit: boolean;
 }
 
 export const STANDARD_ANTWORTEN = ['Ja', 'Nein'];
@@ -362,6 +410,19 @@ export function istPrueferRolle(roleName: string): boolean {
   return /prüf|pruef/i.test(roleName);
 }
 
+/**
+ * Zugehörigkeit eines Schritts zu einem parallelen Block. Schritte mit gleicher
+ * `block`-Kennung stehen in der Liste zusammenhängend und nach `zweig` (0 … n−1)
+ * sortiert, innerhalb eines Zweigs in Ablaufreihenfolge. Ein Block hat
+ * mindestens zwei Zweige; Blöcke werden nicht verschachtelt. Betreten wird
+ * stets der ganze Block, weiter geht es, wenn alle Zweige erledigt sind
+ * (siehe domain/ablauf.ts).
+ */
+export interface Parallel {
+  block: ID;
+  zweig: number;
+}
+
 export interface ProcessTemplate {
   id: ID;
   /** null = globale Standard-Workflow, sonst projektspezifische Variante. */
@@ -370,6 +431,8 @@ export interface ProcessTemplate {
   beschreibung: string;
   herkunft: 'standard' | 'manuell';
   steps: ProcessTemplateStep[];
+  /** Zeitpunkt der letzten Änderung (ISO-Zeitstempel), vom Store gesetzt. */
+  geaendertAm?: string;
 }
 
 export interface ProcessTemplateStep {
@@ -378,7 +441,10 @@ export interface ProcessTemplateStep {
   typ: StepType;
   /** Verantwortliche Rolle für diesen Schritt. */
   roleName: string;
-  /** Frist in Tagen ab Ende des Vorgängerschritts. */
+  /**
+   * Frist in Tagen ab dem tatsächlichen Eingang – dem Abschluss des
+   * vorherigen Schritts (bei parallelen Zweigen: aller Zweige).
+   */
   fristTage: number;
   beschreibung: string;
   /** Nur bei Entscheidungen gefüllt. */
@@ -386,6 +452,8 @@ export interface ProcessTemplateStep {
   /**
    * Nachfolger einer Aufgabe: eine Schritt-ID – auch ein früherer Schritt
    * (Rücksprung) –, `'ende'` oder `null` für den nächsten Schritt der Liste.
+   * Im Zweig eines Blocks: `null` = nächster Schritt des Zweigs, `'ende'` =
+   * Zweig beendet, ein Schritt außerhalb des Blocks = Ausstieg dorthin.
    * Bei Entscheidungen bestimmen die Antworten den Verlauf.
    */
   naechster: ID | 'ende' | null;
@@ -398,6 +466,8 @@ export interface ProcessTemplateStep {
   mailFrage: boolean;
   /** Vorzuschlagende E-Mail-Vorlage; null = die zum Anlass passende. */
   mailVorlageId: ID | null;
+  /** Zweig eines parallelen Blocks; null = außerhalb von Blöcken. */
+  parallel: Parallel | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -413,7 +483,13 @@ export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
 };
 
 /** Grundform des Abbruchs: ersatzlos oder mit neuem Index bzw. neuer Ausgabe. */
-export type AbbruchArt = 'ersatzlos' | 'neuer_index' | 'aufgeteilt' | 'gebuendelt' | 'neu_gestartet';
+export type AbbruchArt =
+  | 'ersatzlos'
+  | 'neuer_index'
+  | 'aufgeteilt'
+  | 'gebuendelt'
+  | 'neu_gestartet'
+  | 'aus_sicherung';
 
 export const ABBRUCH_ART_LABEL: Record<AbbruchArt, string> = {
   ersatzlos: 'ersatzlos',
@@ -427,6 +503,9 @@ export const ABBRUCH_ART_LABEL: Record<AbbruchArt, string> = {
   // Ebenso kein Abbruch: der Planlauf begann mit einem (anderen) Workflow von
   // vorn; der bisherige Lauf bleibt zum Nachschlagen erhalten.
   neu_gestartet: 'mit geändertem Workflow neu gestartet',
+  // Ebenso kein Abbruch: der Lauf wurde beim Abgleich mit einer Sicherung durch
+  // deren Stand ersetzt und bleibt zum Nachschlagen erhalten.
+  aus_sicherung: 'durch den Stand einer Sicherung ersetzt',
 };
 
 export interface PlanRun {
@@ -450,6 +529,10 @@ export interface PlanRun {
   /** Kopie der Schritte – individuelle Abweichungen ändern nur diese Instanz. */
   steps: RunStep[];
   bemerkung: string;
+  /** Änderungsprotokoll, älteste Einträge zuerst. */
+  protokoll: ProtokollEintrag[];
+  /** Beim Start festgehaltener Plan (Grundlage des Terminnachweises). */
+  basis: Basisplan | null;
 }
 
 export type StepStatus = 'offen' | 'laufend' | 'erledigt' | 'uebersprungen';
@@ -478,17 +561,49 @@ export interface RunStep {
    * Besetzung der Funktion anders lautet.
    */
   contactManuell: boolean;
+  /** Frist in Tagen ab dem tatsächlichen Eingang (siehe ProcessTemplateStep). */
   fristTage: number;
-  /** Berechnetes Soll-Datum; manuell überschreibbar (dann Ketten-Basis). */
+  /**
+   * Soll-Datum: Eingang + Frist, berechnet von recalcSollDaten. Bei künftigen
+   * Schritten eine Prognose (nie vor heute). Von Hand überschreibbar (sollManuell).
+   */
   sollDatum: ISODate | null;
   /** true, sobald der Nutzer das Soll-Datum manuell gesetzt hat. */
   sollManuell: boolean;
   istDatum: ISODate | null;
+  /**
+   * Fester, tatsächlicher Eingang: gesetzt, sobald der Schritt ansteht – aus dem
+   * Abschluss der Vorgänger bzw. beim Rücksprung aus dem Ist des Auslösers –,
+   * danach nicht mehr automatisch geändert. Nur bei anstehenden und erledigten
+   * Schritten belegt.
+   */
+  eingangIst: ISODate | null;
+  /** Der Eingang wurde bei der Umstellung des Bestands geschätzt. */
+  eingangGeschaetzt: boolean;
+  /** Berechnet (recalc): eingangIst bzw. der voraussichtliche Eingang; außerhalb des Verlaufs null. */
+  eingangDatum: ISODate | null;
+  /** Momentaufnahme beim Erledigen bzw. Überspringen. */
+  abschlussInfo: AbschlussInfo | null;
+  /** Frühere, durch Rücksprung oder erneute Bearbeitung beendete Durchläufe. */
+  historie: SchrittDurchlauf[];
+  /** Vorbereitete Erinnerungen (letzteErinnerung = Zeitpunkt der letzten). */
+  erinnerungen: Erinnerung[];
+  /** Von Hand zugeordnete Verzugstage des laufenden Durchlaufs. */
+  verzugZuordnung: VerzugAnteil[];
+  /** Nur Entscheidungen: Ursache der Nacharbeit, wenn mit einer Nacharbeit-Antwort erledigt. */
+  nacharbeitSeite: Seite | null;
+  /** Zweig eines parallelen Blocks (siehe ProcessTemplateStep). */
+  parallel: Parallel | null;
+  /**
+   * Durchgang durch den Block: für alle Schritte eines Blocks gemeinsam erhöht,
+   * wenn der ganze Block erneut betreten wird. Außerhalb von Blöcken 1.
+   */
+  blockDurchgang: number;
   status: StepStatus;
   /** Kennzeichnet vom Standard abweichende Schritte (individuelle Anpassung). */
   abweichung: boolean;
   bemerkung: string;
-  /** Zeitpunkt der letzten versendeten Erinnerung (ISO-Timestamp). */
+  /** Zeitpunkt der letzten vorbereiteten Erinnerung (ISO-Zeitstempel). */
   letzteErinnerung: string | null;
   /** Antwortmöglichkeiten bei Entscheidungen. */
   antworten: Antwort[];
@@ -506,6 +621,113 @@ export interface RunStep {
   mailFrage: boolean;
   /** Vorzuschlagende E-Mail-Vorlage. */
   mailVorlageId: ID | null;
+}
+
+/** Momentaufnahme beim Erledigen bzw. Überspringen eines Schritts. */
+export interface AbschlussInfo {
+  roleName: string;
+  /** Seite der Projektfunktion zum Zeitpunkt des Abschlusses. */
+  seite: Seite | null;
+  /** Name der zuständigen Person zum Zeitpunkt des Abschlusses. */
+  kontaktName: string;
+  /** Wer den Abschluss vermerkt hat. */
+  bearbeiter: string;
+  /** ISO-Zeitstempel. */
+  zeitpunkt: string;
+}
+
+/** Ein beendeter Durchlauf eines Schritts – unveränderlich festgehalten. */
+export interface SchrittDurchlauf {
+  durchlauf: number;
+  blockDurchgang: number;
+  name: string;
+  roleName: string;
+  seite: Seite | null;
+  contactId: ID | null;
+  kontaktName: string;
+  eingang: ISODate | null;
+  eingangGeschaetzt: boolean;
+  soll: ISODate | null;
+  sollManuell: boolean;
+  ist: ISODate | null;
+  status: StepStatus;
+  fristTage: number;
+  /** Text der gewählten Antwort (Entscheidungen). */
+  antwort: string | null;
+  antwortNacharbeit: boolean;
+  nacharbeitSeite: Seite | null;
+  nachweisNummer: string | null;
+  bemerkung: string;
+  verzugZuordnung: VerzugAnteil[];
+  grund: 'ruecksprung' | 'wieder_geoeffnet';
+  /** ISO-Zeitstempel, zu dem der Durchlauf endete. */
+  beendetAm: string;
+}
+
+/** Eine vorbereitete Erinnerung bzw. E-Mail zu einem Schritt. */
+export interface Erinnerung {
+  /** ISO-Zeitstempel. */
+  zeitpunkt: string;
+  contactId: ID | null;
+  kontaktName: string;
+  /** Verwendete Adresse(n). */
+  an: string;
+  betreff: string;
+  anlass: EmailAnlass | null;
+  weg: 'outlook' | 'web' | 'kopie' | 'sammel';
+  /** Durchlauf des Schritts; null = unbekannt (vor Fassung 13). */
+  durchlauf: number | null;
+}
+
+/** Von Hand einer Seite zugeordnete Verzugstage. */
+export interface VerzugAnteil {
+  seite: Seite;
+  tage: number;
+  grund: string;
+  /** ISO-Zeitstempel. */
+  zeitpunkt: string;
+  bearbeiter: string;
+}
+
+/** Eintrag im Änderungsprotokoll eines Planlaufs. */
+export interface ProtokollEintrag {
+  /** ISO-Zeitstempel. */
+  zeitpunkt: string;
+  bearbeiter: string;
+  stepId: ID | null;
+  text: string;
+  /** Eintrag stammt aus dem Abgleich mit einer Sicherung. */
+  quelle?: 'import';
+}
+
+/** Beim Start eines Laufs festgehaltener Plan. */
+export interface Basisplan {
+  /** ISO-Zeitstempel. */
+  festgelegtAm: string;
+  /** Eingang Soll des Eintrags bzw. Start des Laufs. */
+  anker: ISODate;
+  /**
+   * Eingang Soll des Eintrags bei der Festlegung (null = keiner, der Anker ist
+   * der Start). Fehlt bei älteren Basisplänen – dann gilt: Anker ≠ Start.
+   */
+  eingangSoll?: ISODate | null;
+  /** Ende im Regelweg; null, wenn es sich nicht berechnen ließ (Schleife). */
+  planEnde: ISODate | null;
+  arbeitstage: boolean;
+  /** Fristen aller Schritte zum Zeitpunkt der Festlegung. */
+  fristen: Record<ID, number>;
+  grund: string;
+}
+
+/** Vermerk über ein gelöschtes Element (für den Abgleich mit Sicherungen). */
+export interface Loeschvermerk {
+  id: ID;
+  art: 'projekt' | 'eintrag' | 'lauf' | 'kontakt' | 'funktion' | 'workflow' | 'gewerk' | 'emailVorlage';
+  projectId: ID | null;
+  bezeichnung: string;
+  /** ISO-Zeitstempel. */
+  am: string;
+  bearbeiter: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -529,4 +751,6 @@ export interface AppData {
   documents: PlanDocument[];
   templates: ProcessTemplate[];
   runs: PlanRun[];
+  /** Vermerke über gelöschte Elemente. */
+  geloescht: Loeschvermerk[];
 }

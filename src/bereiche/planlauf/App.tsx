@@ -1,7 +1,7 @@
 /** Anwendungsrahmen: Seitenleiste, Kopfzeile und Auswahl der Ansicht. */
 import { useEffect, useState } from 'react';
 import { eigeneTodos, offeneFristen } from './domain/engine';
-import { exportiereDaten } from './store/storage';
+import { exportiereDaten, rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
 import { useRoute, type Route } from './lib/router';
 import { useToast } from '../../shared/toast';
@@ -12,6 +12,7 @@ import { Projekte } from './pages/Projekte';
 import { Workflows } from './pages/Workflows';
 import { Funktionen } from './pages/Funktionen';
 import { Vorlagen } from './pages/Vorlagen';
+import { Terminrechner } from './pages/Terminrechner';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../shared/ui';
 import { EIGENE_ROLLE, STANDARD_BEARBEITER } from './domain/types';
@@ -19,10 +20,11 @@ import { Icon } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/SicherungEinspielen';
+import { Hinweisleisten } from './components/Hinweisleisten';
 import type { IconName } from '../../shared/icons';
 
 export function App() {
-  const { data, zuruecksetzen } = useStore();
+  const { data, zuruecksetzen, ladeZustand } = useStore();
   const toast = useToast();
   const [route, navigate] = useRoute();
   const [menuOffen, setMenuOffen] = useState(false);
@@ -75,6 +77,12 @@ export function App() {
           aktiv={route.view === 'vorlagen'}
           onClick={() => gehe({ view: 'vorlagen' })}
         />
+        <NavItem
+          icon="kalender"
+          label="Terminrechner"
+          aktiv={route.view === 'terminrechner'}
+          onClick={() => gehe({ view: 'terminrechner' })}
+        />
 
         <div className="nav-group-label">
           Projekte
@@ -108,13 +116,33 @@ export function App() {
             <button
               type="button"
               className="btn btn-sm btn-outline"
-              onClick={() => exportiereDaten(data)}
-              title="Gesamten Datenbestand als JSON sichern"
+              onClick={() => {
+                // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
+                // gesichert wird dann der gespeicherte Stand, unverändert.
+                if (ladeZustand === 'ok') exportiereDaten(data);
+                else if (!rohdatenHerunterladen())
+                  toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
+              }}
+              title={
+                ladeZustand === 'ok'
+                  ? 'Gesamten Datenbestand als JSON sichern'
+                  : 'Gespeicherten Stand unverändert herunterladen'
+              }
             >
               <Icon name="export" size={12} /> Sicherung
             </button>
             <SicherungWaehlen onGelesen={setSicherung} />
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => setZuruecksetzenDialog(true)}>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setZuruecksetzenDialog(true)}
+              disabled={ladeZustand === 'neuere_fassung'}
+              title={
+                ladeZustand === 'neuere_fassung'
+                  ? 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt'
+                  : undefined
+              }
+            >
               Zurücksetzen
             </button>
           </div>
@@ -137,6 +165,8 @@ export function App() {
           </div>
         </header>
 
+        <Hinweisleisten />
+
         <div className="content">
           <div className="content-inner">
             {route.view === 'dashboard' ? <Dashboard navigate={gehe} /> : null}
@@ -145,6 +175,7 @@ export function App() {
             {route.view === 'ketten' ? <Workflows /> : null}
             {route.view === 'rollen' ? <Funktionen /> : null}
             {route.view === 'vorlagen' ? <Vorlagen /> : null}
+            {route.view === 'terminrechner' ? <Terminrechner /> : null}
             {route.view === 'projekt' ? (
               projekt ? (
                 <ProjektDetail project={projekt} tab={route.tab} navigate={gehe} />
@@ -339,6 +370,8 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
       return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Gewerken' };
     case 'vorlagen':
       return { titel: 'Vorlagen', sub: 'E-Mail-Texte und Excel-Vorlagen für den Upload' };
+    case 'terminrechner':
+      return { titel: 'Terminrechner', sub: 'Späteste Übergabe und Ende des Planlaufs aus den Fristen' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'planlauf':

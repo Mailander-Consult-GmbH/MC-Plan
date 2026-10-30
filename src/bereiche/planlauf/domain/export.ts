@@ -12,19 +12,32 @@
  * sie im Programm erscheint (ohne Schaltflächen) – Aktueller Stand, Nächster
  * Schritt, Zuständig, Fortschritt und Status. In Excel ist sie ein formatiertes
  * Blatt mit Planpaket, Plancode, Index/Ausgabe, Titel, Gewerk, Aktuellem Stand,
- * Datum, Nächstem Schritt und Frist (kurzBlatt). Langfassung: zusätzlich alle
- * durchlaufenen und ausstehenden Schritte je Planlauf.
+ * Datum, Nächstem Schritt und Frist (kurzBlatt). Stehen in parallelen Zweigen
+ * mehrere Schritte an, nennt „Nächster Schritt“ alle. Langfassung: je Planlauf
+ * alle durchlaufenen und ausstehenden Schritte mit Durchlauf, Eingang, Soll,
+ * Ist, Verzug und Seite; frühere Durchläufe (vor einem Rücksprung bzw. vor dem
+ * Wieder öffnen) stehen als eigene Zeilen vor dem laufenden.
  */
-import { formatDate, relativeLabel, today } from '../../../shared/dates';
+import { formatDate, relativeLabel, today, type ISODate } from '../../../shared/dates';
 import { iconSvg } from '../../../shared/icons';
 import { html } from '../../../shared/print';
-import type { Blatt, Stil, Zelle } from '../../../shared/xlsx';
-import { AMPEL_LABEL, abbruchHinweis, ampelFuerSchritt, fortschritt, pfad } from './engine';
+import { spalte, type Blatt, type Stil, type Zelle } from '../../../shared/xlsx';
+import { istErledigt } from './ablauf';
+import {
+  AMPEL_LABEL,
+  abbruchHinweis,
+  aktuelleSchritte,
+  ampelFuerSchritt,
+  pfad,
+  seiteFuerSchritt,
+} from './engine';
+import { tage, verzugBisHeute, zeitrahmen } from './nachweis';
 import {
   DOCUMENT_KIND_LABEL,
   INDEX_LABEL,
   NACHWEIS_LABEL,
   RUN_STATUS_LABEL,
+  SEITE_LABEL,
   STEP_STATUS_LABEL,
   STEP_TYPE_LABEL,
   hatEigenenPlanlauf,
@@ -36,11 +49,14 @@ import {
   type Project,
   type RunStatus,
   type RunStep,
+  type Seite,
 } from './types';
 import {
   eintraegeVon,
   gliederungBilden,
   knotenBilden,
+  laufAmpel,
+  laufFortschritt,
   letzterAbgeschlossenerSchritt,
   massgeblicheLaeufe,
   mitlaufendePlaene,
@@ -109,7 +125,6 @@ export function zeilenSchluessel(zeile: BerichtZeile): ID | undefined {
  * bringt den Lauf seines Verzeichnisses mit – ohne ihn stünde er nirgends.
  */
 export function berichtBilden(data: AppData, project: Project, auswahl?: Set<ID>): Bericht {
-  const vorlauf = project.settings.erinnerungVorlaufTage;
   const documents = data.documents;
   const alleLaeufe = massgeblicheLaeufe(data, project.id);
   const gewaehlt = (id: ID) => !auswahl || auswahl.has(id);
@@ -133,7 +148,7 @@ export function berichtBilden(data: AppData, project: Project, auswahl?: Set<ID>
             art: 'klammer',
             verzeichnis: k.verzeichnis,
             anzahl: k.kinder.length,
-            stand: verzeichnisStand(documents, k.verzeichnis.id, basis, vorlauf),
+            stand: verzeichnisStand(documents, k.verzeichnis.id, basis, project),
             ebene: 0,
           },
           ...k.kinder.map((eintrag): BerichtZeile => ({ art: 'lauf', eintrag, ebene: 1 })),
@@ -160,7 +175,7 @@ export function berichtBilden(data: AppData, project: Project, auswahl?: Set<ID>
       ({ paket, eintraege: inhalt }): BerichtGruppe => ({
         art: 'paket',
         paket,
-        stand: paketStand(documents, paket.id, basis, vorlauf),
+        stand: paketStand(documents, paket.id, basis, project),
         laeufe: inhalt.length,
         zeilen: zeilenVon(inhalt),
       }),
@@ -211,8 +226,8 @@ interface ZeilenWerte {
   zusatz: string;
   gewerk: string;
   stand: { name: string; datum: string } | null;
-  naechster: { name: string; soll: string; frist: string } | null;
-  zustaendig: { funktion: string; person: string } | null;
+  /** Anstehende Schritte – der führende (frühestes Soll) zuerst, in parallelen Zweigen mehrere. */
+  schritte: { name: string; soll: string; frist: string; funktion: string; person: string }[];
   pct: number | null;
   status: { text: string; ton: StatusTon } | null;
   /** Hinweis anstelle der Schrittangaben – abgebrochen, mitlaufend, Klammer. */
@@ -245,8 +260,7 @@ function zeilenWerte(data: AppData, project: Project, zeile: BerichtZeile): Zeil
       zusatz: 'Pläne einzeln',
       gewerk: v.gewerk,
       stand: null,
-      naechster: null,
-      zustaendig: null,
+      schritte: [],
       pct: zeile.stand.status ? zeile.stand.pct : null,
       status: standAnzeige(zeile.stand),
       hinweis: `${zeile.anzahl} ${zeile.anzahl === 1 ? 'laufender Plan' : 'laufende Pläne'}`,
@@ -265,8 +279,7 @@ function zeilenWerte(data: AppData, project: Project, zeile: BerichtZeile): Zeil
       zusatz: '',
       gewerk: p.gewerk,
       stand: null,
-      naechster: null,
-      zustaendig: null,
+      schritte: [],
       pct: null,
       status: null,
       hinweis: 'läuft im Planlauf des Verzeichnisses mit',
@@ -274,9 +287,9 @@ function zeilenWerte(data: AppData, project: Project, zeile: BerichtZeile): Zeil
       farbe: '',
     };
   }
-  const { run, doc, step: offen } = zeile.eintrag;
+  const { run, doc } = zeile.eintrag;
   const abgebrochen = run.status === 'abgebrochen';
-  const step = abgebrochen ? undefined : offen;
+  const schritte = abgebrochen ? [] : zeile.eintrag.schritte;
   const plaene = doc?.kind === 'verzeichnis' ? data.documents.filter((d) => d.parentId === doc.id).length : 0;
   const stand = letzterAbgeschlossenerSchritt(run);
   const kind = doc?.kind ?? 'plan';
@@ -297,13 +310,18 @@ function zeilenWerte(data: AppData, project: Project, zeile: BerichtZeile): Zeil
     zusatz: plaene > 0 ? `${plaene} ${plaene === 1 ? 'Plan' : 'Pläne'}` : '',
     gewerk: doc?.gewerk ?? '',
     stand: abgebrochen || !stand ? null : { name: stand.name, datum: stand.istDatum ? formatDate(stand.istDatum) : '' },
-    naechster: step ? { name: step.name, soll: step.sollDatum ? formatDate(step.sollDatum) : '', frist: relativeLabel(step.sollDatum) } : null,
-    zustaendig: step ? { funktion: step.roleName, person: personText(data, step) } : null,
-    pct: abgebrochen ? null : fortschritt(run),
-    status: statusAnzeige(run, step, vorlauf),
+    schritte: schritte.map((step) => ({
+      name: step.name,
+      soll: step.sollDatum ? formatDate(step.sollDatum) : '',
+      frist: relativeLabel(step.sollDatum),
+      funktion: step.roleName,
+      person: personText(data, step),
+    })),
+    pct: abgebrochen ? null : laufFortschritt(data, run),
+    status: statusAnzeige(run, schritte, vorlauf),
     hinweis: abbruch ? `${abbruch.wann} · ${abbruch.wie}` : '',
     abbruch,
-    farbe: abgebrochen ? 'verworfen' : run.status === 'abgeschlossen' ? 'fertig' : wartetAufEingang(run, step) ? 'eingang' : '',
+    farbe: abgebrochen ? 'verworfen' : run.status === 'abgeschlossen' ? 'fertig' : wartetAufEingang(run, schritte) ? 'eingang' : '',
   };
 }
 
@@ -384,11 +402,16 @@ export function kurzBlatt(data: AppData, project: Project, auswahl?: Set<ID>): B
         const fertig = letzterAbgeschlossenerSchritt(run);
         stand = fertig?.name ?? '';
         datum = fertig?.istDatum ?? null;
-        const step = zeile.eintrag.step;
-        if (run.status === 'laufend' && step) {
-          const ampel = ampelFuerSchritt(step, vorlauf);
-          naechster = step.name;
-          frist = zelle(step.sollDatum, ampel === 'ueberfaellig' ? EXCEL.ueberfaellig : ampel === 'faellig' ? EXCEL.faellig : grund, true);
+        // Alle anstehenden Schritte; die Frist ist die früheste, gefärbt nach dem dringlichsten
+        const schritte = zeile.eintrag.schritte;
+        if (run.status === 'laufend' && schritte.length > 0) {
+          const ampel = laufAmpel(schritte, vorlauf);
+          naechster = schritte.map((s) => s.name).join('; ');
+          frist = zelle(
+            schritte[0].sollDatum,
+            ampel === 'ueberfaellig' ? EXCEL.ueberfaellig : ampel === 'faellig' ? EXCEL.faellig : grund,
+            true,
+          );
         }
       }
       // Ein abgebrochener Lauf trägt seinen eigenen Index
@@ -408,7 +431,7 @@ export function kurzBlatt(data: AppData, project: Project, auswahl?: Set<ID>): B
     }
   }
 
-  const letzte = String.fromCharCode(64 + KURZ_KOPF.length);
+  const letzte = spalte(KURZ_KOPF.length - 1);
   const zeilen: Zelle[][] = [
     [{ wert: `Projekt: ${project.name}`, stil: EXCEL.titel }],
     [{ wert: `Stand: ${formatDate(today())}`, stil: EXCEL.stand }],
@@ -448,7 +471,136 @@ function paketDerZeile(data: AppData, zeile: BerichtZeile): PlanDocument | undef
   return data.documents.find((d) => d.id === paketId && d.kind === 'paket');
 }
 
-const LANG_KOPF = [
+/* --------------------------- Langfassung -------------------------- */
+
+/**
+ * Eine Zeile der Langfassung: eine Ausführung eines Schritts – der laufende
+ * Durchlauf oder ein früherer (vor einem Rücksprung bzw. vor dem Wieder öffnen).
+ */
+interface LangSchritt {
+  /** Position im aktuellen Verlauf; null bei Schritten außerhalb des Verlaufs. */
+  nr: number | null;
+  name: string;
+  typ: string;
+  durchlauf: number;
+  /** Früherer, abgeschlossener Durchlauf (aus der Historie des Schritts). */
+  frueher: boolean;
+  status: string;
+  erledigt: boolean;
+  ueberfaellig: boolean;
+  funktion: string;
+  seite: string;
+  person: string;
+  frist: number;
+  eingang: ISODate | null;
+  /** Eingang bzw. Soll sind noch nicht fest, sondern voraussichtlich. */
+  eingangPrognose: boolean;
+  soll: ISODate | null;
+  sollPrognose: boolean;
+  ist: ISODate | null;
+  /**
+   * Abweichung vom Soll in Arbeits- bzw. Kalendertagen: bei abgeschlossenen
+   * Ausführungen tage(Soll, Ist) – negativ, wenn früher erledigt –, bei
+   * anstehenden die Überschreitung bis heute, bei künftigen keine.
+   */
+  verzug: number | null;
+  nachweis: string;
+  bemerkung: string;
+}
+
+const seiteText = (seite: Seite | null | undefined) => (seite ? SEITE_LABEL[seite] : '');
+
+/**
+ * Alle Ausführungen eines Laufs für die Langfassung – in der Reihenfolge des
+ * Verlaufs, je Schritt zuerst die früheren Durchläufe, dann der laufende.
+ * Frühere Durchläufe von Schritten, die der aktuelle Verlauf nicht mehr
+ * berührt, folgen am Ende (ohne Nr.).
+ */
+function langSchritte(data: AppData, project: Project, run: PlanRun, doc: PlanDocument | undefined): LangSchritt[] {
+  const vorlauf = project.settings.erinnerungVorlaufTage;
+  const rahmen = zeitrahmen(project);
+  const heute = today();
+  const rollen = data.roles.filter((r) => r.projectId === run.projectId);
+  const gewerk = doc?.gewerk ?? '';
+  const anstehend = new Set(run.status === 'laufend' ? aktuelleSchritte(run).map((s) => s.id) : []);
+  const verlauf = pfad(run.steps);
+  const imVerlauf = new Set(verlauf.map((s) => s.id));
+
+  const frueher = (step: RunStep, nr: number | null): LangSchritt[] =>
+    [...step.historie]
+      .sort((a, b) => a.durchlauf - b.durchlauf)
+      .map((h) => ({
+        nr,
+        name: h.name,
+        typ: STEP_TYPE_LABEL[step.typ],
+        durchlauf: h.durchlauf,
+        frueher: true,
+        status: `${STEP_STATUS_LABEL[h.status]} · ${h.grund === 'ruecksprung' ? 'Rücksprung' : 'wieder geöffnet'}`,
+        erledigt: h.status === 'erledigt' || h.status === 'uebersprungen',
+        ueberfaellig: false,
+        funktion: h.roleName,
+        seite: seiteText(h.seite),
+        person: h.kontaktName,
+        frist: h.fristTage,
+        eingang: h.eingang,
+        eingangPrognose: false,
+        soll: h.soll,
+        sollPrognose: false,
+        ist: h.ist,
+        verzug: h.soll && h.ist ? tage(h.soll, h.ist, rahmen) : null,
+        nachweis: h.nachweisNummer ? `${NACHWEIS_LABEL[step.nachweis]} ${h.nachweisNummer}` : '',
+        bemerkung: [h.antwort ? `Antwort: ${h.antwort}` : '', h.bemerkung].filter(Boolean).join(' · '),
+      }));
+
+  const aktuell = (step: RunStep, nr: number): LangSchritt => {
+    const erledigt = istErledigt(step);
+    const steht = anstehend.has(step.id);
+    const ampel = ampelFuerSchritt(step, vorlauf, steht);
+    const info = erledigt ? step.abschlussInfo : null;
+    const antwort = step.antworten.find((a) => a.id === step.gewaehlteAntwortId);
+    return {
+      nr,
+      name: step.name,
+      typ: STEP_TYPE_LABEL[step.typ],
+      durchlauf: step.durchlauf,
+      frueher: false,
+      status: schrittStatus(step, vorlauf, steht),
+      erledigt,
+      ueberfaellig: !erledigt && ampel === 'ueberfaellig',
+      // Abgeschlossene Schritte mit der Momentaufnahme beim Abschluss
+      funktion: info?.roleName || step.roleName,
+      seite: seiteText(info ? info.seite : seiteFuerSchritt(step.roleName, rollen, gewerk)),
+      person: info?.kontaktName || personText(data, step),
+      frist: step.fristTage,
+      eingang: step.eingangDatum,
+      eingangPrognose: !step.eingangIst && step.eingangDatum !== null,
+      soll: step.sollDatum,
+      sollPrognose: !erledigt && !steht && !step.sollManuell && step.sollDatum !== null,
+      ist: step.istDatum,
+      verzug: erledigt
+        ? step.sollDatum && step.istDatum
+          ? tage(step.sollDatum, step.istDatum, rahmen)
+          : null
+        : steht
+          ? verzugBisHeute(step, rahmen, heute)
+          : null,
+      nachweis: step.nachweisNummer ? `${NACHWEIS_LABEL[step.nachweis]} ${step.nachweisNummer}` : '',
+      bemerkung: [antwort ? `Antwort: ${antwort.text}` : '', step.bemerkung].filter(Boolean).join(' · '),
+    };
+  };
+
+  const zeilen: LangSchritt[] = [];
+  verlauf.forEach((step, i) => zeilen.push(...frueher(step, i + 1), aktuell(step, i + 1)));
+  for (const step of run.steps) {
+    if (!imVerlauf.has(step.id) && step.historie.length > 0) zeilen.push(...frueher(step, null));
+  }
+  return zeilen;
+}
+
+/** Einheit der Fristen und Abweichungen nach Projekteinstellung. */
+const tageEinheit = (project: Project) => (project.settings.fristenInArbeitstagen ? 'Arbeitstage' : 'Kalendertage');
+
+const LANG_KOPF = (project: Project) => [
   'Planpaket',
   'Planverzeichnis',
   'Art',
@@ -460,21 +612,49 @@ const LANG_KOPF = [
   'Nr.',
   'Prozessschritt',
   'Schrittart',
+  'Durchlauf',
   'Status',
   'Verantwortlich',
+  'Seite',
   'Person',
-  'Frist (Tage)',
+  `Frist (${tageEinheit(project)})`,
+  'Eingang',
   'Soll',
   'Ist',
+  `Verzug (${tageEinheit(project)})`,
   'Nachweis',
   'Bemerkung',
 ];
 
-/** Langfassung als Tabelle: je Prozessschritt eine Zeile, gegliedert wie die Übersicht. */
-export function langZeilen(data: AppData, project: Project, auswahl?: Set<ID>): Zelle[][] {
-  const vorlauf = project.settings.erinnerungVorlaufTage;
+/** Gestaltung der Excel-Langfassung. */
+const LANG_EXCEL = {
+  frueher: { farbe: '6E6E73' },
+  prognose: { kursiv: true, farbe: '6E6E73' },
+  verzug: { farbe: 'C4211A', fett: true },
+} satisfies Record<string, Stil>;
+
+/**
+ * Langfassung als Excel-Blatt: in A1 das Projekt, in A2 der Stand, darunter je
+ * Ausführung eines Schritts eine Zeile – gegliedert wie die Übersicht. Eingang,
+ * Soll und Ist sind echte Excel-Daten; voraussichtliche Termine stehen kursiv,
+ * frühere Durchläufe grau.
+ */
+export function langBlatt(data: AppData, project: Project, auswahl?: Set<ID>): Blatt {
+  const kopf = LANG_KOPF(project);
+  const letzte = spalte(kopf.length - 1);
+  const zeilen: Zelle[][] = [
+    [{ wert: `Projekt: ${project.name}`, stil: EXCEL.titel }],
+    [{ wert: `Stand: ${formatDate(today())} · ${UMFANG_LABEL.lang}`, stil: EXCEL.stand }],
+    [],
+    kopf.map((titel) => ({ wert: titel, stil: EXCEL.kopf })),
+  ];
+  const datum = (wert: ISODate | null, prognose = false, grund?: Stil): Zelle => ({
+    wert,
+    datum: true,
+    stil: prognose ? LANG_EXCEL.prognose : grund,
+  });
+
   const bericht = berichtBilden(data, project, auswahl);
-  const ausgabe: Zelle[][] = [LANG_KOPF];
   for (const gruppe of bericht.gruppen) {
     for (const zeile of gruppe.zeilen) {
       if (zeile.art === 'klammer') continue;
@@ -491,40 +671,74 @@ export function langZeilen(data: AppData, project: Project, auswahl?: Set<ID>): 
         w.gewerk,
       ];
       if (zeile.art === 'mitlaufend') {
-        ausgabe.push([...vorne, zeile.verzeichnisLauf.name, '', 'läuft im Planlauf des Verzeichnisses mit', '', 'läuft mit', '', '', '', '', '', '', '']);
+        const leer = Array<Zelle>(kopf.length - vorne.length - 6).fill('');
+        zeilen.push([...vorne, zeile.verzeichnisLauf.name, '', 'läuft im Planlauf des Verzeichnisses mit', '', '', 'läuft mit', ...leer]);
         continue;
       }
       const run = zeile.eintrag.run;
-      pfad(run.steps).forEach((step, i) => {
-        const antwort = step.antworten.find((a) => a.id === step.gewaehlteAntwortId);
-        ausgabe.push([
+      for (const s of langSchritte(data, project, run, zeile.eintrag.doc)) {
+        const grund: Stil | undefined = s.frueher ? LANG_EXCEL.frueher : undefined;
+        const text = (wert: string | number | null): Zelle => (grund ? { wert, stil: grund } : wert);
+        zeilen.push([
+          ...vorne.map((z) => (grund ? { wert: z as string, stil: grund } : z)),
+          text(run.name),
+          text(s.nr),
+          text(s.name),
+          text(s.typ),
+          text(s.durchlauf),
+          text(s.status),
+          text(s.funktion),
+          text(s.seite),
+          text(s.person),
+          text(s.frist),
+          datum(s.eingang, s.eingangPrognose, grund),
+          datum(s.soll, s.sollPrognose, grund),
+          datum(s.ist, false, grund),
+          s.verzug !== null && s.verzug > 0 && !s.frueher ? { wert: s.verzug, stil: LANG_EXCEL.verzug } : text(s.verzug),
+          text(s.nachweis),
+          text(s.bemerkung),
+        ]);
+      }
+      if (run.status === 'abgebrochen') {
+        // Das Abbruchdatum steht in der Spalte „Ist“, der Grund unter „Bemerkung“
+        zeilen.push([
           ...vorne,
           run.name,
-          i + 1,
-          step.name,
-          STEP_TYPE_LABEL[step.typ],
-          schrittStatus(step, vorlauf),
-          step.roleName,
-          personText(data, step),
-          step.fristTage,
-          step.sollDatum ? formatDate(step.sollDatum) : '',
-          step.istDatum ? formatDate(step.istDatum) : '',
-          step.nachweisNummer ? `${NACHWEIS_LABEL[step.nachweis]} ${step.nachweisNummer}` : '',
-          [antwort ? `Antwort: ${antwort.text}` : '', step.bemerkung].filter(Boolean).join(' · '),
+          '',
+          'Planlauf abgebrochen',
+          '',
+          '',
+          RUN_STATUS_LABEL.abgebrochen,
+          '',
+          '',
+          '',
+          '',
+          null,
+          null,
+          datum(run.abbruchDatum),
+          '',
+          '',
+          run.abbruchGrund ?? '',
         ]);
-      });
-      if (run.status === 'abgebrochen') {
-        ausgabe.push([...vorne, run.name, '', 'Planlauf abgebrochen', '', RUN_STATUS_LABEL.abgebrochen, '', '', '', run.abbruchDatum ? formatDate(run.abbruchDatum) : '', '', '', run.abbruchGrund ?? '']);
       }
     }
   }
-  return ausgabe;
+  return {
+    name: UMFANG_LABEL.lang,
+    zeilen,
+    kopfzeileFett: false,
+    spaltenbreiten: [22, 16, 12, 24, 10, 36, 10, 30, 5, 34, 14, 9, 22, 24, 13, 22, 10, 11, 11, 11, 10, 22, 36],
+    zusammenfassen: [`A1:${letzte}1`, `A2:${letzte}2`],
+    fixierteZeilen: 4,
+    querformat: true,
+  };
 }
 
-function schrittStatus(step: RunStep, vorlauf: number): string {
+/** Status eines Schritts im Export: erledigt bzw. übersprungen, sonst die Ampel (künftige höchstens „Im Plan“). */
+function schrittStatus(step: RunStep, vorlauf: number, anstehend: boolean): string {
   return step.status === 'erledigt' || step.status === 'uebersprungen'
     ? STEP_STATUS_LABEL[step.status]
-    : AMPEL_LABEL[ampelFuerSchritt(step, vorlauf)];
+    : AMPEL_LABEL[ampelFuerSchritt(step, vorlauf, anstehend)];
 }
 
 /* ------------------------------- PDF ------------------------------ */
@@ -567,6 +781,9 @@ export const EXPORT_STIL = `
   h3 { font-size: 10pt; margin: 4mm 0 1.5mm; page-break-after: avoid; }
   h3.unter { margin-left: 6mm; font-size: 9.5pt; }
   .block-unter { margin-left: 6mm; }
+  .schritt + .schritt { margin-top: 1.2mm; }
+  .kursiv { font-style: italic; }
+  tr.frueher td { color: #8e8e93; }
 `;
 
 /** Einzug der ersten Spalte – wie in der Übersicht rücken Einträge unter Gruppenzeilen ein. */
@@ -628,11 +845,18 @@ function kurzHtml(data: AppData, project: Project, bericht: Bericht): string {
           }
           const zweizeilig = (oben: string, unten: string) =>
             `<td class="klein"><div>${html(oben)}</div><span class="klein grau">${html(unten)}</span></td>`;
+          // Je anstehendem Schritt zwei Zeilen – in parallelen Zweigen mehrere untereinander
+          const mehrzeilig = (paare: string[][]) =>
+            paare.length === 0
+              ? '<td class="klein grau">–</td>'
+              : `<td class="klein">${paare
+                  .map(([oben, unten]) => `<div class="schritt"><div>${html(oben)}</div><span class="klein grau">${html(unten)}</span></div>`)
+                  .join('')}</td>`;
           return `<tr class="${klassen}">${erste}${gewerk}${
             w.stand ? zweizeilig(w.stand.name, w.stand.datum || 'ohne Datum') : '<td class="klein grau">–</td>'
-          }${w.naechster ? zweizeilig(w.naechster.name, w.naechster.frist) : '<td class="klein grau">–</td>'}${
-            w.zustaendig ? zweizeilig(w.zustaendig.funktion || '–', w.zustaendig.person || 'keine Person') : '<td class="klein grau">–</td>'
-          }<td>${balken(w.pct)}</td><td>${badge(w.status)}</td></tr>`;
+          }${mehrzeilig(w.schritte.map((s) => [s.name, s.frist]))}${mehrzeilig(
+            w.schritte.map((s) => [s.funktion || '–', s.person || 'keine Person']),
+          )}<td>${balken(w.pct)}</td><td>${badge(w.status)}</td></tr>`;
         })
         .join('');
       return kopfzeile + inhalt;
@@ -643,7 +867,6 @@ function kurzHtml(data: AppData, project: Project, bericht: Bericht): string {
 
 /** Langfassung als HTML: je Planlauf ein Abschnitt mit allen Schritten, gegliedert wie die Übersicht. */
 function langHtml(data: AppData, project: Project, bericht: Bericht): string {
-  const vorlauf = project.settings.erinnerungVorlaufTage;
   return bericht.gruppen
     .map((gruppe) => {
       const ueberschrift =
@@ -673,37 +896,44 @@ function langHtml(data: AppData, project: Project, bericht: Bericht): string {
           const meta = `<div class="meta grau${zeile.ebene > 0 ? ' block-unter' : ''}">Gewerk: ${html(w.gewerk || '–')} ·
             Planlauf „${html(run.name)}“ (${html(RUN_STATUS_LABEL[run.status])}${w.pct !== null ? `, ${w.pct} %` : ''}) ·
             Aktueller Stand: ${w.stand ? `${html(w.stand.name)}${w.stand.datum ? ` (${w.stand.datum})` : ''}` : '–'} ·
-            Nächster Schritt: ${w.naechster ? `${html(w.naechster.name)}${w.naechster.soll ? ` (Soll ${w.naechster.soll})` : ''}` : '–'}${
+            ${w.schritte.length > 1 ? 'Anstehende Schritte' : 'Nächster Schritt'}: ${
+              w.schritte.length > 0
+                ? w.schritte.map((s) => `${html(s.name)}${s.soll ? ` (Soll ${s.soll})` : ''}`).join('; ')
+                : '–'
+            }${
               mitlaufend.length > 0
                 ? `<br>Pläne in diesem Planlauf: ${mitlaufend.map((m) => html(`${m.plan.nummer} ${m.plan.titel}`.trim())).join(', ')}`
                 : ''
             }</div>`;
-          const schritte = pfad(run.steps)
-            .map((step, i) => {
-              const ampel = ampelFuerSchritt(step, vorlauf);
-              const erledigt = step.status === 'erledigt' || step.status === 'uebersprungen';
-              const antwort = step.antworten.find((a) => a.id === step.gewaehlteAntwortId);
-              return `<tr>
-                <td class="num">${i + 1}</td>
-                <td>${html(step.name)}${antwort ? ` <span class="grau">→ ${html(antwort.text)}</span>` : ''}</td>
-                <td class="${erledigt ? 'erledigt' : ampel === 'ueberfaellig' ? 'ueberfaellig' : ''}">${html(schrittStatus(step, vorlauf))}</td>
-                <td>${html(step.roleName)}</td>
-                <td>${html(personText(data, step))}</td>
-                <td class="num">${step.fristTage}</td>
-                <td class="num">${step.sollDatum ? formatDate(step.sollDatum) : '–'}</td>
-                <td class="num">${step.istDatum ? formatDate(step.istDatum) : '–'}</td>
-                <td>${step.nachweisNummer ? `${html(NACHWEIS_LABEL[step.nachweis])} ${html(step.nachweisNummer)}` : '–'}</td>
-                <td class="grau">${html(step.bemerkung)}</td>
-              </tr>`;
-            })
+          const datum = (iso: ISODate | null, prognose: boolean) =>
+            iso ? `<td class="num${prognose ? ' kursiv' : ''}"${prognose ? ' title="voraussichtlich"' : ''}>${formatDate(iso)}</td>` : '<td class="num">–</td>';
+          const schritte = langSchritte(data, project, run, zeile.eintrag.doc)
+            .map(
+              (s) => `<tr${s.frueher ? ' class="frueher"' : ''}>
+                <td class="num">${s.nr ?? ''}</td>
+                <td>${html(s.name)}</td>
+                <td class="num">${s.durchlauf}</td>
+                <td class="${s.frueher ? '' : s.erledigt ? 'erledigt' : s.ueberfaellig ? 'ueberfaellig' : ''}">${html(s.status)}</td>
+                <td>${html(s.funktion)}</td>
+                <td>${html(s.seite || '–')}</td>
+                <td>${html(s.person)}</td>
+                <td class="num">${s.frist}</td>
+                ${datum(s.eingang, s.eingangPrognose)}
+                ${datum(s.soll, s.sollPrognose)}
+                ${datum(s.ist, false)}
+                <td class="num${s.verzug !== null && s.verzug > 0 && !s.frueher ? ' ueberfaellig' : ''}">${s.verzug ?? '–'}</td>
+                <td>${html(s.nachweis || '–')}</td>
+                <td class="grau">${html(s.bemerkung)}</td>
+              </tr>`,
+            )
             .join('');
           const abbruch =
             run.status === 'abgebrochen'
               ? `<p class="meta ueberfaellig">Planlauf abgebrochen am ${run.abbruchDatum ? formatDate(run.abbruchDatum) : '–'}: ${html(run.abbruchGrund ?? '')}</p>`
               : '';
           return `<h3${unter}>${titel}</h3>${meta}<table${zeile.ebene > 0 ? ' class="block-unter"' : ''}><thead><tr>
-            <th>Nr.</th><th>Prozessschritt</th><th>Status</th><th>Verantwortlich</th><th>Person</th>
-            <th>Frist</th><th>Soll</th><th>Ist</th><th>Nachweis</th><th>Bemerkung</th>
+            <th>Nr.</th><th>Prozessschritt</th><th title="Durchlauf">Dl.</th><th>Status</th><th>Verantwortlich</th><th>Seite</th><th>Person</th>
+            <th>Frist</th><th>Eingang</th><th>Soll</th><th>Ist</th><th>Verzug</th><th>Nachweis</th><th>Bemerkung</th>
           </tr></thead><tbody>${schritte}</tbody></table>${abbruch}`;
         })
         .join('');
@@ -722,8 +952,11 @@ export function exportHtml(data: AppData, project: Project, auswahl: Set<ID> | u
       anzahl === 1 ? 'Planlauf' : 'Planläufe'
     }</div>
   </div>`;
-  const fuss = `<p class="fuss">Erzeugt mit KaPlan am ${formatDate(today())}. Soll-Termine ergeben sich aus den hinterlegten Fristen${
-    project.settings.fristenInArbeitstagen ? ' (Arbeitstage)' : ''
+  // Fristregel: die Frist zählt ab dem tatsächlichen Eingang – dem Abschluss des vorherigen Schritts
+  const fuss = `<p class="fuss">Erzeugt mit KaPlan am ${formatDate(today())}. Soll = Eingang + Frist in ${tageEinheit(
+    project,
+  )}; die Frist zählt ab dem tatsächlichen Eingang – dem Abschluss des vorherigen Schritts. Termine künftiger Schritte sind voraussichtlich${
+    umfang === 'lang' ? ' (kursiv); Verzug in ' + tageEinheit(project) + ', frühere Durchläufe grau' : ''
   }.</p>`;
   return `${kopf}${umfang === 'kurz' ? kurzHtml(data, project, bericht) : langHtml(data, project, bericht)}${fuss}`;
 }

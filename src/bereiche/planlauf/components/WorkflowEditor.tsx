@@ -5,7 +5,11 @@
  * von Karten (Weg mit der jeweils ersten Antwort), daneben die Abweichungen –
  * Schritte, die nur über eine andere Antwort erreicht werden. Übergänge
  * abseits des Standardverlaufs zeichnet eine SVG-Ebene aus den gemessenen
- * Kartenpositionen. Rechts stehen die Schrittdetails des gewählten Schritts,
+ * Kartenpositionen. Ein paralleler Block steht als eine Containerkarte im
+ * Standardverlauf: seine Zweige nebeneinander (untereinander, wenn der Platz
+ * nicht reicht), Abweichungen im Zweig gestrichelt darunter; Übergänge aus
+ * einem Zweig heraus stehen als Text auf der Karte, nie als Linie.
+ * Rechts stehen die Schrittdetails des gewählten Schritts,
  * ohne Auswahl die Übersicht über den Workflow. Auf schmalen Bildschirmen
  * stehen die Abweichungen unter dem Standardverlauf und die Details öffnen
  * sich als Blatt von unten.
@@ -16,7 +20,7 @@
  * Dialog heraus geöffnet wird, dessen Hintergrundfilter fest positionierte
  * Elemente sonst einschließt.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   EIGENE_ROLLE,
@@ -30,24 +34,36 @@ import {
 } from '../domain/types';
 import {
   alsStandard,
+  anzahlBloecke,
   artSetzen,
+  ausBlockLoesen,
   bereinigen,
+  blockAufloesen,
   dauerImStandardverlauf,
   duplizieren,
-  einfuegen,
-  einfuegenAmAnfang,
-  entfernen,
+  einfuegenAn,
+  entfernenMitHinweis,
   funktionSetzen,
   gliedern,
+  imVerlaufVerschieben,
+  istBlockAnzeige,
   neuerSchritt,
+  parallelBlockEinfuegen,
+  parallelDazu,
   pruefen,
   standardKante,
-  imVerlaufVerschieben,
+  verschiebbar,
   zielSetzen,
+  zweigHinzufuegen,
+  type Anzeige,
+  type Bearbeitung,
+  type Einfuegestelle,
   type Gliederung,
   type Kante,
   type Ziel,
+  type ZweigGliederung,
 } from '../domain/workflowGraph';
+import { nachfolger, strukturVon } from '../domain/ablauf';
 import { newId, useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { ConfirmDialog } from '../../../shared/ui';
@@ -79,6 +95,29 @@ interface Verlauf {
 const nr = (i: number) => String(i + 1).padStart(2, '0');
 const tage = (n: number) => `${n} ${n === 1 ? 'Tag' : 'Tage'}`;
 const schritteText = (n: number) => `${n} ${n === 1 ? 'Schritt' : 'Schritte'}`;
+const bloeckeText = (n: number) => `${n} ${n === 1 ? 'paralleler Block' : 'parallele Blöcke'}`;
+
+/**
+ * Was im Bild unter „Nicht erreichbar“ steht: einzelne Schritte und ganze
+ * Blöcke, die nie erreicht werden. Unerreichbare Schritte in einem erreichten
+ * Block stehen bei ihrem Zweig.
+ */
+function unerreichbarOben(g: Gliederung, steps: ProcessTemplateStep[]): Anzeige[] {
+  const blockVon = new Map(steps.map((s) => [s.id, s.parallel?.block ?? null]));
+  const ergebnis: Anzeige[] = [];
+  const gesehen = new Set<ID>();
+  for (const id of g.unerreichbar) {
+    const b = blockVon.get(id) ?? null;
+    if (!b || !g.bloecke[b]) {
+      ergebnis.push(id);
+      continue;
+    }
+    if (g.bloecke[b].erreichbar || gesehen.has(b)) continue;
+    gesehen.add(b);
+    ergebnis.push({ block: b });
+  }
+  return ergebnis;
+}
 
 /** Bildschirm schmaler als die Arbeitsfläche mit zwei Spalten. */
 function useSchmal(grenze = 820): boolean {
@@ -200,7 +239,9 @@ export function WorkflowEditor({
   const hinweise = useMemo(() => pruefen(steps), [steps]);
   const fehlend = useMemo(() => new Set(hinweise.filter((h) => h.sperrt && h.stepId).map((h) => h.stepId!)), [hinweise]);
   const dauer = dauerImStandardverlauf(steps);
+  // Zählungen über alle Schritte – auch die in parallelen Blöcken
   const entscheidungen = steps.filter((s) => s.typ === 'entscheidung').length;
+  const bloecke = anzahlBloecke(steps);
 
   // Gewählter Schritt verschwindet (Rückgängig, Entfernen) → Auswahl aufheben
   const gewaehlt = typeof auswahl === 'string' && auswahl !== 'uebersicht' ? steps.find((s) => s.id === auswahl) : undefined;
@@ -208,41 +249,85 @@ export function WorkflowEditor({
     if (auswahl && auswahl !== 'uebersicht' && !steps.some((s) => s.id === auswahl)) setAuswahl(null);
   }, [auswahl, steps]);
 
-  /** Reihenfolge der Karten im Bild: Standardverlauf, Abweichungen, nicht erreichbar. */
-  const bildFolge = useMemo(
-    () => [...gliederung.haupt, ...gliederung.abweichungen.map((a) => a.id), ...gliederung.unerreichbar],
-    [gliederung],
-  );
+  /**
+   * Reihenfolge der Karten im Bild: Standardverlauf (ein Block mit seinen
+   * Zweigen samt deren Abweichungen), Abweichungen, nicht erreichbar.
+   */
+  const bildFolge = useMemo(() => {
+    const folge: ID[] = [];
+    const gesehen = new Set<ID>();
+    const dazu = (id: ID) => {
+      if (gesehen.has(id)) return;
+      gesehen.add(id);
+      folge.push(id);
+    };
+    const anzeige = (e: Anzeige) => {
+      if (!istBlockAnzeige(e)) return dazu(e);
+      for (const z of gliederung.bloecke[e.block]?.zweige ?? []) [...z.standard, ...z.abweichungen, ...z.unerreichbar].forEach(dazu);
+    };
+    gliederung.hauptAnzeige.forEach(anzeige);
+    gliederung.abweichungen.forEach((a) => anzeige(gliederung.bloecke[a.id] ? { block: a.id } : a.id));
+    unerreichbarOben(gliederung, steps).forEach(anzeige);
+    steps.forEach((s) => dazu(s.id));
+    return folge;
+  }, [gliederung, steps]);
 
   /* ---------------------------------------------------------------- */
   /* Bearbeitungen                                                     */
   /* ---------------------------------------------------------------- */
 
-  const einfuegenIn = (vonId: ID | null, antwortId: ID | null, typ: StepType = 'aufgabe') => {
+  /**
+   * Übernimmt das Ergebnis einer Bearbeitung, die einen Hinweis liefern kann
+   * (etwa: anderer Anschluss hinter einem Block). Ohne Änderung bleibt es beim
+   * Hinweis; sonst `meldung`, wenn kein Hinweis vorliegt.
+   */
+  const bearbeitungUebernehmen = (e: Bearbeitung, neueAuswahl?: ID | null, meldung?: string) => {
+    if (e.steps !== steps) {
+      aendernSchritte(() => e.steps);
+      if (neueAuswahl !== undefined) setAuswahl(neueAuswahl);
+    }
+    const text = e.hinweis ?? (e.steps !== steps ? meldung : undefined);
+    if (text) toast(text);
+  };
+
+  const einfuegenIn = (stelle: Einfuegestelle, typ: StepType = 'aufgabe') => {
     const neu = neuerSchritt(typ, newId);
-    aendernSchritte((alle) => (vonId === null ? einfuegenAmAnfang(alle, neu) : einfuegen(alle, vonId, antwortId, neu, true)));
+    aendernSchritte((alle) => einfuegenAn(alle, stelle, neu));
     setAuswahl(neu.id);
     setMenuOffen(false);
   };
 
-  /** „Schritt hinzufügen“: hinter dem gewählten Schritt, sonst am Ende des Standardverlaufs. */
-  const hinzufuegen = (typ: StepType) => {
-    if (steps.length === 0) {
-      const neu = neuerSchritt(typ, newId);
-      aendernSchritte(() => [neu]);
-      setAuswahl(neu.id);
-      setMenuOffen(false);
-      return;
-    }
-    const vonId = gewaehlt?.id ?? gliederung.haupt[gliederung.haupt.length - 1] ?? steps[steps.length - 1].id;
-    const i = steps.findIndex((s) => s.id === vonId);
-    einfuegenIn(vonId, standardKante(steps, i).antwortId, typ);
+  /** Wo „Schritt hinzufügen“ einfügt: hinter dem gewählten Schritt, sonst am Ende des Standardverlaufs. */
+  const hinzufuegeStelle = (): Einfuegestelle => {
+    const nachSchritt = (id: ID): Einfuegestelle => ({
+      art: 'uebergang',
+      vonId: id,
+      antwortId: standardKante(steps, steps.findIndex((s) => s.id === id)).antwortId,
+    });
+    if (gewaehlt) return nachSchritt(gewaehlt.id);
+    const letzte = gliederung.hauptAnzeige[gliederung.hauptAnzeige.length - 1];
+    if (letzte === undefined) return steps.length > 0 ? nachSchritt(steps[steps.length - 1].id) : { art: 'anfang' };
+    return istBlockAnzeige(letzte) ? { art: 'nachBlock', block: letzte.block } : nachSchritt(letzte);
   };
 
+  const hinzufuegen = (typ: StepType) => einfuegenIn(steps.length === 0 ? { art: 'anfang' } : hinzufuegeStelle(), typ);
+
+  /** „Parallele Zweige“: ein neuer Block mit zwei leeren Aufgaben. */
+  const parallelHinzufuegen = () => {
+    // IDs vor der Änderung erzeugen (StrictMode)
+    const a = neuerSchritt('aufgabe', newId);
+    const b = neuerSchritt('aufgabe', newId);
+    const ergebnis = parallelBlockEinfuegen(steps, steps.length === 0 ? { art: 'anfang' } : hinzufuegeStelle(), a, b, newId('blk'));
+    bearbeitungUebernehmen(ergebnis, a.id, 'Paralleler Block mit zwei Zweigen angelegt.');
+    setMenuOffen(false);
+  };
+  const parallelGesperrt = Boolean(gewaehlt?.parallel);
+
   const entfernenMitMeldung = (id: ID) => {
-    aendernSchritte((alle) => entfernen(alle, id));
+    const ergebnis = entfernenMitHinweis(steps, id);
+    aendernSchritte(() => ergebnis.steps);
     setAuswahl(null);
-    toast('Schritt entfernt – „Rückgängig“ holt ihn zurück.');
+    toast(ergebnis.hinweis ? `Schritt entfernt. ${ergebnis.hinweis}` : 'Schritt entfernt – „Rückgängig“ holt ihn zurück.');
   };
 
   const speichern = () => {
@@ -324,6 +409,7 @@ export function WorkflowEditor({
         onAuswahl={setAuswahl}
         onSchrittAendern={schrittAendern}
         onSchritteAendern={aendernSchritte}
+        onBearbeitung={bearbeitungUebernehmen}
         onEntfernen={entfernenMitMeldung}
         onSchliessen={() => setAuswahl(null)}
         schmal={schmal || mittel}
@@ -337,6 +423,7 @@ export function WorkflowEditor({
         gliederung={gliederung}
         hinweise={hinweise}
         dauer={dauer}
+        bloecke={bloecke}
         arbeitstage={arbeitstage}
         onAuswahl={setAuswahl}
         onSchliessen={schmal || mittel ? () => setAuswahl(null) : undefined}
@@ -363,7 +450,8 @@ export function WorkflowEditor({
           </div>
           <div className="wf-werkzeuge">
             <span className="wf-kennzahl">
-              {schritteText(steps.length)} · {tage(dauer)} im Standardverlauf
+              {schritteText(steps.length)}
+              {bloecke > 0 ? ` · ${bloeckeText(bloecke)}` : ''} · {tage(dauer)} im Standardverlauf
             </span>
             <div className="wf-knopfgruppe">
               <button
@@ -406,7 +494,9 @@ export function WorkflowEditor({
                   <div className="wf-menu-schatten" onMouseDown={() => setMenuOffen(false)} />
                   <div className="wf-menu" role="menu">
                     <div className="wf-menu-hinweis">
-                      {gewaehlt ? `Hinter „${gewaehlt.name || 'Schritt ' + nr(steps.indexOf(gewaehlt))}“` : 'Am Ende des Standardverlaufs'}
+                      {gewaehlt
+                        ? `Hinter „${gewaehlt.name || 'Schritt ' + nr(steps.indexOf(gewaehlt))}“${gewaehlt.parallel ? ' (im selben Zweig)' : ''}`
+                        : 'Am Ende des Standardverlaufs'}
                     </div>
                     <button type="button" role="menuitem" onClick={() => hinzufuegen('aufgabe')}>
                       <span className="wf-typ-zeichen aufgabe">
@@ -424,6 +514,19 @@ export function WorkflowEditor({
                       <span>
                         <b>Entscheidung</b>
                         <small>Verzweigt je nach Antwort, z. B. Ja / Nein</small>
+                      </span>
+                    </button>
+                    <button type="button" role="menuitem" onClick={parallelHinzufuegen} disabled={parallelGesperrt}>
+                      <span className="wf-typ-zeichen wf-parallel-typ">
+                        <span className="wf-parallel-zeichen">‖</span>
+                      </span>
+                      <span>
+                        <b>Parallele Zweige</b>
+                        <small>
+                          {parallelGesperrt
+                            ? 'Nicht innerhalb eines parallelen Blocks – Blöcke lassen sich nicht schachteln'
+                            : 'Zwei Aufgaben laufen gleichzeitig; weiter, wenn beide erledigt sind'}
+                        </small>
                       </span>
                     </button>
                   </div>
@@ -454,6 +557,9 @@ export function WorkflowEditor({
                   </button>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => hinzufuegen('entscheidung')}>
                     <Icon name="plus" size={13} /> Entscheidung
+                  </button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={parallelHinzufuegen}>
+                    <Icon name="plus" size={13} /> Parallele Zweige
                   </button>
                 </div>
               </div>
@@ -505,9 +611,10 @@ export function WorkflowEditor({
             {entscheidungen > 0 ? (
               <span className="tertiary">
                 {entscheidungen} {entscheidungen === 1 ? 'Entscheidung' : 'Entscheidungen'} ·{' '}
-                {gliederung.abweichungen.length} {gliederung.abweichungen.length === 1 ? 'Abweichung' : 'Abweichungen'}
+                {gliederung.abweichungenGesamt} {gliederung.abweichungenGesamt === 1 ? 'Abweichung' : 'Abweichungen'}
               </span>
             ) : null}
+            {bloecke > 0 ? <span className="tertiary">{bloeckeText(bloecke)}</span> : null}
             {arbeitstage ? <span className="tertiary">Fristen in Arbeitstagen</span> : null}
           </span>
           <span className="spacer" />
@@ -556,6 +663,20 @@ interface Geometrie {
   abwRechts: number;
 }
 
+/** Breite eines Zweigs, wenn die Zweige nebeneinander stehen, und Abstand zwischen ihnen (siehe .wf-parallel-*). */
+const ZWEIG_BREITE = 240;
+const ZWEIG_ABSTAND = 12;
+/** Innenrand und Rahmen der Containerkarte. */
+const CONTAINER_RAND = 2 * 12 + 2;
+/** Mindestbreite der übrigen Spalten des Rasters samt Rand der Fläche (siehe .wf-raster, .wf-flaeche). */
+const UEBRIGE_BREITE = 110 + 230 + 70 + 2 * 26;
+
+/** Breite eines Blocks mit n Zweigen nebeneinander. */
+const blockBreite = (n: number) => n * ZWEIG_BREITE + (n - 1) * ZWEIG_ABSTAND + CONTAINER_RAND;
+
+/** Wo eine Karte steht: oben im Bild oder in einem Zweig (Standardweg bzw. Abweichung im Zweig). */
+type KartenOrt = 'haupt' | 'abweichung' | 'unerreichbar' | 'zweig' | 'zweigabw';
+
 function Ablaufbild({
   steps,
   gliederung,
@@ -577,17 +698,29 @@ function Ablaufbild({
   kuerzel: (rolle: string) => string;
   onAuswahl: (id: ID, perTastatur: boolean) => void;
   onHover: (id: ID | null) => void;
-  onEinfuegen: (vonId: ID | null, antwortId: ID | null) => void;
+  onEinfuegen: (stelle: Einfuegestelle) => void;
 }) {
   const rasterRef = useRef<HTMLDivElement>(null);
   const hauptRef = useRef<HTMLDivElement>(null);
   const abwRef = useRef<HTMLDivElement>(null);
   const karten = useRef(new Map<ID, HTMLElement>());
   const [geo, setGeo] = useState<Geometrie | null>(null);
+  /** Breite der Arbeitsfläche – entscheidet, ob die Zweige eines Blocks nebeneinander passen. */
+  const [platz, setPlatz] = useState<number | null>(null);
 
   const index = useMemo(() => new Map(steps.map((s, i) => [s.id, i])), [steps]);
   const schritt = (id: ID) => steps[index.get(id)!];
-  const { haupt, abweichungen, unerreichbar, rueckSprungZu, kanten } = gliederung;
+  const { hauptAnzeige, abweichungen, rueckSprungZu, kanten, bloecke } = gliederung;
+  const unerreichbar = useMemo(() => unerreichbarOben(gliederung, steps), [gliederung, steps]);
+
+  /** Block eines Schritts; null = außerhalb von Blöcken. */
+  const blockVon = (id: ID): ID | null => {
+    const i = index.get(id);
+    const b = i === undefined ? null : (steps[i].parallel?.block ?? null);
+    return b && bloecke[b] ? b : null;
+  };
+  /** Stelle im Bild: der Schritt selbst bzw. sein Block. */
+  const einheit = (id: ID) => blockVon(id) ?? id;
 
   const messen = useCallback(() => {
     const raster = rasterRef.current;
@@ -629,34 +762,77 @@ function Ablaufbild({
     ro.observe(raster);
     return () => ro.disconnect();
   }, [messen]);
+  // Breite der Fläche (Elternelement des Rasters) – vor dem ersten Zeichnen und bei jeder Größenänderung
+  useLayoutEffect(() => {
+    const flaeche = rasterRef.current?.parentElement;
+    if (!flaeche || schmal) return;
+    setPlatz(flaeche.clientWidth);
+    const ro = new ResizeObserver(() => setPlatz(flaeche.clientWidth));
+    ro.observe(flaeche);
+    return () => ro.disconnect();
+  }, [schmal]);
+
+  /** Die Zweige eines Blocks mit n Zweigen passen nebeneinander in die Spalte des Standardverlaufs. */
+  const nebeneinander = (n: number) => !schmal && platz !== null && blockBreite(n) <= platz - UEBRIGE_BREITE;
 
   const merke = (id: ID) => (el: HTMLElement | null) => {
     if (el) karten.current.set(id, el);
     else karten.current.delete(id);
   };
 
-  /** Übergänge, die als Linie gezeichnet werden: alle außer dem Standardverlauf und dem Ende. */
-  const seitenKanten = kanten.filter((k) => !k.standard && k.nach !== 'ende');
-  const abwNachAnker = new Map<number, ID[]>();
-  for (const a of abweichungen) abwNachAnker.set(a.anker, [...(abwNachAnker.get(a.anker) ?? []), a.id]);
-  const hauptPos = new Map(haupt.map((id, k) => [id, k]));
-  /** Stelle im Ablauf: Index im Standardverlauf, bei Abweichungen ihr Anker + ½. */
-  const rang = new Map<ID, number>([...hauptPos, ...abweichungen.map((a): [ID, number] => [a.id, a.anker + 0.5])]);
-  /** Rücksprung: Übergang zu einem Schritt des Standardverlaufs, der nicht später kommt. */
-  const istRueck = (von: ID, nach: Ziel) =>
-    nach !== 'ende' && hauptPos.has(nach) && rang.has(von) && hauptPos.get(nach)! <= rang.get(von)!;
+  const titel = (id: ID) => `${nr(index.get(id)!)} · ${schritt(id).name || 'ohne Bezeichnung'}`;
 
-  const karte = (id: ID, ort: 'haupt' | 'abweichung' | 'unerreichbar') => {
+  /* --------------------------- Rang und Rücksprünge --------------------------- */
+
+  const hauptPos = new Map<ID, number>(hauptAnzeige.map((e, k) => [istBlockAnzeige(e) ? e.block : e, k]));
+  /** Stelle im Ablauf: Index im Standardverlauf (ein Block als eine Stelle), bei Abweichungen ihr Anker + ½. */
+  const rang = new Map<ID, number>([...hauptPos, ...abweichungen.map((a): [ID, number] => [a.id, a.anker + 0.5])]);
+  /** Rücksprung: Übergang zu einer Stelle des Standardverlaufs, die nicht später kommt. */
+  const istRueck = (von: ID, nach: Ziel) => {
+    if (nach === 'ende') return false;
+    const z = einheit(nach);
+    const v = einheit(von);
+    return hauptPos.has(z) && rang.has(v) && hauptPos.get(z)! <= rang.get(v)!;
+  };
+  /** Stelle im Zweig: Standardweg, danach die Abweichungen im Zweig. */
+  const zweigRang = new Map<ID, number>();
+  for (const b of Object.values(bloecke)) {
+    for (const z of b.zweige) [...z.standard, ...z.abweichungen].forEach((id, j) => zweigRang.set(id, j));
+  }
+  /** Rücksprung im Zweig (etwa zur erneuten Nachreichung). */
+  const zweigRueck = (k: Kante) =>
+    k.art === 'schritt' && k.nach !== 'ende' && zweigRang.has(k.von) && zweigRang.has(k.nach) && zweigRang.get(k.nach)! <= zweigRang.get(k.von)!;
+
+  /**
+   * Übergänge, die als Linie gezeichnet werden: abseits des Standardverlaufs,
+   * zwischen Stellen des Bilds (Ziel in einem Block: der ganze Block). Aus
+   * einem Zweig heraus wird nichts gezeichnet – das steht als Text auf der Karte.
+   */
+  const gezeichnet = (k: Kante) =>
+    !schmal && !k.standard && k.nach !== 'ende' && !blockVon(k.von) && rang.has(k.von) && rang.has(einheit(k.nach));
+  const seitenKanten: Kante[] = kanten.filter(gezeichnet).map((k) => ({ ...k, nach: einheit(k.nach as ID) }));
+
+  /** Ziel eines Übergangs als Text auf der Karte. */
+  const zielText = (k: Kante): string => {
+    if (k.unzulaessig) return 'anderer Zweig – nicht zulässig';
+    if (k.art === 'zweigende') return 'Zweig beendet';
+    if (k.nach === 'ende') return 'Planlauf endet';
+    return k.art === 'ausstieg' ? `Ausstieg: ${titel(k.nach)}` : titel(k.nach);
+  };
+
+  /* --------------------------------- Bausteine --------------------------------- */
+
+  const karte = (id: ID, ort: KartenOrt) => {
     const s = schritt(id);
-    const i = index.get(id)!;
+    const imBlock = blockVon(id) !== null;
     const eigene = kanten.filter((k) => k.von === id && !k.standard);
-    // Zweige als Text: auf schmalen Bildschirmen alle, sonst nur die nicht gezeichneten (Ende, nicht erreichbar)
-    const zweige = eigene.filter((k) => schmal || ort === 'unerreichbar' || k.nach === 'ende');
+    // Übergänge als Text: im Block und auf schmalen Bildschirmen alle, sonst die nicht gezeichneten
+    const zweige = eigene.filter((k) => imBlock || !gezeichnet(k));
     return (
       <KarteAnzeige
         key={id}
         step={s}
-        nummer={i}
+        nummer={index.get(id)!}
         ort={ort}
         aktiv={auswahl === id}
         hervor={hover !== null && (hover === id || kanten.some((k) => (k.von === hover && k.nach === id) || (k.nach === hover && k.von === id)))}
@@ -664,8 +840,9 @@ function Ablaufbild({
         kuerzel={kuerzel(s.roleName)}
         zweige={zweige.map((k) => ({
           text: k.text,
-          ziel: k.nach === 'ende' ? 'Planlauf endet' : `${nr(index.get(k.nach)!)} · ${schritt(k.nach).name || 'ohne Bezeichnung'}`,
-          rueck: istRueck(id, k.nach),
+          ziel: zielText(k),
+          rueck: imBlock && k.art === 'schritt' ? zweigRueck(k) : istRueck(id, k.nach),
+          unzulaessig: k.unzulaessig,
         }))}
         refFn={merke(id)}
         onClick={(perTastatur) => onAuswahl(id, perTastatur)}
@@ -674,35 +851,135 @@ function Ablaufbild({
     );
   };
 
-  const verbinder = (vonId: ID | null) => {
-    // Übergang vom Start zum ersten Schritt bzw. zwischen zwei Schritten des Standardverlaufs
-    const s = vonId ? schritt(vonId) : null;
-    const std = s ? standardKante(steps, index.get(vonId!)!) : null;
+  /** Übergang im Standardverlauf bzw. im Zweig mit „+“ zum Einfügen an dieser Stelle. */
+  const verbinder = (stelle: Einfuegestelle, beschriftung: string | null = null, klasse = '') => (
+    <div className={`wf-verbinder ${klasse}`}>
+      <span className="wf-linie" />
+      {beschriftung ? <span className="wf-antwort standard">{beschriftung}</span> : null}
+      <button
+        type="button"
+        className="wf-einfuegen"
+        tabIndex={-1}
+        title="Schritt hier einfügen"
+        aria-label="Schritt hier einfügen"
+        onClick={() => onEinfuegen(stelle)}
+      >
+        <Icon name="plus" size={12} strokeWidth={2.2} />
+      </button>
+      <span className="wf-pfeil" />
+    </div>
+  );
+  /** Übergang hinter einem Schritt: sein Standardübergang (bei Entscheidungen mit Antwort). */
+  const verbinderNach = (id: ID) => {
+    const std = kanten.find((k) => k.von === id);
+    return verbinder(
+      { art: 'uebergang', vonId: id, antwortId: std?.antwortId ?? null },
+      schritt(id).typ === 'entscheidung' ? (std?.text ?? null) : null,
+    );
+  };
+
+  const zweigSchluss = (z: ZweigGliederung) => (
+    <div className={`wf-knoten wf-parallel-schluss ${z.schluss.art}`}>
+      {z.schluss.art === 'zweigende' ? (
+        <>
+          <Icon name="check" size={12} /> Zweig beendet
+        </>
+      ) : z.schluss.art === 'ausstieg' ? (
+        <>
+          <Icon name="chevron" size={12} /> Ausstieg: {titel(z.schluss.nach)}
+        </>
+      ) : (
+        <>
+          <Icon name="schleife" size={12} /> Schleife zurück zu {titel(z.schluss.nach)}
+        </>
+      )}
+    </div>
+  );
+
+  /**
+   * Containerkarte eines parallelen Blocks: Kopf, Gabelbalken, die Zweige
+   * (nebeneinander, wenn genug Platz ist, sonst untereinander) mit ihrem
+   * Standardweg und den Abweichungen im Zweig, Zusammenführungsbalken.
+   */
+  const blockKarte = (blockId: ID, ort: 'haupt' | 'abweichung' | 'unerreichbar') => {
+    const b = bloecke[blockId];
+    const n = b.zweige.length;
+    const seite = ort === 'haupt' && nebeneinander(n);
+    const stil = seite ? ({ '--wf-parallel-n': n } as CSSProperties) : undefined;
+    const bezug = auswahl !== null && blockVon(auswahl) === blockId;
     return (
-      <div className="wf-verbinder">
-        <span className="wf-linie" />
-        {s && s.typ === 'entscheidung' && std?.text ? <span className="wf-antwort standard">{std.text}</span> : null}
-        <button
-          type="button"
-          className="wf-einfuegen"
-          tabIndex={-1}
-          title="Schritt hier einfügen"
-          aria-label="Schritt hier einfügen"
-          onClick={() => onEinfuegen(vonId, std?.antwortId ?? null)}
-        >
-          <Icon name="plus" size={12} strokeWidth={2.2} />
-        </button>
-        <span className="wf-pfeil" />
+      <div
+        key={blockId}
+        ref={merke(blockId)}
+        role="group"
+        aria-label={`Paralleler Block mit ${n} Zweigen`}
+        className={`wf-parallel wf-parallel-${ort} ${seite ? 'wf-parallel-nebeneinander' : 'wf-parallel-gestapelt'} ${bezug ? 'wf-parallel-aktiv' : ''}`}
+        style={stil}
+      >
+        <div className="wf-parallel-kopf">
+          <span className="wf-parallel-zeichen">‖</span>
+          <span>
+            Parallel · {n} Zweige
+          </span>
+          <span className="wf-parallel-kopf-text">laufen gleichzeitig</span>
+        </div>
+        <div className="wf-parallel-balken" aria-hidden="true" />
+        <div className="wf-parallel-zweige">
+          {b.zweige.map((z) => (
+            <div key={z.zweig} className="wf-parallel-zweig">
+              <div className="wf-parallel-zweig-kopf">Zweig {z.zweig + 1}</div>
+              {verbinder({ art: 'zweiganfang', block: blockId, zweig: z.zweig }, null, 'wf-parallel-anfang')}
+              {z.standard.map((id) => (
+                <Fragment key={id}>
+                  {karte(id, 'zweig')}
+                  {verbinderNach(id)}
+                </Fragment>
+              ))}
+              {zweigSchluss(z)}
+              <div className={`wf-parallel-rest ${z.abweichungen.length + z.unerreichbar.length === 0 ? 'mit-linie' : ''}`} />
+              {z.abweichungen.length > 0 ? (
+                <div className="wf-parallel-abw">
+                  <div className="wf-parallel-abw-kopf">Abweichungen im Zweig</div>
+                  {z.abweichungen.map((id) => karte(id, 'zweigabw'))}
+                </div>
+              ) : null}
+              {z.unerreichbar.length > 0 ? (
+                <div className="wf-parallel-abw wf-parallel-weg">
+                  <div className="wf-parallel-abw-kopf">Im Zweig nicht erreichbar</div>
+                  {z.unerreichbar.map((id) => karte(id, 'unerreichbar'))}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+        <div className="wf-parallel-balken" aria-hidden="true" />
+        <div className="wf-parallel-fuss">Weiter, wenn alle Zweige erledigt sind</div>
       </div>
     );
   };
+
+  /** Eine Stelle des Standardverlaufs samt Übergang zur nächsten. */
+  const stelle = (e: Anzeige) =>
+    istBlockAnzeige(e) ? (
+      <>
+        {blockKarte(e.block, 'haupt')}
+        {verbinder({ art: 'nachBlock', block: e.block })}
+      </>
+    ) : (
+      <>
+        {karte(e, 'haupt')}
+        {verbinderNach(e)}
+      </>
+    );
+  const schluessel = (e: Anzeige) => (istBlockAnzeige(e) ? e.block : e);
+  const abweichung = (id: ID) => (bloecke[id] ? blockKarte(id, 'abweichung') : karte(id, 'abweichung'));
+  const nichtErreicht = (e: Anzeige) => (istBlockAnzeige(e) ? blockKarte(e.block, 'unerreichbar') : karte(e, 'unerreichbar'));
 
   const endknoten = (
     <div className="wf-knoten wf-ende">
       {rueckSprungZu ? (
         <>
-          <Icon name="schleife" size={14} /> Schleife zurück zu {nr(index.get(rueckSprungZu)!)} ·{' '}
-          {schritt(rueckSprungZu).name || 'ohne Bezeichnung'}
+          <Icon name="schleife" size={14} /> Schleife zurück zu {titel(rueckSprungZu)}
         </>
       ) : (
         <>
@@ -720,24 +997,23 @@ function Ablaufbild({
         <div className="wf-knoten wf-start">
           <Icon name="start" size={14} /> Planlauf starten
         </div>
-        {verbinder(null)}
-        {haupt.map((id) => (
-          <div key={id} className="wf-zelle">
-            {karte(id, 'haupt')}
-            {verbinder(id)}
+        {verbinder({ art: 'anfang' })}
+        {hauptAnzeige.map((e) => (
+          <div key={schluessel(e)} className="wf-zelle">
+            {stelle(e)}
           </div>
         ))}
         {endknoten}
         {abweichungen.length > 0 ? (
           <>
             <div className="wf-spaltenkopf abw">Abweichungen</div>
-            <div className="wf-stapel">{abweichungen.map((a) => karte(a.id, 'abweichung'))}</div>
+            <div className="wf-stapel">{abweichungen.map((a) => abweichung(a.id))}</div>
           </>
         ) : null}
         {unerreichbar.length > 0 ? (
           <>
             <div className="wf-spaltenkopf weg">Nicht erreichbar</div>
-            <div className="wf-stapel">{unerreichbar.map((id) => karte(id, 'unerreichbar'))}</div>
+            <div className="wf-stapel">{unerreichbar.map(nichtErreicht)}</div>
           </>
         ) : null}
       </div>
@@ -745,9 +1021,20 @@ function Ablaufbild({
   }
 
   /* -------------------------- breit: zwei Spalten mit Linien -------------------------- */
-  const zeilen = haupt.length + 2;
+  const abwNachAnker = new Map<number, ID[]>();
+  for (const a of abweichungen) abwNachAnker.set(a.anker, [...(abwNachAnker.get(a.anker) ?? []), a.id]);
+  // Spalte des Standardverlaufs mindestens so breit wie der breiteste Block mit Zweigen nebeneinander
+  const spalte1 = Math.max(
+    250,
+    ...hauptAnzeige.filter(istBlockAnzeige).map((e) => bloecke[e.block].zweige.length).filter(nebeneinander).map(blockBreite),
+  );
+  const zeilen = hauptAnzeige.length + 2;
   return (
-    <div className="wf-raster" ref={rasterRef}>
+    <div
+      className="wf-raster"
+      ref={rasterRef}
+      style={spalte1 > 250 ? { gridTemplateColumns: `minmax(${spalte1}px, max-content) minmax(110px, 140px) minmax(230px, 300px)` } : undefined}
+    >
       <div className="wf-spaltenkopf" style={{ gridColumn: 1, gridRow: 1 }}>
         Standardverlauf
       </div>
@@ -762,34 +1049,34 @@ function Ablaufbild({
         <div className="wf-knoten wf-start">
           <Icon name="start" size={14} /> Planlauf starten
         </div>
-        {verbinder(null)}
+        {verbinder({ art: 'anfang' })}
       </div>
-      {haupt.map((id, k) => (
-        <div key={id} className="wf-zelle" style={{ gridColumn: 1, gridRow: k + 3 }}>
-          {karte(id, 'haupt')}
-          {verbinder(id)}
+      {hauptAnzeige.map((e, k) => (
+        <div key={schluessel(e)} className="wf-zelle" style={{ gridColumn: 1, gridRow: k + 3 }}>
+          {stelle(e)}
         </div>
       ))}
-      <div className="wf-zelle" style={{ gridColumn: 1, gridRow: haupt.length + 3 }}>
+      <div className="wf-zelle" style={{ gridColumn: 1, gridRow: hauptAnzeige.length + 3 }}>
         {endknoten}
       </div>
 
       {abweichungen.length === 0 ? (
         <div className="wf-abw-leer" style={{ gridColumn: 3, gridRow: 3 }}>
-          Keine Abweichungen – jede Antwort führt durch den Standardverlauf. Schritte, die nur über eine andere Antwort
-          erreicht werden, erscheinen hier.
+          {gliederung.abweichungenGesamt > 0
+            ? 'Abweichungen gibt es nur innerhalb paralleler Zweige – sie stehen gestrichelt unter ihrem Zweig.'
+            : 'Keine Abweichungen – jede Antwort führt durch den Standardverlauf. Schritte, die nur über eine andere Antwort erreicht werden, erscheinen hier.'}
         </div>
       ) : null}
       {[...abwNachAnker.entries()].map(([anker, ids]) => (
         <div key={`abw-${anker}`} className="wf-stapel" style={{ gridColumn: 3, gridRow: anker + 3 }}>
-          {ids.map((id) => karte(id, 'abweichung'))}
+          {ids.map(abweichung)}
         </div>
       ))}
 
       {unerreichbar.length > 0 ? (
-        <div className="wf-weg" style={{ gridColumn: '1 / -1', gridRow: haupt.length + 4 }}>
+        <div className="wf-weg" style={{ gridColumn: '1 / -1', gridRow: hauptAnzeige.length + 4 }}>
           <div className="wf-spaltenkopf weg">Nicht erreichbar – kein Übergang führt zu diesen Schritten</div>
-          <div className="wf-weg-karten">{unerreichbar.map((id) => karte(id, 'unerreichbar'))}</div>
+          <div className="wf-weg-karten">{unerreichbar.map(nichtErreicht)}</div>
         </div>
       ) : null}
 
@@ -798,9 +1085,9 @@ function Ablaufbild({
           geo={geo}
           kanten={seitenKanten}
           rang={rang}
-          haupt={new Set(haupt)}
-          auswahl={auswahl}
-          hover={hover}
+          haupt={new Set(hauptPos.keys())}
+          auswahl={auswahl === null ? null : einheit(auswahl)}
+          hover={hover === null ? null : einheit(hover)}
         />
       ) : null}
     </div>
@@ -826,22 +1113,24 @@ function KarteAnzeige({
 }: {
   step: ProcessTemplateStep;
   nummer: number;
-  ort: 'haupt' | 'abweichung' | 'unerreichbar';
+  ort: KartenOrt;
   aktiv: boolean;
   hervor: boolean;
   fehlt: boolean;
   kuerzel: string;
-  zweige: { text: string | null; ziel: string; rueck: boolean }[];
+  zweige: { text: string | null; ziel: string; rueck: boolean; unzulaessig: boolean }[];
   refFn: (el: HTMLElement | null) => void;
   onClick: (perTastatur: boolean) => void;
   onHover: (id: ID | null) => void;
 }) {
   const entscheidung = step.typ === 'entscheidung';
+  // Karten im Zweig: wie im Standardverlauf bzw. wie Abweichungen, im Zweig gestrichelt
+  const ortKlasse = ort === 'zweig' ? 'haupt wf-parallel-karte' : ort === 'zweigabw' ? 'abweichung wf-parallel-gestrichelt' : ort;
   return (
     <button
       type="button"
       ref={refFn}
-      className={`wf-karte ${step.typ} ${ort} ${aktiv ? 'aktiv' : ''} ${hervor ? 'hervor' : ''} ${fehlt ? 'fehlt' : ''}`}
+      className={`wf-karte ${step.typ} ${ortKlasse} ${aktiv ? 'aktiv' : ''} ${hervor ? 'hervor' : ''} ${fehlt ? 'fehlt' : ''}`}
       onClick={(e) => onClick(e.detail === 0)}
       onMouseEnter={() => onHover(step.id)}
       onMouseLeave={() => onHover(null)}
@@ -884,7 +1173,7 @@ function KarteAnzeige({
       {zweige.length > 0 ? (
         <span className="wf-zweige">
           {zweige.map((z, n) => (
-            <span key={n} className={`wf-zweig ${z.rueck ? 'rueck' : ''}`}>
+            <span key={n} className={`wf-zweig ${z.rueck ? 'rueck' : ''} ${z.unzulaessig ? 'wf-parallel-unzulaessig' : ''}`}>
               {z.text ? <b>{z.text}</b> : null} → {z.ziel}
             </span>
           ))}
@@ -1003,7 +1292,7 @@ function Linien({
         k: g.k,
         d: `M ${cx} ${g.q.b} L ${cx} ${g.z.t}`,
         spitze: `M ${cx} ${g.z.t} l -4.5 -7 l 9 0 z`,
-        label: { x: cx + 8, y: g.q.b + 16, links: false },
+        label: { x: cx + 8, y: g.q.b + 16, links: false, unten: false },
         rueck: g.rueck,
         aktiv: auswahl !== null && (g.k.von === auswahl || g.nach === auswahl),
         hervor: hover !== null && (g.k.von === hover || g.nach === hover),
@@ -1018,11 +1307,14 @@ function Linien({
     const nachRechts = g.art === 'zurAbw';
     const spitze = nachRechts ? `M ${tx} ${g.ty} l -7 -4.5 l 0 9 z` : `M ${tx} ${g.ty} l 7 -4.5 l 0 9 z`;
     const links = g.art === 'zurHaupt';
+    // Rechts der Abweichungen: führt die Linie nach oben, steht das Etikett
+    // unter ihr – sonst läge es über der eigenen senkrechten Bahn.
+    const unten = g.art === 'abwAbw' && g.ty < g.sy;
     return {
       k: g.k,
       d: eckenPfad(punkte),
       spitze,
-      label: { x: links ? g.sx - 8 : g.sx + 8, y: g.sy, links },
+      label: { x: links ? g.sx - 8 : g.sx + 8, y: g.sy, links, unten },
       rueck: g.rueck,
       aktiv: auswahl !== null && (g.k.von === auswahl || g.nach === auswahl),
       hervor: hover !== null && (g.k.von === hover || g.nach === hover),
@@ -1047,7 +1339,7 @@ function Linien({
             style={{
               left: l.label.x,
               top: l.label.y,
-              transform: `translate(${l.label.links ? '-100%' : '0'}, -125%)`,
+              transform: `translate(${l.label.links ? '-100%' : '0'}, ${l.label.unten ? '25%' : '-125%'})`,
             }}
           >
             {l.k.text}
@@ -1071,6 +1363,7 @@ function SchrittDetails({
   onAuswahl,
   onSchrittAendern,
   onSchritteAendern,
+  onBearbeitung,
   onEntfernen,
   onSchliessen,
   schmal,
@@ -1083,6 +1376,8 @@ function SchrittDetails({
   onAuswahl: (id: ID | 'uebersicht' | null) => void;
   onSchrittAendern: (id: ID, f: (s: ProcessTemplateStep) => ProcessTemplateStep, feld?: string | null) => void;
   onSchritteAendern: (f: (s: ProcessTemplateStep[]) => ProcessTemplateStep[], feld?: string | null) => void;
+  /** Bearbeitung mit möglichem Hinweis übernehmen (siehe bearbeitungUebernehmen). */
+  onBearbeitung: (e: Bearbeitung, neueAuswahl?: ID | null, meldung?: string) => void;
   onEntfernen: (id: ID) => void;
   onSchliessen: () => void;
   schmal: boolean;
@@ -1090,41 +1385,109 @@ function SchrittDetails({
   const { data } = useStore();
   const i = steps.indexOf(step);
   const pos = bildFolge.indexOf(step.id);
-  const ort = gliederung.haupt.includes(step.id)
-    ? 'Standardverlauf'
-    : gliederung.unerreichbar.includes(step.id)
-      ? 'nicht erreichbar'
-      : 'Abweichung';
+  const struktur = useMemo(() => strukturVon(steps), [steps]);
+  /** Lage im parallelen Block; null = außerhalb von Blöcken. */
+  const lage = struktur.lage[i] ?? null;
+  const zweigG = lage ? gliederung.bloecke[lage.block.id]?.zweige[lage.zweig] : undefined;
+  const ort = lage
+    ? `Paralleler Block · Zweig ${lage.zweig + 1} von ${lage.block.zweige.length}${
+        zweigG?.standard.includes(step.id) ? '' : zweigG?.unerreichbar.includes(step.id) ? ' · im Zweig nicht erreichbar' : ' · Abweichung im Zweig'
+      }`
+    : gliederung.hauptAnzeige.includes(step.id)
+      ? 'Standardverlauf'
+      : gliederung.unerreichbar.includes(step.id)
+        ? 'nicht erreichbar'
+        : 'Abweichung';
   const entscheidung = step.typ === 'entscheidung';
-  const hauptPos = gliederung.haupt.indexOf(step.id);
+  const bewegbar = verschiebbar(gliederung, step.id);
   const aendern = (patch: Partial<ProcessTemplateStep>, feld: string | null = null) =>
     onSchrittAendern(step.id, (s) => ({ ...s, ...patch }), feld);
-  const folge = steps[i + 1];
+  /** Wohin „nächster Schritt“ (null) führt – im Zweig der nächste Schritt des Zweigs. */
+  const folge = i >= 0 ? nachfolger(steps, i, null, struktur) : null;
+  const titel = (k: number) => `${nr(k)} · ${steps[k].name || 'ohne Bezeichnung'}`;
+  const ZWEIG_BEENDET = 'Zweig beendet – weiter nach dem Block';
 
-  /** Auswahl „weiter mit“: nächster Schritt der Liste, jeder andere Schritt, Ende. */
-  const zielAuswahl = (wert: ID | 'ende' | null, setzen: (z: ID | 'ende' | null) => void, beschriftung: string) => (
-    <select
-      className="select"
-      aria-label={beschriftung}
-      value={wert ?? ''}
-      onChange={(e) => setzen(e.target.value === '' ? null : (e.target.value as ID | 'ende'))}
-    >
-      <option value="">
-        {folge ? `Nächster Schritt: ${nr(i + 1)} · ${folge.name || 'ohne Bezeichnung'}` : 'Nächster Schritt (Planlauf endet)'}
-      </option>
-      {steps.map((z, n) =>
-        z.id === step.id ? null : (
-          <option key={z.id} value={z.id}>
-            {nr(n)} · {z.name || 'ohne Bezeichnung'}
-          </option>
-        ),
-      )}
-      <option value="ende">Planlauf beenden</option>
-      {wert !== null && wert !== 'ende' && (wert === step.id || !steps.some((z) => z.id === wert)) ? (
-        <option value={wert}>{wert === step.id ? `${nr(i)} · dieser Schritt (Wiederholung)` : 'Unbekannter Schritt – bitte wählen'}</option>
-      ) : null}
-    </select>
-  );
+  /**
+   * Auswahl „weiter mit“. Außerhalb von Blöcken: nächster Schritt der Liste,
+   * jeder andere Schritt (ein Block über seinen ersten Schritt), Ende. Im
+   * Zweig: Schritte des eigenen Zweigs, „Zweig beendet“ und Ausstiege aus dem
+   * Block; andere Zweige desselben Blocks sind nicht wählbar.
+   */
+  const zielAuswahl = (wert: ID | 'ende' | null, setzen: (z: ID | 'ende' | null) => void, beschriftung: string) => {
+    const wertIndex = wert !== null && wert !== 'ende' ? struktur.index.get(wert) : undefined;
+    const wertLage = wertIndex === undefined ? null : (struktur.lage[wertIndex] ?? null);
+    /** Ziele außerhalb des eigenen Blocks: Einzelschritte und je Block sein erster Schritt. */
+    const aussen = steps
+      .map((z, n) => ({ z, n, l: struktur.lage[n] ?? null }))
+      .filter(({ z, n, l }) => z.id !== step.id && (!l || (l.block !== lage?.block && l.block.start === n)));
+    const aussenText = (n: number, l: unknown) => `${titel(n)}${l ? ' (Beginn eines parallelen Blocks)' : ''}`;
+    let sonder: ReactNode = null;
+    if (wert !== null && wert !== 'ende') {
+      if (wert === step.id) sonder = <option value={wert}>{`${nr(i)} · dieser Schritt (Wiederholung)`}</option>;
+      else if (wertIndex === undefined) sonder = <option value={wert}>Unbekannter Schritt – bitte wählen</option>;
+      else if (lage && wertLage?.block === lage.block && wertLage.zweig !== lage.zweig)
+        sonder = <option value={wert}>{`${titel(wertIndex)} – anderer Zweig, nicht zulässig`}</option>;
+      else if (wertLage && wertLage.block !== lage?.block && wertLage.block.start !== wertIndex)
+        sonder = <option value={wert}>{`${titel(wertIndex)} – mitten im parallelen Block`}</option>;
+    }
+    return (
+      <select
+        className="select"
+        aria-label={beschriftung}
+        value={wert ?? ''}
+        onChange={(e) => setzen(e.target.value === '' ? null : (e.target.value as ID | 'ende'))}
+      >
+        {lage ? (
+          <>
+            <option value="">{folge?.art === 'schritt' ? `Nächster Schritt im Zweig: ${titel(folge.index)}` : ZWEIG_BEENDET}</option>
+            {folge?.art === 'schritt' || wert === 'ende' ? <option value="ende">{ZWEIG_BEENDET}</option> : null}
+            <optgroup label={`Im eigenen Zweig (Zweig ${lage.zweig + 1})`}>
+              {lage.block.zweige[lage.zweig]
+                .filter((n) => n !== i)
+                .map((n) => (
+                  <option key={steps[n].id} value={steps[n].id}>
+                    {titel(n)}
+                  </option>
+                ))}
+            </optgroup>
+            <optgroup label="Ausstieg aus dem Block">
+              {aussen.map(({ z, n, l }) => (
+                <option key={z.id} value={z.id}>
+                  Ausstieg: {aussenText(n, l)}
+                </option>
+              ))}
+            </optgroup>
+          </>
+        ) : (
+          <>
+            <option value="">
+              {folge?.art === 'schritt'
+                ? `Nächster Schritt: ${aussenText(folge.index, struktur.lage[folge.index])}`
+                : 'Nächster Schritt (Planlauf endet)'}
+            </option>
+            {aussen.map(({ z, n, l }) => (
+              <option key={z.id} value={z.id}>
+                {aussenText(n, l)}
+              </option>
+            ))}
+            <option value="ende">Planlauf beenden</option>
+          </>
+        )}
+        {sonder}
+      </select>
+    );
+  };
+
+  /** Neue Schritte für die Bearbeitungen im Abschnitt „Parallel“ – IDs vor der Änderung erzeugen (StrictMode). */
+  const parallelDazuAusfuehren = () => {
+    const neu = neuerSchritt('aufgabe', newId);
+    onBearbeitung(parallelDazu(steps, step.id, neu, newId('blk')), neu.id, 'Paralleler Block angelegt – der neue Schritt ist Zweig 2.');
+  };
+  const zweigDazu = () => {
+    if (!lage) return;
+    const neu = neuerSchritt('aufgabe', newId);
+    onBearbeitung(zweigHinzufuegen(steps, lage.block.id, neu), neu.id, 'Zweig hinzugefügt.');
+  };
 
   return (
     <div className="wf-details">
@@ -1141,8 +1504,9 @@ function SchrittDetails({
           >
             <Icon name="zurueck" size={14} />
           </button>
-          <span className="tertiary">
-            {pos + 1} von {bildFolge.length}
+          {/* Zählt die Karten in der Reihenfolge der Zeichenfläche – nicht die Schrittnummer */}
+          <span className="tertiary" title="Position in der Reihenfolge der Zeichenfläche">
+            Karte {pos + 1} von {bildFolge.length}
           </span>
           <button
             type="button"
@@ -1253,7 +1617,7 @@ function SchrittDetails({
           </label>
         </div>
         <p className="wf-hilfe">
-          Die Frist zählt ab dem Soll-Termin des vorherigen Schritts. Ein Nachweis wird beim Erledigen abgefragt.
+          Die Frist zählt ab dem tatsächlichen Eingang – dem Abschluss des vorherigen Schritts. Ein Nachweis wird beim Erledigen abgefragt.
         </p>
       </div>
 
@@ -1263,7 +1627,12 @@ function SchrittDetails({
         </h4>
         {entscheidung ? (
           <>
-            <p className="wf-hilfe">Jede Antwort führt zu einem nächsten Schritt. Die erste Antwort bildet den Standardverlauf.</p>
+            <p className="wf-hilfe">
+              Jede Antwort führt zu einem nächsten Schritt. Die erste Antwort bildet den Standardverlauf.
+              {lage ? ' Im Zweig führt eine Antwort zu Schritten desselben Zweigs, beendet den Zweig oder steigt aus dem Block aus.' : ''}{' '}
+              „Führt zu Nacharbeit“ kennzeichnet Antworten, nach denen der weitere Weg als Nacharbeit zählt – etwa für die Ursache
+              eines Verzugs.
+            </p>
             <div className="wf-antworten">
               {step.antworten.map((a, n) => (
                 <div key={a.id} className={`wf-antwort-karte ${n === 0 ? 'standard' : ''}`}>
@@ -1299,6 +1668,19 @@ function SchrittDetails({
                     <span>→ Weiter mit</span>
                     {zielAuswahl(a.ziel, (z) => onSchritteAendern((alle) => zielSetzen(alle, step.id, a.id, z)), `Weiter mit nach „${a.text}“`)}
                   </div>
+                  <label className="checkbox wf-parallel-nacharbeit" title="Wird diese Antwort gewählt, zählt der Weg danach als Nacharbeit – Ursache für Verzug.">
+                    <input
+                      type="checkbox"
+                      checked={a.nacharbeit}
+                      onChange={(e) =>
+                        onSchrittAendern(step.id, (s) => ({
+                          ...s,
+                          antworten: s.antworten.map((x) => (x.id === a.id ? { ...x, nacharbeit: e.target.checked } : x)),
+                        }))
+                      }
+                    />
+                    führt zu Nacharbeit
+                  </label>
                   {n === 0 ? (
                     <span className="wf-standard-marke">Standardverlauf</span>
                   ) : (
@@ -1317,7 +1699,8 @@ function SchrittDetails({
               type="button"
               className="btn btn-sm btn-outline"
               onClick={() => {
-                const antwort = { id: newId('ant'), text: '', ziel: null };
+                // Jede weitere Antwort führt zunächst in Nacharbeit
+                const antwort = { id: newId('ant'), text: '', ziel: null, nacharbeit: step.antworten.length > 0 };
                 onSchrittAendern(step.id, (s) => ({ ...s, antworten: [...s.antworten, antwort] }));
               }}
             >
@@ -1329,6 +1712,54 @@ function SchrittDetails({
             <span>Weiter mit</span>
             {zielAuswahl(step.naechster, (z) => onSchritteAendern((alle) => zielSetzen(alle, step.id, null, z)), 'Weiter mit')}
           </label>
+        )}
+      </section>
+
+      <section className="wf-abschnitt">
+        <h4>
+          <span className="wf-parallel-zeichen">‖</span> Parallel
+        </h4>
+        {lage ? (
+          <>
+            <p className="wf-hilfe">
+              <b>
+                Zweig {lage.zweig + 1} von {lage.block.zweige.length}
+              </b>{' '}
+              eines parallelen Blocks. Die Zweige laufen gleichzeitig; weiter geht es, wenn alle Zweige erledigt sind.
+            </p>
+            <div className="row wrap" style={{ gap: 6 }}>
+              <button type="button" className="btn btn-sm btn-outline" onClick={zweigDazu}>
+                <Icon name="plus" size={13} /> Zweig hinzufügen
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => onBearbeitung(ausBlockLoesen(steps, step.id), step.id, 'Schritt aus dem Block gelöst – er folgt jetzt nach dem Block.')}
+              >
+                Aus dem Block lösen
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() =>
+                  onBearbeitung(blockAufloesen(steps, lage.block.id), step.id, 'Block aufgelöst – die Zweige laufen jetzt nacheinander.')
+                }
+              >
+                Block auflösen
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="wf-hilfe">
+              Legt neben diesem Schritt einen zweiten Zweig an, der gleichzeitig läuft. Weiter geht es, wenn beide erledigt sind.
+            </p>
+            <div>
+              <button type="button" className="btn btn-sm btn-outline" onClick={parallelDazuAusfuehren}>
+                <span className="wf-parallel-zeichen">‖</span> Parallel dazu ausführen
+              </button>
+            </div>
+          </>
         )}
       </section>
 
@@ -1362,12 +1793,12 @@ function SchrittDetails({
 
       <section className="wf-abschnitt wf-aktionen">
         <div className="wf-position">
-          <span className="small tertiary">Im Standardverlauf</span>
+          <span className="small tertiary">{lage ? 'Im Zweig' : 'Im Standardverlauf'}</span>
           <button
             type="button"
             className="btn-icon"
-            disabled={hauptPos <= 0}
-            onClick={() => onSchritteAendern((alle) => imVerlaufVerschieben(alle, step.id, -1))}
+            disabled={!bewegbar.frueher}
+            onClick={() => onBearbeitung(imVerlaufVerschieben(steps, step.id, -1))}
             aria-label="Früher im Ablauf"
             title="Früher im Ablauf"
           >
@@ -1376,8 +1807,8 @@ function SchrittDetails({
           <button
             type="button"
             className="btn-icon"
-            disabled={hauptPos < 0 || hauptPos >= gliederung.haupt.length - 1}
-            onClick={() => onSchritteAendern((alle) => imVerlaufVerschieben(alle, step.id, 1))}
+            disabled={!bewegbar.spaeter}
+            onClick={() => onBearbeitung(imVerlaufVerschieben(steps, step.id, 1))}
             aria-label="Später im Ablauf"
             title="Später im Ablauf"
           >
@@ -1418,6 +1849,7 @@ function Uebersicht({
   gliederung,
   hinweise,
   dauer,
+  bloecke,
   arbeitstage,
   onAuswahl,
   onSchliessen,
@@ -1429,6 +1861,8 @@ function Uebersicht({
   gliederung: Gliederung;
   hinweise: ReturnType<typeof pruefen>;
   dauer: number;
+  /** Zahl der parallelen Blöcke. */
+  bloecke: number;
   arbeitstage: boolean;
   onAuswahl: (id: ID | 'uebersicht' | null) => void;
   onSchliessen?: () => void;
@@ -1471,11 +1905,18 @@ function Uebersicht({
         </div>
         <div>
           <b>{dauer}</b>
-          <span>Tage im Standardverlauf{arbeitstage ? ' (Arbeitstage)' : ''}</span>
+          <span>
+            Tage im Standardverlauf{arbeitstage ? ' (Arbeitstage)' : ''}
+            {bloecke > 0 ? ' – je Block der längste Zweig' : ''}
+          </span>
         </div>
         <div>
-          <b>{gliederung.abweichungen.length}</b>
+          <b>{gliederung.abweichungenGesamt}</b>
           <span>Abweichungen</span>
+        </div>
+        <div>
+          <b>{bloecke}</b>
+          <span>{bloecke === 1 ? 'Paralleler Block' : 'Parallele Blöcke'}</span>
         </div>
       </div>
 
@@ -1506,7 +1947,8 @@ function Uebersicht({
           <li>
             <span className="wf-legende-linie standard" />
             <span>
-              <b>Standardverlauf</b> – der Weg mit der jeweils ersten Antwort; nach ihm rechnen die Soll-Termine.
+              <b>Standardverlauf</b> – der Weg mit der jeweils ersten Antwort; nach ihm rechnen die voraussichtlichen Termine.
+              Die Frist zählt ab dem tatsächlichen Eingang – dem Abschluss des vorherigen Schritts.
             </span>
           </li>
           <li>
@@ -1521,6 +1963,14 @@ function Uebersicht({
               <b>Rücksprung</b> – führt zu einem früheren Schritt zurück; der Planlauf durchläuft ihn erneut.
             </span>
           </li>
+          <li>
+            <span className="wf-legende-linie wf-parallel-legende" />
+            <span>
+              <b>Parallel</b> – die Zweige eines Blocks laufen gleichzeitig; weiter geht es, wenn alle Zweige erledigt sind. Im
+              Standardverlauf zählt der längste Zweig. Abweichungen im Zweig stehen gestrichelt darunter, Ausstiege aus dem Block
+              als Text auf der Karte.
+            </span>
+          </li>
         </ul>
       </section>
 
@@ -1528,7 +1978,8 @@ function Uebersicht({
         <h4>Bedienung</h4>
         <ul className="wf-tipps">
           <li>Karte anklicken, um den Schritt zu bearbeiten.</li>
-          <li>„+“ zwischen zwei Karten fügt dort eine Aufgabe ein.</li>
+          <li>„+“ zwischen zwei Karten fügt dort eine Aufgabe ein – auch im Zweig eines parallelen Blocks.</li>
+          <li>Parallele Zweige: „Schritt hinzufügen“ → „Parallele Zweige“ oder in den Schrittdetails „Parallel dazu ausführen“.</li>
           <li>Strg+Z bzw. Strg+Y: Rückgängig und Wiederholen.</li>
         </ul>
       </section>

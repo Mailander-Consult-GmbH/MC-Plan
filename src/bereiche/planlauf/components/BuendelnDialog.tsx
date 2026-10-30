@@ -4,7 +4,8 @@
  * weiterführen“. Welche Pläne zurückkehren, wird je Plan angekreuzt.
  */
 import { useState } from 'react';
-import { aktuellerSchritt, fortschritt } from '../domain/engine';
+import { aktuelleSchritte, aktuellerSchritt } from '../domain/engine';
+import { laufFortschritt } from '../domain/uebersicht';
 import { INDEX_LABEL, type PlanDocument, type PlanRun } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -40,12 +41,18 @@ export function BuendelnDialog({
   const [quelle, setQuelle] = useState<string>('');
 
   const auswahl = kandidaten.filter((k) => gewaehlt.includes(k.plan.id));
+  /** Fortschritt nach Fristen gewichtet – mit Arbeitstagen und Feiertagen des Projekts. */
+  const fortschritt = (lauf: PlanRun) => laufFortschritt(data, lauf);
   // Ohne laufenden Verzeichnislauf entsteht ein neuer; vorgeschlagen wird der
   // Stand des am wenigsten weit gediehenen Plans, damit für keinen Plan ein
   // Schritt als erledigt gilt, der es nicht ist.
   const vorschlag = [...auswahl].sort((a, b) => fortschritt(a.lauf) - fortschritt(b.lauf))[0];
   const quelleWirksam = auswahl.some((k) => k.lauf.id === quelle) ? quelle : (vorschlag?.lauf.id ?? '');
-  const schrittVon = (lauf: PlanRun) => aktuellerSchritt(lauf)?.name ?? 'ohne offenen Schritt';
+  const schrittVon = (lauf: PlanRun) => {
+    const fuehrend = aktuellerSchritt(lauf);
+    const weitere = aktuelleSchritte(lauf).length - 1;
+    return fuehrend ? `${fuehrend.name}${weitere > 0 ? ` (+${weitere} parallel)` : ''}` : 'ohne offenen Schritt';
+  };
 
   const umschalten = (id: string) =>
     setGewaehlt((g) => (g.includes(id) ? g.filter((x) => x !== id) : [...g, id]));

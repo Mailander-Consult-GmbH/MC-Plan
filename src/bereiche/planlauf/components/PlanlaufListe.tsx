@@ -5,31 +5,46 @@
  * gelten für den Export.
  * Einträge eines Planpakets stehen unter einer aufklappbaren Paketzeile; das
  * Paket selbst hat keinen Planlauf und darum auch keinen Erledigt-Haken.
+ *
+ * Mit `auswahl` erhält die Liste vorn eine Kästchen-Spalte: Lauf-Zeilen und
+ * mitlaufende Pläne werden einzeln gewählt (Schlüssel wie `zeilenSchluessel`
+ * im Export), Paket, „Ohne Planpaket“, Verzeichnisklammer und gebündeltes
+ * Verzeichnis wählen ihren Inhalt (dreistufig), die Überschrift alle
+ * angezeigten Einträge. Abgebrochene Läufe sind nicht wählbar.
+ *
+ * Stehen in parallelen Zweigen mehrere Schritte eines Laufs an, zeigt „Nächster
+ * Schritt“ den führenden (frühestes Soll) mit „+n parallel“; Erinnern und der
+ * Erledigt-Haken fragen dann nach dem Schritt.
  */
 import { Fragment, useState } from 'react';
-import { abbruchHinweis, ampelFuerSchritt, fortschritt } from '../domain/engine';
+import { abbruchHinweis } from '../domain/engine';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import {
   INDEX_LABEL,
   SCHRITT_EINGANG,
   hatEigenenPlanlauf,
-  istEingangPLM,
   type PlanDocument,
   type PlanRun,
   type Project,
   type RunStep,
 } from '../domain/types';
 import {
+  auswahlSchluessel,
   eintraegeVon,
   gliederungBilden,
   knotenBilden,
+  laufAmpel,
+  laufFortschritt,
   letzterAbgeschlossenerSchritt,
   paketStand as paketStandVon,
   paketVon as paketVonIn,
+  statusWert,
   verzeichnisStand as verzeichnisStandVon,
+  wartetAufEingang as wartetAufEingangVon,
   type Knoten,
   type UebersichtEintrag as Eintrag,
 } from '../domain/uebersicht';
+import './auswahl.css';
 import { useStore } from '../store/store';
 import { AmpelBadge, AngekuendigtBadge, DocKindIcon, RunStatusBadge } from './common';
 import { BuendelnDialog } from './BuendelnDialog';
@@ -72,6 +87,8 @@ export function PlanlaufListe({
   alleRuns,
   ebene = 2,
   spaltenFilter,
+  auswahl,
+  onAuswahl,
   oeffneLauf,
 }: {
   project: Project;
@@ -86,6 +103,13 @@ export function PlanlaufListe({
   ebene?: 1 | 2;
   /** Auswahl je Spalte; ohne Angabe bleibt die Überschrift ohne Filter. */
   spaltenFilter?: SpaltenFilter;
+  /**
+   * Mehrfachauswahl: gewählte Schlüssel (Lauf-ID bzw. ID eines mitlaufenden
+   * Plans). Ohne Angabe hat die Liste keine Kästchen-Spalte.
+   */
+  auswahl?: Set<string>;
+  /** Wählt die Schlüssel aus (`true`) bzw. ab. */
+  onAuswahl?: (ids: string[], gewaehlt: boolean) => void;
   oeffneLauf: (runId: string) => void;
 }) {
   const { data, planHerausloesen } = useStore();
@@ -96,6 +120,17 @@ export function PlanlaufListe({
   /** Verzeichnis, dessen einzeln laufende Pläne wieder gebündelt werden sollen. */
   const [buendeln, setBuendeln] = useState<PlanDocument | null>(null);
   const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
+  /**
+   * Stehen mehrere Schritte an, fragt ein kleines Menü am Erledigt-Haken bzw.
+   * an der Erinnern-Schaltfläche nach dem Schritt.
+   */
+  const [schrittWahl, setSchrittWahl] = useState<{
+    art: 'erledigt' | 'mail';
+    run: PlanRun;
+    schritte: RunStep[];
+    x: number;
+    y: number;
+  } | null>(null);
   /** Paketzeilen, die von Hand abweichend auf- bzw. zugeklappt sind. */
   const [abweichend, setAbweichend] = useState<string[]>([]);
   /** Aufgeklappte Planverzeichnisse – zunächst sind alle zugeklappt. */
@@ -148,9 +183,9 @@ export function PlanlaufListe({
    * ergeben sich aus den enthaltenen Einträgen mit eigenem Lauf.
    */
   const vorlauf = project.settings.erinnerungVorlaufTage;
-  const paketStand = (paketId: string) => paketStandVon(data.documents, paketId, alleRuns ?? runs, vorlauf);
+  const paketStand = (paketId: string) => paketStandVon(data.documents, paketId, alleRuns ?? runs, project);
   const verzeichnisStand = (verzeichnisId: string) =>
-    verzeichnisStandVon(data.documents, verzeichnisId, alleRuns ?? runs, vorlauf);
+    verzeichnisStandVon(data.documents, verzeichnisId, alleRuns ?? runs, project);
 
   /** Sortierschlüssel eines Eintrags je Spalte. */
   const schluessel = (e: Eintrag, feld: SortFeld): string | number => {
@@ -168,16 +203,11 @@ export function PlanlaufListe({
         return `${e.step?.roleName ?? ''} ${kontakt ? kontakt.nachname : ''}`.trim().toLowerCase();
       }
       case 'fortschritt':
-        return fortschritt(e.run);
-      case 'status': {
-        if (e.run.status !== 'laufend') return STATUS_RANG[e.run.status];
-        const ampel = e.step ? ampelFuerSchritt(e.step, project.settings.erinnerungVorlaufTage) : 'neutral';
-        // Ein angekündigter Eintrag, dessen Eingang überfällig ist, zählt als
-        // überfällig – sonst verschwände die Dringlichkeit hinter „angekündigt“.
-        if (ampel === 'ueberfaellig') return STATUS_RANG.ueberfaellig;
-        if (e.step && istEingangPLM(e.step.name)) return STATUS_RANG.angekuendigt;
-        return STATUS_RANG[ampel] ?? 9;
-      }
+        return laufFortschritt(data, e.run);
+      case 'status':
+        // Der dringlichste anstehende Schritt zählt; ein angekündigter Eintrag,
+        // dessen Eingang überfällig ist, zählt als überfällig.
+        return STATUS_RANG[statusWert(e.run, e.schritte, vorlauf)] ?? 9;
       default:
         return `${e.doc?.nummer ?? ''} ${e.doc?.titel ?? e.run.name}`.toLowerCase();
     }
@@ -194,6 +224,79 @@ export function PlanlaufListe({
 
   /** Eigener Lauf eines Plans in der angezeigten Liste – sofern vorhanden. */
   const laufDesPlans = (planId: string) => laufende.find((e) => e.doc?.id === planId);
+
+  /* ---------------------------- Auswahl ---------------------------- */
+
+  /** Mit Kästchen-Spalte – Zeilen über die ganze Breite erhalten davor eine (leere) Kästchen-Zelle. */
+  const mitAuswahl = Boolean(auswahl && onAuswahl);
+
+  /**
+   * Schlüssel, die das Kästchen einer Lauf-Zeile wählt: der Lauf, bei einem
+   * gebündelten Verzeichnis dazu seine mitlaufenden Pläne und die darunter
+   * stehenden herausgelösten Pläne mit eigenem Lauf.
+   */
+  const idsVon = (e: Eintrag): string[] => {
+    const ids = auswahlSchluessel(data.documents, e);
+    if (ids.length > 0 && e.doc?.kind === 'verzeichnis') {
+      for (const plan of data.documents.filter((d) => d.parentId === e.doc!.id)) {
+        if (!hatEigenenPlanlauf(plan, data.documents)) continue;
+        const eigener = laufDesPlans(plan.id);
+        if (eigener) ids.push(eigener.run.id);
+      }
+    }
+    return ids;
+  };
+  const idsVonListe = (liste: Eintrag[]) => [...new Set(liste.flatMap(idsVon))];
+
+  /**
+   * Kästchen-Zelle für eine Zeile bzw. Gruppe: gesetzt, wenn alle ihre
+   * Schlüssel gewählt sind, „teilweise“, wenn einige. Ein Klick wählt alle –
+   * bzw. alle ab, wenn schon alle gewählt sind. Ohne Schlüssel bleibt die
+   * Zelle leer. Der Klick öffnet die Zeile nicht.
+   */
+  const kaestchen = (ids: string[], bezeichnung: string) => {
+    if (!mitAuswahl) return null;
+    if (ids.length === 0) return <td className="pll-wahl" />;
+    const alle = ids.every((id) => auswahl!.has(id));
+    const einige = !alle && ids.some((id) => auswahl!.has(id));
+    return (
+      <td className="pll-wahl" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={alle}
+          title={bezeichnung}
+          aria-label={bezeichnung}
+          ref={(el) => {
+            if (el) el.indeterminate = einige;
+          }}
+          onChange={() => onAuswahl!(ids, !alle)}
+        />
+      </td>
+    );
+  };
+
+  /** Öffnet das Menü zur Schrittwahl an der angeklickten Schaltfläche. */
+  const schrittWaehlen = (art: 'erledigt' | 'mail', run: PlanRun, schritte: RunStep[], ziel: HTMLElement) => {
+    const platz = ziel.getBoundingClientRect();
+    setSchrittWahl({
+      art,
+      run,
+      schritte,
+      x: Math.max(8, Math.min(platz.right - 240, window.innerWidth - 248)),
+      y: platz.bottom + 6,
+    });
+  };
+
+  /** Person eines Schritts für Anzeige und Tooltip. */
+  const personVon = (step: RunStep) => {
+    const kontakt = data.contacts.find((c) => c.id === step.contactId);
+    return kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'keine Person';
+  };
+  /** Tooltip mit allen anstehenden Schritten eines Laufs. */
+  const parallelTitel = (schritte: RunStep[]) =>
+    `Parallel anstehend:\n${schritte
+      .map((s) => `• ${s.name} – Soll ${formatDate(s.sollDatum)} (${s.roleName || 'ohne Funktion'}, ${personVon(s)})`)
+      .join('\n')}`;
 
   /**
    * Oberste Ebene einer Gruppe. Pläne mit eigenem Lauf stehen unter ihrem
@@ -345,18 +448,23 @@ export function PlanlaufListe({
     );
   }
 
-  const zeile = ({ run, doc, step: offenerSchritt }: Eintrag, eingerueckt = false, unterVerzeichnis = false) => {
+  const zeile = (eintrag: Eintrag, eingerueckt = false, unterVerzeichnis = false) => {
+    const { run, doc } = eintrag;
     // Ein abgebrochener Lauf ist abgeschlossene Vergangenheit: kein aktueller
     // Schritt, kein Fortschritt und nichts mehr zu erledigen.
     const abgebrochen = run.status === 'abgebrochen';
-    const step = abgebrochen ? undefined : offenerSchritt;
+    const schritte = abgebrochen ? [] : eintrag.schritte;
+    const step = schritte[0];
+    const weitere = schritte.slice(1);
     // Farbe der Zeile: angekündigt (gelb) bzw. abgeschlossen (grün)
-    const wartetAufEingang = Boolean(step && istEingangPLM(step.name));
+    const wartetAufEingang = wartetAufEingangVon(run, schritte);
     const fertig = run.status === 'abgeschlossen';
-    const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
-    const pct = fortschritt(run);
+    // Die Ampel des dringlichsten anstehenden Schritts
+    const ampel = laufAmpel(schritte, vorlauf);
+    const pct = laufFortschritt(data, run);
     const kontakt = data.contacts.find((c) => c.id === step?.contactId);
-    // Aktueller Stand: der zuletzt erledigte Schritt des Verlaufs (übersprungene zählen nicht)
+    // Aktueller Stand: der zuletzt erledigte Schritt des Verlaufs (übersprungene zählen nicht),
+    // nach einem Rücksprung der Schritt, der den Wiedereingang auslöste
     const stand = letzterAbgeschlossenerSchritt(run);
     // Pläne eines gebündelten Verzeichnisses stehen aufklappbar darunter –
     // mitlaufend oder, wenn herausgelöst, mit eigenem Stand.
@@ -385,6 +493,7 @@ export function PlanlaufListe({
               : undefined
         }
       >
+        {kaestchen(idsVon(eintrag), `${doc?.nummer ?? ''} ${doc?.titel ?? run.name} auswählen`.trim())}
         <td style={{ paddingLeft: einzug }}>
           <span className="row" style={{ gap: 9 }}>
             {plaene.length > 0 ? (
@@ -442,19 +551,27 @@ export function PlanlaufListe({
             <td className="small">
               {step ? (
                 <>
-                  <div>{step.name}</div>
+                  <div>
+                    {step.name}
+                    {weitere.length > 0 ? (
+                      <span className="pll-parallel" title={parallelTitel(schritte)}>
+                        +{weitere.length} parallel
+                      </span>
+                    ) : null}
+                  </div>
                   <span className="tertiary small">{relativeLabel(step.sollDatum)}</span>
                 </>
               ) : (
                 <span className="tertiary">–</span>
               )}
             </td>
-            <td className="small col-optional">
+            <td className="small col-optional" title={weitere.length > 0 ? parallelTitel(schritte) : undefined}>
               {step ? (
                 <>
                   <div>{step.roleName || '–'}</div>
                   <span className="tertiary small">
                     {kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'keine Person'}
+                    {weitere.length > 0 ? ` · +${weitere.length}` : ''}
                   </span>
                 </>
               ) : (
@@ -486,16 +603,36 @@ export function PlanlaufListe({
               <button
                 type="button"
                 className="btn btn-sm btn-outline"
-                title="Vorbereitete E-Mail an die zuständige Person"
+                title={
+                  weitere.length > 0
+                    ? 'Vorbereitete E-Mail – Schritt wählen'
+                    : 'Vorbereitete E-Mail an die zuständige Person'
+                }
                 aria-label="Erinnerung vorbereiten"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setMail({ run, step });
+                  if (weitere.length > 0) schrittWaehlen('mail', run, schritte, e.currentTarget);
+                  else setMail({ run, step });
                 }}
               >
                 <Icon name="mail" size={13} />
               </button>{' '}
-              <ErledigtButton run={run} step={step} onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')} />
+              {weitere.length > 0 ? (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-haken"
+                  title={`${schritte.length} Schritte stehen an – welcher ist erledigt?`}
+                  aria-label="Schritt als erledigt vermerken"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    schrittWaehlen('erledigt', run, schritte, e.currentTarget);
+                  }}
+                >
+                  <Icon name="check" size={13} />
+                </button>
+              ) : (
+                <ErledigtButton run={run} step={step} onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')} />
+              )}
             </>
           ) : null}
         </td>
@@ -511,6 +648,7 @@ export function PlanlaufListe({
             }
             return (
             <tr key={plan.id} className="unterzeile">
+              {kaestchen(abgebrochen ? [] : [plan.id], `${plan.nummer} ${plan.titel} auswählen`.trim())}
               <td style={{ paddingLeft: einzug + 28 }}>
                 <span className="row" style={{ gap: 9 }}>
                   <DocKindIcon kind={plan.kind} />
@@ -563,6 +701,7 @@ export function PlanlaufListe({
     return (
       <Fragment key={`klammer-${verzeichnis.id}`}>
         <tr className="klammer-zeile">
+          {kaestchen(idsVonListe(kinder), `Pläne von ${verzeichnis.nummer} ${verzeichnis.titel} auswählen`)}
           <td style={{ paddingLeft: einzug }}>
             <span className="row" style={{ gap: 9 }}>
               <button
@@ -632,6 +771,29 @@ export function PlanlaufListe({
         <table className="table planlauf-tabelle">
           <thead>
             <tr>
+              {mitAuswahl
+                ? (() => {
+                    // Überschrift: alle angezeigten Einträge (ohne abgebrochene)
+                    const ids = idsVonListe(laufende);
+                    const alle = ids.length > 0 && ids.every((id) => auswahl!.has(id));
+                    const einige = !alle && ids.some((id) => auswahl!.has(id));
+                    return (
+                      <th className="pll-wahl">
+                        <input
+                          type="checkbox"
+                          checked={alle}
+                          disabled={ids.length === 0}
+                          title={alle ? 'Auswahl aufheben' : 'Alle angezeigten Einträge auswählen'}
+                          aria-label="Alle angezeigten Einträge auswählen"
+                          ref={(el) => {
+                            if (el) el.indeterminate = einige;
+                          }}
+                          onChange={() => onAuswahl!(ids, !alle)}
+                        />
+                      </th>
+                    );
+                  })()
+                : null}
               <Kopf feld="titel">Plan / Planverzeichnis</Kopf>
               <Kopf feld="gewerk" filter="gewerk">
                 Gewerk
@@ -662,6 +824,7 @@ export function PlanlaufListe({
               return (
                 <Fragment key={paket.id}>
                   <tr className="paket-zeile">
+                    {kaestchen(idsVonListe(inhalt), `Einträge des Planpakets ${paket.titel} auswählen`)}
                     <td>
                       <button
                         type="button"
@@ -707,6 +870,7 @@ export function PlanlaufListe({
 
             {ohnePaket.length > 0 && pakete.length > 0 ? (
               <tr className="paket-zeile ohne-paket">
+                {kaestchen(idsVonListe(ohnePaket), 'Einträge ohne Planpaket auswählen')}
                 <td colSpan={8}>
                   <button
                     type="button"
@@ -729,6 +893,8 @@ export function PlanlaufListe({
 
             {verworfene.length > 0 ? (
               <tr className="paket-zeile ohne-paket">
+                {/* Abgebrochene Läufe sind nicht wählbar */}
+                {kaestchen([], '')}
                 <td colSpan={8}>
                   <button
                     type="button"
@@ -752,6 +918,34 @@ export function PlanlaufListe({
         </table>
       </div>
 
+      {schrittWahl ? (
+        <>
+          <div className="filter-schatten" onClick={() => setSchrittWahl(null)} />
+          <div className="filter-menu" style={{ top: schrittWahl.y, left: schrittWahl.x, width: 240 }} role="menu">
+            <div className="pll-menu-titel">
+              {schrittWahl.art === 'erledigt' ? 'Welcher Schritt ist erledigt?' : 'Erinnerung zu welchem Schritt?'}
+            </div>
+            {schrittWahl.schritte.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  const { art, run } = schrittWahl;
+                  setSchrittWahl(null);
+                  if (art === 'erledigt') setzeStatus(run, s, 'erledigt');
+                  else setMail({ run, step: s });
+                }}
+              >
+                {s.name}
+                <span className="pll-menu-sub">
+                  {personVon(s)} · {relativeLabel(s.sollDatum)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
       {mail ? (
         <EmailDialog project={project} run={mail.run} step={mail.step} onClose={() => setMail(null)} />
       ) : null}

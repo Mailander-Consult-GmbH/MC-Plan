@@ -1,15 +1,33 @@
 /**
- * Planlauf-Logik: Weg durch die Workflow bestimmen, Soll-Termine aus
- * Fristen rechnen, Ampelstatus vergeben und offene Aufgaben einsammeln.
+ * Planlauf-Logik: Weg durch die Workflow bestimmen, Eingänge und Soll-Termine
+ * aus den tatsächlichen Abschlüssen und Fristen rechnen, Ampelstatus vergeben,
+ * Rücksprünge ausführen und offene Aufgaben einsammeln. Die Ablaufregeln selbst
+ * (Blöcke, Nachfolger, anstehende Schritte) stehen in ablauf.ts.
  */
-import { addDays, diffDays, today } from '../../../shared/dates';
+import { addDays, diffDays, naechsterArbeitstag, today } from '../../../shared/dates';
+import {
+  aktuelleSchritte,
+  anstehendeSchritte,
+  istBegonnen,
+  istErledigt,
+  massgeblicheAntwort,
+  nachfolger,
+  ortImVerlauf,
+  statusAbgleichen,
+  strukturVon,
+  verfolgen,
+  zielVon,
+  type Verlauf,
+  type Zweigverlauf,
+} from './ablauf';
+import { prognose } from './simulation';
 import {
   EIGENE_ROLLE,
   INDEX_LABEL,
   STANDARD_BEARBEITER,
   hatEigenenPlanlauf,
+  seiteAusFunktion,
   type DocumentKind,
-  type Antwort,
   type AppData,
   type Contact,
   type Role,
@@ -20,8 +38,14 @@ import {
   type ProcessTemplate,
   type ProcessTemplateStep,
   type Project,
+  type ProtokollEintrag,
   type RunStep,
+  type SchrittDurchlauf,
+  type Seite,
 } from './types';
+
+export { aktuelleSchritte, massgeblicheAntwort } from './ablauf';
+export type { Verlauf } from './ablauf';
 
 export type Ampel = 'erledigt' | 'ueberfaellig' | 'faellig' | 'geplant' | 'neutral';
 
@@ -37,80 +61,24 @@ export const AMPEL_LABEL: Record<Ampel, string> = {
 /* Weg durch die Kette                                                 */
 /* ------------------------------------------------------------------ */
 
-/** Die Antwort, die den weiteren Verlauf bestimmt (ohne Auswahl: die erste). */
-export function massgeblicheAntwort(step: { antworten: Antwort[]; gewaehlteAntwortId?: ID | null }): Antwort | undefined {
-  if (step.antworten.length === 0) return undefined;
-  const gewaehlt = step.antworten.find((a) => a.id === step.gewaehlteAntwortId);
-  return gewaehlt ?? step.antworten[0];
-}
-
 /**
  * Der Nachfolger eines Schritts: bei Entscheidungen das Ziel der maßgeblichen
- * Antwort, sonst der hinterlegte Nachfolger. `null` heißt „nächster Schritt“.
+ * Antwort, sonst der hinterlegte Nachfolger. `null` heißt „nächster Schritt“
+ * (im Zweig eines Blocks: des Zweigs) – aufgelöst wird es in `nachfolger`.
  */
 export function zielVonSchritt(step: ProcessTemplateStep | RunStep): ID | 'ende' | null {
-  if (step.typ === 'entscheidung' && step.antworten.length > 0) {
-    return massgeblicheAntwort(step)?.ziel ?? null;
-  }
-  return step.naechster ?? null;
-}
-
-/** Ergebnis der Ablaufverfolgung durch eine Kette. */
-export interface Verlauf<T> {
-  /** Die durchlaufenen Schritte in ihrer Reihenfolge. */
-  schritte: T[];
-  /**
-   * Schritt, zu dem am Ende zurückgesprungen wird (Schleife, z.B. Überarbeitung).
-   * Der Ablauf wird an dieser Stelle erneut aufgenommen.
-   */
-  rueckSprungZu: T | null;
-  /** true, wenn der Ablauf durch eine Antwort ausdrücklich beendet wird. */
-  beendet: boolean;
+  return zielVon(step);
 }
 
 /**
- * Verfolgt den Ablauf durch die Kette.
- *
- * Schritte werden der Reihe nach abgearbeitet; eine Entscheidung springt
- * gemäß der maßgeblichen Antwort zu einem anderen Schritt, zum Ende oder
- * (ohne Ziel) zum unmittelbar folgenden Schritt. Führt eine Antwort zu einem
- * bereits durchlaufenen Schritt zurück, endet der Ablauf nicht – der Schritt
- * wird als Rücksprungziel gemeldet, damit die Schleife sichtbar bleibt und die
- * Verfolgung nicht endlos läuft.
+ * Verfolgt den Ablauf durch die Kette nach den maßgeblichen Antworten
+ * (gewählt, sonst die erste) – siehe `verfolgen` in ablauf.ts.
  */
 export function verlaufDerKette<T extends ProcessTemplateStep | RunStep>(steps: T[]): Verlauf<T> {
-  const schritte: T[] = [];
-  const besucht = new Set<ID>();
-  let index = 0;
-
-  while (index >= 0 && index < steps.length) {
-    const step = steps[index];
-    besucht.add(step.id);
-    schritte.push(step);
-
-    const ziel = zielVonSchritt(step);
-    if (ziel === 'ende') return { schritte, rueckSprungZu: null, beendet: true };
-    if (ziel) {
-      const zielIndex = steps.findIndex((s) => s.id === ziel);
-      if (zielIndex < 0) break;
-      if (besucht.has(steps[zielIndex].id)) {
-        return { schritte, rueckSprungZu: steps[zielIndex], beendet: false };
-      }
-      index = zielIndex;
-      continue;
-    }
-    index += 1;
-    // Auch der Weg zum nächsten Schritt der Liste kann zu einem bereits
-    // durchlaufenen Schritt führen – nach einem Sprung zurück. Dann ist auch
-    // das ein Rücksprung, sonst stünde der Schritt zweimal im Verlauf.
-    if (index < steps.length && besucht.has(steps[index].id)) {
-      return { schritte, rueckSprungZu: steps[index], beendet: false };
-    }
-  }
-  return { schritte, rueckSprungZu: null, beendet: false };
+  return verfolgen(steps, massgeblicheAntwort);
 }
 
-/** Reihenfolge der tatsächlich durchlaufenen Schritte. */
+/** Reihenfolge der tatsächlich durchlaufenen Schritte (Blöcke flach, Zweig für Zweig). */
 export function pfad<T extends ProcessTemplateStep | RunStep>(steps: T[]): T[] {
   return verlaufDerKette(steps).schritte;
 }
@@ -125,13 +93,30 @@ export function nichtImPfad<T extends ProcessTemplateStep | RunStep>(steps: T[])
 /* Termine                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Das späteste von mehreren Daten (leere Angaben zählen nicht). */
+function spaetestes(daten: (ISODate | null | undefined)[]): ISODate | null {
+  let ergebnis: ISODate | null = null;
+  for (const d of daten) if (d && (ergebnis === null || d > ergebnis)) ergebnis = d;
+  return ergebnis;
+}
+
 /**
- * Rechnet die Soll-Termine der Schrittkette neu durch.
+ * Rechnet Eingänge und Soll-Termine der Schrittkette neu durch.
  *
- * Regel: Soll = Soll des Vorgängers + Frist des Schritts. Ein manuell
- * gesetztes Soll-Datum bleibt erhalten und wird zur neuen Basis für alle
- * folgenden Schritte. Schritte außerhalb des aktuellen Verlaufs erhalten
- * keinen Termin.
+ * Regeln (in Verlaufsreihenfolge, Vorgänger stehen immer davor):
+ * 1. Ein Schritt, der ansteht oder erledigt ist, erhält – falls noch nicht
+ *    vorhanden – einen festen Eingang (`eingangIst`): den spätesten Abschluss
+ *    seiner Vorgänger (Ist, mindestens deren Eingang), ohne Vorgänger den
+ *    Start. Danach ändert er sich nicht mehr von selbst. Offene, nicht
+ *    anstehende Schritte haben keinen festen Eingang.
+ * 2. Soll = Eingang + Frist (bei Arbeitstagen mindestens der nächste
+ *    Arbeitstag). Ein von Hand gesetztes Soll bleibt; der erste Schritt im
+ *    ersten Durchlauf erhält das Eingang Soll des Eintrags, falls hinterlegt –
+ *    nicht aber ein Zweiganfang, dessen Eingang aus einem Rücksprung stammt.
+ * 3. Künftige Schritte rechnen mit dem voraussichtlichen Eingang: erledigte
+ *    Vorgänger mit ihrem Abschluss, offene mit ihrem Soll, frühestens heute.
+ *    Diese Prognose liegt nie in der Vergangenheit.
+ * Schritte außerhalb des Verlaufs erhalten weder Eingang noch Soll.
  */
 export function recalcSollDaten(
   steps: RunStep[],
@@ -140,87 +125,176 @@ export function recalcSollDaten(
   feiertage: ISODate[],
   /**
    * Soll-Termin für den Eingang der Unterlage. Ist er hinterlegt, hat der
-   * erste Schritt keine Frist, sondern genau dieses Datum; die folgenden
-   * Fristen rechnen von dort weiter.
+   * erste Schritt im ersten Durchlauf keine Frist, sondern genau dieses Datum.
    */
   eingangSoll: ISODate | null = null,
+  /** Stichtag der Prognose; null = ohne Stichtag (reine Planung, z. B. Simulation). */
+  heute: ISODate | null = today(),
 ): RunStep[] {
-  const reihenfolge = pfad(steps);
-  const termine = new Map<ID, ISODate>();
-  let basis = start;
+  const verlauf = verfolgen(steps);
+  const anstehend = new Set(anstehendeSchritte(verlauf).map((s) => s.id));
+  const berechnet = new Map<ID, RunStep>();
 
-  for (const [i, step] of reihenfolge.entries()) {
-    if (step.sollManuell && step.sollDatum) {
-      basis = step.sollDatum;
-      termine.set(step.id, step.sollDatum);
-      continue;
+  const fertig = (s: RunStep): ISODate | null => spaetestes([s.istDatum, s.eingangIst]) ?? s.sollDatum;
+  const prognoseFertig = (s: RunStep): ISODate | null =>
+    istErledigt(s) ? fertig(s) : spaetestes([s.sollDatum, heute]);
+
+  for (const step of verlauf.schritte) {
+    const vorIds = verlauf.vorgaenger.get(step.id) ?? [];
+    const ohneVorgaenger = vorIds.length === 0;
+    const vorgaenger = vorIds.map((id) => berechnet.get(id)).filter((s): s is RunStep => Boolean(s));
+    const steht = anstehend.has(step.id);
+    const erledigt = istErledigt(step);
+
+    // 1. Fester Eingang
+    let eingangIst = step.eingangIst ?? null;
+    if (steht || erledigt) {
+      if (!eingangIst) {
+        eingangIst = ohneVorgaenger ? start : spaetestes(vorgaenger.filter((v) => istErledigt(v)).map(fertig));
+      }
+    } else {
+      eingangIst = null;
     }
-    if (i === 0 && eingangSoll) {
-      basis = eingangSoll;
-      termine.set(step.id, eingangSoll);
-      continue;
+
+    // 2. Eingang für die Rechnung: fest bzw. voraussichtlich
+    let eingang: ISODate;
+    if (eingangIst) eingang = eingangIst;
+    else if (ohneVorgaenger) eingang = start;
+    else {
+      eingang = spaetestes(vorgaenger.map(prognoseFertig)) ?? start;
+      if (heute && !steht && !erledigt && eingang < heute) eingang = heute;
     }
-    const soll = addDays(basis, step.fristTage, arbeitstage, feiertage);
-    basis = soll;
-    termine.set(step.id, soll);
+
+    // 3. Soll
+    let soll: ISODate;
+    if (step.sollManuell && step.sollDatum) soll = step.sollDatum;
+    // Eingang Soll gilt nur im ersten Durchlauf und nicht für einen Zweiganfang,
+    // der erst beim erneuten Betreten seines Blocks beginnt (Eingang aus dem Rücksprung)
+    else if (ohneVorgaenger && (step.durchlauf ?? 1) <= 1 && (step.blockDurchgang ?? 1) <= 1 && eingangSoll) soll = eingangSoll;
+    else {
+      soll = addDays(eingang, step.fristTage, arbeitstage, feiertage);
+      if (arbeitstage) soll = naechsterArbeitstag(soll, feiertage);
+    }
+
+    const gleich = step.eingangIst === eingangIst && step.eingangDatum === eingang && step.sollDatum === soll;
+    berechnet.set(step.id, gleich ? step : { ...step, eingangIst, eingangDatum: eingang, sollDatum: soll });
   }
 
-  return steps.map((step) => {
-    const soll = termine.get(step.id) ?? null;
-    return soll === step.sollDatum ? step : { ...step, sollDatum: soll };
+  let geaendert = false;
+  const ergebnis = steps.map((step) => {
+    const neu =
+      berechnet.get(step.id) ??
+      (step.sollDatum === null && step.eingangDatum === null && (istErledigt(step) || step.eingangIst === null)
+        ? step
+        : { ...step, sollDatum: null, eingangDatum: null, eingangIst: istErledigt(step) ? step.eingangIst : null });
+    if (neu !== step) geaendert = true;
+    return neu;
   });
+  return geaendert ? ergebnis : steps;
 }
 
-/** Rechnet einen kompletten Lauf mit den Projekteinstellungen durch. */
+/**
+ * Rechnet einen kompletten Lauf mit den Projekteinstellungen durch. Liefert
+ * den Lauf selbst, wenn sich nichts ändert.
+ */
 export function recalcRun(
   run: PlanRun,
   project: Project | undefined,
   doc?: { eingangSoll: ISODate | null },
+  heute: ISODate | null = today(),
 ): PlanRun {
-  // Ein neu gestarteter Lauf bleibt zum Nachschlagen so stehen, wie er endete –
-  // ein neues Eingang Soll des Eintrags gilt nur noch für den neuen Lauf.
-  if (run.status === 'abgebrochen' && run.abbruchArt === 'neu_gestartet') return run;
+  // Ein neu gestarteter bzw. durch eine Sicherung ersetzter Lauf bleibt zum
+  // Nachschlagen so stehen, wie er endete – ein neues Eingang Soll des Eintrags
+  // gilt nur noch für den neuen Lauf.
+  if (run.status === 'abgebrochen' && (run.abbruchArt === 'neu_gestartet' || run.abbruchArt === 'aus_sicherung')) {
+    return run;
+  }
   const arbeitstage = project?.settings.fristenInArbeitstagen ?? true;
   const feiertage = project?.settings.feiertage ?? [];
-  return {
-    ...run,
-    steps: recalcSollDaten(run.steps, run.start, arbeitstage, feiertage, doc?.eingangSoll ?? null),
-  };
+  const steps = recalcSollDaten(run.steps, run.start, arbeitstage, feiertage, doc?.eingangSoll ?? null, heute);
+  return steps === run.steps ? run : { ...run, steps };
 }
 
 /* ------------------------------------------------------------------ */
 /* Status                                                              */
 /* ------------------------------------------------------------------ */
 
-export function ampelFuerSchritt(step: RunStep, vorlaufTage: number): Ampel {
+/**
+ * Ampel eines Schritts. Nur anstehende Schritte können fällig oder überfällig
+ * sein; künftige Schritte (`anstehend = false`) stehen höchstens „Im Plan“ –
+ * ihr Soll ist eine Prognose. Ob ein Schritt ansteht, weiß nur der Aufrufer
+ * (siehe aktuelleSchritte); deshalb gibt es dafür keine Vorgabe.
+ */
+export function ampelFuerSchritt(step: RunStep, vorlaufTage: number, anstehend: boolean, heute: ISODate = today()): Ampel {
   if (step.status === 'erledigt' || step.status === 'uebersprungen') return 'erledigt';
   if (!step.sollDatum) return 'neutral';
-  const delta = diffDays(today(), step.sollDatum);
+  if (!anstehend) return 'geplant';
+  const delta = diffDays(heute, step.sollDatum);
   if (delta < 0) return 'ueberfaellig';
   if (delta <= vorlaufTage) return 'faellig';
   return 'geplant';
 }
 
-const offenerSchritt = (s: RunStep) => s.status !== 'erledigt' && s.status !== 'uebersprungen';
-
-/** Der erste nicht erledigte Schritt im aktuellen Verlauf. */
-export function aktuellerSchritt(run: PlanRun): RunStep | undefined {
-  return pfad(run.steps).find(offenerSchritt);
+/**
+ * Der führende anstehende Schritt: von den anstehenden der mit dem frühesten
+ * Soll (bei parallelen Zweigen können mehrere Schritte zugleich anstehen –
+ * siehe aktuelleSchritte).
+ */
+export function aktuellerSchritt(run: Pick<PlanRun, 'steps'>): RunStep | undefined {
+  let fuehrend: RunStep | undefined;
+  for (const s of aktuelleSchritte(run)) {
+    if (!fuehrend) fuehrend = s;
+    else if (s.sollDatum && (!fuehrend.sollDatum || s.sollDatum < fuehrend.sollDatum)) fuehrend = s;
+  }
+  return fuehrend;
 }
 
-export function fortschritt(run: PlanRun): number {
-  const reihenfolge = pfad(run.steps);
-  if (reihenfolge.length === 0) return 0;
-  const fertig = reihenfolge.filter((s) => !offenerSchritt(s)).length;
-  return Math.round((fertig / reihenfolge.length) * 100);
+/** Verzug des Laufs in Kalendertagen (>0 = überfällig): der größte unter den anstehenden Schritten. */
+export function verzugTage(run: Pick<PlanRun, 'steps'>, heute: ISODate = today()): number {
+  let verzug = 0;
+  for (const step of aktuelleSchritte(run)) {
+    if (!step.sollDatum) continue;
+    const delta = diffDays(heute, step.sollDatum);
+    if (delta < 0) verzug = Math.max(verzug, -delta);
+  }
+  return verzug;
 }
 
-/** Verzug des Laufs in Tagen (>0 = überfällig), bezogen auf den aktuellen Schritt. */
-export function verzugTage(run: PlanRun): number {
-  const step = aktuellerSchritt(run);
-  if (!step?.sollDatum) return 0;
-  const delta = diffDays(today(), step.sollDatum);
-  return delta < 0 ? Math.abs(delta) : 0;
+const fortschrittSpeicher = new WeakMap<PlanRun, number>();
+
+/**
+ * Fortschritt eines Laufs in Prozent, gewichtet nach Fristen: Fristen der im
+ * laufenden Durchlauf erledigten Verlaufsschritte ÷ (diese + Fristen aller
+ * laut Prognose noch ausstehenden Ausführungen, Rücksprünge und Wiederholungen
+ * eingeschlossen). Ohne Fristen zählen die Schritte. Ein Rücksprung senkt den
+ * Fortschritt also, weil die Wiederholung aussteht. 100 % hat nur ein
+ * abgeschlossener Lauf; ein laufender bleibt höchstens bei 99 % – auch wenn nur
+ * noch Schritte ohne Frist ausstehen. Das Ergebnis wird je Lauf-Objekt
+ * zwischengespeichert – jede Änderung erzeugt ein neues Objekt. Pakete und
+ * Projekte bilden das Mittel der Lauf-Werte.
+ */
+export function fortschritt(
+  run: PlanRun,
+  project?: Pick<Project, 'settings'>,
+  doc?: { eingangSoll: ISODate | null },
+): number {
+  const gespeichert = fortschrittSpeicher.get(run);
+  if (gespeichert !== undefined) return gespeichert;
+  let wert: number;
+  if (run.steps.length === 0) wert = 0;
+  else if (run.status === 'abgeschlossen') wert = 100;
+  else {
+    const erledigt = verfolgen(run.steps).schritte.filter(istErledigt);
+    const rest = prognose(run, project, doc).ausfuehrungen;
+    const fertig = erledigt.reduce((summe, s) => summe + s.fristTage, 0);
+    const offen = rest.reduce((summe, a) => summe + a.frist, 0);
+    if (fertig + offen > 0) wert = Math.round((fertig / (fertig + offen)) * 100);
+    else if (erledigt.length + rest.length > 0) wert = Math.round((erledigt.length / (erledigt.length + rest.length)) * 100);
+    else wert = 0;
+    wert = Math.min(99, wert);
+  }
+  fortschrittSpeicher.set(run, wert);
+  return wert;
 }
 
 /**
@@ -232,6 +306,7 @@ export function abbruchHinweis(run: PlanRun, kind: DocumentKind = 'plan'): strin
   if (run.abbruchArt === 'aufgeteilt') return 'in Einzelläufe der Pläne aufgeteilt';
   if (run.abbruchArt === 'gebuendelt') return 'wieder im Planlauf des Verzeichnisses gebündelt';
   if (run.abbruchArt === 'neu_gestartet') return 'mit geändertem Workflow neu gestartet';
+  if (run.abbruchArt === 'aus_sicherung') return 'durch den Stand einer Sicherung ersetzt';
   if (run.abbruchArt !== 'neuer_index') return 'ersatzlos abgebrochen';
   const label = INDEX_LABEL[kind];
   return run.abbruchNeuerIndex ? `ersetzt durch ${label} ${run.abbruchNeuerIndex}` : `ersetzt durch neuen ${label}`;
@@ -255,8 +330,11 @@ export interface FristEintrag {
 }
 
 /**
- * Alle offenen Schritte des aktuellen Verlaufs, sortiert nach Dringlichkeit.
- * Abgebrochene und abgeschlossene Läufe bleiben außen vor.
+ * Die anstehenden Schritte aller laufenden Planläufe, sortiert nach
+ * Dringlichkeit – ein Eintrag je anstehendem Schritt (in parallelen Zweigen
+ * stehen mehrere Schritte eines Laufs zugleich an). Kommende Schritte
+ * erscheinen erst, wenn sie an der Reihe sind; abgebrochene und
+ * abgeschlossene Läufe bleiben außen vor.
  */
 export function offeneFristen(data: AppData, projectIds?: ID[]): FristEintrag[] {
   const eintraege: FristEintrag[] = [];
@@ -265,27 +343,25 @@ export function offeneFristen(data: AppData, projectIds?: ID[]): FristEintrag[] 
     if (!istAktiv(run)) continue;
     const project = data.projects.find((p) => p.id === run.projectId);
     if (!project) continue;
-    // Nur der jeweils anstehende Schritt ist offen – kommende Schritte
-    // erscheinen erst, wenn sie an der Reihe sind.
-    const step = aktuellerSchritt(run);
-    if (!step) continue;
-    const ampel = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage);
-    if (ampel === 'erledigt') continue;
-    eintraege.push({
-      run,
-      step,
-      project,
-      ampel,
-      tageBisSoll: step.sollDatum ? diffDays(today(), step.sollDatum) : 9999,
-    });
+    for (const step of aktuelleSchritte(run)) {
+      const ampel = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage, true);
+      if (ampel === 'erledigt') continue;
+      eintraege.push({
+        run,
+        step,
+        project,
+        ampel,
+        tageBisSoll: step.sollDatum ? diffDays(today(), step.sollDatum) : 9999,
+      });
+    }
   }
   return eintraege.sort((a, b) => a.tageBisSoll - b.tageBisSoll);
 }
 
 /**
- * Anstehende Schritte im eigenen Verantwortungsbereich (Rolle des Bearbeiters).
- * Berücksichtigt werden der jeweils aktuelle Schritt eines Laufs sowie bereits
- * laufende Schritte – nicht dagegen Schritte, die erst später an die Reihe kommen.
+ * Anstehende Schritte im eigenen Verantwortungsbereich (Rolle des Bearbeiters)
+ * – alle, die gerade an der Reihe sind, nicht dagegen Schritte, die erst später
+ * an die Reihe kommen.
  */
 export function eigeneTodos(data: AppData, projectIds?: ID[]): FristEintrag[] {
   const rolle = EIGENE_ROLLE.toLowerCase();
@@ -320,6 +396,38 @@ export function kontaktFuerRolleUndGewerk(
   const rolle = passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
   if (!rolle) return null;
   return kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === rolle.id))?.id ?? null;
+}
+
+/** Angezeigter Name einer Person: Vor- und Nachname, ersatzweise die Firma. */
+export function kontaktName(kontakt: Pick<Contact, 'vorname' | 'nachname' | 'firma'> | undefined): string {
+  if (!kontakt) return '';
+  return `${kontakt.vorname} ${kontakt.nachname}`.trim() || kontakt.firma.trim();
+}
+
+/**
+ * Seite, der ein Schritt im Terminnachweis zugerechnet wird: die Seite der
+ * Projektfunktion (Funktion des Gewerks, ersatzweise die übergreifende gleichen
+ * Namens – wie bei der Zuständigkeit), ohne passende Funktion die Vorbelegung
+ * aus der Bezeichnung.
+ */
+export function seiteFuerSchritt(roleName: string, rollen: Role[], gewerk: string): Seite | null {
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const passende = rollen.filter((r) => gleich(r.name, roleName));
+  const rolle = passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
+  if (!rolle) return seiteAusFunktion(roleName);
+  return rolle.seite !== undefined ? rolle.seite : seiteAusFunktion(rolle.name);
+}
+
+/** Was beim Abschluss eines Schritts als Momentaufnahme festgehalten wird. */
+export interface AbschlussKontext {
+  /** Funktionen des Projekts. */
+  rollen: Role[];
+  /** Kontakte des Projekts. */
+  kontakte: Contact[];
+  /** Gewerk des Eintrags. */
+  gewerk: string;
+  /** Angemeldete Person. */
+  bearbeiter: string;
 }
 
 /** Name eines Planlaufs: Codierung bzw. Titel des Eintrags, dazu Index bzw. Ausgabe. */
@@ -369,6 +477,8 @@ export function planlaufAusWorkflow(
       newId,
     ),
     bemerkung: '',
+    protokoll: [],
+    basis: null,
   };
 }
 
@@ -383,14 +493,17 @@ export function planlaufAusWorkflow(
  */
 /**
  * Lauf, der nicht abgebrochen, sondern in eine andere Form überführt wurde:
- * aufgeteilt in Einzelläufe, wieder im Verzeichnis gebündelt oder mit
- * geändertem Workflow neu gestartet. Solche Läufe zählen nicht als Abbruch
- * des Eintrags.
+ * aufgeteilt in Einzelläufe, wieder im Verzeichnis gebündelt, mit geändertem
+ * Workflow neu gestartet oder durch den Stand einer Sicherung ersetzt. Solche
+ * Läufe zählen nicht als Abbruch des Eintrags.
  */
 export function laufUeberfuehrt(run: Pick<PlanRun, 'status' | 'abbruchArt'>): boolean {
   return (
     run.status === 'abgebrochen' &&
-    (run.abbruchArt === 'aufgeteilt' || run.abbruchArt === 'gebuendelt' || run.abbruchArt === 'neu_gestartet')
+    (run.abbruchArt === 'aufgeteilt' ||
+      run.abbruchArt === 'gebuendelt' ||
+      run.abbruchArt === 'neu_gestartet' ||
+      run.abbruchArt === 'aus_sicherung')
   );
 }
 
@@ -405,16 +518,40 @@ export function eigenstaendigeLaeufe(documents: PlanDocument[], runs: PlanRun[])
  * Übernimmt einen Planlauf samt Stand für einen anderen Eintrag – etwa wenn
  * ein Plan aus dem gebündelten Lauf seines Verzeichnisses herausgelöst wird.
  * Erledigte Schritte bleiben erledigt, der offene Schritt bleibt offen, Start
- * und Termine laufen weiter. Schritte und Antworten erhalten neue Kennungen;
- * Verweise (Nachfolger, Antwortziele, gewählte Antwort) werden umgebogen.
+ * und Termine laufen weiter; frühere Durchläufe, Erinnerungen, Basisplan und
+ * Protokoll gehen mit. Schritte und Antworten erhalten neue Kennungen;
+ * Verweise (Nachfolger, Antwortziele, gewählte Antwort, Protokoll, Basis-
+ * Fristen) werden umgebogen. Das Protokoll erhält den Eintrag „Stand
+ * übernommen aus …“.
  */
 export function laufUebernehmen(
   quelle: PlanRun,
   ziel: { documentId: ID; name: string; index: string; bemerkung: string },
   neueId: (prefix: string) => ID,
+  vermerk: { zeitpunkt?: string; bearbeiter?: string } = {},
 ): Omit<PlanRun, 'id'> {
   const schrittIds = new Map(quelle.steps.map((s) => [s.id, neueId('rs')]));
   const umbiegen = (z: ID | 'ende' | null) => (z === 'ende' || z === null ? z : (schrittIds.get(z) ?? null));
+  const protokoll: ProtokollEintrag[] = [
+    ...(quelle.protokoll ?? []).map((e) => ({
+      ...e,
+      stepId: e.stepId === null ? null : (schrittIds.get(e.stepId) ?? null),
+    })),
+    {
+      zeitpunkt: vermerk.zeitpunkt ?? new Date().toISOString(),
+      bearbeiter: vermerk.bearbeiter ?? '',
+      stepId: null,
+      text: `Stand übernommen aus „${quelle.name}“`,
+    },
+  ];
+  const basis = quelle.basis
+    ? {
+        ...quelle.basis,
+        fristen: Object.fromEntries(
+          Object.entries(quelle.basis.fristen).map(([id, frist]) => [schrittIds.get(id) ?? id, frist]),
+        ),
+      }
+    : null;
   return {
     projectId: quelle.projectId,
     documentId: ziel.documentId,
@@ -429,6 +566,8 @@ export function laufUebernehmen(
     abbruchArt: null,
     abbruchNeuerIndex: null,
     bemerkung: ziel.bemerkung,
+    protokoll,
+    basis,
     steps: quelle.steps.map((s) => {
       const antwortIds = new Map(s.antworten.map((a) => [a.id, neueId('ant')]));
       return {
@@ -474,7 +613,11 @@ export function lfdNummern(documents: PlanDocument[]): Map<ID, string> {
   return nummern;
 }
 
-/** Erzeugt aus einer Vorlage die Schritte eines neuen Laufs. */
+/**
+ * Erzeugt aus einer Vorlage die Schritte eines neuen Laufs: neue Kennungen
+ * (Ziele werden mitgezogen), alle Lauffelder leer, die ersten anstehenden
+ * Schritte „laufend“.
+ */
 export function stepsAusTemplate(
   template: ProcessTemplate,
   contactFuerRolle: (roleName: string) => ID | null,
@@ -484,7 +627,9 @@ export function stepsAusTemplate(
   const idMap = new Map<ID, ID>();
   template.steps.forEach((s) => idMap.set(s.id, newId()));
 
-  return template.steps.map((s) => ({
+  // Die ersten anstehenden Schritte (bei einem Block am Anfang: alle Zweiganfänge) laufen
+  return statusAbgleichen(template.steps.map((s): RunStep => ({
+    ...neueLaufFelder(),
     id: idMap.get(s.id)!,
     name: s.name,
     typ: s.typ,
@@ -492,26 +637,85 @@ export function stepsAusTemplate(
     contactId: contactFuerRolle(s.roleName),
     contactManuell: false,
     fristTage: s.fristTage,
-    sollDatum: null,
-    sollManuell: false,
-    istDatum: null,
-    status: 'offen' as const,
     abweichung: false,
     bemerkung: s.beschreibung,
-    letzteErinnerung: null,
-    antworten: s.antworten.map((a) => ({
+    antworten: s.antworten.map((a, i) => ({
       id: newId(),
       text: a.text,
       ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
+      nacharbeit: a.nacharbeit ?? i > 0,
     })),
     naechster: s.naechster === 'ende' || s.naechster === null ? s.naechster : (idMap.get(s.naechster) ?? null),
-    gewaehlteAntwortId: null,
-    durchlauf: 1,
     nachweis: s.nachweis,
-    nachweisNummer: null,
     mailFrage: s.mailFrage,
     mailVorlageId: s.mailVorlageId,
-  }));
+    parallel: s.parallel ?? null,
+  })));
+}
+
+/**
+ * Die Felder eines Laufschritts, die zu Beginn eines Laufs leer sind –
+ * Termine, Ist, Antwort, Durchlauf, Historie, Erinnerungen, Nachweis.
+ */
+export function neueLaufFelder(): Pick<
+  RunStep,
+  | 'sollDatum'
+  | 'sollManuell'
+  | 'istDatum'
+  | 'status'
+  | 'letzteErinnerung'
+  | 'gewaehlteAntwortId'
+  | 'durchlauf'
+  | 'nachweisNummer'
+  | 'eingangIst'
+  | 'eingangGeschaetzt'
+  | 'eingangDatum'
+  | 'abschlussInfo'
+  | 'historie'
+  | 'erinnerungen'
+  | 'verzugZuordnung'
+  | 'nacharbeitSeite'
+  | 'blockDurchgang'
+> {
+  return {
+    sollDatum: null,
+    sollManuell: false,
+    istDatum: null,
+    status: 'offen',
+    letzteErinnerung: null,
+    gewaehlteAntwortId: null,
+    durchlauf: 1,
+    nachweisNummer: null,
+    eingangIst: null,
+    eingangGeschaetzt: false,
+    eingangDatum: null,
+    abschlussInfo: null,
+    historie: [],
+    erinnerungen: [],
+    verzugZuordnung: [],
+    nacharbeitSeite: null,
+    blockDurchgang: 1,
+  };
+}
+
+/**
+ * Schritte für einen neuen Lauf aus den Schritten eines bisherigen (neuer
+ * Index bzw. neue Ausgabe): gleiche Kette mit neuen Kennungen, alle Termine,
+ * Ergebnisse, Historie und Erinnerungen zurückgesetzt. Die ersten
+ * anstehenden Schritte sind „laufend“. Abweichungen bleiben gekennzeichnet.
+ */
+export function schritteFuerNeuenLauf(steps: RunStep[], neueId: (prefix: string) => ID): RunStep[] {
+  const idMap = new Map(steps.map((s) => [s.id, neueId('rs')]));
+  const umbiegen = (z: ID | 'ende' | null) => (z === 'ende' || z === null ? z : (idMap.get(z) ?? null));
+  return statusAbgleichen(
+    steps.map((s) => ({
+      ...s,
+      ...neueLaufFelder(),
+      id: idMap.get(s.id)!,
+      naechster: umbiegen(s.naechster),
+      antworten: s.antworten.map((a) => ({ ...a, id: neueId('ant'), ziel: umbiegen(a.ziel) })),
+    })),
+  );
 }
 
 /**
@@ -531,11 +735,13 @@ export function vorlagenSchritte(
     id: idMap.get(s.id)!,
     // „Weiter mit“ und Antwortziele zeigen auf die neuen IDs – sonst gingen Sprünge verloren
     naechster: umbiegen(s.naechster),
-    antworten: s.antworten.map((a) => ({
+    antworten: s.antworten.map((a, i) => ({
       ...a,
       id: neueId('ant'),
       ziel: umbiegen(a.ziel),
+      nacharbeit: a.nacharbeit ?? i > 0,
     })),
+    parallel: s.parallel ?? null,
   }));
 }
 
@@ -564,35 +770,276 @@ export function laufSchritteAusVorlage(
       o.name !== s.name ||
       o.fristTage !== s.fristTage ||
       o.roleName !== s.roleName ||
-      o.typ !== s.typ;
+      o.typ !== s.typ ||
+      (o.parallel?.zweig ?? null) !== (s.parallel?.zweig ?? null) ||
+      Boolean(o.parallel) !== Boolean(s.parallel);
     return abweichend ? { ...s, abweichung: true } : s;
   });
 }
 
 /**
- * Bereitet einen Rücksprung vor: Das Ziel und alle Schritte, die im Verlauf
- * dahinter liegen (einschließlich der auslösenden Entscheidung), werden für
- * einen weiteren Durchlauf geöffnet. Bereits erfasste Ist-Termine der
- * betroffenen Schritte entfallen, der Durchlaufzähler wird erhöht.
+ * „Erledigte Schritte übernehmen“ beim Neustart mit geändertem Workflow:
+ * Entlang des neuen Verlaufs ab Beginn erhält jeder anstehende Schritt den
+ * Stand des erledigten (bzw. übersprungenen) Schritts gleicher Bezeichnung und
+ * Funktion aus dem laufenden Durchlauf des alten Laufs – Status, Ist, Eingang,
+ * Antwort (über ihren Text), Nachweis-Nr., Momentaufnahme und Nacharbeit-
+ * Ursache. Beim ersten anstehenden Schritt ohne Gegenstück (in einem Block:
+ * sobald kein anstehender mehr eines hat) endet die Übernahme; ebenso, bevor
+ * eine übernommene Antwort einen Rücksprung auslösen würde. Jeder alte
+ * Schritt wird höchstens einmal verwendet.
  */
-export function rueckSprungAnwenden(steps: RunStep[], ausloeserId: ID, zielId: ID): RunStep[] {
-  const reihenfolge = pfad(steps);
-  const vonIndex = reihenfolge.findIndex((s) => s.id === zielId);
-  const bisIndex = reihenfolge.findIndex((s) => s.id === ausloeserId);
-  if (vonIndex < 0 || bisIndex < 0 || vonIndex > bisIndex) return steps;
+export function erledigteUebernehmen(alt: RunStep[], neu: RunStep[]): RunStep[] {
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const verwendet = new Set<ID>();
+  let steps = neu;
+  for (let runde = 0; runde < neu.length; runde++) {
+    let uebernommen = false;
+    for (const s of aktuelleSchritte({ steps })) {
+      const vorlage = alt.find(
+        (a) => !verwendet.has(a.id) && istErledigt(a) && gleich(a.name, s.name) && gleich(a.roleName, s.roleName),
+      );
+      if (!vorlage) continue;
+      let gewaehlteAntwortId: ID | null = null;
+      if (s.typ === 'entscheidung' && s.antworten.length > 0) {
+        const text = massgeblicheAntwort(vorlage)?.text ?? '';
+        const antwort = s.antworten.find((a) => gleich(a.text, text));
+        if (!antwort) continue;
+        gewaehlteAntwortId = antwort.id;
+      }
+      const kandidat = steps.map((x) =>
+        x.id === s.id
+          ? {
+              ...x,
+              status: vorlage.status,
+              istDatum: vorlage.istDatum,
+              eingangIst: vorlage.eingangIst,
+              eingangGeschaetzt: vorlage.eingangGeschaetzt,
+              gewaehlteAntwortId: gewaehlteAntwortId ?? x.gewaehlteAntwortId,
+              nachweisNummer: vorlage.nachweisNummer,
+              abschlussInfo: vorlage.abschlussInfo,
+              nacharbeitSeite: vorlage.nacharbeitSeite,
+            }
+          : x,
+      );
+      // Würde die übernommene Antwort zurückführen, endet die Übernahme davor
+      const verlauf = verfolgen(kandidat);
+      const ort = ortImVerlauf(verlauf, s.id);
+      const zweigZurueck = ort?.art === 'zweig' && ort.zweig.rueckSprungZu && ort.zweig.schritte.every(istErledigt);
+      const obenZurueck = verlauf.rueckSprungZu && verlauf.schritte.every(istErledigt);
+      if (!ort || zweigZurueck || obenZurueck) continue;
+      verwendet.add(vorlage.id);
+      steps = statusAbgleichen(kandidat);
+      uebernommen = true;
+    }
+    if (!uebernommen) break;
+  }
+  return steps;
+}
 
-  const betroffen = new Set(reihenfolge.slice(vonIndex, bisIndex + 1).map((s) => s.id));
-  return steps.map((s) => {
-    if (!betroffen.has(s.id)) return s;
+/** Text und Art der maßgeblichen Antwort eines Schritts (nur Entscheidungen). */
+function antwortVon(s: RunStep): { text: string | null; nacharbeit: boolean } {
+  if (s.typ !== 'entscheidung' || s.antworten.length === 0) return { text: null, nacharbeit: false };
+  const a = istErledigt(s) ? massgeblicheAntwort(s) : s.antworten.find((x) => x.id === s.gewaehlteAntwortId);
+  return { text: a?.text ?? null, nacharbeit: a?.nacharbeit ?? false };
+}
+
+/** Hält den laufenden Durchlauf eines Schritts als Historieneintrag fest. */
+export function durchlaufFesthalten(
+  s: RunStep,
+  grund: SchrittDurchlauf['grund'],
+  zeitpunkt: string,
+  kontext?: AbschlussKontext,
+): SchrittDurchlauf {
+  const antwort = antwortVon(s);
+  const seite = s.abschlussInfo
+    ? s.abschlussInfo.seite
+    : kontext
+      ? seiteFuerSchritt(s.roleName, kontext.rollen, kontext.gewerk)
+      : seiteAusFunktion(s.roleName);
+  return {
+    durchlauf: s.durchlauf ?? 1,
+    blockDurchgang: s.blockDurchgang ?? 1,
+    name: s.name,
+    roleName: s.roleName,
+    seite,
+    contactId: s.contactId,
+    kontaktName:
+      s.abschlussInfo?.kontaktName ?? (kontext ? kontaktName(kontext.kontakte.find((c) => c.id === s.contactId)) : ''),
+    eingang: s.eingangIst ?? null,
+    eingangGeschaetzt: s.eingangGeschaetzt ?? false,
+    soll: s.sollDatum,
+    sollManuell: s.sollManuell,
+    ist: s.istDatum,
+    status: s.status,
+    fristTage: s.fristTage,
+    antwort: antwort.text,
+    antwortNacharbeit: antwort.nacharbeit,
+    nacharbeitSeite: s.nacharbeitSeite ?? null,
+    nachweisNummer: s.nachweisNummer,
+    bemerkung: s.bemerkung,
+    verzugZuordnung: s.verzugZuordnung ?? [],
+    grund,
+    beendetAm: zeitpunkt,
+  };
+}
+
+/** Alle Schritte, die von Index `i` über irgendeinen Übergang erreichbar sind (Blöcke als Ganzes). */
+function erreichbarVon(steps: RunStep[], i: number): Set<number> {
+  const st = strukturVon(steps);
+  const erreicht = new Set<number>();
+  const warteschlange = [i];
+  const hinzu = (j: number) => {
+    const lage = st.lage[j];
+    const ziele = lage ? lage.block.zweige.flat() : [j];
+    for (const k of ziele) {
+      if (erreicht.has(k)) continue;
+      erreicht.add(k);
+      warteschlange.push(k);
+    }
+  };
+  erreicht.add(i);
+  while (warteschlange.length > 0) {
+    const j = warteschlange.shift()!;
+    const s = steps[j];
+    const ziele = s.typ === 'entscheidung' && s.antworten.length > 0 ? s.antworten.map((a) => a.ziel) : [s.naechster];
+    for (const z of ziele) {
+      const f = nachfolger(steps, j, z, st);
+      if (f.art === 'schritt' || f.art === 'ausstieg') hinzu(f.index);
+      else if (f.art === 'zweigende') {
+        const ende = st.lage[j]!.block.ende;
+        if (ende < steps.length) hinzu(ende);
+      }
+    }
+  }
+  return erreicht;
+}
+
+/**
+ * Beginnt ab `zielId` einen weiteren Durchlauf – nach einem Rücksprung
+ * (Auslöser: der Schritt, der zurückführt) oder bei erneuter Bearbeitung
+ * eines wieder geöffneten Schritts.
+ *
+ * Bereich: das Ziel und alles, was im laufenden Durchlauf ab ihm begonnen
+ * war – bei einem Zweig-Rücksprung nur der Rest des Zweigs, beim Wiedereintritt
+ * in einen Block der ganze Block, bei einem wieder geöffneten Zweigschritt der
+ * Rest seines Zweigs und alles nach dem Block. Dazu begonnene Schritte
+ * außerhalb des Verlaufs, die vom Ziel aus erreichbar sind. Jeder dieser
+ * Schritte erhält einen Historieneintrag und wird zurückgesetzt (offen, ohne
+ * Ist, Antwort, Nachweis, festes Soll, Zuordnung; Durchlauf + 1). Die Schritte,
+ * mit denen es weitergeht (das Ziel bzw. bei einem Block alle Zweiganfänge),
+ * werden „laufend“ mit Eingang = Ist des Auslösers (bzw. `optionen.eingang`).
+ * Wird ein Block erneut ganz betreten, zählt sein Blockdurchgang hoch.
+ */
+export function rueckSprungAnwenden(
+  steps: RunStep[],
+  zielId: ID,
+  ausloeser: Pick<RunStep, 'id' | 'istDatum'> | null,
+  grund: SchrittDurchlauf['grund'],
+  zeitpunkt: string,
+  optionen: { eingang?: ISODate; heute?: ISODate; kontext?: AbschlussKontext } = {},
+): RunStep[] {
+  const zielIndex = steps.findIndex((s) => s.id === zielId);
+  if (zielIndex < 0) return steps;
+  const verlauf = verfolgen(steps);
+  const datum = optionen.eingang ?? ausloeser?.istDatum ?? optionen.heute ?? today();
+
+  // Zweig-Rücksprung: ein Zweig, der zum Ziel zurückführt und den Auslöser enthält
+  let zweigRueck: { schritte: RunStep[] } | null = null;
+  if (grund === 'ruecksprung' && ausloeser) {
+    for (const a of verlauf.abschnitte) {
+      if (a.art !== 'parallel') continue;
+      const z = a.zweige.find((x) => x.rueckSprungZu?.id === zielId && x.schritte.some((s) => s.id === ausloeser.id));
+      if (z) zweigRueck = { schritte: z.schritte.slice(Math.max(0, z.schritte.findIndex((s) => s.id === zielId))) };
+    }
+  }
+
+  const basis: RunStep[] = [];
+  /** Blöcke, die nicht als Ganzes erneut betreten werden (Zweig-Rücksprung, erneute Bearbeitung im Zweig). */
+  const nurZweig = new Set<ID>();
+  if (zweigRueck) {
+    basis.push(...zweigRueck.schritte);
+    for (const s of zweigRueck.schritte) if (s.parallel) nurZweig.add(s.parallel.block);
+  } else {
+    // Ein Ziel in einem Block, dessen Zweig im Verlauf abgeschnitten ist, liegt über seinen Block im Verlauf
+    const zielBlockId = steps[zielIndex].parallel?.block;
+    const blockAbschnitt = verlauf.abschnitte.findIndex((a) => a.art === 'parallel' && a.block === zielBlockId);
+    const ort: { art: 'oben' | 'zweig'; abschnitt: number; zweig?: Zweigverlauf<RunStep>; pos?: number } | null =
+      ortImVerlauf(verlauf, zielId) ?? (blockAbschnitt >= 0 ? { art: 'zweig', abschnitt: blockAbschnitt } : null);
+    if (ort) {
+      let k = ort.abschnitt;
+      if (ort.art === 'zweig' && ort.zweig && grund === 'wieder_geoeffnet') {
+        basis.push(...ort.zweig.schritte.slice(ort.pos));
+        const block = verlauf.abschnitte[k];
+        if (block.art === 'parallel') nurZweig.add(block.block);
+        k += 1;
+      }
+      for (const a of verlauf.abschnitte.slice(k)) {
+        if (a.art === 'schritt') basis.push(a.step);
+        else basis.push(...a.zweige.flatMap((z) => z.schritte));
+      }
+    } else {
+      basis.push(steps[zielIndex]);
+    }
+    // Begonnene Schritte außerhalb des Verlaufs, die vom Ziel aus erreichbar sind
+    const imVerlauf = new Set(verlauf.schritte.map((s) => s.id));
+    for (const j of erreichbarVon(steps, zielIndex)) {
+      if (!imVerlauf.has(steps[j].id)) basis.push(steps[j]);
+    }
+  }
+
+  const bereich = new Set(basis.filter((s) => s.id === zielId || istBegonnen(s)).map((s) => s.id));
+  // Erneut ganz betreten wird jeder Block, in dem etwas zurückgesetzt wird – außer
+  // beim Rücksprung bzw. bei der erneuten Bearbeitung innerhalb eines Zweigs
+  const bloeckeWieder = new Set<ID>();
+  for (const s of steps) {
+    if (s.parallel && bereich.has(s.id) && !nurZweig.has(s.parallel.block)) bloeckeWieder.add(s.parallel.block);
+  }
+
+  const zurueckgesetzt = steps.map((s): RunStep => {
+    const imBlock = s.parallel ? bloeckeWieder.has(s.parallel.block) : false;
+    const blockDurchgang = (s.blockDurchgang ?? 1) + (imBlock ? 1 : 0);
+    if (!bereich.has(s.id)) return imBlock ? { ...s, blockDurchgang } : s;
     return {
       ...s,
-      status: s.id === zielId ? ('laufend' as const) : ('offen' as const),
+      historie: [...(s.historie ?? []), durchlaufFesthalten(s, grund, zeitpunkt, optionen.kontext)],
+      status: 'offen',
       istDatum: null,
-      durchlauf: (s.durchlauf ?? 1) + 1,
       // Die Entscheidung wird im neuen Durchlauf erneut beantwortet.
       gewaehlteAntwortId: s.typ === 'entscheidung' ? null : s.gewaehlteAntwortId,
+      nachweisNummer: null,
+      sollManuell: false,
+      verzugZuordnung: [],
+      abschlussInfo: null,
+      nacharbeitSeite: null,
+      letzteErinnerung: null,
+      durchlauf: (s.durchlauf ?? 1) + 1,
+      eingangIst: null,
+      eingangGeschaetzt: false,
+      blockDurchgang,
     };
   });
+
+  // Weiter geht es mit dem Ziel und jedem Schritt des Bereichs, dessen Vorgänger
+  // im bisherigen Verlauf außerhalb des Bereichs liegen; wird ein Block als Ganzes
+  // erneut betreten, mit den Anfängen aller seiner Zweige
+  const eintritte = new Set<ID>([zielId]);
+  for (const s of verlauf.schritte) {
+    if (!bereich.has(s.id)) continue;
+    const vor = verlauf.vorgaenger.get(s.id) ?? [];
+    if (vor.every((v) => !bereich.has(v))) eintritte.add(s.id);
+  }
+  const zielBlock = steps[zielIndex].parallel?.block;
+  if (zielBlock && bloeckeWieder.has(zielBlock)) {
+    const block = strukturVon(steps).bloecke.get(zielBlock);
+    for (const zweig of block?.zweige ?? []) {
+      // Zurückgesetzte bzw. noch nicht begonnene Zweiganfänge – Erledigtes bleibt unberührt
+      const anfang = steps[zweig[0]];
+      if (bereich.has(anfang.id) || !istBegonnen(anfang)) eintritte.add(anfang.id);
+    }
+  }
+  return statusAbgleichen(
+    zurueckgesetzt.map((s) => (eintritte.has(s.id) ? { ...s, status: 'laufend' as const, eingangIst: datum } : s)),
+  );
 }
 
 /**

@@ -168,7 +168,7 @@ function xmlText(wert: string): string {
 }
 
 /** Spaltenname zu einem Index: 0 → A, 26 → AA. */
-function spalte(index: number): string {
+export function spalte(index: number): string {
   let name = '';
   let n = index;
   do {

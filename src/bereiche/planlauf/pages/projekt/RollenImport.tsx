@@ -7,17 +7,41 @@
  * besetzt anschließend die Funktion.
  */
 import { useRef, useState } from 'react';
-import { EIGENE_ROLLE, UEBERGREIFEND, istEigeneFunktion, kuerzelAus, type Contact, type ID, type Project, type Zuordnung } from '../../domain/types';
+import {
+  EIGENE_ROLLE,
+  SEITE_LABEL,
+  UEBERGREIFEND,
+  istEigeneFunktion,
+  kuerzelAus,
+  seiteAusFunktion,
+  type Contact,
+  type ID,
+  type Project,
+  type Seite,
+  type Zuordnung,
+} from '../../domain/types';
 import { spaltenZuordnen, tabelleLesen } from '../../../../shared/xlsxLesen';
 import {
   ROLLEN_KOPFZEILE as KOPFZEILE,
-  ROLLEN_SPALTEN as SPALTEN,
+  ROLLEN_SPALTEN,
   rollenVorlageLaden,
 } from '../../domain/importVorlagen';
+import { seiteAusText } from '../../components/SeiteAuswahl';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
 import { Callout, Modal } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
+
+/**
+ * Spalten des Imports – dazu optional die Seite der Funktion für den Verzug
+ * (Planer, Prüfer, Auftraggeber, PLM oder „nicht festgelegt“).
+ */
+const SPALTEN: Record<string, string[]> = {
+  ...ROLLEN_SPALTEN,
+  seite: ['Seite', 'Seite für den Verzug', 'Seite Verzug'],
+};
+
+const seiteText = (seite: Seite | null) => (seite ? SEITE_LABEL[seite] : 'nicht festgelegt');
 
 const FARBEN = ['#24456e', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
 
@@ -37,6 +61,8 @@ interface Zeile {
   gewerk: string | null;
   funktion: string;
   kuerzel: string;
+  /** Seite aus der Spalte „Seite“; undefined = leer bzw. unbekannt (neue Funktionen: aus der Bezeichnung). */
+  seite: Seite | null | undefined;
   person: Person;
   neuesGewerk: boolean;
   neueFunktion: boolean;
@@ -44,7 +70,7 @@ interface Zeile {
 }
 
 export function RollenImport({ project, onClose }: { project: Project; onClose: () => void }) {
-  const { data, addGewerk, addRole, addContact, updateContact } = useStore();
+  const { data, addGewerk, addRole, updateRole, addContact, updateContact } = useStore();
   const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -88,6 +114,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       // Gewerke und Funktionen, die im Laufe der Datei neu hinzukommen
       const neueGewerke = new Set<string>();
       const neueFunktionen = new Set<string>();
+      // Funktionen, deren Seite die Datei schon nennt – maßgeblich ist die erste Angabe
+      const seiteGenannt = new Set<string>();
 
       const ergebnis: Zeile[] = zeilen.map((zeile) => {
         const gewerkRoh = wert(zeile, 'gewerk');
@@ -123,6 +151,25 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           hinweise.push('ohne Funktion – die Person wird nur im Projekt hinterlegt');
         }
 
+        // Seite für den Verzug: optional; vorhandene Funktionen behalten ihre, wenn die Zelle leer ist
+        const seiteRoh = wert(zeile, 'seite');
+        let seite = seiteRoh ? seiteAusText(seiteRoh) : undefined;
+        if (funktion && seiteRoh && seite === undefined) {
+          const folge = findeRolle(funktion, gewerk) ? 'bleibt unverändert' : 'aus der Bezeichnung vorbelegt';
+          hinweise.push(`Seite „${seiteRoh}“ unbekannt – ${folge}`);
+        }
+        if (funktion && seite !== undefined) {
+          const schluessel = `${funktion.toLowerCase()}|${gewerk ?? ''}`;
+          const vorhanden = findeRolle(funktion, gewerk);
+          if (seiteGenannt.has(schluessel)) seite = undefined;
+          else {
+            seiteGenannt.add(schluessel);
+            if (vorhanden && vorhanden.seite !== seite) {
+              hinweise.push(`Seite für den Verzug wird „${seiteText(seite)}“ (bisher „${seiteText(vorhanden.seite)}“)`);
+            }
+          }
+        }
+
         const person: Person = {
           anrede: wert(zeile, 'anrede'),
           vorname: wert(zeile, 'vorname'),
@@ -151,6 +198,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           gewerk,
           funktion,
           kuerzel: wert(zeile, 'kuerzel'),
+          seite,
           person,
           neuesGewerk,
           neueFunktion,
@@ -169,16 +217,28 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
     const gewerkeNeu = [...new Set(vorschau.filter((z) => z.neuesGewerk).map((z) => z.gewerk!))];
     gewerkeNeu.forEach((g) => addGewerk(g));
 
-    // 2. Fehlende Funktionen als Projektfunktionen anlegen
+    // 2. Fehlende Funktionen als Projektfunktionen anlegen; genannte Seiten vorhandener Funktionen übernehmen
     const rolleIds = new Map<string, ID>();
     let neueRollen = 0;
+    let seitenGeaendert = 0;
+    // Seite je Funktion: die erste Angabe der Datei (siehe Vorschau)
+    const seiteVon = new Map<string, Seite | null>();
+    for (const z of vorschau) {
+      const schluessel = `${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`;
+      if (z.funktion && z.seite !== undefined && !seiteVon.has(schluessel)) seiteVon.set(schluessel, z.seite);
+    }
     for (const z of vorschau) {
       if (!z.funktion) continue;
       const schluessel = `${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`;
       if (rolleIds.has(schluessel)) continue;
       const vorhanden = findeRolle(z.funktion, z.gewerk);
+      const seite = seiteVon.get(schluessel);
       if (vorhanden) {
         rolleIds.set(schluessel, vorhanden.id);
+        if (seite !== undefined && vorhanden.seite !== seite) {
+          updateRole(vorhanden.id, { seite });
+          seitenGeaendert += 1;
+        }
         continue;
       }
       const id = addRole({
@@ -188,6 +248,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         farbe: FARBEN[(rollen.length + neueRollen) % FARBEN.length],
         beschreibung: '',
         gewerk: z.gewerk,
+        seite: seite !== undefined ? seite : seiteAusFunktion(z.funktion),
       });
       rolleIds.set(schluessel, id);
       neueRollen += 1;
@@ -245,6 +306,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
     const teile = [`${vorschau.length} Zeilen übernommen`];
     if (gewerkeNeu.length > 0) teile.push(`${gewerkeNeu.length} Gewerk(e) angelegt`);
     if (neueRollen > 0) teile.push(`${neueRollen} Funktion(en) angelegt`);
+    if (seitenGeaendert > 0) teile.push(`Seite bei ${seitenGeaendert} Funktion(en) geändert`);
     if (angelegt > 0) teile.push(`${angelegt} Person(en) neu`);
     if (ergaenzt > 0) teile.push(`${ergaenzt} aktualisiert`);
     toast(`${teile.join(', ')}.`);
@@ -325,6 +387,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         {vorschau.length === 0 && !fehler ? (
           <Callout icon="i">
             Erwartete Spalten: <strong>{KOPFZEILE.join(' · ')}</strong>. Zwingend ist nur <strong>Name</strong>.
+            Optional ist <strong>Seite</strong> – die Seite der Funktion für den Verzug (Planer, Prüfer, Auftraggeber,
+            PLM oder „nicht festgelegt“); ohne Angabe wird sie bei neuen Funktionen aus der Bezeichnung vorbelegt.
             Gewerke und Funktionen, die es noch nicht gibt, werden beim Import angelegt; „Übergreifend“ steht für
             Funktionen ohne Gewerkbezug. Über <em>Vorlage</em> erhalten Sie eine Datei mit genau diesen Spalten.
           </Callout>
@@ -354,6 +418,9 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
                       <td className="small muted">{z.gewerk ?? UEBERGREIFEND}</td>
                       <td>
                         <strong>{z.funktion || '–'}</strong>
+                        {z.funktion && z.seite !== undefined ? (
+                          <div className="tertiary small">Seite: {seiteText(z.seite)}</div>
+                        ) : null}
                       </td>
                       <td>
                         {z.person.vorname} {z.person.nachname}
