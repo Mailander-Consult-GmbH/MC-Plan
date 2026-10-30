@@ -563,7 +563,9 @@ function einheitZusatz(e: Einheit): string {
 const einheitZuletzt = (e: Einheit | undefined): string | null =>
   e ? juengster([...e.docs.map((d) => d.geaendertAm), ...e.runs.map(laufZuletzt)]) : null;
 
-const laufName = (r: PlanRun) => `Planlauf „${r.name}“${r.index ? ` (Index ${r.index})` : ''}`;
+/** „Planlauf …“ – ohne doppeltes „Planlauf“, wenn der Name schon damit beginnt. */
+const laufName = (r: PlanRun) =>
+  `${/^Planlauf\s/.test(r.name) ? r.name : `Planlauf „${r.name}“`}${r.index ? ` (Index ${r.index})` : ''}`;
 
 /** Läufe des Bestands, die bei Übernahme der Einheit als „durch Sicherung ersetzt“ enden. */
 function endendeLaeufe(b: Einheit, s: Einheit): PlanRun[] {

@@ -1797,7 +1797,7 @@ function SchrittDialog({
           <Select
             value={form.contactManuell ? (form.contactId ?? '') : ''}
             onChange={(v) => setForm((f) => ({ ...f, contactId: v || null, contactManuell: Boolean(v) }))}
-            placeholder="– nach Besetzung der Funktion –"
+            placeholder="– laut Funktion –"
             options={kontakte.map((c) => ({ value: c.id, label: `${c.vorname} ${c.nachname} (${c.firma})` }))}
           />
         </Field>

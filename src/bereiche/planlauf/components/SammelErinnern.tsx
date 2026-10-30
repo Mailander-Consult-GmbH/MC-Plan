@@ -132,7 +132,7 @@ export function SammelErinnern({
 
         <Field
           label="Vorlage"
-          hint="Je Person eine E-Mail mit der Liste ihrer anstehenden Schritte ({{liste}}). Vermerkt wird nur bei der Person, deren E-Mail Sie öffnen bzw. kopieren."
+          hint="Je Person eine E-Mail mit der Liste ihrer anstehenden Schritte. Vermerkt wird nur bei der Person, deren E-Mail Sie öffnen bzw. kopieren."
         >
           <Select
             value={vorlage.id}

@@ -258,9 +258,11 @@ export function TerminnachweisKarte({
 
 function PostenZeile({ p, arbeitstage }: { p: NachweisPosten; arbeitstage: boolean }) {
   const aufgefangen = p.art !== 'zeitgewinn' && p.gezaehlt < p.tage;
+  // Nennt der Text die Art schon („Nacharbeit nach …“), entfällt die Vorsilbe
+  const label = POSTEN_ART_LABEL[p.art];
   return (
     <span>
-      {POSTEN_ART_LABEL[p.art]}: {p.text} –{' '}
+      {p.text.startsWith(label) ? p.text : `${label}: ${p.text}`} –{' '}
       {p.art === 'zeitgewinn' ? (
         <span className="pl-frueher">{tageText(p.tage, arbeitstage)} gewonnen</span>
       ) : aufgefangen && p.gezaehlt === 0 ? (

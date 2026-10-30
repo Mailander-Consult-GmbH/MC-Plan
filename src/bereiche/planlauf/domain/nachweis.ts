@@ -694,7 +694,7 @@ export function terminnachweis(
       a.eingangGeschaetzt ? null : vorSeite,
       a.eingangGeschaetzt
         ? 'Eingang bei der Umstellung geschätzt (Altbestand) – Zeit seit dem Vorgänger'
-        : 'Übergabe: Eingang später als der Abschluss des Vorgängers',
+        : 'Eingang später als der Abschluss des Vorgängers',
     );
     const sollVerschoben = a.soll ? t(fs, a.soll) : 0;
     if (a.sollManuell) neuerPosten(liste, a, 'soll_hand', sollVerschoben, a.seite, 'Soll von Hand gesetzt (vereinbarte Fristverlängerung)');
@@ -828,7 +828,7 @@ export function terminnachweis(
     if (istErste && basis) {
       neuerPosten(blockListe, ersteAusf, 'erster_termin', t(basis.anker, u.e), 'auftraggeber', 'Beginn gegenüber dem Basisplan verschoben');
     }
-    neuerPosten(blockListe, ersteAusf, 'uebergabe', uebergabe, ersteAusf.eingangGeschaetzt ? null : vorSeite, 'Übergabe: Eingang des Blocks später als der Abschluss des Vorgängers');
+    neuerPosten(blockListe, ersteAusf, 'uebergabe', uebergabe, ersteAusf.eingangGeschaetzt ? null : vorSeite, 'Eingang des Blocks später als der Abschluss des Vorgängers');
     if (blockArt === 'nacharbeit') {
       // Wodurch der frühere Durchgang endete: Grund der zuletzt abgeschlossenen Ausführung darin
       const letzte = frueher ? frueher.ausf.reduce((x, a) => (a.pos > x.pos ? a : x), frueher.ausf[0]) : null;
