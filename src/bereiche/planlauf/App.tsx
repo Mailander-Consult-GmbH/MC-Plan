@@ -1,7 +1,7 @@
 /** Anwendungsrahmen: Seitenleiste, Kopfzeile und Auswahl der Ansicht. */
 import { useEffect, useState } from 'react';
 import { eigeneTodos, offeneFristen } from './domain/engine';
-import { exportiereDaten } from './store/storage';
+import { exportiereDaten, rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
 import { useRoute, type Route } from './lib/router';
 import { useToast } from '../../shared/toast';
@@ -24,7 +24,7 @@ import { Hinweisleisten } from './components/Hinweisleisten';
 import type { IconName } from '../../shared/icons';
 
 export function App() {
-  const { data, zuruecksetzen } = useStore();
+  const { data, zuruecksetzen, ladeZustand } = useStore();
   const toast = useToast();
   const [route, navigate] = useRoute();
   const [menuOffen, setMenuOffen] = useState(false);
@@ -116,13 +116,33 @@ export function App() {
             <button
               type="button"
               className="btn btn-sm btn-outline"
-              onClick={() => exportiereDaten(data)}
-              title="Gesamten Datenbestand als JSON sichern"
+              onClick={() => {
+                // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
+                // gesichert wird dann der gespeicherte Stand, unverändert.
+                if (ladeZustand === 'ok') exportiereDaten(data);
+                else if (!rohdatenHerunterladen())
+                  toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
+              }}
+              title={
+                ladeZustand === 'ok'
+                  ? 'Gesamten Datenbestand als JSON sichern'
+                  : 'Gespeicherten Stand unverändert herunterladen'
+              }
             >
               <Icon name="export" size={12} /> Sicherung
             </button>
             <SicherungWaehlen onGelesen={setSicherung} />
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => setZuruecksetzenDialog(true)}>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setZuruecksetzenDialog(true)}
+              disabled={ladeZustand === 'neuere_fassung'}
+              title={
+                ladeZustand === 'neuere_fassung'
+                  ? 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt'
+                  : undefined
+              }
+            >
               Zurücksetzen
             </button>
           </div>

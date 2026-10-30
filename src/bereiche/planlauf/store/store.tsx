@@ -279,6 +279,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setLadeZustand('ok');
       },
       zuruecksetzen: () => {
+        // Ein Stand aus einer neueren Fassung darf nicht überschrieben werden
+        if (ladeZustand === 'neuere_fassung') return;
         mutate(() => seedData(), { protokoll: false });
         setLadeZustand('ok');
       },
