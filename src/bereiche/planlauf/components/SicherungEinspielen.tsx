@@ -2,22 +2,27 @@
  * Einspielen einer Sicherung – das Gegenstück zur Schaltfläche „Sicherung“.
  *
  * Die gewählte JSON-Datei wird gelesen und wie beim Laden auf die aktuelle
- * Fassung gehoben (sicherungLesen in store/storage.ts). Nach einer Rückfrage
- * ersetzt sie den gesamten Bestand in diesem Browser. „Angemeldet als“ bleibt
- * erhalten, sofern nicht ausdrücklich der Name aus der Sicherung gewählt wird.
+ * Fassung gehoben (sicherungLesen in store/storage.ts). Danach wählt man:
+ * „Alles ersetzen“ ersetzt den gesamten Bestand in diesem Browser („Angemeldet
+ * als“ bleibt erhalten, sofern nicht ausdrücklich der Name aus der Sicherung
+ * gewählt wird); „Abgleichen und auswählen“ zeigt die Unterschiede und
+ * übernimmt nur das Gewählte (components/Abgleich.tsx).
  */
 import { useRef, useState } from 'react';
-import { STANDARD_BEARBEITER, type AppData } from '../domain/types';
+import { STANDARD_BEARBEITER, type AppData, type ISODate } from '../domain/types';
 import { exportiereDaten, sicherungLesen } from '../store/storage';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { Callout, Modal } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
+import { toISO } from '../../../shared/dates';
+import { AbgleichDialog } from './Abgleich';
 
-/** Gelesene Sicherung samt Dateiname. */
+/** Gelesene Sicherung samt Dateiname und Stand (Änderungsdatum der Datei). */
 export interface Sicherung {
   datei: string;
   daten: AppData;
+  stand: ISODate | null;
 }
 
 /**
@@ -31,7 +36,11 @@ export function SicherungWaehlen({ onGelesen }: { onGelesen: (sicherung: Sicheru
 
   const lesen = async (datei: File) => {
     try {
-      onGelesen({ datei: datei.name, daten: sicherungLesen(await datei.text()) });
+      onGelesen({
+        datei: datei.name,
+        daten: sicherungLesen(await datei.text()),
+        stand: datei.lastModified ? toISO(new Date(datei.lastModified)) : null,
+      });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Die Sicherung konnte nicht gelesen werden.');
     }
@@ -43,7 +52,7 @@ export function SicherungWaehlen({ onGelesen }: { onGelesen: (sicherung: Sicheru
         type="button"
         className="btn btn-sm btn-outline"
         onClick={() => eingabe.current?.click()}
-        title="Sicherung (JSON) einspielen – ersetzt den Datenbestand"
+        title="Sicherung (JSON) einspielen – ganz ersetzen oder abgleichen"
       >
         <Icon name="importieren" size={12} /> Einspielen
       </button>
@@ -63,7 +72,11 @@ export function SicherungWaehlen({ onGelesen }: { onGelesen: (sicherung: Sicheru
   );
 }
 
-/** Rückfrage vor dem Einspielen – nennt den Inhalt der Sicherung und bietet an, vorher zu sichern. */
+/**
+ * Nach dem Lesen: nennt den Inhalt der Sicherung und bietet „Alles ersetzen“
+ * (mit Rückfrage und dem Angebot, vorher zu sichern) oder „Abgleichen und
+ * auswählen“ an.
+ */
 export function SicherungEinspielenDialog({
   sicherung,
   onClose,
@@ -77,6 +90,7 @@ export function SicherungEinspielenDialog({
   const toast = useToast();
   // Ohne eingerichteten Namen liegt es nahe, den aus der Sicherung zu nehmen
   const [nameUebernehmen, setNameUebernehmen] = useState(data.bearbeiter.name === STANDARD_BEARBEITER);
+  const [abgleichen, setAbgleichen] = useState(false);
 
   const anzahl = (n: number, eins: string, mehr: string) => `${n} ${n === 1 ? eins : mehr}`;
   const fremderName = sicherung.daten.bearbeiter.name !== data.bearbeiter.name;
@@ -96,9 +110,11 @@ export function SicherungEinspielenDialog({
     onEingespielt();
   };
 
+  if (abgleichen) return <AbgleichDialog sicherung={sicherung} onClose={onClose} />;
+
   return (
     <Modal
-      titel="Sicherung einspielen?"
+      titel="Sicherung einspielen"
       sub={sicherung.datei}
       onClose={onClose}
       footer={
@@ -115,13 +131,11 @@ export function SicherungEinspielenDialog({
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            style={{ background: 'var(--red)' }}
-            onClick={einspielen}
-          >
-            Einspielen
+          <button type="button" className="btn btn-primary" style={{ background: 'var(--red)' }} onClick={einspielen}>
+            Alles ersetzen
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => setAbgleichen(true)}>
+            Abgleichen und auswählen …
           </button>
         </>
       }
@@ -136,9 +150,19 @@ export function SicherungEinspielenDialog({
           )}{' '}
           und {anzahl(sicherung.daten.runs.length, 'Planlauf', 'Planläufe')}.
         </p>
+        <div className="ab-wahl-liste">
+          <div className="ab-wahl-option">
+            <strong>Abgleichen und auswählen</strong>
+            Zeigt, was in der Sicherung neu, geändert oder im Bestand gelöscht ist, und übernimmt nur das Gewählte. Alles
+            andere im Bestand bleibt erhalten.
+          </div>
+          <div className="ab-wahl-option">
+            <strong>Alles ersetzen</strong>
+            Der gesamte jetzige Bestand in diesem Browser wird durch die Sicherung ersetzt.
+          </div>
+        </div>
         <Callout ton="warn" icon="!">
-          Der gesamte jetzige Bestand in diesem Browser wird durch die Sicherung ersetzt. Das lässt sich nicht
-          rückgängig machen – wer ihn noch braucht, sichert ihn vorher.
+          „Alles ersetzen“ lässt sich nicht rückgängig machen – wer den jetzigen Bestand noch braucht, sichert ihn vorher.
         </Callout>
         {fremderName ? (
           <label className="checkbox">
@@ -147,7 +171,7 @@ export function SicherungEinspielenDialog({
               checked={nameUebernehmen}
               onChange={(e) => setNameUebernehmen(e.target.checked)}
             />
-            „Angemeldet als“ aus der Sicherung übernehmen ({sicherung.daten.bearbeiter.name}) – sonst bleibt es bei{' '}
+            Beim Ersetzen „Angemeldet als“ aus der Sicherung übernehmen ({sicherung.daten.bearbeiter.name}) – sonst bleibt es bei{' '}
             {data.bearbeiter.name}
           </label>
         ) : null}

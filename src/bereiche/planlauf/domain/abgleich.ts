@@ -190,7 +190,9 @@ export interface Verweisfeld<T> {
  * Eintragseinheit – parentId, documentId – gehören zur Einheit selbst.)
  */
 export const VERWEISFELDER = {
-  standardFunktion: [{ feld: 'gewerk', ziel: 'gewerk', regel: 'pflicht', werte: (r) => [r.gewerk] }] as Verweisfeld<StandardRolle>[],
+  standardFunktion: [
+    { feld: 'gewerk', ziel: 'gewerk', regel: 'pflicht', werte: (r) => [r.gewerk] },
+  ] as Verweisfeld<StandardRolle>[],
   funktion: [
     { feld: 'projectId', ziel: 'projekt', regel: 'pflicht', werte: (r) => [r.projectId] },
     { feld: 'gewerk', ziel: 'gewerk', regel: 'pflicht', werte: (r) => [r.gewerk] },
@@ -721,7 +723,14 @@ function ermitteln(bestand: AppData, sicherungRoh: AppData, getrennt: ReadonlySe
   const global: AbgleichGruppe[] = [
     {
       titel: 'Gewerke',
-      elemente: liste('gewerk', gewerkeListe(bestand.gewerke), gewerkeListe(s.gewerke), () => ({}), (x) => x.id, () => null),
+      elemente: liste(
+        'gewerk',
+        gewerkeListe(bestand.gewerke),
+        gewerkeListe(s.gewerke),
+        () => ({}),
+        (x) => x.id,
+        () => null,
+      ),
     },
     {
       titel: 'Funktionen',
@@ -729,7 +738,14 @@ function ermitteln(bestand: AppData, sicherungRoh: AppData, getrennt: ReadonlySe
     },
     {
       titel: 'E-Mail-Vorlagen',
-      elemente: liste('emailVorlage', bestand.emailVorlagen, s.emailVorlagen, formVorlage, (t) => t.name, () => null),
+      elemente: liste(
+        'emailVorlage',
+        bestand.emailVorlagen,
+        s.emailVorlagen,
+        formVorlage,
+        (t) => t.name,
+        () => null,
+      ),
     },
     {
       titel: 'Workflows',
@@ -854,7 +870,12 @@ function ermitteln(bestand: AppData, sicherungRoh: AppData, getrennt: ReadonlySe
         // Vermutlich dasselbe: zusammengeführt (Kennung des Bestands) oder getrennt (Kennung der Sicherung)
         const sid = z.vermutlich.get(id);
         if (sid !== undefined && !getrennt.has(sid)) {
-          e.vermutlichDasselbe = { sicherungId: sid, bestandId: id, bestandBezeichnung: be ? eintragName(be.oben) : e.bezeichnung, getrennt: false };
+          e.vermutlichDasselbe = {
+            sicherungId: sid,
+            bestandId: id,
+            bestandBezeichnung: be ? eintragName(be.oben) : e.bezeichnung,
+            getrennt: false,
+          };
           e.vorbelegt = false;
           e.hinweise.push('Vermutlich derselbe Eintrag wie im Bestand – gleiche Codierung, andere Kennung.');
         }
@@ -899,10 +920,30 @@ function ermitteln(bestand: AppData, sicherungRoh: AppData, getrennt: ReadonlySe
   }
   for (const e of Object.values(elemente)) {
     if (e.zustand === 'nur_bestand' || e.zustand === 'gleich') continue;
-    if (e.art === 'standardFunktion') verweise(e, VERWEISFELDER.standardFunktion, s.standardRollen.filter((r) => r.id === e.id));
-    if (e.art === 'funktion') verweise(e, VERWEISFELDER.funktion, s.roles.filter((r) => r.id === e.id));
-    if (e.art === 'kontakt') verweise(e, VERWEISFELDER.kontakt, s.contacts.filter((c) => c.id === e.id));
-    if (e.art === 'workflow') verweise(e, VERWEISFELDER.workflow, s.templates.filter((t) => t.id === e.id));
+    if (e.art === 'standardFunktion')
+      verweise(
+        e,
+        VERWEISFELDER.standardFunktion,
+        s.standardRollen.filter((r) => r.id === e.id),
+      );
+    if (e.art === 'funktion')
+      verweise(
+        e,
+        VERWEISFELDER.funktion,
+        s.roles.filter((r) => r.id === e.id),
+      );
+    if (e.art === 'kontakt')
+      verweise(
+        e,
+        VERWEISFELDER.kontakt,
+        s.contacts.filter((c) => c.id === e.id),
+      );
+    if (e.art === 'workflow')
+      verweise(
+        e,
+        VERWEISFELDER.workflow,
+        s.templates.filter((t) => t.id === e.id),
+      );
     if (e.art === 'eintrag') {
       const einheit = sEinheiten.get(e.id);
       if (!einheit) continue;
@@ -1017,12 +1058,7 @@ function laufBeenden(r: PlanRun, v: Vermerk): PlanRun {
 }
 
 /** Übernimmt eine Eintragseinheit samt ihrer Läufe aus der (abgebildeten) Sicherung. */
-function einheitUebernehmen(
-  d: AppData,
-  b: Einheit | undefined,
-  s: Einheit,
-  v: Vermerk,
-): { daten: AppData; beendet: number } {
+function einheitUebernehmen(d: AppData, b: Einheit | undefined, s: Einheit, v: Vermerk): { daten: AppData; beendet: number } {
   const sDocIds = new Set(s.docs.map((x) => x.id));
   const documents = einsetzen(d.documents, s.docs);
   const vorher = new Map(d.runs.map((r) => [r.id, r]));
@@ -1133,7 +1169,9 @@ function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>): AppDa
   });
   const documents = d.documents.map((x) => (x.paketId && !docs.has(x.paketId) ? { ...x, paketId: null } : x));
   const contacts = d.contacts.map((c) =>
-    c.zuordnungen.some((z) => !rollen.has(z.roleId)) ? { ...c, zuordnungen: c.zuordnungen.filter((z) => rollen.has(z.roleId)) } : c,
+    c.zuordnungen.some((z) => !rollen.has(z.roleId))
+      ? { ...c, zuordnungen: c.zuordnungen.filter((z) => rollen.has(z.roleId)) }
+      : c,
   );
   const genutzt = [
     ...d.roles.map((r) => r.gewerk),
@@ -1204,7 +1242,12 @@ export function abgleichAnwenden(
 ): AbgleichErgebnis {
   const kopien = new Set(auswahl.kopien ?? []);
   const { abgleich, sicherung: s, bEinheiten, sEinheiten } = ermitteln(bestand, sicherungRoh, new Set(auswahl.getrennt ?? []));
-  const v: Vermerk = { zeitpunkt: auswahl.zeitpunkt, bearbeiter: auswahl.bearbeiter, heute: auswahl.heute, quelle: auswahl.quelle };
+  const v: Vermerk = {
+    zeitpunkt: auswahl.zeitpunkt,
+    bearbeiter: auswahl.bearbeiter,
+    heute: auswahl.heute,
+    quelle: auswahl.quelle,
+  };
   const ausKopie = (k: string) => {
     const e = abgleich.elemente[k];
     return !!e && e.projectId !== null && kopien.has(e.projectId);
