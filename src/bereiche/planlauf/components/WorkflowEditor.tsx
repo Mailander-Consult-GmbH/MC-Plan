@@ -1292,7 +1292,7 @@ function Linien({
         k: g.k,
         d: `M ${cx} ${g.q.b} L ${cx} ${g.z.t}`,
         spitze: `M ${cx} ${g.z.t} l -4.5 -7 l 9 0 z`,
-        label: { x: cx + 8, y: g.q.b + 16, links: false },
+        label: { x: cx + 8, y: g.q.b + 16, links: false, unten: false },
         rueck: g.rueck,
         aktiv: auswahl !== null && (g.k.von === auswahl || g.nach === auswahl),
         hervor: hover !== null && (g.k.von === hover || g.nach === hover),
@@ -1307,11 +1307,14 @@ function Linien({
     const nachRechts = g.art === 'zurAbw';
     const spitze = nachRechts ? `M ${tx} ${g.ty} l -7 -4.5 l 0 9 z` : `M ${tx} ${g.ty} l 7 -4.5 l 0 9 z`;
     const links = g.art === 'zurHaupt';
+    // Rechts der Abweichungen: führt die Linie nach oben, steht das Etikett
+    // unter ihr – sonst läge es über der eigenen senkrechten Bahn.
+    const unten = g.art === 'abwAbw' && g.ty < g.sy;
     return {
       k: g.k,
       d: eckenPfad(punkte),
       spitze,
-      label: { x: links ? g.sx - 8 : g.sx + 8, y: g.sy, links },
+      label: { x: links ? g.sx - 8 : g.sx + 8, y: g.sy, links, unten },
       rueck: g.rueck,
       aktiv: auswahl !== null && (g.k.von === auswahl || g.nach === auswahl),
       hervor: hover !== null && (g.k.von === hover || g.nach === hover),
@@ -1336,7 +1339,7 @@ function Linien({
             style={{
               left: l.label.x,
               top: l.label.y,
-              transform: `translate(${l.label.links ? '-100%' : '0'}, -125%)`,
+              transform: `translate(${l.label.links ? '-100%' : '0'}, ${l.label.unten ? '25%' : '-125%'})`,
             }}
           >
             {l.k.text}

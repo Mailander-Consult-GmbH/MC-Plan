@@ -174,7 +174,8 @@
   align-items: stretch;
   width: 100%;
   min-width: min-content;
-  padding-right: 70px;
+  /* Platz für die Bahnen rechts der Abweichungen und deren Etiketten (max. 104 px) */
+  padding-right: 116px;
 }
 .wf-messleiste { pointer-events: none; }
 
