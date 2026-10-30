@@ -154,8 +154,9 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         // Seite für den Verzug: optional; vorhandene Funktionen behalten ihre, wenn die Zelle leer ist
         const seiteRoh = wert(zeile, 'seite');
         let seite = seiteRoh ? seiteAusText(seiteRoh) : undefined;
-        if (seiteRoh && seite === undefined) {
-          hinweise.push(`Seite „${seiteRoh}“ unbekannt – ${funktion && findeRolle(funktion, gewerk) ? 'bleibt unverändert' : 'aus der Bezeichnung vorbelegt'}`);
+        if (funktion && seiteRoh && seite === undefined) {
+          const folge = findeRolle(funktion, gewerk) ? 'bleibt unverändert' : 'aus der Bezeichnung vorbelegt';
+          hinweise.push(`Seite „${seiteRoh}“ unbekannt – ${folge}`);
         }
         if (funktion && seite !== undefined) {
           const schluessel = `${funktion.toLowerCase()}|${gewerk ?? ''}`;

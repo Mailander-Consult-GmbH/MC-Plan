@@ -138,7 +138,7 @@ export function Funktionen() {
                 {funktionen.map((f) => (
                   <tr key={f.id} className="clickable" onClick={() => setDialog({ funktion: f })}>
                     <td>
-                      <span className="row" style={{ gap: 8 }}>
+                      <span className="row wrap" style={{ gap: 8 }}>
                         <span className="dot" style={{ background: f.farbe }} />
                         <strong>{f.name}</strong>
                         <SeiteBadge seite={f.seite} />

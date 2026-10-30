@@ -24,8 +24,8 @@
   cursor: pointer;
 }
 .pli-kaestchen:disabled { cursor: default; opacity: 0.4; }
-.table tr.pli-gewaehlt td { background: var(--accent-soft); }
-.table tr.clickable.pli-gewaehlt:hover td { background: var(--bg-active); }
+/* Gewählte Zeile: Balken am Rand – die Hintergrundfarben (abgeschlossen, angekündigt) bleiben sichtbar */
+.table tr.pli-gewaehlt td.pli-wahl { box-shadow: inset 3px 0 0 var(--accent); }
 
 /* Aktionsleiste über der Liste, solange etwas gewählt ist */
 .pli-leiste {
@@ -41,11 +41,6 @@
   font-weight: 600;
   margin-right: 4px;
 }
-.pli-leiste .pli-hinweis {
-  flex-basis: 100%;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
 
 /* Löschen-Rückfrage: betroffene Einträge */
 .pli-liste {
@@ -58,7 +53,6 @@
 .btn.btn-primary.pli-rot:hover { background: var(--red); }
 
 :root[data-farbmodus='kontrast'] .pli-leiste { border-bottom-color: var(--separator-strong); }
-:root[data-farbmodus='kontrast'] .table tr.pli-gewaehlt td { box-shadow: inset 3px 0 0 var(--accent); }
 
 @media (max-width: 640px) {
   .pli-leiste .btn { flex: 1 1 auto; }

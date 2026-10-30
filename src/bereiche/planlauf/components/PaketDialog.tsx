@@ -158,26 +158,26 @@ export function PaketDialog({
             ) : null}
             {ausAuswahl ? null : (
               <>
-            <Field label="Kurzzeichen" hint="optional, z.B. PP-Nordkanal">
-              <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} />
-            </Field>
-            <Field label="Gewerk" hint="Auswahl oder freie Eingabe">
-              <input
-                className="input"
-                list="paket-gewerke"
-                value={form.gewerk}
-                onChange={(e) => set('gewerk', e.target.value)}
-                placeholder="KIB, VA, OLA …"
-              />
-              <datalist id="paket-gewerke">
-                {gewerkeFuerProjekt(data, project.id).map((g) => (
-                  <option key={g} value={g} />
-                ))}
-              </datalist>
-            </Field>
-            <Field label="Bemerkung" full>
-              <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />
-            </Field>
+                <Field label="Kurzzeichen" hint="optional, z.B. PP-Nordkanal">
+                  <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} />
+                </Field>
+                <Field label="Gewerk" hint="Auswahl oder freie Eingabe">
+                  <input
+                    className="input"
+                    list="paket-gewerke"
+                    value={form.gewerk}
+                    onChange={(e) => set('gewerk', e.target.value)}
+                    placeholder="KIB, VA, OLA …"
+                  />
+                  <datalist id="paket-gewerke">
+                    {gewerkeFuerProjekt(data, project.id).map((g) => (
+                      <option key={g} value={g} />
+                    ))}
+                  </datalist>
+                </Field>
+                <Field label="Bemerkung" full>
+                  <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />
+                </Field>
               </>
             )}
           </div>
