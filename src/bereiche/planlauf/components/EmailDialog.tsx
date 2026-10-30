@@ -1,49 +1,95 @@
 /**
- * Vorbereitete E-Mail zu einem Prozessschritt: Vorlage wählen, Text prüfen,
- * per E-Mail-Programm öffnen oder in die Zwischenablage kopieren.
+ * Vorbereitete E-Mail zu einem Prozessschritt – bzw. als Sammel-E-Mail an eine
+ * Person zu mehreren Schritten: Vorlage wählen, Text prüfen, per
+ * E-Mail-Programm öffnen oder in die Zwischenablage kopieren. Jede vorbereitete
+ * E-Mail wird an den Schritten vermerkt (Erinnerungen, Protokoll).
+ *
+ * Lauf und Schritt werden über ihre IDs frisch aus dem Bestand gelesen; die
+ * übergebenen Objekte dienen nur als Rückfall.
  */
-import { useMemo, useState } from 'react';
-import { EMAIL_ANLASS_LABEL, type PlanRun, type Project, type RunStep } from '../domain/types';
-import { mailLinks, mailVorbereiten, vorlageVorschlagen } from '../domain/email';
+import { useState } from 'react';
+import { EMAIL_ANLASS_LABEL, type ID, type PlanRun, type Project, type RunStep } from '../domain/types';
+import { mailLinks, mailVorbereiten, sammelMailVorbereiten, vorlageVorschlagen } from '../domain/email';
 import { aktuelleSchritte, ampelFuerSchritt, kontaktName } from '../domain/engine';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
+import { formatDate } from '../../../shared/dates';
+import { erinnerungText } from './common';
+import './planlauf.css';
+
+/** Ein Schritt, zu dem die E-Mail vorbereitet wird. */
+export interface MailPosten {
+  runId: ID;
+  stepId: ID;
+}
 
 export function EmailDialog({
-  project,
-  run,
-  step,
+  project: projectVorgabe,
+  run: runVorgabe,
+  step: stepVorgabe,
+  runId,
+  stepId,
+  posten,
   vorlageId,
   onClose,
+  onVermerkt,
 }: {
-  project: Project;
-  run: PlanRun;
-  step: RunStep;
-  /** Im Workflow hinterlegte Vorlage; ohne Angabe wird nach Anlass gewählt. */
+  /** Ohne Angabe das Projekt des (ersten) Laufs. */
+  project?: Project;
+  run?: PlanRun;
+  step?: RunStep;
+  runId?: ID;
+  stepId?: ID;
+  /** Mehrere Schritte derselben Person: eine Sammel-E-Mail (Platzhalter {{liste}}). */
+  posten?: MailPosten[];
+  /** Im Workflow hinterlegte bzw. vorgewählte Vorlage; ohne Angabe wird nach Anlass gewählt. */
   vorlageId?: string | null;
   onClose: () => void;
+  /** Nach dem Vermerken der vorbereiteten E-Mail. */
+  onVermerkt?: () => void;
 }) {
-  const { data, erinnerungVermerken } = useStore();
+  const { data, erinnerungenVermerken } = useStore();
   const toast = useToast();
 
-  const kontakt = data.contacts.find((c) => c.id === step.contactId) ?? null;
-  const anstehend = aktuelleSchritte(run).some((s) => s.id === step.id);
-  const ueberfaellig = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage, anstehend) === 'ueberfaellig';
+  const gesucht: MailPosten[] = posten ?? [
+    { runId: runVorgabe?.id ?? runId ?? '', stepId: stepVorgabe?.id ?? stepId ?? '' },
+  ];
+  const eintraege = gesucht.flatMap(({ runId: r, stepId: s }) => {
+    const run = data.runs.find((x) => x.id === r) ?? (runVorgabe?.id === r ? runVorgabe : undefined);
+    const step = run?.steps.find((x) => x.id === s) ?? (stepVorgabe?.id === s ? stepVorgabe : undefined);
+    return run && step ? [{ run, step }] : [];
+  });
+  const erster = eintraege[0];
+  const sammel = eintraege.length > 1;
+  const project = projectVorgabe ?? data.projects.find((p) => p.id === erster?.run.projectId);
+  const kontakt = data.contacts.find((c) => c.id === erster?.step.contactId) ?? null;
+  const vorlauf = project?.settings.erinnerungVorlaufTage ?? 0;
+  const ueberfaellig = eintraege.some(
+    ({ run, step }) =>
+      ampelFuerSchritt(step, vorlauf, aktuelleSchritte(run).some((s) => s.id === step.id)) === 'ueberfaellig',
+  );
   const vorlagen = data.emailVorlagen;
 
   const [templateId, setTemplateId] = useState(() => {
-    // Die im Workflow hinterlegte Vorlage hat Vorrang
+    // Die im Workflow hinterlegte Vorlage hat Vorrang, mehrere Schritte nennt die Sammelerinnerung
     const hinterlegt = vorlageId ? vorlagen.find((v) => v.id === vorlageId) : undefined;
-    return hinterlegt?.id ?? vorlageVorschlagen(vorlagen, ueberfaellig)?.id ?? vorlagen[0]?.id ?? '';
+    const sammelVorlage = sammel ? vorlagen.find((v) => /\{\{\s*liste\s*\}\}/.test(v.text)) : undefined;
+    return (
+      hinterlegt?.id ?? sammelVorlage?.id ?? vorlageVorschlagen(vorlagen, ueberfaellig)?.id ?? vorlagen[0]?.id ?? ''
+    );
   });
   const template = vorlagen.find((t) => t.id === templateId) ?? vorlagen[0];
 
-  const vorbereitet = useMemo(
-    () => (template ? mailVorbereiten(template, { project, run, step, contact: kontakt, data }) : null),
-    [template, project, run, step, kontakt, data],
-  );
+  const vorbereitet =
+    !template || !erster
+      ? null
+      : sammel
+        ? sammelMailVorbereiten(template, { contact: kontakt, posten: eintraege, data })
+        : project
+          ? mailVorbereiten(template, { project, run: erster.run, step: erster.step, contact: kontakt, data })
+          : null;
 
   const [an, setAn] = useState(vorbereitet?.an ?? '');
   const [betreff, setBetreff] = useState(vorbereitet?.betreff ?? '');
@@ -58,18 +104,25 @@ export function EmailDialog({
     setText(vorbereitet.text);
   }
 
-  const { mailto, outlookWeb } = mailLinks(an, betreff, text);
+  const { mailto, outlookWeb, zuLang } = mailLinks(an, betreff, text);
 
-  /** Vermerkt die vorbereitete E-Mail am Schritt (Erinnerungen, Protokoll). */
+  /** Vermerkt die vorbereitete E-Mail an allen Schritten (Erinnerungen, Protokoll). */
   const merkeVersand = (weg: 'outlook' | 'web' | 'kopie') => {
-    erinnerungVermerken(run.id, step.id, {
-      contactId: kontakt?.id ?? null,
-      kontaktName: kontaktName(kontakt ?? undefined),
-      an,
-      betreff,
-      anlass: template?.anlass ?? null,
-      weg,
-    });
+    erinnerungenVermerken(
+      eintraege.map(({ run, step }) => ({
+        runId: run.id,
+        stepId: step.id,
+        erinnerung: {
+          contactId: kontakt?.id ?? null,
+          kontaktName: kontaktName(kontakt ?? undefined),
+          an,
+          betreff,
+          anlass: template?.anlass ?? null,
+          weg,
+        },
+      })),
+    );
+    onVermerkt?.();
   };
 
   /** Öffnet Outlook auf dem Rechner (Standard-Mailprogramm). */
@@ -98,6 +151,16 @@ export function EmailDialog({
     }
   };
 
+  if (!erster) {
+    return (
+      <Modal titel="E-Mail vorbereiten" onClose={onClose}>
+        <Callout ton="warn" icon="!">
+          Der Schritt ist nicht mehr vorhanden.
+        </Callout>
+      </Modal>
+    );
+  }
+
   if (!template) {
     return (
       <Modal titel="Keine E-Mail-Vorlage" onClose={onClose}>
@@ -109,10 +172,15 @@ export function EmailDialog({
     );
   }
 
+  // Bisherige Erinnerungen im laufenden Durchlauf
+  const bisher = sammel
+    ? []
+    : (erster.step.erinnerungen ?? []).filter((e) => e.durchlauf === null || e.durchlauf === erster.step.durchlauf);
+
   return (
     <Modal
-      titel="E-Mail für Outlook vorbereiten"
-      sub={`${step.name} · ${run.name}`}
+      titel={sammel ? 'Sammel-E-Mail für Outlook vorbereiten' : 'E-Mail für Outlook vorbereiten'}
+      sub={sammel ? `${eintraege.length} Schritte · ${kontaktName(kontakt ?? undefined) || 'ohne Person'}` : `${erster.step.name} · ${erster.run.name}`}
       wide
       onClose={onClose}
       footer={
@@ -123,10 +191,22 @@ export function EmailDialog({
           <button type="button" className="btn btn-outline" onClick={kopieren}>
             <Icon name="kopieren" size={14} /> Kopieren
           </button>
-          <button type="button" className="btn btn-outline" onClick={imWeb} disabled={!an}>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={imWeb}
+            disabled={!an || zuLang}
+            title={zuLang ? 'Zu lang für die Übergabe – bitte „Kopieren“ verwenden' : undefined}
+          >
             Outlook im Web
           </button>
-          <button type="button" className="btn btn-primary" onClick={inOutlook} disabled={!an}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={inOutlook}
+            disabled={!an || zuLang}
+            title={zuLang ? 'Zu lang für die Übergabe – bitte „Kopieren“ verwenden' : undefined}
+          >
             <Icon name="mail" size={14} /> In Outlook öffnen
           </button>
         </>
@@ -138,6 +218,22 @@ export function EmailDialog({
             Für den Schritt ist keine Person unter „Funktion“ hinterlegt – bitte Empfänger von Hand
             eintragen.
           </Callout>
+        ) : null}
+        {zuLang ? (
+          <Callout ton="warn" icon="!">
+            Die E-Mail ist zu lang, um sie direkt an Outlook zu übergeben. Bitte „Kopieren“ verwenden und den Text
+            in eine neue E-Mail einfügen.
+          </Callout>
+        ) : null}
+
+        {sammel ? (
+          <div className="pl-liste">
+            {eintraege.map(({ run, step }) => (
+              <span key={`${run.id}/${step.id}`}>
+                {step.name} · {run.name} · Soll {formatDate(step.sollDatum)}
+              </span>
+            ))}
+          </div>
         ) : null}
 
         <div className="form-grid">
@@ -162,11 +258,12 @@ export function EmailDialog({
           </Field>
         </div>
 
-        {step.letzteErinnerung ? (
-          <p className="small tertiary">
-            Letzte Erinnerung zu diesem Schritt:{' '}
-            {new Date(step.letzteErinnerung).toLocaleString('de-DE')}
-          </p>
+        {bisher.length > 0 ? (
+          <div className="pl-liste">
+            {bisher.slice(-3).map((e) => (
+              <span key={e.zeitpunkt}>{erinnerungText(e)}</span>
+            ))}
+          </div>
         ) : null}
       </div>
     </Modal>

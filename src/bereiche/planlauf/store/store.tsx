@@ -10,7 +10,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { laufUebernehmen, planlaufName } from '../domain/engine';
+import { laufUebernehmen, planlaufName, schritteFuerNeuenLauf } from '../domain/engine';
 import {
   aenderungenAufLauf,
   schrittErgaenzen,
@@ -163,6 +163,13 @@ interface StoreValue {
   basisNeuFestlegen: (runId: ID, grund: string) => void;
   /** Bricht einen Lauf mit Begründung ab; er bleibt im Projekt sichtbar. */
   abbrechenRun: (runId: ID, grund: string, art: AbbruchArt, neuerIndex: string | null) => void;
+  /**
+   * Bricht einen Lauf wegen eines neuen Index (bzw. einer neuen Ausgabe) ab,
+   * hebt den Eintrag auf den neuen Index und beginnt einen neuen Lauf mit
+   * derselben Kette (alle Lauffelder zurückgesetzt) – in einem Schritt.
+   * Liefert die Kennung des neuen Laufs.
+   */
+  neuerIndexStarten: (runId: ID, grund: string, neuerIndex: string) => ID | null;
   /**
    * Beginnt einen laufenden Planlauf mit einem (anderen) Workflow von vorn:
    * Der bisherige Lauf endet als „neu gestartet“ und bleibt zum Nachschlagen
@@ -566,6 +573,51 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
       mutate((d, v) =>
         laufAendern(d, runId, (r) => ({ ...r, ...abbruch(art, grund, v.heute ?? today()), abbruchNeuerIndex: neuerIndex })),
       ),
+
+    neuerIndexStarten: (runId, grund, neuerIndex) => {
+      const vorher = data.runs.find((r) => r.id === runId);
+      if (!vorher || vorher.status !== 'laufend' || !neuerIndex.trim()) return null;
+      if (!data.documents.some((x) => x.id === vorher.documentId)) return null;
+      const id = newId('run');
+      mutate((d, v) => {
+        const alt = d.runs.find((r) => r.id === runId);
+        if (!alt || alt.status !== 'laufend') return d;
+        const heute = v.heute ?? today();
+        const documents = d.documents.map((x) => (x.id === alt.documentId ? { ...x, index: neuerIndex } : x));
+        const eintrag = documents.find((x) => x.id === alt.documentId);
+        if (!eintrag) return d;
+        const lauf: PlanRun = {
+          id,
+          projectId: alt.projectId,
+          documentId: alt.documentId,
+          templateId: alt.templateId,
+          templateName: alt.templateName,
+          name: planlaufName(eintrag),
+          index: neuerIndex,
+          start: heute,
+          status: 'laufend',
+          abbruchGrund: null,
+          abbruchDatum: null,
+          abbruchArt: null,
+          abbruchNeuerIndex: null,
+          steps: schritteFuerNeuenLauf(alt.steps, newId),
+          bemerkung: `Nachfolger von „${alt.name}“ (${grund})`,
+          protokoll: [],
+          basis: null,
+        };
+        const mitDoc = { ...d, documents };
+        return {
+          ...mitDoc,
+          runs: [
+            ...d.runs.map((r) =>
+              r.id === runId ? { ...r, ...abbruch('neuer_index', grund, heute), abbruchNeuerIndex: neuerIndex } : r,
+            ),
+            mitBasis(mitDoc, lauf, v),
+          ],
+        };
+      });
+      return id;
+    },
 
     planlaufNeuStarten: (runId, neu) => {
       const vorher = data.runs.find((r) => r.id === runId);
