@@ -289,6 +289,20 @@ export function terminBerechnen(e: TerminrechnerEingabe): TerminrechnerErgebnis 
     zweigeJeBlock.set(s.parallel.block, menge);
   }
   const zielIndex = ziel ? sim.ausfuehrungen.map((a) => a.stepId).lastIndexOf(ziel) : -1;
+  // „Nach dem Zielschritt“ liegt nur, was vom Zielschritt aus erreichbar ist –
+  // ein paralleler Nachbarzweig ist „ohne Einfluss“, auch wenn er später gelistet ist.
+  const nachZiel = new Set<number>();
+  if (zielIndex >= 0) {
+    const nachfolger: number[][] = sim.ausfuehrungen.map(() => []);
+    sim.ausfuehrungen.forEach((a, i) => a.vorgaengerAusfuehrungen.forEach((v) => nachfolger[v]?.push(i)));
+    const stapel = [...nachfolger[zielIndex]];
+    while (stapel.length > 0) {
+      const i = stapel.pop() as number;
+      if (nachZiel.has(i)) continue;
+      nachZiel.add(i);
+      stapel.push(...nachfolger[i]);
+    }
+  }
   const erster = e.steps[0];
   const planerstellung =
     ankerArt === 'uebergabe' ? { beginn: addDays(anker, -erster.fristTage, arbeitstage, feiertage), frist: erster.fristTage } : null;
@@ -297,7 +311,7 @@ export function terminBerechnen(e: TerminrechnerEingabe): TerminrechnerErgebnis 
     const planung = planerstellung !== null && i === 0 && a.stepId === erster.id && a.durchlauf <= 1;
     const zweige = a.parallel ? (zweigeJeBlock.get(a.parallel.block)?.size ?? null) : null;
     const ohneBelang: TerminZeile['ohneBelang'] =
-      cpm.spaetestens[i] !== null ? null : zielIndex >= 0 && i > zielIndex ? 'nach_ziel' : 'ohne_einfluss';
+      cpm.spaetestens[i] !== null ? null : nachZiel.has(i) ? 'nach_ziel' : 'ohne_einfluss';
     return {
       nr: i + 1,
       stepId: a.stepId,
