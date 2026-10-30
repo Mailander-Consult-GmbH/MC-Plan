@@ -1625,7 +1625,9 @@ function SchrittDetails({
           <>
             <p className="wf-hilfe">
               Jede Antwort führt zu einem nächsten Schritt. Die erste Antwort bildet den Standardverlauf.
-              {lage ? ' Im Zweig führt eine Antwort zu Schritten desselben Zweigs, beendet den Zweig oder steigt aus dem Block aus.' : ''}
+              {lage ? ' Im Zweig führt eine Antwort zu Schritten desselben Zweigs, beendet den Zweig oder steigt aus dem Block aus.' : ''}{' '}
+              „Führt zu Nacharbeit“ kennzeichnet Antworten, nach denen der weitere Weg als Nacharbeit zählt – etwa für die Ursache
+              eines Verzugs.
             </p>
             <div className="wf-antworten">
               {step.antworten.map((a, n) => (
@@ -1899,7 +1901,10 @@ function Uebersicht({
         </div>
         <div>
           <b>{dauer}</b>
-          <span>Tage im Standardverlauf{arbeitstage ? ' (Arbeitstage)' : ''}</span>
+          <span>
+            Tage im Standardverlauf{arbeitstage ? ' (Arbeitstage)' : ''}
+            {bloecke > 0 ? ' – je Block der längste Zweig' : ''}
+          </span>
         </div>
         <div>
           <b>{gliederung.abweichungenGesamt}</b>
