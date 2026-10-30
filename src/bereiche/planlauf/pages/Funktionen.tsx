@@ -8,7 +8,16 @@
  * hier nicht – sie füllt stets die angemeldete Person aus.
  */
 import { useState } from 'react';
-import { EIGENE_ROLLE, UEBERGREIFEND, istEigeneFunktion, kuerzelAus, seiteAusFunktion, type StandardRolle } from '../domain/types';
+import {
+  EIGENE_ROLLE,
+  UEBERGREIFEND,
+  istEigeneFunktion,
+  kuerzelAus,
+  seiteAusFunktion,
+  type Seite,
+  type StandardRolle,
+} from '../domain/types';
+import { SeiteBadge, SeiteFeld } from '../components/SeiteAuswahl';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import {
@@ -132,6 +141,7 @@ export function Funktionen() {
                       <span className="row" style={{ gap: 8 }}>
                         <span className="dot" style={{ background: f.farbe }} />
                         <strong>{f.name}</strong>
+                        <SeiteBadge seite={f.seite} />
                       </span>
                     </td>
                     <td className="num">{f.kuerzel || '–'}</td>
@@ -266,9 +276,14 @@ function FunktionsDialog({
     farbe: funktion?.farbe ?? FARBEN[anzahl % FARBEN.length],
     beschreibung: funktion?.beschreibung ?? '',
     gewerk: funktion?.gewerk ?? vorauswahl,
+    seite: funktion ? funktion.seite : (null as Seite | null),
   });
+  // Eine neue Funktion übernimmt die Seite aus ihrer Bezeichnung, bis sie von Hand gewählt wird
+  const [seiteVonHand, setSeiteVonHand] = useState(Boolean(funktion));
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const nameAendern = (name: string) =>
+    setForm((f) => ({ ...f, name, seite: seiteVonHand ? f.seite : seiteAusFunktion(name) }));
 
   const speichern = () => {
     if (!form.name.trim()) {
@@ -282,8 +297,6 @@ function FunktionsDialog({
     const werte = {
       ...form,
       kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
-      // Seite im Terminnachweis: bleibt bestehen, neue Funktionen nach ihrer Bezeichnung
-      seite: funktion ? funktion.seite : seiteAusFunktion(form.name),
     };
     if (funktion) {
       updateStandardRolle(funktion.id, werte);
@@ -312,7 +325,7 @@ function FunktionsDialog({
     >
       <div className="form-grid">
         <Field label="Bezeichnung" full>
-          <TextInput value={form.name} onChange={(v) => set('name', v)} placeholder="z.B. Erdungsprüfer" />
+          <TextInput value={form.name} onChange={nameAendern} placeholder="z.B. Erdungsprüfer" />
         </Field>
         <Field label="Kürzel" hint="leer = aus der Bezeichnung gebildet">
           <TextInput value={form.kuerzel} onChange={(v) => set('kuerzel', v)} />
@@ -336,6 +349,14 @@ function FunktionsDialog({
             options={[UEBERGREIFEND, ...gewerke].map((g) => ({ value: g, label: g }))}
           />
         </Field>
+        <SeiteFeld
+          value={form.seite}
+          vorbelegt={!seiteVonHand}
+          onChange={(v) => {
+            setSeiteVonHand(true);
+            set('seite', v);
+          }}
+        />
         <Field label="Beschreibung" full>
           <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={2} />
         </Field>
