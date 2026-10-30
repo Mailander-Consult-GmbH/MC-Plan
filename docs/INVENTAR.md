@@ -23,10 +23,17 @@ dann hat jeder Plan einen eigenen Lauf und das Verzeichnis ordnet nur
 (`planlaufModus`; ohne Angabe gilt gebündelt). Einzelne Pläne eines
 gebündelten Verzeichnisses lassen sich nachträglich herauslösen
 (`eigenerLauf`), Pläne mit eigenem Lauf wieder bündeln (`planeBuendeln`). Welcher Eintrag einen eigenen Lauf hat, entscheidet allein
-`hatEigenenPlanlauf` in `types.ts`. Die Anwendung rechnet aus den
-Fristen je Schritt die Soll-Termine, überwacht sie mit einer Ampel (im Plan /
-fällig / überfällig) und bereitet Erinnerungen als E-Mail für Outlook vor
-(`ampelFuerSchritt`, `src/bereiche/planlauf/components/EmailDialog.tsx`). Sie läuft vollständig im
+`hatEigenenPlanlauf` in `types.ts`. Den Weg durch einen Workflow – samt
+parallelen Blöcken, Ausstiegen und Rücksprüngen – bestimmt allein die
+Ablaufverfolgung in `src/bereiche/planlauf/domain/ablauf.ts` (`nachfolger`,
+`verfolgen`). Die Anwendung rechnet aus den Fristen je Schritt die
+Soll-Termine ab dem tatsächlichen Eingang (`recalcSollDaten` in `engine.ts`),
+überwacht sie mit einer Ampel (im Plan / fällig / überfällig), schätzt das Ende
+eines Laufs (`prognose` in `src/bereiche/planlauf/domain/simulation.ts`), weist
+den Verzug gegenüber dem Basisplan je Seite nach
+(`terminnachweis` in `src/bereiche/planlauf/domain/nachweis.ts`) und bereitet
+Erinnerungen als E-Mail für Outlook vor (`ampelFuerSchritt`,
+`src/bereiche/planlauf/components/EmailDialog.tsx`). Sie läuft vollständig im
 Browser: Der gesamte Bestand liegt in `localStorage`, ein Server wird nicht
 angesprochen (`src/bereiche/planlauf/store/storage.ts`).
 
@@ -51,10 +58,11 @@ und bleiben damit als Lesezeichen gültig.
 | Route | Seite | Aktionen |
 | --- | --- | --- |
 | `#/planlauf` bzw. `#/planlauf/dashboard` | Übersicht (`src/bereiche/planlauf/pages/Dashboard.tsx`) | Vier Kacheln: Laufende Planläufe, To-Dos (Planlaufmanagement), Überfällige Schritte, Demnächst fällig – die beiden letzten führen per Klick auf `#/planlauf/fristen`. Tabelle „Meine To-Dos“ mit Schritt, Gewerk, Projekt, Soll-Termin, Status, Erinnerungs-Mail und Erledigt-Haken. Tabelle „Projekte“ mit Anzahl Pläne/Verzeichnisse, laufenden Planläufen, demnächst fällig, überfällig, Fortschrittsbalken und „Projekt öffnen“. Angezeigt werden markierte Projekte; ohne Markierung alle (`sichtbareProjekte`). |
-| `#/planlauf/fristen` | Fristen & Erinnerungen (`src/bereiche/planlauf/pages/Fristen.tsx`) | Alle offenen Schritte über alle Projekte, gegliedert nach Projekt. Filter Alle / Überfällig / Fällig / Im Plan mit Zählern, Suche über Schritt, Planlauf, Projekt, Funktion, Nachname und Firma. Je Zeile: Planlauf öffnen, Erinnerungs-Mail vorbereiten, Schritt als erledigt setzen. Kein Eintrag in der Seitenleiste – erreichbar über die Kacheln der Übersicht. |
+| `#/planlauf/fristen` | Fristen & Erinnerungen (`src/bereiche/planlauf/pages/Fristen.tsx`) | Alle anstehenden Schritte über alle Projekte – bei parallelen Zweigen mehrere je Planlauf (`offeneFristen` in `engine.ts`) –, gegliedert nach Projekt; je Schritt „E-Mail vorbereitet am …“, wenn schon erinnert wurde. Filter Alle / Überfällig / Fällig / Im Plan mit Zählern, Suche über Schritt, Planlauf, Projekt, Funktion, Nachname und Firma. Je Zeile: Planlauf öffnen, Erinnerungs-Mail vorbereiten, Schritt als erledigt setzen. Kein Eintrag in der Seitenleiste – erreichbar über die Kacheln der Übersicht. |
 | `#/planlauf/projekte` | Projekte (`src/bereiche/planlauf/pages/Projekte.tsx`) | Projektliste mit Suche über Name, Nummer und Beschreibung; Projekt anlegen (übernimmt alle projektübergreifenden Funktionen als Projektfunktionen), bearbeiten, mit ★ markieren bzw. Markierung aufheben, Projekt öffnen. |
-| `#/planlauf/ketten` | Workflows (`src/bereiche/planlauf/pages/Workflows.tsx`) | Karten unter „Projektübergreifende Workflows“ und „Projektvarianten“, je Karte Kennzeichen „Standard“, „Eigener Workflow“ oder „Projektvariante“, Zahlen und die Punktkette des Standardverlaufs (`AblaufVorschau` in `src/bereiche/planlauf/components/AblaufVorschau.tsx`); „Neuer Workflow“, „Öffnen“, „Duplizieren“, Löschen. „Öffnen“ startet den Workflow-Editor (`src/bereiche/planlauf/components/WorkflowEditor.tsx`, Logik in `src/bereiche/planlauf/domain/workflowGraph.ts`): Spalten „Standardverlauf“ und „Abweichungen“ mit Karten von „Planlauf starten“ bis „Planlauf beenden“, „Rücksprung“-Kennzeichen, „+“ („Schritt hier einfügen“), „Schritt hinzufügen“, Rückgängig/Wiederholen (Strg+Z/Strg+Y), „Übersicht“. „Schrittdetails“ je Schritt: Bezeichnung, Art (Aufgabe / Entscheidung), „Verantwortliche Funktion“, Frist, „Nachweis bei Abschluss“, „Weiter mit“ bzw. Antworten mit „→ Weiter mit“ und „Als Standardverlauf“, „E-Mail nach Abschluss“ samt Vorlage, „Im Standardverlauf“ früher/später (`imVerlaufVerschieben`), „Duplizieren“, „Entfernen“ (Verweise gehen an das Standardziel, `entfernen`). Hinweise in der Fußzeile aus `pruefen`; wer mit Änderungen schließt, erhält „Änderungen verwerfen?“. |
-| `#/planlauf/rollen` | Funktionen (`src/bereiche/planlauf/pages/Funktionen.tsx`) | Projektübergreifende Funktionen, gegliedert in „Übergreifend“ und je Gewerk. Neue Funktion anlegen (Bezeichnung, Kürzel, Farbe, Gewerk, Beschreibung), vorhandene Funktion eines anderen Gewerks übernehmen, bearbeiten, löschen. Über das **+** an den Reitern entsteht ein Gewerk, über „Gewerk … löschen“ am Seitenende entfällt es. |
+| `#/planlauf/ketten` | Workflows (`src/bereiche/planlauf/pages/Workflows.tsx`) | Karten unter „Projektübergreifende Workflows“ und „Projektvarianten“, je Karte Kennzeichen „Standard“, „Eigener Workflow“ oder „Projektvariante“, Zahlen und die Punktkette des Standardverlaufs (`AblaufVorschau` in `src/bereiche/planlauf/components/AblaufVorschau.tsx`); „Neuer Workflow“, „Öffnen“, „Duplizieren“, Löschen. „Öffnen“ startet den Workflow-Editor (`src/bereiche/planlauf/components/WorkflowEditor.tsx`, Logik in `src/bereiche/planlauf/domain/workflowGraph.ts`): Spalten „Standardverlauf“ und „Abweichungen“ mit Karten von „Planlauf starten“ bis „Planlauf beenden“, „Rücksprung“-Kennzeichen, „+“ („Schritt hier einfügen“), „Schritt hinzufügen“, Rückgängig/Wiederholen (Strg+Z/Strg+Y), „Übersicht“. „Schrittdetails“ je Schritt: Bezeichnung, Art (Aufgabe / Entscheidung), „Verantwortliche Funktion“, Frist, „Nachweis bei Abschluss“, „Weiter mit“ bzw. Antworten mit „→ Weiter mit“ und „Als Standardverlauf“, „E-Mail nach Abschluss“ samt Vorlage, „Im Standardverlauf“ früher/später (`imVerlaufVerschieben`), „Duplizieren“, „Entfernen“ (Verweise gehen an das Standardziel, `entfernen`). Hinweise in der Fußzeile aus `pruefen`; wer mit Änderungen schließt, erhält „Änderungen verwerfen?“. Parallele Blöcke: Containerkarte „Parallel · … Zweige“ mit „Weiter, wenn alle Zweige erledigt sind“, „Abweichungen im Zweig“ und „Ausstieg aus dem Block“; angelegt über „Schritt hinzufügen“ → „Parallele Zweige“ oder in den Schrittdetails „Parallel dazu ausführen“, gelöst über „Aus dem Block lösen“; Blöcke lassen sich nicht schachteln. Je Antwort der Haken „führt zu Nacharbeit“. Ändert eine Umstellung den Anschluss hinter einem Block, meldet der Editor das (`bloeckeOrdnenMitHinweis` in `ablauf.ts`). |
+| `#/planlauf/rollen` | Funktionen (`src/bereiche/planlauf/pages/Funktionen.tsx`) | Projektübergreifende Funktionen, gegliedert in „Übergreifend“ und je Gewerk. Neue Funktion anlegen (Bezeichnung, Kürzel, Farbe, Gewerk, Beschreibung), vorhandene Funktion eines anderen Gewerks übernehmen, bearbeiten, löschen. Über das **+** an den Reitern entsteht ein Gewerk, über „Gewerk … löschen“ am Seitenende entfällt es. Feld „Seite für den Verzug“ (Planer, Prüfer, Auftraggeber, PLM oder „nicht festgelegt“; `SEITE_LABEL` in `types.ts`, Auswahl in `src/bereiche/planlauf/components/SeiteAuswahl.tsx`), bei neuen Funktionen vorbelegt aus der Bezeichnung (`seiteAusFunktion`); Abzeichen in der Liste, „Seite offen“ ohne Seite. |
+| `#/planlauf/terminrechner` | Terminrechner (`src/bereiche/planlauf/pages/Terminrechner.tsx`, Logik in `src/bereiche/planlauf/domain/terminrechner.ts`) | Menüpunkt „Terminrechner“ unter „Vorlagen“. „Richtung“: „Rückwärts“ („Termin auf der Baustelle → späteste Übergabe des Planers“ bzw. „Termin auf der Baustelle → spätester Start des Planlaufs“) oder „Vorwärts“ („Eingang der Planung → Ende des Planlaufs“ bzw. „Start des Planlaufs → Ende des Planlaufs“) – Anker ist die Übergabe des Planers, wenn der Workflow mit „Eingang PLM“ beginnt, sonst der Start. Eingaben: Projekt (Arbeitstage, Feiertage; „Ohne Projekt: Mo–Fr, ohne Feiertage“), Workflow (übergreifend und Projektvarianten), Datum, Fristen, „Szenario“ („Antwort je Entscheidung im ersten Durchlauf; Vorgabe ist der Standardverlauf.“) und „Zielschritt“ (Vorgabe „Ende des Planlaufs“). Gerechnet wird über `simulieren` bzw. `rueckwaerts` in `simulation.ts`, also mit denselben Regeln wie im Planlauf. „Zwischenergebnisse“ mit Schritt, Funktion, Frist, Eingang, Fristende und Puffer, auf dem kritischen Weg „spätestens“; Druck über `src/shared/print.ts`. Zustände: „Noch kein Datum“, „Kein Workflow vorhanden“, „Der Workflow enthält keine Schritte“, „Das Datum ist ungültig.“, Schleife („Der Ablauf endet in diesem Szenario in einer Schleife – Terminrechnung nicht möglich.“), Grenze („Der Ablauf kommt auch nach 500 Abschlüssen nicht zum Ende – Terminrechnung abgebrochen.“, `SIMULATION_GRENZE`), Zielschritt nicht erreicht, Übergabe bzw. Start vor heute (frühestes Ende bei Übergabe bzw. Start heute) und „Das eingegebene Datum liegt vor heute – gerechnet wird trotzdem ab diesem Tag.“ |
 | `#/planlauf/vorlagen` | Vorlagen (`src/bereiche/planlauf/pages/Vorlagen.tsx`) | Reiter **E-Mail-Texte**: Vorlagen anlegen, bearbeiten, löschen; Editor mit Bausteinen aus `PLATZHALTER` (`src/bereiche/planlauf/domain/email.ts`) und Vorschau mit Beispielwerten; Anlass je Vorlage (Erinnerung, Mahnung, Freigabe, Übergabe, Allgemein). Reiter **Excel-Vorlagen**: Vorlagen „Planliste“ und „Funktion“ als `.xlsx` herunterladen, mit Spaltenerläuterung. |
 | `#/planlauf/projekt/<id>/<reiter>` | Projektarbeitsbereich (`src/bereiche/planlauf/pages/ProjektDetail.tsx`) | Reiter siehe 2.2. Frühere Adressen werden umgeleitet: `planlaeufe` → `plaene`, `pakete` → `plaene`, `adressbuch` → `rollen`. |
 | `#/planlauf/projekt/<id>/planlauf/<runId>` | Planlauf (`src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx`) | Siehe 2.3. |
@@ -63,20 +71,38 @@ und bleiben damit als Lesezeichen gültig.
 
 | Reiter | Seite | Aktionen |
 | --- | --- | --- |
-| `uebersicht` | Planläufe – Reiterbezeichnung „Planläufe“ (`src/bereiche/planlauf/pages/projekt/Uebersicht.tsx`, Liste in `src/bereiche/planlauf/components/PlanlaufListe.tsx`) | Kennzahlen (Planpakete, Planverzeichnisse, Pläne – je ein Klick führt auf die Planliste –, fällige und überfällige Schritte) und Gesamtfortschritt. Liste der Planläufe, gegliedert nach Planpaketen, je Eintrag in der Spalte „Aktueller Stand“ mit dem zuletzt erledigten Schritt vor dem offenen – übersprungene Schritte zählen nicht, nach dem Wiederöffnen eines früheren Schritts also nie ein späterer – und darunter in Grau seinem Ist-Datum („ohne Datum“, wenn keines eingetragen ist; `letzterAbgeschlossenerSchritt` in `src/bereiche/planlauf/domain/uebersicht.ts`), in der Spalte „Nächster Schritt“ mit dem offenen Schritt: Gliederung umschalten („Planpakete“ / „+ Pläne & Verzeichnisse“), Pakete und Planverzeichnisse am Pfeil auf- und zuklappen (Verzeichnisse zunächst zugeklappt; der Pfeil steht vor Symbol und Titel, sodass Pläne und Verzeichnisse auf einer Linie beginnen), Suche, Filter in den Spaltenüberschriften (Gewerk, Zuständig, Status – einschließlich „Angekündigt“), Sortierung je Spalte („Aktueller Stand“ nach dem Datum des zuletzt erledigten Schritts), Erinnerungs-Mail, Erledigt-Haken, Planlauf öffnen, „Export“ (`ExportDialog.tsx`, siehe `einstellungen`; bei gesetztem Filter sind die gezeigten Einträge vorgewählt – „Vorgewählt sind die Einträge, die der Filter im Reiter „Planläufe“ zeigt.“). Welche Läufe die Liste zeigt und wie sie sie gliedert, legen `massgeblicheLaeufe`, `gliederungBilden` und `knotenBilden` in `uebersicht.ts` fest – dieselben Funktionen gliedern den Export. Die Bezeichnung steht gelb, solange „Eingang PLM“ aussteht – diese Läufe tragen den Status „Angekündigt“, ist der Eingang überfällig jedoch „Überfällig“; Filter und Sortierung folgen derselben Regel –, und grün, wenn der Lauf abgeschlossen ist. Unter einem gebündelten Verzeichnis stehen seine Pläne mit „läuft im Planlauf des Verzeichnisses mit“ – solange der Verzeichnislauf läuft, mit der Schaltfläche „Herauslösen …“ (`planHerausloesen`; die Liste bleibt danach stehen) –, herausgelöste Pläne dagegen mit ihrem eigenen Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als Zeile „… · Pläne einzeln“ ohne eigenen Lauf, mit der Zahl seiner laufenden Pläne, dem aus ihnen zusammengefassten Fortschritt und Status (wie ein Planpaket) und der Schaltfläche „Bündeln …“; seine Pläne stehen darunter. Abgebrochene Läufe – ersatzlos wie durch neuen Index ersetzt – stehen gesammelt am Ende unter der zunächst zugeklappten Zeile „Abgebrochen · … Planläufe“, ausgegraut ohne Schritt, Fortschritt und Schaltflächen, mit dem Index des abgebrochenen Laufs, „Abgebrochen am …“ und dem Zusatz *ersatzlos* bzw. *ersetzt durch Index …*. Aufgeteilte bzw. wieder gebündelte Läufe erscheinen dort nicht (`laufUeberfuehrt` in `engine.ts`). Fortschrittsbalken stehen immer in der Hausfarbe. |
-| `plaene` | Planliste (`src/bereiche/planlauf/pages/projekt/Plaene.tsx`) | Alle Pläne und Planverzeichnisse mit laufender Nummer, Art, Bezeichnung/Titel, Gewerk, zugehörigem Planverzeichnis und Eingang Soll, gegliedert nach Planpaketen: je Paket eine Kopfzeile mit Name, Kurzzeichen, Gewerk und Zahl der angezeigten Einträge samt eingerückter Pläne („noch nichts zugeordnet“ bei leeren Paketen) – der Pfeil klappt sie zu, ein Klick öffnet das Paket –, danach die Einträge ohne Paket, sobald Pakete angezeigt werden unter „Ohne Planpaket · …“ (gleich gezählt). Leere Pakete erscheinen ohne Suche und Filter bzw. wenn Name, Kurzzeichen oder Gewerk zur Suche passen; die Suche erfasst auch den Paketnamen. Die Schaltflächen über der Liste brechen auf schmalen Bildschirmen um. „Neues Planpaket“ und die Kopfzeilen öffnen den Paketdialog (`src/bereiche/planlauf/components/PaketDialog.tsx`): Name, Kurzzeichen, Gewerk, Bemerkung, Löschen mit Rückfrage – die Einträge bleiben mit ihren Planläufen erhalten und verlieren ihre Paketzuordnung (`deleteDocument`) –, beim Bearbeiten außerdem „Inhalt“ (mit dem Hinweis „gilt sofort“) mit „Entfernen“ je Eintrag und „Hinzufügen:“ für Planverzeichnisse und Pläne ohne Verzeichnis und ohne (noch vorhandenes) Paket; Pläne eines Verzeichnisses folgen dessen Paket (`paketVon` in `uebersicht.ts`). Reines Ordnungsmerkmal ohne Einfluss auf Planläufe. Pläne eines Planverzeichnisses stehen unter ihm, mit Symbol, Art und Titel eingerückt; der Pfeil zum Auf- und Zuklappen steht zwischen Nummer und Symbol (zunächst aufgeklappt). Ist das Verzeichnis ausgefiltert, stehen seine Pläne für sich. Filter (Alle / Pläne / Verzeichnisse), Suche, Sortierung je Spalte. Einträge, deren Planlauf noch beim Schritt „Eingang PLM“ steht, tragen eine gelbe Bezeichnung und das Kennzeichen „Angekündigt“; bei abgeschlossenen Läufen steht die Bezeichnung grün. Kennzeichen „Pläne einzeln“ an Verzeichnissen mit Einzelläufen, „eigener Lauf“ an herausgelösten Plänen eines gebündelten Verzeichnisses. Eintrag anlegen (startet zugleich den Planlauf, sofern der Eintrag einen eigenen hat; „Ablauf dieses Planlaufs“ zeigt den gewählten Workflow, „Individueller Workflow“ öffnet den Workflow-Editor nur für diesen Lauf, Kennzeichen „Individuell angepasst“, „Auf Workflow zurücksetzen“ – `LaufSchritte` in `AblaufVorschau.tsx`), bearbeiten, löschen – beim Löschen eines gebündelten Verzeichnisses bleiben seine Pläne als Einzelpläne im Paket des Verzeichnisses, mitlaufende führen den Stand des Verzeichnislaufs in einem eigenen Lauf weiter (`deleteDocument` mit `laufUebernehmen`); Planverzeichnis oder Planpaket direkt aus den Auswahlfeldern neu anlegen – ein so angelegtes Planverzeichnis fragt „Codierung“ und „Titel“ ab (ohne Titel gilt die Codierung als Titel); sein Planlauf startet mit „Anlegen und Planlauf starten“ des Plans nach dem Workflow im Dialog, der Hinweis „Das Planverzeichnis „…“ hat noch keinen Planlauf.“ steht darüber (`verzeichnisOhneLauf`; gilt für jedes gebündelte Verzeichnis, das noch nie einen Lauf hatte). Bei „Abbrechen“ oder Wahl eines anderen Verzeichnisses entfällt das angelegte Verzeichnis wieder. Excel-Import (`PlaeneImport.tsx`): jede Zeile erhält ihren eigenen Eintrag; jeder Eintrag mit eigenem Planlauf – auch ohne Codierung, ein beim Import neu angelegtes Verzeichnis und ein vorhandenes gebündeltes Verzeichnis, das noch nie einen Lauf hatte – startet ihn sofort, nach dem Workflow der Spalte „Workflow“, sonst nach dem unter „Workflow für Einträge ohne Angabe“ gewählten (`planlaufAusWorkflow` in `engine.ts`). Pakete und Verzeichnisse werden je Art über Codierung bzw. Kurzzeichen oder Titel gefunden, auch in derselben Datei; ein neu angelegtes Verzeichnis übernimmt das früheste Eingang Soll seiner Pläne. Die Nummer eines Planverzeichnisses heißt „Codierung“ (`NUMMER_LABEL` in `types.ts`). Einträge, deren Lauf durch einen neuen Index ersetzt oder ersatzlos abgebrochen wurde, tragen einen grauen Zusatz; aufgeteilte bzw. wieder gebündelte Läufe zählen nicht als Abbruch. Im Dialog eines Planverzeichnisses: Haken „Pläne einzeln durch den Planlauf führen“ – frei wählbar, solange weder das Verzeichnis noch seine Pläne einen Lauf haben – und bei laufendem gebündeltem Lauf „Alle Pläne einzeln weiterführen …“ (`verzeichnisAufteilen`). Im Dialog eines mitlaufenden Plans: „Aus dem Verzeichnislauf herauslösen …“ (`planHerausloesen`). Haben Pläne des Verzeichnisses einen eigenen Lauf, bietet der Verzeichnis-Dialog „Pläne wieder bündeln …“: Der Dialog (`src/bereiche/planlauf/components/BuendelnDialog.tsx`) listet diese Pläne mit Haken, aktuellem Schritt und Fortschritt; die angekreuzten kehren in einen gemeinsamen Verzeichnislauf zurück (`planeBuendeln`), ihre eigenen Läufe enden mit der Abbruchart `gebuendelt`, nicht angekreuzte behalten ihren Lauf. Läuft das Verzeichnis noch, übernehmen sie dessen Stand – ein Plan, der weiter ist, wird mit „weiter als das Verzeichnis – fällt zurück“ gekennzeichnet. Ist es aufgeteilt, entsteht ein neuer Verzeichnislauf; sein Stand wird unter „Stand des Verzeichnislaufs übernehmen von“ gewählt, vorgeschlagen ist der am wenigsten weit gediehene Plan. In beiden Fällen übernimmt der Plan den Stand des Verzeichnislaufs – erledigte Schritte bleiben erledigt, Start und Termine laufen weiter (`laufUebernehmen` in `engine.ts`); der gebündelte Lauf endet beim Aufteilen mit der Abbruchart `aufgeteilt`. Ein Plan, der schon einen eigenen Lauf hat, behält ihn beim Verschieben in ein anderes Verzeichnis. |
-| `rollen` | Funktion (`src/bereiche/planlauf/pages/projekt/RollenFunktionen.tsx`) | Nach Gewerken gegliedert („Übergreifend“ + je Gewerk, **+** für ein weiteres Gewerk, „Gewerk … löschen“ am Seitenende). Je Funktion die Besetzung mit einer Person samt Adressdaten: Funktion anlegen, bearbeiten, löschen; Besetzung setzen, wechseln, aufheben – von der Funktion aus (Person übernehmen oder neu erfassen) oder über „Person hinzufügen“ von der Person aus (Funktion optional gleich mitwählen). Suche über Funktion, Person und Firma; Personen ohne Funktion in einer eigenen Liste, je Zeile bearbeiten und löschen (Rückfrage „Person löschen?“); das Planlaufmanagement wird nicht angezeigt (immer die angemeldete Person); Excel-Import (`RollenImport.tsx`), der fehlende Gewerke und Funktionen anlegt. |
+| `uebersicht` | Planläufe – Reiterbezeichnung „Planläufe“ (`src/bereiche/planlauf/pages/projekt/Uebersicht.tsx`, Liste in `src/bereiche/planlauf/components/PlanlaufListe.tsx`) | Kennzahlen (Planpakete, Planverzeichnisse, Pläne – je ein Klick führt auf die Planliste –, fällige und überfällige Schritte) und Gesamtfortschritt. Liste der Planläufe, gegliedert nach Planpaketen, je Eintrag in der Spalte „Aktueller Stand“ mit dem zuletzt erledigten Schritt vor dem offenen – übersprungene Schritte zählen nicht, nach dem Wiederöffnen eines früheren Schritts also nie ein späterer – und darunter in Grau seinem Ist-Datum („ohne Datum“, wenn keines eingetragen ist; `letzterAbgeschlossenerSchritt` in `src/bereiche/planlauf/domain/uebersicht.ts`), in der Spalte „Nächster Schritt“ mit dem offenen Schritt: Gliederung umschalten („Planpakete“ / „+ Pläne & Verzeichnisse“), Pakete und Planverzeichnisse am Pfeil auf- und zuklappen (Verzeichnisse zunächst zugeklappt; der Pfeil steht vor Symbol und Titel, sodass Pläne und Verzeichnisse auf einer Linie beginnen), Suche, Filter in den Spaltenüberschriften (Gewerk, Zuständig, Status – einschließlich „Angekündigt“), Sortierung je Spalte („Aktueller Stand“ nach dem Datum des zuletzt erledigten Schritts), Erinnerungs-Mail, Erledigt-Haken, Planlauf öffnen, „Export“ (`ExportDialog.tsx`, siehe `einstellungen`; bei gesetztem Filter sind die gezeigten Einträge vorgewählt – „Vorgewählt sind die Einträge, die der Filter im Reiter „Planläufe“ zeigt.“). Welche Läufe die Liste zeigt und wie sie sie gliedert, legen `massgeblicheLaeufe`, `gliederungBilden` und `knotenBilden` in `uebersicht.ts` fest – dieselben Funktionen gliedern den Export. Die Bezeichnung steht gelb, solange „Eingang PLM“ aussteht – diese Läufe tragen den Status „Angekündigt“, ist der Eingang überfällig jedoch „Überfällig“; Filter und Sortierung folgen derselben Regel –, und grün, wenn der Lauf abgeschlossen ist. Unter einem gebündelten Verzeichnis stehen seine Pläne mit „läuft im Planlauf des Verzeichnisses mit“ – solange der Verzeichnislauf läuft, mit der Schaltfläche „Herauslösen …“ (`planHerausloesen`; die Liste bleibt danach stehen) –, herausgelöste Pläne dagegen mit ihrem eigenen Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als Zeile „… · Pläne einzeln“ ohne eigenen Lauf, mit der Zahl seiner laufenden Pläne, dem aus ihnen zusammengefassten Fortschritt und Status (wie ein Planpaket) und der Schaltfläche „Bündeln …“; seine Pläne stehen darunter. Abgebrochene Läufe – ersatzlos wie durch neuen Index ersetzt – stehen gesammelt am Ende unter der zunächst zugeklappten Zeile „Abgebrochen · … Planläufe“, ausgegraut ohne Schritt, Fortschritt und Schaltflächen, mit dem Index des abgebrochenen Laufs, „Abgebrochen am …“ und dem Zusatz *ersatzlos* bzw. *ersetzt durch Index …*. Aufgeteilte bzw. wieder gebündelte Läufe erscheinen dort nicht (`laufUeberfuehrt` in `engine.ts`). Fortschrittsbalken stehen immer in der Hausfarbe; der Fortschritt ist nach Fristen gewichtet und schließt die laut Prognose noch ausstehenden Ausführungen ein (`fortschritt` in `engine.ts`, Mittel in `mittlererFortschritt`). Nach einem Rücksprung nennt „Aktueller Stand“ den zuletzt bis zum Wiedereingang erledigten Schritt. Stehen in parallelen Zweigen mehrere Schritte an, zeigt die Zeile den führenden mit „+… parallel“ (`src/bereiche/planlauf/components/common.tsx`); Erinnerungs-Mail und Erledigt-Haken fragen dann nach dem Schritt („… Schritte stehen an – welcher ist erledigt?“), Status, Filter und Suche berücksichtigen alle anstehenden Schritte. **Mehrfachauswahl:** Kästchen-Spalte – Planpaket, „Ohne Planpaket“, Verzeichnis und Kopfzeile wählen ihren Inhalt dreistufig, abgebrochene Läufe sind nicht wählbar; Aktionsleiste („Aktionen für die Auswahl“, „… ausgewählt“) mit „Schritte erledigen …“ (`src/bereiche/planlauf/components/SammelErledigen.tsx`: Ist-Datum, erledigt oder übersprungen, je Lauf die anstehenden Schritte, gemeinsame Antwort und Nachweis-Nr. für gleichnamige Schritte, Vorschau mit Rücksprüngen und Abschlüssen, danach Ergebnis und auf Wunsch „Neu zuständig“; Store `schritteAbschliessen`), „Erinnern …“ (`src/bereiche/planlauf/components/SammelErinnern.tsx`: eine Zeile je Person mit Outlook, Web und Kopieren), „Exportieren …“ („Vorgewählt ist Ihre Auswahl im Reiter „Planläufe“.“) und „Auswahl aufheben“. Vor den Aktionen wird die Auswahl in Planläufe aufgelöst; ein mitlaufender Plan wirkt auf den Lauf seines Verzeichnisses. |
+| `plaene` | Planliste (`src/bereiche/planlauf/pages/projekt/Plaene.tsx`) | Alle Pläne und Planverzeichnisse mit laufender Nummer, Art, Bezeichnung/Titel, Gewerk, zugehörigem Planverzeichnis und Eingang Soll, gegliedert nach Planpaketen: je Paket eine Kopfzeile mit Name, Kurzzeichen, Gewerk und Zahl der angezeigten Einträge samt eingerückter Pläne („noch nichts zugeordnet“ bei leeren Paketen) – der Pfeil klappt sie zu, ein Klick öffnet das Paket –, danach die Einträge ohne Paket, sobald Pakete angezeigt werden unter „Ohne Planpaket · …“ (gleich gezählt). Leere Pakete erscheinen ohne Suche und Filter bzw. wenn Name, Kurzzeichen oder Gewerk zur Suche passen; die Suche erfasst auch den Paketnamen. Die Schaltflächen über der Liste brechen auf schmalen Bildschirmen um. „Neues Planpaket“ und die Kopfzeilen öffnen den Paketdialog (`src/bereiche/planlauf/components/PaketDialog.tsx`): Name, Kurzzeichen, Gewerk, Bemerkung, Löschen mit Rückfrage – die Einträge bleiben mit ihren Planläufen erhalten und verlieren ihre Paketzuordnung (`deleteDocument`) –, beim Bearbeiten außerdem „Inhalt“ (mit dem Hinweis „gilt sofort“) mit „Entfernen“ je Eintrag und „Hinzufügen:“ für Planverzeichnisse und Pläne ohne Verzeichnis und ohne (noch vorhandenes) Paket; Pläne eines Verzeichnisses folgen dessen Paket (`paketVon` in `uebersicht.ts`). Reines Ordnungsmerkmal ohne Einfluss auf Planläufe. Pläne eines Planverzeichnisses stehen unter ihm, mit Symbol, Art und Titel eingerückt; der Pfeil zum Auf- und Zuklappen steht zwischen Nummer und Symbol (zunächst aufgeklappt). Ist das Verzeichnis ausgefiltert, stehen seine Pläne für sich. Filter (Alle / Pläne / Verzeichnisse), Suche, Sortierung je Spalte. Einträge, deren Planlauf noch beim Schritt „Eingang PLM“ steht, tragen eine gelbe Bezeichnung und das Kennzeichen „Angekündigt“; bei abgeschlossenen Läufen steht die Bezeichnung grün. Kennzeichen „Pläne einzeln“ an Verzeichnissen mit Einzelläufen, „eigener Lauf“ an herausgelösten Plänen eines gebündelten Verzeichnisses. Eintrag anlegen (startet zugleich den Planlauf, sofern der Eintrag einen eigenen hat; „Ablauf dieses Planlaufs“ zeigt den gewählten Workflow, „Individueller Workflow“ öffnet den Workflow-Editor nur für diesen Lauf, Kennzeichen „Individuell angepasst“, „Auf Workflow zurücksetzen“ – `LaufSchritte` in `AblaufVorschau.tsx`), bearbeiten, löschen – beim Löschen eines gebündelten Verzeichnisses bleiben seine Pläne als Einzelpläne im Paket des Verzeichnisses, mitlaufende führen den Stand des Verzeichnislaufs in einem eigenen Lauf weiter (`deleteDocument` mit `laufUebernehmen`); Planverzeichnis oder Planpaket direkt aus den Auswahlfeldern neu anlegen – ein so angelegtes Planverzeichnis fragt „Codierung“ und „Titel“ ab (ohne Titel gilt die Codierung als Titel); sein Planlauf startet mit „Anlegen und Planlauf starten“ des Plans nach dem Workflow im Dialog, der Hinweis „Das Planverzeichnis „…“ hat noch keinen Planlauf.“ steht darüber (`verzeichnisOhneLauf`; gilt für jedes gebündelte Verzeichnis, das noch nie einen Lauf hatte). Bei „Abbrechen“ oder Wahl eines anderen Verzeichnisses entfällt das angelegte Verzeichnis wieder. Excel-Import (`PlaeneImport.tsx`): jede Zeile erhält ihren eigenen Eintrag; jeder Eintrag mit eigenem Planlauf – auch ohne Codierung, ein beim Import neu angelegtes Verzeichnis und ein vorhandenes gebündeltes Verzeichnis, das noch nie einen Lauf hatte – startet ihn sofort, nach dem Workflow der Spalte „Workflow“, sonst nach dem unter „Workflow für Einträge ohne Angabe“ gewählten (`planlaufAusWorkflow` in `engine.ts`). Pakete und Verzeichnisse werden je Art über Codierung bzw. Kurzzeichen oder Titel gefunden, auch in derselben Datei; ein neu angelegtes Verzeichnis übernimmt das früheste Eingang Soll seiner Pläne. Die Nummer eines Planverzeichnisses heißt „Codierung“ (`NUMMER_LABEL` in `types.ts`). Einträge, deren Lauf durch einen neuen Index ersetzt oder ersatzlos abgebrochen wurde, tragen einen grauen Zusatz; aufgeteilte bzw. wieder gebündelte Läufe zählen nicht als Abbruch. Im Dialog eines Planverzeichnisses: Haken „Pläne einzeln durch den Planlauf führen“ – frei wählbar, solange weder das Verzeichnis noch seine Pläne einen Lauf haben – und bei laufendem gebündeltem Lauf „Alle Pläne einzeln weiterführen …“ (`verzeichnisAufteilen`). Im Dialog eines mitlaufenden Plans: „Aus dem Verzeichnislauf herauslösen …“ (`planHerausloesen`). Haben Pläne des Verzeichnisses einen eigenen Lauf, bietet der Verzeichnis-Dialog „Pläne wieder bündeln …“: Der Dialog (`src/bereiche/planlauf/components/BuendelnDialog.tsx`) listet diese Pläne mit Haken, aktuellem Schritt und Fortschritt; die angekreuzten kehren in einen gemeinsamen Verzeichnislauf zurück (`planeBuendeln`), ihre eigenen Läufe enden mit der Abbruchart `gebuendelt`, nicht angekreuzte behalten ihren Lauf. Läuft das Verzeichnis noch, übernehmen sie dessen Stand – ein Plan, der weiter ist, wird mit „weiter als das Verzeichnis – fällt zurück“ gekennzeichnet. Ist es aufgeteilt, entsteht ein neuer Verzeichnislauf; sein Stand wird unter „Stand des Verzeichnislaufs übernehmen von“ gewählt, vorgeschlagen ist der am wenigsten weit gediehene Plan. In beiden Fällen übernimmt der Plan den Stand des Verzeichnislaufs – erledigte Schritte bleiben erledigt, Start und Termine laufen weiter (`laufUebernehmen` in `engine.ts`); der gebündelte Lauf endet beim Aufteilen mit der Abbruchart `aufgeteilt`. Ein Plan, der schon einen eigenen Lauf hat, behält ihn beim Verschieben in ein anderes Verzeichnis. „Angekündigt“ prüft alle anstehenden Schritte. Läuft ein Plan im Lauf seines Verzeichnisses mit, nennt der Dialog zu „Eingang Soll“: „Der Plan läuft im Planlauf seines Verzeichnisses mit – maßgeblich ist das Eingang Soll des Verzeichnisses.“ **Mehrfachauswahl:** Kästchen-Spalte (ein Verzeichnis wählt sich samt seinen sichtbaren Plänen; Paketzeile, „Ohne Planpaket“ und Kopfzeile wählen ihren Inhalt; was Suche oder Filter ausblenden, fällt aus der Auswahl) mit Aktionsleiste „… ausgewählt“: „Planpaket zuweisen …“ (`dokumentePaketZuweisen`, auch „– keinem Paket –“; Pläne folgen dem Paket ihres Verzeichnisses), „Neues Planpaket aus Auswahl …“ (PaketDialog mit `paketAusAuswahl`, das kein leeres Paket anlegt), „Gewerk/Planungsphase …“ (`dokumenteAendern`, „Leer lassen = unverändert“), „Löschen …“ (`dokumenteLoeschen`; die Rückfrage nennt Verzeichnisse mit oder ohne ihre Pläne, die Zahl der Planläufe samt denen mit Ist-Daten bzw. Protokoll und die künftigen Einzelpläne, mit „Sicherung vorher herunterladen“) und „Auswahl aufheben“ – Dialoge in `src/bereiche/planlauf/components/PlanlisteAktionen.tsx`. Auch „Hinzufügen“ und „Entfernen“ im Paketdialog laufen über `dokumentePaketZuweisen`. |
+| `rollen` | Funktion (`src/bereiche/planlauf/pages/projekt/RollenFunktionen.tsx`) | Nach Gewerken gegliedert („Übergreifend“ + je Gewerk, **+** für ein weiteres Gewerk, „Gewerk … löschen“ am Seitenende). Je Funktion die Besetzung mit einer Person samt Adressdaten: Funktion anlegen, bearbeiten, löschen; Besetzung setzen, wechseln, aufheben – von der Funktion aus (Person übernehmen oder neu erfassen) oder über „Person hinzufügen“ von der Person aus (Funktion optional gleich mitwählen). Suche über Funktion, Person und Firma; Personen ohne Funktion in einer eigenen Liste, je Zeile bearbeiten und löschen (Rückfrage „Person löschen?“); das Planlaufmanagement wird nicht angezeigt (immer die angemeldete Person); Excel-Import (`RollenImport.tsx`), der fehlende Gewerke und Funktionen anlegt; die optionale Spalte „Seite“ setzt die Seite für den Verzug. Feld „Seite für den Verzug“ im Funktionsdialog, Abzeichen in der Liste („Seite offen“ ohne Seite). |
 | `ketten` | Workflows im Projekt (`src/bereiche/planlauf/pages/Workflows.tsx` mit `projectId`) | Wie der globale Bereich, zusätzlich mit den Projektvarianten dieses Projekts. |
-| `einstellungen` | Einstellungen (`src/bereiche/planlauf/pages/projekt/Einstellungen.tsx`) | Projektdaten bearbeiten; Vorlaufzeit für Erinnerungen, Fristenrechnung in Arbeitstagen, Feiertage, Absendername und Absender-E-Mail pflegen; Hinweis auf die projektübergreifenden E-Mail-Texte; **Export** (`ExportDialog.tsx`, Titel „Planläufe exportieren“; ebenso im Reiter „Planläufe“): Kurz- oder Langfassung; Auswahl der Einträge in der Gliederung der Planlaufliste – je Planpaket, „Ohne Planpaket“ und „Abgebrochen“ ein Haken für die Gruppe; gewählt wird je Planlauf bzw. mitlaufendem Plan (`zeilenSchluessel`), ein Verzeichnis wählt die Pläne unter sich mit, ein mitlaufender Plan – gekennzeichnet mit „läuft im Verzeichnis mit“ – sein Verzeichnis, abgebrochene Läufe tragen ihren eigenen Index; PDF und Excel bleiben gesperrt, solange der Bericht leer wäre; eine Auswahl nach Arten gibt es nicht. Ausgabe als Excel-Datei (`src/shared/xlsx.ts`) oder als PDF über den Druckdialog (`src/shared/print.ts`). Aufbereitung in `src/bereiche/planlauf/domain/export.ts` (`berichtBilden` auf Grundlage von `uebersicht.ts`): Überschriften sind nur die Planpakete (dazu wie in der Liste „Ohne Planpaket“ und „Abgebrochen“); ein gebündeltes Verzeichnis ist ein Planlauf mit seinen mitlaufenden Plänen, ein Verzeichnis mit Plänen einzeln nur eine Klammer. Kurzfassung als PDF: die Tabelle der Planlaufliste (Plan / Planverzeichnis, Gewerk, Aktueller Stand, Nächster Schritt, Zuständig, Fortschritt, Status) ohne Schaltflächen, mit `EXPORT_STIL`; in Excel ein formatiertes Blatt (`kurzBlatt`): A1 „Projekt: …“, A2 „Stand: …“, Kopfzeile in Zeile 4 (`KURZ_KOPF`: Planpaket, Plancode, Index/Ausgabe, Titel, Gewerk, Aktueller Stand, Datum, Nächster Schritt, Frist; Planpaket „ohne Planpaket“, wenn keines), erst die laufenden Planläufe, dann gesondert „Abgeschlossen (…)“ grün und „Abgebrochen (…)“ grau hinterlegt; Datum und Frist als Excel-Daten, Frist bei fälligen Schritten orange, bei überfälligen rot; mitlaufende Pläne mit „läuft im Planlauf von … mit“, Verzeichnisklammern ohne eigene Zeile; Kopfzeilen fixiert, Druck quer auf Seitenbreite (Zellformate in `src/shared/xlsx.ts`). Langfassung: je Planlauf alle Schritte, in Excel je Schritt eine Zeile (`LANG_KOPF`). Projekt löschen. |
+| `einstellungen` | Einstellungen (`src/bereiche/planlauf/pages/projekt/Einstellungen.tsx`) | Projektdaten bearbeiten; Vorlaufzeit für Erinnerungen, Fristenrechnung in Arbeitstagen, Feiertage, Absendername und Absender-E-Mail pflegen; Hinweis auf die projektübergreifenden E-Mail-Texte; **Export** (`ExportDialog.tsx`, Titel „Planläufe exportieren“; ebenso im Reiter „Planläufe“): Kurz- oder Langfassung; Auswahl der Einträge in der Gliederung der Planlaufliste – je Planpaket, „Ohne Planpaket“ und „Abgebrochen“ ein Haken für die Gruppe; gewählt wird je Planlauf bzw. mitlaufendem Plan (`zeilenSchluessel`), ein Verzeichnis wählt die Pläne unter sich mit, ein mitlaufender Plan – gekennzeichnet mit „läuft im Verzeichnis mit“ – sein Verzeichnis, abgebrochene Läufe tragen ihren eigenen Index; PDF und Excel bleiben gesperrt, solange der Bericht leer wäre; eine Auswahl nach Arten gibt es nicht. Ausgabe als Excel-Datei (`src/shared/xlsx.ts`) oder als PDF über den Druckdialog (`src/shared/print.ts`). Aufbereitung in `src/bereiche/planlauf/domain/export.ts` (`berichtBilden` auf Grundlage von `uebersicht.ts`): Überschriften sind nur die Planpakete (dazu wie in der Liste „Ohne Planpaket“ und „Abgebrochen“); ein gebündeltes Verzeichnis ist ein Planlauf mit seinen mitlaufenden Plänen, ein Verzeichnis mit Plänen einzeln nur eine Klammer. Kurzfassung als PDF: die Tabelle der Planlaufliste (Plan / Planverzeichnis, Gewerk, Aktueller Stand, Nächster Schritt, Zuständig, Fortschritt, Status) ohne Schaltflächen, mit `EXPORT_STIL`; in Excel ein formatiertes Blatt (`kurzBlatt`): A1 „Projekt: …“, A2 „Stand: …“, Kopfzeile in Zeile 4 (`KURZ_KOPF`: Planpaket, Plancode, Index/Ausgabe, Titel, Gewerk, Aktueller Stand, Datum, Nächster Schritt, Frist; Planpaket „ohne Planpaket“, wenn keines), erst die laufenden Planläufe, dann gesondert „Abgeschlossen (…)“ grün und „Abgebrochen (…)“ grau hinterlegt; Datum und Frist als Excel-Daten, Frist bei fälligen Schritten orange, bei überfälligen rot; mitlaufende Pläne mit „läuft im Planlauf von … mit“, Verzeichnisklammern ohne eigene Zeile; Kopfzeilen fixiert, Druck quer auf Seitenbreite (Zellformate in `src/shared/xlsx.ts`). Langfassung: je Planlauf alle Schritte, in Excel je Schritt eine Zeile (`LANG_KOPF`, u. a. mit Durchlauf, Seite, Eingang, Soll, Ist und Verzug); frühere Durchläufe stehen als eigene graue Zeilen, voraussichtliche Termine kursiv. Die Kurzfassung nennt bei parallelen Zweigen alle anstehenden Schritte. Projekt löschen. |
 
 ### 2.3 Planlauf
 
-`src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx`: Kopf mit Stammdaten, Status und
-Fortschritt, Verlaufskette und Schrittliste. Aktionen am jeweils anstehenden
-Schritt: **Erledigt**, **Überspringen**, **Erinnern** (E-Mail vorbereiten);
-abgeschlossene Schritte bieten **Wieder öffnen**, jede Zeile **Anpassen**
-(Bezeichnung, Art, Funktion, zuständige Person, Frist, Soll-Termin, Status,
-Bemerkung, Nachweis). Zur Wahl der Funktion stehen die Funktionen des Gewerks
+`src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx`: Kopf mit Stammdaten, Status,
+„Fortschritt“, „Voraussichtliches Ende“ bzw. „Abgeschlossen am“ samt geplantem
+Ende, „Verzug gegenüber Basis“ und dem am stärksten überfälligen Schritt,
+Verlaufskette und Schrittliste („Prozessschritte“ – „Die Frist zählt ab dem
+tatsächlichen Eingang – dem Abschluss des vorherigen Schritts.“). Die
+Schrittliste folgt den Abschnitten aus `verfolgen` (`ablauf.ts`): ein paralleler
+Block erscheint als Gruppe („Die Zweige laufen gleichzeitig.“, „Weiter, wenn
+alle Zweige erledigt sind.“), je Zweig mit Stand, Zweig-Rücksprung, Ausstieg
+und abgeschnittenen Schritten. Aktionen an jedem anstehenden Schritt
+(`aktuelleSchritte`; ein abgebrochener Lauf hat keine): **Erledigt**,
+**Überspringen**, **Erinnern** (E-Mail vorbereiten). Je Schritt stehen Eingang
+(fest, „voraussichtlich“, „geschätzt“ oder „Wiedereingang am …“), Frist, Soll,
+Ist, Verzug bzw. Abweichung, Seite, die beim Abschluss festgehaltene Person,
+die vorbereiteten E-Mails („E-Mail vorbereitet am …“) und aufklappbar die
+früheren Durchläufe aus `historie`. Abgeschlossene Schritte bieten **Wieder
+öffnen …**: Dialog „Schritt wieder öffnen“ („Wie soll der Schritt wieder
+geöffnet werden?“) mit „Korrektur“ – nur solange kein Nachfolger ein Ist hat
+(`wiederOeffnenArt` in `abschluss.ts`) – oder „Erneute Bearbeitung“ mit
+„Eingang des neuen Durchlaufs“; Store `wiederOeffnen`. Jede Zeile **Anpassen**
+(„Schritt anpassen“: Bezeichnung, Art, Funktion, zuständige Person – „– laut
+Funktion –“ –, Frist, Eingang, „Ist-Termin“ nur bei erledigten Schritten,
+„Soll-Termin festsetzen“, Bemerkung, Nachweis; kein Statusfeld). Ändert sich
+dabei ein Eingang oder Ist, fragt „Eingang der Nachfolger ebenfalls
+anpassen?“; gespeichert wird in einem Aufruf von `aenderungenAnwenden`. Zur Wahl der Funktion stehen die Funktionen des Gewerks
 des Eintrags und die übergreifenden, je Bezeichnung einmal
 (`funktionenFuerGewerk` in `engine.ts`); eine bereits gesetzte Funktion bleibt
 wählbar. Beim Lauf eines Planverzeichnisses steht unter dem Kopf die Karte
@@ -90,10 +116,14 @@ entsteht dabei ein neuer Verzeichnislauf, öffnet die Seite ihn. Ein
 aufgeteilter Lauf zeigt statt der roten Abbruchmeldung den Hinweis „In
 Einzelläufe der Pläne aufgeteilt am …“, der eigene Lauf eines wieder
 gebündelten Plans „Wieder im Planlauf des Verzeichnisses gebündelt am …“.
-Weiter: **Schritt einfügen**, Antwort einer Entscheidung
+Weiter: **Schritt einfügen** (nur an Stellen, hinter denen nichts erledigt ist
+– `einfuegenMoeglich` in `ablauf.ts` –, im Block in den Zweig des gewählten
+Schritts, „am Ende von Zweig …“ oder „nach dem parallelen Block (bevor es
+weitergeht)“; Store `schrittImLaufEinfuegen`), Antwort einer Entscheidung
 wählen, **Workflow ändern …**, **Planlauf abbrechen** (ersatzlos oder mit neuem Index bzw. neuer
-Ausgabe – dann startet ein Nachfolgelauf) und **Lauf löschen**. „Workflow
-ändern …“ öffnet „Workflow ändern und neu starten“: Workflow, „Start des
+Ausgabe – dann startet ein Nachfolgelauf in einem Schritt, `neuerIndexStarten`) und **Lauf löschen**. „Workflow
+ändern …“ öffnet „Workflow ändern und neu starten“: Workflow, „Erledigte Schritte
+übernehmen“ (`erledigteUebernehmen` in `engine.ts`), „Start des
 Planlaufs“, „Eingang Soll“ (wird am Eintrag nachgetragen; ein vergangenes
 Datum ist nicht vorbelegt, leer gelten die Termine ab dem Start), „Grund“ und
 „Ablauf des neuen Planlaufs“ mit „Individueller Workflow“ (`LaufSchritte` in
@@ -109,10 +139,36 @@ blendet alle Schaltflächen aus. Verlangt ein Schritt einen Nachweis
 (`Freigabe-Nr.` oder `Prüfbericht-Nr.`), wird die Nummer beim Erledigen
 abgefragt (`src/bereiche/planlauf/components/SchrittStatus.tsx`).
 
+Folgt ein laufender Lauf noch einer früheren Fassung seines Workflows
+(`alteFassung`), steht im Kopf der Hinweis mit „Auf aktuelle Fassung umstellen
+…“ – derselbe Neustart-Dialog, Grund vorbelegt mit „Auf die aktuelle Fassung des
+Workflows umgestellt“. Nach jedem Erledigen oder Überspringen öffnet sich –
+sofern `mailNachfrage` gesetzt ist – „Neu zuständig“
+(`src/bereiche/planlauf/components/NeuZustaendig.tsx`): je Person eine Zeile mit
+den neu anstehenden Schritten, Vorlage, „E-Mail …“ und dem Kennzeichen „E-Mail
+vorbereitet“. Der E-Mail-Dialog fasst mehrere Schritte einer Person zu einer
+Sammel-E-Mail zusammen und vermerkt jede vorbereitete E-Mail am Schritt
+(`erinnerungenVermerken`).
+
+Karte **Terminnachweis** (`src/bereiche/planlauf/components/Terminnachweis.tsx`,
+Rechnung `terminnachweis` in `nachweis.ts`): „Verzug gegenüber dem Basisplan –
+und welcher Seite er zuzurechnen ist“, „Geplantes Ende (Basis)“, „Gesamtverzug“,
+Summen je Seite, „Seite fehlt“, „Zeitgewinn“, „Nicht erklärt“ und Warnungen;
+„Verzug je Ausführung“ mit Posten (`POSTEN_ART_LABEL`: Fristüberschreitung,
+Nacharbeit, Planänderung, Soll von Hand, Übergabelücke, Erster Termin
+verschoben, Nacharbeit (paralleler Block), Zeitgewinn) und „Zuordnen …“ (Dialog
+„Verzug zuordnen“, Tage je Seite, „Grund (Pflicht)“; Store `verzugZuordnen`),
+„Ursache der Nacharbeit“ je Entscheidung (`nacharbeitSeiteSetzen`), „Basisplan“
+mit „Basis neu festlegen …“ (Grund Pflicht, `basisNeuFestlegen`) und „Nachweis
+als Excel“ mit den Blättern „Ausführungen“, „Verzug je Seite“, „Erinnerungen“ und
+„Protokoll“. Karte **Protokoll** (`src/bereiche/planlauf/components/Protokoll.tsx`):
+Änderungen am Lauf, neueste zuerst, 20 Einträge, dann „Alle (…)“; geschrieben
+von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
+
 ### 2.4 Übergreifende Bedienelemente
 
 * **Seitenleiste** (`src/bereiche/planlauf/App.tsx`): Navigation (Übersicht, Projekte, Workflows,
-  Funktionen, Vorlagen), darunter die markierten Projekte mit vorangestellter
+  Funktionen, Vorlagen, Terminrechner), darunter die markierten Projekte mit vorangestellter
   Projektnummer und der Anzahl überfälliger Schritte. Ganz unten
   **Bereich wechseln** zurück zur Bereichsauswahl
   (`src/shell/BereichWechsel.tsx`).
@@ -121,22 +177,52 @@ abgefragt (`src/bereiche/planlauf/components/SchrittStatus.tsx`).
   eine E-Mail vorsieht“ und Schalter „Farbmodus für Rot-Grün-Sehschwäche
   (hoher Kontrast)“.
 * **Sicherung**: lädt den gesamten Bestand als JSON herunter
-  (`exportiereDaten`). **Einspielen**
+  (`exportiereDaten`); nach einem Lade- oder Fassungsfehler stattdessen den
+  gespeicherten Stand unverändert („Gespeicherten Stand unverändert
+  herunterladen“, `rohdatenHerunterladen`). **Einspielen**
   (`src/bereiche/planlauf/components/SicherungEinspielen.tsx`): wählt eine
   solche JSON-Datei, liest sie mit `sicherungLesen`
   (`src/bereiche/planlauf/store/storage.ts`, Anhebung wie beim Laden) und
-  fragt „Sicherung einspielen?“ – mit der Zahl der Projekte, Pläne und
+  zeigt „Sicherung einspielen“ – mit der Zahl der Projekte, Pläne und
   Planverzeichnisse und Planläufe, der Warnung, dass der jetzige Bestand
   ersetzt wird, „Aktuellen Stand sichern“ und, wenn die Namen abweichen, dem
   Haken „„Angemeldet als“ aus der Sicherung übernehmen“ (vorgewählt, solange
   der Name `STANDARD_BEARBEITER` ist); ohne gesetzten Haken bleiben Name,
-  Farbmodus und E-Mail-Nachfrage der Person am Rechner. „Einspielen“ ersetzt den Bestand über
-  `ersetzeDaten` und wechselt zur Übersicht. **Zurücksetzen**: verwirft den
+  Farbmodus und E-Mail-Nachfrage der Person am Rechner. „Alles ersetzen“ ersetzt den Bestand über
+  `ersetzeDaten` und wechselt zur Übersicht. „Abgleichen und auswählen …“
+  öffnet „Sicherung abgleichen“ (`src/bereiche/planlauf/components/Abgleich.tsx`,
+  Logik `abgleichErmitteln`/`abgleichAnwenden` in
+  `src/bereiche/planlauf/domain/abgleich.ts`): ein Baum mit Kästchen –
+  „Übergreifend“ (Gewerke, Funktionen, E-Mail-Vorlagen, Workflows) und
+  „Projekte“ (Projektdaten, Funktionen, Kontakte, Projekt-Workflows,
+  Eintragseinheiten) –, je Element neu, geändert, gleich, nur im Bestand oder
+  im Bestand gelöscht (Löschvermerke `AppData.geloescht`), „vermutlich dasselbe“
+  bei gleicher Codierung mit anderer Kennung, Projekt bei abweichender
+  Projektnummer „als Kopie“; Abhängigkeiten aus `VERWEISFELDER` werden „mitgenommen“.
+  Ohne Unterschiede: „Keine Unterschiede“. Übernommen wird über `datenAbgleichen`;
+  Läufe gleicher Kennung vereinigen Protokoll, Historie und Erinnerungen.
+  Stammt der gespeicherte Stand aus einer neueren Fassung, sind beide Wege
+  gesperrt, nach einem Ladefehler das Abgleichen. **Zurücksetzen**: verwirft den
   Bestand und lädt die Demodaten (`zuruecksetzen` in
-  `src/bereiche/planlauf/store/store.tsx`).
+  `src/bereiche/planlauf/store/store.tsx`); gesperrt, solange der gespeicherte
+  Stand aus einer neueren Fassung stammt („Gesperrt, damit der Stand aus der
+  neueren Fassung erhalten bleibt“).
+* **Hinweisleisten** (`src/bereiche/planlauf/components/Hinweisleisten.tsx`,
+  zwischen Kopfzeile und Inhalt) nach `ladeZustand`, `speicherZustand` und
+  `stammdatenKopien` des Stores: „Der gespeicherte Stand ließ sich nicht laden.“
+  mit „Gespeicherten Stand herunterladen“ und „Mit Demodaten neu beginnen?“; „Die
+  gespeicherten Daten stammen aus einer neueren Fassung von KaPlan.“ mit „Seite
+  neu laden“; „Nicht gespeichert – bitte Sicherung herunterladen.“ samt Grund
+  („Der Speicher des Browsers ist voll“ bzw. „Der Browser lässt das Speichern
+  nicht zu (etwa durch Datenschutzeinstellungen)“); „Standard-Workflows
+  aktualisiert.“ mit den Kopien „… (eigene Fassung)“, quittiert mit „Verstanden“.
 * **E-Mail-Dialog** (`src/bereiche/planlauf/components/EmailDialog.tsx`): Vorlage wählen, Betreff
-  und Text bearbeiten, „In Outlook öffnen“ (mailto), „Outlook im Web“ oder „In
-  die Zwischenablage“.
+  und Text bearbeiten, „In Outlook öffnen“ (mailto), „Outlook im Web“ oder „Kopieren“
+  (in die Zwischenablage). Bei mehreren Schritten einer Person eine Sammel-E-Mail
+  (Vorlage „Sammelerinnerung“, `sammelMailVorbereiten` in `email.ts`, Platzhalter
+  `{{liste}}` und `{{anzahl}}`); ist der Link länger als `MAILTO_GRENZE`, bleibt
+  nur „Kopieren“ („Zu lang für die Übergabe – bitte „Kopieren“ verwenden“).
+  Jede vorbereitete E-Mail wird als Erinnerung am Schritt vermerkt.
 
 ## 3. Nutzerrollen und Rechte
 
@@ -171,6 +257,10 @@ Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
    Schweißtechnischer Prüfer, Korrosionsschutzprüfer, Gleisgeometrie Prüfer,
    Geotechnischer Prüfer) für die mitgelieferten Gewerke EEA, KIB, LST, OLA,
    OSE, TK und VA. Gewerke und Funktionen lassen sich ergänzen und löschen.
+   Jede Funktion trägt eine Seite für den Verzug (`seite` vom Typ `Seite` in
+   `types.ts`: Planer, Prüfer, Auftraggeber, PLM oder `null`), nach der der
+   Terminnachweis Verzug zurechnet; die mitgelieferten Funktionen bringen sie
+   mit, neue werden aus der Bezeichnung vorbelegt (`seiteAusFunktion`).
 
 Die Besetzung wirkt sofort: `zustaendigkeitenNachziehen` (`src/bereiche/planlauf/domain/engine.ts`)
 setzt in laufenden Planläufen die zuständige Person aus der aktuellen Besetzung
@@ -204,16 +294,37 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 3. **Datenbank**: entfällt. Es gibt keine Datenbank, keinen Server und keine
    Migrationsskripte. Der Bestand liegt unter dem Schlüssel
    `planlauf-management.data.v1` im `localStorage`
-   (`src/bereiche/planlauf/store/storage.ts`).
-4. **Migrationen**: laufen automatisch beim Laden. `DATEN_VERSION = 12` und
-   `STAMMDATEN_VERSION = 4` (`src/bereiche/planlauf/domain/types.ts`) steuern, ob `migriere()`
+   (`src/bereiche/planlauf/store/storage.ts`). Vor einer Umstellung auf eine
+   neue Daten- oder Stammdatenfassung legt `ladeDaten` den gespeicherten Text
+   einmalig unter `planlauf-management.data.v1.vor-fassung-<n>` ab (n = bisherige
+   `version`); ist der Speicher voll, entfernt `speichereDaten` diese Kopien
+   zuerst und versucht es erneut.
+4. **Migrationen**: laufen automatisch beim Laden. `DATEN_VERSION = 13` und
+   `STAMMDATEN_VERSION = 5` (`src/bereiche/planlauf/domain/types.ts`) steuern, ob `migriere()`
    einen älteren Bestand auf die aktuelle Struktur hebt und ob neue Stammdaten
-   (Funktionen, Standard-Workflows) übernommen werden. Seit Fassung 12 wird die
-   frühere Schrittart „Sonstiges“ zur Aufgabe (`migriereTyp`), Ziele auf nicht
+   (Funktionen, Standard-Workflows) übernommen werden. Seit Fassung 12 werden
+   frühere Schrittarten außer Entscheidungen zur Aufgabe (`migriereTyp`), Ziele auf nicht
    mehr vorhandene Schritte entfallen (`zieleBereinigen`) und „Rückmeldung an
    Planer“ führt wieder zu „Erneute Vorlage von Planer“ (`rueckmeldungVerbinden`,
-   bei Planläufen nur für laufende) – alle in `store/storage.ts`. Ohne gespeicherten
-   Bestand werden die Demodaten aus `src/bereiche/planlauf/domain/seed.ts` geladen.
+   bei Planläufen nur für laufende). Fassung 13 ergänzt Antworten mit
+   `nacharbeit` (alle außer der ersten, `mitNacharbeit`), Funktionen mit Seite
+   (`mitSeite`), Erinnerungen aus der früheren `letzteErinnerung`
+   (`erinnerungenAus`) und die E-Mail-Vorlagen um `{{verzug.zahl}}` und die
+   Sammelerinnerung (`vorlagenFassung13`); `laeufeFassung13` schätzt den
+   Wiedereingang laufender Rücksprünge (`wiedereingangSchaetzen`, Eintrag im
+   Protokoll „KaPlan (Umstellung auf Fassung 13)“, Kennzeichen „geschätzt“),
+   gleicht den Status laufender Läufe mit dem Weg ab (`statusAbgleichen`) und
+   legt für jeden Lauf ohne Basisplan einen fest (`basisplanFestlegen`) – alle in
+   `store/storage.ts`. Stammdatenfassung 5 ersetzt die Standard-Workflows
+   (`stammdatenAktualisieren`); hatte ein Bestand der Stammdatenfassung 4 einen
+   mitgelieferten Workflow selbst geändert (Vergleich mit
+   `STANDARD_FASSUNG4_FINGERABDRUCK` in `seed.ts`), bleibt dieser als Kopie
+   „… (eigene Fassung)“ erhalten (`eigeneFassung`). Lässt sich der gespeicherte
+   Stand nicht lesen (`ladefehler`) oder stammt er aus einer neueren Fassung
+   (`neuere_fassung`), zeigt `ladeDaten` Demodaten, und der Store speichert nicht,
+   solange `ladeZustand` nicht `ok` ist. Ohne gespeicherten Bestand werden die
+   Demodaten aus `src/bereiche/planlauf/domain/seed.ts` geladen; ihre Läufe
+   entstehen über die Engine mit zufälligen IDs.
 5. **Entwicklung starten**: `npm run dev` – Vite startet auf Port 5173 und ist
    im Netz erreichbar (`server: { port: 5173, host: true }`).
 6. **Prüfen und bauen**: `npm run typecheck` (`tsc --noEmit`) und `npm run
@@ -248,7 +359,14 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | „Bitte einen Namen angeben.“ | `src/bereiche/planlauf/components/WorkflowEditor.tsx` | Workflow ohne Namen gespeichert. |
 | „Schritt … hat keine Bezeichnung.“ / „Entscheidung … hat keine Antwort.“ / „Schritt … wird nie erreicht – kein Übergang führt zu ihm.“ | `src/bereiche/planlauf/domain/workflowGraph.ts` (`pruefen`) | Workflow-Editor: Hinweise in der Fußzeile; die ersten beiden (und „Der Workflow hat noch keinen Schritt.“) erscheinen beim Speichern bzw. Übernehmen als Meldung und verhindern es. |
 | „Bitte jeden Schritt der Workflow benennen.“ | `src/bereiche/planlauf/pages/projekt/Plaene.tsx`, `PlanlaufDetail.tsx` | Beim Start bzw. Neustart eines Planlaufs ist ein Schritt unbenannt. |
-| „Bitte einen Grund angeben.“ | `src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx` | Abbruch ohne Begründung. |
+| „Bitte einen Grund angeben.“ | `src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx`, `src/bereiche/planlauf/components/Terminnachweis.tsx` | Abbruch bzw. „Basis neu festlegen“ ohne Begründung. |
+| „Bitte einen Grund für … angeben.“ | `src/bereiche/planlauf/components/Terminnachweis.tsx` | „Verzug zuordnen“: Tage für eine Seite ohne Grund. |
+| „Bitte den Eingang des neuen Durchlaufs angeben.“ | `src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx` | „Wieder öffnen …“ als erneute Bearbeitung ohne Eingang. |
+| „Bitte ein Ist-Datum angeben – zum Zurücknehmen „Wieder öffnen“ verwenden.“ | `src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx` | „Schritt anpassen“: Ist eines erledigten Schritts geleert. |
+| „Bitte den Soll-Termin angeben.“ | `src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx` | „Soll-Termin festsetzen“ ohne Datum. |
+| „Bitte eine Stelle zum Einfügen wählen.“ | `src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx` | „Schritt einfügen“ ohne Einfügestelle. |
+| „Dort lässt sich kein Schritt einfügen – dahinter ist schon etwas erledigt.“ | `src/bereiche/planlauf/domain/abschluss.ts` | Die gewählte Stelle ist nicht (mehr) zulässig (`einfuegenMoeglich`). |
+| „Bitte ein Planpaket wählen.“ | `src/bereiche/planlauf/components/PlanlisteAktionen.tsx` | „Planpaket zuweisen“ ohne Ziel. |
 | „Bitte mindestens einen Eintrag auswählen.“ | `src/bereiche/planlauf/pages/projekt/ExportDialog.tsx` | Export ohne Auswahl. |
 
 ### Import aus Excel/CSV
@@ -274,6 +392,9 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | „Die Sicherung ist unvollständig.“ | Einer Sicherung der aktuellen Fassung fehlt eine der Listen (Projekte, Funktionen, Kontakte, Einträge, Workflows, Planläufe …) oder der Name unter „Angemeldet als“. |
 | „Die Sicherung konnte nicht gelesen werden.“ | Das Anheben auf die aktuelle Fassung schlug fehl. |
 | „Sicherung eingespielt – ….“ | Kein Fehler: Der Bestand wurde ersetzt; die Meldung nennt die Zahl der Projekte und Planläufe. |
+| „Nichts übernommen – der Stand nach dem Abgleich wäre nicht stimmig:“ | „Sicherung abgleichen“: Die Konsistenzprüfung nach `abgleichAnwenden` fand Verstöße, die der Abgleich neu erzeugen würde; die ersten acht werden aufgezählt. |
+| „Abgleich übernommen – ….“ | Kein Fehler: Die gewählten Elemente wurden übernommen (`src/bereiche/planlauf/components/Abgleich.tsx`). |
+| „Keine Unterschiede“ – „Die Sicherung enthält nichts, was vom Bestand in diesem Browser abweicht.“ | Kein Fehler: Sicherung und Bestand stimmen überein. |
 
 ### Laufzeit und Technik
 
@@ -281,11 +402,16 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | --- | --- |
 | „Kopieren nicht möglich – bitte Text manuell markieren.“ | `navigator.clipboard.writeText` wurde abgelehnt (fehlende Berechtigung oder unsicherer Kontext), `src/bereiche/planlauf/components/EmailDialog.tsx`. |
 | „Druckdialog geöffnet – dort ‚Als PDF sichern‘ wählen.“ | Kein Fehler: Der PDF-Export läuft über den Druckdialog des Browsers (`src/shared/print.ts`). |
-| Konsole: „Daten konnten nicht lokal gespeichert werden: …“ | `localStorage.setItem` schlug fehl – Speicher voll oder gesperrt (privates Fenster), `src/bereiche/planlauf/store/storage.ts`. |
+| Konsole: „Daten konnten nicht lokal gespeichert werden: …“ | `localStorage.setItem` schlug fehl – Speicher voll oder gesperrt (privates Fenster), `src/bereiche/planlauf/store/storage.ts`. `speichereDaten` liefert dann `voll` oder `gesperrt` (bei vollem Speicher erst nach dem Entfernen der Rohkopien `…vor-fassung-…`). |
+| Hinweisleiste „Nicht gespeichert – bitte Sicherung herunterladen.“ | Derselbe Fall in der Oberfläche (`speicherZustand`), mit „Der Speicher des Browsers ist voll“ bzw. „Der Browser lässt das Speichern nicht zu (etwa durch Datenschutzeinstellungen)“ (`src/bereiche/planlauf/components/Hinweisleisten.tsx`). |
+| Hinweisleiste „Der gespeicherte Stand ließ sich nicht laden.“ | `ladeDaten` konnte den gespeicherten Text nicht lesen oder aufbereiten (`ladefehler`). Angezeigt werden Demodaten, gespeichert wird nicht; „Mit Demodaten neu beginnen?“ ersetzt den Stand erst nach Rückfrage. |
+| Hinweisleiste „Die gespeicherten Daten stammen aus einer neueren Fassung von KaPlan.“ | `version` des gespeicherten Stands ist größer als `DATEN_VERSION` (`neuere_fassung`): Demodaten, kein Speichern, Einspielen und Zurücksetzen gesperrt; Abhilfe „Seite neu laden“. |
+| Hinweisleiste „Standard-Workflows aktualisiert.“ | Kein Fehler: Beim Wechsel von Stammdatenfassung 4 wurde ein selbst geänderter Standard-Workflow als Kopie „… (eigene Fassung)“ behalten (`stammdatenKopien`). |
+| Terminnachweis: „Für diesen Planlauf ist kein Basisplan festgelegt – der Gesamtverzug lässt sich nicht bestimmen.“, „Die Prognose endet nicht (Schleife bzw. zu viele Schritte) – das Ende ist unsicher.“, „Der Planlauf wurde abgebrochen …“, „Frühere Durchläufe einzelner Schritte stammen aus der Zeit vor der Umstellung und sind nicht gespeichert – ihre Zeit erscheint als Übergabelücke, ein Rest ist möglich.“, „Zuordnung von Hand bei „…“ (Durchlauf …) übersteigt den Verzug um …“ | Hinweise der Karte „Terminnachweis“ (`warnungen` aus `terminnachweis` in `src/bereiche/planlauf/domain/nachweis.ts`). |
 | Konsole: „Service Worker konnte nicht registriert werden: …“ | Registrierung abgelehnt, etwa ohne HTTPS (`src/shared/pwa.ts`). Die Anwendung läuft weiter, nur der Offline-Betrieb entfällt. |
 | Ausnahme: „useStore muss innerhalb des StoreProvider verwendet werden.“ | Entwicklungsfehler: Eine Komponente nutzt `useStore` außerhalb von `StoreProvider` (`src/bereiche/planlauf/store/store.tsx`). |
 | Seite „Nicht gefunden – Der aufgerufene Eintrag existiert nicht (mehr).“ | Die Adresse nennt ein Projekt oder einen Planlauf, den es nicht (mehr) gibt (`src/bereiche/planlauf/App.tsx`). |
-| Ein alter Stand erscheint nach einer Aktualisierung | Entweder liegt unter `app/` noch ein älterer Build (siehe Abschnitt 5, Schritt 7), oder der Service Worker liefert aus seinem Cache, derzeit `mc-plan-v5` (`public/sw.js`). Beim Aktivieren löscht er alle älteren Caches; bis dahin hilft einmal Neuladen bzw. Strg+Umschalt+R. |
+| Ein alter Stand erscheint nach einer Aktualisierung | Entweder liegt unter `app/` noch ein älterer Build (siehe Abschnitt 5, Schritt 7), oder der Service Worker liefert aus seinem Cache, derzeit `mc-plan-v6` (`public/sw.js`). Beim Aktivieren löscht er alle älteren Caches; bis dahin hilft einmal Neuladen bzw. Strg+Umschalt+R. |
 | Planliste: Haken „Pläne einzeln durch den Planlauf führen“ ist ausgegraut – „Es bestehen bereits Planläufe. Die Pläne lassen sich nur noch nachträglich einzeln weiterführen.“ bzw. „Die Pläne laufen bereits einzeln. Über „Pläne wieder bündeln …“ lassen sich ausgewählte Pläne zurückführen.“ | Kein Fehler: Sobald das Verzeichnis oder einer seiner Pläne einen Lauf hat, ist die Wahl gesperrt (`modusGesperrt` in `Plaene.tsx`). Weiter geht es über die Nachträge „Herauslösen …“, „Alle Pläne einzeln weiterführen …“ und „Pläne wieder bündeln …“ bzw. „Bündeln …“ – im Dialog der Planliste, in der Karte „Pläne dieses Verzeichnisses“ des Planlaufs und im Reiter „Planläufe“. |
 | Konsole der Wurzelseite: 404 für `/src/main.tsx` und die Symbole unter `icons/` | Kein Fehler: Die Wurzelseite ist der ausgelieferte Quellcode und springt nur nach `app/` weiter; dort gibt es diese Fehlanfragen nicht. |
 

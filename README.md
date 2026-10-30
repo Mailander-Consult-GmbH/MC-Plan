@@ -4,7 +4,8 @@ KaPlan gliedert sich in drei getrennte Bereiche, zwischen denen der Startbildsch
 
 * **Planlaufmanagement** – Verwaltungssoftware für Planläufe: Projekte,
   Planpakete/Pläne/Planverzeichnisse und die Prozessketten, die diese durchlaufen – mit
-  Soll-/Ist-Terminen, Fristenüberwachung und vorbereiteten Erinnerungs-E-Mails.
+  Soll-/Ist-Terminen ab dem tatsächlichen Eingang, parallelen Prüf- und Versandschritten,
+  Fristenüberwachung, Terminnachweis je Seite und vorbereiteten Erinnerungs-E-Mails.
 * **Baubetriebsplanung** (erster Entwurf) – Monitor für baubetriebliche Anmeldungen von
   Sperrpausen: Projekte mit ihren Anmeldungen, die anpassbare Workflows je Phase durchlaufen –
   SKM, MKM, KM (n-2 & n-1) und KKM (unterjährig) – mit Terminfristen laut Richtlinie,
@@ -167,6 +168,14 @@ demselben Workflow, aber mit unterschiedlichem Gewerk, erhalten unterschiedliche
 Gewerke zur Auswahl: EEA, KIB, LST, OLA, OSE, TK, VA – weitere lassen sich über das **+** an den
 Gewerk-Reitern anlegen; sie gelten dann überall.
 
+Jede Funktion trägt eine **Seite für den Verzug** – *Planer*, *Prüfer*, *Auftraggeber*, *PLM* oder
+„nicht festgelegt“. Der Terminnachweis rechnet Verzug in Schritten dieser Funktion der Seite zu.
+Neue Funktionen erhalten sie aus der Bezeichnung vorbelegt (Planlaufmanagement → PLM, Planer und
+Fachspezialisten → Planer, prüfende Funktionen → Prüfer, Bauvorlageberechtigte, Projektleitung und
+Bauüberwachung → Auftraggeber), bis sie von Hand gewählt wird. Die Listen zeigen die Seite als
+Abzeichen; fehlt sie, steht dort gelb *Seite offen*. Dasselbe Feld gibt es im Projekt unter
+**Funktion**.
+
 ### Funktion (im Projekt)
 Im Vordergrund steht die **Funktion, nicht die Person**: Die Seite ist – wie der projektübergreifende
 Reiter *Funktionen* – nach **Gewerken** gegliedert (je Gewerk eine Seite, dazu „Übergreifend“). Je
@@ -189,8 +198,10 @@ Projekt. Das Planlaufmanagement erscheint auf dieser Seite nicht – es ist imme
 
 **Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · Telefon ·
 Email · Straße · Nr. · PLZ · Ort · Notiz*. Gewerke und Funktionen, die es noch nicht gibt, werden
-beim Import angelegt; „Übergreifend“ steht für Funktionen ohne Gewerkbezug. Die Vorschau nennt je
-Zeile, was angelegt wird und wen eine Besetzung ersetzt.
+beim Import angelegt; „Übergreifend“ steht für Funktionen ohne Gewerkbezug. Eine optionale Spalte
+*Seite* setzt die Seite für den Verzug – bei neuen Funktionen (sonst gilt die Vorbelegung) und bei
+vorhandenen, wenn sie abweicht. Die Vorschau nennt je Zeile, was angelegt wird, wen eine Besetzung
+ersetzt und welche Seite sich ändert.
 
 ### Planliste
 Planbestand aus Plänen, Planpaketen und Planverzeichnissen im Reiter **Planliste**. Je Eintrag
@@ -237,6 +248,16 @@ Planlaufliste **gelb**, in der Planlaufliste trägt er den Status **Angekündigt
 auch filtern und sortieren), in der Planliste das Kennzeichen *Angekündigt*. Ist der Eingang
 überfällig, lautet der Status **Überfällig**; die Bezeichnung bleibt gelb. Abgeschlossene
 Planläufe stehen in **Grün**, abgebrochene grau.
+
+**Mehrfachauswahl:** Über die Kästchen-Spalte lassen sich Einträge wählen. Das Kästchen eines
+Verzeichnisses wählt es samt seinen sichtbaren Plänen; Paketzeile, *Ohne Planpaket* und Kopfzeile
+wählen ihren Inhalt (bei abweichender Auswahl teilweise markiert). Was Suche oder Filter ausblenden,
+fällt aus der Auswahl. Die Aktionsleiste bietet **Planpaket zuweisen …** (auch „– keinem Paket –“;
+Pläne folgen dem Paket ihres Verzeichnisses), **Neues Planpaket aus Auswahl …**,
+**Gewerk/Planungsphase …** (ein leeres Feld bleibt unverändert), **Löschen …** und **Auswahl
+aufheben**. Die Rückfrage zum Löschen nennt jedes Verzeichnis mit oder ohne seine Pläne, die Zahl
+der Planläufe – davon die mit Ist-Daten bzw. Protokoll –, die künftigen Einzelpläne und bietet
+**Sicherung vorher herunterladen**.
 
 ### Planverzeichnisse: gebündelt oder Pläne einzeln
 Jedes Planverzeichnis läuft auf eine von zwei Arten:
@@ -285,12 +306,27 @@ mehrfach vorkommen.
 Der erste Reiter eines Projekts, **Planläufe**, zeigt Kennzahlen und die Planlaufliste. Je Eintrag
 steht in der Spalte **Aktueller Stand** der zuletzt erledigte Prozessschritt vor dem offenen –
 übersprungene Schritte zählen nicht, und auch nach dem Wiederöffnen eines früheren Schritts liegt er
-nie dahinter –, darunter in Grau sein Erledigungsdatum, und in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist.
+nie dahinter; nach einem Rücksprung ist es der zuletzt bis zum Wiedereingang erledigte –, darunter
+in Grau sein Erledigungsdatum, und in der Spalte **Nächster Schritt** der offene Schritt mit seiner
+Frist. Stehen in parallelen Zweigen mehrere Schritte an, nennt die Zeile den dringlichsten mit
+„+n parallel“; Erinnern und Erledigt-Haken fragen dann nach dem Schritt. Status, Filter und Suche
+berücksichtigen alle anstehenden Schritte. Der **Fortschritt** ist nach Fristen gewichtet: die
+Fristen der erledigten Schritte im Verhältnis zu ihnen plus den Fristen aller laut Prognose noch
+ausstehenden Ausführungen – ein Rücksprung senkt ihn also; 100 % hat nur ein abgeschlossener Lauf.
 Die Liste ist nach Planpaketen gegliedert; Planverzeichnisse lassen sich am Pfeil vor Symbol und Titel
 aufklappen (zunächst zugeklappt). Darunter stehen die Pläne – mitlaufend mit **Herauslösen …**,
 herausgelöst mit eigenem Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als
 zusammenfassende Zeile mit **Bündeln …**. Abgebrochene Läufe stehen gesammelt am Ende unter einer
 eigenen, zunächst zugeklappten Zeile **Abgebrochen**.
+
+**Mehrfachauswahl:** Über die Kästchen-Spalte lassen sich Planläufe wählen – Planpaket, *Ohne
+Planpaket*, Verzeichnis und Kopfzeile wählen ihren Inhalt, abgebrochene Läufe sind nicht wählbar.
+Die Aktionsleiste bietet **Schritte erledigen …** (Ist-Datum, erledigt oder übersprungen, je Lauf
+die anstehenden Schritte; gleichnamige Schritte lassen sich gemeinsam beantworten und mit einer
+Nachweis-Nr. versehen; eine Vorschau nennt Rücksprünge und Abschlüsse, danach folgen das Ergebnis
+und auf Wunsch **Neu zuständig**), **Erinnern …** (eine E-Mail je Person mit all ihren Schritten),
+**Exportieren …** (Export mit der Auswahl vorgewählt) und **Auswahl aufheben**. Ein gewählter
+mitlaufender Plan wirkt auf den Planlauf seines Verzeichnisses.
 
 Die Planlaufliste lässt sich über die Spaltenüberschriften **sortieren** – nach Bezeichnung, Gewerk,
 Datum des aktuellen Stands, Soll-Termin des nächsten Schritts, Zuständigkeit, Fortschritt oder Status
@@ -317,14 +353,27 @@ von Hand gewählt wurde.
 
 ### Prozessketten
 Ein Schritt ist eine **Aufgabe** oder eine **Entscheidung**, hat eine Frist in Tagen und
-einen Verantwortlichen (Rolle). Entscheidungen erhalten zwei Antwortmöglichkeiten („Ja“/„Nein“ als
+einen Verantwortlichen (Funktion). Entscheidungen erhalten zwei Antwortmöglichkeiten („Ja“/„Nein“ als
 Vorbelegung, frei überschreibbar); weitere lassen sich ergänzen. Je Antwort wird festgelegt, mit
 welchem Schritt es weitergeht – mit dem nächsten Schritt, einem beliebigen anderen oder dem Ende des
-Laufs. Die erste Antwort bildet den **Standardverlauf**, die übrigen die **Abweichungen**.
+Laufs – und ob sie **zu Nacharbeit führt** (Vorgabe: alle außer der ersten); der Weg danach gilt im
+Terminnachweis als Nacharbeit. Die erste Antwort bildet den **Standardverlauf**, die übrigen die
+**Abweichungen**.
 
 Zeigt eine Antwort oder das „Weiter mit“ einer Aufgabe auf einen bereits durchlaufenen Schritt
 zurück, entsteht eine **Schleife** (z.B. Überarbeitung nach einer Prüfung): Der Ablauf endet dort
 nicht, sondern nimmt den genannten Schritt in einem weiteren Durchlauf erneut auf.
+
+**Parallele Blöcke.** Schritte, die gleichzeitig laufen, bilden einen parallelen Block aus zwei oder
+mehr **Zweigen**. Ein Block wird immer als Ganzes betreten – alle Zweige beginnen zugleich –, und
+weiter geht es hinter dem Block, wenn alle Zweige erledigt sind (Zusammenführung). Im Zweig geht es
+zum nächsten Schritt des Zweigs, zum Zweigende oder zurück auf einen früheren Schritt desselben
+Zweigs (**Zweig-Rücksprung**, etwa eine erneute Nachreichung); ein Ziel in einem anderen Zweig ist
+unzulässig. Ein Ziel außerhalb des Blocks ist ein **Ausstieg** (etwa „Nein“ einer Prüfung zur
+Rückmeldung an den Planer): Ist der auslösende Schritt erledigt, beginnen die übrigen Zweige nichts
+Neues mehr – Laufendes wird noch erledigt –, und es geht am Ziel des Ausstiegs weiter. Ein
+Rücksprung auf einen Schritt im Block betritt wieder den ganzen Block. Blöcke lassen sich nicht
+schachteln.
 
 **Workflow-Editor.** Workflows werden in einem bildschirmfüllenden Editor bearbeitet – projektübergreifend
 unter *Workflows*, als Projektvariante im Reiter *Workflows* des Projekts und für einen einzelnen
@@ -336,17 +385,33 @@ Art, Nummer, Bezeichnung, Funktion und Frist. Ein Klick öffnet rechts die *Schr
 (Bezeichnung, Art, verantwortliche Funktion, Frist, Nachweis, „Weiter mit“ bzw. die Antworten mit
 *Als Standardverlauf*, *E-Mail nach Abschluss*, Verschieben im Standardverlauf, Duplizieren,
 Entfernen). „+“ zwischen zwei Karten fügt dort eine Aufgabe ein, *Schritt hinzufügen* hängt einen
-Schritt an. Änderungen lassen sich rückgängig machen (Strg+Z / Strg+Y); die Fußzeile meldet
+Schritt an. Ein paralleler Block erscheint als Containerkarte „Parallel · … Zweige“ mit den
+Zweigen nebeneinander (bei Platzmangel untereinander), Gabel- und Zusammenführungsbalken, „+“ je
+Zweig, Abweichungen im Zweig gestrichelt darunter und Ausstiegen als Text; angelegt wird er über
+*Schritt hinzufügen* → *Parallele Zweige* oder in den Schrittdetails mit *Parallel dazu ausführen*,
+aufgelöst mit *Aus dem Block lösen*. Ändert sich dabei der Anschluss hinter einem Block, weist der
+Editor darauf hin. Änderungen lassen sich rückgängig machen (Strg+Z / Strg+Y); die Fußzeile meldet
 Unvollständiges (fehlende Bezeichnung, Entscheidung ohne Antwort, nie erreichte Schritte), und
 erst *Speichern* bzw. *Übernehmen* schreibt den Stand. Auf schmalen Bildschirmen stehen die
 Schrittdetails in einem Blatt von unten, bei mittlerer Breite in einer Schublade.
 
 Mitgeliefert sind die drei vorgegebenen Ketten **VVBau ohne Prüfstatik**, **VVBau mit Prüfstatik**
-und **VVBau STE** mit ihren Verzweigungen und Rücksprüngen. Die Fristen sind dort nicht vorgegeben
-und daher als Erfahrungswerte vorbelegt (z.B. 10 Tage Planerstellung, 3 Tage formale Prüfung,
-10 Tage BVB-Freigabe, 15 Tage Fachprüfung); sie lassen sich je Kette und je Planlauf ändern. Schritte,
-die in der Vorgabe parallel laufen (etwa die vier Versandschritte nach der Genehmigung), sind
-nacheinander abgebildet.
+und **VVBau STE** mit ihren Verzweigungen und Rücksprüngen. Jede Prüf- bzw. Freigabeentscheidung
+hat neben „Ja“ und „Nein“ die Antwort **Nachreichung**: Der Fachplaner reicht beim ablehnenden
+Prüfer nach („Nachreichung an …“), dieselbe Funktion prüft bzw. gibt die Nachreichung frei – „Ja“
+führt weiter wie das „Ja“ der Ausgangsentscheidung, „Nein“ zur Rückmeldung an den Planer, eine
+weitere „Nachreichung“ zurück zur Nachreichung. In *VVBau mit Prüfstatik* laufen Fachprüfung und
+Prüfstatik als paralleler Block (jede mit eigener Nachreichung im Zweig, „Nein“ als Ausstieg zur
+Rückmeldung an den Planer); in allen drei Ketten laufen nach der Genehmigung der digitale Versand an
+Bau AN, BVB und BÜW sowie der Plotauftrag parallel, danach der Postversand an Bau AN und BÜW. Die
+Fristen sind dort nicht vorgegeben und daher als Erfahrungswerte vorbelegt (z.B. 10 Tage
+Planerstellung, 3 Tage formale Prüfung, 10 Tage BVB-Freigabe, 15 Tage Fachprüfung, je 5 Tage für
+Nachreichung und Prüfung der Nachreichung); sie lassen sich je Kette und je Planlauf ändern.
+
+Diese Ketten kamen mit Stammdatenfassung 5. Ein vorhandener Bestand übernimmt sie beim Laden; wer
+einen mitgelieferten Workflow der Fassung 4 selbst geändert hatte, behält diesen als eigene Kopie
+„… (eigene Fassung)“ – ein einmaliger Hinweis nennt sie. Laufende Planläufe behalten ihre Schritte;
+der Planlauf bietet dann **Auf aktuelle Fassung umstellen …**.
 
 Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen. Die eigene Rolle im
 Projekt ist **Planlaufmanagement (PLM)**.
@@ -365,8 +430,11 @@ Exportfassungen.
 
 ### Prüfer individuell ergänzen
 Über **Schritt einfügen** wird ein zusätzlicher Prüfschritt in den laufenden Verlauf eingehängt –
-mit Rolle (z.B. Erdungsprüfer), Frist und Nachweis. Die Einfügeposition wird aus dem aktuellen
-Verlauf gewählt; die Verkettung wird dabei richtig gesetzt, auch hinter Entscheidungen.
+mit Funktion (z.B. Erdungsprüfer), Frist und Nachweis. Die Einfügeposition wird aus dem aktuellen
+Verlauf gewählt, vorgeschlagen ist die Stelle hinter dem anstehenden Schritt; angeboten werden nur
+Stellen, hinter denen noch nichts erledigt ist. Im parallelen Block landet der Schritt im Zweig des
+gewählten Schritts, wahlweise am Ende eines Zweigs oder nach dem Block. Die Verkettung wird dabei
+richtig gesetzt, auch hinter Entscheidungen.
 
 ### Planläufe (Soll-/Ist-Termine)
 Ein Planlauf ist die laufende Instanz einer Prozesskette für einen Plan oder ein gebündeltes
@@ -374,28 +442,64 @@ Planverzeichnis. Beim Start werden die Schritte der Vorlage kopiert und lassen s
 noch ergänzen, ändern oder entfernen – **individuelle Abweichungen** wirken deshalb nur auf den
 jeweiligen Lauf und sind als solche gekennzeichnet.
 
-* **Soll-Termine** werden aus den Fristen gerechnet: Soll = Soll des Vorgängers + Frist. Wahlweise
-  in Arbeitstagen (Mo–Fr, ohne hinterlegte Feiertage) oder Kalendertagen.
+* **Die Frist zählt ab dem tatsächlichen Eingang.** Sobald ein Schritt ansteht, erhält er einen
+  **festen Eingang**: den Abschluss seines Vorgängers – nach einem parallelen Block den spätesten
+  Abschluss der Zweige –, beim ersten Schritt den Start. **Soll = Eingang + Frist**, wahlweise in
+  Arbeitstagen (Mo–Fr, ohne hinterlegte Feiertage; das Soll fällt mindestens auf den nächsten
+  Arbeitstag) oder Kalendertagen. Der erste Schritt erhält das *Eingang Soll* des Eintrags, falls
+  hinterlegt. Der feste Eingang ändert sich danach nicht mehr von selbst; unter *Anpassen* lässt er
+  sich ändern, auf Wunsch samt dem Eingang der Nachfolger.
+* Künftige Schritte rechnen mit dem **voraussichtlichen Eingang** – erledigte Vorgänger mit ihrem
+  Abschluss, offene mit ihrem Soll, frühestens heute. Diese **Prognose** liegt nie in der
+  Vergangenheit und ist als „voraussichtlich“ gekennzeichnet; aus ihr ergibt sich auch das
+  voraussichtliche Ende des Laufs.
 * Ein Soll-Termin kann **manuell festgesetzt** werden und bildet dann die Basis für alle folgenden
   Schritte.
-* Führt eine Antwort oder das „Weiter mit“ einer Aufgabe zurück auf einen früheren Schritt, beginnt
-  mit dem Erledigen dieses Schritts ein **weiterer Durchlauf** ab dem Ziel; die betroffenen Schritte werden erneut geöffnet und
-  als „2. Durchlauf“ gekennzeichnet.
-* **Ist-Termine** dokumentieren die Erledigung; Schritte lassen sich auch **überspringen**. Der
-  jeweils nächste Schritt wird automatisch aktiv, der Lauf schließt sich, wenn alle Schritte des
-  Verlaufs erledigt sind.
+* Führt eine Antwort oder das „Weiter mit“ einer Aufgabe zurück auf einen früheren Schritt
+  (**Rücksprung**), beginnt mit dem Erledigen dieses Schritts ein **weiterer Durchlauf** ab dem Ziel:
+  Das Ziel und alles, was ab ihm schon begonnen war, wird zurückgesetzt und als „2. Durchlauf“
+  gekennzeichnet; ein Zweig-Rücksprung betrifft nur den Rest des Zweigs, ein Rücksprung in einen
+  Block den ganzen Block. Der bisherige Stand bleibt als **früherer Durchlauf** in der Historie des
+  Schritts erhalten (aufklappbar). Das Ziel erhält als **Wiedereingang** den Abschluss des
+  Auslösers („Wiedereingang am … (aus Rücksprung)“), und seine Frist zählt ab dann neu.
+* **Parallele Blöcke** stehen in der Schrittliste als Gruppe, die Zweige nebeneinander (bei
+  Platzmangel untereinander), je Zweig mit Stand, Zweig-Rücksprung, Ausstieg und abgeschnittenen
+  Schritten. Jeder anstehende Schritt – in parallelen Zweigen also mehrere zugleich – bietet die
+  Aktionen.
+* **Ist-Termine** dokumentieren die Erledigung; Schritte lassen sich auch **überspringen**. Ein Ist
+  vor dem Eingang wird angezeigt und verlangt beim gesammelten Erledigen eine Bestätigung. Mit dem
+  Abschluss hält der Schritt die zuständige Person fest. Die folgenden Schritte werden automatisch
+  aktiv, der Lauf schließt sich, wenn alle Schritte des Verlaufs erledigt sind.
+* Nach jedem Erledigen oder Überspringen zeigt **Neu zuständig** die nun anstehenden Schritte je
+  Person mit Vorlage und E-Mail-Schaltfläche – sofern unter *Angemeldet als* die Nachfrage
+  zugelassen ist.
 * Bei **Entscheidungen** wird die Antwort im Lauf gewählt. Der angezeigte Verlauf folgt dieser
   Antwort; ohne Auswahl der ersten Möglichkeit. Schritte, die nur bei anderer Antwort durchlaufen
   werden, sind unterhalb der Liste aufgeführt.
-* Im Planlauf sind die Schaltflächen (Erledigt, Überspringen, Erinnern) nur am **aktuell anstehenden
-  Schritt** sichtbar; abgeschlossene Schritte bieten *Wieder öffnen*, und *Anpassen* steht als
-  Stiftsymbol rechts an jeder Zeile.
+* Im Planlauf sind die Schaltflächen (Erledigt, Überspringen, Erinnern) nur an **anstehenden
+  Schritten** sichtbar; *Anpassen* steht als Stiftsymbol rechts an jeder Zeile.
+* Abgeschlossene Schritte bieten **Wieder öffnen …**. Der Dialog fragt nach der Art: **Korrektur**
+  (Fehlbedienung – das Ist entfällt, Nachfolger, die dadurch nicht mehr anstehen, warten wieder;
+  nur solange kein Nachfolger ein Ist hat) oder **Erneute Bearbeitung** (ab diesem Schritt beginnt
+  ein weiterer Durchlauf, dessen Eingang abgefragt wird; der bisherige bleibt in der Historie). Er
+  nennt die betroffenen Schritte. Ein abgeschlossener Lauf läuft danach wieder.
+* Der **Kopf** des Planlaufs zeigt den Fortschritt, das voraussichtliche bzw. tatsächliche Ende samt
+  geplantem Ende, den Verzug gegenüber der Basis und den am stärksten überfälligen Schritt.
+* Jede vorbereitete E-Mail wird am Schritt als **Erinnerung** vermerkt („E-Mail vorbereitet am … an
+  …“). Die Karte **Protokoll** führt alle Änderungen am Lauf – wer wann einen Schritt erledigt,
+  wieder geöffnet, angepasst, eine Person gewählt oder eine E-Mail vorbereitet hat, Rücksprünge,
+  geänderte Arbeitstage, Feiertage oder Eingang Soll –, neueste zuerst; berechnete Termine
+  erscheinen dort nicht.
 * Ein Lauf kann mit Begründung **abgebrochen** werden – wahlweise **ersatzlos** oder mit **neuem
   Index bzw. neuer Ausgabe**. Im zweiten Fall erhält der Eintrag den angegebenen Index, und der
   Planlauf beginnt mit denselben Schritten von vorn.
 * Über **Workflow ändern …** lässt sich ein laufender Planlauf mit einem anderen (oder demselben)
   Workflow **von vorn beginnen**: Workflow wählen, Schritte bei Bedarf über *Individueller Workflow* anpassen, Start und
-  *Eingang Soll* setzen, optional einen Grund angeben, dann **Neu starten**. Der bisherige Lauf gilt
+  *Eingang Soll* setzen, optional einen Grund angeben, dann **Neu starten**. Mit **Erledigte Schritte
+  übernehmen** behält der neue Lauf entlang seines Ablaufs ab Beginn die erledigten Schritte gleicher
+  Bezeichnung und Funktion – mit Ist, Eingang, Antwort und Nachweis. Folgt ein laufender Planlauf
+  noch einer früheren Fassung seines Workflows, weist er darauf hin und bietet **Auf aktuelle
+  Fassung umstellen …** (derselbe Workflow, erledigte Schritte übernommen). Der bisherige Lauf gilt
   nicht als Abbruch – er erscheint nicht unter *Abgebrochen*, bleibt aber mit dem Hinweis „Mit
   geändertem Workflow neu gestartet am …“ zum Nachschlagen erhalten. Der neue Lauf vermerkt den
   vorherigen Workflow und führt unter *Frühere Läufe vor dem Neustart* zu ihm.
@@ -407,17 +511,50 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   in der Fristenliste. In der **Planliste** trägt der Eintrag den entsprechenden Zusatz
   (`Index B → C` bzw. `abgebrochen`).
 
+### Terminnachweis
+Die Karte **Terminnachweis** im Planlauf zeigt den Verzug gegenüber dem **Basisplan** – dem beim
+Start festgehaltenen Plan mit Fristen und geplantem Ende – und rechnet ihn einer **Seite** zu:
+Planer, Prüfer, Auftraggeber oder PLM, vorbelegt aus der Funktion des Schritts. Der Gesamtverzug
+zerfällt in Posten je Ausführung: Fristüberschreitung, Nacharbeit (der Weg nach einer Antwort, die
+zu Nacharbeit führt, oder eine erneute Bearbeitung), Planänderung, Soll von Hand, Übergabelücke,
+erster Termin verschoben und Zeitgewinn. Ein paralleler Block zählt als Ganzes: nur sein Verzug
+gegenüber dem längsten Zweig des Basisplans, verteilt auf genau einen maßgeblichen Zweig; was
+darüber hinausgeht, hat der Puffer aufgefangen. Bei laufenden Läufen geht die Prognose bis zum Ende
+ein. Es gilt Gesamtverzug = Summe der Seiten + Seite fehlt − Zeitgewinn; ein Rest erscheint als
+*Nicht erklärt*.
+
+Die **Ursache der Nacharbeit** lässt sich je Entscheidung einer Seite zuordnen, mit **Zuordnen …**
+der Verzug einer Ausführung von Hand auf die Seiten verteilen (Grund Pflicht) und mit **Basis neu
+festlegen …** der Basisplan erneuern (Grund Pflicht). **Nachweis als Excel** gibt die Blätter
+*Ausführungen*, *Verzug je Seite*, *Erinnerungen* und *Protokoll* aus.
+
+### Terminrechner
+Der **Terminrechner** (Seitenleiste, unter *Vorlagen*) rechnet mit den Regeln des Planlaufs –
+Fristen ab Eingang, parallele Zweige, Rücksprünge und Nachreichungen –, ohne einen Lauf anzulegen:
+**Rückwärts** vom Termin auf der Baustelle bis zur spätesten Übergabe des Planers (bzw. zum
+spätesten Start des Planlaufs, wenn der Workflow nicht mit *Eingang PLM* beginnt), **Vorwärts** vom
+Eingang der Planung bzw. Start bis zum Ende des Planlaufs. Eingaben: Projekt (Arbeitstage und
+Feiertage; ohne Projekt Mo–Fr ohne Feiertage), Workflow (übergreifend und Projektvarianten),
+Richtung, Datum, Fristen, ein **Szenario** (Antwort je Entscheidung im ersten Durchlauf, Vorgabe
+der Standardverlauf) und wahlweise ein **Zielschritt** statt des Endes. Die Zwischenergebnisse
+nennen je Schritt Eingang und Fristende, auf dem kritischen Weg „spätestens“, für die übrigen den
+Puffer. Das Ergebnis lässt sich drucken.
+
 ### Fristen & Erinnerungen
 Fristenübersicht über alle Projekte, sortiert nach Dringlichkeit und gefiltert nach
-überfällig / fällig / im Plan. Angezeigt wird je Planlauf **nur der aktuell anstehende Schritt**.
-Ein Schritt gilt als *fällig*, sobald der Soll-Termin näher liegt als die in den Projekteinstellungen
-gepflegte Vorlaufzeit.
+überfällig / fällig / im Plan. Angezeigt werden **alle anstehenden Schritte** – bei parallelen
+Zweigen mehrere je Planlauf. Ein Schritt gilt als *fällig*, sobald der Soll-Termin näher liegt als
+die in den Projekteinstellungen gepflegte Vorlaufzeit.
 
 Je Schritt öffnet der Button **Erinnern** ein Fenster mit der vorbereiteten E-Mail: Die zur Lage
 passende Vorlage (Erinnerung oder Mahnung) wird ausgewählt, die Platzhalter aus Projekt, Plan,
-Schritt, Frist und Empfänger ersetzt. Von dort lässt sich die Nachricht in **Outlook** öffnen
+Schritt, Frist und Empfänger ersetzt (`{{verzug}}` nennt die Einheit, etwa „5 Arbeitstage“,
+`{{verzug.zahl}}` nur die Zahl). Von dort lässt sich die Nachricht in **Outlook** öffnen
 (`mailto:`, also das eingerichtete Standardprogramm), in **Outlook im Web** anlegen oder in die
-Zwischenablage kopieren; der Zeitpunkt wird am Schritt vermerkt.
+Zwischenablage kopieren; jede vorbereitete E-Mail wird am Schritt vermerkt. Stehen bei einer Person
+mehrere Schritte an, entsteht eine **Sammel-E-Mail** (Vorlage *Sammelerinnerung*, Platzhalter
+`{{liste}}` und `{{anzahl}}`). Ist sie für die Übergabe an das Mailprogramm zu lang, bleibt nur
+„Kopieren“.
 
 ### Export je Projekt
 Über **Export** im Reiter **Planläufe** (oder in den Projekteinstellungen) lassen sich die Planläufe
@@ -428,10 +565,11 @@ wählt die Pläne unter sich mit, ein mitlaufender Plan sein Verzeichnis. Ist im
 ein Filter gesetzt, sind die gezeigten Einträge vorgewählt. Zwei Umfänge:
 
 * **Kurzfassung** – als PDF genau die Angaben der Planlaufliste: Aktueller Stand, Nächster
-  Schritt, Zuständig, Fortschritt und Status; in Excel nach Planpaket, Plancode, Stand und Frist
-  (siehe unten).
+  Schritt (bei parallelen Zweigen alle anstehenden), Zuständig, Fortschritt und Status; in Excel
+  nach Planpaket, Plancode, Stand und Frist (siehe unten).
 * **Langfassung** – je Planlauf zusätzlich alle bereits durchlaufenen und alle ausstehenden
-  Schritte mit Verantwortlichen.
+  Schritte mit Verantwortlichen, Durchlauf, Eingang, Soll, Ist, Verzug und Seite; frühere
+  Durchläufe stehen als eigene graue Zeilen, voraussichtliche Termine kursiv.
 
 Beides jeweils als **Excel** (.xlsx, ohne zusätzliche Programmbibliothek erzeugt) und als **PDF**
 über den Druckdialog des Browsers („Als PDF sichern“). Das PDF der Kurzfassung sieht aus wie die
@@ -467,6 +605,29 @@ Person automatisch das **Planlaufmanagement** und ist damit für dessen Schritte
 Unten links in der Seitenleiste stehen der eigene Name (bis zur Anmeldung je Person „Max
 Mustermann“), die Nachfrage nach E-Mails und der **Farbmodus für eine Rot-Grün-Sehschwäche**: er
 stellt Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot dar und erhöht die Kontraste.
+
+### Sicherung, Abgleich und Hinweise
+**Sicherung** (Seitenleiste) lädt den gesamten Bestand als JSON herunter. **Einspielen** liest eine
+solche Datei und bietet danach **Alles ersetzen** oder **Abgleichen und auswählen**: Der Abgleich
+vergleicht Sicherung und Bestand je Element – übergreifend Gewerke, Funktionen, E-Mail-Vorlagen und
+Workflows, je Projekt Projektdaten, Funktionen, Kontakte, Projekt-Workflows und Einträge samt Plänen
+und Planläufen – und kennzeichnet sie als neu, geändert, gleich, nur im Bestand oder im Bestand
+gelöscht. Gewählte Elemente werden samt Abhängigkeiten übernommen; bei Läufen gleicher Kennung
+werden Protokoll, frühere Durchläufe und Erinnerungen beider Seiten vereinigt. Einträge gleicher
+Codierung mit anderer Kennung gelten als „vermutlich dasselbe“, ein Projekt mit gleicher Kennung und
+anderer Projektnummer lässt sich als Kopie übernehmen. Wäre der Stand danach nicht stimmig, wird
+nichts übernommen. Dazu merkt sich der Bestand Löschungen (Löschvermerke) und den
+Änderungszeitpunkt von Projekten, Einträgen, Kontakten, Funktionen und Workflows.
+
+**Hinweisleisten** unter der Kopfzeile melden, wenn sich der gespeicherte Stand nicht laden lässt
+(*Gespeicherten Stand herunterladen* oder mit Demodaten neu beginnen), wenn er aus einer neueren
+Fassung von KaPlan stammt (nur *Seite neu laden*; Einspielen und *Zurücksetzen* sind dann
+gesperrt), wenn nicht gespeichert werden kann – Speicher voll oder vom Browser gesperrt (*Sicherung
+herunterladen*) – und einmalig, wenn ein selbst geänderter Standard-Workflow als Kopie behalten
+wurde. Bei einem Lade- oder Fassungsfehler zeigt die Anwendung Demodaten und speichert nicht, damit
+der gespeicherte Stand erhalten bleibt. Vor jeder Umstellung auf eine neue Fassung legt sie den
+gespeicherten Text als **Sicherungskopie** im Browser ab (Schlüssel
+`planlauf-management.data.v1.vor-fassung-<n>`); wird der Speicher knapp, entfällt diese Kopie zuerst.
 
 ### Projekteinstellungen
 Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie – wie im Reiter
@@ -741,21 +902,33 @@ src/
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
       domain/    Fachlogik ohne UI-Bezug
         types.ts     Datenmodell (Projekt, Rolle, Kontakt, Plan, Vorlage, Planlauf …)
-        engine.ts    Verlauf durch die Kette, Fristenrechnung, Ampelstatus, To-Dos
-        workflowGraph.ts  Gliederung und Bearbeitung eines Workflows für den Editor
-        abschluss.ts Statuswechsel eines Schritts samt Nachweis
-        email.ts     Platzhalter und Aufbereitung der Vorlagen
+        ablauf.ts    Ablaufverfolgung – die einzige Auflösung der Ziele, parallele Blöcke,
+                     Zweige, Ausstiege, Rücksprünge, anstehende Schritte, Einfügestellen
+        engine.ts    Fristenrechnung ab dem tatsächlichen Eingang, Rücksprung mit Historie,
+                     Ampel, Verzug, gewichteter Fortschritt, To-Dos, Zuständigkeiten
+        simulation.ts  Simulation eines Laufs: Prognose, Basisplan, Rückwärtsrechnung
+        nachweis.ts  Terminnachweis – Verzug gegenüber dem Basisplan je Seite
+        protokoll.ts Änderungsprotokoll der Planläufe (protokollNachziehen)
+        bestand.ts   Ablauf von mutate, Löschen mit Löschvermerk, Sammelaktionen
+        abgleich.ts  Selektiver Abgleich mit einer Sicherung
+        terminrechner.ts  Späteste Übergabe bzw. Ende des Planlaufs aus einem Workflow
+        workflowGraph.ts  Gliederung und Bearbeitung eines Workflows für den Editor (blockbewusst)
+        abschluss.ts Statuswechsel, Wieder öffnen, Einfügen eines Schritts samt Nachweis
+        email.ts     Platzhalter und Aufbereitung der Vorlagen, Sammel-E-Mail
         uebersicht.ts  Gliederung und Zeilenwerte der Planlaufliste – auch für den Export
         export.ts    Kurz- und Langfassung für Excel und PDF
         importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen
         seed.ts      Standard-Prozessketten und Demodaten
       store/
-        storage.ts   Persistenz (localStorage) – Austauschpunkt für eine spätere Datenbank
-        store.tsx    Zentraler Zustand, alle Schreibzugriffe
+        storage.ts   Persistenz (localStorage), Migration, Rohkopie vor der Umstellung, Sicherung
+        store.tsx    Zentraler Zustand, alle Schreibzugriffe, Lade- und Speicherzustand
       lib/router.ts  Hash-Adressen unterhalb von #/planlauf
-      pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen, Projektreiter)
+      pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen,
+                     Terminrechner, Projektreiter)
       components/    Fachliche Bausteine (common.tsx, WorkflowEditor, AblaufVorschau, EmailDialog,
-                     PlanlaufListe, PaketDialog, BuendelnDialog, SicherungEinspielen …)
+                     PlanlaufListe, PaketDialog, BuendelnDialog, SicherungEinspielen, Abgleich,
+                     Hinweisleisten, Terminnachweis, Protokoll, NeuZustaendig, SammelErledigen,
+                     SammelErinnern, PlanlisteAktionen, SeiteAuswahl …)
     baubetrieb/  Bereich „Baubetriebsplanung“ (erster Entwurf)
       index.tsx  Einstiegspunkt samt Datenbestand des Bereichs
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
@@ -810,4 +983,5 @@ transluzente Seitenleiste und Kopfzeile, Segmented Controls und Pill-Buttons. Di
   (heute sieht jeder Arbeitsplatz nur seinen lokalen Stand).
 * Automatischer Mailversand über SMTP statt `mailto:` inkl. Erinnerungslauf im Hintergrund.
 * Dateiablage für die eigentlichen Plandateien (PDF/DWG) je Index.
-* Auswertungen: Terminlisten, Planlieferlisten und Verzugsberichte als Export.
+* Auswertungen: Terminlisten, Planlieferlisten und projektweite Verzugsberichte als Export (heute
+  gibt es den Terminnachweis je Planlauf).

@@ -54,8 +54,28 @@ ignoriert.
   * `domain/types.ts` Datenmodell (flache Listen in `AppData`, Verweise über IDs – außer: Schritte
     nennen ihre Funktion per `roleName`, Gewerke sind Namen; Umbenennungen müssen diese Stellen
     mitziehen),
-  * `domain/engine.ts` Weg durch die Kette, Soll-Termine, Ampel, To-Dos, Zuständigkeiten,
-  * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten,
+  * `domain/ablauf.ts` Ablaufverfolgung – **die einzige Stelle, die Ziele auflöst**
+    (`nachfolger`, `verfolgen`); Planlauf, Editor, Terminrechnung und Simulation folgen ihr.
+    Blockregeln: Schritte bleiben eine flache Liste; ein paralleler Block ist nur der Marker
+    `parallel: { block, zweig }`, seine Schritte stehen zusammenhängend und nach `zweig` sortiert
+    (`bloeckeOrdnen` stellt das her), Blöcke werden nicht geschachtelt. Ein Ziel im Zweig führt im
+    Zweig weiter, außerhalb des Blocks ist es ein Ausstieg, in einem anderen Zweig unzulässig; ein
+    Ziel auf einen Blockschritt betritt den ganzen Block,
+  * `domain/engine.ts` Soll-Termine ab dem tatsächlichen Eingang (`recalcSollDaten`),
+    Rücksprung mit Historie, Ampel, Verzug, gewichteter Fortschritt, To-Dos, Zuständigkeiten,
+  * `domain/abschluss.ts` Statuswechsel (`schrittStatusSetzen`), Wieder öffnen, Einfügen,
+  * `domain/simulation.ts` Prognose, Basisplan und Rückwärtsrechnung – erledigt die Schritte mit
+    `schrittStatusSetzen` und rechnet mit `recalcSollDaten`, also ohne eigene Regeln,
+  * `domain/nachweis.ts` Terminnachweis (Verzug gegenüber dem Basisplan je Seite),
+  * `domain/protokoll.ts` Änderungsprotokoll: `protokollNachziehen` vergleicht in jedem `mutate()`
+    alten und neuen Stand und schreibt je Lauf, was jemand getan hat (nichts Berechnetes),
+  * `domain/bestand.ts` Ablauf von `mutate()` (`bestandAendern`), Löschen mit Löschvermerk,
+    Sammelaktionen als reine Funktionen,
+  * `domain/abgleich.ts` selektiver Abgleich mit einer Sicherung; Verweise zwischen Objekten
+    stehen zentral in `VERWEISFELDER`,
+  * `domain/terminrechner.ts` Terminrechner über `simulieren`/`rueckwaerts`,
+  * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten
+    (Läufe über die Engine, zufällige IDs),
   * `store/store.tsx` alle Schreibzugriffe, `store/storage.ts` Laden, Speichern, Migration,
   * `lib/router.ts` Hash-Router, `pages/` Ansichten, `components/` fachliche Bausteine.
 * `src/bereiche/baubetrieb/` – gleich aufgebaut: `domain/workflow.ts` Standard-Workflows je Phase
@@ -90,9 +110,23 @@ ignoriert.
 * `src/shared/` enthält nur Bausteine ohne fachlichen Bezug und importiert nichts aus
   `src/bereiche/`. Die Bereiche greifen nicht aufeinander zu.
 * **Schreibzugriffe nur über den Store.** Jede Änderung läuft über `mutate()` in
-  `store/store.tsx`; danach werden automatisch `eigeneKontakteSichern`,
-  `zustaendigkeitenNachziehen` und `recalcRun` für alle Läufe ausgeführt. Neue Aktionen als
-  Methode im `StoreValue` ergänzen, nicht an `mutate` vorbei. IDs mit `newId(prefix)`.
+  `store/store.tsx`, das `bestandAendern` (`domain/bestand.ts`) aufruft: danach werden
+  automatisch `eigeneKontakteSichern`, `zustaendigkeitenNachziehen` und `recalcRun` für alle
+  Läufe ausgeführt, `protokollNachziehen` schreibt das Änderungsprotokoll und `geaendertAm` wird an
+  geänderten Projekten, Einträgen, Kontakten, Funktionen und Workflows gesetzt (beides entfällt
+  mit `mutate(fn, { protokoll: false })`). `fn` erhält `{ zeitpunkt, heute, bearbeiter }`. Neue
+  Aktionen als Methode im `StoreValue` ergänzen, nicht an `mutate` vorbei, und möglichst in einem
+  einzigen `mutate`. IDs mit `newId(prefix)`.
+* Status und Ist eines Schritts nur über `domain/abschluss.ts` ändern (`schrittStatusSetzen`,
+  `wiederOeffnen`, `aenderungenAufLauf`) – dort entstehen Historie, Rücksprung und die
+  Momentaufnahme der Person. Der feste Eingang `eingangIst` wird beim Anstehen festgeschrieben und
+  danach von der Fristenrechnung nicht mehr geändert, nur noch ausdrücklich.
+* Wer löscht, hinterlässt einen Löschvermerk in `AppData.geloescht` (`loeschvermerk` bzw. die
+  Löschfunktionen in `domain/bestand.ts`) – der Abgleich braucht ihn. Neue Verweisfelder in `VERWEISFELDER`
+  (`domain/abgleich.ts`) eintragen.
+* Gespeichert wird nur bei `ladeZustand === 'ok'`: Nach einem Ladefehler oder bei einem Stand aus
+  einer neueren Fassung zeigt der Bereich Demodaten und lässt den gespeicherten Stand unberührt.
+  Vor jeder Umstellung legt `ladeDaten` eine Rohkopie `<Schlüssel>.vor-fassung-<n>` an.
 * Der localStorage-Schlüssel `planlauf-management.data.v1` bleibt unverändert. Neue Felder am
   Datenmodell sind optional oder werden in `migriere()` (`store/storage.ts`) nachgetragen – dann
   **`DATEN_VERSION`** (`domain/types.ts`) erhöhen: `migriere()` läuft nur, wenn die gespeicherte
@@ -116,8 +150,10 @@ ignoriert.
 
 ## Hinweise für Prüfungen im Browser
 
-* Der aktuelle Schritt eines Laufs folgt dem Workflow-Pfad (`aktuellerSchritt`), nicht der
-  Reihenfolge im Array. Wer Testdaten vorbereitet, muss den Schritt auf dem Pfad ändern.
+* Die anstehenden Schritte eines Laufs folgen dem Verlauf (`aktuelleSchritte`, `verfolgen` in
+  `domain/ablauf.ts`), nicht der Reihenfolge im Array – in parallelen Zweigen stehen mehrere an.
+  Wer Testdaten vorbereitet, muss den Schritt auf dem Pfad ändern. Die Demodaten haben zufällige
+  IDs.
 * Nach dem Schreiben in den `localStorage` die Seite neu laden (`reload`) – ein Wechsel nur im
   Hash lädt nicht neu, und der laufende Store überschreibt die Änderung.
 * Hilfsserver über ihre Prozessnummer beenden, nicht mit `pkill -f "<Befehl>"`: Das Muster trifft
