@@ -82,6 +82,11 @@ export function Workflows({ projectId }: { projectId?: string }) {
           <span>
             <b>{z.entscheidungen}</b> {z.entscheidungen === 1 ? 'Entscheidung' : 'Entscheidungen'}
           </span>
+          {z.bloecke > 0 ? (
+            <span>
+              <b>{z.bloecke}</b> {z.bloecke === 1 ? 'paralleler Block' : 'parallele Blöcke'}
+            </span>
+          ) : null}
           <span>
             <b>{z.tage}</b> {z.tage === 1 ? 'Tag' : 'Tage'} im Standardverlauf
           </span>
