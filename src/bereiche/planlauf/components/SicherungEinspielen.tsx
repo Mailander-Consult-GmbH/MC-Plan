@@ -86,7 +86,7 @@ export function SicherungEinspielenDialog({
   onClose: () => void;
   onEingespielt: () => void;
 }) {
-  const { data, ersetzeDaten } = useStore();
+  const { data, ersetzeDaten, ladeZustand } = useStore();
   const toast = useToast();
   // Ohne eingerichteten Namen liegt es nahe, den aus der Sicherung zu nehmen
   const [nameUebernehmen, setNameUebernehmen] = useState(data.bearbeiter.name === STANDARD_BEARBEITER);
@@ -94,6 +94,10 @@ export function SicherungEinspielenDialog({
 
   const anzahl = (n: number, eins: string, mehr: string) => `${n} ${n === 1 ? eins : mehr}`;
   const fremderName = sicherung.daten.bearbeiter.name !== data.bearbeiter.name;
+  // Ein gespeicherter Stand aus einer neueren Fassung darf nicht überschrieben werden;
+  // nach einem Ladefehler gibt es keinen Bestand, mit dem sich abgleichen ließe.
+  const neuereFassung = ladeZustand === 'neuere_fassung';
+  const ohneBestand = ladeZustand !== 'ok';
 
   const einspielen = () => {
     const { daten } = sicherung;
@@ -131,10 +135,16 @@ export function SicherungEinspielenDialog({
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
-          <button type="button" className="btn btn-primary" style={{ background: 'var(--red)' }} onClick={einspielen}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ background: 'var(--red)' }}
+            disabled={neuereFassung}
+            onClick={einspielen}
+          >
             Alles ersetzen
           </button>
-          <button type="button" className="btn btn-primary" onClick={() => setAbgleichen(true)}>
+          <button type="button" className="btn btn-primary" disabled={ohneBestand} onClick={() => setAbgleichen(true)}>
             Abgleichen und auswählen …
           </button>
         </>
@@ -161,9 +171,21 @@ export function SicherungEinspielenDialog({
             Der gesamte jetzige Bestand in diesem Browser wird durch die Sicherung ersetzt.
           </div>
         </div>
-        <Callout ton="warn" icon="!">
-          „Alles ersetzen“ lässt sich nicht rückgängig machen – wer den jetzigen Bestand noch braucht, sichert ihn vorher.
-        </Callout>
+        {neuereFassung ? (
+          <Callout ton="error" icon="!">
+            Gespeichert ist ein Stand aus einer neueren Fassung von KaPlan. Damit er nicht überschrieben wird, lässt sich
+            hier nichts einspielen – bitte zuerst die Seite neu laden.
+          </Callout>
+        ) : ladeZustand === 'ladefehler' ? (
+          <Callout ton="error" icon="!">
+            Der gespeicherte Stand ließ sich nicht laden; abgleichen ist deshalb nicht möglich. „Alles ersetzen“
+            überschreibt ihn – wer ihn noch braucht, lädt ihn vorher über die Hinweisleiste herunter.
+          </Callout>
+        ) : (
+          <Callout ton="warn" icon="!">
+            „Alles ersetzen“ lässt sich nicht rückgängig machen – wer den jetzigen Bestand noch braucht, sichert ihn vorher.
+          </Callout>
+        )}
         {fremderName ? (
           <label className="checkbox">
             <input
