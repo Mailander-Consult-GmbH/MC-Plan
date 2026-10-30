@@ -33,7 +33,7 @@ import {
   workflowFingerabdruck,
 } from '../domain/seed';
 import { eigeneKontakteSichern, recalcRun, zustaendigkeitenNachziehen } from '../domain/engine';
-import { anstehendeSchritte, istErledigt, verfolgen } from '../domain/ablauf';
+import { anstehendeSchritte, istErledigt, statusAbgleichen, verfolgen } from '../domain/ablauf';
 import { basisplanFestlegen } from '../domain/simulation';
 import { gliedern } from '../domain/workflowGraph';
 import { formatDate, today } from '../../../shared/dates';
@@ -617,8 +617,9 @@ function migriere(daten: AppData): AppData {
 }
 
 /**
- * Nach dem Umbau der Felder: geschätzter Wiedereingang und Basisplan für jeden
- * Lauf, der noch keinen hat (festgelegt mit dem Stand der Umstellung).
+ * Nach dem Umbau der Felder: geschätzter Wiedereingang, Status passend zum Weg
+ * (anstehend = „laufend“) und Basisplan für jeden Lauf, der noch keinen hat
+ * (festgelegt mit dem Stand der Umstellung).
  */
 function laeufeFassung13(daten: AppData): AppData {
   const heute = today();
@@ -626,7 +627,9 @@ function laeufeFassung13(daten: AppData): AppData {
   return {
     ...daten,
     runs: daten.runs.map((r) => {
-      const lauf = wiedereingangSchaetzen(r, heute, zeitpunkt);
+      const geschaetzt = wiedereingangSchaetzen(r, heute, zeitpunkt);
+      const steps = geschaetzt.status === 'laufend' ? statusAbgleichen(geschaetzt.steps) : geschaetzt.steps;
+      const lauf = steps === geschaetzt.steps ? geschaetzt : { ...geschaetzt, steps };
       if (lauf.basis) return lauf;
       const project = daten.projects.find((p) => p.id === lauf.projectId);
       const doc = daten.documents.find((d) => d.id === lauf.documentId);

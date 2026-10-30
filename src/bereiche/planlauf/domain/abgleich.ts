@@ -483,13 +483,20 @@ const formEintrag = (d: PlanDocument) => ({
   planlaufModus: d.kind === 'verzeichnis' ? (d.planlaufModus ?? 'gebuendelt') : undefined,
   eigenerLauf: d.eigenerLauf ? true : undefined,
 });
-/** Eingabefelder eines Laufs: ohne Protokoll, berechnete Termine und automatische Zuständigkeit. */
+/**
+ * Eingabefelder eines Laufs: ohne Protokoll, berechnete Termine, automatische
+ * Zuständigkeit und geschätzten Wiedereingang. Beim Basisplan zählt der Inhalt,
+ * nicht der Zeitpunkt – die Umstellung auf Fassung 13 legt ihn mit dem Zeitpunkt
+ * der Umstellung fest, Bestand und ältere Sicherung unterscheiden sich sonst stets.
+ */
 const formLauf = (r: PlanRun) => ({
-  ...ohne(r, 'protokoll'),
+  ...ohne(r, 'protokoll', 'basis'),
+  basis: r.basis ? ohne(r.basis, 'festgelegtAm') : r.basis,
   steps: r.steps.map((s) => ({
-    ...ohne(s, 'eingangDatum', 'historie', 'erinnerungen', 'letzteErinnerung', 'sollDatum', 'contactId'),
+    ...ohne(s, 'eingangDatum', 'historie', 'erinnerungen', 'letzteErinnerung', 'sollDatum', 'contactId', 'eingangIst', 'eingangGeschaetzt'),
     sollDatum: s.sollManuell ? s.sollDatum : null,
     contactId: s.contactManuell ? s.contactId : null,
+    eingangIst: s.eingangGeschaetzt ? null : s.eingangIst,
   })),
 });
 
