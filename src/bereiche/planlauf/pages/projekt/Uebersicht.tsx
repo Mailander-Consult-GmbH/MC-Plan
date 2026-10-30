@@ -9,7 +9,7 @@
  * gewählte mitlaufende Pläne wirken auf den Lauf ihres Verzeichnisses).
  */
 import { useState } from 'react';
-import { aktuelleSchritte, eigenstaendigeLaeufe, offeneFristen } from '../../domain/engine';
+import { eigenstaendigeLaeufe, offeneFristen } from '../../domain/engine';
 import {
   anstehendeSchritte,
   auswahlAufloesen,
@@ -90,7 +90,7 @@ export function Uebersicht({
   // Suche, Status und Personenauswahl über alle anstehenden Schritte (parallele Zweige)
   const gefiltert = massgeblich.filter((r) => {
     const doc = data.documents.find((d) => d.id === r.documentId);
-    const anstehend = aktuelleSchritte(r);
+    const anstehend = anstehendeSchritte(r);
     // Pläne eines Verzeichnisses gehören zu dessen Paket
     const elternId = doc?.kind === 'plan' ? doc.parentId : null;
     const paketId = (elternId ? dokumente.find((d) => d.id === elternId)?.paketId : undefined) ?? doc?.paketId;
@@ -113,7 +113,7 @@ export function Uebersicht({
   const personenIds = [
     ...new Set(
       massgeblich
-        .flatMap((r) => aktuelleSchritte(r).map((s) => s.contactId))
+        .flatMap((r) => anstehendeSchritte(r).map((s) => s.contactId))
         .filter((id): id is string => Boolean(id)),
     ),
   ];

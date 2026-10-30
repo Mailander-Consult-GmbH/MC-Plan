@@ -193,8 +193,9 @@ export function PlanlaufDetail({
   /** Laufende Nummer im Verlauf (Blöcke: Zweig 0, dann Zweig 1 …). */
   const nummer = new Map(verlauf.schritte.map((s, i) => [s.id, i + 1]));
   const abseits = nichtImPfad(run.steps);
-  // In parallelen Zweigen stehen mehrere Schritte zugleich an – jeder ist bedienbar
-  const anstehendeListe = aktuelleSchritte(run);
+  // In parallelen Zweigen stehen mehrere Schritte zugleich an – jeder ist bedienbar.
+  // Ein abgebrochener Lauf hat keine anstehenden Schritte mehr (keine Ampel, kein Verzug).
+  const anstehendeListe = run.status === 'laufend' ? aktuelleSchritte(run) : [];
   const anstehend = new Set(anstehendeListe.map((s) => s.id));
   const vorlauf = project.settings.erinnerungVorlaufTage;
   const abweichungen = run.steps.filter((s) => s.abweichung).length;
