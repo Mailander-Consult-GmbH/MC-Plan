@@ -112,6 +112,8 @@ function verlaufAus(schritte: [string, ISODate][], bearbeiter: string, workflows
 interface DemoAnmeldung {
   art: AnmeldungsArt;
   anmeldeId: string;
+  vorhaben?: string;
+  bbk?: string;
   verlauf: [string, ISODate][];
   bauVon?: ISODate;
   bauBis?: ISODate;
@@ -133,6 +135,8 @@ function demoAnmeldung(projektId: ID, d: DemoAnmeldung, bearbeiter: string, work
     id: newId('an'),
     projektId,
     anmeldeId: d.anmeldeId,
+    vorhaben: d.vorhaben ?? '',
+    bbk: d.bbk ?? '',
     art: d.art,
     statusId,
     statusSeit,
@@ -211,6 +215,7 @@ export function seedDaten(): BaubetriebDaten {
       {
         art: 'A',
         anmeldeId: 'A-4000-0812',
+        bbk: 'Fr. Weber',
         verlauf: [
           ['W0', `${jahr - 1}-02-10`],
           ['W2', `${jahr - 1}-03-20`],
@@ -248,6 +253,7 @@ export function seedDaten(): BaubetriebDaten {
       {
         art: 'B',
         anmeldeId: 'B-4000-2231',
+        bbk: 'Fr. Weber',
         verlauf: [
           ['Y0', tag(-110)],
           ['Y2', tag(-95)],
@@ -282,6 +288,7 @@ export function seedDaten(): BaubetriebDaten {
       {
         art: 'B(S)',
         anmeldeId: 'BS-4000-1187',
+        bbk: 'Hr. Kaya',
         verlauf: [
           ['Y0', tag(-160)],
           ['Y2', tag(-150)],
@@ -306,6 +313,7 @@ export function seedDaten(): BaubetriebDaten {
       {
         art: 'A',
         anmeldeId: 'A-4000-0977',
+        bbk: 'Hr. Kaya',
         verlauf: [
           ['X0', tag(-420)],
           ['X2', tag(-400)],
@@ -345,7 +353,8 @@ export function seedDaten(): BaubetriebDaten {
       durlach.id,
       {
         art: 'SKM',
-        anmeldeId: 'Kabeltiefbau Abschnitt Nord',
+        vorhaben: 'Kabeltiefbau Abschnitt Nord',
+        anmeldeId: 'tVE 4000-23',
         verlauf: [['V0', tag(-12)]],
         fahrplanjahr: jahr + 5,
         bfStrecke: 'Strecke 4020, Durlach – Weingarten',

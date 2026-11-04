@@ -24,6 +24,7 @@ import {
   rilFristenNachPhase,
   type Phase,
   STATUS_ART_LABEL,
+  ZUSTAENDIGKEIT_LABEL,
   type AnmeldungsArt,
   type BauzeitraumModus,
   type FristRegel,
@@ -33,6 +34,7 @@ import {
   type StatusZiel,
   type Workflow,
   type WorkflowStatus,
+  type Zustaendigkeit,
 } from '../domain/types';
 import { anmeldungenJeStatus, belegteEntfallendeStatus, workflowKopie } from '../domain/workflowPflege';
 import type { Route } from '../lib/router';
@@ -192,6 +194,7 @@ function neuerStatus(): WorkflowStatus {
     id: newId('st'),
     name: '',
     art: 'entwurf',
+    zustaendig: null,
     frist: { typ: 'keine' },
     nachhaken: false,
     bemerkung: '',
@@ -422,6 +425,19 @@ function StatusListe({
                           value: k,
                           label: STATUS_ART_LABEL[k],
                         }))}
+                      />
+                    </Field>
+                    <Field label="Zuständig" hint="Die Liste nennt dazu den Namen aus Anmeldung bzw. Projekt.">
+                      <Select
+                        value={s.zustaendig ?? ''}
+                        onChange={(v) => setzen(s.id, { zustaendig: (v || null) as Zustaendigkeit | null })}
+                        options={[
+                          { value: '', label: '– niemand –' },
+                          ...(Object.keys(ZUSTAENDIGKEIT_LABEL) as Zustaendigkeit[]).map((k) => ({
+                            value: k,
+                            label: ZUSTAENDIGKEIT_LABEL[k],
+                          })),
+                        ]}
                       />
                     </Field>
                     <FristFeld frist={s.frist} onChange={(frist) => setzen(s.id, { frist })} />

@@ -22,7 +22,7 @@ import {
   type RilSchluessel,
   type Workflow,
 } from './types';
-import { istKkmWorkflow, istLeiche, statusInfo, statusVon, type StatusInfo } from './workflow';
+import { istLeiche, statusVon, type StatusInfo } from './workflow';
 
 /** Was die Fristenrechnung aus dem Bestand braucht. */
 export type FristKontext = Pick<BaubetriebDaten, 'einstellungen' | 'workflows' | 'projekte'>;
@@ -122,13 +122,7 @@ export function rilSchluesselFuer(
 /** Wochentag Mittwoch (Date.getDay). */
 const MITTWOCH = 3;
 
-/** Der Mittwoch an oder nach dem Datum – Stichtag einer Anmeldung im KKM. */
-export function naechsterMittwoch(datum: ISODate): ISODate {
-  const tag = parseISO(datum)?.getDay() ?? MITTWOCH;
-  return addDays(datum, (MITTWOCH - tag + 7) % 7);
-}
-
-/** Der Mittwoch an oder vor dem Datum. */
+/** Der Mittwoch an oder vor dem Datum – Stichtag einer Anmeldung im KKM. */
 function vorigerMittwoch(datum: ISODate): ISODate {
   const tag = parseISO(datum)?.getDay() ?? MITTWOCH;
   return addDays(datum, -((tag - MITTWOCH + 7) % 7));
@@ -296,7 +290,8 @@ export interface TerminEintrag {
   ampel: Ampel;
 }
 
-const AMPEL_RANG: Record<Ampel, number> = { ueberfaellig: 0, faellig: 1, geplant: 2, ohne: 3 };
+/** Reihenfolge nach Dringlichkeit – Überfälliges zuerst. */
+export const AMPEL_RANG: Record<Ampel, number> = { ueberfaellig: 0, faellig: 1, geplant: 2, ohne: 3 };
 
 /** Alle Anmeldungen mit Terminfrist – Überfälliges zuerst, dann nach Datum. */
 export function offeneTermine(d: BaubetriebDaten, projektIds?: ID[]): TerminEintrag[] {
@@ -318,6 +313,52 @@ export function offeneTermine(d: BaubetriebDaten, projektIds?: ID[]): TerminEint
   return eintraege.sort(
     (a, b) => AMPEL_RANG[a.ampel] - AMPEL_RANG[b.ampel] || (a.frist.datum ?? '').localeCompare(b.frist.datum ?? ''),
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Erstanmeldung                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Woher die Frist der Erstanmeldung stammt. */
+export type ErstanmeldungGrund = 'eingetragen' | 'vorschlag';
+
+export const ERSTANMELDUNG_GRUND: Record<ErstanmeldungGrund, string> = {
+  eingetragen: 'Erster Anmeldetermin (ca.) laut Projekt',
+  vorschlag: 'laut Richtlinie ermittelt – im Projekt kein erster Anmeldetermin eingetragen',
+};
+
+/** Projekt ohne Anmeldung: Die Erstanmeldung steht aus. */
+export interface ErstanmeldungEintrag {
+  projekt: Projekt;
+  /** Frist der Erstanmeldung – der erste Anmeldetermin, sonst der Vorschlag laut Richtlinie. */
+  frist: ISODate | null;
+  grund: ErstanmeldungGrund;
+  ampel: Ampel;
+}
+
+/**
+ * Ausstehende Erstanmeldung eines Projekts, solange es keine Anmeldung hat
+ * (Anmeldeleichen zählen nicht) und nicht abgeschlossen ist – sonst null.
+ */
+export function erstanmeldungAusstehend(p: Projekt, d: BaubetriebDaten): ErstanmeldungEintrag | null {
+  if (p.status === 'abgeschlossen') return null;
+  if (d.anmeldungen.some((a) => a.projektId === p.id && !istLeiche(d.workflows, a.statusId))) return null;
+  const frist = p.ersterAnmeldetermin ?? ersterTerminVorschlag(p, d.einstellungen);
+  return {
+    projekt: p,
+    frist,
+    grund: p.ersterAnmeldetermin ? 'eingetragen' : 'vorschlag',
+    ampel: ampelFuer(frist, d.einstellungen.vorlaufTage),
+  };
+}
+
+/** Alle (bzw. die genannten) Projekte mit ausstehender Erstanmeldung – Überfälliges zuerst. */
+export function ausstehendeErstanmeldungen(d: BaubetriebDaten, projektIds?: ID[]): ErstanmeldungEintrag[] {
+  return d.projekte
+    .filter((p) => !projektIds || projektIds.includes(p.id))
+    .map((p) => erstanmeldungAusstehend(p, d))
+    .filter((e): e is ErstanmeldungEintrag => e !== null)
+    .sort((a, b) => AMPEL_RANG[a.ampel] - AMPEL_RANG[b.ampel] || (a.frist ?? '').localeCompare(b.frist ?? ''));
 }
 
 /* ------------------------------------------------------------------ */
@@ -358,62 +399,16 @@ export interface BedarfZelle {
   durch?: Anmeldung;
 }
 
-/**
- * KKM: Wann eine Sperrpause der Maßnahmenart im Fahrplanjahr frühestens sein
- * kann, wenn heute angemeldet wird – das ganze Jahr, ab einem Datum oder gar
- * nicht mehr.
- */
-export type KkmZustand = 'ganzesJahr' | 'ab' | 'nichtMehr';
-
-export interface KkmZelle {
-  art: AnmeldungsArt;
-  /** Frühester Sperrbeginn bei Anmeldung zum nächsten Stichtag. */
-  fruehestens: ISODate | null;
-  zustand: KkmZustand;
-  /** Unterjährige Anmeldungen dieser Art im Fahrplanjahr, nach Sperrbeginn. */
-  eintraege: Anmeldung[];
-}
-
 export interface BedarfZeile {
   fahrplanjahr: number;
   zellen: BedarfZelle[];
-  kkm: KkmZelle[];
-}
-
-/**
- * KKM je Maßnahmenart: frühester Sperrbeginn bei Anmeldung zum Stichtag
- * (Mittwoch) zuzüglich des Vorlaufs laut Richtlinie. Ist die Frist als
- * Stichtag im Fahrplanjahr eingestellt, ist alles ab dem Stichtag oder nichts
- * mehr möglich. Vorhandene Anmeldungen ändern daran nichts – je Sperrpause wird
- * eigens angemeldet.
- */
-function kkmZellen(n: number, kkm: Anmeldung[], e: Einstellungen, stichtag: ISODate): KkmZelle[] {
-  const beginn = fahrplanjahrBeginn(n);
-  const ende = fahrplanjahrEnde(n);
-  return MASSNAHMENARTEN.map((art): KkmZelle => {
-    const ril = e.rilFristen[art as RilSchluessel];
-    let fruehestens: ISODate | null;
-    if (ril.bezug === 'baubeginn') {
-      fruehestens = addDays(stichtag, 7 * ril.wochenVorher);
-    } else {
-      const frist = rilDatum(ril, n, null);
-      fruehestens = frist && stichtag <= frist ? (stichtag > beginn ? stichtag : beginn) : null;
-    }
-    const zustand: KkmZustand =
-      !fruehestens || fruehestens > ende ? 'nichtMehr' : fruehestens <= beginn ? 'ganzesJahr' : 'ab';
-    const eintraege = kkm
-      .filter((a) => a.fahrplanjahr === n && a.art === art)
-      .sort((a, b) => (a.bauVon ?? '').localeCompare(b.bauVon ?? ''));
-    return { art, fruehestens, zustand, eintraege };
-  });
 }
 
 /**
  * Anmeldebedarf je betroffenem Fahrplanjahr: Für SKM, MKM, KM N-2 und KM N-1
- * die Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat;
- * für KKM je Maßnahmenart, ab wann eine Sperrpause bei Anmeldung heute
- * frühestens möglich ist. Anmeldeleichen zählen nicht mit. Fristen vor dem
- * ersten Anmeldetermin liegen vor der Betreuung durch MIC.
+ * die Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat.
+ * Anmeldeleichen zählen nicht mit. Fristen vor dem ersten Anmeldetermin
+ * liegen vor der Betreuung durch MIC.
  */
 export function anmeldebedarf(
   p: Projekt,
@@ -422,11 +417,6 @@ export function anmeldebedarf(
 ): BedarfZeile[] {
   const e = d.einstellungen;
   const eigene = d.anmeldungen.filter((a) => a.projektId === p.id && !istLeiche(d.workflows, a.statusId));
-  const kkm = eigene.filter((a) => {
-    const info = statusInfo(d.workflows, a.statusId);
-    return !!info && istKkmWorkflow(info.workflow);
-  });
-  const stichtag = naechsterMittwoch(heute);
   const beginnGrenze = betreuungAb(p);
   // Bei gleichem Rang zählt der frühere Workflow – ein KM-Eintrag vor einem KKM-Eintrag.
   const workflowRang = (a: Anmeldung) => {
@@ -451,7 +441,7 @@ export function anmeldebedarf(
       else zustand = 'kuenftig';
       return { phase, fahrplanjahr: n, frist, zustand, durch };
     });
-    zeilen.push({ fahrplanjahr: n, zellen, kkm: kkmZellen(n, kkm, e, stichtag) });
+    zeilen.push({ fahrplanjahr: n, zellen });
   }
   return zeilen;
 }

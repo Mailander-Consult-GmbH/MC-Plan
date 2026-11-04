@@ -23,6 +23,7 @@ import {
   RIL_SCHLUESSEL,
   STANDARD_BEARBEITER,
   STATUS_ART_LABEL,
+  ZUSTAENDIGKEIT_LABEL,
   type Anmeldung,
   type AnmeldungStand,
   type AnmeldungsArt,
@@ -37,6 +38,7 @@ import {
   type VerlaufEintrag,
   type Workflow,
   type WorkflowStatus,
+  type Zustaendigkeit,
 } from '../domain/types';
 
 export { DATEN_VERSION };
@@ -114,6 +116,7 @@ function workflowsAufbereiten(roh: unknown, nachhakTage: number): Workflow[] {
           id: text(s.id) || zufallsId('st'),
           name: text(s.name) || 'Status',
           art: (s.art as string) in STATUS_ART_LABEL ? (s.art as StatusArt) : 'entwurf',
+          zustaendig: (s.zustaendig as string) in ZUSTAENDIGKEIT_LABEL ? (s.zustaendig as Zustaendigkeit) : null,
           frist: fristAufbereiten((s.frist ?? {}) as never, nachhakTage),
           nachhaken: s.nachhaken === true,
           bemerkung: text(s.bemerkung),
@@ -163,6 +166,8 @@ function aufbereiten(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
         id: text(a.id) || zufallsId('an'),
         projektId: text(a.projektId),
         anmeldeId: text(a.anmeldeId),
+        vorhaben: text(a.vorhaben),
+        bbk: text(a.bbk),
         art,
         statusId,
         statusSeit: datum(a.statusSeit) ?? new Date().toISOString().slice(0, 10),
@@ -298,6 +303,7 @@ function ausFassung4(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
       id,
       name: 'Anmeldeleiche',
       art: 'leiche',
+      zustaendig: null,
       frist: { typ: 'keine' },
       nachhaken: false,
       bemerkung: '',
@@ -449,6 +455,25 @@ function ausFassung6(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
 }
 
 /**
+ * Hebt Fassung 7 auf Fassung 8: Jeder Status nennt, wer zuständig ist. Die
+ * Status der Standard-Workflows erhalten die Vorgabe der mitgelieferten
+ * Workflows, andere bleiben ohne Zuständigkeit. Anmeldungen erhalten
+ * Vorhabenname und zuständigen BBK (leer).
+ */
+function ausFassung7(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
+  const vorgabe = new Map(standardWorkflows().flatMap((w) => w.status.map((s) => [s.id, s.zustaendig] as const)));
+  const workflows = (Array.isArray(roh.workflows) ? roh.workflows : []).map((w: Partial<Workflow>) => ({
+    ...w,
+    status: Array.isArray(w.status)
+      ? w.status.map((s: Partial<WorkflowStatus>) =>
+          s.zustaendig === undefined ? { ...s, zustaendig: vorgabe.get(text(s.id)) ?? null } : s,
+        )
+      : w.status,
+  }));
+  return { ...roh, workflows: workflows as Workflow[] };
+}
+
+/**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt. Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch
  * keinen Inhalt. Sie erhält deshalb die Demodaten und behält ihre Einstellung.
@@ -468,6 +493,7 @@ function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   if (version <= 4) stand = ausFassung4(stand);
   if (version <= 5) stand = ausFassung5(stand);
   if (version <= 6) stand = ausFassung6(stand);
+  if (version <= 7) stand = ausFassung7(stand);
   return aufbereiten(stand);
 }
 

@@ -23,7 +23,17 @@ import {
   type StatusZiel,
   type VerlaufEintrag,
 } from '../domain/types';
-import { istAenderung, istLeiche, istUebernahme, nachfolgerVon, statusInfo, statusVon } from '../domain/workflow';
+import {
+  anmeldungTitel,
+  istAenderung,
+  istLeiche,
+  istUebernahme,
+  nachfolgerVon,
+  statusInfo,
+  statusVon,
+  vorhabenFuehrend,
+  zustaendigText,
+} from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 
@@ -36,7 +46,7 @@ export function AnmeldungDetail({
   anmeldung: Anmeldung;
   navigate: (r: Route) => void;
 }) {
-  const { data, deleteAnmeldung, statusZuruecknehmen } = useStore();
+  const { data, deleteAnmeldung, duplicateAnmeldung, statusZuruecknehmen } = useStore();
   const toast = useToast();
   const [wechsel, setWechsel] = useState<StatusZiel | null>(null);
   const [bearbeiten, setBearbeiten] = useState(false);
@@ -52,6 +62,14 @@ export function AnmeldungDetail({
   const { herkunft, aufgeteilt } = verwandte(data, anmeldung);
   const zumProjekt = () => navigate({ view: 'projekt', projektId: projekt.id });
   const oeffne = (a: Anmeldung) => navigate({ view: 'anmeldung', projektId: a.projektId, anmeldungId: a.id });
+  const titel = anmeldungTitel(anmeldung);
+  const vorhaben = vorhabenFuehrend(anmeldung);
+  const zustaendig = zustaendigText(status, anmeldung, projekt);
+  const duplizieren = () => {
+    const id = duplicateAnmeldung(anmeldung.id);
+    toast('Anmeldung dupliziert – die Kopie ist geöffnet.');
+    navigate({ view: 'anmeldung', projektId: projekt.id, anmeldungId: id });
+  };
 
   // Workflows, die die Anmeldung schon durchlaufen hat
   const besuchteWorkflows = new Set(
@@ -81,6 +99,14 @@ export function AnmeldungDetail({
           <button type="button" className="btn btn-outline" onClick={() => setBearbeiten(true)}>
             <Icon name="bearbeiten" size={14} /> Bearbeiten
           </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={duplizieren}
+            title="Kopie mit aktuellem Stand und Statusverlauf anlegen"
+          >
+            <Icon name="kopieren" size={14} /> Duplizieren
+          </button>
           <button type="button" className="btn btn-danger" onClick={() => setLoeschen(true)}>
             <Icon name="loeschen" size={14} /> Löschen
           </button>
@@ -89,8 +115,15 @@ export function AnmeldungDetail({
 
       <Card>
         <CardHeader
-          titel={anmeldung.anmeldeId || 'Anmeldung ohne ID'}
-          sub={`${anmeldung.art} · ${bauzeitraumText(anmeldung, data.workflows)}${anmeldung.gewerk ? ` · ${anmeldung.gewerk}` : ''}`}
+          titel={titel === 'ohne ID' ? 'Anmeldung ohne ID' : titel}
+          sub={[
+            vorhaben && anmeldung.vorhaben.trim() ? anmeldung.anmeldeId : '',
+            anmeldung.art,
+            bauzeitraumText(anmeldung, data.workflows),
+            anmeldung.gewerk,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
           actions={<StatusBadge statusId={anmeldung.statusId} />}
         />
         <div className="card-pad">
@@ -152,6 +185,9 @@ export function AnmeldungDetail({
                       <span>
                         Terminfrist: <b>{frist.datum ? formatDate(frist.datum) : 'keine'}</b>
                         {frist.datum ? ` · ${frist.manuell ? 'von Hand festgelegt' : frist.regel}` : ''}
+                      </span>
+                      <span>
+                        Zuständig: <b>{zustaendig ?? '–'}</b>
                       </span>
                     </div>
                     <p className="small tertiary">{frist.erlaeuterung}</p>
@@ -230,7 +266,13 @@ export function AnmeldungDetail({
         <CardHeader titel="Merkmale" />
         <div className="card-pad">
           <dl className="kv kv-breit" style={{ margin: 0 }}>
-            <dt>{ganzesFahrplanjahr(workflow) ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}</dt>
+            {vorhaben || anmeldung.vorhaben.trim() ? (
+              <>
+                <dt>Vorhabenname</dt>
+                <dd>{anmeldung.vorhaben || '–'}</dd>
+              </>
+            ) : null}
+            <dt>{vorhaben ? 'tVE-Nr' : ganzesFahrplanjahr(workflow) ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}</dt>
             <dd>{anmeldung.anmeldeId || '–'}</dd>
             <dt>Maßnahmenart</dt>
             <dd>{anmeldung.art}</dd>
@@ -250,6 +292,8 @@ export function AnmeldungDetail({
             <dd>{anmeldung.bfStrecke || '–'}</dd>
             <dt>Gewerk/Tätigkeit</dt>
             <dd>{anmeldung.gewerk || '–'}</dd>
+            <dt>Zuständiger BBK</dt>
+            <dd>{anmeldung.bbk || '–'}</dd>
             {istAenderung(data.workflows, anmeldung.statusId) ? (
               <>
                 <dt>ÄAbst-Nr</dt>
@@ -265,7 +309,7 @@ export function AnmeldungDetail({
                 <dt>Herkunft</dt>
                 <dd>
                   <button type="button" className="link-btn" onClick={() => oeffne(herkunft)}>
-                    {herkunft.anmeldeId || 'ohne ID'}
+                    {anmeldungTitel(herkunft)}
                   </button>{' '}
                   <span className="tertiary small">– bei der Übernahme aufgeteilt</span>
                 </dd>
@@ -277,7 +321,7 @@ export function AnmeldungDetail({
                 <dd className="row wrap" style={{ gap: 8 }}>
                   {aufgeteilt.map((a) => (
                     <button key={a.id} type="button" className="link-btn" onClick={() => oeffne(a)}>
-                      {a.anmeldeId || 'ohne ID'}
+                      {anmeldungTitel(a)}
                     </button>
                   ))}
                 </dd>
@@ -332,7 +376,7 @@ export function AnmeldungDetail({
       {loeschen ? (
         <ConfirmDialog
           titel="Anmeldung löschen?"
-          text={`„${anmeldung.anmeldeId || anmeldung.gewerk || 'ohne ID'}“ wird samt Statusverlauf gelöscht. Für Anmeldeleichen ist der Status „Anmeldeleiche“ vorgesehen.`}
+          text={`„${titel}“ wird samt Statusverlauf gelöscht. Für Anmeldeleichen ist der Status „Anmeldeleiche“ vorgesehen.`}
           onConfirm={() => {
             deleteAnmeldung(anmeldung.id);
             toast('Anmeldung gelöscht.');

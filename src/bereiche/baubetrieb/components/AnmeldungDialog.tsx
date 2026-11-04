@@ -17,7 +17,7 @@ import {
   type ID,
   type Projekt,
 } from '../domain/types';
-import { NEUANLAGE_WORKFLOW, istAenderung, startbareWorkflows, statusVon } from '../domain/workflow';
+import { NEUANLAGE_WORKFLOW, istAenderung, startbareWorkflows, statusVon, vorhabenFuehrend } from '../domain/workflow';
 import { useStore } from '../store/store';
 import { StatusBadge } from './common';
 
@@ -68,6 +68,8 @@ export function AnmeldungDialog({
     statusSeit: anmeldung?.statusSeit ?? today(),
     art: (anmeldung?.art ?? startWorkflow?.arten[0] ?? 'A') as AnmeldungsArt,
     anmeldeId: anmeldung?.anmeldeId ?? '',
+    vorhaben: anmeldung?.vorhaben ?? '',
+    bbk: anmeldung?.bbk ?? '',
     fahrplanjahr: anmeldung?.fahrplanjahr ?? vorgabeFahrplanjahr(projekt),
     bauVon: anmeldung?.bauVon ?? '',
     bauBis: anmeldung?.bauBis ?? '',
@@ -84,6 +86,8 @@ export function AnmeldungDialog({
   // Die bisherige Art bleibt wählbar, auch wenn der Workflow sie nicht mehr führt.
   const arten = [...new Set([...(workflow?.arten ?? []), ...(anmeldung ? [anmeldung.art] : [])])];
   const aenderung = !!anmeldung && istAenderung(data.workflows, anmeldung.statusId);
+  // Im SKM führt der Vorhabenname, die Nummer ist die tVE-Nr.
+  const vorhaben = vorhabenFuehrend(form);
 
   /** Phase (Workflow) und Maßnahmenart aus einem Auswahlfeld: Wert „Workflow-ID|Art“. */
   const phaseUndArtWaehlen = (wert: string) => {
@@ -112,6 +116,8 @@ export function AnmeldungDialog({
     const gemeinsam = {
       art: form.art,
       anmeldeId: form.anmeldeId.trim(),
+      vorhaben: form.vorhaben.trim(),
+      bbk: form.bbk.trim(),
       bfStrecke: form.bfStrecke.trim(),
       gewerk: form.gewerk.trim(),
       bemerkung: form.bemerkung.trim(),
@@ -208,9 +214,19 @@ export function AnmeldungDialog({
           </Field>
         ) : null}
 
+        {vorhaben ? (
+          <Field label="Vorhabenname" full hint="Führt im SKM die Liste an; die tVE-Nr steht darunter.">
+            <TextInput value={form.vorhaben} onChange={(v) => set('vorhaben', v)} placeholder="Kabeltiefbau Abschnitt Nord" />
+          </Field>
+        ) : null}
+
         <Field
-          label={ganzesJahr ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}
-          hint={ganzesJahr ? 'Vor dem KM gibt es noch keine Anmeldungen – Sammeleintrag nach Begriffen bzw. tVE-Nr.' : undefined}
+          label={vorhaben ? 'tVE-Nr' : ganzesJahr ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}
+          hint={
+            ganzesJahr && !vorhaben
+              ? 'Vor dem KM gibt es noch keine Anmeldungen – Sammeleintrag nach Begriffen bzw. tVE-Nr.'
+              : undefined
+          }
         >
           <TextInput
             value={form.anmeldeId}
@@ -244,6 +260,9 @@ export function AnmeldungDialog({
         </Field>
         <Field label="Gewerk/Tätigkeit" hint="in Stichworten">
           <TextInput value={form.gewerk} onChange={(v) => set('gewerk', v)} placeholder="Weichenerneuerung" />
+        </Field>
+        <Field label="Zuständiger BBK" hint="Name – erscheint in „Zuständig“, wenn die BBK am Zug ist">
+          <TextInput value={form.bbk} onChange={(v) => set('bbk', v)} placeholder="Fr. Weber" />
         </Field>
 
         {aenderung ? (

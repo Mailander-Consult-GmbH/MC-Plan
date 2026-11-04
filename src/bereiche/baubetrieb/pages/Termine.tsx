@@ -1,16 +1,18 @@
 /**
  * Termine & Nachhaken: alle Anmeldungen mit Terminfrist über alle Projekte,
- * gefiltert nach Dringlichkeit, dazu der Anmeldebedarf aus den Projekten.
+ * gefiltert nach Dringlichkeit – je Projekt zuerst eine ausstehende
+ * Erstanmeldung –, dazu der Anmeldebedarf aus den Projekten.
  */
 import { Fragment, useMemo, useState } from 'react';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
-import { Card, CardHeader, EmptyState, Search, Segmented } from '../../../shared/ui';
+import { Badge, Card, CardHeader, EmptyState, Search, Segmented } from '../../../shared/ui';
 import { AmpelPunkt, NachfolgerAuswahl, NachhakenBadge, StatusBadge, TerminZelle } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import { NachhakenDialog } from '../components/TerminDialoge';
-import { faelligerBedarf, offeneTermine } from '../domain/fristen';
-import { RIL_LABEL, type Anmeldung, type StatusZiel } from '../domain/types';
+import { ERSTANMELDUNG_GRUND, ausstehendeErstanmeldungen, faelligerBedarf, offeneTermine } from '../domain/fristen';
+import { ERSTE_PHASE_LABEL, RIL_LABEL, type Anmeldung, type StatusZiel } from '../domain/types';
+import { anmeldungTitel } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 
@@ -24,13 +26,23 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
   const [nachhaken, setNachhaken] = useState<Anmeldung | null>(null);
 
   const alle = useMemo(() => offeneTermine(data), [data]);
+  const erst = useMemo(() => ausstehendeErstanmeldungen(data), [data]);
   const bedarf = useMemo(() => faelligerBedarf(data), [data]);
-  const zaehler = (f: Filter) => alle.filter((t) => passt(f, t.ampel, t.frist.nachhaken)).length;
+  const zaehler = (f: Filter) =>
+    alle.filter((t) => passt(f, t.ampel, t.frist.nachhaken)).length + erst.filter((e) => passt(f, e.ampel, false)).length;
+  const sucheTrifft = (felder: string[]) =>
+    !suche.trim() || felder.join(' ').toLowerCase().includes(suche.toLowerCase());
+  const erstanmeldungen = erst.filter(
+    (e) =>
+      passt(filter, e.ampel, false) &&
+      sucheTrifft(['Erstanmeldung ausstehend', e.projekt.name, e.projekt.dbGNummer, ERSTE_PHASE_LABEL[e.projekt.erstePhase]]),
+  );
 
   const eintraege = alle.filter((t) => {
     if (!passt(filter, t.ampel, t.frist.nachhaken)) return false;
     if (!suche.trim()) return true;
     return [
+      t.anmeldung.vorhaben,
       t.anmeldung.anmeldeId,
       t.anmeldung.bfStrecke,
       t.anmeldung.gewerk,
@@ -45,9 +57,9 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
       .includes(suche.toLowerCase());
   });
 
-  const projekte = [...new Map(eintraege.map((t) => [t.projekt.id, t.projekt])).values()].sort((a, b) =>
-    a.name.localeCompare(b.name, 'de'),
-  );
+  const projekte = [
+    ...new Map([...erstanmeldungen, ...eintraege].map((t) => [t.projekt.id, t.projekt])).values(),
+  ].sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
   return (
     <div className="stack">
@@ -56,7 +68,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
           value={filter}
           onChange={setFilter}
           options={[
-            { value: 'alle', label: `Alle (${alle.length})` },
+            { value: 'alle', label: `Alle (${alle.length + erst.length})` },
             { value: 'ueberfaellig', label: `Überfällig (${zaehler('ueberfaellig')})` },
             { value: 'faellig', label: `Fällig (${zaehler('faellig')})` },
             { value: 'geplant', label: `Im Plan (${zaehler('geplant')})` },
@@ -71,7 +83,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
           titel="Terminfristen der Anmeldungen"
           sub="Frist im aktuellen Status laut Workflow – berechnet nach Richtlinie, Stichtag oder Nachhak-Termin"
         />
-        {eintraege.length === 0 ? (
+        {eintraege.length + erstanmeldungen.length === 0 ? (
           <EmptyState icon="check" titel="Nichts offen" text="Für diese Auswahl gibt es keine Terminfrist." />
         ) : (
           <div className="table-scroll">
@@ -88,6 +100,8 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
               <tbody>
                 {projekte.map((projekt) => {
                   const zeilen = eintraege.filter((t) => t.projekt.id === projekt.id);
+                  const e = erstanmeldungen.find((x) => x.projekt.id === projekt.id);
+                  const anzahl = zeilen.length + (e ? 1 : 0);
                   return (
                     <Fragment key={projekt.id}>
                       <tr className="gruppe-zeile">
@@ -101,10 +115,52 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
                           </button>
                           <span className="small tertiary">
                             {' '}
-                            · {zeilen.length} {zeilen.length === 1 ? 'Termin' : 'Termine'}
+                            · {anzahl} {anzahl === 1 ? 'Termin' : 'Termine'}
                           </span>
                         </td>
                       </tr>
+                      {e ? (
+                        <tr>
+                          <td className="col-optional">
+                            <AmpelPunkt ampel={e.ampel} />
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="link-btn"
+                              onClick={() => navigate({ view: 'projekt', projektId: projekt.id })}
+                            >
+                              <strong>Erstanmeldung ausstehend</strong>
+                            </button>
+                            <div className="small tertiary">
+                              {ERSTE_PHASE_LABEL[projekt.erstePhase]} · noch keine Anmeldung im Projekt
+                            </div>
+                          </td>
+                          <td>
+                            <Badge ton="orange">Ausstehend</Badge>
+                          </td>
+                          <td>
+                            {e.frist ? (
+                              <span className="small">
+                                <b>{formatDate(e.frist)}</b>
+                                <div className="tertiary small">{relativeLabel(e.frist)}</div>
+                                <div className="tertiary small">{ERSTANMELDUNG_GRUND[e.grund]}</div>
+                              </span>
+                            ) : (
+                              <span className="small tertiary">kein erster Anmeldetermin</span>
+                            )}
+                          </td>
+                          <td className="actions">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => navigate({ view: 'projekt', projektId: projekt.id })}
+                            >
+                              Zum Projekt
+                            </button>
+                          </td>
+                        </tr>
+                      ) : null}
                       {zeilen.map((t) => (
                         <tr key={t.anmeldung.id}>
                           <td className="col-optional">
@@ -118,7 +174,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
                                 navigate({ view: 'anmeldung', projektId: projekt.id, anmeldungId: t.anmeldung.id })
                               }
                             >
-                              <strong>{t.anmeldung.anmeldeId || 'ohne ID'}</strong>
+                              <strong>{anmeldungTitel(t.anmeldung)}</strong>
                             </button>
                             <div className="small tertiary">
                               {[t.anmeldung.art, t.anmeldung.bfStrecke, t.anmeldung.gewerk].filter(Boolean).join(' · ')}

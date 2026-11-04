@@ -1,17 +1,26 @@
 /**
- * Startseite des Bereichs: Kennzahlen, anstehende Terminfristen, Anmeldebedarf
- * aus den Projekten und die Projekte mit ihren Anmeldungen je Workflow.
- * Angezeigt werden die markierten Projekte.
+ * Startseite des Bereichs: Kennzahlen, anstehende Terminfristen (samt
+ * ausstehender Erstanmeldungen), Anmeldebedarf aus den Projekten und die
+ * Projekte mit ihren Anmeldungen je Workflow. Angezeigt werden die markierten
+ * Projekte.
  */
 import { useState } from 'react';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
-import { Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
+import { Badge, Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
 import { AmpelPunkt, NachfolgerAuswahl, StatusBadge, TerminZelle } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
-import { faelligerBedarf, offeneTermine } from '../domain/fristen';
-import { RIL_LABEL, type Anmeldung, type Projekt, type StatusZiel } from '../domain/types';
-import { statusVon } from '../domain/workflow';
+import {
+  AMPEL_RANG,
+  ERSTANMELDUNG_GRUND,
+  ausstehendeErstanmeldungen,
+  faelligerBedarf,
+  offeneTermine,
+  type ErstanmeldungEintrag,
+  type TerminEintrag,
+} from '../domain/fristen';
+import { ERSTE_PHASE_LABEL, RIL_LABEL, type Anmeldung, type Projekt, type StatusZiel } from '../domain/types';
+import { anmeldungTitel, statusVon } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 
@@ -20,6 +29,11 @@ export function sichtbareProjekte(projekte: Projekt[]): Projekt[] {
   const markiert = projekte.filter((p) => p.markiert);
   return markiert.length > 0 ? markiert : projekte;
 }
+
+/** Zeile der anstehenden Terminfristen: eine Anmeldung oder eine ausstehende Erstanmeldung. */
+type FristZeile = { t: TerminEintrag; e?: undefined } | { e: ErstanmeldungEintrag; t?: undefined };
+const ampelVon = (z: FristZeile) => (z.t ? z.t.ampel : z.e.ampel);
+const datumVon = (z: FristZeile) => (z.t ? z.t.frist.datum : z.e.frist) ?? '';
 
 /** So viele Terminfristen zeigt die Übersicht; alle stehen unter „Termine“. */
 const ANZAHL_TERMINE = 8;
@@ -31,11 +45,17 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
   const ids = projekte.map((p) => p.id);
   const anmeldungen = data.anmeldungen.filter((a) => ids.includes(a.projektId));
   const termine = offeneTermine(data, ids);
-  const ueberfaellig = termine.filter((t) => t.ampel === 'ueberfaellig');
-  const faellig = termine.filter((t) => t.ampel === 'faellig');
+  const erst = ausstehendeErstanmeldungen(data, ids);
+  // Terminfristen der Anmeldungen und ausstehende Erstanmeldungen, nach Dringlichkeit
+  const fristen: FristZeile[] = [
+    ...termine.map((t): FristZeile => ({ t })),
+    ...erst.map((e): FristZeile => ({ e })),
+  ].sort((a, b) => AMPEL_RANG[ampelVon(a)] - AMPEL_RANG[ampelVon(b)] || datumVon(a).localeCompare(datumVon(b)));
+  const ueberfaellig = [...termine, ...erst].filter((t) => t.ampel === 'ueberfaellig');
+  const faellig = [...termine, ...erst].filter((t) => t.ampel === 'faellig');
   const nachhaken = termine.filter((t) => t.frist.nachhaken && t.ampel !== 'geplant');
   const bedarf = faelligerBedarf(data, ids);
-  const vorn = termine.slice(0, ANZAHL_TERMINE);
+  const vorn = fristen.slice(0, ANZAHL_TERMINE);
   const alleMarkiert = data.projekte.filter((p) => p.markiert).length;
 
   return (
@@ -72,11 +92,11 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
       <Card>
         <CardHeader
           titel="Anstehende Terminfristen"
-          sub="Je Anmeldung die Frist im aktuellen Status – Überfälliges zuerst"
+          sub="Je Anmeldung die Frist im aktuellen Status, dazu ausstehende Erstanmeldungen – Überfälliges zuerst"
           actions={
-            termine.length > ANZAHL_TERMINE ? (
+            fristen.length > ANZAHL_TERMINE ? (
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate({ view: 'termine' })}>
-                Alle {termine.length} <Icon name="chevron" size={13} />
+                Alle {fristen.length} <Icon name="chevron" size={13} />
               </button>
             ) : null
           }
@@ -97,7 +117,37 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                 </tr>
               </thead>
               <tbody>
-                {vorn.map((t) => (
+                {vorn.map(({ t, e }) =>
+                  e ? (
+                    <tr
+                      key={`erst-${e.projekt.id}`}
+                      className="clickable"
+                      onClick={() => navigate({ view: 'projekt', projektId: e.projekt.id })}
+                    >
+                      <td className="col-optional">
+                        <AmpelPunkt ampel={e.ampel} />
+                      </td>
+                      <td>
+                        <strong>Erstanmeldung ausstehend</strong>
+                        <div className="small tertiary">{ERSTE_PHASE_LABEL[e.projekt.erstePhase]}</div>
+                      </td>
+                      <td className="small muted col-optional">{e.projekt.name}</td>
+                      <td>
+                        <Badge ton="orange">Ausstehend</Badge>
+                      </td>
+                      <td>
+                        {e.frist ? (
+                          <span className="small" title={ERSTANMELDUNG_GRUND[e.grund]}>
+                            <b>{formatDate(e.frist)}</b>
+                            <div className="tertiary small">{relativeLabel(e.frist)}</div>
+                          </span>
+                        ) : (
+                          <span className="small tertiary">kein erster Anmeldetermin</span>
+                        )}
+                      </td>
+                      <td className="actions" />
+                    </tr>
+                  ) : (
                   <tr
                     key={t.anmeldung.id}
                     className="clickable"
@@ -109,7 +159,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                       <AmpelPunkt ampel={t.ampel} />
                     </td>
                     <td>
-                      <strong>{t.anmeldung.anmeldeId || 'ohne ID'}</strong>
+                      <strong>{anmeldungTitel(t.anmeldung)}</strong>
                       <div className="small tertiary">
                         {[t.anmeldung.art, t.anmeldung.gewerk].filter(Boolean).join(' · ')}
                       </div>
@@ -129,7 +179,8 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                       />
                     </td>
                   </tr>
-                ))}
+                  ),
+                )}
               </tbody>
             </table>
           </div>
