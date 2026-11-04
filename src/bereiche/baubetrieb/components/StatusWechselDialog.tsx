@@ -24,7 +24,7 @@ import {
   type ID,
   type StatusZiel,
 } from '../domain/types';
-import { istAenderung, istUebernahme, statusVon } from '../domain/workflow';
+import { anmeldungBezeichnung, istAenderung, istUebernahme, statusVon } from '../domain/workflow';
 import { useStore } from '../store/store';
 import { ANNEX_OPTIONEN, fahrplanjahrOptionen } from './AnmeldungDialog';
 import { StatusBadge } from './common';
@@ -185,7 +185,7 @@ export function StatusWechselDialog({
     >
       {loeschen ? (
         <p className="muted">
-          {vonLeiche ? 'Anmeldeleichen werden komplett gelöscht. ' : ''}Der Eintrag „{anmeldung.anmeldeId || anmeldung.gewerk || 'ohne ID'}“
+          {vonLeiche ? 'Anmeldeleichen werden komplett gelöscht. ' : ''}Der Eintrag „{anmeldungBezeichnung(anmeldung)}“
           verschwindet samt Statusverlauf aus dem Projekt. Das lässt sich nicht rückgängig machen.
         </p>
       ) : (

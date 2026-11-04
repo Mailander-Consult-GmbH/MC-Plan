@@ -1,7 +1,7 @@
 /**
  * Ablauflogik einer Anmeldung: Statuswechsel samt Übernahme in eine neue
  * Phase (einen anderen Workflow) und Aufteilung, Rücknahme des letzten
- * Wechsels und Abgleich des Sperrzeitraums. Reine Funktionen – der Store ruft
+ * Wechsels, Duplizieren und Abgleich des Sperrzeitraums. Reine Funktionen – der Store ruft
  * sie in `mutate()` auf.
  */
 import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon, ganzesFahrplanjahr } from './fristen';
@@ -18,7 +18,17 @@ import {
   type VerlaufEintrag,
   type Workflow,
 } from './types';
-import { istAenderung, istUebernahme, nachfolgerVon, statusInfo, statusVon, zielText } from './workflow';
+import {
+  anmeldungBezeichnung,
+  anmeldungTitel,
+  istAenderung,
+  istUebernahme,
+  nachfolgerVon,
+  statusInfo,
+  statusVon,
+  titelFeld,
+  zielText,
+} from './workflow';
 
 /** Sperrzeitraum einer übernommenen bzw. aufgeteilten Anmeldung (Felder bauVon/bauBis). */
 export interface Bauzeitraum {
@@ -174,7 +184,7 @@ export function wechselAnwenden(
                 nach: w.nach,
                 vonText,
                 nachText,
-                text: `Bei der Übernahme aus „${alt.anmeldeId || 'ohne ID'}“ (${vonText}) aufgeteilt`,
+                text: `Bei der Übernahme aus „${anmeldungTitel(alt)}“ (${vonText}) aufgeteilt`,
               },
             ],
           },
@@ -211,6 +221,64 @@ export function wechselZuruecknehmen(d: BaubetriebDaten, id: ID): BaubetriebDate
       return { ...a, ...letzter.vorher, verlauf: a.verlauf.filter((v) => v.id !== letzter.id) };
     }),
   };
+}
+
+/** Vorab vergebene Kennungen einer Kopie: die Anmeldung, je Verlaufseintrag eine, der Vermerk. */
+export interface KopieIds {
+  anmeldung: ID;
+  verlauf: ID[];
+  vermerk: ID;
+}
+
+/**
+ * Kopie einer Anmeldung mit aktuellem Stand und Statusverlauf; ein Vermerk
+ * hält fest, woraus sie entstand. Die führende Bezeichnung erhält „(Kopie)“ –
+ * ohne Nummer wird „(Kopie)“ die Nummer –, auch im gespeicherten Vorstand,
+ * damit ein Zurücknehmen die Kopie nicht wieder wie das Original benennt.
+ * Die Kopie steht direkt hinter dem Original.
+ */
+export function anmeldungDuplizieren(
+  d: BaubetriebDaten,
+  id: ID,
+  ids: KopieIds,
+  bearbeiter: string,
+  erfasst: string,
+  datum: ISODate,
+): BaubetriebDaten {
+  const index = d.anmeldungen.findIndex((a) => a.id === id);
+  if (index < 0) return d;
+  const alt = d.anmeldungen[index];
+  const kennzeichnen = (t: string) => (t.trim() ? `${t.trim()} (Kopie)` : '(Kopie)');
+  const nachVorhaben = titelFeld(alt) === 'vorhaben';
+  const kopie: Anmeldung = {
+    ...alt,
+    id: ids.anmeldung,
+    vorhaben: nachVorhaben ? kennzeichnen(alt.vorhaben) : alt.vorhaben,
+    anmeldeId: nachVorhaben ? alt.anmeldeId : kennzeichnen(alt.anmeldeId),
+    herkunftId: null,
+    verlauf: [
+      ...alt.verlauf.map((v, i) => ({
+        ...v,
+        id: ids.verlauf[i] ?? `${ids.anmeldung}-vl${i}`,
+        ...(v.vorher && !nachVorhaben ? { vorher: { ...v.vorher, anmeldeId: kennzeichnen(v.vorher.anmeldeId) } } : {}),
+      })),
+      {
+        id: ids.vermerk,
+        typ: 'notiz',
+        datum,
+        erfasst,
+        bearbeiter,
+        von: null,
+        nach: null,
+        vonText: '',
+        nachText: '',
+        text: `Dupliziert aus „${anmeldungBezeichnung(alt)}“`,
+      },
+    ],
+  };
+  const anmeldungen = [...d.anmeldungen];
+  anmeldungen.splice(index + 1, 0, kopie);
+  return { ...d, anmeldungen };
 }
 
 /** Herkunft und Aufteilung: aus welchem Eintrag diese Anmeldung entstand und welche aus ihr. */

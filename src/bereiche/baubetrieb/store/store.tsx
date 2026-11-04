@@ -5,7 +5,14 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { bauzeitraumAbgleichen, wechselAnwenden, wechselZuruecknehmen, type Wechsel } from '../domain/ablauf';
+import { today } from '../../../shared/dates';
+import {
+  anmeldungDuplizieren,
+  bauzeitraumAbgleichen,
+  wechselAnwenden,
+  wechselZuruecknehmen,
+  type Wechsel,
+} from '../domain/ablauf';
 import { newId, seedDaten } from '../domain/seed';
 import type {
   Anmeldung,
@@ -55,6 +62,8 @@ interface StoreValue {
   addAnmeldung: (a: NeueAnmeldung) => ID;
   updateAnmeldung: (id: ID, patch: Partial<Omit<Anmeldung, 'id' | 'statusId' | 'verlauf'>>) => void;
   deleteAnmeldung: (id: ID) => void;
+  /** Legt eine Kopie mit aktuellem Stand und Statusverlauf an und liefert ihre Kennung. */
+  duplicateAnmeldung: (id: ID) => ID;
   /**
    * Statuswechsel auf einen zulässigen Nachfolger. Liefert die Kennungen der
    * bei einer Aufteilung zusätzlich entstandenen Anmeldungen.
@@ -177,6 +186,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             .filter((a) => a.id !== id)
             .map((a) => (a.herkunftId === id ? { ...a, herkunftId: null } : a)),
         })),
+
+      duplicateAnmeldung: (id) => {
+        // Kennungen vor mutate() – im StrictMode läuft die Änderungsfunktion doppelt.
+        const quelle = data.anmeldungen.find((a) => a.id === id);
+        const ids = {
+          anmeldung: newId('an'),
+          verlauf: (quelle?.verlauf ?? []).map(() => newId('vl')),
+          vermerk: newId('vl'),
+        };
+        const erfasst = new Date().toISOString();
+        mutate((d) => anmeldungDuplizieren(d, id, ids, d.einstellungen.bearbeiter, erfasst, today()));
+        return ids.anmeldung;
+      },
 
       statusWechseln: (id, w) => {
         const ids = {

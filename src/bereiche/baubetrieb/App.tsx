@@ -6,8 +6,9 @@ import { useToast } from '../../shared/toast';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../shared/ui';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
-import { offeneTermine } from './domain/fristen';
+import { ausstehendeErstanmeldungen, offeneTermine } from './domain/fristen';
 import { STANDARD_BEARBEITER } from './domain/types';
+import { anmeldungBezeichnung } from './domain/workflow';
 import { useRoute, type Route } from './lib/router';
 import { AnmeldungDetail } from './pages/AnmeldungDetail';
 import { Einstellungen } from './pages/Einstellungen';
@@ -30,7 +31,8 @@ export function App() {
 
   const markierte = sichtbareProjekte(data.projekte);
   const termine = offeneTermine(data);
-  const ueberfaellig = termine.filter((t) => t.ampel === 'ueberfaellig');
+  // Überfällig: Terminfristen der Anmeldungen und ausstehende Erstanmeldungen
+  const ueberfaellig = [...termine, ...ausstehendeErstanmeldungen(data)].filter((t) => t.ampel === 'ueberfaellig');
   const projekt =
     route.view === 'projekt' || route.view === 'anmeldung'
       ? data.projekte.find((p) => p.id === route.projektId)
@@ -49,7 +51,7 @@ export function App() {
     document.documentElement.dataset.farbmodus = farbmodus;
   }, [farbmodus]);
 
-  const kopf = kopfzeile(route, projekt?.name, anmeldung?.anmeldeId);
+  const kopf = kopfzeile(route, projekt?.name, anmeldung ? anmeldungBezeichnung(anmeldung) : undefined);
 
   return (
     <div className="app">
@@ -302,7 +304,7 @@ function NichtGefunden({ onZurueck }: { onZurueck: () => void }) {
   );
 }
 
-function kopfzeile(route: Route, projektName?: string, anmeldeId?: string): { titel: string; sub?: string } {
+function kopfzeile(route: Route, projektName?: string, anmeldungName?: string): { titel: string; sub?: string } {
   switch (route.view) {
     case 'uebersicht':
       return { titel: 'Übersicht', sub: 'Baubetriebliche Anmeldungen für Sperrpausen' };
@@ -317,6 +319,6 @@ function kopfzeile(route: Route, projektName?: string, anmeldeId?: string): { ti
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projekt' };
     case 'anmeldung':
-      return { titel: anmeldeId || 'Anmeldung', sub: projektName };
+      return { titel: anmeldungName || 'Anmeldung', sub: projektName };
   }
 }

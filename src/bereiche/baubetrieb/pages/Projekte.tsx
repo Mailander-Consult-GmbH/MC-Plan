@@ -6,6 +6,7 @@ import { useToast } from '../../../shared/toast';
 import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
 import {
   anmeldebedarf,
+  erstanmeldungAusstehend,
   ersterTerminVorschlag,
   fahrplanjahrBeginn,
   fahrplanjahrEnde,
@@ -75,7 +76,9 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
           {projekte.map((p) => {
             const anzahl = data.anmeldungen.filter((a) => a.projektId === p.id).length;
             const termine = offeneTermine(data, [p.id]);
-            const ueberfaellig = termine.filter((t) => t.ampel === 'ueberfaellig').length;
+            const ueberfaellig =
+              termine.filter((t) => t.ampel === 'ueberfaellig').length +
+              (erstanmeldungAusstehend(p, data)?.ampel === 'ueberfaellig' ? 1 : 0);
             const bedarf = naechsterBedarf(anmeldebedarf(p, data));
             return (
               <button
@@ -244,7 +247,7 @@ export function ProjektDialog({
           <TextInput value={form.projektnummer} onChange={(v) => set('projektnummer', v)} />
         </Field>
 
-        <Field label="Betroffene Fahrplanjahre" full hint="Je gewähltem Fahrplanjahr zeigt das Projekt den Anmeldebedarf.">
+        <Field label="Betroffene Fahrplanjahre" full hint="Daraus ergeben sich der Anmeldebedarf in Übersicht und Terminen und der Vorschlag für den ersten Anmeldetermin.">
           <div className="row wrap" style={{ gap: '6px 16px' }}>
             {jahre.map((n) => (
               <label
@@ -262,11 +265,9 @@ export function ProjektDialog({
             ))}
           </div>
         </Field>
-        <Field label="Inbetriebnahme" hint="optional">
-          <TextInput type="date" value={form.inbetriebnahme} onChange={(v) => set('inbetriebnahme', v)} />
-        </Field>
 
-        <Field label="Prozessphase des ersten Anmeldetermins">
+        {/* Eine Zeile mit einzeiligen Beschriftungen – Eingaben stehen auf gleicher Höhe, Hinweise darunter. */}
+        <Field label="Prozessphase" hint="des ersten Anmeldetermins">
           <Select
             value={form.erstePhase}
             onChange={(v) => set('erstePhase', v as ErstePhase)}
@@ -276,33 +277,34 @@ export function ProjektDialog({
             }))}
           />
         </Field>
-        <Field
-          label="Erster Anmeldetermin (ca.)"
-          hint={
-            vorschlag
-              ? `Laut Richtlinie für ${ERSTE_PHASE_LABEL[form.erstePhase]}: ${formatDate(vorschlag)}`
-              : 'Je nach Prozessphase laut Richtlinie – mit betroffenen Fahrplanjahren lässt er sich vorschlagen.'
-          }
-        >
-          <span className="row" style={{ gap: 6 }}>
-            <TextInput
-              type="date"
-              value={form.ersterAnmeldetermin}
-              onChange={(v) => set('ersterAnmeldetermin', v)}
-            />
-            {vorschlag && vorschlag !== form.ersterAnmeldetermin ? (
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                onClick={() => set('ersterAnmeldetermin', vorschlag)}
-                title="Vorschlag laut Richtlinie übernehmen"
-              >
-                Übernehmen
-              </button>
-            ) : null}
+        <Field label="Erster Anmeldetermin (ca.)">
+          <TextInput type="date" value={form.ersterAnmeldetermin} onChange={(v) => set('ersterAnmeldetermin', v)} />
+          <span className="hint">
+            {vorschlag ? (
+              <>
+                Laut Richtlinie: {formatDate(vorschlag)}
+                {vorschlag !== form.ersterAnmeldetermin ? (
+                  <>
+                    {' · '}
+                    <button
+                      type="button"
+                      className="link-btn"
+                      style={{ fontSize: 'inherit', color: 'var(--accent)' }}
+                      onClick={() => set('ersterAnmeldetermin', vorschlag)}
+                    >
+                      übernehmen
+                    </button>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              'Vorschlag laut Richtlinie, sobald Fahrplanjahre gewählt sind'
+            )}
           </span>
         </Field>
-
+        <Field label="Inbetriebnahme">
+          <TextInput type="date" value={form.inbetriebnahme} onChange={(v) => set('inbetriebnahme', v)} />
+        </Field>
         <Field label="Status der Betreuung">
           <Select
             value={form.status}

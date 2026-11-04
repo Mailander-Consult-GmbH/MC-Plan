@@ -6,18 +6,21 @@ import { formatDate, today } from '../../../shared/dates';
 import { dateiLaden, xlsxErzeugen, type Zelle } from '../../../shared/xlsx';
 import { AMPEL_LABEL, ampelFuer, terminfrist } from './fristen';
 import { ANNEX_VII_LABEL, ERSTE_PHASE_LABEL, PROJEKT_STATUS_LABEL, type BaubetriebDaten, type ID } from './types';
-import { statusVon } from './workflow';
+import { statusVon, zustaendigText } from './workflow';
 
 const KOPF_STIL = { fett: true, fuellung: 'E8EDF3', rahmen: true };
 
 const ANMELDUNG_KOPF = [
   'Projekt',
   'DB-G-Nummer',
+  'Vorhabenname',
   'Anmelde-ID / Begriff',
   'Maßnahmenart',
   'Workflow',
   'Status',
   'Status seit',
+  'Zuständig',
+  'Zuständiger BBK',
   'Sperrzeit von',
   'Sperrzeit bis',
   'Fahrplanjahr',
@@ -77,11 +80,14 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
         return [
           p.name,
           p.dbGNummer,
+          a.vorhaben,
           a.anmeldeId,
           a.art,
           workflow.name,
           status.name,
           datum(a.statusSeit),
+          zustaendigText(status, a, p) ?? '',
+          a.bbk,
           datum(a.bauVon),
           datum(a.bauBis),
           a.fahrplanjahr,
@@ -122,7 +128,7 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
       zeilen: [[{ wert: titel, stil: { fett: true, groesse: 13 } }], [stand], [], kopf(ANMELDUNG_KOPF), ...anmeldungZeilen],
       fixierteZeilen: 4,
       querformat: true,
-      spaltenbreiten: [28, 14, 22, 13, 20, 26, 12, 12, 12, 11, 12, 18, 11, 30, 30, 12, 26, 36],
+      spaltenbreiten: [28, 14, 26, 22, 13, 20, 26, 12, 22, 18, 12, 12, 11, 12, 18, 11, 30, 30, 12, 26, 36],
     },
     {
       name: 'Projekte',

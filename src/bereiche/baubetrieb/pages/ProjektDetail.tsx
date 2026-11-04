@@ -1,39 +1,43 @@
 /**
- * Projekt: Stammdaten, Anmeldebedarf je Fahrplanjahr und die baubetrieblichen
+ * Projekt: Stammdaten, ausstehende Erstanmeldung und die baubetrieblichen
  * Anmeldungen – je Workflow (Phase) eine eigene Tabelle mit Statuswechsel
  * direkt in der Zeile. Eine Zeile umfasst höchstens zwei Textzeilen; längere
  * Angaben werden gekürzt und stehen vollständig im Tooltip.
  */
-import { Fragment, useState } from 'react';
-import { formatDate, today } from '../../../shared/dates';
+import { useState } from 'react';
+import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Search } from '../../../shared/ui';
 import { AnmeldungDialog } from '../components/AnmeldungDialog';
-import { NachfolgerAuswahl, StatusBadge, TerminKompakt } from '../components/common';
+import { AmpelBadge, AmpelPunkt, NachfolgerAuswahl, StatusBadge, TerminKompakt } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import { monitorExportieren } from '../domain/export';
 import {
+  ERSTANMELDUNG_GRUND,
   ampelFuer,
-  anmeldebedarf,
   bauzeitraumText,
-  naechsterMittwoch,
+  erstanmeldungAusstehend,
   terminfrist,
-  type BedarfZelle,
-  type KkmZelle,
+  type ErstanmeldungEintrag,
 } from '../domain/fristen';
 import {
   ANNEX_VII_LABEL,
   ERSTE_PHASE_LABEL,
-  PHASE_LABEL,
   PROJEKT_STATUS_LABEL,
-  RIL_LABEL,
   type Anmeldung,
   type Projekt,
   type StatusZiel,
   type Workflow,
 } from '../domain/types';
-import { istAenderung, statusInfo, statusText, statusVon } from '../domain/workflow';
+import {
+  anmeldungTitel,
+  istAenderung,
+  statusInfo,
+  statusVon,
+  vorhabenFuehrend,
+  zustaendigText,
+} from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { ProjektDialog, PROJEKT_STATUS_TON } from './Projekte';
@@ -51,14 +55,14 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
   const [suche, setSuche] = useState('');
 
   const eigene = data.anmeldungen.filter((a) => a.projektId === projekt.id);
-  const bedarf = anmeldebedarf(projekt, data);
+  const erstanmeldung = erstanmeldungAusstehend(projekt, data);
   const oeffne = (a: Anmeldung) => navigate({ view: 'anmeldung', projektId: projekt.id, anmeldungId: a.id });
 
   const workflowVon = (a: Anmeldung) => statusVon(data.workflows, a.statusId).workflow.id;
   const passt = (a: Anmeldung) => {
     if (!suche.trim()) return true;
     const { workflow, status } = statusVon(data.workflows, a.statusId);
-    return [a.anmeldeId, a.bfStrecke, a.gewerk, a.bemerkung, a.art, workflow.name, status.name, a.aenderungsNr]
+    return [a.vorhaben, a.anmeldeId, a.bfStrecke, a.gewerk, a.bemerkung, a.bbk, a.art, workflow.name, status.name, a.aenderungsNr]
       .join(' ')
       .toLowerCase()
       .includes(suche.toLowerCase());
@@ -152,52 +156,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
         </div>
       </Card>
 
-      <Card>
-        <CardHeader
-          titel="Anmeldebedarf je Fahrplanjahr"
-          sub={`Je betroffenem Fahrplanjahr: ob eine Anmeldung zum nächsten SKM, MKM oder KM fällig ist; KKM: frühester Sperrbeginn bei Anmeldung zum nächsten Stichtag (Mittwoch, ${formatDate(naechsterMittwoch(today()))})`}
-        />
-        {bedarf.length === 0 ? (
-          <EmptyState
-            icon="kalender"
-            titel="Keine Fahrplanjahre gewählt"
-            text="Mit den betroffenen Fahrplanjahren des Projekts lässt sich der Anmeldebedarf ablesen."
-          />
-        ) : (
-          <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Fahrplanjahr</th>
-                  {bedarf[0].zellen.map((z) => (
-                    <th key={z.phase}>{RIL_LABEL[z.phase]}</th>
-                  ))}
-                  <th title="Frühester Sperrbeginn je Maßnahmenart bei Anmeldung zum nächsten Stichtag (Mittwoch)">
-                    {PHASE_LABEL.kkm}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {bedarf.map((zeile) => (
-                  <tr key={zeile.fahrplanjahr}>
-                    <td>
-                      <strong>{zeile.fahrplanjahr}</strong>
-                    </td>
-                    {zeile.zellen.map((zelle) => (
-                      <td key={zelle.phase}>
-                        <BedarfInhalt zelle={zelle} onOeffnen={oeffne} />
-                      </td>
-                    ))}
-                    <td>
-                      <KkmInhalt zellen={zeile.kkm} onOeffnen={oeffne} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+      {erstanmeldung ? <ErstanmeldungKarte eintrag={erstanmeldung} onBearbeiten={() => setBearbeiten(true)} /> : null}
 
       <div className="row-between wrap">
         <div>
@@ -231,6 +190,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
               zeilen={zeilen}
               onOeffnen={oeffne}
               onWechsel={(anmeldung, nach) => setWechsel({ anmeldung, nach })}
+              projekt={projekt}
             />
           ),
         )
@@ -264,108 +224,54 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
   );
 }
 
-/** Inhalt einer Zelle des Anmeldebedarfs. */
-function BedarfInhalt({ zelle, onOeffnen }: { zelle: BedarfZelle; onOeffnen: (a: Anmeldung) => void }) {
-  const { data } = useStore();
-  const datum = zelle.frist ? formatDate(zelle.frist) : '–';
-  switch (zelle.zustand) {
-    case 'abgedeckt':
-      return (
-        <button type="button" className="link-btn small" onClick={() => onOeffnen(zelle.durch!)} title="Eintrag öffnen">
-          <Badge ton="green">✓ {zelle.durch!.art}</Badge>
-          <div className="tertiary small">{statusText(statusVon(data.workflows, zelle.durch!.statusId))}</div>
-        </button>
-      );
-    case 'faellig':
-    case 'kuenftig':
-      return (
-        <span className="small">
-          {zelle.zustand === 'faellig' ? <Badge ton="orange">fällig</Badge> : <span className="muted">anstehend</span>}
-          <div>
-            bis <b>{datum}</b>
-          </div>
-        </span>
-      );
-    case 'verstrichen':
-      return (
-        <span className="small tertiary" title="Frist verstrichen, ohne dass ein Eintrag besteht">
-          verstrichen
-          <div>{datum}</div>
-        </span>
-      );
-    case 'vorBeginn':
-      return (
-        <span className="small tertiary" title="Liegt vor dem ersten Anmeldetermin des Projekts">
-          vor Betreuung
-          <div>{datum}</div>
-        </span>
-      );
-    default:
-      return <span className="small tertiary">–</span>;
-  }
-}
-
-/**
- * KKM im Anmeldebedarf: je Maßnahmenart eine Zeile – ab wann die Sperrpause
- * bei Anmeldung zum nächsten Stichtag frühestens sein kann, dahinter die
- * vorhandenen unterjährigen Anmeldungen (abgelehnte ohne Haken).
- */
-function KkmInhalt({ zellen, onOeffnen }: { zellen: KkmZelle[]; onOeffnen: (a: Anmeldung) => void }) {
-  const { data } = useStore();
+/** Hinweis im Projekt, solange noch keine Anmeldung besteht: Erstanmeldung mit Frist. */
+function ErstanmeldungKarte({ eintrag, onBearbeiten }: { eintrag: ErstanmeldungEintrag; onBearbeiten: () => void }) {
   return (
-    <div className="small" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 8, rowGap: 2 }}>
-      {zellen.map((z) => (
-        <Fragment key={z.art}>
-          <b>{z.art}</b>
-          <span>
-            {z.zustand === 'ganzesJahr' ? (
-              <span className="muted">ganzes Jahr</span>
-            ) : z.zustand === 'ab' ? (
-              <span>
-                ab <b>{formatDate(z.fruehestens)}</b>
-              </span>
-            ) : (
-              <span className="tertiary" title="Bei Anmeldung zum nächsten Stichtag ist in diesem Fahrplanjahr keine Sperrpause mehr möglich">
-                nicht mehr
-              </span>
-            )}
-            {z.eintraege.map((a) => {
-              const status = statusVon(data.workflows, a.statusId).status;
-              return (
-                <Fragment key={a.id}>
-                  <span className="tertiary"> · </span>
-                  <button
-                    type="button"
-                    className="link-btn small"
-                    onClick={() => onOeffnen(a)}
-                    title={`${a.anmeldeId || 'ohne ID'} – Eintrag öffnen`}
-                  >
-                    {status.art === 'abgelehnt' ? '' : '✓ '}
-                    {status.name}
-                  </button>
-                </Fragment>
-              );
-            })}
-          </span>
-        </Fragment>
-      ))}
-    </div>
+    <Card>
+      <CardHeader
+        titel="Erstanmeldung ausstehend"
+        sub={`Noch keine Anmeldung im Projekt – Prozessphase ${ERSTE_PHASE_LABEL[eintrag.projekt.erstePhase]}`}
+        actions={eintrag.frist ? <AmpelBadge ampel={eintrag.ampel} /> : null}
+      />
+      <div className="card-pad">
+        {eintrag.frist ? (
+          <div className="row wrap" style={{ gap: 10 }}>
+            <AmpelPunkt ampel={eintrag.ampel} />
+            <span>
+              Terminfrist: <b>{formatDate(eintrag.frist)}</b> <span className="muted">· {relativeLabel(eintrag.frist)}</span>
+            </span>
+            <span className="small tertiary">{ERSTANMELDUNG_GRUND[eintrag.grund]}</span>
+          </div>
+        ) : (
+          <div className="row wrap" style={{ gap: 10 }}>
+            <span className="small muted">
+              Kein erster Anmeldetermin – mit Prozessphase und betroffenen Fahrplanjahren lässt er sich ermitteln.
+            </span>
+            <button type="button" className="btn btn-sm btn-outline" onClick={onBearbeiten}>
+              <Icon name="bearbeiten" size={13} /> Projekt bearbeiten
+            </button>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
-/** Anmeldungen eines Workflows – Spalten Anmeldung, Maßnahmenart, Sperrzeitraum, Status, Terminfrist. */
+/** Anmeldungen eines Workflows – Spalten Anmeldung, Sperrzeitraum, Status, Zuständig, Terminfrist. */
 function AnmeldungenTabelle({
   titel,
   anzahl,
   zeilen,
   onOeffnen,
   onWechsel,
+  projekt,
 }: {
   titel: string;
   anzahl: number;
   zeilen: Anmeldung[];
   onOeffnen: (a: Anmeldung) => void;
   onWechsel: (a: Anmeldung, nach: StatusZiel) => void;
+  projekt: Projekt;
 }) {
   const { data } = useStore();
   return (
@@ -378,13 +284,13 @@ function AnmeldungenTabelle({
       {zeilen.length === 0 ? null : (
         <div className="table-scroll">
           {/* Feste Breiten: Anmeldung nimmt den Rest und kürzt, alle anderen Spalten passen einzeilig. */}
-          <table className="table" style={{ tableLayout: 'fixed', minWidth: 980 }}>
+          <table className="table" style={{ tableLayout: 'fixed', minWidth: 1020 }}>
             <thead>
               <tr>
                 <th>Anmeldung</th>
-                <th style={{ width: 136 }}>Maßnahmenart</th>
                 <th style={{ width: 178 }}>Sperrzeitraum</th>
                 <th style={{ width: 206 }}>Status</th>
+                <th style={{ width: 150 }}>Zuständig</th>
                 <th style={{ width: 152 }}>Terminfrist</th>
                 <th className="actions" style={{ width: 176 }} />
               </tr>
@@ -393,7 +299,14 @@ function AnmeldungenTabelle({
               {zeilen.map((a) => {
                 const frist = terminfrist(a, data);
                 const ampel = ampelFuer(frist.datum, data.einstellungen.vorlaufTage);
-                const ort = [a.bfStrecke, a.gewerk].filter(Boolean).join(' · ');
+                // Im SKM führt der Vorhabenname, die tVE-Nr steht in der zweiten Zeile.
+                const vorhaben = vorhabenFuehrend(a) && a.vorhaben.trim();
+                const titel = anmeldungTitel(a);
+                const { workflow, status } = statusVon(data.workflows, a.statusId);
+                // Die Maßnahmenart nur, wo der Workflow mehrere führt (KKM: A, B, C …)
+                const art = workflow.arten.length > 1 ? a.art : '';
+                const unterzeile = [vorhaben ? a.anmeldeId : '', art, a.bfStrecke, a.gewerk].filter(Boolean).join(' · ');
+                const zustaendig = zustaendigText(status, a, projekt);
                 const aenderung =
                   istAenderung(data.workflows, a.statusId) && (a.aenderungsNr || a.annexVII)
                     ? [a.aenderungsNr && `ÄAbst-Nr ${a.aenderungsNr}`, a.annexVII && ANNEX_VII_LABEL[a.annexVII]]
@@ -404,16 +317,13 @@ function AnmeldungenTabelle({
                 return (
                   <tr key={a.id} className="clickable" onClick={() => onOeffnen(a)}>
                     <td>
-                      <div style={EINZEILIG} title={a.anmeldeId || 'ohne ID'}>
-                        {a.anmeldeId ? <strong>{a.anmeldeId}</strong> : <span className="tertiary">ohne ID</span>}
+                      <div style={EINZEILIG} title={titel}>
+                        {titel !== 'ohne ID' ? <strong>{titel}</strong> : <span className="tertiary">ohne ID</span>}
                         {a.herkunftId ? <span className="small tertiary"> · aus Aufteilung</span> : null}
                       </div>
-                      <div className="small tertiary" style={EINZEILIG} title={ort || undefined}>
-                        {ort || '–'}
+                      <div className="small tertiary" style={EINZEILIG} title={unterzeile || undefined}>
+                        {unterzeile || '–'}
                       </div>
-                    </td>
-                    <td className="small" style={EINZEILIG}>
-                      {a.art}
                     </td>
                     <td className="small" style={EINZEILIG} title={zeitraum}>
                       {zeitraum}
@@ -427,6 +337,9 @@ function AnmeldungenTabelle({
                           {aenderung}
                         </div>
                       ) : null}
+                    </td>
+                    <td className="small" style={EINZEILIG} title={zustaendig ?? undefined}>
+                      {zustaendig ?? <span className="tertiary">–</span>}
                     </td>
                     <td>
                       <TerminKompakt frist={frist} ampel={ampel} />

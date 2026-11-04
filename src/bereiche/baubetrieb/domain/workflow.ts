@@ -19,9 +19,13 @@ import {
   type ID,
   type RilBezug,
   type StatusArt,
+  type Anmeldung,
+  type Projekt,
   type StatusZiel,
   type Workflow,
   type WorkflowStatus,
+  type Zustaendigkeit,
+  ZUSTAENDIGKEIT_LABEL,
 } from './types';
 
 /* ------------------------------------------------------------------ */
@@ -34,17 +38,35 @@ const keine: FristRegel = { typ: 'keine' };
 /** Nachhak-Termin der mitgelieferten Status („Nachhak-Termin!?“ im Lastenheft). */
 export const NACHHAK_TAGE = 21;
 
+/**
+ * Zuständigkeit nach Art des Status – Vorgabe der mitgelieferten Status und
+ * eigener Workflows älterer Bestände: MIC bereitet vor,
+ * meldet an und führt nach Genehmigung oder Ablehnung weiter; während BBK-
+ * Mitwirkung, Anmeldung und Änderungsabstimmung liegt der Ball bei der BBK.
+ */
+export const ZUSTAENDIG_NACH_ART: Record<StatusArt, Zustaendigkeit | null> = {
+  entwurf: 'mic',
+  abstimmung: 'bbk',
+  angemeldet: 'bbk',
+  verspaetet: 'bbk',
+  genehmigt: 'mic',
+  abgelehnt: 'mic',
+  aenderung: 'bbk',
+  leiche: null,
+};
+
 const status = (
   id: ID,
   name: string,
   art: StatusArt,
   frist: FristRegel,
   nachfolger: StatusZiel[],
-  zusatz: Partial<Pick<WorkflowStatus, 'nachhaken' | 'bemerkung'>> = {},
+  zusatz: Partial<Pick<WorkflowStatus, 'nachhaken' | 'bemerkung' | 'zustaendig'>> = {},
 ): WorkflowStatus => ({
   id,
   name,
   art,
+  zustaendig: zusatz.zustaendig !== undefined ? zusatz.zustaendig : ZUSTAENDIG_NACH_ART[art],
   frist,
   nachfolger,
   nachhaken: zusatz.nachhaken ?? frist.typ === 'nachhaken',
@@ -129,7 +151,7 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
         status('vp-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('Nx', -2), ['vp-zugestimmt', 'vp-abgelehnt'], {
           nachhaken: true,
         }),
-        status('vp-zugestimmt', 'Zugestimmt', 'abstimmung', ril('Nx'), ['vp-angemeldet']),
+        status('vp-zugestimmt', 'Zugestimmt', 'abstimmung', ril('Nx'), ['vp-angemeldet'], { zustaendig: 'mic' }),
         status('vp-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(), [
           'vp-genehmigt',
           'vp-abgelehnt',
@@ -162,7 +184,9 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
         status('uj-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('X', -2), ['uj-zugestimmt', 'uj-abgelehnt'], {
           nachhaken: true,
         }),
-        status('uj-zugestimmt', 'Zugestimmt', 'abstimmung', ril('X'), ['uj-angemeldet', 'uj-verspaetet']),
+        status('uj-zugestimmt', 'Zugestimmt', 'abstimmung', ril('X'), ['uj-angemeldet', 'uj-verspaetet'], {
+          zustaendig: 'mic',
+        }),
         status('uj-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(), [
           'uj-genehmigt',
           'uj-abgelehnt',
@@ -259,6 +283,7 @@ export function statusVon(workflows: Workflow[], statusId: ID): StatusInfo {
         id: statusId,
         name: 'Unbekannter Status',
         art: 'entwurf',
+        zustaendig: null,
         frist: keine,
         nachhaken: false,
         bemerkung: '',
@@ -308,6 +333,46 @@ export function istLeiche(workflows: Workflow[], statusId: ID | null): boolean {
   return statusInfo(workflows, statusId)?.status.art === 'leiche';
 }
 
+/**
+ * Wer im Status zuständig ist, mit Namen, soweit bekannt: „BBK · Fr. Weber“,
+ * „MIC · M. Muster“ – oder null, wenn der Status niemanden nennt.
+ */
+export function zustaendigText(
+  s: Pick<WorkflowStatus, 'zustaendig'>,
+  a: Pick<Anmeldung, 'bbk'>,
+  p: Pick<Projekt, 'hauptbearbeiter' | 'projektleiter'> | undefined,
+): string | null {
+  if (!s.zustaendig) return null;
+  const name =
+    s.zustaendig === 'bbk' ? a.bbk : s.zustaendig === 'mic' ? p?.hauptbearbeiter : p?.projektleiter;
+  const rolle = ZUSTAENDIGKEIT_LABEL[s.zustaendig];
+  return name?.trim() ? `${rolle} · ${name.trim()}` : rolle;
+}
+
+/** Im SKM führt der Vorhabenname, sonst die Nummer (Anmelde-ID bzw. tVE-Nr). */
+export function vorhabenFuehrend(a: Pick<Anmeldung, 'art'>): boolean {
+  return a.art === 'SKM';
+}
+
+/** Welches Feld eine Anmeldung bezeichnet: im SKM der Vorhabenname, sonst die Nummer. */
+export function titelFeld(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeId'>): 'vorhaben' | 'anmeldeId' | null {
+  if (vorhabenFuehrend(a) && a.vorhaben.trim()) return 'vorhaben';
+  if (a.anmeldeId.trim()) return 'anmeldeId';
+  if (a.vorhaben.trim()) return 'vorhaben';
+  return null;
+}
+
+/** Bezeichnung einer Anmeldung in Listen und Köpfen – ohne Nummer „ohne ID“. */
+export function anmeldungTitel(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeId'>): string {
+  const feld = titelFeld(a);
+  return feld ? a[feld].trim() : 'ohne ID';
+}
+
+/** Bezeichnung für Rückfragen und Vermerke – ohne Nummer notfalls das Gewerk. */
+export function anmeldungBezeichnung(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeId' | 'gewerk'>): string {
+  return titelFeld(a) ? anmeldungTitel(a) : a.gewerk.trim() || 'ohne ID';
+}
+
 /** Während einer Änderungsabstimmung sind ÄAbst-Nr und AnnexVII relevant. */
 export function istAenderung(workflows: Workflow[], statusId: ID | null): boolean {
   return statusInfo(workflows, statusId)?.status.art === 'aenderung';
@@ -325,14 +390,6 @@ export const STANDARD_WORKFLOW_ID: Record<Phase, ID> = {
   km: 'wf-vorprozess',
   kkm: 'wf-unterjahr',
 };
-
-/**
- * Workflow der unterjährigen Anmeldung (KKM): der Standard-Workflow oder ein
- * Workflow, dessen Fristen sich nach der Maßnahmenart richten (Ril_KKM).
- */
-export function istKkmWorkflow(w: Workflow): boolean {
-  return w.id === STANDARD_WORKFLOW_ID.kkm || w.status.some((s) => s.frist.typ === 'ril' && s.frist.bezug === 'X');
-}
 
 /** Workflow, in dem „Neue Anmeldung“ ohne Vorgabe anlegt: KKM (unterjährig). */
 export const NEUANLAGE_WORKFLOW = STANDARD_WORKFLOW_ID.kkm;

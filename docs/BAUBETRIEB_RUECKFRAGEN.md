@@ -28,7 +28,8 @@ bzw. tVE-Nr, Sperrzeitraum ein ganzes Fahrplanjahr.
 **A2. tVE-Nr** – Was bezeichnet die tVE-Nr, wie ist sie aufgebaut, und hat ein SKM-/PzE-Eintrag
 genau eine oder mehrere tVE-Nr?
 
-*Entwurf:* Ein Freitextfeld „Begriff / tVE-Nr“ je Eintrag.
+*Entwurf:* Ein Freitextfeld „Begriff / tVE-Nr“ je Eintrag; im SKM führt der Vorhabenname
+(eigenes Feld), die tVE-Nr steht darunter.
 
 **A3. BBK / „MitwirkungBBK“** – Ist die Baubetriebskoordination gemeint? Was genau ist
 „Mitwirkung“ (Abstimmung des Entwurfs vor der Anmeldung, Freigabe, Stellungnahme)?
@@ -74,7 +75,7 @@ Inbetriebnahme als eigenes Feld geführt werden?
 Fahrplanjahre angekreuzt; die Inbetriebnahme ist ein optionales Feld ohne weitere Rechnung.
 
 **B3a. Betroffene Fahrplanjahre** – Statt der „geplanten Bauzeit“ des Lastenhefts führt das
-Projekt die betroffenen Fahrplanjahre; je Jahr zeigt es den Anmeldebedarf. Reicht die Angabe in
+Projekt die betroffenen Fahrplanjahre; daraus ergibt sich der Anmeldebedarf. Reicht die Angabe in
 Fahrplanjahren, oder wird für Fristen „Wochen vor Sperrbeginn“ doch ein genaueres Datum gebraucht
 (heute rechnet der Anmeldebedarf dann ab Beginn des Fahrplanjahres)?
 
@@ -89,13 +90,14 @@ Schlussrechnung)?
 **B6. ★ Anmeldebedarf** – „Bei längeren Betreuungspausen … nachvollziehen, ob eine Anmeldung zum
 nächsten SKM oder PzE oder N-x fällig ist“.
 
-*Entwurf:* Für jedes betroffene Fahrplanjahr werden die Fristen für SKM, MKM, KM N-2 und KM N-1
-berechnet; ein Eintrag im KM oder KKM deckt beide KM-Fristen ab. Für KKM zeigt die Anwendung je
-Maßnahmenart, ab wann eine Sperrpause bei Anmeldung heute frühestens möglich ist (Stichtag ist der
-nächste Mittwoch, dazu der Vorlauf der Maßnahmenart). Eine Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen
-Eintrag in dieser oder einer späteren Phase hat; Anmeldeleichen zählen nicht. Fristen deutlich
-vor dem ersten Anmeldetermin gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne
-Eintrag erscheinen in der Übersicht.
+*Entwurf (nach Rückmeldung angepasst):* Für jedes betroffene Fahrplanjahr werden die Fristen für
+SKM, MKM, KM N-2 und KM N-1 berechnet; ein Eintrag im KM oder KKM deckt beide KM-Fristen ab. Eine
+Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen Eintrag in dieser
+oder einer späteren Phase hat; Anmeldeleichen zählen nicht. Fristen deutlich vor dem ersten
+Anmeldetermin gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne Eintrag erscheinen in
+Übersicht und Terminen; eine eigene Übersicht je Projekt gibt es nicht mehr. Solange ein Projekt
+keine Anmeldung hat, steht dort stattdessen „Erstanmeldung ausstehend“ mit dem ersten
+Anmeldetermin als Frist – auch in Terminen und Übersicht.
 
 - Ist die Prüfung je Fahrplanjahr richtig, oder je Maßnahme/Bauabschnitt?
 - Reicht jeder Eintrag außer einer Anmeldeleiche als „abgedeckt“, oder muss er einen bestimmten
@@ -293,11 +295,15 @@ Passt das, oder gibt es Maßnahmen, die unabhängig vom Zeitpunkt in N-2 (bzw. N
 werden müssen?
 
 **E10. ★ Stichtag Mittwoch im KKM** – Unterjährig zählt als Anmeldetag immer der Mittwoch.
-*Entwurf:* Im Anmeldebedarf rechnet die Anwendung vom nächsten Mittwoch (ein Mittwoch selbst
-zählt noch) plus Vorlauf der Maßnahmenart den frühesten Sperrbeginn. Die Terminfrist einer
-unterjährigen Anmeldung (Ril_KKM) fällt auf den Mittwoch an oder vor „Sperrbeginn minus Vorlauf“
-– z. B. C mit Sperrbeginn Donnerstag, 10.12., auf Mittwoch, 28.10. Stimmt beides so, und bis wann
-am Mittwoch muss die Anmeldung eingehen?
+*Entwurf:* Die Terminfrist einer unterjährigen Anmeldung (Ril_KKM) fällt auf den Mittwoch an oder
+vor „Sperrbeginn minus Vorlauf“ – z. B. C mit Sperrbeginn Donnerstag, 10.12., auf Mittwoch, 28.10.
+Stimmt das so, und bis wann am Mittwoch muss die Anmeldung eingehen?
+
+**E11. ★ Zuständigkeit je Status** – Jeder Status nennt, wer am Zug ist: MIC, BBK oder
+Projektleitung DB. *Entwurf:* MIC bei Entwurf, Zugestimmt, Genehmigt und Abgelehnt; BBK bei
+Mitwirkung BBK, Angemeldet und Änderungsabstimmung; die Anmeldeleiche ohne Zuständigkeit. Die Liste
+nennt dazu den Namen (Zuständiger BBK der Anmeldung, Hauptbearbeiter MIC, Projektleiter). Passt
+die Vorbelegung, und braucht es weitere Rollen (z. B. Fahrplan/Kapazitätsmanagement DB, EVU)?
 
 ---
 

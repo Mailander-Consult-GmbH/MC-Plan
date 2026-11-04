@@ -8,7 +8,7 @@ import { useToast } from '../../../shared/toast';
 import { Field, Modal, TextArea, TextInput } from '../../../shared/ui';
 import { terminfrist } from '../domain/fristen';
 import type { Anmeldung } from '../domain/types';
-import { statusVon } from '../domain/workflow';
+import { anmeldungBezeichnung, statusVon } from '../domain/workflow';
 import { useStore } from '../store/store';
 
 /** Hält fest, dass nachgehakt wurde – mit Notiz und optional neuem Termin. */
@@ -25,7 +25,7 @@ export function NachhakenDialog({ anmeldung, onClose }: { anmeldung: Anmeldung; 
   return (
     <Modal
       titel="Nachgehakt"
-      sub={anmeldung.anmeldeId || anmeldung.gewerk || 'Anmeldung'}
+      sub={anmeldungBezeichnung(anmeldung)}
       onClose={onClose}
       footer={
         <>

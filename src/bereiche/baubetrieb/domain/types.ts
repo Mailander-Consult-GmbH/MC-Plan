@@ -17,7 +17,7 @@ export type ID = string;
  * Fassung des gespeicherten Bestands. Erhöhen, sobald `migriere()` in
  * `store/storage.ts` ältere Stände anheben muss.
  */
-export const DATEN_VERSION = 7;
+export const DATEN_VERSION = 8;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -174,10 +174,25 @@ export const LOESCHEN = 'loeschen';
  */
 export type StatusZiel = ID;
 
+/**
+ * Wer in einem Status am Zug ist. Die Tabelle nennt dazu den Namen: BBK – der
+ * zuständige BBK der Anmeldung, MIC – der Hauptbearbeiter, Projektleitung –
+ * der Projektleiter des Projekts.
+ */
+export type Zustaendigkeit = 'mic' | 'bbk' | 'projektleitung';
+
+export const ZUSTAENDIGKEIT_LABEL: Record<Zustaendigkeit, string> = {
+  mic: 'MIC',
+  bbk: 'BBK',
+  projektleitung: 'Projektleitung DB',
+};
+
 export interface WorkflowStatus {
   id: ID;
   name: string;
   art: StatusArt;
+  /** Wer in diesem Status zuständig ist; null – niemand. */
+  zustaendig: Zustaendigkeit | null;
   frist: FristRegel;
   /** Der Termin dient zum Nachhaken („Zum Nachhaken“). */
   nachhaken: boolean;
@@ -386,6 +401,10 @@ export interface AnmeldungStand {
 export interface Anmeldung extends AnmeldungStand {
   id: ID;
   projektId: ID;
+  /** Vorhabenname – im SKM führend vor der Nummer (tVE-Nr). */
+  vorhaben: string;
+  /** Zuständiger BBK (Name). */
+  bbk: string;
   /** Bf/Strecke in Stichworten. */
   bfStrecke: string;
   /** Gewerk/Tätigkeit in Stichworten. */
