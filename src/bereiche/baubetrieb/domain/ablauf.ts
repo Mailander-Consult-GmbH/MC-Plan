@@ -19,13 +19,14 @@ import {
   type Workflow,
 } from './types';
 import {
+  anmeldungBezeichnung,
   anmeldungTitel,
   istAenderung,
   istUebernahme,
   nachfolgerVon,
   statusInfo,
   statusVon,
-  vorhabenFuehrend,
+  titelFeld,
   zielText,
 } from './workflow';
 
@@ -183,7 +184,7 @@ export function wechselAnwenden(
                 nach: w.nach,
                 vonText,
                 nachText,
-                text: `Bei der Übernahme aus „${alt.anmeldeId || 'ohne ID'}“ (${vonText}) aufgeteilt`,
+                text: `Bei der Übernahme aus „${anmeldungTitel(alt)}“ (${vonText}) aufgeteilt`,
               },
             ],
           },
@@ -231,7 +232,9 @@ export interface KopieIds {
 
 /**
  * Kopie einer Anmeldung mit aktuellem Stand und Statusverlauf; ein Vermerk
- * hält fest, woraus sie entstand. Die führende Bezeichnung erhält „(Kopie)“.
+ * hält fest, woraus sie entstand. Die führende Bezeichnung erhält „(Kopie)“ –
+ * ohne Nummer wird „(Kopie)“ die Nummer –, auch im gespeicherten Vorstand,
+ * damit ein Zurücknehmen die Kopie nicht wieder wie das Original benennt.
  * Die Kopie steht direkt hinter dem Original.
  */
 export function anmeldungDuplizieren(
@@ -245,15 +248,20 @@ export function anmeldungDuplizieren(
   const index = d.anmeldungen.findIndex((a) => a.id === id);
   if (index < 0) return d;
   const alt = d.anmeldungen[index];
-  const vorhaben = vorhabenFuehrend(alt) && alt.vorhaben.trim();
+  const kennzeichnen = (t: string) => (t.trim() ? `${t.trim()} (Kopie)` : '(Kopie)');
+  const nachVorhaben = titelFeld(alt) === 'vorhaben';
   const kopie: Anmeldung = {
     ...alt,
     id: ids.anmeldung,
-    vorhaben: vorhaben ? `${alt.vorhaben.trim()} (Kopie)` : alt.vorhaben,
-    anmeldeId: !vorhaben && alt.anmeldeId.trim() ? `${alt.anmeldeId.trim()} (Kopie)` : alt.anmeldeId,
+    vorhaben: nachVorhaben ? kennzeichnen(alt.vorhaben) : alt.vorhaben,
+    anmeldeId: nachVorhaben ? alt.anmeldeId : kennzeichnen(alt.anmeldeId),
     herkunftId: null,
     verlauf: [
-      ...alt.verlauf.map((v, i) => ({ ...v, id: ids.verlauf[i] ?? `${ids.anmeldung}-vl${i}` })),
+      ...alt.verlauf.map((v, i) => ({
+        ...v,
+        id: ids.verlauf[i] ?? `${ids.anmeldung}-vl${i}`,
+        ...(v.vorher && !nachVorhaben ? { vorher: { ...v.vorher, anmeldeId: kennzeichnen(v.vorher.anmeldeId) } } : {}),
+      })),
       {
         id: ids.vermerk,
         typ: 'notiz',
@@ -264,7 +272,7 @@ export function anmeldungDuplizieren(
         nach: null,
         vonText: '',
         nachText: '',
-        text: `Dupliziert aus „${anmeldungTitel(alt)}“`,
+        text: `Dupliziert aus „${anmeldungBezeichnung(alt)}“`,
       },
     ],
   };

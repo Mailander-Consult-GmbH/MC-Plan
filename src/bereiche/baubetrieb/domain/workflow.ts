@@ -39,11 +39,12 @@ const keine: FristRegel = { typ: 'keine' };
 export const NACHHAK_TAGE = 21;
 
 /**
- * Zuständigkeit der mitgelieferten Status nach ihrer Art: MIC bereitet vor,
+ * Zuständigkeit nach Art des Status – Vorgabe der mitgelieferten Status und
+ * eigener Workflows älterer Bestände: MIC bereitet vor,
  * meldet an und führt nach Genehmigung oder Ablehnung weiter; während BBK-
  * Mitwirkung, Anmeldung und Änderungsabstimmung liegt der Ball bei der BBK.
  */
-const ZUSTAENDIG_NACH_ART: Record<StatusArt, Zustaendigkeit | null> = {
+export const ZUSTAENDIG_NACH_ART: Record<StatusArt, Zustaendigkeit | null> = {
   entwurf: 'mic',
   abstimmung: 'bbk',
   angemeldet: 'bbk',
@@ -353,11 +354,23 @@ export function vorhabenFuehrend(a: Pick<Anmeldung, 'art'>): boolean {
   return a.art === 'SKM';
 }
 
-/** Bezeichnung einer Anmeldung in Listen, Köpfen und Rückfragen. */
-export function anmeldungTitel(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeId' | 'gewerk'>): string {
-  const vorhaben = a.vorhaben.trim();
-  if (vorhabenFuehrend(a) && vorhaben) return vorhaben;
-  return a.anmeldeId.trim() || vorhaben || a.gewerk.trim() || 'ohne ID';
+/** Welches Feld eine Anmeldung bezeichnet: im SKM der Vorhabenname, sonst die Nummer. */
+export function titelFeld(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeId'>): 'vorhaben' | 'anmeldeId' | null {
+  if (vorhabenFuehrend(a) && a.vorhaben.trim()) return 'vorhaben';
+  if (a.anmeldeId.trim()) return 'anmeldeId';
+  if (a.vorhaben.trim()) return 'vorhaben';
+  return null;
+}
+
+/** Bezeichnung einer Anmeldung in Listen und Köpfen – ohne Nummer „ohne ID“. */
+export function anmeldungTitel(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeId'>): string {
+  const feld = titelFeld(a);
+  return feld ? a[feld].trim() : 'ohne ID';
+}
+
+/** Bezeichnung für Rückfragen und Vermerke – ohne Nummer notfalls das Gewerk. */
+export function anmeldungBezeichnung(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeId' | 'gewerk'>): string {
+  return titelFeld(a) ? anmeldungTitel(a) : a.gewerk.trim() || 'ohne ID';
 }
 
 /** Während einer Änderungsabstimmung sind ÄAbst-Nr und AnnexVII relevant. */

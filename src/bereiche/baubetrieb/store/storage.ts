@@ -8,6 +8,7 @@ import { seedDaten, standardEinstellungen, standardRilFristen } from '../domain/
 import {
   NACHHAK_TAGE,
   STATUS_AUS_NUMMER,
+  ZUSTAENDIG_NACH_ART,
   standardWorkflows,
   statusInfo,
   workflowFuerArt,
@@ -457,17 +458,22 @@ function ausFassung6(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
 /**
  * Hebt Fassung 7 auf Fassung 8: Jeder Status nennt, wer zuständig ist. Die
  * Status der Standard-Workflows erhalten die Vorgabe der mitgelieferten
- * Workflows, andere bleiben ohne Zuständigkeit. Anmeldungen erhalten
- * Vorhabenname und zuständigen BBK (leer).
+ * Workflows, die übrigen (eigene oder kopierte Workflows) die Vorgabe ihrer
+ * Art. Vorhabenname und zuständiger BBK der Anmeldungen ergänzt aufbereiten()
+ * leer.
  */
 function ausFassung7(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
   const vorgabe = new Map(standardWorkflows().flatMap((w) => w.status.map((s) => [s.id, s.zustaendig] as const)));
+  const nachArt = (art: unknown) =>
+    (art as string) in ZUSTAENDIG_NACH_ART ? ZUSTAENDIG_NACH_ART[art as StatusArt] : null;
   const workflows = (Array.isArray(roh.workflows) ? roh.workflows : []).map((w: Partial<Workflow>) => ({
     ...w,
     status: Array.isArray(w.status)
-      ? w.status.map((s: Partial<WorkflowStatus>) =>
-          s.zustaendig === undefined ? { ...s, zustaendig: vorgabe.get(text(s.id)) ?? null } : s,
-        )
+      ? w.status.map((s: Partial<WorkflowStatus>) => {
+          if (s.zustaendig !== undefined) return s;
+          const standard = vorgabe.get(text(s.id));
+          return { ...s, zustaendig: standard !== undefined ? standard : nachArt(s.art) };
+        })
       : w.status,
   }));
   return { ...roh, workflows: workflows as Workflow[] };

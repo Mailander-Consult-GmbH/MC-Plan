@@ -86,8 +86,12 @@ export function AnmeldungDialog({
   // Die bisherige Art bleibt wählbar, auch wenn der Workflow sie nicht mehr führt.
   const arten = [...new Set([...(workflow?.arten ?? []), ...(anmeldung ? [anmeldung.art] : [])])];
   const aenderung = !!anmeldung && istAenderung(data.workflows, anmeldung.statusId);
-  // Im SKM führt der Vorhabenname, die Nummer ist die tVE-Nr.
+  // Im SKM führt der Vorhabenname, die Nummer ist die tVE-Nr. Ein vorhandener Vorhabenname
+  // (etwa aus dem SKM übernommen) bleibt auch in anderen Phasen sichtbar und änderbar.
   const vorhaben = vorhabenFuehrend(form);
+  const vorhabenFeld = vorhaben || !!form.vorhaben.trim();
+  // Ältere SKM-Einträge führen den Begriff noch als Nummer
+  const alterBegriff = vorhaben && !form.vorhaben.trim() && !!form.anmeldeId.trim();
 
   /** Phase (Workflow) und Maßnahmenart aus einem Auswahlfeld: Wert „Workflow-ID|Art“. */
   const phaseUndArtWaehlen = (wert: string) => {
@@ -214,14 +218,18 @@ export function AnmeldungDialog({
           </Field>
         ) : null}
 
-        {vorhaben ? (
-          <Field label="Vorhabenname" full hint="Führt im SKM die Liste an; die tVE-Nr steht darunter.">
+        {vorhabenFeld ? (
+          <Field
+            label="Vorhabenname"
+            full
+            hint={vorhaben ? 'Führt im SKM die Liste an; die tVE-Nr steht darunter.' : 'Aus dem SKM übernommen.'}
+          >
             <TextInput value={form.vorhaben} onChange={(v) => set('vorhaben', v)} placeholder="Kabeltiefbau Abschnitt Nord" />
           </Field>
         ) : null}
 
         <Field
-          label={vorhaben ? 'tVE-Nr' : ganzesJahr ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}
+          label={vorhaben && !alterBegriff ? 'tVE-Nr' : ganzesJahr ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}
           hint={
             ganzesJahr && !vorhaben
               ? 'Vor dem KM gibt es noch keine Anmeldungen – Sammeleintrag nach Begriffen bzw. tVE-Nr.'
@@ -233,6 +241,19 @@ export function AnmeldungDialog({
             onChange={(v) => set('anmeldeId', v)}
             placeholder={ganzesJahr ? 'tVE 4000-17' : 'noch ohne ID'}
           />
+          {alterBegriff ? (
+            <span className="hint">
+              Steht hier der Vorhabenname?{' '}
+              <button
+                type="button"
+                className="link-btn"
+                style={{ fontSize: 'inherit', color: 'var(--accent)' }}
+                onClick={() => setForm((f) => ({ ...f, vorhaben: f.anmeldeId.trim(), anmeldeId: '' }))}
+              >
+                als Vorhabenname übernehmen
+              </button>
+            </span>
+          ) : null}
         </Field>
 
         {ganzesJahr ? (

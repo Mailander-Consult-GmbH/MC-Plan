@@ -284,13 +284,13 @@ function AnmeldungenTabelle({
       {zeilen.length === 0 ? null : (
         <div className="table-scroll">
           {/* Feste Breiten: Anmeldung nimmt den Rest und kürzt, alle anderen Spalten passen einzeilig. */}
-          <table className="table" style={{ tableLayout: 'fixed', minWidth: 980 }}>
+          <table className="table" style={{ tableLayout: 'fixed', minWidth: 1020 }}>
             <thead>
               <tr>
                 <th>Anmeldung</th>
                 <th style={{ width: 178 }}>Sperrzeitraum</th>
                 <th style={{ width: 206 }}>Status</th>
-                <th style={{ width: 170 }}>Zuständig</th>
+                <th style={{ width: 150 }}>Zuständig</th>
                 <th style={{ width: 152 }}>Terminfrist</th>
                 <th className="actions" style={{ width: 176 }} />
               </tr>

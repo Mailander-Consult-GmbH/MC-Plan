@@ -24,6 +24,7 @@ import {
   type VerlaufEintrag,
 } from '../domain/types';
 import {
+  anmeldungBezeichnung,
   anmeldungTitel,
   istAenderung,
   istLeiche,
@@ -272,7 +273,13 @@ export function AnmeldungDetail({
                 <dd>{anmeldung.vorhaben || '–'}</dd>
               </>
             ) : null}
-            <dt>{vorhaben ? 'tVE-Nr' : ganzesFahrplanjahr(workflow) ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}</dt>
+            <dt>
+              {vorhaben && anmeldung.vorhaben.trim()
+                ? 'tVE-Nr'
+                : ganzesFahrplanjahr(workflow)
+                  ? 'Begriff / tVE-Nr'
+                  : 'Anmelde-ID'}
+            </dt>
             <dd>{anmeldung.anmeldeId || '–'}</dd>
             <dt>Maßnahmenart</dt>
             <dd>{anmeldung.art}</dd>
@@ -376,7 +383,7 @@ export function AnmeldungDetail({
       {loeschen ? (
         <ConfirmDialog
           titel="Anmeldung löschen?"
-          text={`„${titel}“ wird samt Statusverlauf gelöscht. Für Anmeldeleichen ist der Status „Anmeldeleiche“ vorgesehen.`}
+          text={`„${anmeldungBezeichnung(anmeldung)}“ wird samt Statusverlauf gelöscht. Für Anmeldeleichen ist der Status „Anmeldeleiche“ vorgesehen.`}
           onConfirm={() => {
             deleteAnmeldung(anmeldung.id);
             toast('Anmeldung gelöscht.');

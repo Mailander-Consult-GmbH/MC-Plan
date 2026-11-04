@@ -8,7 +8,7 @@ import { BereichWechsel } from '../../shell/BereichWechsel';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { ausstehendeErstanmeldungen, offeneTermine } from './domain/fristen';
 import { STANDARD_BEARBEITER } from './domain/types';
-import { anmeldungTitel } from './domain/workflow';
+import { anmeldungBezeichnung } from './domain/workflow';
 import { useRoute, type Route } from './lib/router';
 import { AnmeldungDetail } from './pages/AnmeldungDetail';
 import { Einstellungen } from './pages/Einstellungen';
@@ -51,7 +51,7 @@ export function App() {
     document.documentElement.dataset.farbmodus = farbmodus;
   }, [farbmodus]);
 
-  const kopf = kopfzeile(route, projekt?.name, anmeldung ? anmeldungTitel(anmeldung) : undefined);
+  const kopf = kopfzeile(route, projekt?.name, anmeldung ? anmeldungBezeichnung(anmeldung) : undefined);
 
   return (
     <div className="app">

@@ -129,7 +129,9 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                       </td>
                       <td>
                         <strong>Erstanmeldung ausstehend</strong>
-                        <div className="small tertiary">{ERSTE_PHASE_LABEL[e.projekt.erstePhase]}</div>
+                        <div className="small tertiary">
+                          {ERSTE_PHASE_LABEL[e.projekt.erstePhase]} · {e.projekt.name}
+                        </div>
                       </td>
                       <td className="small muted col-optional">{e.projekt.name}</td>
                       <td>
@@ -238,8 +240,12 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                 {projekte.map((p) => {
                   const eigene = data.anmeldungen.filter((a) => a.projektId === p.id);
                   const eigeneTermine = termine.filter((t) => t.projekt.id === p.id);
-                  const spaet = eigeneTermine.filter((t) => t.ampel === 'ueberfaellig').length;
+                  const offen = erst.find((e) => e.projekt.id === p.id);
+                  const spaet =
+                    eigeneTermine.filter((t) => t.ampel === 'ueberfaellig').length + (offen?.ampel === 'ueberfaellig' ? 1 : 0);
                   const naechste = eigeneTermine.find((t) => t.ampel !== 'ueberfaellig');
+                  // Ohne Anmeldung ist die Erstanmeldung die nächste Frist
+                  const naechsteErst = !naechste && offen?.frist && offen.ampel !== 'ueberfaellig' ? offen : null;
                   return (
                     <tr key={p.id} className="clickable" onClick={() => navigate({ view: 'projekt', projektId: p.id })}>
                       <td>
@@ -266,7 +272,16 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                         {naechste ? (
                           <>
                             {formatDate(naechste.frist.datum)}
-                            <div className="tertiary small">{naechste.anmeldung.anmeldeId || naechste.status.status.name}</div>
+                            <div className="tertiary small">
+                              {naechste.anmeldung.anmeldeId || naechste.anmeldung.vorhaben
+                                ? anmeldungTitel(naechste.anmeldung)
+                                : naechste.status.status.name}
+                            </div>
+                          </>
+                        ) : naechsteErst ? (
+                          <>
+                            {formatDate(naechsteErst.frist)}
+                            <div className="tertiary small">Erstanmeldung</div>
                           </>
                         ) : (
                           <span className="tertiary">–</span>

@@ -6,6 +6,7 @@ import { useToast } from '../../../shared/toast';
 import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
 import {
   anmeldebedarf,
+  erstanmeldungAusstehend,
   ersterTerminVorschlag,
   fahrplanjahrBeginn,
   fahrplanjahrEnde,
@@ -75,7 +76,9 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
           {projekte.map((p) => {
             const anzahl = data.anmeldungen.filter((a) => a.projektId === p.id).length;
             const termine = offeneTermine(data, [p.id]);
-            const ueberfaellig = termine.filter((t) => t.ampel === 'ueberfaellig').length;
+            const ueberfaellig =
+              termine.filter((t) => t.ampel === 'ueberfaellig').length +
+              (erstanmeldungAusstehend(p, data)?.ampel === 'ueberfaellig' ? 1 : 0);
             const bedarf = naechsterBedarf(anmeldebedarf(p, data));
             return (
               <button
