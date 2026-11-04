@@ -675,7 +675,8 @@ ist entfallen.
 ### Anmeldung
 Je Anmeldung eine Zeile im Projekt: Anmelde-ID (in Workflows mit ganzem Fahrplanjahr Begriff bzw.
 tVE-Nr, weil es in SKM und MKM noch keine Anmeldungen gibt; im **SKM** führt der
-**Vorhabenname**, die tVE-Nr steht darunter), **Zuständiger BBK**, Maßnahmenart (SKM und MKM für die
+**Vorhabenname**, die tVE-Nr steht darunter – bei älteren SKM-Einträgen übernimmt
+„als Vorhabenname übernehmen“ im Dialog den bisherigen Begriff), **Zuständiger BBK**, Maßnahmenart (SKM und MKM für die
 Sammeleinträge dieser Phasen, sonst A, B(0), B(S), B, C, Container – dieselbe Art kann in mehreren
 Phasen vorkommen, getrennt wird nach Workflow), Workflow und Status, Sperrzeitraum (ganzes
 Fahrplanjahr oder tagesscharf – je nach Workflow), Terminfrist, Bf/Strecke, Gewerk/Tätigkeit,
@@ -697,7 +698,8 @@ aktuelle mit Terminfrist, Ampel und den möglichen Nachfolgern („Weiter mit“
 Phase“, „Abschluss“ mit „Eintrag löschen“) und wer zuständig ist. Darunter Merkmale und
 Statusverlauf. Oben rechts stehen **Bearbeiten**, **Duplizieren** und **Löschen**: Duplizieren legt
 direkt hinter dem Original eine Kopie mit aktuellem Stand und Statusverlauf an (Vermerk „Dupliziert
-aus …“, die führende Bezeichnung erhält „(Kopie)“) und öffnet sie.
+aus …“, die führende Bezeichnung erhält „(Kopie)“, ohne Nummer wird „(Kopie)“ die Nummer) und
+öffnet sie.
 
 ### Workflows
 Wie im Planlaufmanagement sind die Workflows **anpassbar**. Mitgeliefert wird je Phase ein
