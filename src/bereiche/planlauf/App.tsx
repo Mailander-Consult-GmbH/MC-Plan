@@ -28,6 +28,12 @@ export function App() {
   const toast = useToast();
   const [route, navigate] = useRoute();
   const [menuOffen, setMenuOffen] = useState(false);
+  const inEinstellungen = route.view === 'ketten' || route.view === 'rollen' || route.view === 'vorlagen';
+  const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
+  // Wer eine der Seiten unter „Einstellungen“ aufruft, sieht die Gruppe aufgeklappt
+  useEffect(() => {
+    if (inEinstellungen) setEinstellungenOffen(true);
+  }, [inEinstellungen]);
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [bearbeiterDialog, setBearbeiterDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
@@ -69,20 +75,27 @@ export function App() {
           onClick={() => gehe({ view: 'dashboard' })}
         />
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
-        <NavItem icon="kette" label="Workflows" aktiv={route.view === 'ketten'} onClick={() => gehe({ view: 'ketten' })} />
-        <NavItem icon="person" label="Funktionen" aktiv={route.view === 'rollen'} onClick={() => gehe({ view: 'rollen' })} />
-        <NavItem
-          icon="kopieren"
-          label="Vorlagen"
-          aktiv={route.view === 'vorlagen'}
-          onClick={() => gehe({ view: 'vorlagen' })}
-        />
         <NavItem
           icon="kalender"
           label="Terminrechner"
           aktiv={route.view === 'terminrechner'}
           onClick={() => gehe({ view: 'terminrechner' })}
         />
+        {/* Workflows, Funktionen und Vorlagen gebündelt unter „Einstellungen“ */}
+        <NavItem
+          icon="einstellungen"
+          label="Einstellungen"
+          aktiv={false}
+          offen={einstellungenOffen}
+          onClick={() => setEinstellungenOffen((o) => !o)}
+        />
+        {einstellungenOffen ? (
+          <>
+            <NavItem unter icon="kette" label="Workflows" aktiv={route.view === 'ketten'} onClick={() => gehe({ view: 'ketten' })} />
+            <NavItem unter icon="person" label="Funktionen" aktiv={route.view === 'rollen'} onClick={() => gehe({ view: 'rollen' })} />
+            <NavItem unter icon="kopieren" label="Vorlagen" aktiv={route.view === 'vorlagen'} onClick={() => gehe({ view: 'vorlagen' })} />
+          </>
+        ) : null}
 
         <div className="nav-group-label">
           Projekte
@@ -319,6 +332,8 @@ function NavItem({
   aktiv,
   badge,
   badgeAlarm,
+  unter,
+  offen,
   onClick,
 }: {
   icon: IconName;
@@ -326,15 +341,30 @@ function NavItem({
   aktiv: boolean;
   badge?: string;
   badgeAlarm?: boolean;
+  /** Unterpunkt einer aufklappbaren Gruppe (eingerückt). */
+  unter?: boolean;
+  /** Nur Gruppen: aufgeklappt? Zeigt den Pfeil. */
+  offen?: boolean;
   onClick: () => void;
 }) {
   return (
-    <button type="button" className={`nav-item ${aktiv ? 'active' : ''}`} onClick={onClick} title={label}>
+    <button
+      type="button"
+      className={`nav-item ${aktiv ? 'active' : ''} ${unter ? 'unter' : ''}`}
+      onClick={onClick}
+      title={label}
+      aria-expanded={offen}
+    >
       <span className="nav-icon">
         <Icon name={icon} size={16} />
       </span>
       <span className="nav-label">{label}</span>
       {badge ? <span className={`nav-badge ${badgeAlarm ? 'alert' : ''}`}>{badge}</span> : null}
+      {offen !== undefined ? (
+        <span className={`nav-pfeil ${offen ? 'offen' : ''}`}>
+          <Icon name="chevron" size={13} />
+        </span>
+      ) : null}
     </button>
   );
 }
