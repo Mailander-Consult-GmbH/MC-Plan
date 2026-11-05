@@ -4,6 +4,8 @@
  * Blocks. Der Dialog zeigt je Person eine Zeile mit ihren neu anstehenden
  * Schritten, einer Vorlage und einer E-Mail (bei mehreren Schritten als
  * Sammel-E-Mail); ein Haken zeigt, für wen die E-Mail schon vorbereitet ist.
+ * Steht ein Schritt nach einem Versandschritt an (Anliegen am Schritt), ist
+ * die Vorlage „Versand“ vorgewählt.
  *
  * Übergeben werden nur IDs; Läufe und Schritte werden frisch aus dem Bestand
  * gelesen (Termine sind erst nach dem Neuberechnen im Store aktuell).
@@ -11,7 +13,8 @@
 import { useState } from 'react';
 import { istErledigt } from '../domain/ablauf';
 import { kontaktName } from '../domain/engine';
-import { vorlageVorschlagen } from '../domain/email';
+import { versandSchrittVor, vorlageVorschlagen } from '../domain/email';
+import { VERSAND_ANLIEGEN_LABEL } from '../domain/types';
 import type { ID, PlanRun, RunStep } from '../domain/types';
 import { useStore } from '../store/store';
 import { formatDate } from '../../../shared/dates';
@@ -73,12 +76,22 @@ export function NeuZustaendig({
   }
 
   const vorlagen = data.emailVorlagen;
-  /** Vorauswahl: hinterlegte Vorlage, bei mehreren Schritten die Sammelerinnerung, sonst „Übergabe“. */
+  /** Anliegen, wenn der Schritt nach einem Versandschritt ansteht (z. B. „Freigabe“). */
+  const anliegenVon = (g: Gruppe) => {
+    const versand = g.posten.map((p) => versandSchrittVor(p.run, p.step.id)).find(Boolean);
+    return versand?.versandAnliegen ?? null;
+  };
+  /**
+   * Vorauswahl: hinterlegte Vorlage; nach einem Versandschritt die Vorlage
+   * „Versand“ (Platzhalter {{versandliste}}); bei mehreren Schritten die
+   * Sammelerinnerung, sonst „Übergabe“.
+   */
   const vorgabe = (g: Gruppe): string => {
     const hinterlegt = vorlageId ? vorlagen.find((v) => v.id === vorlageId) : undefined;
+    const versand = anliegenVon(g) ? vorlagen.find((v) => /\{\{\s*versandliste\s*\}\}/.test(v.text)) : undefined;
     const sammel = g.posten.length > 1 ? vorlagen.find((v) => /\{\{\s*liste\s*\}\}/.test(v.text)) : undefined;
     const uebergabe = vorlagen.find((v) => v.anlass === 'uebergabe');
-    return (hinterlegt ?? sammel ?? uebergabe ?? vorlageVorschlagen(vorlagen, false))?.id ?? '';
+    return (hinterlegt ?? versand ?? sammel ?? uebergabe ?? vorlageVorschlagen(vorlagen, false))?.id ?? '';
   };
   const vorlageVon = (g: Gruppe) => gewaehlt[g.schluessel] ?? vorgabe(g);
 
@@ -117,6 +130,7 @@ export function NeuZustaendig({
           {gruppen.map((g) => {
             const kontakt = data.contacts.find((c) => c.id === g.contactId);
             const fertig = vermerkt.includes(g.schluessel);
+            const anliegen = anliegenVon(g);
             return (
               <div className="pl-zustaendig" key={g.schluessel}>
                 <span
@@ -128,6 +142,12 @@ export function NeuZustaendig({
                 <div className="pl-zustaendig-person">
                   <strong>{kontakt ? kontaktName(kontakt) : 'Keine Person zugeordnet'}</strong>
                   {kontakt?.email ? <span>{kontakt.email}</span> : null}
+                  {anliegen ? (
+                    <span>
+                      Versand zur {VERSAND_ANLIEGEN_LABEL[anliegen]}
+                      {kontakt && !kontakt.sharepointEingang?.trim() ? ' · SharePoint-Link Eingang fehlt' : ''}
+                    </span>
+                  ) : null}
                   {!kontakt ? (
                     <span>Funktion „{g.posten[0]?.step.roleName || '–'}“ ist im Projekt nicht besetzt.</span>
                   ) : null}

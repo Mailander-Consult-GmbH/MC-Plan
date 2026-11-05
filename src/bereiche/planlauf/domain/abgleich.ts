@@ -272,6 +272,8 @@ const FELDNAMEN: Record<string, string> = {
   email: 'E-Mail',
   telefon: 'Telefon',
   anschrift: 'Anschrift',
+  sharepointEingang: 'SharePoint-Link Eingang',
+  sharepointAusgang: 'SharePoint-Link Ausgang',
   zuordnungen: 'Funktionen',
   notiz: 'Notiz',
   herkunft: 'Herkunft',

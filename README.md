@@ -181,7 +181,9 @@ Im Vordergrund steht die **Funktion, nicht die Person**: Die Seite ist – wie d
 Reiter *Funktionen* – nach **Gewerken** gegliedert (je Gewerk eine Seite, dazu „Übergreifend“). Je
 Funktion steht in der Zeile, wer sie ausfüllt; ein Klick öffnet die Besetzung, in der eine im Projekt
 bekannte Person übernommen oder eine neue mit Anrede, Firma, E-Mail, Telefon und Anschrift erfasst
-wird. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann mehrere Funktionen
+wird – dazu die Felder **SharePoint-Link Eingang** (Ordner, in dem die Unterlagen für die Person
+bereitliegen) und **SharePoint-Link Ausgang** (Ordner, in den sie ihre Unterlagen hochlädt) für die
+Versandmail; hinterlegte Links stehen als kleine Links unter den Kontaktdaten in der Liste. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann mehrere Funktionen
 haben.
 
 Über das **+** an den Gewerk-Reitern entsteht ein weiteres Gewerk, über *Gewerk löschen* am Ende der
@@ -197,7 +199,8 @@ darunter; ein Klick weist ihnen eine Funktion zu, das Papierkorb-Symbol rechts l
 Projekt. Das Planlaufmanagement erscheint auf dieser Seite nicht – es ist immer die angemeldete Person.
 
 **Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · Telefon ·
-Email · Straße · Nr. · PLZ · Ort · Notiz*. Gewerke und Funktionen, die es noch nicht gibt, werden
+Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*; leere
+SharePoint-Zellen lassen vorhandene Links stehen. Gewerke und Funktionen, die es noch nicht gibt, werden
 beim Import angelegt; „Übergreifend“ steht für Funktionen ohne Gewerkbezug. Eine optionale Spalte
 *Seite* setzt die Seite für den Verzug – bei neuen Funktionen (sonst gilt die Vorbelegung) und bei
 vorhandenen, wenn sie abweicht. Die Vorschau nennt je Zeile, was angelegt wird, wen eine Besetzung
@@ -325,6 +328,7 @@ Die Aktionsleiste bietet **Schritte erledigen …** (Ist-Datum, erledigt oder ü
 die anstehenden Schritte; gleichnamige Schritte lassen sich gemeinsam beantworten und mit einer
 Nachweis-Nr. versehen; eine Vorschau nennt Rücksprünge und Abschlüsse, danach folgen das Ergebnis
 und auf Wunsch **Neu zuständig**), **Erinnern …** (eine E-Mail je Person mit all ihren Schritten),
+**Versandmail …** (siehe *Versandmail*),
 **Exportieren …** (Export mit der Auswahl vorgewählt) und **Auswahl aufheben**. Ein gewählter
 mitlaufender Plan wirkt auf den Planlauf seines Verzeichnisses.
 
@@ -383,7 +387,7 @@ daneben unter *Abweichungen* die Schritte, die nur über eine andere Antwort err
 farbigen Linien und Antwortbeschriftungen; Rücksprünge sind eigens gekennzeichnet. Jede Karte zeigt
 Art, Nummer, Bezeichnung, Funktion und Frist. Ein Klick öffnet rechts die *Schrittdetails*
 (Bezeichnung, Art, verantwortliche Funktion, Frist, Nachweis, „Weiter mit“ bzw. die Antworten mit
-*Als Standardverlauf*, *E-Mail nach Abschluss*, Verschieben im Standardverlauf, Duplizieren,
+*Als Standardverlauf*, *E-Mail nach Abschluss*, *Anliegen in der Versandmail*, Verschieben im Standardverlauf, Duplizieren,
 Entfernen). „+“ zwischen zwei Karten fügt dort eine Aufgabe ein, *Schritt hinzufügen* hängt einen
 Schritt an. Ein paralleler Block erscheint als Containerkarte „Parallel · … Zweige“ mit den
 Zweigen nebeneinander (bei Platzmangel untereinander), Gabel- und Zusammenführungsbalken, „+“ je
@@ -415,12 +419,19 @@ Fristen sind dort nicht vorgegeben und daher als Erfahrungswerte vorbelegt (z.B.
 Planerstellung, 3 Tage formale Prüfung, 10 Tage BVB-Freigabe, 15 Tage Fachprüfung, je 5 Tage für
 Nachreichung und Prüfung der Nachreichung); sie lassen sich je Kette und je Planlauf ändern.
 
-Diese Ketten kamen mit Stammdatenfassung 5. Ein vorhandener Bestand übernimmt sie beim Laden; wer
-einen mitgelieferten Workflow der Fassung 4 selbst geändert hatte, behält diesen als eigene Kopie
-„… (eigene Fassung)“ – ein einmaliger Hinweis nennt sie. Laufende Planläufe behalten ihre Schritte;
+**Versandschritte** tragen ein *Anliegen in der Versandmail*: „PLM an BVB zur Freigabe“ →
+Freigabe, „PLM an BVB zur Freigabe zur fachtechnischen Prüfung“ → Vorprüfung, „PLM an Fachprüfer
+und Prüfstatiker“ und „PLM an Planprüfer“ → Prüfung, „PLM an PL zur Genehmigung“ → Genehmigung;
+alle übrigen Schritte keins.
+
+Diese Ketten kamen mit Stammdatenfassung 5, das Anliegen mit Fassung 6. Ein vorhandener Bestand
+übernimmt sie beim Laden; wer einen mitgelieferten Workflow der Fassung 4 bzw. 5 selbst geändert
+hatte, behält diesen als eigene Kopie „… (eigene Fassung)“ – ein einmaliger Hinweis nennt sie.
+Vorhandene Workflow-Kopien, Projektvarianten und Planläufe erhalten das Anliegen über den
+Schrittnamen. Laufende Planläufe behalten ihre Schritte;
 der Planlauf bietet dann **Auf aktuelle Fassung umstellen …**.
 
-Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen. Die eigene Rolle im
+Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen; Projektvarianten erscheinen nur im Reiter *Workflows* ihres Projekts. Die eigene Rolle im
 Projekt ist **Planlaufmanagement (PLM)**.
 
 ### Nachweise: Freigabe- und Prüfbericht-Nummern
@@ -479,7 +490,8 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   aktiv, der Lauf schließt sich, wenn alle Schritte des Verlaufs erledigt sind.
 * Nach jedem Erledigen oder Überspringen zeigt **Neu zuständig** die nun anstehenden Schritte je
   Person mit Vorlage und E-Mail-Schaltfläche – sofern unter *Angemeldet als* die Nachfrage
-  zugelassen ist.
+  zugelassen ist. War der erledigte Schritt ein Versandschritt, ist die Vorlage **Versand** für die
+  neu zuständige Person vorgewählt („Versand zur Freigabe“ usw.).
 * Bei **Entscheidungen** wird die Antwort im Lauf gewählt. Der angezeigte Verlauf folgt dieser
   Antwort; ohne Auswahl der ersten Möglichkeit. Schritte, die nur bei anderer Antwort durchlaufen
   werden, sind unterhalb der Liste aufgeführt.
@@ -562,7 +574,42 @@ Schritt, Frist und Empfänger ersetzt (`{{verzug}}` nennt die Einheit, etwa „5
 Zwischenablage kopieren; jede vorbereitete E-Mail wird am Schritt vermerkt. Stehen bei einer Person
 mehrere Schritte an, entsteht eine **Sammel-E-Mail** (Vorlage *Sammelerinnerung*, Platzhalter
 `{{liste}}` und `{{anzahl}}`). Ist sie für die Übergabe an das Mailprogramm zu lang, bleibt nur
-„Kopieren“.
+„Kopieren“. **Kopieren (formatiert)** legt nur den Text mit Formatierung (Links anklickbar,
+Aufzählungen, „ORDNERNAME EINFÜGEN“ rot und fett) und zugleich als Klartext in die Zwischenablage –
+zum Einfügen in eine neue Outlook-Mail.
+
+### Versandmail
+Die Vorlage **Versand** schreibt der Person, die **nach einem Versandschritt** zuständig ist:
+
+```
+{{anrede}}
+
+auf Ihrem SharePoint-Ordner {{sharepoint.eingang}} haben wir Ihnen die folgenden Unterlagen bereitgestellt und bitten um {{anliegen}}.
+
+Hier der Link zum Hochladen der Unterlagen nach Ihrer {{anliegen}}:
+{{sharepoint.ausgang}}
+
+Ordnername: ORDNERNAME EINFÜGEN
+
+{{versandliste}}
+```
+
+Die Anrede kommt aus `{{anrede}}` („Sehr geehrter Herr Lindqvist,“, ohne Anrede „Guten Tag Vorname
+Nachname,“), das Anliegen aus dem
+vorangehenden Versandschritt, die Links aus dem Kontakt. `{{versandliste}}` gliedert die Unterlagen
+nach Planpaketen („PP-Nordkanal Eisenbahnüberführung Nordkanal:“, darunter „* Codierung Titel“),
+ein Planverzeichnis mit seinen mitlaufenden Plänen eingerückt („  – …“); ein einzelner Plan ohne
+Paket steht mit seinem Namen für sich, mehrere unter „Ohne Planpaket:“. Fehlt ein Link, steht
+„[SharePoint-Link Eingang fehlt]“ bzw. „[SharePoint-Link Ausgang fehlt]“ im Text und der Dialog
+weist darauf hin. „ORDNERNAME EINFÜGEN“ wird vor dem Absenden von Hand ersetzt.
+
+Ausgelöst wird die Versandmail auf zwei Wegen: nach dem Erledigen eines Versandschritts in **Neu
+zuständig** (siehe oben) und gesammelt über **Versandmail …** in der Planlaufliste. Dort gilt je
+gewähltem Planlauf: Steht ein Versandschritt an (etwa „PLM an BVB zur Freigabe“), ist Empfänger
+die Person des Schritts danach (bei einem parallelen Block jedes Zweigs); steht der Schritt direkt
+nach einem erledigten Versandschritt an, dessen Person. Je Empfänger und Anliegen entsteht **eine**
+Mail mit allen betroffenen Plänen; vermerkt wird wie bei Erinnerungen am anstehenden Schritt.
+Planläufe ohne Versandschritt nennt ein Hinweis.
 
 ### Export je Projekt
 Über **Export** im Reiter **Planläufe** (oder in den Projekteinstellungen) lassen sich die Planläufe
@@ -913,6 +960,7 @@ src/
     dates.ts     Fristen- und Datumsrechnung
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit (mit Zellformaten)
     xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe
+    zwischenablage.ts  Formatiert (text/html) und als Klartext kopieren
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers
     global.css   Design-Tokens im hellen Apple-Erscheinungsbild
@@ -935,7 +983,7 @@ src/
         terminrechner.ts  Späteste Übergabe bzw. Ende des Planlaufs aus einem Workflow
         workflowGraph.ts  Gliederung und Bearbeitung eines Workflows für den Editor (blockbewusst)
         abschluss.ts Statuswechsel, Wieder öffnen, Einfügen eines Schritts samt Nachweis
-        email.ts     Platzhalter und Aufbereitung der Vorlagen, Sammel-E-Mail
+        email.ts     Platzhalter und Aufbereitung der Vorlagen, Sammel-E-Mail, Versandmail
         uebersicht.ts  Gliederung und Zeilenwerte der Planlaufliste – auch für den Export
         export.ts    Kurz- und Langfassung für Excel und PDF
         importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen

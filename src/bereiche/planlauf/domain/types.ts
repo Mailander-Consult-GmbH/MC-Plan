@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 13;
+export const DATEN_VERSION = 14;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -20,7 +20,7 @@ export const DATEN_VERSION = 13;
  * Laden die neuen Stammdaten – eigene Rollen, Varianten und laufende Planläufe
  * bleiben dabei unangetastet.
  */
-export const STAMMDATEN_VERSION = 5;
+export const STAMMDATEN_VERSION = 6;
 
 /* ------------------------------------------------------------------ */
 /* Bearbeiter                                                          */
@@ -233,6 +233,10 @@ export interface Contact {
   telefon: string;
   /** Straße, PLZ und Ort – mehrzeilig. */
   anschrift: string;
+  /** SharePoint-Ordner, in dem die Unterlagen für die Person bereitliegen (Versandmail). */
+  sharepointEingang: string;
+  /** SharePoint-Ordner, in den die Person ihre Unterlagen zurücklegt (Versandmail). */
+  sharepointAusgang: string;
   /** Besetzte Rollen, ggf. je Gewerk. */
   zuordnungen: Zuordnung[];
   notiz: string;
@@ -443,6 +447,39 @@ export interface ProcessTemplate {
   geaendertAm?: string;
 }
 
+/** Anliegen eines Versandschritts – worum die Versandmail die nächste Person bittet. */
+export type VersandAnliegen = 'freigabe' | 'vorpruefung' | 'pruefung' | 'genehmigung';
+
+export const VERSAND_ANLIEGEN_LABEL: Record<VersandAnliegen, string> = {
+  freigabe: 'Freigabe',
+  vorpruefung: 'Vorprüfung',
+  pruefung: 'Prüfung',
+  genehmigung: 'Genehmigung',
+};
+
+/** Auswahl „Anliegen in der Versandmail“ (Workflow-Editor, Schritt anpassen). */
+export const ANLIEGEN_OPTIONEN: { value: string; label: string }[] = [
+  { value: '', label: 'keins' },
+  ...Object.entries(VERSAND_ANLIEGEN_LABEL).map(([value, label]) => ({ value, label })),
+];
+
+/**
+ * Anliegen der Versandschritte in den mitgelieferten Workflows (nach dem
+ * Schrittnamen) – auch für die Umstellung vorhandener Bestände.
+ */
+export const VERSAND_ANLIEGEN_NACH_NAME: Record<string, VersandAnliegen> = {
+  'PLM an BVB zur Freigabe': 'freigabe',
+  'PLM an BVB zur Freigabe zur fachtechnischen Prüfung': 'vorpruefung',
+  'PLM an Fachprüfer und Prüfstatiker': 'pruefung',
+  'PLM an Planprüfer': 'pruefung',
+  'PLM an PL zur Genehmigung': 'genehmigung',
+};
+
+/** Anliegen nach dem Schrittnamen (siehe VERSAND_ANLIEGEN_NACH_NAME), sonst null. */
+export function versandAnliegenNachName(name: string): VersandAnliegen | null {
+  return VERSAND_ANLIEGEN_NACH_NAME[(name ?? '').trim()] ?? null;
+}
+
 export interface ProcessTemplateStep {
   id: ID;
   name: string;
@@ -474,6 +511,11 @@ export interface ProcessTemplateStep {
   mailFrage: boolean;
   /** Vorzuschlagende E-Mail-Vorlage; null = die zum Anlass passende. */
   mailVorlageId: ID | null;
+  /**
+   * Versandschritt: Anliegen, um das die Versandmail an die danach zuständige
+   * Person bittet ({{anliegen}}); null = kein Versandschritt.
+   */
+  versandAnliegen: VersandAnliegen | null;
   /** Zweig eines parallelen Blocks; null = außerhalb von Blöcken. */
   parallel: Parallel | null;
 }
@@ -629,6 +671,8 @@ export interface RunStep {
   mailFrage: boolean;
   /** Vorzuschlagende E-Mail-Vorlage. */
   mailVorlageId: ID | null;
+  /** Anliegen der Versandmail (siehe ProcessTemplateStep). */
+  versandAnliegen: VersandAnliegen | null;
 }
 
 /** Momentaufnahme beim Erledigen bzw. Überspringen eines Schritts. */

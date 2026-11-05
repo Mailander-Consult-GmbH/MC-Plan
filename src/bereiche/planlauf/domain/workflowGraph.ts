@@ -73,6 +73,7 @@ export function neuerSchritt(typ: StepType, neueId: NeueId): ProcessTemplateStep
     nachweis: 'keine',
     mailFrage: false,
     mailVorlageId: null,
+    versandAnliegen: null,
     parallel: null,
   };
 }

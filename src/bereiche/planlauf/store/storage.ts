@@ -10,6 +10,7 @@ import {
   STAMMDATEN_VERSION,
   STANDARD_BEARBEITER,
   seiteAusFunktion,
+  versandAnliegenNachName,
   type AppData,
   type EmailTemplate,
   type Erinnerung,
@@ -25,11 +26,13 @@ import {
 } from '../domain/types';
 import {
   STANDARD_FASSUNG4_FINGERABDRUCK,
+  STANDARD_FASSUNG5_FINGERABDRUCK,
   STANDARD_ROLLEN,
   STANDARD_TEMPLATES,
   sammelVorlage,
   seedData,
   standardVorlagen,
+  versandVorlage,
   workflowFingerabdruck,
 } from '../domain/seed';
 import { eigeneKontakteSichern, recalcRun, zustaendigkeitenNachziehen } from '../domain/engine';
@@ -218,6 +221,15 @@ const neueId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice
 const eigenerKontakt = (daten: AppData): AppData => eigeneKontakteSichern(daten, neueId);
 
 /**
+ * Fingerabdrücke der mitgelieferten Standard-Workflows je früherer
+ * Stammdaten-Fassung (siehe workflowFingerabdruck); ab Fassung 5 mit Blöcken.
+ */
+const FINGERABDRUECKE: Record<number, { werte: Record<ID, string>; mitBloecken: boolean }> = {
+  4: { werte: STANDARD_FASSUNG4_FINGERABDRUCK, mitBloecken: false },
+  5: { werte: STANDARD_FASSUNG5_FINGERABDRUCK, mitBloecken: true },
+};
+
+/**
  * Übernimmt neue mitgelieferte Stammdaten in einen bestehenden Bestand:
  * Funktionen und Standard-Workflows werden auf den aktuellen Stand
  * gebracht und fehlende Rollen in jedes Projekt ergänzt. Eigene Rollen,
@@ -241,21 +253,22 @@ function stammdatenAktualisieren(daten: AppData): { daten: AppData; kopien: stri
   ];
 
   // Standard-Workflows ersetzen, eigene Ketten und Projektvarianten behalten.
-  // Beim Wechsel von Fassung 4 bleibt ein selbst geänderter Standard-Workflow
-  // als eigene Kopie „<Name> (eigene Fassung)“ erhalten.
+  // Beim Wechsel von Fassung 4 bzw. 5 bleibt ein selbst geänderter
+  // Standard-Workflow als eigene Kopie „<Name> (eigene Fassung)“ erhalten –
+  // erkannt am Fingerabdruck der damals mitgelieferten Fassung.
   const eigeneKetten = (daten.templates ?? []).filter(
     (t) => t.projectId !== null || t.herkunft !== 'standard',
   );
-  const kopien: ProcessTemplate[] =
-    (daten.stammdatenVersion ?? 0) === 4
-      ? (daten.templates ?? [])
-          .filter((t) => t.projectId === null && t.herkunft === 'standard')
-          .filter((t) => {
-            const soll = STANDARD_FASSUNG4_FINGERABDRUCK[t.id];
-            return soll !== undefined && workflowFingerabdruck(t) !== soll;
-          })
-          .map(eigeneFassung)
-      : [];
+  const vergleich = FINGERABDRUECKE[daten.stammdatenVersion ?? 0];
+  const kopien: ProcessTemplate[] = vergleich
+    ? (daten.templates ?? [])
+        .filter((t) => t.projectId === null && t.herkunft === 'standard')
+        .filter((t) => {
+          const soll = vergleich.werte[t.id];
+          return soll !== undefined && workflowFingerabdruck(t, vergleich.mitBloecken) !== soll;
+        })
+        .map(eigeneFassung)
+    : [];
   const templates: ProcessTemplate[] = [...STANDARD_TEMPLATES.map((t) => ({ ...t })), ...kopien, ...eigeneKetten];
 
   // Fehlende Rollen in jedes Projekt ergänzen
@@ -419,7 +432,8 @@ function wiedereingangSchaetzen(run: PlanRun, heute: string, zeitpunkt: string):
 /**
  * E-Mail-Vorlagen ab Fassung 13: {{verzug}} nennt die Einheit („5 Arbeitstage“).
  * Wo eine Vorlage die Einheit selbst schreibt („seit {{verzug}} Tagen“), steht
- * fortan die reine Zahl {{verzug.zahl}}; die Sammelerinnerung kommt hinzu.
+ * fortan die reine Zahl {{verzug.zahl}}; die Sammelerinnerung kommt hinzu,
+ * ab Fassung 14 die Vorlage „Versand“.
  */
 function vorlagenFassung13(vorlagen: EmailTemplate[]): EmailTemplate[] {
   const zahl = (text: string) => text.replace(/\{\{\s*verzug\s*\}\}(\s+(?:Kalender|Arbeits)?[Tt]ag)/g, '{{verzug.zahl}}$1');
@@ -428,7 +442,11 @@ function vorlagenFassung13(vorlagen: EmailTemplate[]): EmailTemplate[] {
     const text = zahl(v.text);
     return betreff === v.betreff && text === v.text ? v : { ...v, betreff, text };
   });
-  return liste.some((v) => v.id === sammelVorlage().id) ? liste : [...liste, sammelVorlage()];
+  // Mitgelieferte Vorlagen, die später hinzukamen, werden ergänzt
+  return [sammelVorlage(), versandVorlage()].reduce(
+    (alle, neu) => (alle.some((v) => v.id === neu.id) ? alle : [...alle, neu]),
+    liste,
+  );
 }
 
 /**
@@ -437,7 +455,9 @@ function vorlagenFassung13(vorlagen: EmailTemplate[]): EmailTemplate[] {
  * Fassung 13: Antworten mit Nacharbeit (alle außer der ersten), Funktionen mit
  * Seite, Erinnerungen aus der letzten Erinnerung, geschätzter Wiedereingang
  * laufender Rücksprünge (siehe wiedereingangSchaetzen) und ein Basisplan für
- * jeden Lauf.
+ * jeden Lauf. Ab Fassung 14: SharePoint-Links an Kontakten (leer) und das
+ * Anliegen der Versandmail an Workflow- und Laufschritten – nach dem
+ * Schrittnamen der mitgelieferten Versandschritte, sonst keins.
  */
 function migriere(daten: AppData): AppData {
   if (daten.version === DATEN_VERSION) return daten;
@@ -509,6 +529,8 @@ function migriere(daten: AppData): AppData {
       return {
         ...c,
         anschrift: c.anschrift ?? '',
+        sharepointEingang: c.sharepointEingang ?? '',
+        sharepointAusgang: c.sharepointAusgang ?? '',
         eigen: c.eigen ?? false,
         // Zuordnungen zeigen jetzt auf die Funktion des jeweiligen Gewerks
         zuordnungen: zuordnungen.flatMap((z) => {
@@ -569,6 +591,8 @@ function migriere(daten: AppData): AppData {
           nachweis: s.nachweis ?? 'keine',
           mailFrage: s.mailFrage ?? false,
           mailVorlageId: s.mailVorlageId ?? null,
+          // Fassung 14: Anliegen der Versandmail nach dem Schrittnamen
+          versandAnliegen: s.versandAnliegen !== undefined ? s.versandAnliegen : versandAnliegenNachName(s.name),
           parallel: s.parallel ?? null,
         };
       }))),
@@ -609,6 +633,7 @@ function migriere(daten: AppData): AppData {
           contactManuell: s.contactManuell ?? false,
           mailFrage: s.mailFrage ?? false,
           mailVorlageId: s.mailVorlageId ?? null,
+          versandAnliegen: s.versandAnliegen !== undefined ? s.versandAnliegen : versandAnliegenNachName(s.name),
         };
       }))),
     })),

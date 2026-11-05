@@ -226,3 +226,7 @@
   .pl-posten-zeile { grid-template-columns: minmax(0, 1fr); }
   .pl-nachweis-abschnitt { padding: 12px 14px; }
 }
+
+/* SharePoint-Links einer Person (Funktionen) */
+.pl-sharepoint { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 2px; }
+.pl-sharepoint a { white-space: nowrap; }

@@ -45,6 +45,7 @@ import {
   SEITE_LABEL,
   STEP_STATUS_LABEL,
   STEP_TYPE_LABEL,
+  ANLIEGEN_OPTIONEN,
   hatEigenenPlanlauf,
   istPrueferRolle,
   verzeichnisGebuendelt,
@@ -58,6 +59,7 @@ import {
   type Project,
   type RunStep,
   type StepType,
+  type VersandAnliegen,
 } from '../../domain/types';
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
@@ -1491,6 +1493,7 @@ type SchrittForm = {
   nachweisNummer: string;
   bemerkung: string;
   nachweis: Nachweis;
+  versandAnliegen: VersandAnliegen | null;
 };
 
 /**
@@ -1536,6 +1539,7 @@ function SchrittDialog({
     nachweisNummer: step?.nachweisNummer ?? '',
     bemerkung: step?.bemerkung ?? '',
     nachweis: step?.nachweis ?? 'keine',
+    versandAnliegen: step?.versandAnliegen ?? null,
   });
   const [frage, setFrage] = useState(false);
 
@@ -1612,6 +1616,7 @@ function SchrittDialog({
       sollDatum: form.sollManuell ? form.sollDatum : step.sollDatum,
       bemerkung: form.bemerkung,
       nachweis: form.nachweis,
+      versandAnliegen: form.versandAnliegen,
       abweichung: step.abweichung || veraendert,
     };
     if (erledigt && form.istDatum !== (step.istDatum ?? '')) patch.istDatum = form.istDatum;
@@ -1664,6 +1669,7 @@ function SchrittDialog({
       nachweis: form.nachweis,
       mailFrage: false,
       mailVorlageId: null,
+      versandAnliegen: form.versandAnliegen,
       parallel: null,
     };
     const ergebnis = schrittImLaufEinfuegen(run.id, ort.nachId, neu, ort.position);
@@ -1775,6 +1781,13 @@ function SchrittDialog({
             value={form.nachweis}
             onChange={(v) => set('nachweis', v as Nachweis)}
             options={Object.entries(NACHWEIS_LABEL).map(([value, label]) => ({ value, label }))}
+          />
+        </Field>
+        <Field label="Anliegen in der Versandmail" hint="nach dem Erledigen schlägt „Neu zuständig“ die Vorlage „Versand“ vor">
+          <Select
+            value={form.versandAnliegen ?? ''}
+            onChange={(v) => set('versandAnliegen', (v || null) as VersandAnliegen | null)}
+            options={ANLIEGEN_OPTIONEN}
           />
         </Field>
         {!step ? (

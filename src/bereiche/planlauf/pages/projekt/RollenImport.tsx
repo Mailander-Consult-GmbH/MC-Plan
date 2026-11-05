@@ -54,7 +54,9 @@ function anschriftBauen(strasse: string, nr: string, plz: string, ort: string): 
 
 const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-type Person = Omit<Contact, 'id' | 'projectId' | 'zuordnungen' | 'eigen'>;
+/** SharePoint-Links nur, wenn die Zelle gefüllt ist – leere Zellen lassen vorhandene stehen. */
+type Person = Omit<Contact, 'id' | 'projectId' | 'zuordnungen' | 'eigen' | 'sharepointEingang' | 'sharepointAusgang'> &
+  Partial<Pick<Contact, 'sharepointEingang' | 'sharepointAusgang'>>;
 
 interface Zeile {
   /** Gewerk der Funktion; null = übergreifend. */
@@ -184,6 +186,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
             wert(zeile, 'ort'),
           ),
           notiz: wert(zeile, 'notiz'),
+          ...(wert(zeile, 'sharepointEingang') ? { sharepointEingang: wert(zeile, 'sharepointEingang') } : {}),
+          ...(wert(zeile, 'sharepointAusgang') ? { sharepointAusgang: wert(zeile, 'sharepointAusgang') } : {}),
         };
 
         const vorhandeneRolle = funktion ? findeRolle(funktion, gewerk) : undefined;
@@ -287,6 +291,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         ergaenzt += 1;
       } else {
         addContact({
+          sharepointEingang: '',
+          sharepointAusgang: '',
           ...eintrag.person,
           projectId: project.id,
           zuordnungen: eintrag.zuordnungen,

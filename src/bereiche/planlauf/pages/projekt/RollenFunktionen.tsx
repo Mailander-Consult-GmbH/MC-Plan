@@ -43,6 +43,7 @@ import {
   TextInput,
 } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
+import '../../components/planlauf.css';
 
 const FARBEN = ['#24456e', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
 
@@ -199,6 +200,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
                           <span className="tertiary">–</span>
                         )}
                         {c?.telefon ? <div className="tertiary small">{c.telefon}</div> : null}
+                        {c ? <SharePointLinks kontakt={c} /> : null}
                       </td>
                       <td className="actions">
                         <button
@@ -428,6 +430,8 @@ function BesetzungsDialog({
     email: '',
     telefon: '',
     anschrift: '',
+    sharepointEingang: '',
+    sharepointAusgang: '',
     notiz: '',
   };
   const werteVon = (c?: Contact) =>
@@ -440,6 +444,8 @@ function BesetzungsDialog({
           email: c.email,
           telefon: c.telefon,
           anschrift: c.anschrift,
+          sharepointEingang: c.sharepointEingang ?? '',
+          sharepointAusgang: c.sharepointAusgang ?? '',
           notiz: c.notiz,
         }
       : leer;
@@ -602,6 +608,24 @@ function BesetzungsDialog({
           <Field label="Anschrift" full hint="Straße, PLZ und Ort">
             <TextArea value={form.anschrift} onChange={(v) => set('anschrift', v)} rows={2} />
           </Field>
+          <Field label="SharePoint-Link Eingang" full hint="Ordner, in dem die Unterlagen für die Person bereitliegen – für die Versandmail">
+            <TextInput
+              value={form.sharepointEingang}
+              onChange={(v) => set('sharepointEingang', v)}
+              type="url"
+              inputMode="url"
+              placeholder="https://…sharepoint.com/sites/…"
+            />
+          </Field>
+          <Field label="SharePoint-Link Ausgang" full hint="Ordner, in den die Person ihre Unterlagen hochlädt">
+            <TextInput
+              value={form.sharepointAusgang}
+              onChange={(v) => set('sharepointAusgang', v)}
+              type="url"
+              inputMode="url"
+              placeholder="https://…sharepoint.com/sites/…"
+            />
+          </Field>
           <Field label="Notiz" full>
             <TextArea value={form.notiz} onChange={(v) => set('notiz', v)} rows={2} />
           </Field>
@@ -745,5 +769,23 @@ function FunktionsDialog({
         </Field>
       </div>
     </Modal>
+  );
+}
+
+/** Kleine Links zu den SharePoint-Ordnern einer Person (nur, wenn hinterlegt). */
+function SharePointLinks({ kontakt }: { kontakt: Contact }) {
+  const links = [
+    { text: 'SharePoint Eingang', url: kontakt.sharepointEingang },
+    { text: 'SharePoint Ausgang', url: kontakt.sharepointAusgang },
+  ].filter((l) => l.url?.trim());
+  if (links.length === 0) return null;
+  return (
+    <div className="small pl-sharepoint">
+      {links.map((l) => (
+        <a key={l.text} href={l.url.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+          {l.text}
+        </a>
+      ))}
+    </div>
   );
 }

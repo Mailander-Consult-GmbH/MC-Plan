@@ -315,6 +315,7 @@ export function laufSchritteFuerSimulation(steps: ProcessTemplateStep[]): RunSte
     nachweis: s.nachweis,
     mailFrage: s.mailFrage,
     mailVorlageId: s.mailVorlageId,
+    versandAnliegen: s.versandAnliegen ?? null,
     parallel: s.parallel ?? null,
   }));
 }

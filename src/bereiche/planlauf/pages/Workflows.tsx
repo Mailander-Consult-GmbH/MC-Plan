@@ -1,6 +1,7 @@
 /**
  * Verwaltung der Workflows: projektübergreifende (mitgelieferte Standard-
- * Workflows und eigene) und Projektvarianten. Jede Karte zeigt den
+ * Workflows und eigene) und – nur im Reiter „Workflows“ eines Projekts – dessen
+ * Projektvarianten. Jede Karte zeigt den
  * Standardverlauf als Punktkette; „Öffnen“ führt in den grafischen
  * Workflow-Editor (components/WorkflowEditor.tsx).
  */
@@ -21,7 +22,8 @@ export function Workflows({ projectId }: { projectId?: string }) {
   const [editor, setEditor] = useState<{ template?: ProcessTemplate; steps: ProcessTemplateStep[] } | null>(null);
   const [loeschen, setLoeschen] = useState<ProcessTemplate | null>(null);
 
-  const vorlagen = data.templates.filter((t) => (projectId ? t.projectId === null || t.projectId === projectId : true));
+  // Projektvarianten erscheinen nur im eigenen Projekt, nicht im übergreifenden Menü
+  const vorlagen = data.templates.filter((t) => t.projectId === null || (projectId !== undefined && t.projectId === projectId));
   const uebergreifend = vorlagen.filter((t) => t.projectId === null);
   const varianten = vorlagen.filter((t) => t.projectId !== null);
 
@@ -152,14 +154,14 @@ export function Workflows({ projectId }: { projectId?: string }) {
         uebergreifend,
         'Legen Sie einen Workflow an oder duplizieren Sie einen vorhandenen.',
       )}
-      {abschnitt(
-        'Projektvarianten',
-        projectId ? 'Nur in diesem Projekt wählbar' : 'Nur im jeweiligen Projekt wählbar',
-        varianten,
-        projectId
-          ? 'Duplizieren Sie hier einen Workflow, um eine Variante nur für dieses Projekt anzulegen.'
-          : 'Projektvarianten entstehen im Projekt, Reiter „Workflows“, über „Duplizieren“ oder „Neuer Workflow“.',
-      )}
+      {projectId
+        ? abschnitt(
+            'Projektvarianten',
+            'Nur in diesem Projekt wählbar',
+            varianten,
+            'Duplizieren Sie hier einen Workflow, um eine Variante nur für dieses Projekt anzulegen.',
+          )
+        : null}
 
       {editor ? (
         <WorkflowEditor
