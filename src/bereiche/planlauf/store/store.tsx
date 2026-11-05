@@ -144,7 +144,7 @@ interface StoreValue {
   /**
    * Schließt einen oder mehrere Schritte ab (Sammel-Erledigen), nacheinander
    * auf dem jeweils aktuellen Stand. Liefert je Eintrag das Ergebnis (gerechnet
-   * auf dem angezeigten Stand – Grundlage für Meldung und „Neu zuständig“).
+   * auf dem angezeigten Stand – Grundlage für Meldung und „E-Mail senden“).
    */
   schritteAbschliessen: (eintraege: SchrittAbschluss[]) => AbschlussErgebnis[];
   /** Öffnet einen erledigten Schritt wieder (Korrektur bzw. erneute Bearbeitung ab `eingang`). */

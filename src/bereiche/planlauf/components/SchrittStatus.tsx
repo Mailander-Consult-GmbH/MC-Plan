@@ -3,7 +3,7 @@
  *
  * `useSchrittStatus` kapselt den Statuswechsel samt Erfassung der Freigabe-
  * bzw. Prüfbericht-Nummer und bietet nach jedem Abschluss den Dialog
- * „Neu zuständig“ an (alle neu anstehenden Schritte, je Person eine Zeile).
+ * „E-Mail senden“ an (alle neu anstehenden Schritte, je Person eine Zeile).
  * Geschrieben wird ausschließlich über den Store (schritteAbschliessen,
  * wiederOeffnen, aenderungenAnwenden). Die zurückgegebenen Dialoge müssen in
  * der jeweiligen Seite gerendert werden; `ErledigtButton` ist der kleine Haken,
@@ -106,7 +106,7 @@ export function useSchrittStatus() {
  *
  * Neue Form: `runId` und `stepIds` (alle anstehenden Schritte des Laufs); bei
  * mehreren fragt ein kleines Menü, welcher erledigt ist. Ohne `onErledigen`
- * erledigt der Haken selbst (samt Nachweis-Nr. und „Neu zuständig“).
+ * erledigt der Haken selbst (samt Nachweis-Nr. und „E-Mail senden“).
  * Bisherige Form: `run`, `step` und `onErledigen(run, step)`.
  */
 export function ErledigtButton(

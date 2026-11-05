@@ -11,7 +11,7 @@
  * nach ausdrücklicher Bestätigung möglich. Die Vorschau rechnet den Abschluss
  * auf dem aktuellen Stand durch („führt zurück zu …“, „schließt Planlauf ab“);
  * danach meldet der Dialog das Ergebnis mit Zahlen und bietet für die neu
- * anstehenden Schritte den Dialog „Neu zuständig“ an.
+ * anstehenden Schritte den Dialog „E-Mail senden“ an.
  */
 import { useMemo, useState } from 'react';
 import { formatDate, today, type ISODate } from '../../../shared/dates';
@@ -43,7 +43,7 @@ interface Zahlen {
   abgeschlossen: number;
   ausgelassen: number;
   neuAnstehend: number;
-  /** Neu anstehende Schritte je Lauf – für den Dialog „Neu zuständig“. */
+  /** Neu anstehende Schritte je Lauf – für den Dialog „E-Mail senden“. */
   neu: NeuZustaendigEintrag[];
   art: Art;
 }
@@ -239,7 +239,7 @@ export function SammelErledigen({
           <>
             {ergebnis.neu.length > 0 ? (
               <button type="button" className="btn btn-outline" onClick={() => setNeuOffen(true)}>
-                Neu zuständig …
+                E-Mail senden …
               </button>
             ) : null}
             <button type="button" className="btn btn-primary" onClick={onClose}>
@@ -258,7 +258,7 @@ export function SammelErledigen({
           {ergebnis.neuAnstehend > 0 ? (
             <p className="small muted">
               {ergebnis.neuAnstehend === 1 ? 'Ein Schritt steht' : `${ergebnis.neuAnstehend} Schritte stehen`} jetzt neu an. Unter
-              „Neu zuständig …“ lassen sich die Zuständigen je Person per E-Mail informieren.
+              „E-Mail senden …“ lassen sich die Zuständigen je Person per E-Mail informieren.
             </p>
           ) : null}
           {ergebnis.ausgelassen > 0 ? (

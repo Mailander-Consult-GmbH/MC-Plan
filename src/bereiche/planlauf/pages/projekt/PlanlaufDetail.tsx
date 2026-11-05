@@ -1783,7 +1783,7 @@ function SchrittDialog({
             options={Object.entries(NACHWEIS_LABEL).map(([value, label]) => ({ value, label }))}
           />
         </Field>
-        <Field label="Anliegen in der Versandmail" hint="nach dem Erledigen schlägt „Neu zuständig“ die Vorlage „Versand“ vor">
+        <Field label="Anliegen in der Versandmail" hint="nach dem Erledigen schlägt „E-Mail senden“ die Vorlage „Versand“ vor">
           <Select
             value={form.versandAnliegen ?? ''}
             onChange={(v) => set('versandAnliegen', (v || null) as VersandAnliegen | null)}

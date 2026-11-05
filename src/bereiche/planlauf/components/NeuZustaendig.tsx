@@ -1,5 +1,5 @@
 /**
- * „Neu zuständig“: Nach einem Abschluss (auch nach dem Sammel-Erledigen)
+ * „E-Mail senden“: Nach einem Abschluss (auch nach dem Sammel-Erledigen)
  * stehen ein oder mehrere Schritte neu an – etwa alle Zweige eines parallelen
  * Blocks. Der Dialog zeigt je Person eine Zeile mit ihren neu anstehenden
  * Schritten, einer Vorlage und einer E-Mail (bei mehreren Schritten als
@@ -109,7 +109,7 @@ export function NeuZustaendig({
 
   return (
     <Modal
-      titel="Neu zuständig"
+      titel="E-Mail senden"
       sub={
         gruppen.length === 0
           ? 'Keine neu anstehenden Schritte'
