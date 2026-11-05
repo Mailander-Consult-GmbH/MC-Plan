@@ -29,10 +29,12 @@ import {
   NACHWEIS_LABEL,
   STANDARD_ANTWORTEN,
   STEP_TYPE_LABEL,
+  ANLIEGEN_OPTIONEN,
   type ID,
   type Nachweis,
   type ProcessTemplateStep,
   type StepType,
+  type VersandAnliegen,
 } from '../domain/types';
 import {
   alsStandard,
@@ -1861,6 +1863,24 @@ function SchrittDetails({
             ))}
           </select>
         ) : null}
+        <label className="wf-feld">
+          <span>Anliegen in der Versandmail</span>
+          <select
+            className="select"
+            value={step.versandAnliegen ?? ''}
+            onChange={(e) => aendern({ versandAnliegen: (e.target.value || null) as VersandAnliegen | null })}
+          >
+            {ANLIEGEN_OPTIONEN.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="wf-hilfe">
+          Versandschritt: Nach dem Erledigen schlägt KaPlan der danach zuständigen Person die Vorlage „Versand“ mit
+          diesem Anliegen und ihren SharePoint-Links vor.
+        </p>
       </section>
 
       <section className="wf-abschnitt wf-aktionen">

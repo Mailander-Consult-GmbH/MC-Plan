@@ -15,6 +15,7 @@ import {
   DATEN_VERSION,
   EIGENE_ROLLE,
   STAMMDATEN_VERSION,
+  versandAnliegenNachName,
   STANDARD_BEARBEITER,
   type AppData,
   type Antwort,
@@ -158,6 +159,8 @@ function kette(id: string, name: string, beschreibung: string, roh: RohSchritt[]
       // Nachfrage nach einer E-Mail wird je Schritt im Workflow gesetzt
       mailFrage: false,
       mailVorlageId: null,
+      // Versandschritte bitten die nächste Person um Freigabe, Prüfung …
+      versandAnliegen: versandAnliegenNachName(r.name),
       parallel:
         r.block !== undefined
           ? {
@@ -318,10 +321,18 @@ function streuwert(text: string): string {
  * aufgelöst; Antworten mit ihrem Text). IDs und spätere Felder (Blöcke,
  * Nacharbeit) zählen nicht – so lässt sich erkennen, ob ein gespeicherter
  * Standard-Workflow noch dem mitgelieferten Stand einer Fassung entspricht.
- * Gilt für Workflows ohne parallele Blöcke (bis Stammdaten-Fassung 4).
+ * Ohne `mitBloecken` gilt er für Workflows ohne parallele Blöcke (bis
+ * Stammdaten-Fassung 4); mit `mitBloecken` zählen zusätzlich je Schritt der
+ * Block (als Position seines ersten Schritts), Zweig und Namen sowie die
+ * Nacharbeit-Kennung der Antworten (Fassung 5). Das Anliegen der Versandmail
+ * zählt nicht – es kam erst mit Fassung 6.
  */
-export function workflowFingerabdruck(t: Pick<ProcessTemplate, 'name' | 'beschreibung' | 'steps'>): string {
+export function workflowFingerabdruck(
+  t: Pick<ProcessTemplate, 'name' | 'beschreibung' | 'steps'>,
+  mitBloecken = false,
+): string {
   const steps = t.steps ?? [];
+  const blockStart = (block: ID) => steps.findIndex((x) => x.parallel?.block === block);
   const index = new Map(steps.map((s, i) => [s.id, i]));
   const ziel = (i: number, z: ID | 'ende' | null | undefined) => {
     if (z === 'ende') return 'E';
@@ -341,6 +352,14 @@ export function workflowFingerabdruck(t: Pick<ProcessTemplate, 'name' | 'beschre
       s.typ === 'entscheidung' && (s.antworten ?? []).length > 0
         ? s.antworten.map((a) => `${(a.text ?? '').trim()}>${ziel(i, a.ziel)}`).join(',')
         : `>${ziel(i, s.naechster)}`,
+      ...(mitBloecken
+        ? [
+            s.parallel
+              ? `${blockStart(s.parallel.block)}:${s.parallel.zweig}:${(s.parallel.name ?? '').trim()}:${(s.parallel.zweigName ?? '').trim()}`
+              : '-',
+            (s.antworten ?? []).map((a) => (a.nacharbeit ? 1 : 0)).join(''),
+          ]
+        : []),
     ].join('|'),
   );
   return streuwert([(t.name ?? '').trim(), (t.beschreibung ?? '').trim(), ...zeilen].join('\n'));
@@ -357,6 +376,19 @@ export const STANDARD_FASSUNG4_FINGERABDRUCK: Record<ID, string> = {
   'tpl-vvbau-ohne': '1f5fc6b675401c',
   'tpl-vvbau-mit': '1bd0b072bcd0ce',
   'tpl-vvbau-ste': '19027a5acc299c',
+};
+
+/**
+ * Fingerabdrücke der Standard-Workflows in Stammdaten-Fassung 5 (mit
+ * parallelen Blöcken und Nachreichung, vor dem Anliegen der Versandmail),
+ * berechnet mit `workflowFingerabdruck(t, true)`. Weicht ein gespeicherter
+ * Standard-Workflow davon ab, bleibt er beim Wechsel auf Fassung 6 als eigene
+ * Kopie erhalten.
+ */
+export const STANDARD_FASSUNG5_FINGERABDRUCK: Record<ID, string> = {
+  'tpl-vvbau-ohne': '16223f3fc0d271',
+  'tpl-vvbau-mit': '026ef092b1835b',
+  'tpl-vvbau-ste': '0a0d74703eb137',
 };
 
 /* ------------------------------------------------------------------ */
@@ -430,7 +462,33 @@ Mit freundlichen Grüßen
 {{absender}}`,
     },
     sammelVorlage(),
+    versandVorlage(),
   ];
+}
+
+/**
+ * Vorlage „Versand“: Nach einem Versandschritt (Anliegen am Schritt) erhält
+ * die danach zuständige Person die Links zu ihren SharePoint-Ordnern, das
+ * Anliegen und die Liste der Unterlagen nach Planpaketen ({{versandliste}},
+ * siehe domain/email.ts). „ORDNERNAME EINFÜGEN“ trägt man vor dem Absenden ein.
+ */
+export function versandVorlage(): EmailTemplate {
+  return {
+    id: 'mail-versand',
+    name: 'Versand',
+    anlass: 'uebergabe',
+    betreff: '[{{projekt.nummer}}] Unterlagen zur {{anliegen}} – {{projekt}}',
+    text: `{{anrede}}
+
+auf Ihrem SharePoint-Ordner {{sharepoint.eingang}} haben wir Ihnen die folgenden Unterlagen bereitgestellt und bitten um {{anliegen}}.
+
+Hier der Link zum Hochladen der Unterlagen nach Ihrer {{anliegen}}:
+{{sharepoint.ausgang}}
+
+Ordnername: ORDNERNAME EINFÜGEN
+
+{{versandliste}}`,
+  };
 }
 
 /**
@@ -515,6 +573,7 @@ export function seedData(): AppData {
     nachreichung: at(bezug, -33),
     zweiterDurchlauf: at(bezug, -30),
     abgeschlossen: at(bezug, -52),
+    versand: at(bezug, -16),
   };
 
   const project: Project = {
@@ -533,25 +592,30 @@ export function seedData(): AppData {
     },
   };
 
-  const kontakt = (c: Omit<Contact, 'id' | 'projectId' | 'eigen' | 'notiz'> & { notiz?: string; eigen?: boolean }): Contact => ({
+  const kontakt = (
+    c: Omit<Contact, 'id' | 'projectId' | 'eigen' | 'notiz' | 'sharepointEingang' | 'sharepointAusgang'> &
+      Partial<Pick<Contact, 'notiz' | 'eigen' | 'sharepointEingang' | 'sharepointAusgang'>>,
+  ): Contact => ({
     id: zufallsId('con'),
     projectId,
     notiz: '',
     eigen: false,
+    sharepointEingang: '',
+    sharepointAusgang: '',
     ...c,
   });
   const jeGewerk = (kuerzel: string) => ['KIB', 'LST', 'OLA', 'VA'].map((g) => ({ roleId: rolle(kuerzel, g), gewerk: g }));
   const contacts: Contact[] = [
     // Eigener Eintrag: die angemeldete Person führt das Planlaufmanagement
     kontakt({ anrede: '', vorname: 'Max', nachname: 'Mustermann', firma: EIGENE_ROLLE, email: '', telefon: '', anschrift: '', zuordnungen: [{ roleId: rolle('PLM'), gewerk: null }], eigen: true }),
-    kontakt({ anrede: 'Frau', vorname: 'Sabine', nachname: 'Ortmann', firma: 'Projektleitung', email: 's.ortmann@example.de', telefon: '+49 40 123456-01', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle('PL'), gewerk: null }] }),
+    kontakt({ anrede: 'Frau', vorname: 'Sabine', nachname: 'Ortmann', firma: 'Projektleitung', email: 's.ortmann@example.de', telefon: '+49 40 123456-01', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle('PL'), gewerk: null }], sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Ausgang' }),
     kontakt({ anrede: 'Frau', vorname: 'Katrin', nachname: 'Berger', firma: 'Ingenieurbüro Berger', email: 'k.berger@example.de', telefon: '+49 40 998877-12', anschrift: 'Billstraße 88\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachplanung Ingenieurbau' }),
     kontakt({ anrede: 'Herr', vorname: 'Ali', nachname: 'Sarikaya', firma: 'LST Nord Ingenieure', email: 'sarikaya@example.de', telefon: '+49 40 998877-30', anschrift: 'Billstraße 90\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'LST'), gewerk: 'LST' }], notiz: 'Fachplanung Leit- und Sicherungstechnik' }),
     kontakt({ anrede: 'Herr', vorname: 'Piet', nachname: 'Osterkamp', firma: 'Osterkamp Fahrleitungsbau', email: 'p.osterkamp@example.de', telefon: '+49 4101 7788-0', anschrift: 'Industriering 9\n25436 Tornesch', zuordnungen: [{ roleId: rolle('FP', 'OLA'), gewerk: 'OLA' }], notiz: 'Fachplanung Oberleitung' }),
-    kontakt({ anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'KIB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags' }),
-    kontakt({ anrede: 'Frau', vorname: 'Marlene', nachname: 'Hoffstedt', firma: 'Bauvorlageberechtigung Nord', email: 'm.hoffstedt@example.de', telefon: '+49 40 224466-4', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'LST'), gewerk: 'LST' }, { roleId: rolle('BVB', 'OLA'), gewerk: 'OLA' }] }),
-    kontakt({ anrede: 'Herr', vorname: 'Dietmar', nachname: 'Krause', firma: 'Prüfstelle Krause', email: 'd.krause@example.de', telefon: '+49 4131 309-0', anschrift: 'Am Ochsenmarkt 1\n21335 Lüneburg', zuordnungen: [{ roleId: rolle('PSV', 'LST'), gewerk: 'LST' }], notiz: 'Fachtechnische Prüfung LST' }),
-    kontakt({ anrede: 'Frau', vorname: 'Yuki', nachname: 'Tanaka', firma: 'Prüfstelle Tanaka', email: 'y.tanaka@example.de', telefon: '+49 40 556677-1', anschrift: 'Alsterdorfer Damm 4\n22297 Hamburg', zuordnungen: [{ roleId: rolle('PSV', 'KIB'), gewerk: 'KIB' }, { roleId: rolle('PrSt', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachtechnische Prüfung und Prüfstatik KIB' }),
+    kontakt({ anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'KIB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Frau', vorname: 'Marlene', nachname: 'Hoffstedt', firma: 'Bauvorlageberechtigung Nord', email: 'm.hoffstedt@example.de', telefon: '+49 40 224466-4', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'LST'), gewerk: 'LST' }, { roleId: rolle('BVB', 'OLA'), gewerk: 'OLA' }], sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Herr', vorname: 'Dietmar', nachname: 'Krause', firma: 'Prüfstelle Krause', email: 'd.krause@example.de', telefon: '+49 4131 309-0', anschrift: 'Am Ochsenmarkt 1\n21335 Lüneburg', zuordnungen: [{ roleId: rolle('PSV', 'LST'), gewerk: 'LST' }], notiz: 'Fachtechnische Prüfung LST', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Frau', vorname: 'Yuki', nachname: 'Tanaka', firma: 'Prüfstelle Tanaka', email: 'y.tanaka@example.de', telefon: '+49 40 556677-1', anschrift: 'Alsterdorfer Damm 4\n22297 Hamburg', zuordnungen: [{ roleId: rolle('PSV', 'KIB'), gewerk: 'KIB' }, { roleId: rolle('PrSt', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachtechnische Prüfung und Prüfstatik KIB', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Ausgang' }),
     kontakt({ anrede: 'Herr', vorname: 'Tobias', nachname: 'Reinhold', firma: 'Prüfstelle Erdung', email: 't.reinhold@example.de', telefon: '+49 40 445566-8', anschrift: 'Wandsbeker Chaussee 3\n22089 Hamburg', zuordnungen: [{ roleId: rolle('ErP', 'OLA'), gewerk: 'OLA' }], notiz: 'Erdungsprüfung' }),
     kontakt({ anrede: 'Herr', vorname: 'Sven', nachname: 'Dallmann', firma: 'Dallmann Bau GmbH', email: 's.dallmann@example.de', telefon: '+49 4101 5566-0', anschrift: 'Gewerbepark 4\n25469 Halstenbek', zuordnungen: jeGewerk('AN') }),
     kontakt({ anrede: 'Frau', vorname: 'Heike', nachname: 'Petersen', firma: 'Bauüberwachung Nord', email: 'h.petersen@example.de', telefon: '+49 40 334455-2', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: jeGewerk('BÜW') }),
@@ -570,6 +634,9 @@ export function seedData(): AppData {
   const signallageplan = plan('NK-LST-SP-102', 'Signallageplan Bereich Nord', { paketId: paket.id, index: 'B', gewerk: 'LST', eingangSoll: at(start.nachreichung, 10) });
   const fahrleitung = plan('NK-OLA-FL-210', 'Fahrleitungsplan km 12,4 – 13,8', { gewerk: 'OLA', eingangSoll: at(start.zweiterDurchlauf, 10) });
   const widerlager = plan('NK-KIB-EÜ-002', 'Widerlager Nord', { paketId: paket.id, index: 'A', eingangSoll: at(start.abgeschlossen, 10) });
+  // Zwei Pläne warten auf den Versand an die BVB (Versandmail „Versand“)
+  const lager = plan('NK-KIB-EÜ-003', 'Lager und Fahrbahnübergänge', { paketId: paket.id, index: 'A', eingangSoll: at(start.versand, 10) });
+  const entwaesserung = plan('NK-KIB-EÜ-004', 'Entwässerung Überbau', { paketId: paket.id, index: 'A', eingangSoll: at(start.versand, 10) });
   const verkehrsanlagen = eintrag({ kind: 'verzeichnis', parentId: null, paketId: null, nummer: 'NK-VA-PV-001', titel: 'Planverzeichnis Verkehrsanlagen', index: '02', gewerk: 'VA', planungsphase: 'Entwurfsplanung', eingangSoll: at(heute, 22), datum: null, bemerkung: 'Eingang angekündigt' });
 
   const data: AppData = {
@@ -582,7 +649,7 @@ export function seedData(): AppData {
     projects: [project],
     roles: rollen,
     contacts,
-    documents: [paket, verzeichnis, grundriss, schnitt, signallageplan, fahrleitung, widerlager, verkehrsanlagen],
+    documents: [paket, verzeichnis, grundriss, schnitt, signallageplan, fahrleitung, widerlager, lager, entwaesserung, verkehrsanlagen],
     templates: STANDARD_TEMPLATES,
     runs: [],
     geloescht: [],
@@ -747,6 +814,10 @@ export function seedData(): AppData {
       { name: 'Postversand an Bau AN' },
       { name: 'Postversand an BÜW' },
     ]),
+    // Formal geprüft – der Versand an die BVB zur Freigabe steht an
+    ...[lager, entwaesserung].map((doc) =>
+      laufAus(ohne, doc, start.versand, [{ name: 'Eingang PLM' }, { name: 'Formale Prüfung', antwort: 'Ja' }]),
+    ),
     // Planläufe starten immer mit dem Eintrag – dieser wartet noch auf den Eingang
     laufAus(ohne, verkehrsanlagen, heute, []),
   ];

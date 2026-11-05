@@ -649,6 +649,7 @@ export function stepsAusTemplate(
     nachweis: s.nachweis,
     mailFrage: s.mailFrage,
     mailVorlageId: s.mailVorlageId,
+    versandAnliegen: s.versandAnliegen ?? null,
     parallel: s.parallel ?? null,
   })));
 }
@@ -1105,6 +1106,8 @@ export function eigeneKontakteSichern(daten: AppData, neueId: (prefix: string) =
           email: '',
           telefon: '',
           anschrift: '',
+          sharepointEingang: '',
+          sharepointAusgang: '',
           zuordnungen: rolle ? [{ roleId: rolle.id, gewerk: null }] : [],
           notiz: '',
           eigen: true,

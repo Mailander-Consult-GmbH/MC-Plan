@@ -9,7 +9,15 @@
  */
 import { useState } from 'react';
 import { EMAIL_ANLASS_LABEL, type ID, type PlanRun, type Project, type RunStep } from '../domain/types';
-import { mailLinks, mailVorbereiten, sammelMailVorbereiten, vorlageVorschlagen } from '../domain/email';
+import {
+  fehlendeAngaben,
+  mailHtml,
+  mailLinks,
+  mailVorbereiten,
+  sammelMailVorbereiten,
+  vorlageVorschlagen,
+} from '../domain/email';
+import { formatiertKopieren } from '../../../shared/zwischenablage';
 import { aktuelleSchritte, ampelFuerSchritt, kontaktName } from '../domain/engine';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -44,7 +52,7 @@ export function EmailDialog({
   stepId?: ID;
   /** Mehrere Schritte derselben Person: eine Sammel-E-Mail (Platzhalter {{liste}}). */
   posten?: MailPosten[];
-  /** Im Workflow hinterlegte bzw. vorgewählte Vorlage; ohne Angabe wird nach Anlass gewählt. */
+  /** Im Workflow hinterlegte bzw. vorgewählte Vorlage (etwa „Versand“); ohne Angabe wird nach Anlass gewählt. */
   vorlageId?: string | null;
   onClose: () => void;
   /** Nach dem Vermerken der vorbereiteten E-Mail. */
@@ -151,6 +159,18 @@ export function EmailDialog({
     }
   };
 
+  /** Nur der Text, formatiert (Links, ORDNERNAME EINFÜGEN rot und fett) – zum Einfügen in Outlook. */
+  const kopierenFormatiert = async () => {
+    try {
+      await formatiertKopieren(mailHtml(text), text);
+      merkeVersand('kopie');
+      toast('Text formatiert kopiert – in Outlook in die neue E-Mail einfügen.');
+    } catch {
+      toast('Kopieren nicht möglich – bitte Text manuell markieren.');
+    }
+  };
+  const luecken = fehlendeAngaben(text);
+
   if (!erster) {
     return (
       <Modal titel="E-Mail vorbereiten" onClose={onClose}>
@@ -194,6 +214,14 @@ export function EmailDialog({
           <button
             type="button"
             className="btn btn-outline"
+            onClick={kopierenFormatiert}
+            title="Nur den Text mit Formatierung kopieren (Links, ORDNERNAME EINFÜGEN rot und fett)"
+          >
+            <Icon name="kopieren" size={14} /> Kopieren (formatiert)
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
             onClick={imWeb}
             disabled={!an || zuLang}
             title={zuLang ? 'Zu lang für die Übergabe – bitte „Kopieren“ verwenden' : undefined}
@@ -217,6 +245,12 @@ export function EmailDialog({
           <Callout ton="warn" icon="!">
             Für den Schritt ist keine Person unter „Funktion“ hinterlegt – bitte Empfänger von Hand
             eintragen.
+          </Callout>
+        ) : null}
+        {luecken.length > 0 ? (
+          <Callout ton="warn" icon="!">
+            Im Text fehlen Angaben: {luecken.join(', ')}. Bitte bei der Person unter „Funktionen“ ergänzen bzw. im
+            Text von Hand eintragen.
           </Callout>
         ) : null}
         {zuLang ? (

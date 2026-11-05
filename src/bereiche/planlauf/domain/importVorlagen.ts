@@ -100,6 +100,8 @@ export const ROLLEN_KOPFZEILE = [
   'PLZ',
   'Ort',
   'Notiz',
+  'SharePoint Eingang',
+  'SharePoint Ausgang',
 ];
 
 export const ROLLEN_SPALTEN: Record<string, string[]> = {
@@ -117,13 +119,15 @@ export const ROLLEN_SPALTEN: Record<string, string[]> = {
   plz: ['PLZ', 'Postleitzahl'],
   ort: ['Ort'],
   notiz: ['Notiz', 'Bemerkung'],
+  sharepointEingang: ['SharePoint Eingang', 'SharePoint-Link Eingang', 'Link Eingang'],
+  sharepointAusgang: ['SharePoint Ausgang', 'SharePoint-Link Ausgang', 'Link Ausgang'],
 };
 
 export const ROLLEN_BEISPIELE: string[][] = [
-  ['KIB', 'Fachplaner', 'FP', 'Frau', 'Katrin', 'Berger', 'Ingenieurbüro Berger', '+49 40 998877-12', 'k.berger@example.de', 'Billstraße', '88', '20539', 'Hamburg', 'Fachplanung Ingenieurbau'],
-  ['LST', 'Fachtechnischer Prüfer', 'PSV', 'Herr', 'Dietmar', 'Krause', 'Prüfstelle Krause', '+49 4131 309-0', 'd.krause@example.de', 'Am Ochsenmarkt', '1', '21335', 'Lüneburg', ''],
-  ['Übergreifend', 'Projektleitung', 'PL', 'Frau', 'Sabine', 'Ortmann', 'Projektleitung', '+49 40 123456-01', 's.ortmann@example.de', 'Hafenstraße', '12', '20359', 'Hamburg', ''],
-  ['BÜ', 'Fachplaner', 'FP', 'Herr', 'Jens', 'Harms', 'Harms Planung', '+49 40 556677-3', 'j.harms@example.de', 'Deichweg', '4', '21079', 'Hamburg', 'Gewerk und Funktion werden beim Import angelegt'],
+  ['KIB', 'Fachplaner', 'FP', 'Frau', 'Katrin', 'Berger', 'Ingenieurbüro Berger', '+49 40 998877-12', 'k.berger@example.de', 'Billstraße', '88', '20539', 'Hamburg', 'Fachplanung Ingenieurbau', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Eingang', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Ausgang'],
+  ['LST', 'Fachtechnischer Prüfer', 'PSV', 'Herr', 'Dietmar', 'Krause', 'Prüfstelle Krause', '+49 4131 309-0', 'd.krause@example.de', 'Am Ochsenmarkt', '1', '21335', 'Lüneburg', '', '', ''],
+  ['Übergreifend', 'Projektleitung', 'PL', 'Frau', 'Sabine', 'Ortmann', 'Projektleitung', '+49 40 123456-01', 's.ortmann@example.de', 'Hafenstraße', '12', '20359', 'Hamburg', '', '', ''],
+  ['BÜ', 'Fachplaner', 'FP', 'Herr', 'Jens', 'Harms', 'Harms Planung', '+49 40 556677-3', 'j.harms@example.de', 'Deichweg', '4', '21079', 'Hamburg', 'Gewerk und Funktion werden beim Import angelegt', '', ''],
 ];
 
 export const ROLLEN_HINWEISE: [string, string][] = [
@@ -132,6 +136,7 @@ export const ROLLEN_HINWEISE: [string, string][] = [
   ['Kürzel', 'nur für neu angelegte Funktionen; leer = aus der Bezeichnung gebildet'],
   ['Name', 'Nachname der Person – einzige Pflichtangabe der Besetzung'],
   ['Straße · Nr. · PLZ · Ort', 'werden zur Anschrift zusammengefasst'],
+  ['SharePoint Eingang · Ausgang', 'Links zu den SharePoint-Ordnern der Person für die Versandmail; leere Zellen lassen vorhandene Links unverändert'],
 ];
 
 export function rollenVorlageLaden(): void {

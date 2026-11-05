@@ -4,8 +4,8 @@
  * Die Liste hat eine Mehrfachauswahl (Menge von Zeilenschlüsseln wie im
  * Export: Lauf-ID bzw. ID eines mitlaufenden Plans). Sie wird bei jedem
  * Filterwechsel auf die angezeigten Einträge beschnitten. Solange etwas gewählt
- * ist, bietet eine Aktionsleiste Sammelaktionen an; vor „Schritte erledigen …“
- * und „Erinnern …“ wird die Auswahl in Planläufe aufgelöst (ohne Dubletten,
+ * ist, bietet eine Aktionsleiste Sammelaktionen an; vor „Schritte erledigen …“,
+ * „Erinnern …“ und „Versandmail …“ wird die Auswahl in Planläufe aufgelöst (ohne Dubletten,
  * gewählte mitlaufende Pläne wirken auf den Lauf ihres Verzeichnisses).
  */
 import { useState } from 'react';
@@ -63,7 +63,7 @@ export function Uebersicht({
   const [auswahl, setAuswahl] = useState<Set<ID>>(() => new Set());
   /** Offene Sammelaktion – die Läufe werden beim Öffnen festgehalten. */
   const [aktion, setAktion] = useState<
-    | { art: 'erledigen' | 'erinnern'; runIds: ID[]; hinweise: string[] }
+    | { art: 'erledigen' | 'erinnern' | 'versand'; runIds: ID[]; hinweise: string[] }
     | { art: 'export' }
     | null
   >(null);
@@ -142,7 +142,7 @@ export function Uebersicht({
     });
   const aufgeloest = auswahlAufloesen(data.documents, gefiltert, gewaehlt);
   const laufendGewaehlt = aufgeloest.laeufe.filter((r) => r.status === 'laufend');
-  const sammelAktion = (art: 'erledigen' | 'erinnern') =>
+  const sammelAktion = (art: 'erledigen' | 'erinnern' | 'versand') =>
     setAktion({
       art,
       runIds: laufendGewaehlt.map((r) => r.id),
@@ -235,6 +235,19 @@ export function Uebersicht({
             >
               <Icon name="mail" size={13} /> Erinnern …
             </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              disabled={laufendGewaehlt.length === 0}
+              title={
+                laufendGewaehlt.length === 0
+                  ? 'Keiner der gewählten Planläufe läuft noch'
+                  : 'Versandmail je Empfänger für die Pläne am Versandschritt'
+              }
+              onClick={() => sammelAktion('versand')}
+            >
+              <Icon name="mail" size={13} /> Versandmail …
+            </button>
             <button type="button" className="btn btn-sm btn-outline" onClick={() => setAktion({ art: 'export' })}>
               <Icon name="export" size={13} /> Exportieren …
             </button>
@@ -311,8 +324,13 @@ export function Uebersicht({
       {aktion?.art === 'erledigen' ? (
         <SammelErledigen runIds={aktion.runIds} hinweise={aktion.hinweise} onClose={() => setAktion(null)} />
       ) : null}
-      {aktion?.art === 'erinnern' ? (
-        <SammelErinnern runIds={aktion.runIds} hinweise={aktion.hinweise} onClose={() => setAktion(null)} />
+      {aktion?.art === 'erinnern' || aktion?.art === 'versand' ? (
+        <SammelErinnern
+          art={aktion.art}
+          runIds={aktion.runIds}
+          hinweise={aktion.hinweise}
+          onClose={() => setAktion(null)}
+        />
       ) : null}
     </div>
   );

@@ -4,7 +4,20 @@
  */
 import { formatDate, relativeLabel, today } from '../../../shared/dates';
 import { tageText, verzugBisHeute, zeitrahmen } from './nachweis';
-import type { AppData, Contact, EmailTemplate, PlanDocument, PlanRun, Project, RunStep } from './types';
+import { aktuelleSchritte, verfolgen } from './ablauf';
+import { mitlaufendePlaene, paketVon } from './uebersicht';
+import {
+  VERSAND_ANLIEGEN_LABEL,
+  type AppData,
+  type Contact,
+  type EmailTemplate,
+  type ID,
+  type PlanDocument,
+  type PlanRun,
+  type Project,
+  type RunStep,
+  type VersandAnliegen,
+} from './types';
 
 export interface Platzhalter {
   schluessel: string;
@@ -32,6 +45,10 @@ export const PLATZHALTER: Platzhalter[] = [
   { schluessel: 'verzug.zahl', beschreibung: 'Verzug als Zahl (Arbeits- bzw. Kalendertage nach Projekt)' },
   { schluessel: 'liste', beschreibung: 'Sammel-E-Mail: Liste der Pläne mit Schritt und Soll' },
   { schluessel: 'anzahl', beschreibung: 'Sammel-E-Mail: Anzahl der Pläne in der Liste' },
+  { schluessel: 'anliegen', beschreibung: 'Versandmail: Anliegen des vorangehenden Versandschritts, z.B. „Freigabe“' },
+  { schluessel: 'sharepoint.eingang', beschreibung: 'Versandmail: SharePoint-Link Eingang des Empfängers' },
+  { schluessel: 'sharepoint.ausgang', beschreibung: 'Versandmail: SharePoint-Link Ausgang des Empfängers' },
+  { schluessel: 'versandliste', beschreibung: 'Versandmail: Unterlagen nach Planpaketen („Paket:“ und darunter „* Codierung Titel“)' },
   { schluessel: 'heute', beschreibung: 'Heutiges Datum' },
   { schluessel: 'absender', beschreibung: 'Absendername aus den Projekteinstellungen' },
 ];
@@ -71,6 +88,10 @@ export function werteFuerKontext(ctx: MailKontext): Record<string, string> {
     'verzug.zahl': String(verzug),
     liste: listenZeile({ step, doc }, rahmen.arbeitstage, verzug),
     anzahl: '1',
+    anliegen: anliegenText(versandSchrittVor(run, step.id)?.versandAnliegen ?? null),
+    'sharepoint.eingang': contact?.sharepointEingang?.trim() || FEHLT_EINGANG,
+    'sharepoint.ausgang': contact?.sharepointAusgang?.trim() || FEHLT_AUSGANG,
+    versandliste: versandListe([run.documentId], data.documents),
     heute: formatDate(today()),
     absender: project.settings.absenderName,
   };
@@ -165,8 +186,8 @@ export function sammelListe(posten: SammelPosten[], data: Pick<AppData, 'documen
 /**
  * Sammel-E-Mail an eine Person über alle ihre anstehenden Schritte. Einzelwerte
  * (Projekt, Plan, Schritt, Soll …) stammen vom dringlichsten Posten; {{liste}}
- * nennt alle. Enthält die Vorlage keinen Platzhalter {{liste}}, wird die Liste
- * angehängt. `zuLang`: die mailto-Verknüpfung überschreitet MAILTO_GRENZE.
+ * nennt alle, {{versandliste}} ebenso nach Planpaketen. Enthält die Vorlage
+ * keinen der beiden Platzhalter, wird {{liste}} angehängt. `zuLang`: die mailto-Verknüpfung überschreitet MAILTO_GRENZE.
  */
 export function sammelMailVorbereiten(
   template: EmailTemplate,
@@ -186,9 +207,16 @@ export function sammelMailVorbereiten(
     ...(projekte.size > 1 ? { projekt: 'mehrere Projekte', 'projekt.nummer': '' } : {}),
     liste: sammelListe(ctx.posten, ctx.data),
     anzahl: String(ctx.posten.length),
+    versandliste: versandListe(
+      ctx.posten.map((p) => p.run.documentId),
+      ctx.data.documents,
+    ),
   };
   const betreff = fuelleVorlage(template.betreff, alle);
-  const vorlageText = /\{\{\s*liste\s*\}\}/.test(template.text) ? template.text : `${template.text}\n\n{{liste}}`;
+  // Die Versandmail bringt mit {{versandliste}} ihre eigene Liste mit
+  const vorlageText = /\{\{\s*(?:liste|versandliste)\s*\}\}/.test(template.text)
+    ? template.text
+    : `${template.text}\n\n{{liste}}`;
   const text = fuelleVorlage(vorlageText, alle);
   const an = ctx.contact?.email ?? '';
   return { an, betreff, text, ...mailLinks(an, betreff, text) };
@@ -201,4 +229,169 @@ export function vorlageVorschlagen(
 ): EmailTemplate | undefined {
   const anlass = ueberfaellig ? 'ueberfaellig' : 'erinnerung';
   return templates.find((t) => t.anlass === anlass) ?? templates[0];
+}
+
+/* ------------------------------------------------------------------ */
+/* Versandmail                                                         */
+/* ------------------------------------------------------------------ */
+
+/** Steht wörtlich in der Vorlage „Versand“; vor dem Absenden von Hand ersetzen. */
+export const ORDNERNAME_PLATZHALTER = 'ORDNERNAME EINFÜGEN';
+export const FEHLT_EINGANG = '[SharePoint-Link Eingang fehlt]';
+export const FEHLT_AUSGANG = '[SharePoint-Link Ausgang fehlt]';
+export const FEHLT_ANLIEGEN = '[Anliegen fehlt]';
+
+/** Lücken im Text („[… fehlt]“) – der Dialog weist darauf hin. */
+export function fehlendeAngaben(text: string): string[] {
+  return [...new Set(text.match(/\[[^\]\n]+ fehlt\]/g) ?? [])];
+}
+
+function anliegenText(anliegen: VersandAnliegen | null): string {
+  return anliegen ? VERSAND_ANLIEGEN_LABEL[anliegen] : FEHLT_ANLIEGEN;
+}
+
+/**
+ * Der Versandschritt, nach dem ein Schritt ansteht: ein Vorgänger im Verlauf
+ * (siehe Verlauf.vorgaenger) mit Anliegen. Sein Anliegen steht in der Mail an
+ * die für den Schritt zuständige Person.
+ */
+export function versandSchrittVor(run: Pick<PlanRun, 'steps'>, stepId: ID): RunStep | undefined {
+  const verlauf = verfolgen(run.steps);
+  for (const id of verlauf.vorgaenger.get(stepId) ?? []) {
+    const s = run.steps.find((x) => x.id === id);
+    if (s?.versandAnliegen) return s;
+  }
+  return undefined;
+}
+
+/** Ein Plan in einer Sammel-Versandmail. */
+export interface VersandPosten {
+  run: PlanRun;
+  /** Schritt der Empfängerin bzw. des Empfängers – nach dem Versandschritt. */
+  step: RunStep;
+  /** Der anstehende Schritt, an dem die vorbereitete Mail vermerkt wird. */
+  vermerk: RunStep;
+  anliegen: VersandAnliegen;
+}
+
+/**
+ * Versandmails eines laufenden Planlaufs: Steht ein Versandschritt an (etwa
+ * „PLM an BVB zur Freigabe“), gilt die Mail den Zuständigen der Schritte
+ * danach (bei einem Block allen Zweiganfängen); steht ein Schritt direkt nach
+ * einem erledigten Versandschritt an, gilt sie dessen Zuständigen. Vermerkt
+ * wird jeweils am anstehenden Schritt.
+ */
+export function versandPosten(run: PlanRun): VersandPosten[] {
+  if (run.status !== 'laufend') return [];
+  const verlauf = verfolgen(run.steps);
+  const ergebnis: VersandPosten[] = [];
+  for (const anstehend of aktuelleSchritte(run)) {
+    if (anstehend.versandAnliegen) {
+      for (const [id, vor] of verlauf.vorgaenger) {
+        const step = run.steps.find((s) => s.id === id);
+        if (step && vor.includes(anstehend.id)) {
+          ergebnis.push({ run, step, vermerk: anstehend, anliegen: anstehend.versandAnliegen });
+        }
+      }
+      continue;
+    }
+    const versand = versandSchrittVor(run, anstehend.id);
+    if (versand?.versandAnliegen) ergebnis.push({ run, step: anstehend, vermerk: anstehend, anliegen: versand.versandAnliegen });
+  }
+  return ergebnis;
+}
+
+const planName = (d: Pick<PlanDocument, 'nummer' | 'titel'>) => [d.nummer.trim(), d.titel.trim()].filter(Boolean).join(' ');
+const nachNummer = (a: PlanDocument, b: PlanDocument) => a.nummer.localeCompare(b.nummer, 'de', { numeric: true });
+
+/**
+ * Liste der Unterlagen für die Versandmail ({{versandliste}}): je Planpaket
+ * „<Paket>:“ und darunter „* <Codierung> <Titel>“, Planverzeichnisse mit ihren
+ * mitlaufenden Plänen eingerückt („  – …“). Ohne Paket: ein einzelner Plan
+ * steht mit seinem Namen als Überschrift, sonst gesammelt unter „Ohne
+ * Planpaket:“. Gruppen durch eine Leerzeile getrennt.
+ */
+export function versandListe(documentIds: ID[], documents: PlanDocument[]): string {
+  const docs = [...new Set(documentIds)]
+    .map((id) => documents.find((d) => d.id === id))
+    .filter((d): d is PlanDocument => Boolean(d));
+  const gruppen = new Map<ID | null, PlanDocument[]>();
+  for (const d of docs) {
+    const paket = paketVon(documents, d);
+    gruppen.set(paket, [...(gruppen.get(paket) ?? []), d]);
+  }
+  const zeilen = (liste: PlanDocument[]) =>
+    [...liste].sort(nachNummer).flatMap((d) => [
+      `* ${planName(d)}`,
+      ...(d.kind === 'verzeichnis' ? mitlaufendePlaene(documents, d.id).sort(nachNummer).map((p) => `  – ${planName(p)}`) : []),
+    ]);
+  const pakete = [...gruppen.entries()]
+    .filter(([id]) => id !== null)
+    .map(([id, liste]) => {
+      const paket = documents.find((d) => d.id === id);
+      return { titel: paket ? planName(paket) : 'Planpaket', liste };
+    })
+    .sort((a, b) => a.titel.localeCompare(b.titel, 'de', { numeric: true }));
+  const bloecke = pakete.map((p) => [`${p.titel}:`, ...zeilen(p.liste)].join('\n'));
+  const ohne = gruppen.get(null) ?? [];
+  if (ohne.length === 1 && ohne[0].kind === 'plan') bloecke.push(planName(ohne[0]));
+  else if (ohne.length > 0) bloecke.push(['Ohne Planpaket:', ...zeilen(ohne)].join('\n'));
+  return bloecke.join('\n\n');
+}
+
+const htmlEscape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Eine Zeile als HTML: Links als Links, ORDNERNAME EINFÜGEN und fehlende Angaben rot und fett. */
+function zeileHtml(zeile: string): string {
+  return htmlEscape(zeile)
+    .replace(/https?:\/\/[^\s<>"]+/g, (url) => `<a href="${url}">${url}</a>`)
+    .replace(
+      new RegExp(`${ORDNERNAME_PLATZHALTER}|\\[[^\\]]+ fehlt\\]`, 'g'),
+      (t) => `<strong style="color:#c00000">${t}</strong>`,
+    );
+}
+
+/**
+ * Formatierte Fassung eines Mailtexts für „Kopieren (formatiert)“: Absätze,
+ * Zeilen mit „* “ als Aufzählung (eingerückte „– “-Zeilen darunter), die
+ * Zeile davor mit Doppelpunkt fett, Links anklickbar, „ORDNERNAME EINFÜGEN“
+ * rot und fett.
+ */
+export function mailHtml(text: string): string {
+  const absaetze = text.replace(/\r\n/g, '\n').split(/\n\s*\n/);
+  const teile = absaetze.map((absatz) => {
+    const zeilen = absatz.split('\n');
+    const html: string[] = [];
+    let i = 0;
+    while (i < zeilen.length) {
+      const z = zeilen[i];
+      if (/^\* /.test(z)) {
+        const punkte: string[] = [];
+        while (i < zeilen.length && /^\* /.test(zeilen[i])) {
+          let punkt = `<li>${zeileHtml(zeilen[i].slice(2))}`;
+          i++;
+          // Eingerückte „– “-Zeilen gehören zum Punkt davor
+          const unter: string[] = [];
+          while (i < zeilen.length && /^\s+– /.test(zeilen[i])) {
+            unter.push(`<li>${zeileHtml(zeilen[i].replace(/^\s+– /, ''))}</li>`);
+            i++;
+          }
+          if (unter.length > 0) punkt += `<ul style="margin:0;list-style-type:circle">${unter.join('')}</ul>`;
+          punkte.push(`${punkt}</li>`);
+        }
+        html.push(`<ul style="margin:0">${punkte.join('')}</ul>`);
+        continue;
+      }
+      const ueberschrift = /:\s*$/.test(z) && /^\* /.test(zeilen[i + 1] ?? '');
+      html.push(ueberschrift ? `<strong>${zeileHtml(z)}</strong>` : zeileHtml(z));
+      i++;
+    }
+    // Zeilen eines Absatzes mit <br>, Listen ohne zusätzlichen Umbruch
+    const inhalt = html.reduce(
+      (acc, h, k) => (k === 0 ? h : /^<ul/.test(h) || /^<ul/.test(html[k - 1]) ? acc + h : `${acc}<br>${h}`),
+      '',
+    );
+    return `<div style="margin:0 0 11pt 0">${inhalt}</div>`;
+  });
+  return `<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">${teile.join('')}</div>`;
 }
