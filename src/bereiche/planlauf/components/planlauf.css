@@ -1,7 +1,7 @@
 /*
  * Planlauf-Ansicht (pages/projekt/PlanlaufDetail.tsx) und ihre Bausteine:
  * Kennzahlen, parallele Blöcke, Durchläufe, Terminnachweis, Protokoll,
- * „Neu zuständig“ und der Erledigt-Haken. Klassen mit Präfix pl-, nur Design-Tokens.
+ * „E-Mail senden“ und der Erledigt-Haken. Klassen mit Präfix pl-, nur Design-Tokens.
  */
 
 /* Kennzahlen im Kopf: Fortschritt, Ende, Verzug */
@@ -170,7 +170,7 @@
 .pl-protokoll-zeile:last-child { border-bottom: none; }
 .pl-protokoll-zeit { font-size: 12px; color: var(--text-secondary); }
 
-/* Neu zuständig: eine Zeile je Person */
+/* E-Mail senden: eine Zeile je Person */
 .pl-zustaendig {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) minmax(150px, 220px) auto;

@@ -327,7 +327,7 @@ Planpaket*, Verzeichnis und Kopfzeile wählen ihren Inhalt, abgebrochene Läufe 
 Die Aktionsleiste bietet **Schritte erledigen …** (Ist-Datum, erledigt oder übersprungen, je Lauf
 die anstehenden Schritte; gleichnamige Schritte lassen sich gemeinsam beantworten und mit einer
 Nachweis-Nr. versehen; eine Vorschau nennt Rücksprünge und Abschlüsse, danach folgen das Ergebnis
-und auf Wunsch **Neu zuständig**), **Erinnern …** (eine E-Mail je Person mit all ihren Schritten),
+und auf Wunsch **E-Mail senden**), **Erinnern …** (eine E-Mail je Person mit all ihren Schritten),
 **Versandmail …** (siehe *Versandmail*),
 **Exportieren …** (Export mit der Auswahl vorgewählt) und **Auswahl aufheben**. Ein gewählter
 mitlaufender Plan wirkt auf den Planlauf seines Verzeichnisses.
@@ -488,7 +488,7 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   vor dem Eingang wird angezeigt und verlangt beim gesammelten Erledigen eine Bestätigung. Mit dem
   Abschluss hält der Schritt die zuständige Person fest. Die folgenden Schritte werden automatisch
   aktiv, der Lauf schließt sich, wenn alle Schritte des Verlaufs erledigt sind.
-* Nach jedem Erledigen oder Überspringen zeigt **Neu zuständig** die nun anstehenden Schritte je
+* Nach jedem Erledigen oder Überspringen zeigt **E-Mail senden** die nun anstehenden Schritte je
   Person mit Vorlage und E-Mail-Schaltfläche – sofern unter *Angemeldet als* die Nachfrage
   zugelassen ist. War der erledigte Schritt ein Versandschritt, ist die Vorlage **Versand** für die
   neu zuständige Person vorgewählt („Versand zur Freigabe“ usw.).
