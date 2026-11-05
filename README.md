@@ -420,7 +420,7 @@ einen mitgelieferten Workflow der Fassung 4 selbst geändert hatte, behält dies
 „… (eigene Fassung)“ – ein einmaliger Hinweis nennt sie. Laufende Planläufe behalten ihre Schritte;
 der Planlauf bietet dann **Auf aktuelle Fassung umstellen …**.
 
-Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen. Die eigene Rolle im
+Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen; Projektvarianten erscheinen nur im Reiter *Workflows* ihres Projekts. Die eigene Rolle im
 Projekt ist **Planlaufmanagement (PLM)**.
 
 ### Nachweise: Freigabe- und Prüfbericht-Nummern
