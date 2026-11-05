@@ -156,6 +156,10 @@ a:hover { text-decoration: underline; }
 .nav-item:hover { background: var(--bg-hover); }
 .nav-item.active { background: var(--accent); color: #fff; font-weight: 500; }
 .nav-item.active .nav-badge { background: rgba(255, 255, 255, 0.24); color: #fff; }
+/* Unterpunkte einer aufklappbaren Gruppe in der Menüleiste */
+.nav-item.unter { padding-left: 32px; }
+.nav-pfeil { display: inline-flex; flex: none; color: var(--text-tertiary); transition: transform 0.15s; }
+.nav-pfeil.offen { transform: rotate(90deg); }
 .nav-icon { width: 17px; text-align: center; flex: none; opacity: 0.9; }
 .nav-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-badge {

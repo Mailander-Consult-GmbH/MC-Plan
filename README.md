@@ -146,7 +146,7 @@ Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar blei
 ### Projekte
 Anlage und Pflege von Projekten (Projektnummer, Name, Status, Beschreibung). Beim Anlegen werden
 die projektübergreifenden Funktionen als Projektfunktionen übernommen. Die E-Mail-Texte gelten
-projektübergreifend und werden unter **Vorlagen** in der Seitenleiste gepflegt.
+projektübergreifend und werden unter **Einstellungen › Vorlagen** in der Seitenleiste gepflegt.
 
 ### Funktionen und Gewerke
 Im übergeordneten Reiter **Funktionen** werden die projektübergreifenden Funktionen gepflegt –
@@ -548,7 +548,7 @@ festlegen …** der Basisplan erneuern (Grund Pflicht). **Nachweis als Excel** g
 *Ausführungen*, *Verzug je Seite*, *Erinnerungen* und *Protokoll* aus.
 
 ### Terminrechner
-Der **Terminrechner** (Seitenleiste, unter *Vorlagen*) rechnet mit den Regeln des Planlaufs –
+Der **Terminrechner** (Seitenleiste, unter *Projekte*) rechnet mit den Regeln des Planlaufs –
 Fristen ab Eingang, parallele Zweige, Rücksprünge und Nachreichungen –, ohne einen Lauf anzulegen:
 **Rückwärts** vom Termin auf der Baustelle bis zur spätesten Übergabe des Planers (bzw. zum
 spätesten Start des Planlaufs, wenn der Workflow nicht mit *Eingang PLM* beginnt), **Vorwärts** vom
@@ -688,7 +688,7 @@ gespeicherten Text als **Sicherungskopie** im Browser ab (Schlüssel
 Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie – wie im Reiter
 *Planläufe* – der **Export**. Die
 **E-Mail-Texte** (Betreff und Text, mit Übersicht der Platzhalter) werden projektübergreifend unter
-**Vorlagen** in der Seitenleiste gepflegt; dort liegen auch die Excel-Vorlagen für die Importe.
+**Einstellungen › Vorlagen** in der Seitenleiste gepflegt; dort liegen auch die Excel-Vorlagen für die Importe.
 
 ## Baubetriebsplanung
 
