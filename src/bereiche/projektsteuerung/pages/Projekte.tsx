@@ -1,5 +1,16 @@
-/** Projektliste mit Anlage- und Bearbeitungsdialog. */
+/**
+ * Projektliste mit Anlage- und Bearbeitungsdialog. Darunter die im Bereich
+ * archivierten Projekte und – grau hinterlegt – Projekte aus anderen Bereichen
+ * zum Übernehmen (Projektregister, src/gemeinsam/).
+ */
 import { useState } from 'react';
+import {
+  ArchivAbschnitt,
+  BereichsMarken,
+  FremdeProjekte,
+  VerknuepfungsHinweis,
+  useArchivierte,
+} from '../../../gemeinsam/ProjektBereiche';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
@@ -27,6 +38,74 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const projekte = data.projekte.filter((p) =>
     [p.name, p.nummer, p.beschreibung].join(' ').toLowerCase().includes(suche.toLowerCase()),
   );
+  const archiviert = useArchivierte('projektsteuerung');
+  const aktive = projekte.filter((p) => !archiviert.has(p.id));
+  const archivierte = projekte.filter((p) => archiviert.has(p.id));
+
+  const karte = (p: Projekt) => {
+    const offen = offenePunkte(data, [p.id]);
+    const spaet = offen.filter((x) => x.ampel === 'ueberfaellig').length;
+    const beteiligte = data.beteiligte.filter((b) => b.projektId === p.id).length;
+    const protokolle = data.protokolle.filter((x) => x.projektId === p.id).length;
+    return (
+      <button
+        key={p.id}
+        type="button"
+        className="card card-click"
+        onClick={() => navigate({ view: 'projekt', projektId: p.id, tab: 'beteiligte' })}
+      >
+        <div className="card-pad">
+          <div className="row-between" style={{ alignItems: 'flex-start' }}>
+            <div style={{ minWidth: 0 }}>
+              <div className="mono tertiary">{p.nummer}</div>
+              <h2 style={{ marginTop: 2 }}>{p.name}</h2>
+              {p.beschreibung ? (
+                <div className="small muted truncate" style={{ marginTop: 3 }}>
+                  {p.beschreibung}
+                </div>
+              ) : null}
+            </div>
+            <span className="row" style={{ gap: 6 }}>
+              <Badge ton={STATUS_TON[p.status]}>{PROJEKT_STATUS_LABEL[p.status]}</Badge>
+              <span
+                role="button"
+                tabIndex={0}
+                className={`stern ${p.markiert ? 'aktiv' : ''}`}
+                title={p.markiert ? 'Markierung aufheben' : 'Projekt markieren – erscheint in Übersicht und Seitenleiste'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMarkiert(p.id);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleMarkiert(p.id);
+                  }
+                }}
+              >
+                {p.markiert ? '★' : '☆'}
+              </span>
+            </span>
+          </div>
+
+          <div className="row wrap" style={{ gap: 16, marginTop: 14 }}>
+            <span className="small muted">
+              <b>{beteiligte}</b> Beteiligte
+            </span>
+            <span className="small muted">
+              <b>{protokolle}</b> Protokolle
+            </span>
+            <span className="small muted">
+              <b>{offen.length}</b> offene Punkte
+            </span>
+            {spaet > 0 ? <Badge ton="red">{spaet} überfällig</Badge> : <Badge ton="green">im Plan</Badge>}
+          </div>
+          <BereichsMarken bereich="projektsteuerung" lokaleId={p.id} />
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div className="stack">
@@ -42,12 +121,12 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
         </button>
       </div>
 
-      {projekte.length === 0 ? (
+      {aktive.length === 0 ? (
         <Card>
           <EmptyState
             icon="projekt"
             titel="Kein Projekt gefunden"
-            text="Legen Sie ein Projekt an, um Projektbeteiligte und Protokolle zu führen."
+            text="Legen Sie ein Projekt an oder übernehmen Sie eines aus einem anderen Bereich, um Projektbeteiligte und Protokolle zu führen."
             action={
               <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
                 <Icon name="plus" size={14} /> Neues Projekt
@@ -56,72 +135,11 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
           />
         </Card>
       ) : (
-        <div className="grid grid-2">
-          {projekte.map((p) => {
-            const offen = offenePunkte(data, [p.id]);
-            const spaet = offen.filter((x) => x.ampel === 'ueberfaellig').length;
-            const beteiligte = data.beteiligte.filter((b) => b.projektId === p.id).length;
-            const protokolle = data.protokolle.filter((x) => x.projektId === p.id).length;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                className="card card-click"
-                onClick={() => navigate({ view: 'projekt', projektId: p.id, tab: 'beteiligte' })}
-              >
-                <div className="card-pad">
-                  <div className="row-between" style={{ alignItems: 'flex-start' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="mono tertiary">{p.nummer}</div>
-                      <h2 style={{ marginTop: 2 }}>{p.name}</h2>
-                      {p.beschreibung ? (
-                        <div className="small muted truncate" style={{ marginTop: 3 }}>
-                          {p.beschreibung}
-                        </div>
-                      ) : null}
-                    </div>
-                    <span className="row" style={{ gap: 6 }}>
-                      <Badge ton={STATUS_TON[p.status]}>{PROJEKT_STATUS_LABEL[p.status]}</Badge>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        className={`stern ${p.markiert ? 'aktiv' : ''}`}
-                        title={p.markiert ? 'Markierung aufheben' : 'Projekt markieren – erscheint in Übersicht und Seitenleiste'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleMarkiert(p.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            toggleMarkiert(p.id);
-                          }
-                        }}
-                      >
-                        {p.markiert ? '★' : '☆'}
-                      </span>
-                    </span>
-                  </div>
-
-                  <div className="row wrap" style={{ gap: 16, marginTop: 14 }}>
-                    <span className="small muted">
-                      <b>{beteiligte}</b> Beteiligte
-                    </span>
-                    <span className="small muted">
-                      <b>{protokolle}</b> Protokolle
-                    </span>
-                    <span className="small muted">
-                      <b>{offen.length}</b> offene Punkte
-                    </span>
-                    {spaet > 0 ? <Badge ton="red">{spaet} überfällig</Badge> : <Badge ton="green">im Plan</Badge>}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <div className="grid grid-2">{aktive.map(karte)}</div>
       )}
+
+      <ArchivAbschnitt anzahl={archivierte.length}>{archivierte.map(karte)}</ArchivAbschnitt>
+      <FremdeProjekte bereich="projektsteuerung" suche={suche} />
 
       {dialog ? <ProjektDialog onClose={() => setDialog(false)} navigate={navigate} /> : null}
     </div>
@@ -196,6 +214,7 @@ export function ProjektDialog({
           <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={3} />
         </Field>
       </div>
+      {projekt ? null : <VerknuepfungsHinweis bereich="projektsteuerung" nummer={form.nummer} />}
     </Modal>
   );
 }

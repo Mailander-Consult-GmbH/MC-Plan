@@ -6,6 +6,7 @@
  *   #/planlauf/…              Planlaufmanagement
  *   #/baubetrieb/…            Baubetriebsplanung
  *   #/projektsteuerung/…      Projektsteuerung
+ *   #/controlling/…           Controlling (mit PIN)
  */
 import { useEffect, useState } from 'react';
 import { BEREICH_IDS, type BereichId } from './bereiche';

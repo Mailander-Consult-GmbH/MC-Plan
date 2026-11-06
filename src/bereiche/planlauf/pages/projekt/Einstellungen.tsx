@@ -1,5 +1,6 @@
 /** Projekteinstellungen: Fristenrechnung, Erinnerungen und E-Mail-Vorlagen. */
 import { useState } from 'react';
+import { useLoeschHinweis } from '../../../../gemeinsam/ProjektBereiche';
 import { type Project } from '../../domain/types';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
@@ -22,6 +23,7 @@ export function Einstellungen({ project }: { project: Project }) {
   const [loeschen, setLoeschen] = useState(false);
   const [neuerFeiertag, setNeuerFeiertag] = useState('');
   const [exportOffen, setExportOffen] = useState(false);
+  const loeschHinweis = useLoeschHinweis('planlauf', project.id);
 
   const s = project.settings;
   const setSettings = (patch: Partial<typeof s>) => updateProject(project.id, { settings: { ...s, ...patch } });
@@ -153,7 +155,7 @@ export function Einstellungen({ project }: { project: Project }) {
       {loeschen ? (
         <ConfirmDialog
           titel="Projekt löschen?"
-          text={`„${project.name}“ wird mit allen Plänen, Kontakten und Planläufen gelöscht.`}
+          text={`„${project.name}“ wird mit allen Plänen, Kontakten und Planläufen gelöscht.${loeschHinweis}`}
           onConfirm={() => {
             deleteProject(project.id);
             toast('Projekt gelöscht.');

@@ -1,0 +1,106 @@
+/*
+ * Gestaltung des Controllings (Klassen mit Präfix ct-, nur Design-Tokens aus
+ * src/shared/global.css). Marken der Bereiche: src/gemeinsam/gemeinsam.css.
+ */
+
+/* PIN-Abfrage */
+.ct-pin {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--bg);
+}
+.ct-pin-karte {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 26px 22px;
+  text-align: center;
+}
+.ct-pin-logo { margin-bottom: 18px; max-width: 100%; }
+.ct-pin-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ct-pin-titel { margin: 14px 0 4px; font-size: 20px; }
+.ct-pin-text { margin: 0 0 16px; }
+.input.ct-pin-feld {
+  width: 150px;
+  text-align: center;
+  font-size: 22px;
+  letter-spacing: 0.5em;
+  padding-left: 0.5em;
+}
+.input.ct-pin-feld.falsch { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-soft); }
+.ct-pin-meldung { min-height: 20px; margin-top: 6px; font-size: 12.5px; color: var(--rot-text); }
+.btn.ct-pin-knopf { width: 150px; justify-content: center; margin-top: 4px; }
+.ct-pin-zurueck {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+  font-size: 12.5px;
+}
+
+/* Seitenleiste */
+.sidebar-brand.ct-marke { flex-direction: column; align-items: stretch; gap: 6px; }
+.ct-marke-text {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-align: left;
+  padding-left: 2px;
+}
+.btn.ct-sperren { width: 100%; justify-content: center; margin: 4px 0 8px; }
+
+/* Projektkarte */
+.ct-beschreibung { margin-top: 3px; }
+.ct-aktionen { gap: 2px; flex: none; }
+.ct-loeschen:hover { color: var(--rot-text); }
+
+/* Projektkarten etwas breiter als im Raster der Bereiche – je Bereich eine Zeile */
+.ct-raster { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); }
+
+.ct-bereiche {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--separator);
+}
+.ct-bereich {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 30px;
+}
+.ct-bereich-name { flex: 1 1 150px; font-size: 13px; }
+.ct-bereich-stand { flex: none; min-width: 96px; display: flex; }
+.ct-bereich-aktion { flex: none; margin-left: auto; display: flex; }
+
+.ct-beteiligte-umschalter { margin-top: 12px; font-size: 12.5px; }
+.ct-beteiligte-umschalter:disabled { cursor: default; color: var(--text-secondary); }
+.ct-personen {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.ct-personen li { padding: 8px 10px; border-radius: var(--radius-sm); background: var(--fill-gruppe); }
+

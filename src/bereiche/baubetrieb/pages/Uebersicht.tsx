@@ -23,11 +23,13 @@ import { ERSTE_PHASE_LABEL, RIL_LABEL, type Anmeldung, type Projekt, type Status
 import { anmeldungTitel, statusVon } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
+import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 
-/** Markierte Projekte; ohne Markierung alle. */
-export function sichtbareProjekte(projekte: Projekt[]): Projekt[] {
-  const markiert = projekte.filter((p) => p.markiert);
-  return markiert.length > 0 ? markiert : projekte;
+/** Markierte Projekte; ohne Markierung alle. Archivierte (Projektregister) bleiben außen vor. */
+export function sichtbareProjekte(projekte: Projekt[], archiviert: Set<string>): Projekt[] {
+  const aktiv = projekte.filter((p) => !archiviert.has(p.id));
+  const markiert = aktiv.filter((p) => p.markiert);
+  return markiert.length > 0 ? markiert : aktiv;
 }
 
 /** Zeile der anstehenden Terminfristen: eine Anmeldung oder eine ausstehende Erstanmeldung. */
@@ -41,7 +43,7 @@ const ANZAHL_TERMINE = 8;
 export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
   const { data } = useStore();
   const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusZiel } | null>(null);
-  const projekte = sichtbareProjekte(data.projekte);
+  const projekte = sichtbareProjekte(data.projekte, useArchivierte('baubetrieb'));
   const ids = projekte.map((p) => p.id);
   const anmeldungen = data.anmeldungen.filter((a) => ids.includes(a.projektId));
   const termine = offeneTermine(data, ids);

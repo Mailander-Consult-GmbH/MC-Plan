@@ -14,11 +14,13 @@ import { offenePunkte, type Punkt } from '../domain/punkte';
 import type { Projekt } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
+import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 
 /** Markierte Projekte; ohne Markierung alle. */
-export function sichtbareProjekte(projekte: Projekt[]): Projekt[] {
-  const markiert = projekte.filter((p) => p.markiert);
-  return markiert.length > 0 ? markiert : projekte;
+export function sichtbareProjekte(projekte: Projekt[], archiviert: Set<string>): Projekt[] {
+  const aktiv = projekte.filter((p) => !archiviert.has(p.id));
+  const markiert = aktiv.filter((p) => p.markiert);
+  return markiert.length > 0 ? markiert : aktiv;
 }
 
 /** So viele Punkte zeigt die Übersicht zunächst. */
@@ -37,7 +39,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
   const [filter, setFilter] = useState<Filter>('alle');
   const [alle, setAlle] = useState(false);
 
-  const projekte = sichtbareProjekte(data.projekte);
+  const projekte = sichtbareProjekte(data.projekte, useArchivierte('projektsteuerung'));
   const ids = projekte.map((p) => p.id);
   const offen = offenePunkte(data, ids);
   const ueberfaellig = offen.filter((p) => p.ampel === 'ueberfaellig');

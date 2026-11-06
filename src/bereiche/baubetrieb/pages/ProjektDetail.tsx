@@ -5,6 +5,7 @@
  * Angaben werden gekürzt und stehen vollständig im Tooltip.
  */
 import { useState } from 'react';
+import { ArchivHinweis, RegisterBeteiligte, useLoeschHinweis } from '../../../gemeinsam/ProjektBereiche';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
@@ -55,6 +56,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
   const [suche, setSuche] = useState('');
 
   const eigene = data.anmeldungen.filter((a) => a.projektId === projekt.id);
+  const loeschHinweis = useLoeschHinweis('baubetrieb', projekt.id);
   const erstanmeldung = erstanmeldungAusstehend(projekt, data);
   const oeffne = (a: Anmeldung) => navigate({ view: 'anmeldung', projektId: projekt.id, anmeldungId: a.id });
 
@@ -103,6 +105,8 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
           </button>
         </div>
       </div>
+
+      <ArchivHinweis bereich="baubetrieb" lokaleId={projekt.id} />
 
       <Card>
         <CardHeader
@@ -201,6 +205,8 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
         </Card>
       ) : null}
 
+      <RegisterBeteiligte bereich="baubetrieb" lokaleId={projekt.id} />
+
       {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
       {neu ? <AnmeldungDialog projekt={projekt} onClose={() => setNeu(false)} /> : null}
       {wechsel ? (
@@ -211,7 +217,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
           titel="Projekt löschen?"
           text={`„${projekt.name}“ wird samt ${eigene.length} ${
             eigene.length === 1 ? 'Anmeldung' : 'Anmeldungen'
-          } gelöscht. Das lässt sich nicht rückgängig machen.`}
+          } gelöscht. Das lässt sich nicht rückgängig machen.${loeschHinweis}`}
           onConfirm={() => {
             deleteProjekt(projekt.id);
             toast('Projekt gelöscht.');

@@ -1,4 +1,5 @@
 /** Projektarbeitsbereich mit Reitern für alle projektbezogenen Funktionen. */
+import { ArchivHinweis } from '../../../gemeinsam/ProjektBereiche';
 import type { Project } from '../domain/types';
 import type { ProjektTab, Route } from '../lib/router';
 import { RollenFunktionen } from './projekt/RollenFunktionen';
@@ -29,6 +30,7 @@ export function ProjektDetail({
 
   return (
     <div className="stack">
+      <ArchivHinweis bereich="planlauf" lokaleId={project.id} />
       <div className="tabs">
         {TABS.map((t) => (
           <button key={t.id} type="button" className={t.id === tab ? 'active' : ''} onClick={() => gotoTab(t.id)}>

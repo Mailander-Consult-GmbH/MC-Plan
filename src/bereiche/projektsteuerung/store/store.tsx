@@ -3,11 +3,16 @@
  * über `mutate()`; danach werden die Teilnehmenden der Protokolle mit der
  * Projektbeteiligtenliste abgeglichen (`teilnehmerNachziehen`) und der
  * Bestand lokal gespeichert. Der Aufbau entspricht dem des
- * Planlaufmanagements, ist davon aber vollständig getrennt.
+ * Planlaufmanagements, ist davon aber getrennt – gemeinsam ist nur das
+ * Projektregister (`src/gemeinsam/`): Projekte und Projektbeteiligte gleicht
+ * der Store nach jeder Änderung mit ihm ab (`useRegisterAbgleich`,
+ * domain/register.ts).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
 import { folgeprotokoll, naechsteNr, teilnehmerNachziehen } from '../domain/protokoll';
+import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { seedDaten } from '../domain/seed';
 import {
   newId,
@@ -77,8 +82,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   /** Jede Änderung läuft hierüber – die Funktion muss rein sein. */
   const mutate = useCallback((fn: (d: ProjektsteuerungDaten) => ProjektsteuerungDaten) => {
-    setData((alt) => teilnehmerNachziehen(fn(alt)));
+    setData((alt) => {
+      const neu = fn(alt);
+      return neu === alt ? alt : teilnehmerNachziehen(neu);
+    });
   }, []);
+
+  // Projekte und Beteiligte mit dem Projektregister abgleichen
+  const { ersetzt } = useRegisterAbgleich({
+    bereich: 'projektsteuerung',
+    daten: data,
+    aktiv: true,
+    sicht: sichtFuerRegister,
+    anwenden: (plan) => mutate((d) => registerPlanAnwenden(d, plan)),
+  });
 
   const protokollAendern = useCallback(
     (id: ID, fn: (p: Protokoll) => Protokoll) =>
@@ -219,10 +236,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }));
       },
 
-      ersetzeDaten: (d) => mutate(() => d),
-      zuruecksetzen: () => mutate(() => seedDaten()),
+      ersetzeDaten: (d) => {
+        ersetzt();
+        mutate(() => d);
+      },
+      zuruecksetzen: () => {
+        ersetzt();
+        mutate(() => seedDaten());
+      },
     }),
-    [data, mutate, protokollAendern],
+    [data, mutate, protokollAendern, ersetzt],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -14,18 +14,23 @@ import { Card, CardHeader, EmptyState, Progress, Stat } from '../../../shared/ui
 import { EmailDialog } from '../components/EmailDialog';
 import { Icon } from '../../../shared/icons';
 import { ErledigtButton, useSchrittStatus } from '../components/SchrittStatus';
+import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 
-/** Markierte Projekte; ohne Markierung werden alle angezeigt. */
-export function sichtbareProjekte(projects: Project[]): Project[] {
-  const markiert = projects.filter((p) => p.markiert);
-  return markiert.length > 0 ? markiert : projects;
+/**
+ * Markierte Projekte; ohne Markierung werden alle angezeigt. Archivierte
+ * Projekte (Projektregister, archiviert im Controlling) bleiben außen vor.
+ */
+export function sichtbareProjekte(projects: Project[], archiviert: Set<string>): Project[] {
+  const aktiv = projects.filter((p) => !archiviert.has(p.id));
+  const markiert = aktiv.filter((p) => p.markiert);
+  return markiert.length > 0 ? markiert : aktiv;
 }
 
 export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
   const { data } = useStore();
   const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const [mail, setMail] = useState<{ project: Project; run: PlanRun; step: RunStep } | null>(null);
-  const projekte = sichtbareProjekte(data.projects);
+  const projekte = sichtbareProjekte(data.projects, useArchivierte('planlauf'));
   const ids = projekte.map((p) => p.id);
 
   const fristen = offeneFristen(data, ids);

@@ -7,6 +7,10 @@
  * übergebenen Stand, nie mit der Render-Kopie `data` (die Fachlogik dazu steht
  * in domain/bestand.ts). IDs, die die Oberfläche braucht, entstehen vor
  * `mutate` – im StrictMode läuft die Änderungsfunktion doppelt.
+ *
+ * Projekte und Kontakte gleicht der Store nach jeder Änderung mit dem
+ * Projektregister ab (`useRegisterAbgleich`, domain/register.ts) – solange der
+ * gespeicherte Stand gelesen werden konnte.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -42,6 +46,8 @@ import {
 } from '../domain/bestand';
 import { basisplanFestlegen } from '../domain/simulation';
 import { seedData } from '../domain/seed';
+import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
+import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
 import { ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 import { formatDate, today } from '../../../shared/dates';
 import { funktionsName } from '../domain/types';
@@ -266,6 +272,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setData((alt) => bestandAendern(alt, fn, { zeitpunkt, heute, protokoll: optionen.protokoll }, newId));
   }, []);
 
+  // Projekte und Kontakte mit dem Projektregister abgleichen
+  const { ersetzt } = useRegisterAbgleich({
+    bereich: 'planlauf',
+    daten: data,
+    aktiv: ladeZustand === 'ok',
+    sicht: sichtFuerRegister,
+    anwenden: (plan) => mutate((d, v) => registerPlanAnwenden(d, plan, v, newId)),
+  });
+
   const value = useMemo<StoreValue>(
     () => ({
       data,
@@ -275,17 +290,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       stammdatenHinweisQuittieren: () => setStammdatenKopien([]),
       ...storeAktionen(data, mutate),
       ersetzeDaten: (d) => {
+        ersetzt();
         mutate(() => d, { protokoll: false });
         setLadeZustand('ok');
       },
       zuruecksetzen: () => {
         // Ein Stand aus einer neueren Fassung darf nicht überschrieben werden
         if (ladeZustand === 'neuere_fassung') return;
+        ersetzt();
         mutate(() => seedData(), { protokoll: false });
         setLadeZustand('ok');
       },
     }),
-    [data, mutate, speicherZustand, ladeZustand, stammdatenKopien],
+    [data, mutate, speicherZustand, ladeZustand, stammdatenKopien, ersetzt],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

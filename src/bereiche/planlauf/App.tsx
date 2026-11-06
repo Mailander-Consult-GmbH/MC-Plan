@@ -21,6 +21,7 @@ import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/SicherungEinspielen';
 import { Hinweisleisten } from './components/Hinweisleisten';
+import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import type { IconName } from '../../shared/icons';
 
 export function App() {
@@ -38,7 +39,9 @@ export function App() {
   const [bearbeiterDialog, setBearbeiterDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
 
-  const markierte = sichtbareProjekte(data.projects);
+  const archiviert = useArchivierte('planlauf');
+  const markierte = sichtbareProjekte(data.projects, archiviert);
+  const aktiveAnzahl = data.projects.filter((p) => !archiviert.has(p.id)).length;
   const markierteIds = markierte.map((p) => p.id);
   const todos = eigeneTodos(data, markierteIds).length;
   const projekt =
@@ -99,7 +102,7 @@ export function App() {
 
         <div className="nav-group-label">
           Projekte
-          {markierte.length < data.projects.length ? <span className="tertiary"> (markierte)</span> : null}
+          {markierte.length < aktiveAnzahl ? <span className="tertiary"> (markierte)</span> : null}
         </div>
         {markierte.map((p) => {
           const offen = offeneFristen(data, [p.id]).filter((f) => f.ampel === 'ueberfaellig').length;

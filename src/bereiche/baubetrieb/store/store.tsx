@@ -1,7 +1,10 @@
 /**
  * Datenbestand des Bereichs „Baubetriebsplanung“. Alle Schreibzugriffe laufen
  * über `mutate()`; der Bestand wird danach lokal gespeichert. Der Aufbau
- * entspricht dem des Planlaufmanagements, ist davon aber vollständig getrennt.
+ * entspricht dem des Planlaufmanagements, ist davon aber getrennt – gemeinsam
+ * ist nur das Projektregister (`src/gemeinsam/`), mit dem der Store die
+ * Projekte nach jeder Änderung abgleicht (`useRegisterAbgleich`,
+ * domain/register.ts).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -25,6 +28,8 @@ import type {
   RilSchluessel,
   Workflow,
 } from '../domain/types';
+import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
+import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { zielText } from '../domain/workflow';
 import { workflowLoeschen, workflowSpeichern } from '../domain/workflowPflege';
 import { ladeDaten, speichereDaten } from './storage';
@@ -93,6 +98,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const mutate = useCallback((fn: (d: BaubetriebDaten) => BaubetriebDaten) => {
     setData((alt) => fn(alt));
   }, []);
+
+  // Projekte mit dem Projektregister abgleichen
+  const { ersetzt } = useRegisterAbgleich({
+    bereich: 'baubetrieb',
+    daten: data,
+    aktiv: true,
+    sicht: sichtFuerRegister,
+    anwenden: (plan) => mutate((d) => registerPlanAnwenden(d, plan)),
+  });
 
   const anmeldungAendern = useCallback(
     (id: ID, fn: (a: Anmeldung) => Anmeldung) =>
@@ -244,8 +258,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       terminSetzen: (id, termin) => anmeldungAendern(id, (a) => ({ ...a, terminManuell: termin })),
 
-      ersetzeDaten: (d) => mutate(() => d),
+      ersetzeDaten: (d) => {
+        ersetzt();
+        mutate(() => d);
+      },
       zuruecksetzen: () => {
+        ersetzt();
         const neu = seedDaten();
         // Persönliche Einstellungen bleiben erhalten.
         mutate((d) => ({
@@ -258,7 +276,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }));
       },
     }),
-    [data, mutate, anmeldungAendern],
+    [data, mutate, anmeldungAendern, ersetzt],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
