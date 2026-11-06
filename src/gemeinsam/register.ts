@@ -20,6 +20,7 @@
  * gleichen nicht ab).
  */
 import { useSyncExternalStore } from 'react';
+import { nachRaeumenSpeichern, speicherVoll } from '../shared/speicher';
 
 export type ID = string;
 
@@ -337,9 +338,24 @@ function laden(): { register: Register; zustand: RegisterZustand } {
   }
 }
 
+/**
+ * Schreibt das Register. Ist der Speicher voll, macht `nachRaeumenSpeichern`
+ * (src/shared/speicher.ts) Platz, indem es Rohkopien (`.vor-fassung-<n>`,
+ * `.vor-einspielen-…`) entfernt – das Register wiegt schwerer als eine Kopie.
+ */
 function speichern(register: Register): void {
+  const text = JSON.stringify(register);
   try {
-    localStorage.setItem(KEY, JSON.stringify(register));
+    localStorage.setItem(KEY, text);
+    return;
+  } catch (err) {
+    if (!speicherVoll(err)) {
+      console.warn('Projektregister konnte nicht gespeichert werden:', err);
+      return;
+    }
+  }
+  try {
+    if (!nachRaeumenSpeichern(KEY, text)) console.warn('Projektregister konnte nicht gespeichert werden: Speicher voll');
   } catch (err) {
     console.warn('Projektregister konnte nicht gespeichert werden:', err);
   }

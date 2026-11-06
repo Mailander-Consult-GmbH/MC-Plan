@@ -29,6 +29,7 @@
  * Schlüssel, lädt der Store dessen Stand mit `ladeDaten` nach.
  */
 import { today } from '../../../shared/dates';
+import { nachRaeumenSpeichern, speicherVoll } from '../../../shared/speicher';
 import { registerLesen } from '../../../gemeinsam/register';
 import { seedDaten } from '../domain/seed';
 import {
@@ -389,19 +390,15 @@ export function ladeDaten(): Geladen {
 /** Schlüssel des Bestands – der Store hört auf `storage`-Ereignisse anderer Fenster dafür. */
 export const SPEICHER_SCHLUESSEL = KEY;
 
-/** Der Speicher des Browsers ist voll. */
-function speicherVoll(err: unknown): boolean {
-  if (!(err instanceof DOMException)) return false;
-  return err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22 || err.code === 1014;
-}
-
 /** Ergebnis des Speicherns: gespeichert, Speicher voll oder Speicher nicht nutzbar (gesperrt). */
 export type SpeicherZustand = 'ok' | 'voll' | 'gesperrt';
 
 /**
  * Speichert den Bestand; der Store ruft das nur bei `ladeZustand === 'ok'`
- * auf. Ist der Speicher voll, werden zuerst die Rohkopien früherer Fassungen
- * (`<Schlüssel>.vor-fassung-<n>`) entfernt und das Speichern wiederholt.
+ * auf. Ist der Speicher voll, macht `nachRaeumenSpeichern`
+ * (src/shared/speicher.ts) nach und nach Platz, indem es Rohkopien
+ * (`<Schlüssel>.vor-fassung-<n>`, `.vor-einspielen-…` – auch anderer
+ * Bereiche) entfernt, und stellt sie zurück, wenn es nicht reicht.
  * Liefert, ob der Bestand gespeichert ist bzw. warum nicht – dann zeigt der
  * Bereich einen dauerhaften Hinweis (components/SpeicherHinweis.tsx).
  */
@@ -417,15 +414,7 @@ export function speichereDaten(daten: LeistungsnachweisDaten): SpeicherZustand {
     }
   }
   try {
-    const alt: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k?.startsWith(VOR_FASSUNG)) alt.push(k);
-    }
-    if (alt.length === 0) return 'voll';
-    alt.forEach((k) => localStorage.removeItem(k));
-    localStorage.setItem(KEY, inhalt);
-    return 'ok';
+    return nachRaeumenSpeichern(KEY, inhalt) ? 'ok' : 'voll';
   } catch (err) {
     console.warn('Daten konnten nicht lokal gespeichert werden:', err);
     return speicherVoll(err) ? 'voll' : 'gesperrt';

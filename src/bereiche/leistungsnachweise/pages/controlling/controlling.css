@@ -254,6 +254,11 @@
 
 /* Kontrastmodus: Markierung von Zeilen mit Aufschlag kräftiger */
 :root[data-farbmodus='kontrast'] .table.ln-co-abrechnung tbody.ln-co-zeile-aufschlag td.ln-co-datum { box-shadow: inset 4px 0 0 var(--accent); }
+@media (max-width: 1100px) {
+  /* Schmale Ansicht: der Balken steht an der ganzen Zeile, nicht zusätzlich am Datum */
+  :root[data-farbmodus='kontrast'] .table.ln-co-abrechnung tbody.ln-co-zeile-aufschlag td.ln-co-datum { box-shadow: none; }
+  :root[data-farbmodus='kontrast'] .table.ln-co-abrechnung tbody.ln-co-zeile-aufschlag { box-shadow: inset 4px 0 0 var(--accent); }
+}
 :root[data-farbmodus='kontrast'] .input.ln-co-zahl.ln-co-fehlerhaft { border-width: 2px; }
 
 /* Projekt im Controlling und Liste der Projekte */

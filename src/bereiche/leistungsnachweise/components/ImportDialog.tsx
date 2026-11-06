@@ -19,7 +19,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Badge, Callout, Field, Modal, Select } from '../../../shared/ui';
+import { Badge, Callout, Field, Modal, Select, alsKnopf } from '../../../shared/ui';
 import { tabelleLesen, type GeleseneTabelle } from '../../../shared/xlsxLesen';
 import { importVorlageLaden } from '../domain/export';
 import {
@@ -382,7 +382,7 @@ export function ImportDialog({ onClose, navigate }: { onClose: () => void; navig
         <div
           className={`drop-zone ${ueber ? 'over' : ''} ${datei ? 'ln-imp-klein' : ''}`}
           style={bereit ? undefined : { display: 'none' }}
-          onClick={() => eingabe.current?.click()}
+          {...alsKnopf(() => eingabe.current?.click())}
           onDragOver={(e) => {
             e.preventDefault();
             setUeber(true);
