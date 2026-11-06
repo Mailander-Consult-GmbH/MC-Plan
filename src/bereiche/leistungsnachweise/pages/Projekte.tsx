@@ -2,13 +2,14 @@
  * Projektliste des Bereichs. Hier wird nichts angelegt oder eingestellt – das
  * macht das Controlling (Projekte im Controlling-Bereich bzw. Reiter
  * „Projekte“ der Leistungsnachweise dort); unbekannte Projekte legt auch der
- * Excel-Import an. Ein Klick öffnet die eigenen Leistungen im Projekt; mit ★
+ * Excel-Import an. Jedes Projekt der anderen Bereiche steht von selbst auch
+ * hier (`JEDES_PROJEKT_IN`, Projektregister). Ein Klick öffnet die eigenen Leistungen im Projekt; mit ★
  * markierte Projekte erscheinen in der Übersicht und in der Seitenleiste.
  *
  * Die Kacheln nennen nur Projektnummer, Projektname, Beschreibung und die
  * anderen Bereiche des Projekts. Darunter die im Bereich archivierten Projekte
- * und – grau hinterlegt – Projekte aus anderen Bereichen zum Übernehmen
- * (Projektregister, src/gemeinsam/).
+ * (Projektregister, src/gemeinsam/). Der Abschnitt „Projekte aus anderen
+ * Bereichen“ bleibt hier leer, weil der Bereich jedes Projekt führt.
  */
 import { useState } from 'react';
 import { ArchivAbschnitt, BereichsMarken, FremdeProjekte, useArchivierte } from '../../../gemeinsam/ProjektBereiche';
@@ -93,7 +94,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
           <EmptyState
             icon="projekt"
             titel="Kein Projekt gefunden"
-            text="Übernehmen Sie ein Projekt aus einem anderen Bereich oder Leistungen per Excel-Import – unbekannte Projekte legt der Import an. Neue Projekte legt das Controlling an."
+            text="Hier stehen alle Projekte der anderen Bereiche und des Controllings von selbst; unbekannte Projekte legt auch der Excel-Import an."
           />
         </Card>
       ) : (

@@ -168,7 +168,7 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
           <EmptyState
             icon="projekt"
             titel="Kein Projekt"
-            text="Übernehmen Sie unter „Projekte“ ein Projekt aus einem anderen Bereich – oder Leistungen per Excel-Import; unbekannte Projekte legt der Import an."
+            text="Alle Projekte der anderen Bereiche und des Controllings stehen hier von selbst – markieren Sie unter „Projekte“ mit ★, woran Sie arbeiten. Unbekannte Projekte legt auch der Excel-Import an."
           />
         ) : (
           <div className="table-scroll">
