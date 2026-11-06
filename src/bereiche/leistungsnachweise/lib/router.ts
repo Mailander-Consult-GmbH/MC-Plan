@@ -73,17 +73,21 @@ export function routeToHash(r: Route): string {
 }
 
 /**
- * Liest eine Adresse; unbekannte führen zur Übersicht, das Controlling ohne
+ * Liest eine Adresse; unbekannte und die anderer Bereiche führen zur Übersicht
+ * (ohne Umlenkung – die Wahl des Bereichs trifft die Shell), das Controlling ohne
  * gültigen Reiter zur Auswertung, ein Projekt im Controlling ohne gültigen
  * Reiter zu seinen Leistungsnachweisen. Frühere Adressen siehe oben.
  */
 export function hashToRoute(hash: string): Route {
-  const teile = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  const alle = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   // Controlling-Bereich: #/controlling/leistungsnachweise/…
-  if (teile[0] === 'controlling' && teile[1] === PREFIX) return controllingRoute(teile.slice(2));
+  if (alle[0] === 'controlling' && alle[1] === PREFIX) return controllingRoute(alle.slice(2));
+  // Andere Adressen (etwa #/controlling/projekte, solange dieser Router noch
+  // eingehängt ist) gehören nicht diesem Bereich: Übersicht, nichts umlenken.
+  if (alle[0] !== PREFIX) return { view: 'uebersicht' };
   // Das Bereichspräfix gehört der Shell und wird hier übersprungen.
-  if (teile[0] === PREFIX) teile.shift();
-  // Frühere Adressen des Controllings im Bereich
+  const teile = alle.slice(1);
+  // Frühere Adressen des Controllings im Bereich (#/leistungsnachweise/controlling/…)
   if (teile[0] === 'controlling') return controllingRoute(teile.slice(1));
   if (teile[0] === 'projekt' && teile[1]) {
     // Früher der gemeinsame Nachweis im Bereich – jetzt die Abrechnung im Controlling

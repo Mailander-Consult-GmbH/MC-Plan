@@ -18,8 +18,9 @@ export function Shell() {
   const bereich = useBereich();
 
   useEffect(() => {
-    // Der Farbmodus gehört zu den Einstellungen eines Bereichs. Die
-    // Bereichsauswahl selbst zeigt immer die Standardfarben.
+    // Der Farbmodus gilt für alle Bereiche (gemeinsame Anmeldung „Angemeldet
+    // als“, src/gemeinsam/benutzer.ts); die Bereichsauswahl selbst zeigt immer
+    // die Standardfarben.
     if (!bereich) document.documentElement.dataset.farbmodus = 'standard';
   }, [bereich]);
 

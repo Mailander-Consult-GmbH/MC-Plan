@@ -39,6 +39,20 @@ function aufzaehlung(titel: string[]): string {
   return titel.length <= 1 ? (titel[0] ?? '') : `${titel.slice(0, -1).join(', ')} und ${titel[titel.length - 1]}`;
 }
 
+type Zustand = 'aktiv' | 'vorgesehen' | 'archiviert' | 'fehlt';
+
+/**
+ * Stand eines Projekts in einem Bereich – für die Karte und die Kennzahlen
+ * „aktiv in …“. In die Leistungsnachweise (`JEDES_PROJEKT_IN`) kommt jedes
+ * Projekt; bis zu ihrem nächsten Abgleich gilt es dort als vorgesehen.
+ */
+function zustandIm(p: RegisterProjekt, b: ProjektBereich): Zustand {
+  const m = p.bereiche[b];
+  if (!m) return b === JEDES_PROJEKT_IN ? 'vorgesehen' : 'fehlt';
+  if (m.offen) return 'vorgesehen';
+  return istArchiviert(p, b) ? 'archiviert' : 'aktiv';
+}
+
 export function Projekte({ archiv }: { archiv: boolean }) {
   const register = useRegister();
   const toast = useToast();
@@ -53,7 +67,7 @@ export function Projekte({ archiv }: { archiv: boolean }) {
     .sort((a, b) => projektTitel(a).localeCompare(projektTitel(b), 'de'));
 
   const laufend = register.projekte.filter((p) => !p.archiviert);
-  const imBereich = (b: ProjektBereich) => laufend.filter((p) => p.bereiche[b] && !istArchiviert(p, b)).length;
+  const imBereich = (b: ProjektBereich) => laufend.filter((p) => zustandIm(p, b) === 'aktiv').length;
 
   return (
     <div className="stack">
@@ -181,16 +195,7 @@ function ProjektKarte({
           {PROJEKT_BEREICHE.map((b) => {
             const m = projekt.bereiche[b.id];
             const immer = b.id === JEDES_PROJEKT_IN;
-            // In die Leistungsnachweise kommt jedes Projekt – bis zu ihrem nächsten Abgleich gilt es als vorgesehen
-            const zustand = !m
-              ? immer
-                ? 'vorgesehen'
-                : 'fehlt'
-              : m.offen
-                ? 'vorgesehen'
-                : istArchiviert(projekt, b.id)
-                  ? 'archiviert'
-                  : 'aktiv';
+            const zustand = zustandIm(projekt, b.id);
             const aendern = (fn: Parameters<typeof registerAendern>[0], meldung: string) => {
               registerAendern(fn);
               toast(meldung);
@@ -205,9 +210,11 @@ function ProjektKarte({
                     <span
                       className="badge gem-vorgesehen"
                       title={
-                        immer
-                          ? 'Jedes Projekt gehört in die Leistungsnachweise – sie legen es beim nächsten Öffnen an'
-                          : 'Der Bereich legt das Projekt beim nächsten Öffnen an'
+                        !immer
+                          ? 'Der Bereich legt das Projekt beim nächsten Öffnen an'
+                          : !m && projekt.archiviert
+                            ? 'Jedes Projekt gehört in die Leistungsnachweise – sie legen es an, sobald es aus dem Archiv geholt ist'
+                            : 'Jedes Projekt gehört in die Leistungsnachweise – sie legen es beim nächsten Öffnen an'
                       }
                     >
                       Vorgesehen

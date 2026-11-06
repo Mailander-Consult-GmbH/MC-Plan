@@ -32,7 +32,27 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
     setVorschau([]);
     try {
       const tabellen = await tabelleLesen(f);
-      const zeilen = beteiligteLesen(tabellen[0]?.zeilen ?? [], data, projekt.id);
+      // Das erste Blatt mit Kopfzeile und Personen gilt – ein vorangestelltes
+      // Hinweis- oder Deckblatt wird übersprungen. Findet sich in keinem Blatt
+      // eine Kopfzeile, meldet `beteiligteLesen` die fehlende Spalte.
+      let zeilen: ImportZeile[] | null = null;
+      let ersterFehler: unknown = null;
+      for (const t of tabellen) {
+        try {
+          const gelesen = beteiligteLesen(t.zeilen, data, projekt.id);
+          zeilen ??= gelesen;
+          if (gelesen.length > 0) {
+            zeilen = gelesen;
+            break;
+          }
+        } catch (e) {
+          ersterFehler ??= e;
+        }
+      }
+      if (!zeilen) {
+        if (ersterFehler) throw ersterFehler;
+        zeilen = beteiligteLesen([], data, projekt.id);
+      }
       if (zeilen.length === 0) setFehler('Die Datei enthält keine Zeile mit einem Nachnamen.');
       setVorschau(zeilen);
     } catch (e) {

@@ -5,7 +5,10 @@
  *   Bereichen das Projekt noch geführt wird – ohne die Leistungsnachweise,
  *   die jedes Projekt führen (`genannteBereiche`), außer dort selbst,
  * * `FremdeProjekte` – grau hinterlegter Abschnitt „Projekte aus anderen
- *   Bereichen“ mit „Übernehmen in …“,
+ *   Bereichen“ mit „Übernehmen in …“; führt kein genannter Bereich das
+ *   Projekt, nennt die Karte seine Herkunft (`herkunftOhneBereich`),
+ * * `andereBereiche`, `vorgeseheneBereiche`, `useLoeschHinweis` – für
+ *   Löschdialoge und Löschsperren,
  * * `ArchivAbschnitt`, `ArchivHinweis`, `useArchivierte` – im Bereich
  *   archivierte Projekte (archiviert wird im Controlling),
  * * `VerknuepfungsHinweis` – beim Anlegen: Das Projekt gibt es schon,
@@ -18,6 +21,7 @@ import { Badge, Callout, Card, CardHeader, EmptyState } from '../shared/ui';
 import { inBereichUebernehmen } from './abgleich';
 import {
   BEREICH_TITEL,
+  JEDES_PROJEKT_IN,
   PROJEKT_BEREICHE,
   archivierteIds,
   funktionText,
@@ -56,18 +60,51 @@ export function useMarkiertAnderswo(bereich: ProjektBereich): Map<ID, string[]> 
  * und Projektsteuerung“ – ohne die Leistungsnachweise, außer dort selbst (`genannteBereiche`).
  */
 export function andereBereiche(register: Register, bereich: ProjektBereich, lokaleId: ID): string {
+  return bereicheMitStand(register, bereich, lokaleId, false);
+}
+
+/**
+ * Titel der anderen Bereiche, für die das Projekt erst zur Übernahme
+ * vorgesehen ist (offene Mitgliedschaft) – Aufbau wie `andereBereiche`.
+ */
+export function vorgeseheneBereiche(register: Register, bereich: ProjektBereich, lokaleId: ID): string {
+  return bereicheMitStand(register, bereich, lokaleId, true);
+}
+
+function bereicheMitStand(register: Register, bereich: ProjektBereich, lokaleId: ID, offen: boolean): string {
   const p = projektImBereich(register, bereich, lokaleId);
   if (!p) return '';
   const genannt = genannteBereiche(bereich);
-  const titel = PROJEKT_BEREICHE.filter((b) => genannt.includes(b.id) && p.bereiche[b.id] && !p.bereiche[b.id]!.offen).map((b) => b.titel);
+  const titel = PROJEKT_BEREICHE.filter((b) => genannt.includes(b.id) && p.bereiche[b.id] && p.bereiche[b.id]!.offen === offen).map((b) => b.titel);
   return titel.length <= 1 ? (titel[0] ?? '') : `${titel.slice(0, -1).join(', ')} und ${titel[titel.length - 1]}`;
 }
 
-/** Hinweis für Löschdialoge: Was in den anderen Bereichen bleibt. */
+/**
+ * Hinweis für Löschdialoge: Was in den anderen Bereichen bleibt. Führt sonst
+ * nur `JEDES_PROJEKT_IN` das Projekt, bleibt es dort – und steht danach hier
+ * unter „Projekte aus anderen Bereichen“; ganz löscht es nur das Controlling.
+ */
 export function useLoeschHinweis(bereich: ProjektBereich, lokaleId: ID): string {
   const register = useRegister();
   const andere = andereBereiche(register, bereich, lokaleId);
-  return andere ? ` In ${andere} bleibt das Projekt mit seinen Projektbeteiligten erhalten.` : '';
+  if (andere) return ` In ${andere} bleibt das Projekt mit seinen Projektbeteiligten erhalten.`;
+  const p = projektImBereich(register, bereich, lokaleId);
+  if (p && bereich !== JEDES_PROJEKT_IN && p.bereiche[JEDES_PROJEKT_IN]) {
+    return ` In den Leistungsnachweisen bleibt das Projekt mit seinen Leistungen und Projektbeteiligten erhalten und steht danach hier unter „Projekte aus anderen Bereichen“; ganz löschen lässt es sich nur im Controlling unter „Projekte“.`;
+  }
+  return '';
+}
+
+/**
+ * Herkunft eines Projekts unter „Projekte aus anderen Bereichen“, wenn kein
+ * genannter Bereich es führt: im Controlling angelegt, hier gelöscht bzw. nur
+ * in `JEDES_PROJEKT_IN` geführt.
+ */
+function herkunftOhneBereich(p: RegisterProjekt, bereich: ProjektBereich): string | null {
+  if (p.herkunft === 'controlling') return 'Im Controlling angelegt';
+  if (!p.bereiche[JEDES_PROJEKT_IN]) return null;
+  // Dativ von `JEDES_PROJEKT_IN` („Leistungsnachweise“)
+  return p.herkunft === bereich ? 'Hier gelöscht – weiter in den Leistungsnachweisen geführt' : 'Nur in den Leistungsnachweisen geführt';
 }
 
 /**
@@ -188,9 +225,9 @@ export function FremdeProjekte({ bereich, suche }: { bereich: ProjektBereich; su
               {p.beschreibung ? <div className="small muted truncate">{p.beschreibung}</div> : null}
               {genannteBereiche(bereich).some((b) => p.bereiche[b]) ? (
                 <ProjektMarken projekt={p} aus={bereich} label="Geführt in" />
-              ) : p.herkunft === 'controlling' ? (
+              ) : herkunftOhneBereich(p, bereich) ? (
                 <div className="gem-marken">
-                  <span className="gem-marken-label">Im Controlling angelegt</span>
+                  <span className="gem-marken-label">{herkunftOhneBereich(p, bereich)}</span>
                 </div>
               ) : null}
               <div className="gem-fremd-fuss">

@@ -4,7 +4,9 @@ import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { useToast } from '../../shared/toast';
 import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
+import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
 import { BereichWechsel } from '../../shell/BereichWechsel';
+import { Hinweisleisten } from './components/Hinweisleisten';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { bezeichnung } from './domain/protokoll';
 import { eigeneTodos, offenePunkte } from './domain/punkte';
@@ -14,15 +16,20 @@ import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
 import { ProtokollEditor } from './pages/projekt/ProtokollEditor';
 import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
-import { exportiereDaten } from './store/storage';
+import { exportiereDaten, rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 
 export function App() {
-  const { data, zuruecksetzen } = useStore();
+  const { data, ladeZustand, zuruecksetzen } = useStore();
+  // Ein Stand aus einer neueren Fassung darf weder ersetzt noch zurückgesetzt werden
+  const gesperrt = ladeZustand === 'neuere_fassung';
+  const gesperrtTitel = 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt';
   const toast = useToast();
   const [route, navigate] = useRoute();
+  // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
+  const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projektId}` : route.view === 'protokoll' ? `protokoll/${route.protokollId}` : route.view);
   const [menuOffen, setMenuOffen] = useState(false);
   const inEinstellungen = route.view === 'funktionen';
   const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
@@ -54,7 +61,8 @@ export function App() {
 
   const farbmodus = data.einstellungen.farbmodus;
   useEffect(() => {
-    // Eigene Einstellung dieses Bereichs – unabhängig von den anderen Bereichen.
+    // Spiegel des gemeinsamen Farbmodus aus „Angemeldet als“ (src/gemeinsam/benutzer.ts),
+    // nachgezogen über useBenutzerAbgleich im Store.
     document.documentElement.dataset.farbmodus = farbmodus;
   }, [farbmodus]);
 
@@ -118,13 +126,35 @@ export function App() {
             <button
               type="button"
               className="btn btn-sm btn-outline"
-              onClick={() => exportiereDaten(data)}
-              title="Gesamten Datenbestand der Projektsteuerung als JSON sichern"
+              onClick={() => {
+                // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
+                // gesichert wird dann der gespeicherte Stand, unverändert.
+                if (ladeZustand === 'ok') exportiereDaten(data);
+                else if (!rohdatenHerunterladen())
+                  toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
+              }}
+              title={
+                ladeZustand === 'ok'
+                  ? 'Gesamten Datenbestand der Projektsteuerung als JSON sichern'
+                  : 'Gespeicherten Stand unverändert herunterladen'
+              }
             >
               <Icon name="export" size={12} /> Sicherung
             </button>
-            <SicherungWaehlen onGelesen={setSicherung} />
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => setZuruecksetzenDialog(true)}>
+            {gesperrt ? (
+              <button type="button" className="btn btn-sm btn-outline" disabled title={gesperrtTitel}>
+                <Icon name="importieren" size={12} /> Einspielen
+              </button>
+            ) : (
+              <SicherungWaehlen onGelesen={setSicherung} />
+            )}
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setZuruecksetzenDialog(true)}
+              disabled={gesperrt}
+              title={gesperrt ? gesperrtTitel : undefined}
+            >
               Zurücksetzen
             </button>
           </div>
@@ -147,8 +177,9 @@ export function App() {
           </div>
         </header>
 
-        <div className="content">
+        <div className="content" ref={inhalt}>
           <div className="content-inner">
+            <Hinweisleisten />
             {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
             {route.view === 'funktionen' ? <Funktionen /> : null}

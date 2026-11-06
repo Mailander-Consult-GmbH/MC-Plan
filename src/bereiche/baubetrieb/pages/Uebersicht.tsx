@@ -45,7 +45,8 @@ const ANZAHL_TERMINE = 8;
 export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
   const { data } = useStore();
   const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusZiel } | null>(null);
-  const projekte = sichtbareProjekte(data.projekte, useArchivierte('baubetrieb'));
+  const archiviert = useArchivierte('baubetrieb');
+  const projekte = sichtbareProjekte(data.projekte, archiviert);
   const ids = projekte.map((p) => p.id);
   const anmeldungen = data.anmeldungen.filter((a) => ids.includes(a.projektId));
   const termine = offeneTermine(data, ids);
@@ -60,7 +61,9 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
   const nachhaken = termine.filter((t) => t.frist.nachhaken && t.ampel !== 'geplant');
   const bedarf = faelligerBedarf(data, ids);
   const vorn = fristen.slice(0, ANZAHL_TERMINE);
-  const alleMarkiert = data.projekte.filter((p) => p.markiert).length;
+  // Hinweis „Kein Projekt markiert“ nach derselben Regel wie sichtbareProjekte: Markierte archivierte zählen nicht
+  const aktive = data.projekte.filter((p) => !archiviert.has(p.id));
+  const keinesMarkiert = aktive.length > 0 && !aktive.some((p) => p.markiert);
 
   return (
     <div className="stack">
@@ -86,7 +89,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
         />
       </div>
 
-      {alleMarkiert === 0 ? (
+      {keinesMarkiert ? (
         <p className="small tertiary">
           Kein Projekt markiert – es werden alle angezeigt. Unter <strong>Projekte</strong> lassen sich einzelne
           markieren; dann erscheinen nur diese hier und in der Seitenleiste.

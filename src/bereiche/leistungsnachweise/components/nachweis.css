@@ -101,3 +101,6 @@
 
 /* Nicht erfasste Leistungen (NachweisDialog.tsx, `NichtErfasstHinweis`) */
 .ln-nicht-erfasst { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+/* Aufgeklappt („Alle … anzeigen“): alle Leistungen, in einem eigenen Bildlaufbereich */
+.ln-nicht-erfasst.ln-nicht-erfasst-alle { max-height: 240px; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; }
+.ln-nicht-erfasst-umschalter { font-size: 12.5px; }

@@ -3,34 +3,21 @@
  * src/shared/global.css).
  */
 
-/* „Status ändern“: Haken mit Auswahl der Nachfolger – wie der Erledigt-Haken im Planlaufmanagement */
-.bb-haken { position: relative; display: inline-flex; }
-.bb-haken-menue {
-  position: absolute;
-  top: calc(100% + 4px);
+/* „Status ändern“: Haken mit Auswahl der Nachfolger – wie der Erledigt-Haken im
+   Planlaufmanagement; das Menü ist das gemeinsame AufklappMenue (.aufklapp-menue). */
+.bb-haken { display: inline-flex; }
+
+/* Anmeldungstabellen im Projekt (ProjektDetail.tsx): Scrollt die Tabelle quer,
+   bleibt die Spalte mit dem Haken am rechten Rand stehen, damit „Status ändern“
+   immer erreichbar ist. Der Hintergrund deckt die darunter laufenden Spalten ab. */
+.table-scroll-quer > .bb-anmeldungen th.actions,
+.table-scroll-quer > .bb-anmeldungen td.actions {
+  position: sticky;
   right: 0;
-  z-index: 30;
-  min-width: 220px;
-  max-width: min(320px, 90vw);
-  padding: 4px;
   background: var(--bg-elev);
-  border: 1px solid var(--separator-strong);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
+  box-shadow: inset 1px 0 0 var(--separator);
 }
-.bb-haken-menue button {
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 7px 10px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
+.table-scroll-quer > .bb-anmeldungen th.actions { z-index: 4; box-shadow: inset 1px 0 0 var(--separator), inset 0 -1px 0 var(--separator); }
+.table-scroll-quer > .bb-anmeldungen tr.clickable:hover td.actions {
+  background: linear-gradient(var(--bg-hover), var(--bg-hover)), var(--bg-elev);
 }
-.bb-haken-menue button:hover { background: var(--bg-hover); }
-.bb-haken-menue button.bb-haken-loeschen { color: var(--rot-text); }
-.bb-haken-menue .bb-haken-titel { padding: 5px 10px; font-size: 11.5px; color: var(--text-secondary); }

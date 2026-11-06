@@ -21,15 +21,26 @@
  * Rückgabewerte (Kennungen, Meldungen) rechnet die Methode zusätzlich auf dem
  * angezeigten Stand. Mit der gemeinsamen Datenbank gehen dieselben Prüfungen
  * auf den Server über.
+ *
+ * Bereich und Controlling können in zwei Fenstern zugleich offen sein und
+ * teilen denselben Schlüssel: Speichert das andere Fenster, übernimmt der
+ * Store dessen Stand (`useFremdeAenderung`, `ladeDaten`), ohne ihn
+ * zurückzuschreiben und ohne ihn ans Projektregister zu übertragen – so
+ * überschreibt keines die Änderungen des anderen; einen Stand aus einer
+ * neueren Fassung überschreibt es nicht, sondern speichert nicht mehr. Lässt sich nicht speichern
+ * (Speicher voll), meldet `speicherZustand` das für einen dauerhaften Hinweis.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
 import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
+import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
 import type { Benutzer } from '../../../gemeinsam/benutzer';
 import { abschnitteAusElementen, importAnwenden, kuerzelFrei, type ImportPlan } from '../domain/import';
 import {
+  abgerechnetIn,
   aufschlagPruefen,
+  leistungenDesNachweises,
   leistungenOhneNachweis,
   mitAufschlag,
   mitZeilenText,
@@ -47,6 +58,7 @@ import {
   angemeldet,
   darf,
   darfLeistungAendern,
+  eigeneLeistungen,
   mitarbeiterLoeschenPruefen,
   mitarbeiterZumNamen,
   type Zugang,
@@ -68,7 +80,7 @@ import {
   type Raster,
 } from '../domain/types';
 import { istDatum, runden } from '../domain/zeitraum';
-import { ladeDaten, speichereDaten, type LadeZustand } from './storage';
+import { SPEICHER_SCHLUESSEL, ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 
 export { newId };
 
@@ -80,6 +92,8 @@ interface StoreValue {
   controlling: boolean;
   /** 'ok' – es wird gespeichert; sonst zeigt der Bereich Demodaten und lässt den gespeicherten Stand unberührt. */
   ladeZustand: LadeZustand;
+  /** Ergebnis des letzten Speicherns: 'voll' bzw. 'gesperrt' – nicht gespeichert (Hinweis: components/SpeicherHinweis.tsx). */
+  speicherZustand: SpeicherZustand;
   /*
    * Anmeldung: Name und Farbmodus kommen aus der gemeinsamen Anmeldung aller
    * Bereiche (src/gemeinsam/benutzer.ts); der Store zieht sie samt dem
@@ -117,7 +131,10 @@ interface StoreValue {
    * (`nachweiseErgaenzen`); liefert die ID, ohne Anmeldung null (keine Änderung).
    */
   addLeistung: (l: Omit<Leistung, 'id' | 'erfasst' | 'quelle' | 'mitarbeiterId'> & { quelle?: Quelle }) => ID | null;
-  /** Ändern – nur eigene; Mitarbeiter und Projekt bleiben. Ein neues Datum außerhalb aller Nachweise ergänzt einen. */
+  /**
+   * Ändern – nur eigene; Mitarbeiter und Projekt bleiben. Ein neues Datum außerhalb aller Nachweise ergänzt einen –
+   * außer die Leistung ist schon abgerechnet (`abgerechnetIn`): Sie bleibt im Stand ihres abgeschlossenen Nachweises.
+   */
   updateLeistung: (id: ID, patch: Partial<Omit<Leistung, 'id' | 'projektId' | 'mitarbeiterId'>>) => void;
   /** Nur eigene. */
   deleteLeistung: (id: ID) => void;
@@ -135,11 +152,17 @@ interface StoreValue {
   nachweisFuerNichtAbgerechnete: (projektId: ID, vorgaben: { raster: Raster; titel: string; nachreichen?: boolean }) => ID | null;
   /** Übernimmt die nicht erfassten Leistungen als nachgereichte in den offenen Nachweis (nur Controlling, nach Rückfrage). */
   leistungenNachreichen: (nachweisId: ID) => void;
-  /** Zeitraum, Raster, Titel und Bemerkung – nur Controlling (Zeitraum ohne Überschneidung). */
-  updateNachweis: (id: ID, patch: Partial<Pick<Leistungsnachweis, 'titel' | 'von' | 'bis' | 'raster' | 'bemerkung'>>) => void;
   /**
-   * Löscht den Nachweis (nur Controlling); mitLeistungen = auch die eigenen Leistungen in seinem
-   * Zeitraum löschen. Leistungen anderer bleiben – sie löscht auch das Controlling nicht.
+   * Zeitraum, Raster, Titel und Bemerkung – nur Controlling (Zeitraum ohne Überschneidung). Ein
+   * geändertes Ende legt den Zeitraum fest (`bisFest`: läuft nicht mehr bis zum Abschluss), außer
+   * der Patch nennt `bisFest` ausdrücklich.
+   */
+  updateNachweis: (id: ID, patch: Partial<Pick<Leistungsnachweis, 'titel' | 'von' | 'bis' | 'bisFest' | 'raster' | 'bemerkung'>>) => void;
+  /**
+   * Löscht den Nachweis (nur Controlling); mitLeistungen = auch die eigenen Leistungen des
+   * Nachweises löschen – dieselben, die die Oberfläche nennt (`leistungenDesNachweises` mit
+   * `eigeneLeistungen`): samt seinen nachgereichten, ohne die in einen anderen Nachweis
+   * nachgereichten. Leistungen anderer bleiben – sie löscht auch das Controlling nicht.
    */
   deleteNachweis: (id: ID, mitLeistungen: boolean) => void;
   /** Text einer Zeile setzen (mit den Leistungs-IDs der Zeile); null = wieder automatisch. Nur Controlling, nur offene Nachweise. */
@@ -207,13 +230,20 @@ const ohneLeere = <T extends object>(patch: T): T =>
 export type Mutate = (fn: Aenderung, optionen?: { zeitstempel?: boolean }) => void;
 
 /** Die Methoden des Stores ohne Zustände (für Prüfungen auch außerhalb von React nutzbar). */
-export type StoreAktionen = Omit<StoreValue, 'data' | 'zugang' | 'controlling' | 'ladeZustand' | 'ersetzeDaten' | 'zuruecksetzen'>;
+export type StoreAktionen = Omit<
+  StoreValue,
+  'data' | 'zugang' | 'controlling' | 'ladeZustand' | 'speicherZustand' | 'ersetzeDaten' | 'zuruecksetzen'
+>;
 
 /**
  * Beschränkt einen Importplan auf das, was der Zugang darf: im Controlling
  * alles (Sammel-Import); im Bereich ohne Anmeldung nichts, sonst nur eigene
  * neue Leistungen, keine neuen Mitarbeiter und als „ersetzt“ nur eigene
- * frühere Importe.
+ * frühere Importe. Ausnahme vom Rechtemodell (domain/rechte.ts): Projekte,
+ * Abschnitte und Nachweise, die die eigenen Leistungen brauchen, legt der
+ * Import auch im Bereich an – unbekannte Projekte nur, wenn in der Vorschau
+ * „Projekt anlegen“ angehakt ist. Einstellen lassen sie sich danach nur im
+ * Controlling (`projektVerwalten`).
  */
 function planErlaubt(d: LeistungsnachweisDaten, plan: ImportPlan, zugang: Zugang): ImportPlan | null {
   if (darf(zugang, 'sammelImport')) return plan;
@@ -228,6 +258,7 @@ function planErlaubt(d: LeistungsnachweisDaten, plan: ImportPlan, zugang: Zugang
   return {
     ...plan,
     neueMitarbeiter: [],
+    // Ausnahme (siehe oben): Projekte und Abschnitte für die eigenen Leistungen
     neueProjekte: plan.neueProjekte.filter((p) => projekte.has(p.id)),
     neueLeistungen,
     neueNachweise: plan.neueNachweise.filter((n) => brauchtNachweis(n.projektId, n.von, n.bis)),
@@ -391,7 +422,8 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
           stunden: runden(patch.stunden ?? alt.stunden),
         };
         const daten = { ...d, leistungen: d.leistungen.map((l) => (l.id === id ? neu : l)) };
-        if (neu.datum === alt.datum) return daten;
+        // Eine abgerechnete Leistung bleibt im Stand ihres abgeschlossenen Nachweises – sie braucht keinen neuen
+        if (neu.datum === alt.datum || abgerechnetIn(d, alt)) return daten;
         const ids = folge();
         return nachweiseSichern(daten, neu.projektId, [neu.datum], jetzt, () => ids('ln')).daten;
       });
@@ -445,7 +477,8 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
           const bis = sauber.bis ?? n.bis;
           return istDatum(von) && istDatum(bis) && von <= bis && !ueberschneidung(d, n.projektId, von, bis, n.id);
         },
-        (n) => ({ ...n, ...sauber }),
+        // Ein von Hand geändertes Ende steht fest – der Nachweis läuft dann nicht mehr bis zum Abschluss
+        (n) => ({ ...n, ...sauber, bisFest: sauber.bisFest ?? (sauber.bis !== undefined && sauber.bis !== n.bis ? true : n.bisFest) }),
       );
     },
     deleteNachweis: (id, mitLeistungen) =>
@@ -453,14 +486,12 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
         controllingNur((d) => {
           const n = d.nachweise.find((x) => x.id === id);
           if (!n) return d;
+          // Dieselbe Zuordnung wie die Anzeige – nicht nach Datum, sonst fielen nachgereichte heraus bzw. hinein
+          const weg = new Set(mitLeistungen ? eigeneLeistungen(d, leistungenDesNachweises(d, n)).map((l) => l.id) : []);
           return {
             ...d,
             nachweise: d.nachweise.filter((x) => x.id !== id),
-            leistungen: mitLeistungen
-              ? d.leistungen.filter(
-                  (l) => !(l.projektId === n.projektId && l.datum >= n.von && l.datum <= n.bis && darfLeistungAendern(d, l)),
-                )
-              : d.leistungen,
+            leistungen: weg.size ? d.leistungen.filter((l) => !weg.has(l.id)) : d.leistungen,
           };
         }),
       ),
@@ -554,11 +585,14 @@ export function StoreProvider({ zugang = 'bereich', children }: { zugang?: Zugan
   const [geladen] = useState(ladeDaten);
   const [data, setData] = useState<LeistungsnachweisDaten>(geladen.daten);
   const [ladeZustand, setLadeZustand] = useState<LadeZustand>(geladen.zustand);
+  const [speicherZustand, setSpeicherZustand] = useState<SpeicherZustand>('ok');
+  // Stand, den ein anderes Fenster gespeichert hat – er wird übernommen, aber nicht zurückgeschrieben
+  const uebernommen = useRef<LeistungsnachweisDaten | null>(null);
 
   // Nach einem Ladefehler bzw. bei einer neueren Fassung bleibt der gespeicherte Stand unberührt
   useEffect(() => {
-    if (ladeZustand !== 'ok') return;
-    speichereDaten(data);
+    if (ladeZustand !== 'ok' || data === uebernommen.current) return;
+    setSpeicherZustand(speichereDaten(data));
   }, [data, ladeZustand]);
 
   /** Jede Änderung läuft hierüber – die Funktion muss rein sein. */
@@ -598,12 +632,26 @@ export function StoreProvider({ zugang = 'bereich', children }: { zugang?: Zugan
     anwenden: (plan) => mutate((d) => registerPlanAnwenden(d, plan)),
   });
 
+  // Ein anderes Fenster (Bereich bzw. Controlling) hat gespeichert: dessen Stand übernehmen, ohne ihn
+  // zurückzuschreiben (`uebernommen`) oder ans Register zu übertragen (`ersetzt`) – das andere Fenster hat
+  // beides getan. Stammt er aus einer neueren Fassung, zeigt der Bereich wie beim Laden Demodaten und
+  // speichert nicht mehr (`ladeZustand`), statt ihn mit dem älteren Stand zu überschreiben.
+  useFremdeAenderung(SPEICHER_SCHLUESSEL, ladeZustand === 'ok', () => {
+    const neu = ladeDaten();
+    uebernommen.current = neu.daten;
+    ersetzt();
+    setLadeZustand(neu.zustand);
+    setData(neu.daten);
+    setSpeicherZustand('ok');
+  });
+
   const value = useMemo<StoreValue>(
     () => ({
       data,
       zugang,
       controlling: zugang === 'controlling',
       ladeZustand,
+      speicherZustand,
       ...storeAktionen(data, mutate, zugang),
       ersetzeDaten: (d) => {
         ersetzt();
@@ -619,7 +667,7 @@ export function StoreProvider({ zugang = 'bereich', children }: { zugang?: Zugan
         setLadeZustand('ok');
       },
     }),
-    [data, ladeZustand, mutate, zugang, ersetzt],
+    [data, ladeZustand, speicherZustand, mutate, zugang, ersetzt],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

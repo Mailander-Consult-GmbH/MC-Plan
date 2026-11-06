@@ -10,7 +10,7 @@
  * mit dem sich ein anstehender Schritt direkt aus einer Liste heraus erledigen
  * lässt – bei mehreren anstehenden Schritten (parallele Zweige) mit Auswahl.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { schrittStatusSetzen, type Abschluss } from '../domain/abschluss';
 import { istErledigt } from '../domain/ablauf';
 import { kontextFuer } from '../domain/bestand';
@@ -20,6 +20,7 @@ import { useToast } from '../../../shared/toast';
 import { Field, Modal, TextInput } from '../../../shared/ui';
 import { NeuZustaendig } from './NeuZustaendig';
 import { Icon } from '../../../shared/icons';
+import { AufklappMenue } from '../../../shared/menue';
 import './planlauf.css';
 
 export function useSchrittStatus() {
@@ -129,17 +130,7 @@ export function ErledigtButton(
   const { data } = useStore();
   const eigen = useSchrittStatus();
   const [menue, setMenue] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  // Menü schließt bei einem Klick daneben
-  useEffect(() => {
-    if (!menue) return;
-    const zu = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setMenue(false);
-    };
-    document.addEventListener('mousedown', zu);
-    return () => document.removeEventListener('mousedown', zu);
-  }, [menue]);
+  const knopf = useRef<HTMLButtonElement>(null);
 
   const runId = props.run ? props.run.id : props.runId;
   const ids = props.step ? [props.step.id] : props.stepIds;
@@ -166,8 +157,9 @@ export function ErledigtButton(
   const einer = schritte.length === 1;
 
   return (
-    <span className="pl-haken" ref={ref} onClick={(e) => e.stopPropagation()}>
+    <span className="pl-haken" onClick={(e) => e.stopPropagation()}>
       <button
+        ref={knopf}
         type="button"
         className="btn btn-sm btn-haken"
         title={
@@ -183,15 +175,24 @@ export function ErledigtButton(
         <Icon name="check" size={13} />
       </button>
       {menue ? (
-        <div className="pl-haken-menue" role="menu">
-          <div className="pl-haken-titel">Welcher Schritt ist erledigt?</div>
-          {schritte.map((s) => (
-            <button key={s.id} type="button" role="menuitem" onClick={() => erledige(s.id)}>
-              {s.name}
-              {s.roleName ? <span className="tertiary"> · {s.roleName}</span> : null}
-            </button>
-          ))}
-        </div>
+        <AufklappMenue
+          anker={knopf}
+          titel="Welcher Schritt ist erledigt?"
+          eintraege={schritte.map((s) => ({
+            key: s.id,
+            inhalt: (
+              <>
+                {s.name}
+                {s.roleName ? <span className="tertiary"> · {s.roleName}</span> : null}
+              </>
+            ),
+            onWaehle: () => erledige(s.id),
+          }))}
+          onSchliessen={(fokusZurueck) => {
+            setMenue(false);
+            if (fokusZurueck) knopf.current?.focus();
+          }}
+        />
       ) : null}
       {selbst ? eigen.nachweisDialog : null}
     </span>

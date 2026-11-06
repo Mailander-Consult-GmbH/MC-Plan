@@ -2,7 +2,8 @@
  * Excel-Import der Leistungen aus der Zeiterfassung. Je Zeile eine Buchung mit
  * Datum, Mitarbeiter, Leistungstext, Stunden, Projekt („K9101: …“) und
  * Projektelement. Eine Datei kann mehrere Projekte und Mitarbeiter enthalten;
- * jede Leistung landet in ihrem Projekt und dort im Nachweis ihres Zeitraums.
+ * jede Leistung landet in ihrem Projekt und dort im Nachweis ihres Zeitraums
+ * (Ausnahmen nachgereichter und abgerechneter: `nachweisDerLeistung`).
  *
  * Ablauf: `importLesen` liest die Zeilen eines Blatts, `importPlanen` rechnet
  * daraus eine Vorschau samt Plan (rein, ohne Zufall – alle Kennungen über
@@ -22,10 +23,14 @@
  * (gleiche Person, gleiches Projekt, Datum, Stunden, Text und – gegenüber
  * früheren Importen – Projektelement) werden übersprungen, und „ersetzen“
  * entfernt nur frühere Importe derselben Person in den Projekten der Datei
- * und in ihrem Datumsbereich der Datei.
+ * und in ihrem Datumsbereich der Datei. Ist eine ersetzte Leistung schon
+ * abgerechnet (im Stand eines abgeschlossenen Nachweises) oder nachgereicht,
+ * übernimmt die neue Zeile derselben Person vom selben Tag ihre Kennung – so
+ * bleibt sie dort abgerechnet bzw. nachgereicht und wird nicht als „nicht
+ * erfasst“ ein zweites Mal abgerechnet.
  */
 import { datumLesen, spaltenZuordnen } from '../../../shared/xlsxLesen';
-import { nachweisDerLeistung, nachweiseErgaenzen, nachweisTitel, textSchluessel } from './nachweis';
+import { abgerechnetIn, nachgereichtIn, nachweisDerLeistung, nachweiseErgaenzen, nachweisTitel, textSchluessel } from './nachweis';
 import {
   kuerzelAus,
   mitarbeiterName,
@@ -570,11 +575,13 @@ function dublettenSchluessel(
  * freiem Kürzel (`kuerzelFrei`, etwa „MM2“) und Hinweis.
  *
  * Projekte über die Nummer (ohne Leerzeichen, Großschreibung; sonst neu mit name aus der Datei,
- * Leistungsbereich „Projektsteuerung“, Raster „monat“, Regel „monat“, markiert). Abschnitte über
+ * Vorgaben aus `IMPORT_PROJEKT_VORGABEN` – Regel „fortlaufend“ –, markiert). Abschnitte über
  * die Kennung des Projektelements (Spalte J); fehlende legt der Plan an. Doppelte werden
  * übersprungen – je vorhandener Leistung höchstens einmal: zuerst gegen frühere Importe mit
  * gleichem Projektelement, danach gegen händisch erfasste ohne Rücksicht auf das Projektelement
- * (`dublettenSchluessel`). Danach `nachweiseErgaenzen` je Projekt für die neuen Leistungen.
+ * (`dublettenSchluessel`). Mit `ersetzen` übernimmt eine neue Leistung die Kennung einer
+ * ersetzten, die abgerechnet oder nachgereicht ist (gleiche Person, gleiches Projekt, gleicher
+ * Tag). Danach `nachweiseErgaenzen` je Projekt für die neuen Leistungen.
  * `neueId(prefix)` erzeugt alle IDs. Neue Mitarbeiter und Projekte nimmt der Plan nur auf, wenn
  * sie neue Leistungen erhalten.
  */
@@ -810,11 +817,25 @@ export function importPlanen(
     abschnittNachKennung.set(projekt.id, bekannt);
   }
 
+  /*
+   * Ersetzte Leistungen, die abgerechnet oder nachgereicht sind: Ihre Kennung geht an die neue
+   * Zeile derselben Person vom selben Tag – sonst stünde die Leistung im Stand des abgeschlossenen
+   * Nachweises und als „nicht erfasst“ noch einmal zur Abrechnung an.
+   */
+  const tagSchluessel = (l: Pick<Leistung, 'mitarbeiterId' | 'projektId' | 'datum'>) => `${l.mitarbeiterId}|${l.projektId}|${l.datum}`;
+  const festeKennungen = new Map<string, ID[]>();
+  for (const l of [...entfernt].sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0))) {
+    const fest = !!abgerechnetIn(daten, l) || !!nachgereichtIn(daten, l);
+    if (!fest) continue;
+    const k = tagSchluessel(l);
+    festeKennungen.set(k, [...(festeKennungen.get(k) ?? []), l.id]);
+  }
+
   /* Neue Leistungen und Nachweise */
   const neueLeistungen: Leistung[] = neu.map((k) => {
     const kennung = kennungNormal(projektelementTeilen(k.posten.projektelement).kennung);
     return {
-      id: neueId('le'),
+      id: festeKennungen.get(tagSchluessel({ mitarbeiterId: k.mitarbeiterId, projektId: k.projekt.id, datum: k.posten.datum }))?.shift() ?? neueId('le'),
       projektId: k.projekt.id,
       mitarbeiterId: k.mitarbeiterId,
       datum: k.posten.datum,
@@ -931,7 +952,8 @@ export function importAnwenden(daten: LeistungsnachweisDaten, plan: ImportPlan):
     ],
     leistungen: [
       ...daten.leistungen.filter((l) => !entfernen.has(l.id)),
-      ...plan.neueLeistungen.filter((l) => !leistungIds.has(l.id)),
+      // Eine neue Leistung kann die Kennung einer ersetzten übernehmen (abgerechnet bzw. nachgereicht)
+      ...plan.neueLeistungen.filter((l) => !leistungIds.has(l.id) || entfernen.has(l.id)),
     ],
     nachweise: [
       ...daten.nachweise.map((n) => {

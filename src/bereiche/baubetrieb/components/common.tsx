@@ -1,7 +1,8 @@
 /** Fachliche Anzeige-Bausteine der Baubetriebsplanung, die mehrere Ansichten brauchen. */
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { diffDays, formatDate, relativeLabel, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
+import { AufklappMenue } from '../../../shared/menue';
 import { Badge } from '../../../shared/ui';
 import { sachstand } from '../domain/ablauf';
 import { AMPEL_LABEL, type Ampel, type Terminfrist } from '../domain/fristen';
@@ -139,24 +140,7 @@ export function NachfolgerAuswahl({
 }) {
   const { data } = useStore();
   const [menue, setMenue] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  // Menü schließt bei einem Klick daneben und mit Escape
-  useEffect(() => {
-    if (!menue) return;
-    const daneben = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setMenue(false);
-    };
-    const taste = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenue(false);
-    };
-    document.addEventListener('mousedown', daneben);
-    document.addEventListener('keydown', taste);
-    return () => {
-      document.removeEventListener('mousedown', daneben);
-      document.removeEventListener('keydown', taste);
-    };
-  }, [menue]);
+  const knopf = useRef<HTMLButtonElement>(null);
 
   const nachfolger = nachfolgerVon(data.workflows, statusId);
   if (nachfolger.length === 0) return null;
@@ -167,8 +151,9 @@ export function NachfolgerAuswahl({
   };
 
   return (
-    <span className="bb-haken" ref={ref} onClick={(e) => e.stopPropagation()}>
+    <span className="bb-haken" onClick={(e) => e.stopPropagation()}>
       <button
+        ref={knopf}
         type="button"
         className="btn btn-sm btn-haken"
         title={
@@ -184,20 +169,20 @@ export function NachfolgerAuswahl({
         <Icon name="check" size={13} />
       </button>
       {menue ? (
-        <div className="bb-haken-menue" role="menu">
-          <div className="bb-haken-titel">Welcher Status folgt?</div>
-          {nachfolger.map((n) => (
-            <button
-              key={n}
-              type="button"
-              role="menuitem"
-              className={n === LOESCHEN ? 'bb-haken-loeschen' : undefined}
-              onClick={() => waehle(n)}
-            >
-              {nachfolgerText(data.workflows, statusId, n)}
-            </button>
-          ))}
-        </div>
+        <AufklappMenue
+          anker={knopf}
+          titel="Welcher Status folgt?"
+          eintraege={nachfolger.map((n) => ({
+            key: n,
+            inhalt: nachfolgerText(data.workflows, statusId, n),
+            gefahr: n === LOESCHEN,
+            onWaehle: () => waehle(n),
+          }))}
+          onSchliessen={(fokusZurueck) => {
+            setMenue(false);
+            if (fokusZurueck) knopf.current?.focus();
+          }}
+        />
       ) : null}
     </span>
   );

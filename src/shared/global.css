@@ -403,10 +403,13 @@ a:hover { text-decoration: underline; }
 /* ------------------------------------------------------------------ */
 /* Tabellen scrollen bei schmalen Fenstern quer, statt abgeschnitten zu werden. */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-/* Ab Tabletbreite passen die Tabellen; ohne eigenen Scrollbereich bleibt die
-   Kopfzeile beim Blättern der Seite stehen. */
+/* Ab Tabletbreite ohne eigenen Scrollbereich, damit die Kopfzeile beim Blättern
+   der Seite stehen bleibt. Passt eine Tabelle nicht in ihre Karte, setzt
+   tabellenBreiteBeobachten (src/shared/tabellen.ts) table-scroll-quer: Dann
+   scrollt sie quer, statt Spalten und Aktionen stumm abzuschneiden. */
 @media (min-width: 861px) {
   .table-scroll { overflow-x: clip; }
+  .table-scroll.table-scroll-quer { overflow-x: auto; }
 }
 .table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .table th {
@@ -514,37 +517,47 @@ a:hover { text-decoration: underline; }
 }
 .filter-btn.aktiv, .filter-btn.offen { color: var(--accent); }
 
-.filter-schatten { position: fixed; inset: 0; z-index: 40; }
-.filter-menu {
+
+/* Auswahlmenü an einem Knopf (AufklappMenue, src/shared/menue.tsx): fest
+   positioniert im body, die Lage setzt der Baustein. Über Dialogen (100) und
+   dem Workflow-Editor (150), unter Meldungen (200). */
+.aufklapp-menue {
   position: fixed;
-  z-index: 41;
-  min-width: 170px;
-  max-height: 280px;
+  z-index: 160;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 4px;
   background: var(--bg-elev);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--separator);
-}
-.filter-menu button {
-  display: block;
-  width: 100%;
-  padding: 6px 10px;
-  border: none;
-  background: none;
+  border: 1px solid var(--separator-strong);
   border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
   text-align: left;
+  white-space: normal;
   font-size: 13px;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
   color: var(--text);
-  white-space: nowrap;
+}
+.aufklapp-menue button {
+  flex: none;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
-.filter-menu button:hover { background: var(--bg-hover); }
-.filter-menu button.aktiv { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.aufklapp-menue button:hover, .aufklapp-menue button:focus-visible { background: var(--bg-hover); }
+.aufklapp-menue button.gefahr { color: var(--rot-text); }
+.aufklapp-menue button.aktiv { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.aufklapp-menue .aufklapp-menue-titel { flex: none; padding: 5px 10px; font-size: 11.5px; color: var(--text-secondary); }
 
 
 /* Antwortmöglichkeiten einer Entscheidung */
@@ -751,7 +764,10 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   width: min(680px, 100%);
+  /* dvh: auf Telefonen ohne die Werkzeugleisten des Browsers, sonst läge der
+     Dialogfuß darunter; 100vh bleibt Rückfall für ältere Browser. */
   max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   display: flex; flex-direction: column;
   animation: pop 0.18s cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -775,9 +791,12 @@ a:hover { text-decoration: underline; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop { from { opacity: 0; transform: scale(0.97) translateY(6px); } to { opacity: 1; transform: none; } }
 
-/* Hinweis „Neue Fassung verfügbar“ (src/shell/NeueFassung.tsx) – über Dialogen, unter Meldungen */
+/* Hinweis „Neue Fassung verfügbar“ (src/shell/NeueFassung.tsx) – über dem
+   Inhalt, aber unter der aufgeklappten Seitenleiste (90) und unter Dialogen
+   (100), damit er deren Fuß nicht verdeckt. Meldungen rücken über ihn
+   (--neue-fassung-hoehe, gesetzt vom Hinweis). */
 .neue-fassung {
-  position: fixed; right: 18px; bottom: 18px; z-index: 150;
+  position: fixed; right: 18px; bottom: 18px; z-index: 80;
   width: min(420px, calc(100vw - 24px));
   display: flex; flex-direction: column; gap: 10px;
   padding: 14px 16px;
@@ -795,7 +814,7 @@ a:hover { text-decoration: underline; }
   .neue-fassung { left: 12px; right: 12px; bottom: 12px; width: auto; }
 }
 
-.toast-wrap { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+.toast-wrap { position: fixed; bottom: calc(22px + var(--neue-fassung-hoehe, 0px)); left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; }
 .toast {
   background: rgba(30, 30, 32, 0.92);
   backdrop-filter: blur(12px);
@@ -1072,7 +1091,7 @@ a:hover { text-decoration: underline; }
   .step-row { padding: 12px 16px; }
   .table th, .table td { padding: 9px 12px; }
 
-  .modal { max-height: calc(100vh - 24px); border-radius: var(--radius-lg); }
+  .modal { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); border-radius: var(--radius-lg); }
   .modal-header, .modal-body, .modal-footer { padding-left: 16px; padding-right: 16px; }
   .modal-footer { flex-wrap: wrap; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
   .overlay { padding: 12px; }

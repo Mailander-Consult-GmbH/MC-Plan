@@ -10,44 +10,48 @@ import { statusVon, zustaendigText } from './workflow';
 
 const KOPF_STIL = { fett: true, fuellung: 'E8EDF3', rahmen: true };
 
-const ANMELDUNG_KOPF = [
-  'Projekt',
-  'DB-G-Nummer',
-  'Vorhabenname',
-  'Anmelde-ID / Begriff',
-  'Maßnahmenart',
-  'Workflow',
-  'Status',
-  'Status seit',
-  'Zuständig',
-  'Zuständiger BBK',
-  'Anmelder',
-  'Sperrzeit von',
-  'Sperrzeit bis',
-  'Fahrplanjahr',
-  'Terminfrist',
-  'Regel',
-  'Ampel',
-  'Bf/Strecke',
-  'Gewerk/Tätigkeit',
-  'ÄAbst-Nr',
-  'AnnexVII',
-  'Bemerkungen',
+// Kopf und Breite stehen je Spalte beisammen, damit eine neue Spalte die Breiten der
+// folgenden nicht verschiebt.
+/** Spalten des Blatts „Anmeldungen“ mit ihrer Breite (Zeichen). */
+const ANMELDUNG_SPALTEN: [titel: string, breite: number][] = [
+  ['Projekt', 28],
+  ['DB-G-Nummer', 14],
+  ['Vorhabenname', 26],
+  ['Anmelde-ID / Begriff', 22],
+  ['Maßnahmenart', 13],
+  ['Workflow', 20],
+  ['Status', 26],
+  ['Status seit', 12],
+  ['Zuständig', 22],
+  ['Zuständiger BBK', 18],
+  ['Anmelder', 22],
+  ['Sperrzeit von', 12],
+  ['Sperrzeit bis', 12],
+  ['Fahrplanjahr', 11],
+  ['Terminfrist', 12],
+  ['Regel', 18],
+  ['Ampel', 11],
+  ['Bf/Strecke', 30],
+  ['Gewerk/Tätigkeit', 30],
+  ['ÄAbst-Nr', 12],
+  ['AnnexVII', 26],
+  ['Bemerkungen', 36],
 ];
 
-const PROJEKT_KOPF = [
-  'Projekt',
-  'Projektleiter',
-  'DB-G-Nummer',
-  'Erster Anmeldetermin (ca.)',
-  'Prozessphase',
-  'Betroffene Fahrplanjahre',
-  'Inbetriebnahme',
-  'Hauptbearbeiter MIC',
-  'MIC-Projektnummer (wiko)',
-  'Status',
-  'Anmeldungen',
-  'Bemerkung',
+/** Spalten des Blatts „Projekte“ mit ihrer Breite (Zeichen). */
+const PROJEKT_SPALTEN: [titel: string, breite: number][] = [
+  ['Projekt', 32],
+  ['Projektleiter', 26],
+  ['DB-G-Nummer', 14],
+  ['Erster Anmeldetermin (ca.)', 14],
+  ['Prozessphase', 16],
+  ['Betroffene Fahrplanjahre', 22],
+  ['Inbetriebnahme', 14],
+  ['Hauptbearbeiter MIC', 20],
+  ['MIC-Projektnummer (wiko)', 18],
+  ['Status', 16],
+  ['Anmeldungen', 12],
+  ['Bemerkung', 36],
 ];
 
 const datum = (wert: string | null): Zelle => ({ wert, datum: true });
@@ -120,25 +124,25 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
     p.bemerkung,
   ]);
 
-  const kopf = (spalten: string[]): Zelle[] => spalten.map((wert) => ({ wert, stil: KOPF_STIL }));
+  const kopf = (spalten: [string, number][]): Zelle[] => spalten.map(([wert]) => ({ wert, stil: KOPF_STIL }));
   const titel = projekte.length === 1 ? `Projekt: ${projekte[0].name}` : 'Baubetriebsplanung – Monitor';
 
   const blob = xlsxErzeugen([
     {
       name: 'Anmeldungen',
       kopfzeileFett: false,
-      zeilen: [[{ wert: titel, stil: { fett: true, groesse: 13 } }], [stand], [], kopf(ANMELDUNG_KOPF), ...anmeldungZeilen],
+      zeilen: [[{ wert: titel, stil: { fett: true, groesse: 13 } }], [stand], [], kopf(ANMELDUNG_SPALTEN), ...anmeldungZeilen],
       fixierteZeilen: 4,
       querformat: true,
-      spaltenbreiten: [28, 14, 26, 22, 13, 20, 26, 12, 22, 18, 12, 12, 11, 12, 18, 11, 30, 30, 12, 26, 36],
+      spaltenbreiten: ANMELDUNG_SPALTEN.map(([, breite]) => breite),
     },
     {
       name: 'Projekte',
       kopfzeileFett: false,
-      zeilen: [[{ wert: 'Projekte', stil: { fett: true, groesse: 13 } }], [stand], [], kopf(PROJEKT_KOPF), ...projektZeilen],
+      zeilen: [[{ wert: 'Projekte', stil: { fett: true, groesse: 13 } }], [stand], [], kopf(PROJEKT_SPALTEN), ...projektZeilen],
       fixierteZeilen: 4,
       querformat: true,
-      spaltenbreiten: [32, 26, 14, 14, 16, 22, 14, 20, 18, 16, 12, 36],
+      spaltenbreiten: PROJEKT_SPALTEN.map(([, breite]) => breite),
     },
   ]);
   const name = projekte.length === 1 ? dateiname(projekte[0].name) : 'Monitor';

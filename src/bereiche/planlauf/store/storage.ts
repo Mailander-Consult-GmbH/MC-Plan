@@ -86,7 +86,9 @@ function rollenAufteilen<T extends { id: string; name: string }>(rollen: T[]): (
   });
 }
 
-const KEY = 'planlauf-management.data.v1';
+/** Schlüssel des Bestands im localStorage (auch für `storage`-Ereignisse anderer Fenster). */
+export const SPEICHER_SCHLUESSEL = 'planlauf-management.data.v1';
+const KEY = SPEICHER_SCHLUESSEL;
 
 /** Präfix der Rohkopien vor einer Umstellung: `<KEY>.vor-fassung-<n>`. */
 const VOR_FASSUNG = `${KEY}.vor-fassung-`;

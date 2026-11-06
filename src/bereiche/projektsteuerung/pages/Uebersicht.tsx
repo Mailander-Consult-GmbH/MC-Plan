@@ -40,14 +40,17 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
   const [filter, setFilter] = useState<Filter>('alle');
   const [alle, setAlle] = useState(false);
 
-  const projekte = sichtbareProjekte(data.projekte, useArchivierte('projektsteuerung'));
+  const archiviert = useArchivierte('projektsteuerung');
+  const projekte = sichtbareProjekte(data.projekte, archiviert);
   const ids = projekte.map((p) => p.id);
   const offen = eigeneTodos(data, ids);
   const ueberfaellig = offen.filter((p) => p.ampel === 'ueberfaellig');
   const faellig = offen.filter((p) => p.ampel === 'faellig');
   const gefiltert = filter === 'ueberfaellig' ? ueberfaellig : filter === 'faellig' ? faellig : offen;
   const sichtbar = alle ? gefiltert : gefiltert.slice(0, ANZAHL_PUNKTE);
-  const alleMarkiert = data.projekte.filter((p) => p.markiert).length;
+  // Hinweis „Kein Projekt markiert“ nach derselben Regel wie sichtbareProjekte: Markierte archivierte zählen nicht
+  const aktive = data.projekte.filter((p) => !archiviert.has(p.id));
+  const keinesMarkiert = aktive.length > 0 && !aktive.some((p) => p.markiert);
   const ich = data.einstellungen.bearbeiter;
   const heute = today();
 
@@ -74,7 +77,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
         />
       </div>
 
-      {alleMarkiert === 0 ? (
+      {keinesMarkiert ? (
         <p className="small tertiary">
           Kein Projekt markiert – es werden alle angezeigt. Unter <strong>Projekte</strong> lassen sich einzelne
           markieren; dann erscheinen nur diese hier und in der Seitenleiste.

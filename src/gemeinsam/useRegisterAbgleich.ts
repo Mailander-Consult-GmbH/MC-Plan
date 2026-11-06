@@ -8,7 +8,13 @@
  *    sollen; dort gilt das Register.
  * 2. Unbekanntes trägt der Bereich ins Register ein, und was das Register
  *    Neues kennt, übernimmt er über sein eigenes `mutate()` (`abgleichen`,
- *    Plan → `anwenden`).
+ *    Plan → `anwenden`). Als maßgeblich (`vollstaendig`: nicht mehr geführte
+ *    Projekte lösen, ★ übernehmen) gilt der Bestand nur beim ersten Abgleich
+ *    nach dem Laden und nach `ersetzt()` – so nimmt ein zweites Fenster mit
+ *    älterem Bestand nicht zurück, was das erste eben eingetragen hat. Damit
+ *    es seinen Bestand gar nicht erst veraltet hält, lädt der Store ihn bei
+ *    Änderungen aus einem anderen Fenster nach (`useFremdeAenderung`) und
+ *    meldet vorher `ersetzt()`.
  *
  * Der Abgleich ruht, solange der Bereich seinen gespeicherten Stand nicht lesen
  * konnte (`aktiv` = false) oder das Register nicht lesbar ist.
@@ -32,6 +38,7 @@ export function useRegisterAbgleich<D>(optionen: AbgleichOptionen<D>): { ersetzt
   const zustand = useRegisterZustand();
   const vorher = useRef<D | null>(null);
   const ersetzt = useRef(false);
+  const erstmals = useRef(true);
   const aktuell = useRef(optionen);
   aktuell.current = optionen;
 
@@ -47,12 +54,15 @@ export function useRegisterAbgleich<D>(optionen: AbgleichOptionen<D>): { ersetzt
     const eingespielt = geaendert && ersetzt.current;
     if (geaendert) ersetzt.current = false;
 
+    const vollstaendig = erstmals.current || eingespielt;
+    erstmals.current = false;
+
     const jetzt = new Date().toISOString();
     const neueSicht = sicht(daten);
     let plan: Plan | null = null;
     registerAendern((r) => {
       const stand = geaendert && !eingespielt ? uebertragen(bereich, sicht(alt as D), neueSicht, r, jetzt) : r;
-      const ergebnis = abgleichen(bereich, neueSicht, stand, jetzt);
+      const ergebnis = abgleichen(bereich, neueSicht, stand, jetzt, vollstaendig);
       plan = ergebnis.plan;
       return ergebnis.register;
     });

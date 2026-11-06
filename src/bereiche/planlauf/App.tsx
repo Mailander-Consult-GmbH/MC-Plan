@@ -24,11 +24,14 @@ import { Hinweisleisten } from './components/Hinweisleisten';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import type { IconName } from '../../shared/icons';
+import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
 
 export function App() {
   const { data, zuruecksetzen, ladeZustand, setBearbeiter } = useStore();
   const toast = useToast();
   const [route, navigate] = useRoute();
+  // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
+  const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projectId}` : route.view === 'planlauf' ? `planlauf/${route.runId}` : route.view);
   const [menuOffen, setMenuOffen] = useState(false);
   const inEinstellungen = route.view === 'ketten' || route.view === 'rollen' || route.view === 'vorlagen';
   const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
@@ -184,7 +187,7 @@ export function App() {
 
         <Hinweisleisten />
 
-        <div className="content">
+        <div className="content" ref={inhalt}>
           <div className="content-inner">
             {route.view === 'dashboard' ? <Dashboard navigate={gehe} /> : null}
             {route.view === 'fristen' ? <Fristen navigate={gehe} /> : null}

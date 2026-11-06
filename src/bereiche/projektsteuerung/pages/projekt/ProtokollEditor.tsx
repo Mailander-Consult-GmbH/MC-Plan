@@ -105,7 +105,17 @@ export function ProtokollEditor({
 
   useEffect(() => {
     if (!fokus) return;
-    const el = document.getElementById(fokus);
+    let el = document.getElementById(fokus);
+    // „Nach oben“/„Nach unten“ ist am Anfang bzw. Ende der Tagesordnung gesperrt – dann der Gegenknopf,
+    // sonst fiele der Fokus auf die Seite zurück
+    if (el instanceof HTMLButtonElement && el.disabled) {
+      const gegen = fokus.startsWith('ps-hoch-')
+        ? fokus.replace('ps-hoch-', 'ps-runter-')
+        : fokus.startsWith('ps-runter-')
+          ? fokus.replace('ps-runter-', 'ps-hoch-')
+          : null;
+      el = (gegen && document.getElementById(gegen)) || el;
+    }
     el?.focus();
     // Aus dem Ergänzungsfeld entsteht beim ersten Zeichen eine Zeile: weiterschreiben am Ende
     if (el instanceof HTMLTextAreaElement) el.setSelectionRange(el.value.length, el.value.length);
@@ -164,8 +174,8 @@ export function ProtokollEditor({
     if (!id) return;
     toast(`Folgeprotokoll Nr. ${nr} angelegt${mit ? ` – ${mit} ${mit === 1 ? 'Eintrag' : 'Einträge'} übernommen` : ''}.`);
     setAnsicht('bearbeiten');
+    // Die neue Seite beginnt oben (useNachObenBeiSeitenwechsel in App.tsx)
     navigate({ view: 'protokoll', projektId: projekt.id, protokollId: id });
-    window.scrollTo(0, 0);
   };
 
   const drucken = () => blattDrucken(titel, inhalt);

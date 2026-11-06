@@ -217,7 +217,13 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
           titel="Projekt löschen?"
           text={`„${projekt.name}“ wird samt ${eigene.length} ${
             eigene.length === 1 ? 'Anmeldung' : 'Anmeldungen'
-          } gelöscht. Das lässt sich nicht rückgängig machen.${loeschHinweis}`}
+          } gelöscht.${
+            eigene.length === 0
+              ? ''
+              : eigene.length === 1
+                ? ' Die Anmeldung lässt sich nicht wiederherstellen.'
+                : ' Die Anmeldungen lassen sich nicht wiederherstellen.'
+          }${loeschHinweis}`}
           onConfirm={() => {
             deleteProjekt(projekt.id);
             toast('Projekt gelöscht.');
@@ -293,14 +299,17 @@ function AnmeldungenTabelle({
       {/* Ohne Anmeldung bleibt es bei der Kopfzeile, damit leere Workflows wenig Platz brauchen. */}
       {zeilen.length === 0 ? null : (
         <div className="table-scroll">
-          {/* Feste Breiten: Anmeldung nimmt den Rest und kürzt, alle anderen Spalten passen einzeilig. */}
-          <table className="table" style={{ tableLayout: 'fixed', minWidth: 1100 }}>
+          {/* Feste Breiten: Anmeldung nimmt den Rest, längere Texte kürzen mit „…“ (voller Text im
+              Tooltip). Ist die Karte schmaler als die Mindestbreite, scrollt die Tabelle quer
+              (table-scroll-quer, src/shared/tabellen.ts); der Haken bleibt dabei rechts stehen
+              (.bb-anmeldungen in baubetrieb.css). */}
+          <table className="table bb-anmeldungen" style={{ tableLayout: 'fixed', minWidth: 1080 }}>
             <thead>
               <tr>
                 <th>Anmeldung</th>
-                <th style={{ width: 178 }}>Sperrzeitraum</th>
+                <th style={{ width: 170 }}>Sperrzeitraum</th>
                 <th style={{ width: 206 }}>Status</th>
-                <th style={{ width: 150 }}>Zuständig</th>
+                <th style={{ width: 136 }}>Zuständig</th>
                 <th style={{ width: 152 }}>Terminfrist</th>
                 <th style={{ width: 200 }}>Sachstand</th>
                 <th className="actions" style={{ width: 64 }} />

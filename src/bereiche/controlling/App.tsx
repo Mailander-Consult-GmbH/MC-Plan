@@ -9,6 +9,7 @@ import { useRegister, useRegisterZustand } from '../../gemeinsam/register';
 import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { Callout } from '../../shared/ui';
+import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import { useBenutzer } from '../../gemeinsam/benutzer';
@@ -20,6 +21,9 @@ export function App({ onSperren }: { onSperren: () => void }) {
   const register = useRegister();
   const zustand = useRegisterZustand();
   const [route, navigate] = useRoute();
+  // Ein neuer Menüpunkt beginnt oben (src/shared/scrollen.ts); die Leistungsnachweise
+  // setzen innerhalb ihres Menüpunkts selbst zurück.
+  const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view);
   const [menuOffen, setMenuOffen] = useState(false);
 
   // Das Controlling hat keine eigenen Einstellungen – es folgt dem Farbmodus der gemeinsamen Anmeldung.
@@ -97,7 +101,7 @@ export function App({ onSperren }: { onSperren: () => void }) {
           </div>
         </header>
 
-        <div className="content">
+        <div className="content" ref={inhalt}>
           <div className="content-inner">
             {route.view === 'leistungsnachweise' ? (
               <LeistungsnachweiseControlling />

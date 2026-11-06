@@ -420,7 +420,8 @@ export interface Anmeldung extends AnmeldungStand {
   herkunftId: ID | null;
   verlauf: VerlaufEintrag[];
   /**
-   * Tag der letzten Änderung der Merkmale („Bearbeiten“, Terminfrist von Hand);
+   * Tag der letzten tatsächlichen Änderung der Merkmale („Bearbeiten“, Terminfrist
+   * von Hand – ohne Änderung bleibt er stehen);
    * Anlage, Statuswechsel und Nachhaken stehen mit ihrem Datum im Verlauf.
    * Zusammen ergeben sie den Sachstand (`sachstand`, domain/ablauf.ts).
    */

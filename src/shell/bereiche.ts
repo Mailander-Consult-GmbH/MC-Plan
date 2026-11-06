@@ -42,7 +42,7 @@ export const BEREICHE: Bereich[] = [
     titel: 'Projektsteuerung',
     untertitel: 'Beteiligte und Protokolle',
     beschreibung:
-      'Projektbeteiligte mit projektübergreifenden Funktionen führen, Besprechungen protokollieren und offene Punkte in einer fortgeschriebenen Liste verfolgen.',
+      'Projektbeteiligte mit projektübergreifenden Funktionen führen, Besprechungen mit Folgeprotokollen festhalten und eigene Aufgaben verfolgen.',
     icon: 'protokoll',
     marke: 'Erster Entwurf',
   },
@@ -51,7 +51,7 @@ export const BEREICHE: Bereich[] = [
     titel: 'Leistungsnachweise',
     untertitel: 'Stunden und Leistungen je Projekt',
     beschreibung:
-      'Leistungen händisch oder per Excel-Import erfassen und je Projekt tages-, wochen- oder monatsscharfe Leistungsnachweise erstellen – gemeinsam im Team, als PDF und Excel.',
+      'Eigene Leistungen je Projekt von Hand, im Kalender oder per Excel-Import erfassen – daraus entstehen gemeinsame tages-, wochen- oder monatsscharfe Leistungsnachweise, die das Controlling abrechnet und als PDF und Excel ausgibt.',
     icon: 'stunden',
     marke: 'Erster Entwurf',
   },
@@ -60,7 +60,7 @@ export const BEREICHE: Bereich[] = [
     titel: 'Controlling',
     untertitel: 'Projekte aller Bereiche',
     beschreibung:
-      'Projekte für alle Bereiche anlegen, in Bereiche übernehmen, je Bereich oder ganz archivieren und löschen.',
+      'Projekte für alle Bereiche anlegen, in Bereiche übernehmen, je Bereich oder ganz archivieren und löschen; dazu Leistungsnachweise abrechnen, abschließen und ausgeben.',
     icon: 'schloss',
     marke: 'Mit PIN',
   },

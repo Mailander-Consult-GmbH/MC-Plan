@@ -8,7 +8,7 @@
  * gemeinsame Anmeldung aller Bereiche (`useBenutzerAbgleich`,
  * src/gemeinsam/benutzer.ts).
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { today } from '../../../shared/dates';
 import {
@@ -31,11 +31,12 @@ import type {
   Workflow,
 } from '../domain/types';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
+import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
 import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { zielText } from '../domain/workflow';
 import { workflowLoeschen, workflowSpeichern } from '../domain/workflowPflege';
-import { ladeDaten, speichereDaten } from './storage';
+import { SPEICHER_SCHLUESSEL, ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 
 export { newId };
 
@@ -47,6 +48,10 @@ export type NeueAnmeldung = Omit<
 
 interface StoreValue {
   data: BaubetriebDaten;
+  /** Ergebnis des Ladens; außer bei 'ok' werden Demodaten gezeigt und nichts gespeichert. */
+  ladeZustand: LadeZustand;
+  /** Ergebnis des letzten Speicherns: 'voll' bzw. 'gesperrt' – nicht gespeichert (Hinweis: components/Hinweisleisten.tsx). */
+  speicherZustand: SpeicherZustand;
   /* Einstellungen */
   setEinstellungen: (e: Partial<Omit<Einstellungen, 'rilFristen'>>) => void;
   /** Ändert eine Richtlinienfrist; sie gilt danach nicht mehr als Platzhalter. */
@@ -68,7 +73,7 @@ interface StoreValue {
   toggleMarkiert: (id: ID) => void;
   /* Anmeldungen */
   addAnmeldung: (a: NeueAnmeldung) => ID;
-  /** Ändert Merkmale; setzt `geaendertAm` auf heute. */
+  /** Ändert Merkmale; setzt `geaendertAm` auf heute – nur, wenn sich dabei etwas ändert. */
   updateAnmeldung: (id: ID, patch: Partial<Omit<Anmeldung, 'id' | 'statusId' | 'verlauf' | 'geaendertAm'>>) => void;
   deleteAnmeldung: (id: ID) => void;
   /** Legt eine Kopie mit aktuellem Stand und Statusverlauf an und liefert ihre Kennung. */
@@ -82,7 +87,7 @@ interface StoreValue {
   statusZuruecknehmen: (id: ID) => void;
   /** Hält fest, dass nachgehakt wurde, und setzt ggf. einen neuen Termin. */
   nachgehakt: (id: ID, datum: ISODate, notiz: string, neuerTermin: ISODate | null) => void;
-  /** Legt die Terminfrist im aktuellen Status von Hand fest (null: berechnen); setzt `geaendertAm`. */
+  /** Legt die Terminfrist im aktuellen Status von Hand fest (null: berechnen); setzt `geaendertAm`, wenn sie sich ändert. */
   terminSetzen: (id: ID, termin: ISODate | null) => void;
   /* Verwaltung */
   ersetzeDaten: (d: BaubetriebDaten) => void;
@@ -91,12 +96,28 @@ interface StoreValue {
 
 const StoreContext = createContext<StoreValue | null>(null);
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<BaubetriebDaten>(() => ladeDaten());
+/** Ob sich zwei Fassungen einer Anmeldung in einem Feld unterscheiden (Werte, Listen, kleine Objekte). */
+function unterscheidet(a: Anmeldung, b: Anmeldung): boolean {
+  const schluessel = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof Anmeldung>;
+  for (const k of schluessel) {
+    if (a[k] !== b[k] && JSON.stringify(a[k]) !== JSON.stringify(b[k])) return true;
+  }
+  return false;
+}
 
+export function StoreProvider({ children }: { children: ReactNode }) {
+  const [geladen] = useState(ladeDaten);
+  const [data, setData] = useState<BaubetriebDaten>(geladen.daten);
+  const [ladeZustand, setLadeZustand] = useState<LadeZustand>(geladen.zustand);
+  const [speicherZustand, setSpeicherZustand] = useState<SpeicherZustand>('ok');
+
+  // Nach einem Ladefehler bzw. bei einer neueren Fassung bleibt der gespeicherte Stand unberührt
+  // Ein aus einem anderen Fenster nachgeladener Stand steht schon im Speicher – nicht zurückschreiben
+  const uebernommen = useRef<BaubetriebDaten | null>(null);
   useEffect(() => {
-    speichereDaten(data);
-  }, [data]);
+    if (ladeZustand !== 'ok' || data === uebernommen.current) return;
+    setSpeicherZustand(speichereDaten(data));
+  }, [data, ladeZustand]);
 
   /** Jede Änderung läuft hierüber – die Funktion muss rein sein. */
   const mutate = useCallback((fn: (d: BaubetriebDaten) => BaubetriebDaten) => {
@@ -115,24 +136,48 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ),
   );
 
-  // Projekte mit dem Projektregister abgleichen
+  // Projekte mit dem Projektregister abgleichen – solange der gespeicherte Stand gelesen werden konnte
   const { ersetzt } = useRegisterAbgleich({
     bereich: 'baubetrieb',
     daten: data,
-    aktiv: true,
+    aktiv: ladeZustand === 'ok',
     sicht: sichtFuerRegister,
     anwenden: (plan) => mutate((d) => registerPlanAnwenden(d, plan)),
   });
 
+  // Hat ein anderes Fenster den Bestand gespeichert, gilt sein Stand: nachladen,
+  // statt ihn mit dem nächsten Speichern zu überschreiben. Der nachgeladene Stand
+  // ist keine eigene Änderung (`ersetzt`) und wird nicht zurückgeschrieben
+  // (`uebernommen`); stammt er aus einer neueren Fassung, ruht das Speichern.
+  useFremdeAenderung(SPEICHER_SCHLUESSEL, ladeZustand === 'ok', () => {
+    const neu = ladeDaten();
+    uebernommen.current = neu.daten;
+    ersetzt();
+    setLadeZustand(neu.zustand);
+    setData(neu.daten);
+  });
+
+  /** Ändert eine Anmeldung; liefert `fn` sie unverändert zurück, bleibt der Bestand derselbe. */
   const anmeldungAendern = useCallback(
     (id: ID, fn: (a: Anmeldung) => Anmeldung) =>
-      mutate((d) => ({ ...d, anmeldungen: d.anmeldungen.map((a) => (a.id === id ? fn(a) : a)) })),
+      mutate((d) => {
+        let geaendert = false;
+        const anmeldungen = d.anmeldungen.map((a) => {
+          if (a.id !== id) return a;
+          const neu = fn(a);
+          if (neu !== a) geaendert = true;
+          return neu;
+        });
+        return geaendert ? { ...d, anmeldungen } : d;
+      }),
     [mutate],
   );
 
   const value = useMemo<StoreValue>(
     () => ({
       data,
+      ladeZustand,
+      speicherZustand,
       setEinstellungen: (e) => mutate((d) => ({ ...d, einstellungen: { ...d.einstellungen, ...e } })),
       setRilFrist: (schluessel, patch) =>
         mutate((d) => ({
@@ -205,12 +250,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       updateAnmeldung: (id, patch) => {
         const heute = today();
-        mutate((d) => ({
-          ...d,
-          anmeldungen: d.anmeldungen.map((a) =>
-            a.id === id ? bauzeitraumAbgleichen({ ...a, ...patch, id, geaendertAm: heute }, d.workflows) : a,
-          ),
-        }));
+        mutate((d) => {
+          let geaendert = false;
+          const anmeldungen = d.anmeldungen.map((a) => {
+            if (a.id !== id) return a;
+            const neu = bauzeitraumAbgleichen({ ...a, ...patch, id }, d.workflows);
+            // Nur eine tatsächliche Änderung zählt – „Speichern“ ohne Änderung verschiebt den Sachstand nicht
+            if (!unterscheidet(bauzeitraumAbgleichen(a, d.workflows), neu)) return a;
+            geaendert = true;
+            return { ...neu, geaendertAm: heute };
+          });
+          return geaendert ? { ...d, anmeldungen } : d;
+        });
       },
       deleteAnmeldung: (id) =>
         mutate((d) => ({
@@ -277,15 +328,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       terminSetzen: (id, termin) => {
         const heute = today();
-        anmeldungAendern(id, (a) => ({ ...a, terminManuell: termin, geaendertAm: heute }));
+        anmeldungAendern(id, (a) => (a.terminManuell === termin ? a : { ...a, terminManuell: termin, geaendertAm: heute }));
       },
 
       ersetzeDaten: (d) => {
+        // Ein Stand aus einer neueren Fassung darf nicht überschrieben werden
+        if (ladeZustand === 'neuere_fassung') return;
         ersetzt();
         mutate(() => d);
+        setLadeZustand('ok');
       },
       zuruecksetzen: () => {
+        if (ladeZustand === 'neuere_fassung') return;
         ersetzt();
+        setLadeZustand('ok');
         const neu = seedDaten();
         // Persönliche Einstellungen bleiben erhalten.
         mutate((d) => ({
@@ -298,7 +354,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }));
       },
     }),
-    [data, mutate, anmeldungAendern, ersetzt],
+    [data, ladeZustand, speicherZustand, mutate, anmeldungAendern, ersetzt],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

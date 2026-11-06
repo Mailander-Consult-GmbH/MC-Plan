@@ -187,7 +187,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
   // Nicht erfasste Leistungen – nur am laufenden Nachweis (nach dem letzten abgeschlossenen)
   const plan = abgeschlossen ? null : nichtAbgerechnet(data, projekt.id, today());
   const nichtErfasst = plan && plan.offene.some((o) => o.id === n.id) ? plan.nichtErfasst : [];
-  // Löschen darf auch das Controlling nur eigene Leistungen (domain/rechte.ts)
+  // Löschen darf auch das Controlling nur eigene Leistungen (domain/rechte.ts) – dieselben, die `deleteNachweis` löscht
   const eigeneImZeitraum = eigeneLeistungen(data, imZeitraum).length;
   const aufschlaege = anzahlAufschlaege(n);
   const mitarbeiterVon = new Map(data.mitarbeiter.map((m) => [m.id, m]));
@@ -463,7 +463,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
                       <ZeileAbrechnung
                         key={z.schluessel}
                         zeile={z}
-                        nachgereicht={z.bis < n.von}
+                        nachgereicht={!!z.nachgereicht || z.bis < n.von}
                         positionen={positionenVon(z, n, abschnitte, spalten, abgeschlossen, alleAbschnitte)}
                         spalten={spalten}
                         lesen={abgeschlossen}
@@ -620,7 +620,7 @@ function ZeileAbrechnung({
   onAbgerechnet,
 }: {
   zeile: NachweisZeile;
-  /** Zeile vor dem Zeitraum – aus nachgereichten Leistungen. */
+  /** Zeile aus nachgereichten Leistungen (`NachweisZeile.nachgereicht`; in älteren Ständen: vor dem Zeitraum). */
   nachgereicht: boolean;
   positionen: Position[];
   spalten: boolean;
@@ -891,9 +891,9 @@ function NachweisLoeschen({
   onLoeschen,
 }: {
   titel: string;
-  /** Zahl der eigenen Leistungen im Zeitraum – nur sie lassen sich mitlöschen. */
+  /** Zahl der eigenen Leistungen des Nachweises (`leistungenDesNachweises`, samt nachgereichten) – nur sie lassen sich mitlöschen. */
   eigene: number;
-  /** Zahl der Leistungen anderer im Zeitraum – sie bleiben immer erhalten. */
+  /** Zahl der Leistungen anderer im Nachweis – sie bleiben immer erhalten. */
   andere: number;
   onClose: () => void;
   onLoeschen: (mitLeistungen: boolean) => void;
@@ -928,7 +928,7 @@ function NachweisLoeschen({
         {eigene > 0 ? (
           <label className="checkbox">
             <input type="checkbox" checked={mit} onChange={(e) => setMit(e.target.checked)} />
-            Auch meine {anzahl(eigene, 'Leistung', 'Leistungen')} im Zeitraum endgültig löschen
+            Auch meine {anzahl(eigene, 'Leistung', 'Leistungen')} in diesem Leistungsnachweis endgültig löschen
           </label>
         ) : null}
         {bleiben > 0 ? (

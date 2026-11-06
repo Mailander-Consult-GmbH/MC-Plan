@@ -9,12 +9,19 @@
  *   – sonst nichts. Wer angemeldet ist, ergibt sich aus dem Namen der
  *   gemeinsamen Anmeldung aller Bereiche (`mitarbeiterZumNamen`). Die
  *   Leistungsnachweise entstehen dabei von selbst (`nachweiseErgaenzen`).
+ *   Einzige Ausnahme: Der Excel-Import legt auch hier unbekannte Projekte
+ *   (wenn „Projekt anlegen“ angehakt ist) und fehlende Abschnitte an, soweit
+ *   die eigenen Leistungen sie brauchen (`planErlaubt` im Store) – einstellen
+ *   lassen sie sich danach nur im Controlling (`projektVerwalten`).
  * * **Controlling** – der Controlling-Bereich von KaPlan (nach der PIN) bindet
  *   den Bestand mit diesem Zugang ein (controlling.tsx). Dort gibt es alles
  *   Übrige: Projekte anlegen und einstellen (Vorgaben, Abschnitte, Logos),
  *   Leistungsnachweise anlegen, bearbeiten (Leistungstext, Bemerkung),
  *   abschließen und löschen, Aufschläge, Auswertung, Export, Sammel-Import und
- *   Mitarbeiterverwaltung – ohne Anmeldung als Mitarbeiter.
+ *   Mitarbeiterverwaltung – eine Anmeldung als Mitarbeiter ist nicht nötig.
+ *   Ist die Person unter „Angemeldet als“ Mitarbeiter, gilt sie auch hier als
+ *   angemeldet: Ihre eigenen Leistungen lassen sich beim Löschen eines
+ *   Nachweises mitlöschen.
  *
  * Leistungen anderer ändert niemand, auch das Controlling nicht.
  *

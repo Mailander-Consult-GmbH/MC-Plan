@@ -33,8 +33,10 @@ export type ISODate = string;
  * Fassung 4: Nachweise laufen bis zum Abschluss – alle Projekte erhalten die
  * Zeitraumregel „fortlaufend“.
  * Fassung 5: nachgereichte Leistungen am Nachweis (`nachgereicht`, leer).
+ * Fassung 6: von Hand festgelegtes Ende am Nachweis (`bisFest`, false);
+ * nachgereichte Zeilen im festgeschriebenen Stand (`NachweisZeile.nachgereicht`).
  */
-export const DATEN_VERSION = 5;
+export const DATEN_VERSION = 6;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Mitarbeiter MIC';
@@ -201,7 +203,9 @@ export const QUELLE_LABEL: Record<Quelle, string> = {
 /**
  * Erfasste Leistung: an einem Tag, von einer Person, für ein Projekt. Sie
  * gehört keinem bestimmten Nachweis – welcher sie zeigt, ergibt sich aus
- * dessen Zeitraum (`nachweisFuer` in domain/nachweis.ts).
+ * dessen Zeitraum, außer sie ist nachgereicht oder steht im festgeschriebenen
+ * Stand eines abgeschlossenen Nachweises (`nachweisDerLeistung` in
+ * domain/nachweis.ts).
  */
 export interface Leistung {
   id: ID;
@@ -250,7 +254,10 @@ export interface ZeilenText {
  * stehen sie in Druck und Excel.
  */
 export interface NachweisZeile {
-  /** Schlüssel des Zeitraums, etwa „T2026-10-30“, „W2026-44“ oder „M2026-10“ (`periodeVon`). */
+  /**
+   * Schlüssel des Zeitraums, etwa „T2026-10-30“, „W2026-44“ oder „M2026-10“ (`periodeVon`);
+   * Zeilen aus nachgereichten Leistungen mit vorangestelltem „N“, etwa „NW2026-44“.
+   */
   schluessel: string;
   von: ISODate;
   bis: ISODate;
@@ -267,6 +274,11 @@ export interface NachweisZeile {
   /** Stunden je Mitarbeiter-ID – zur Kontrolle, nicht im Druck. */
   stundenJeMitarbeiter: Record<ID, number>;
   leistungIds: ID[];
+  /**
+   * Zeile aus nachgereichten Leistungen (vor dem Zeitraum, `Leistungsnachweis.nachgereicht`) –
+   * eigene Zeile, nie zusammen mit laufenden. Fehlt in Ständen vor Fassung 6.
+   */
+  nachgereicht?: boolean;
   /** Wirksamer Aufschlag der Zeile (± Stunden) = `abgerechnet - stunden`. */
   aufschlag: number;
   /** Wirksamer Aufschlag je Abschnitt (Schlüssel wie `stundenJeAbschnitt`); nur Einträge ≠ 0. */
@@ -311,6 +323,13 @@ export interface Leistungsnachweis {
   titel: string;
   von: ISODate;
   bis: ISODate;
+  /**
+   * Das Ende hat das Controlling von Hand festgelegt („Zeitraum ändern“): Der
+   * Nachweis läuft dann nicht bis zum Abschluss (`laeuftBisAbschluss`), wird
+   * nicht verlängert (`nachweiseErgaenzen`) und beim Abschluss nicht gekürzt
+   * (`abschlussZeitraum`). „Neuer Leistungsnachweis“ hebt es wieder auf.
+   */
+  bisFest: boolean;
   raster: Raster;
   status: NachweisStatus;
   /** Von Hand bearbeitete Leistungstexte je Zeilenschlüssel. */

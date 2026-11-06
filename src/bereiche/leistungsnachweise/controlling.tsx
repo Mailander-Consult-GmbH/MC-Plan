@@ -3,8 +3,11 @@
  * der Leistungsnachweise – Auswertung, Leistungsnachweise mit Abrechnung
  * (Leistungstexte, Aufschläge, Abschluss, Druck und Export), Projekte mit
  * ihren Einstellungen, Mitarbeiter und der Sammel-Import aus Excel. Sie arbeiten auf dem Bestand dieses Bereichs mit
- * dem Zugang 'controlling' (domain/rechte.ts) – ohne Anmeldung als
- * Mitarbeiter; die PIN fragt der Controlling-Bereich ab.
+ * dem Zugang 'controlling' (domain/rechte.ts) – eine Anmeldung als
+ * Mitarbeiter ist nicht nötig; die PIN fragt der Controlling-Bereich ab. Ist
+ * die Person unter „Angemeldet als“ Mitarbeiter, gilt sie auch hier als
+ * angemeldet (eigene Leistungen beim Löschen eines Nachweises mitlöschen;
+ * im Sammel-Import lassen sich ihr Zeilen ohne Mitarbeiter zuordnen).
  *
  * Der Controlling-Bereich bindet nur dieses Modul ein (die Bereiche greifen
  * sonst nicht aufeinander zu). Adressen: #/controlling/leistungsnachweise/<reiter>
@@ -15,7 +18,9 @@ import { Icon } from '../../shared/icons';
 import { Callout } from '../../shared/ui';
 import { AnmeldungBereitstellen } from './components/AnmeldeDialog';
 import { ImportDialog } from './components/ImportDialog';
-import { CONTROLLING_PREFIX, hashToRoute, useRoute, type ControllingTab } from './lib/router';
+import { SpeicherHinweis } from './components/SpeicherHinweis';
+import { CONTROLLING_PREFIX, hashToRoute, useRoute, type ControllingTab, type Route } from './lib/router';
+import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
 import { Abrechnung } from './pages/controlling/Abrechnung';
 import { Controlling } from './pages/controlling/Controlling';
 import { ControllingProjekt } from './pages/controlling/Projekt';
@@ -53,17 +58,23 @@ function Rahmen() {
   const { ladeZustand } = useStore();
   const [route, navigate] = useRoute();
   const [importOffen, setImportOffen] = useState(false);
+  // Eine neue Seite beginnt oben – der Reiter eines Projekts ist keine neue Seite (src/shared/scrollen.ts)
+  const oben = useNachObenBeiSeitenwechsel<HTMLDivElement>(seite(route));
 
   return (
-    // Im Controlling ist niemand als Mitarbeiter angemeldet – die Anmeldung öffnet hier nichts.
+    // Den Anmeldedialog gibt es nur im Bereich – hier öffnet die Anmeldung nichts. Wer unter
+    // „Angemeldet als“ als Mitarbeiter geführt ist, gilt aber auch hier als angemeldet (Store):
+    // Nur dessen Leistungen lassen sich beim Löschen eines Nachweises mitlöschen, und der
+    // Sammel-Import kann ihm Zeilen ohne Mitarbeiter zuordnen.
     <AnmeldungBereitstellen value={() => {}}>
-      <div className="stack ln-app">
+      <div className="stack ln-app" ref={oben}>
         {ladeZustand !== 'ok' ? (
           <Callout ton="error" icon="!">
             Der gespeicherte Stand der Leistungsnachweise ließ sich nicht laden bzw. stammt aus einer neueren Fassung.
             Angezeigt werden Demodaten, gespeichert wird nichts – Hinweise dazu im Bereich Leistungsnachweise.
           </Callout>
         ) : null}
+        <SpeicherHinweis />
 
         {route.view === 'abrechnung' ? (
           <Abrechnung key={route.nachweisId} projektId={route.projektId} nachweisId={route.nachweisId} navigate={navigate} />
@@ -93,4 +104,18 @@ function Rahmen() {
       </div>
     </AnmeldungBereitstellen>
   );
+}
+
+/** Kennung der Seite ohne den Reiter eines Projekts. */
+function seite(r: Route): string {
+  switch (r.view) {
+    case 'controlling':
+      return `controlling/${r.tab}`;
+    case 'controllingProjekt':
+      return `projekt/${r.projektId}`;
+    case 'abrechnung':
+      return `nachweis/${r.nachweisId}`;
+    default:
+      return r.view;
+  }
 }

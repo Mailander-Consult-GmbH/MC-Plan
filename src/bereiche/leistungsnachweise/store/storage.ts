@@ -3,6 +3,13 @@
  * Schlüssel. Die Bestände der anderen Bereiche werden weder gelesen noch
  * geschrieben.
  *
+ * Gibt es noch keinen Bestand, beginnt der Bereich mit Demodaten – aber nur,
+ * solange das Projektregister leer ist. Führt es schon Projekte (andere
+ * Bereiche sind in Gebrauch, etwa beim ersten Öffnen nach dem Wechsel auf
+ * eine Fassung mit Leistungsnachweisen), beginnt der Bereich leer: Sonst
+ * trüge sein Abgleich die Beispielprojekte ins Register und damit in alle
+ * Bereiche. Die Projekte des Registers nimmt der Abgleich ohnehin auf.
+ *
  * Wie im Planlaufmanagement wird nur gespeichert, wenn der Bestand
  * einwandfrei geladen wurde (`LadeZustand` 'ok'): Nach einem Ladefehler oder
  * bei einem Stand aus einer neueren Fassung zeigt der Bereich Demodaten und
@@ -12,9 +19,17 @@
  * Fassungen: 1 – erster Stand; 2 – Rolle Controlling am Mitarbeiter,
  * Aufschläge je Nachweiszeile, abgerechnete Stunden im festgeschriebenen Stand
  * (`migriere`); 3 – ohne Rolle, das Controlling ist ein eigener Bereich mit
- * PIN (`aufbereiten` übernimmt die Rolle nicht).
+ * PIN (`aufbereiten` übernimmt die Rolle nicht); 4 – Zeitraumregel
+ * „fortlaufend“; 5 – nachgereichte Leistungen; 6 – festgelegtes Ende
+ * (`bisFest`) und gekennzeichnete nachgereichte Zeilen im Stand.
+ *
+ * Speichern meldet, ob es gelungen ist (`SpeicherZustand`) – ist der Speicher
+ * des Browsers voll, zeigt der Bereich einen dauerhaften Hinweis
+ * (components/SpeicherHinweis.tsx). Schreibt ein anderes Fenster denselben
+ * Schlüssel, lädt der Store dessen Stand mit `ladeDaten` nach.
  */
 import { today } from '../../../shared/dates';
+import { registerLesen } from '../../../gemeinsam/register';
 import { seedDaten } from '../domain/seed';
 import {
   DATEN_VERSION,
@@ -31,6 +46,7 @@ import {
   type Projekt,
   type ZeilenText,
 } from '../domain/types';
+import { nachgereichteZeilenUmstellen } from '../domain/nachweis';
 import { istDatum, runden } from '../domain/zeitraum';
 
 export { DATEN_VERSION };
@@ -114,6 +130,7 @@ function zeileAufbereiten(z: Roh): NachweisZeile {
     stundenJeAbschnitt: jeAbschnitt,
     stundenJeMitarbeiter: zahlen(z.stundenJeMitarbeiter),
     leistungIds: ids(z.leistungIds),
+    ...(z.nachgereicht === true ? { nachgereicht: true } : {}),
     // Fehlen die Felder (Fassung 1), gilt: kein Aufschlag, abgerechnet = erfasst
     aufschlag: stunden(z.aufschlag),
     aufschlagJeAbschnitt: ohneNull(zahlen(z.aufschlagJeAbschnitt)),
@@ -244,6 +261,7 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
           titel: text(n.titel),
           von,
           bis,
+          bisFest: n.bisFest === true,
           raster: auswahl(n.raster, RASTER, projekt.raster),
           status,
           texte: texteAufbereiten(n.texte),
@@ -314,14 +332,17 @@ function vonFassung3(roh: Roh): Roh {
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt; neue Schritte kommen hier vor `aufbereiten` hinzu. Auch
  * Sicherungen älterer Fassungen laufen hierdurch. Fassung 4 → 5: `nachgereicht`
- * ergänzt `aufbereiten` leer.
+ * ergänzt `aufbereiten` leer; 5 → 6: `bisFest` ergänzt `aufbereiten` mit false,
+ * Zeilen nachgereichter Leistungen erhalten ihren eigenen Schlüssel – in
+ * Texten, Aufschlägen und im festgeschriebenen Stand (`nachgereichteZeilenUmstellen`).
  */
 function migriere(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   let stand = roh as unknown as Roh;
   const fassung = typeof stand.version === 'number' ? stand.version : 0;
   if (fassung < 2) stand = vonFassung1(stand);
   if (fassung < 4) stand = vonFassung3(stand);
-  return aufbereiten(stand as Partial<LeistungsnachweisDaten>);
+  const daten = aufbereiten(stand as Partial<LeistungsnachweisDaten>);
+  return fassung < 6 ? nachgereichteZeilenUmstellen(daten) : daten;
 }
 
 /** Lädt den Bestand; ohne gespeicherten Stand die Demodaten. */
@@ -333,7 +354,11 @@ export function ladeDaten(): Geladen {
   } catch {
     return demo('ladefehler');
   }
-  if (!roh) return demo('ok');
+  if (!roh) {
+    // Andere Bereiche sind schon in Gebrauch: ohne Beispielprojekte beginnen
+    if (registerLesen().projekte.length > 0) return { daten: aufbereiten({ projekte: [] }), zustand: 'ok' };
+    return demo('ok');
+  }
   let daten: Partial<LeistungsnachweisDaten>;
   try {
     daten = JSON.parse(roh) as Partial<LeistungsnachweisDaten>;
@@ -358,12 +383,49 @@ export function ladeDaten(): Geladen {
   }
 }
 
-/** Speichert den Bestand; der Store ruft das nur bei `ladeZustand === 'ok'` auf. */
-export function speichereDaten(daten: LeistungsnachweisDaten): void {
+/** Schlüssel des Bestands – der Store hört auf `storage`-Ereignisse anderer Fenster dafür. */
+export const SPEICHER_SCHLUESSEL = KEY;
+
+/** Der Speicher des Browsers ist voll. */
+function speicherVoll(err: unknown): boolean {
+  if (!(err instanceof DOMException)) return false;
+  return err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22 || err.code === 1014;
+}
+
+/** Ergebnis des Speicherns: gespeichert, Speicher voll oder Speicher nicht nutzbar (gesperrt). */
+export type SpeicherZustand = 'ok' | 'voll' | 'gesperrt';
+
+/**
+ * Speichert den Bestand; der Store ruft das nur bei `ladeZustand === 'ok'`
+ * auf. Ist der Speicher voll, werden zuerst die Rohkopien früherer Fassungen
+ * (`<Schlüssel>.vor-fassung-<n>`) entfernt und das Speichern wiederholt.
+ * Liefert, ob der Bestand gespeichert ist bzw. warum nicht – dann zeigt der
+ * Bereich einen dauerhaften Hinweis (components/SpeicherHinweis.tsx).
+ */
+export function speichereDaten(daten: LeistungsnachweisDaten): SpeicherZustand {
+  const inhalt = JSON.stringify(daten);
   try {
-    localStorage.setItem(KEY, JSON.stringify(daten));
+    localStorage.setItem(KEY, inhalt);
+    return 'ok';
+  } catch (err) {
+    if (!speicherVoll(err)) {
+      console.warn('Daten konnten nicht lokal gespeichert werden:', err);
+      return 'gesperrt';
+    }
+  }
+  try {
+    const alt: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(VOR_FASSUNG)) alt.push(k);
+    }
+    if (alt.length === 0) return 'voll';
+    alt.forEach((k) => localStorage.removeItem(k));
+    localStorage.setItem(KEY, inhalt);
+    return 'ok';
   } catch (err) {
     console.warn('Daten konnten nicht lokal gespeichert werden:', err);
+    return speicherVoll(err) ? 'voll' : 'gesperrt';
   }
 }
 

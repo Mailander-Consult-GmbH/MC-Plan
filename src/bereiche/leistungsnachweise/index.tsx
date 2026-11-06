@@ -4,8 +4,8 @@
  * aus der Zeiterfassung –, und daraus entstehen gemeinsame tages-, wochen- oder
  * monatsscharfe Leistungsnachweise für den Auftraggeber. Abschluss,
  * Aufschläge, Export und Auswertung übernimmt das Controlling. Eigener
- * Speicherort, eigene Einstellungen, eigener Router – unabhängig von den
- * anderen Bereichen.
+ * Speicherort, eigener Router; Name und Farbmodus kommen aus der gemeinsamen
+ * Anmeldung („Angemeldet als“, src/gemeinsam/benutzer.ts).
  */
 import { App } from './App';
 import { StoreProvider } from './store/store';

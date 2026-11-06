@@ -29,6 +29,7 @@
 import {
   JEDES_PROJEKT_IN,
   PERSON_FELDER,
+  PROJEKT_BEREICHE,
   funktionsSchluessel,
   newId,
   personName,
@@ -114,6 +115,52 @@ function stammdatenWeichen(l: LokalesProjekt, p: RegisterProjekt): boolean {
   return l.nummer !== p.nummer || l.name !== p.name || (l.beschreibung !== null && l.beschreibung !== p.beschreibung);
 }
 
+/** Kennzeichen der Vermerke, die `stammdatenZusammenfuehren` an die Beschreibung anhängt. */
+const VERMERK = ' vor der Zusammenführung: ';
+
+/**
+ * Verknüpft der Abgleich ein eigenes Projekt des Bereichs mit einem
+ * Registerprojekt gleicher Nummer: Lücken im Register füllt der Bereich,
+ * sonst gelten Bezeichnung und Beschreibung des Registers – welche das sind,
+ * hängt davon ab, welcher Bereich das Projekt zuerst eingetragen hat. Damit
+ * die abweichende Bezeichnung bzw. Beschreibung des Bereichs nicht ohne
+ * Hinweis verloren geht, hängt der Abgleich sie als Vermerk an die
+ * Beschreibung des Registerprojekts an; so steht sie in allen Bereichen und im
+ * Controlling. Vermerke zählen nicht als Beschreibung.
+ */
+function stammdatenZusammenfuehren(p: RegisterProjekt, l: LokalesProjekt, bereich: ProjektBereich): void {
+  const titel = PROJEKT_BEREICHE.find((b) => b.id === bereich)?.titel ?? bereich;
+  const einzeilig = (t: string) => t.replace(/\s*\n\s*/g, ' ');
+  if (!p.nummer.trim() && l.nummer.trim()) p.nummer = l.nummer;
+
+  const neu: string[] = [];
+  const name = l.name.trim();
+  if (!p.name.trim()) {
+    if (name) p.name = l.name;
+  } else if (name && norm(name) !== norm(p.name)) {
+    neu.push(`Bezeichnung in ${titel}${VERMERK}„${einzeilig(name)}“`);
+  }
+
+  const ohneVermerke = (t: string) =>
+    t
+      .split('\n')
+      .filter((z) => !z.includes(VERMERK))
+      .join('\n')
+      .trim();
+  const vermerke = p.beschreibung.split('\n').filter((z) => z.includes(VERMERK));
+  const eigene = ohneVermerke(p.beschreibung);
+  const beschreibung = ohneVermerke(l.beschreibung ?? '');
+  let fuellt = false;
+  if (beschreibung && !eigene) fuellt = true;
+  else if (beschreibung && norm(beschreibung) !== norm(eigene)) {
+    neu.push(`Beschreibung in ${titel}${VERMERK}${einzeilig(beschreibung)}`);
+  }
+
+  const hinzu = neu.filter((v) => !vermerke.includes(v));
+  if (!fuellt && hinzu.length === 0) return;
+  p.beschreibung = [fuellt ? beschreibung : eigene, ...vermerke, ...hinzu].filter(Boolean).join('\n');
+}
+
 /** Gleiche Person laut E-Mail-Adresse, ersatzweise laut Vor- und Nachname. */
 function gleichePerson(r: RegisterPerson, l: LokalePerson): boolean {
   if (norm(r.email) && norm(l.email)) return norm(r.email) === norm(l.email);
@@ -147,15 +194,18 @@ function neuePerson(l: LokalePerson, projektId: ID, bereich: ProjektBereich, id:
 /**
  * Das Projekt wird im Bereich nicht mehr geführt. Bleibt es in keinem Bereich
  * und stammt es nicht aus dem Controlling, entfällt es samt seinen Personen –
- * ebenso, wenn es zuletzt `JEDES_PROJEKT_IN` gelöscht hat (sonst nähme dessen
- * Abgleich es gleich wieder auf).
+ * ebenso, wenn es jemand in `JEDES_PROJEKT_IN` zuletzt gelöscht hat
+ * (`geloescht`, nur aus `uebertragen`; sonst nähme dessen Abgleich es gleich
+ * wieder auf). Fehlt es dort nur, weil ein Stand eingespielt oder
+ * zurückgesetzt wurde, bleibt ein Projekt des Controllings erhalten, und der
+ * Abgleich legt es wieder an.
  */
-function mitgliedschaftLoesen(r: Register, projektId: ID, bereich: ProjektBereich): void {
+function mitgliedschaftLoesen(r: Register, projektId: ID, bereich: ProjektBereich, geloescht: boolean): void {
   const p = r.projekte.find((x) => x.id === projektId);
   if (!p) return;
   delete p.bereiche[bereich];
   r.personen.filter((x) => x.projektId === projektId).forEach((x) => delete x.ids[bereich]);
-  if (Object.keys(p.bereiche).length === 0 && (p.herkunft !== 'controlling' || bereich === JEDES_PROJEKT_IN)) {
+  if (Object.keys(p.bereiche).length === 0 && (p.herkunft !== 'controlling' || (geloescht && bereich === JEDES_PROJEKT_IN))) {
     r.projekte = r.projekte.filter((x) => x.id !== projektId);
     r.personen = r.personen.filter((x) => x.projektId !== projektId);
   }
@@ -185,9 +235,12 @@ export function uebertragen(bereich: ProjektBereich, alt: Sicht, neu: Sicht, reg
     if (!reg) continue;
     const n = neueProjekte.get(a.id);
     if (!n) {
-      mitgliedschaftLoesen(r, reg.id, bereich);
+      mitgliedschaftLoesen(r, reg.id, bereich, true);
       continue;
     }
+    // ★ geht nur als Änderung ins Register – ein veralteter Stand in einem zweiten Fenster setzt sie nicht zurück
+    const mitglied = reg.bereiche[bereich];
+    if (mitglied && n.markiert !== undefined && a.markiert !== n.markiert) mitglied.markiert = n.markiert;
     let geaendert = false;
     if (a.nummer !== n.nummer) (reg.nummer = n.nummer), (geaendert = true);
     if (a.name !== n.name) (reg.name = n.name), (geaendert = true);
@@ -241,8 +294,24 @@ export function uebertragen(bereich: ProjektBereich, alt: Sicht, neu: Sicht, reg
  * Trägt Projekte und Personen des Bereichs, die das Register noch nicht
  * kennt, ein und liefert, was der Bereich aus dem Register übernehmen muss.
  * Verändert nichts im Bereich selbst – das erledigt dessen Store mit dem Plan.
+ *
+ * `vollstaendig`: Der Bestand ist frisch geladen, eingespielt oder
+ * zurückgesetzt und gilt als maßgeblich – dann löst der Abgleich
+ * Mitgliedschaften, deren Projekt der Bereich nicht (mehr) führt, und
+ * übernimmt seine ★-Markierungen. Sonst meldet beides allein `uebertragen`
+ * (alter gegen neuer Stand): Ein zweites Fenster desselben Bereichs mit
+ * älterem Bestand soll nicht zurücknehmen, was das erste eben eingetragen hat
+ * – sonst schaukeln sich die beiden Fenster endlos auf. Nur die ★ eines eben
+ * übernommenen Projekts (Mitgliedschaft noch `offen`) übernimmt der Abgleich
+ * immer; das geschieht einmal.
  */
-export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Register, jetzt: string): { register: Register; plan: Plan } {
+export function abgleichen(
+  bereich: ProjektBereich,
+  sicht: Sicht,
+  register: Register,
+  jetzt: string,
+  vollstaendig = true,
+): { register: Register; plan: Plan } {
   const r = klon(register);
   const plan = leererPlan();
   const lokal = new Map(sicht.projekte.map((p) => [p.id, p]));
@@ -263,19 +332,43 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
   const projektWeg = new Set(plan.projekteLoeschen);
   const personWeg = new Set(plan.personenLoeschen);
 
-  // 2. Projekte des Bereichs laut Register: zur Übernahme vorgesehene anlegen,
-  //    nicht mehr geführte lösen, Stammdaten auf den Stand des Registers bringen.
+  // 2. Projekte des Bereichs laut Register: zur Übernahme vorgesehene mit einem
+  //    noch nicht verknüpften eigenen Projekt gleicher Nummer verknüpfen bzw.
+  //    anlegen, nicht mehr geführte lösen (nur bei maßgeblichem Bestand),
+  //    Stammdaten auf den Stand des Registers bringen.
+  const verknuepft = new Set<ID>(
+    r.projekte.flatMap((p) => {
+      const id = p.bereiche[bereich]?.id;
+      return id && lokal.has(id) ? [id] : [];
+    }),
+  );
   for (const p of [...r.projekte]) {
     const m = p.bereiche[bereich];
     if (!m) continue;
-    const l = lokal.get(m.id);
+    let l = lokal.get(m.id);
+    if (!l && m.offen) {
+      // Das Controlling sieht ein Projekt vor, das der Bereich schon führt, aber noch nicht gemeldet hat
+      l = sicht.projekte.find((k) => !verknuepft.has(k.id) && !projektWeg.has(k.id) && gleichesProjekt(p, k));
+      if (l) {
+        m.id = l.id;
+        verknuepft.add(l.id);
+        // Kennungen, die ein früherer Abgleich für die Personen vorgesehen hatte, gelten nicht mehr
+        r.personen
+          .filter((x) => x.projektId === p.id && x.ids[bereich] && !lokalePersonen?.has(x.ids[bereich]!))
+          .forEach((x) => delete x.ids[bereich]);
+        stammdatenZusammenfuehren(p, l, bereich);
+        if (l.markiert !== undefined) m.markiert = l.markiert;
+      }
+    }
     if (!l) {
       if (m.offen) plan.projekteAnlegen.push({ id: m.id, projekt: p });
-      else mitgliedschaftLoesen(r, p.id, bereich);
+      else if (vollstaendig) mitgliedschaftLoesen(r, p.id, bereich, false);
       continue;
     }
+    // ★ eines eben übernommenen Projekts (Mitgliedschaft noch offen) meldet
+    // sonst niemand: `uebertragen` kennt es nicht aus dem alten Stand
+    if ((vollstaendig || m.offen) && l.markiert !== undefined) m.markiert = l.markiert;
     m.offen = false;
-    if (l.markiert !== undefined) m.markiert = l.markiert;
     if (!projektWeg.has(l.id) && stammdatenWeichen(l, p)) {
       plan.projekteAendern.push({ id: l.id, nummer: p.nummer, name: p.name, beschreibung: p.beschreibung });
     }
@@ -288,10 +381,9 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
     const gleich = r.projekte.find((p) => !p.bereiche[bereich] && !p.archiviert && gleichesProjekt(p, l));
     if (gleich) {
       gleich.bereiche[bereich] = { id: l.id, archiviert: false, offen: false, markiert: l.markiert ?? false };
-      // Lücken im Register füllt der Bereich, sonst gilt das Register
-      if (!gleich.nummer.trim() && l.nummer.trim()) gleich.nummer = l.nummer;
-      if (!gleich.name.trim() && l.name.trim()) gleich.name = l.name;
-      if (!gleich.beschreibung.trim() && l.beschreibung?.trim()) gleich.beschreibung = l.beschreibung;
+      // Lücken im Register füllt der Bereich, sonst gilt das Register –
+      // Abweichendes des Bereichs bleibt in der Beschreibung vermerkt
+      stammdatenZusammenfuehren(gleich, l, bereich);
       if (stammdatenWeichen(l, gleich)) {
         plan.projekteAendern.push({ id: l.id, nummer: gleich.nummer, name: gleich.name, beschreibung: gleich.beschreibung });
       }
