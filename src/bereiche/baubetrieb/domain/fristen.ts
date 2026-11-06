@@ -446,15 +446,6 @@ export function anmeldebedarf(
   return zeilen;
 }
 
-/** Nächster offener Anmeldetermin des Projekts, sonst null. */
-export function naechsterBedarf(zeilen: BedarfZeile[]): BedarfZelle | null {
-  const offen = zeilen
-    .flatMap((z) => z.zellen)
-    .filter((z) => (z.zustand === 'faellig' || z.zustand === 'kuenftig') && z.frist)
-    .sort((a, b) => a.frist!.localeCompare(b.frist!));
-  return offen[0] ?? null;
-}
-
 export interface BedarfEintrag {
   projekt: Projekt;
   zelle: BedarfZelle;

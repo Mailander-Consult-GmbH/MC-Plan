@@ -92,15 +92,3 @@
 .ct-bereich-stand { flex: none; min-width: 96px; display: flex; }
 .ct-bereich-aktion { flex: none; margin-left: auto; display: flex; }
 
-.ct-beteiligte-umschalter { margin-top: 12px; font-size: 12.5px; }
-.ct-beteiligte-umschalter:disabled { cursor: default; color: var(--text-secondary); }
-.ct-personen {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-  font-size: 13px;
-}
-.ct-personen li { padding: 8px 10px; border-radius: var(--radius-sm); background: var(--fill-gruppe); }
-

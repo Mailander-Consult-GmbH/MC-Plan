@@ -17,10 +17,8 @@ import {
 import {
   PROJEKT_BEREICHE,
   bereicheVon,
-  funktionText,
   istArchiviert,
   newId,
-  personName,
   projektTitel,
   registerAendern,
   useRegister,
@@ -146,12 +144,7 @@ function ProjektKarte({
   onLoeschen: () => void;
   onArchivieren: (an: boolean) => void;
 }) {
-  const register = useRegister();
   const toast = useToast();
-  const [beteiligteOffen, setBeteiligteOffen] = useState(false);
-  const personen = register.personen
-    .filter((x) => x.projektId === projekt.id)
-    .sort((a, b) => (a.nachname || a.firma).localeCompare(b.nachname || b.firma, 'de'));
 
   return (
     <div className="card">
@@ -258,36 +251,6 @@ function ProjektKarte({
             );
           })}
         </div>
-
-        <button
-          type="button"
-          className="link-btn ct-beteiligte-umschalter"
-          onClick={() => setBeteiligteOffen((o) => !o)}
-          disabled={personen.length === 0}
-          aria-expanded={beteiligteOffen}
-        >
-          <b>{personen.length}</b> {personen.length === 1 ? 'Projektbeteiligter' : 'Projektbeteiligte'}
-          {personen.length > 0 ? <span className="tertiary"> · {beteiligteOffen ? 'ausblenden' : 'anzeigen'}</span> : null}
-        </button>
-        {beteiligteOffen ? (
-          <ul className="ct-personen">
-            {personen.map((x) => (
-              <li key={x.id}>
-                <strong>{personName(x) || '–'}</strong>
-                {x.funktionen.length > 0 ? <span className="muted"> · {x.funktionen.map(funktionText).join(', ')}</span> : null}
-                {x.firma ? <div className="small tertiary">{x.firma}</div> : null}
-                {x.email ? (
-                  <div className="small">
-                    <a href={`mailto:${x.email}`}>{x.email}</a>
-                    {x.telefon ? ` · ${x.telefon}` : ''}
-                  </div>
-                ) : x.telefon ? (
-                  <div className="small">{x.telefon}</div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : null}
       </div>
     </div>
   );

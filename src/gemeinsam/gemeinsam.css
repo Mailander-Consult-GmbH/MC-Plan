@@ -38,11 +38,10 @@
   outline-offset: -1px;
 }
 .card.gem-fremd .gem-fremd-titel { margin-top: 2px; color: var(--text-secondary); }
-.gem-fremd-fuss {
-  justify-content: space-between;
-  gap: 8px 16px;
-  margin-top: 12px;
-}
+/* Schaltfläche am Fuß der Kachel – auch bei unterschiedlich langen Texten auf einer Linie */
+.card.gem-fremd { display: flex; flex-direction: column; }
+.gem-fremd-inhalt { flex: 1; display: flex; flex-direction: column; }
+.gem-fremd-fuss { margin-top: auto; padding-top: 14px; display: flex; }
 
 /* Archiv: aufklappbar, Kacheln zurückgenommen */
 .gem-umschalter {
@@ -66,3 +65,7 @@
 .gem-pfeil.offen { transform: rotate(90deg); }
 .gem-archiv-liste > .card { background: var(--fill-gruppe); box-shadow: none; }
 .gem-archiv-liste > .card h2 { color: var(--text-secondary); }
+
+/* Projektkacheln der Bereiche (Schaltflächen): Inhalt oben, auch wenn die Nachbarkachel höher ist */
+.card.gem-kachel { display: flex; flex-direction: column; justify-content: flex-start; text-align: left; }
+.card.gem-kachel > .card-pad { width: 100%; }
