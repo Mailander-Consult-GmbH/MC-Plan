@@ -1,16 +1,15 @@
 /**
- * Leistungsnachweise eines Projekts: Tabelle der Nachweise (Zeitraum und
- * Überschrift, Raster, Bearbeiter, erfasste Stunden, Status) und ein Hinweis,
- * wenn Leistungen in keinem Nachweis liegen – mit „Nachweise anlegen“ nach der
- * Zeitraumregel des Projekts. „Neuer Leistungsnachweis“ für einen freien
- * Zeitraum gibt es nur im Controlling (domain/rechte.ts); sonst entstehen
- * Nachweise beim Erfassen und Importieren von selbst.
+ * Reiter „Leistungsnachweise“ eines Projekts im Controlling: Tabelle der
+ * Nachweise (Zeitraum und Überschrift, Raster, Bearbeiter, erfasste Stunden,
+ * Status; ein Klick öffnet die Abrechnung) und ein Hinweis, wenn Leistungen in
+ * keinem Nachweis liegen – mit „Nachweise anlegen“ nach der Zeitraumregel des
+ * Projekts. Dazu „Neuer Leistungsnachweis“ für einen freien Zeitraum; sonst
+ * entstehen Nachweise beim Erfassen und Importieren von selbst.
  */
 import { useState } from 'react';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Callout, Card, CardHeader, EmptyState } from '../../../../shared/ui';
-import { useAnmeldung } from '../../components/AnmeldeDialog';
 import { NachweisDialog } from '../../components/NachweisDialog';
 import { NachweisStatusBadge, RasterBadge, anzahl, nachweiseAngelegtText } from '../../components/common';
 import {
@@ -22,33 +21,24 @@ import {
   summeStunden,
   zeilenFuerAnzeige,
 } from '../../domain/nachweis';
-import { angemeldet, darf } from '../../domain/rechte';
+import { darf } from '../../domain/rechte';
 import { RASTER_LABEL, ZEITRAUMREGEL_LABEL, type Leistungsnachweis, type Projekt } from '../../domain/types';
 import { langDatum, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import '../../components/nachweis.css';
 
-export function Nachweise({ projekt, navigate }: { projekt: Projekt; navigate: (r: Route) => void }) {
+export function ProjektNachweise({ projekt, navigate }: { projekt: Projekt; navigate: (r: Route) => void }) {
   const { data, nachweiseFuerOffeneLeistungen, zugang } = useStore();
   const toast = useToast();
-  const anmeldung = useAnmeldung();
   const [neu, setNeu] = useState(false);
   const verwalten = darf(zugang, 'nachweisVerwalten');
 
   // Neueste zuerst
   const nachweise = [...nachweiseVon(data, projekt.id)].reverse();
   const offen = leistungenOhneNachweis(data, projekt.id);
-  const oeffne = (n: Leistungsnachweis) => navigate({ view: 'nachweis', projektId: projekt.id, nachweisId: n.id });
-
-  // Ohne Anmeldung erst anmelden – danach den Knopf erneut wählen
-  const anlegen = () => {
-    if (!angemeldet(data)) {
-      anmeldung();
-      return;
-    }
-    toast(nachweiseAngelegtText(nachweiseFuerOffeneLeistungen(projekt.id)));
-  };
+  const oeffne = (n: Leistungsnachweis) => navigate({ view: 'abrechnung', projektId: projekt.id, nachweisId: n.id });
+  const anlegen = () => toast(nachweiseAngelegtText(nachweiseFuerOffeneLeistungen(projekt.id)));
 
   // Nachweise für einen freien Zeitraum legt nur das Controlling an
   const neuKnopf = verwalten ? (
@@ -63,8 +53,8 @@ export function Nachweise({ projekt, navigate }: { projekt: Projekt; navigate: (
         <p className="small muted" style={{ maxWidth: 640 }}>
           Ein Leistungsnachweis fasst die Leistungen seines Zeitraums je Tag, Woche oder Monat zu Zeilen zusammen –
           gemeinsam für alle Mitarbeiter des Projekts (Vorgabe: {RASTER_LABEL[projekt.raster]}). Leistungen außerhalb der
-          Nachweise erhalten einen nach der Regel „{ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}“. Abgeschlossen und
-          abgerechnet wird im Controlling.
+          Nachweise erhalten einen nach der Regel „{ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}“. Ein Klick öffnet die
+          Abrechnung mit Leistungstexten, Aufschlägen und Abschluss.
         </p>
         {neuKnopf ? <div className="row wrap">{neuKnopf}</div> : null}
       </div>
@@ -91,8 +81,8 @@ export function Nachweise({ projekt, navigate }: { projekt: Projekt; navigate: (
             titel="Noch keine Leistungsnachweise"
             text={
               verwalten
-                ? 'Leistungsnachweise entstehen beim Erfassen oder beim Excel-Import von Leistungen von selbst – je Kalendermonat oder fortlaufend, wie es das Projekt vorgibt. Hier lässt sich ein Nachweis auch für einen freien Zeitraum anlegen.'
-                : 'Leistungsnachweise entstehen beim Erfassen oder beim Excel-Import von Leistungen von selbst – je Kalendermonat oder fortlaufend, wie es das Projekt vorgibt.'
+                ? 'Leistungsnachweise entstehen beim Erfassen oder beim Excel-Import von Leistungen von selbst und laufen, bis sie abgeschlossen werden – oder je Kalendermonat, wie es das Projekt vorgibt. Hier lässt sich ein Nachweis auch für einen freien Zeitraum anlegen.'
+                : 'Leistungsnachweise entstehen beim Erfassen oder beim Excel-Import von Leistungen von selbst und laufen, bis sie abgeschlossen werden – oder je Kalendermonat, wie es das Projekt vorgibt.'
             }
             action={neuKnopf ?? undefined}
           />

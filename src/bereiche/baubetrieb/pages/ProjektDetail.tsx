@@ -64,7 +64,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
   const passt = (a: Anmeldung) => {
     if (!suche.trim()) return true;
     const { workflow, status } = statusVon(data.workflows, a.statusId);
-    return [a.vorhaben, a.anmeldeId, a.bfStrecke, a.gewerk, a.bemerkung, a.bbk, a.art, workflow.name, status.name, a.aenderungsNr]
+    return [a.vorhaben, a.anmeldeId, a.bfStrecke, a.gewerk, a.bemerkung, a.bbk, a.anmelder, a.art, workflow.name, status.name, a.aenderungsNr]
       .join(' ')
       .toLowerCase()
       .includes(suche.toLowerCase());

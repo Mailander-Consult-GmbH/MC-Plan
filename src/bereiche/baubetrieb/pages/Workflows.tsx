@@ -143,7 +143,7 @@ export function Workflows({ navigate }: { navigate: (r: Route) => void }) {
           titel="Fristen laut Richtlinie"
           sub="Grundlage der Terminfristen „Frist laut Richtlinie“, gegliedert nach Phase: Ril_KM nimmt die N-2- oder die N-1-Frist, Ril_KKM die Frist der Maßnahmenart"
           actions={
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => navigate({ view: 'einstellungen' })}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => navigate({ view: 'fristen' })}>
               Anpassen
             </button>
           }

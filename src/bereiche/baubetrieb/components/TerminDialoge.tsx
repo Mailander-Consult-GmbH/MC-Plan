@@ -17,7 +17,7 @@ export function NachhakenDialog({ anmeldung, onClose }: { anmeldung: Anmeldung; 
   const toast = useToast();
   const [datum, setDatum] = useState(today());
   const [notiz, setNotiz] = useState('');
-  // Nächster Nachhak-Termin: Abstand des Status, sonst die Vorgabe aus den Einstellungen
+  // Nächster Nachhak-Termin: Abstand des Status, sonst die Vorgabe unter „Fristen“
   const { status } = statusVon(data.workflows, anmeldung.statusId);
   const abstand = status.frist.typ === 'nachhaken' ? status.frist.tage : data.einstellungen.nachhakTage;
   const [neuerTermin, setNeuerTermin] = useState(addDays(today(), abstand));

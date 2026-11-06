@@ -1,14 +1,14 @@
 /**
  * Einstieg für den Controlling-Bereich von KaPlan: die Controlling-Ansichten
  * der Leistungsnachweise – Auswertung, Leistungsnachweise mit Abrechnung
- * (Aufschläge, Abschluss, Druck und Export), Mitarbeiter und der
- * Sammel-Import aus Excel. Sie arbeiten auf dem Bestand dieses Bereichs mit
+ * (Leistungstexte, Aufschläge, Abschluss, Druck und Export), Projekte mit
+ * ihren Einstellungen, Mitarbeiter und der Sammel-Import aus Excel. Sie arbeiten auf dem Bestand dieses Bereichs mit
  * dem Zugang 'controlling' (domain/rechte.ts) – ohne Anmeldung als
  * Mitarbeiter; die PIN fragt der Controlling-Bereich ab.
  *
  * Der Controlling-Bereich bindet nur dieses Modul ein (die Bereiche greifen
  * sonst nicht aufeinander zu). Adressen: #/controlling/leistungsnachweise/<reiter>
- * bzw. …/projekt/<id>/nachweis/<id> (lib/router.ts).
+ * bzw. …/projekt/<id>/<reiter> und …/projekt/<id>/nachweis/<id> (lib/router.ts).
  */
 import { useState } from 'react';
 import { Icon } from '../../shared/icons';
@@ -18,6 +18,7 @@ import { ImportDialog } from './components/ImportDialog';
 import { CONTROLLING_PREFIX, hashToRoute, useRoute, type ControllingTab } from './lib/router';
 import { Abrechnung } from './pages/controlling/Abrechnung';
 import { Controlling } from './pages/controlling/Controlling';
+import { ControllingProjekt } from './pages/controlling/Projekt';
 import { StoreProvider, useStore } from './store/store';
 import './leistungsnachweise.css';
 
@@ -27,13 +28,15 @@ export const LEISTUNGSNACHWEISE_CONTROLLING = CONTROLLING_PREFIX;
 const UNTERTITEL: Record<ControllingTab, string> = {
   auswertung: 'Auswertung – Stunden je Mitarbeiter und Projekt',
   nachweise: 'Leistungsnachweise aller Projekte – Abrechnung, Abschluss und Export',
+  projekte: 'Projekte – Leistungsnachweise, Leistungen und Einstellungen je Projekt',
   mitarbeiter: 'Mitarbeiter verwalten',
 };
 
 /** Untertitel der Kopfzeile im Controlling-Bereich zur aktuellen Adresse. */
 export function leistungsnachweiseUntertitel(hash: string): string {
   const route = hashToRoute(hash);
-  if (route.view === 'abrechnung') return 'Abrechnung eines Leistungsnachweises – Aufschläge, Abschluss und Export';
+  if (route.view === 'abrechnung') return 'Leistungsnachweis – Leistungstexte, Aufschläge, Abschluss und Export';
+  if (route.view === 'controllingProjekt') return 'Projekt – Leistungsnachweise, Leistungen und Einstellungen';
   return route.view === 'controlling' ? UNTERTITEL[route.tab] : UNTERTITEL.auswertung;
 }
 
@@ -64,6 +67,8 @@ function Rahmen() {
 
         {route.view === 'abrechnung' ? (
           <Abrechnung key={route.nachweisId} projektId={route.projektId} nachweisId={route.nachweisId} navigate={navigate} />
+        ) : route.view === 'controllingProjekt' ? (
+          <ControllingProjekt key={route.projektId} projektId={route.projektId} tab={route.tab} navigate={navigate} />
         ) : (
           <>
             <div className="row-between wrap">

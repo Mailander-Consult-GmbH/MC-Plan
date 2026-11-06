@@ -6,14 +6,15 @@
  *
  * * **Bereich** – wer angemeldet ist (`einstellungen.mitarbeiterId`, ein
  *   aktiver Mitarbeiter), erfasst, ändert und importiert nur eigene Leistungen
- *   und bearbeitet den gemeinsamen Nachweis (Leistungstext, Bemerkung,
- *   „Ergänzen“), solange er offen ist. Wer angemeldet ist, ergibt sich aus dem
- *   Namen der gemeinsamen Anmeldung aller Bereiche (`mitarbeiterZumNamen`).
+ *   – sonst nichts. Wer angemeldet ist, ergibt sich aus dem Namen der
+ *   gemeinsamen Anmeldung aller Bereiche (`mitarbeiterZumNamen`). Die
+ *   Leistungsnachweise entstehen dabei von selbst (`nachweiseErgaenzen`).
  * * **Controlling** – der Controlling-Bereich von KaPlan (nach der PIN) bindet
  *   den Bestand mit diesem Zugang ein (controlling.tsx). Dort gibt es alles
- *   Übrige: Auswertung, Nachweise anlegen, ändern, abschließen und löschen,
- *   Aufschläge, Export, Sammel-Import und Mitarbeiterverwaltung – ohne
- *   Anmeldung als Mitarbeiter.
+ *   Übrige: Projekte anlegen und einstellen (Vorgaben, Abschnitte, Logos),
+ *   Leistungsnachweise anlegen, bearbeiten (Leistungstext, Bemerkung),
+ *   abschließen und löschen, Aufschläge, Auswertung, Export, Sammel-Import und
+ *   Mitarbeiterverwaltung – ohne Anmeldung als Mitarbeiter.
  *
  * Leistungen anderer ändert niemand, auch das Controlling nicht.
  *
@@ -37,6 +38,7 @@ export const NUR_CONTROLLING = 'Das ist dem Controlling vorbehalten.';
 
 /** Rechte, die allein der Zugang über das Controlling gewährt. */
 export type Recht =
+  | 'projektVerwalten'
   | 'sammelImport'
   | 'projektLoeschen'
   | 'nachweisVerwalten'

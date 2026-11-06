@@ -194,7 +194,7 @@ export function AnmeldungDetail({
                     <p className="small tertiary">{frist.erlaeuterung}</p>
                     {frist.platzhalter ? (
                       <p className="small" style={{ color: 'var(--orange)' }}>
-                        Berechnet aus einem Platzhalterwert – Richtlinienfrist unter „Einstellungen“ prüfen.
+                        Berechnet aus einem Platzhalterwert – Richtlinienfrist unter „Fristen“ prüfen.
                       </p>
                     ) : null}
                     {s.bemerkung ? <p className="small muted">{s.bemerkung}</p> : null}
@@ -301,6 +301,8 @@ export function AnmeldungDetail({
             <dd>{anmeldung.gewerk || '–'}</dd>
             <dt>Zuständiger BBK</dt>
             <dd>{anmeldung.bbk || '–'}</dd>
+            <dt>Anmelder</dt>
+            <dd>{anmeldung.anmelder || '–'}</dd>
             {istAenderung(data.workflows, anmeldung.statusId) ? (
               <>
                 <dt>ÄAbst-Nr</dt>

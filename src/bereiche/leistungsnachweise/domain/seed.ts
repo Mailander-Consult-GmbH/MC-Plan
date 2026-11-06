@@ -2,7 +2,9 @@
  * Mitgelieferte Logos des Bereichs und der Demodatenbestand. Die Demodaten
  * sind frei erfunden (Personen, Projekte, Nummern im Format „K9xxx“); ihre
  * Leistungen liegen in den letzten zwei bis drei Monaten vor dem heutigen
- * Tag, die Nachweise entstehen wie im Betrieb über `nachweiseErgaenzen`.
+ * Tag, die Nachweise entstehen wie im Betrieb über `nachweiseErgaenzen` und
+ * laufen bis zum Abschluss: Bei der Brücke hat das Controlling den ersten
+ * nach dem ersten Monat abgeschlossen, seitdem läuft ein neuer.
  * Die Demodaten melden Anna Becker an; maßgeblich ist aber der Name unter
  * „Angemeldet als“ (gemeinsam für alle Bereiche) – wer dort „Anna Becker“
  * einträgt, erfasst als sie. Abschluss und Aufschläge zeigt das Controlling.
@@ -123,7 +125,7 @@ export function seedDaten(): LeistungsnachweisDaten {
     beschreibung: 'Ersatzneubau einer Eisenbahnüberführung (Beispielprojekt)',
     leistungsbereich: 'Projektsteuerung',
     raster: 'monat',
-    zeitraumregel: 'monat',
+    zeitraumregel: 'fortlaufend',
     abschnitte: [],
   });
   const nord = { id: newId('ab'), kennung: '01', kurz: 'Abschn.1', name: 'Nordheim, Strecke 9401' };
@@ -145,7 +147,7 @@ export function seedDaten(): LeistungsnachweisDaten {
     beschreibung: 'Neubau eines Haltepunkts (Beispielprojekt)',
     leistungsbereich: 'Planlaufmanagement',
     raster: 'tag',
-    zeitraumregel: 'monat',
+    zeitraumregel: 'fortlaufend',
     abschnitte: [],
   });
   const dammAbschnitte = [
@@ -224,12 +226,18 @@ export function seedDaten(): LeistungsnachweisDaten {
     leistungen,
     nachweise: [],
   };
-  for (const p of daten.projekte) {
-    const tage = leistungen.filter((l) => l.projektId === p.id).map((l) => l.datum);
+  const ergaenzen = (p: Projekt, tage: string[]) => {
     daten = ergaenzungAnwenden(daten, nachweiseErgaenzen(daten, p, tage, jetzt, () => newId('ln')), jetzt);
-  }
+  };
+  const tageVon = (p: Projekt) => leistungen.filter((l) => l.projektId === p.id).map((l) => l.datum);
+  // Brücke: zuerst nur der erste Monat – sein Nachweis wird gleich abgeschlossen
+  const brueckeTage = tageVon(bruecke);
+  const ersterMonat = [...brueckeTage].sort()[0]?.slice(0, 7) ?? '';
+  ergaenzen(bruecke, brueckeTage.filter((t) => t.startsWith(ersterMonat)));
+  ergaenzen(damm, tageVon(damm));
+  ergaenzen(halt, tageVon(halt));
 
-  // Der älteste Monatsnachweis der Brücke ist abgegeben – mit bearbeitetem Text
+  // Der erste Nachweis der Brücke ist abgeschlossen – mit bearbeitetem Text und Aufschlag
   const erster = nachweiseVon(daten, bruecke.id)[0];
   if (erster && erster.bis < heute) {
     const zeile = nachweisZeilen(daten, erster)[0];
@@ -248,6 +256,8 @@ export function seedDaten(): LeistungsnachweisDaten {
     n = { ...n, status: 'abgeschlossen', abgeschlossen, geaendert: abgeschlossen, stand: standErzeugen(daten, n) };
     daten = { ...daten, nachweise: daten.nachweise.map((x) => (x.id === n.id ? n : x)) };
   }
+  // Die übrigen Leistungen der Brücke: ein neuer Nachweis, der bis zum Abschluss läuft
+  ergaenzen(bruecke, brueckeTage.filter((t) => !t.startsWith(ersterMonat)));
 
   // Im offenen Nachweis der Dammsanierung −0,5 Std. auf den Abschnitt Nordheim einer Woche
   const offen = nachweiseVon(daten, damm.id).find((x) => x.status === 'entwurf');

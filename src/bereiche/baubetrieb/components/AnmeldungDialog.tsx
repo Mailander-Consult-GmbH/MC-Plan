@@ -70,6 +70,7 @@ export function AnmeldungDialog({
     anmeldeId: anmeldung?.anmeldeId ?? '',
     vorhaben: anmeldung?.vorhaben ?? '',
     bbk: anmeldung?.bbk ?? '',
+    anmelder: anmeldung?.anmelder ?? '',
     fahrplanjahr: anmeldung?.fahrplanjahr ?? vorgabeFahrplanjahr(projekt),
     bauVon: anmeldung?.bauVon ?? '',
     bauBis: anmeldung?.bauBis ?? '',
@@ -122,6 +123,7 @@ export function AnmeldungDialog({
       anmeldeId: form.anmeldeId.trim(),
       vorhaben: form.vorhaben.trim(),
       bbk: form.bbk.trim(),
+      anmelder: form.anmelder.trim(),
       bfStrecke: form.bfStrecke.trim(),
       gewerk: form.gewerk.trim(),
       bemerkung: form.bemerkung.trim(),
@@ -284,6 +286,9 @@ export function AnmeldungDialog({
         </Field>
         <Field label="Zuständiger BBK" hint="Name – erscheint in „Zuständig“, wenn die BBK am Zug ist">
           <TextInput value={form.bbk} onChange={(v) => set('bbk', v)} placeholder="Fr. Weber" />
+        </Field>
+        <Field label="Anmelder" hint="wer die Anmeldung eingereicht hat – künftig aus dem Import">
+          <TextInput value={form.anmelder} onChange={(v) => set('anmelder', v)} placeholder="z. B. DB InfraGO, I.NA-SW-N" />
         </Field>
 
         {aenderung ? (

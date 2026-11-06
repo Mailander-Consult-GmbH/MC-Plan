@@ -1,4 +1,8 @@
-/** Rahmen der Baubetriebsplanung: Seitenleiste, Kopfzeile und Auswahl der Ansicht. */
+/**
+ * Rahmen der Baubetriebsplanung: Seitenleiste, Kopfzeile und Auswahl der
+ * Ansicht. Workflows und Fristen stehen – wie im Planlaufmanagement – unter
+ * der aufklappbaren Gruppe „Einstellungen“.
+ */
 import { useEffect, useState } from 'react';
 import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
@@ -10,7 +14,7 @@ import { ausstehendeErstanmeldungen, offeneTermine } from './domain/fristen';
 import { anmeldungBezeichnung } from './domain/workflow';
 import { useRoute, type Route } from './lib/router';
 import { AnmeldungDetail } from './pages/AnmeldungDetail';
-import { Einstellungen } from './pages/Einstellungen';
+import { Fristen } from './pages/Fristen';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
 import { Termine } from './pages/Termine';
@@ -26,6 +30,12 @@ export function App() {
   const toast = useToast();
   const [route, navigate] = useRoute();
   const [menuOffen, setMenuOffen] = useState(false);
+  const inEinstellungen = route.view === 'workflows' || route.view === 'fristen';
+  const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
+  // Wer eine der Seiten unter „Einstellungen“ aufruft, sieht die Gruppe aufgeklappt
+  useEffect(() => {
+    if (inEinstellungen) setEinstellungenOffen(true);
+  }, [inEinstellungen]);
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
 
@@ -77,13 +87,20 @@ export function App() {
           onClick={() => gehe({ view: 'termine' })}
         />
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
-        <NavItem icon="kette" label="Workflows" aktiv={route.view === 'workflows'} onClick={() => gehe({ view: 'workflows' })} />
+        {/* Workflows und Fristen gebündelt unter „Einstellungen“ */}
         <NavItem
           icon="einstellungen"
           label="Einstellungen"
-          aktiv={route.view === 'einstellungen'}
-          onClick={() => gehe({ view: 'einstellungen' })}
+          aktiv={false}
+          offen={einstellungenOffen}
+          onClick={() => setEinstellungenOffen((o) => !o)}
         />
+        {einstellungenOffen ? (
+          <>
+            <NavItem unter icon="kette" label="Workflows" aktiv={route.view === 'workflows'} onClick={() => gehe({ view: 'workflows' })} />
+            <NavItem unter icon="kalender" label="Fristen" aktiv={route.view === 'fristen'} onClick={() => gehe({ view: 'fristen' })} />
+          </>
+        ) : null}
 
         <div className="nav-group-label">
           Projekte
@@ -145,7 +162,7 @@ export function App() {
             {route.view === 'termine' ? <Termine navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
             {route.view === 'workflows' ? <Workflows navigate={gehe} /> : null}
-            {route.view === 'einstellungen' ? <Einstellungen /> : null}
+            {route.view === 'fristen' ? <Fristen /> : null}
             {route.view === 'projekt' ? (
               projekt ? (
                 <ProjektDetail projekt={projekt} navigate={gehe} />
@@ -200,6 +217,8 @@ function NavItem({
   aktiv,
   badge,
   badgeAlarm,
+  unter,
+  offen,
   onClick,
 }: {
   icon: IconName;
@@ -207,15 +226,30 @@ function NavItem({
   aktiv: boolean;
   badge?: string;
   badgeAlarm?: boolean;
+  /** Unterpunkt einer aufklappbaren Gruppe (eingerückt). */
+  unter?: boolean;
+  /** Nur Gruppen: aufgeklappt? Zeigt den Pfeil. */
+  offen?: boolean;
   onClick: () => void;
 }) {
   return (
-    <button type="button" className={`nav-item ${aktiv ? 'active' : ''}`} onClick={onClick} title={label}>
+    <button
+      type="button"
+      className={`nav-item ${aktiv ? 'active' : ''} ${unter ? 'unter' : ''}`}
+      onClick={onClick}
+      title={label}
+      aria-expanded={offen}
+    >
       <span className="nav-icon">
         <Icon name={icon} size={16} />
       </span>
       <span className="nav-label">{label}</span>
       {badge ? <span className={`nav-badge ${badgeAlarm ? 'alert' : ''}`}>{badge}</span> : null}
+      {offen !== undefined ? (
+        <span className={`nav-pfeil ${offen ? 'offen' : ''}`}>
+          <Icon name="chevron" size={13} />
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -247,8 +281,8 @@ function kopfzeile(route: Route, projektName?: string, anmeldungName?: string): 
       return { titel: 'Projekte', sub: 'Je Baumaßnahme ein Projekt mit seinen Anmeldungen' };
     case 'workflows':
       return { titel: 'Workflows', sub: 'Status, Terminfristen und Nachfolger je Phase – anpassbar' };
-    case 'einstellungen':
-      return { titel: 'Einstellungen', sub: 'Fristen laut Richtlinie, Ampel und Nachhaken' };
+    case 'fristen':
+      return { titel: 'Fristen', sub: 'Fristen laut Richtlinie, Ampel und Nachhaken' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projekt' };
     case 'anmeldung':

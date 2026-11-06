@@ -194,7 +194,7 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
         beschreibung: text(p.beschreibung),
         leistungsbereich: typeof p.leistungsbereich === 'string' ? p.leistungsbereich : 'Projektsteuerung',
         raster: auswahl(p.raster, RASTER, 'monat'),
-        zeitraumregel: auswahl(p.zeitraumregel, ['monat', 'fortlaufend'] as const, 'monat'),
+        zeitraumregel: auswahl(p.zeitraumregel, ['fortlaufend', 'monat'] as const, 'fortlaufend'),
         abschnitte: eindeutig(liste(p.abschnitte).map(abschnittAufbereiten)),
         logos: Array.isArray(p.logos)
           ? liste(p.logos)
@@ -301,6 +301,15 @@ function vonFassung1(roh: Roh): Roh {
 }
 
 /**
+ * Fassung 3 → 4: Leistungsnachweise laufen bis zum Abschluss – bisher war je
+ * Kalendermonat die Vorgabe, nun erhalten alle Projekte die Regel
+ * „fortlaufend“. Vorhandene Nachweise bleiben, wie sie sind.
+ */
+function vonFassung3(roh: Roh): Roh {
+  return { ...roh, projekte: liste(roh.projekte).map((p) => ({ ...p, zeitraumregel: 'fortlaufend' })) };
+}
+
+/**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt; neue Schritte kommen hier vor `aufbereiten` hinzu. Auch
  * Sicherungen älterer Fassungen laufen hierdurch.
@@ -309,6 +318,7 @@ function migriere(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten 
   let stand = roh as unknown as Roh;
   const fassung = typeof stand.version === 'number' ? stand.version : 0;
   if (fassung < 2) stand = vonFassung1(stand);
+  if (fassung < 4) stand = vonFassung3(stand);
   return aufbereiten(stand as Partial<LeistungsnachweisDaten>);
 }
 

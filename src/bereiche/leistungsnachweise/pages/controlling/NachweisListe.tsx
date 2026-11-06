@@ -226,7 +226,7 @@ export function NachweisListe({ navigate }: { navigate: (r: Route) => void }) {
       )}
 
       {neu && neuProjekt ? (
-        <NachweisDialog projekt={neuProjekt} projektWahl onClose={() => setNeu(false)} navigate={navigate} ziel="abrechnung" />
+        <NachweisDialog projekt={neuProjekt} projektWahl onClose={() => setNeu(false)} navigate={navigate} />
       ) : null}
     </div>
   );

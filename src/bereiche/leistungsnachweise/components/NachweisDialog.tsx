@@ -59,7 +59,6 @@ export function NachweisDialog({
   onClose,
   navigate,
   projektWahl = false,
-  ziel = 'nachweis',
 }: {
   projekt: Projekt;
   nachweis?: Leistungsnachweis;
@@ -67,8 +66,6 @@ export function NachweisDialog({
   navigate?: (r: Route) => void;
   /** Neuer Nachweis: das Projekt im Dialog wählen (Vorgabe `projekt`) – im Controlling. */
   projektWahl?: boolean;
-  /** Wohin ein neuer Nachweis führt: in den Editor (Vorgabe) oder in die Abrechnung des Controllings. */
-  ziel?: 'nachweis' | 'abrechnung';
 }) {
   const { data, addNachweis, updateNachweis } = useStore();
   const toast = useToast();
@@ -178,7 +175,7 @@ export function NachweisDialog({
     addNachweis(neu);
     toast(`„${nachweisTitel(neu)}“ angelegt.`);
     onClose();
-    navigate?.({ view: ziel, projektId: projekt.id, nachweisId: id });
+    navigate?.({ view: 'abrechnung', projektId: projekt.id, nachweisId: id });
   };
 
   return (

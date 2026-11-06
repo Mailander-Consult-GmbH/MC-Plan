@@ -1,6 +1,7 @@
 /**
- * Einstellungen des Bereichs: Fristen laut Richtlinie, Ampel, Nachhak-Termin
- * und Vorschau des Anmeldebedarfs. Änderungen gelten sofort.
+ * Seite „Fristen“ (Menügruppe „Einstellungen“, früher selbst „Einstellungen“):
+ * Fristen laut Richtlinie, Ampel, Nachhak-Termin und Vorschau des
+ * Anmeldebedarfs. Änderungen gelten sofort.
  */
 import { Fragment, useState } from 'react';
 import { Badge, Callout, Card, CardHeader, Field, Select } from '../../../shared/ui';
@@ -59,7 +60,7 @@ function ZahlFeld({
   );
 }
 
-export function Einstellungen() {
+export function Fristen() {
   const { data, setEinstellungen, setRilFrist } = useStore();
   const e = data.einstellungen;
   const platzhalter = RIL_SCHLUESSEL.filter((s) => e.rilFristen[s].platzhalter).length;

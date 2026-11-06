@@ -3,20 +3,23 @@
  * KaPlan (controlling.tsx, Zugang 'controlling', nach der PIN):
  * Reiter „Auswertung“ (Stunden je Mitarbeiter, Monat und Projekt; Excel),
  * „Leistungsnachweise“ (alle Nachweise aller Projekte, Klick öffnet die
- * Abrechnung mit Aufschlägen, Abschluss und Export) und „Mitarbeiter“
- * (Verwaltung). Die Auswahl der Filter bleibt erhalten,
+ * Abrechnung mit Leistungstexten, Aufschlägen, Abschluss und Export),
+ * „Projekte“ (je Projekt Leistungsnachweise, Leistungen und Einstellungen) und
+ * „Mitarbeiter“ (Verwaltung). Die Auswahl der Filter bleibt erhalten,
  * solange die Seite offen ist.
  */
 import { CONTROLLING_TABS, type ControllingTab, type Route } from '../../lib/router';
 import { AuswertungAnsicht } from './Auswertung';
 import { Mitarbeiter } from './Mitarbeiter';
 import { NachweisListe } from './NachweisListe';
+import { ProjektListe } from './ProjektListe';
 import './controlling.css';
 
 /** Beschriftung und Tooltip der Reiter. */
 const REITER: Record<ControllingTab, { label: string; titel: string }> = {
   auswertung: { label: 'Auswertung', titel: 'Stunden je Mitarbeiter, Monat und Projekt – mit Excel' },
-  nachweise: { label: 'Leistungsnachweise', titel: 'Alle Leistungsnachweise – Aufschläge, Abschluss und Export' },
+  nachweise: { label: 'Leistungsnachweise', titel: 'Alle Leistungsnachweise – Leistungstexte, Aufschläge, Abschluss und Export' },
+  projekte: { label: 'Projekte', titel: 'Projekte der Leistungsnachweise – Nachweise, Leistungen und Einstellungen je Projekt' },
   mitarbeiter: { label: 'Mitarbeiter', titel: 'Mitarbeiter verwalten' },
 };
 
@@ -41,6 +44,7 @@ export function Controlling({ tab, navigate }: { tab: ControllingTab; navigate: 
 
       {tab === 'auswertung' ? <AuswertungAnsicht navigate={navigate} /> : null}
       {tab === 'nachweise' ? <NachweisListe navigate={navigate} /> : null}
+      {tab === 'projekte' ? <ProjektListe navigate={navigate} /> : null}
       {tab === 'mitarbeiter' ? <Mitarbeiter /> : null}
     </div>
   );

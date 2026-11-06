@@ -8,7 +8,8 @@
  *   #/baubetrieb/projekt/<id>                     Projekt mit seinen Anmeldungen
  *   #/baubetrieb/projekt/<id>/anmeldung/<id>      Anmeldung mit Statusverlauf
  *   #/baubetrieb/workflows                        Workflows (früher #/baubetrieb/workflow)
- *   #/baubetrieb/einstellungen                    Richtlinienfristen und Einstellungen
+ *   #/baubetrieb/fristen                          Fristen laut Richtlinie, Ampel und Nachhaken
+ *                                                 (früher #/baubetrieb/einstellungen)
  *
  * Unbekannte Adressen führen auf die Übersicht.
  */
@@ -23,7 +24,7 @@ export type Route =
   | { view: 'termine' }
   | { view: 'projekte' }
   | { view: 'workflows' }
-  | { view: 'einstellungen' }
+  | { view: 'fristen' }
   | { view: 'projekt'; projektId: ID }
   | { view: 'anmeldung'; projektId: ID; anmeldungId: ID };
 
@@ -54,7 +55,8 @@ export function hashToRoute(hash: string): Route {
   if (teile[0] === 'projekte') return { view: 'projekte' };
   // Die frühere Adresse „workflow“ führt auf dieselbe Seite.
   if (teile[0] === 'workflows' || teile[0] === 'workflow') return { view: 'workflows' };
-  if (teile[0] === 'einstellungen') return { view: 'einstellungen' };
+  // Die frühere Seite „Einstellungen“ heißt jetzt „Fristen“.
+  if (teile[0] === 'fristen' || teile[0] === 'einstellungen') return { view: 'fristen' };
   return { view: 'uebersicht' };
 }
 

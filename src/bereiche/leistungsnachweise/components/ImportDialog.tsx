@@ -207,7 +207,10 @@ export function importMeldung(plan: ImportPlan): string {
   return `${kopf}${teile.length ? ` – ${teile.join(', ')}` : ''}.`;
 }
 
-/** Ziel nach dem Übernehmen: Betrifft der Import genau ein Projekt, dessen Leistungsnachweise, sonst die Übersicht. */
+/**
+ * Ziel nach dem Übernehmen: Betrifft der Import genau ein Projekt, dessen Leistungen, sonst die
+ * Übersicht; im Controlling die Leistungsnachweise.
+ */
 export function importZiel(daten: LeistungsnachweisDaten, plan: ImportPlan, zugang: Zugang = 'bereich'): Route {
   // Im Controlling bleibt man im Controlling – bei den Leistungsnachweisen
   if (zugang === 'controlling') return { view: 'controlling', tab: 'nachweise' };
@@ -216,7 +219,7 @@ export function importZiel(daten: LeistungsnachweisDaten, plan: ImportPlan, zuga
     ...plan.neueLeistungen.map((l) => l.projektId),
     ...daten.leistungen.filter((l) => entfernt.has(l.id)).map((l) => l.projektId),
   ]);
-  if (projekte.size === 1) return { view: 'projekt', projektId: [...projekte][0], tab: 'nachweise' };
+  if (projekte.size === 1) return { view: 'projekt', projektId: [...projekte][0] };
   return { view: 'uebersicht' };
 }
 

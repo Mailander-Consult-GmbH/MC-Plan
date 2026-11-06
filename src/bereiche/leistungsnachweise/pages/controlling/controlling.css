@@ -246,3 +246,8 @@
 /* Kontrastmodus: Markierung von Zeilen mit Aufschlag kräftiger */
 :root[data-farbmodus='kontrast'] .table.ln-co-abrechnung tbody.ln-co-zeile-aufschlag td.ln-co-datum { box-shadow: inset 4px 0 0 var(--accent); }
 :root[data-farbmodus='kontrast'] .input.ln-co-zahl.ln-co-fehlerhaft { border-width: 2px; }
+
+/* Projekt im Controlling und Liste der Projekte */
+.ln-co-projekttitel { font-size: 15px; margin: 0; min-width: 0; }
+.table tr.ln-co-archiviert td { color: var(--text-tertiary); }
+.zahl.ln-co-warnzahl { color: var(--orange-text); font-weight: 600; }

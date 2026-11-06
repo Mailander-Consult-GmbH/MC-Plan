@@ -1,23 +1,22 @@
 /**
- * Reiter „Einstellungen“ eines Projekts: Vorgaben für den Kopf und die Zeilen
- * neuer Leistungsnachweise, die Abschnitte (ab zwei Abschnitten eigene
- * Stundenspalten unter „Aufwand (Std)“, `mitAbschnittsspalten`) und die Logos
- * im Druckkopf. Der Excel-Import ordnet Leistungen über die Kennung des
- * Projektelements (Spalte J) einem Abschnitt zu und legt fehlende selbst an.
- * Abgeschlossene Nachweise behalten ihren festgeschriebenen Stand samt
- * Abschnitten. Ändern darf jede angemeldete Person; ohne Anmeldung ist alles
- * gesperrt.
+ * Reiter „Einstellungen“ eines Projekts im Controlling: Vorgaben für den Kopf
+ * und die Zeilen neuer Leistungsnachweise, die Abschnitte (ab zwei
+ * Abschnitten eigene Stundenspalten unter „Aufwand (Std)“,
+ * `mitAbschnittsspalten`) und die Logos im Druckkopf. Der Excel-Import ordnet
+ * Leistungen über die Kennung des Projektelements (Spalte J) einem Abschnitt
+ * zu und legt fehlende selbst an. Abgeschlossene Nachweise behalten ihren
+ * festgeschriebenen Stand samt Abschnitten. Ändern darf nur das Controlling
+ * (domain/rechte.ts, `projektVerwalten`); andernorts ist alles gesperrt.
  */
 import { useId, useState } from 'react';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Callout, Card, CardHeader, ConfirmDialog, Field, Modal, Segmented, Select, TextInput } from '../../../../shared/ui';
-import { useAnmeldung } from '../../components/AnmeldeDialog';
 import { LogoVerwaltung } from '../../components/Logos';
 import { RASTER_OPTIONEN, REGEL_OPTIONEN, anzahl } from '../../components/common';
 import { abschnitteAusElementen, kennungNormal, projektelementTeilen } from '../../domain/import';
 import { mitAbschnittsspalten } from '../../domain/nachweis';
-import { angemeldet } from '../../domain/rechte';
+import { darf } from '../../domain/rechte';
 import {
   LEISTUNGSBEREICH_VORSCHLAEGE,
   newId,
@@ -31,24 +30,14 @@ import '../../components/leistungen.css';
 
 
 export function ProjektEinstellungen({ projekt }: { projekt: Projekt }) {
-  const { data } = useStore();
-  const anmeldung = useAnmeldung();
-  // Ohne Anmeldung nur ansehen – der Store ändert dann ohnehin nichts
-  const gesperrt = !angemeldet(data);
+  const { zugang } = useStore();
+  // Ohne Recht nur ansehen – der Store ändert dann ohnehin nichts
+  const gesperrt = !darf(zugang, 'projektVerwalten');
   // Ändert sich das Projekt von anderer Stelle (Dialog „Bearbeiten“), beginnt das Formular neu
   const stand = [projekt.leistungsbereich, projekt.kurzname, projekt.raster, projekt.zeitraumregel].join('\u0000');
   return (
     <div className="stack">
-      {gesperrt ? (
-        <Callout icon="i">
-          <div className="row-between wrap">
-            <span>Die Einstellungen des Projekts ändert jede angemeldete Person – bitte zuerst anmelden.</span>
-            <button type="button" className="btn btn-sm btn-primary" onClick={() => anmeldung()}>
-              Anmelden
-            </button>
-          </div>
-        </Callout>
-      ) : null}
+      {gesperrt ? <Callout icon="i">Die Einstellungen des Projekts ändert nur das Controlling.</Callout> : null}
       <NachweisVorgaben key={stand} projekt={projekt} gesperrt={gesperrt} />
       <Abschnitte projekt={projekt} gesperrt={gesperrt} />
       <LogoVerwaltung projekt={projekt} gesperrt={gesperrt} />
@@ -116,7 +105,7 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
           </Field>
           <Field
             label="Neue Nachweise"
-            hint="Für Leistungen außerhalb der vorhandenen Nachweise: je Kalendermonat ein eigener, oder der offene Nachweis wächst mit, bis er abgeschlossen wird – für Nachweise über mehrere Monate."
+            hint="Vorgabe: Der offene Nachweis läuft weiter – auch über mehrere Monate –, bis er abgeschlossen wird; danach beginnt ein neuer. Alternativ je Kalendermonat ein eigener."
           >
             <Select value={form.zeitraumregel} onChange={(v) => set('zeitraumregel', v as Zeitraumregel)} options={REGEL_OPTIONEN} />
           </Field>

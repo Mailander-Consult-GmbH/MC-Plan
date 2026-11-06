@@ -46,7 +46,7 @@ const vorBaubeginn = (wochenVorher: number): RilFrist => ({
 
 /**
  * Fristen laut Richtlinie. Die Werte sind Platzhalter für den Entwurf und noch
- * nicht mit der Richtlinie abgeglichen – sie sind unter „Einstellungen“
+ * nicht mit der Richtlinie abgeglichen – sie sind unter „Fristen“
  * anzupassen.
  */
 export function standardRilFristen(): Record<RilSchluessel, RilFrist> {
@@ -114,6 +114,7 @@ interface DemoAnmeldung {
   anmeldeId: string;
   vorhaben?: string;
   bbk?: string;
+  anmelder?: string;
   verlauf: [string, ISODate][];
   bauVon?: ISODate;
   bauBis?: ISODate;
@@ -137,6 +138,7 @@ function demoAnmeldung(projektId: ID, d: DemoAnmeldung, bearbeiter: string, work
     anmeldeId: d.anmeldeId,
     vorhaben: d.vorhaben ?? '',
     bbk: d.bbk ?? '',
+    anmelder: d.anmelder ?? '',
     art: d.art,
     statusId,
     statusSeit,
@@ -151,6 +153,7 @@ function demoAnmeldung(projektId: ID, d: DemoAnmeldung, bearbeiter: string, work
     bemerkung: d.bemerkung ?? '',
     herkunftId: null,
     verlauf: verlaufAus(d.verlauf, bearbeiter, workflows),
+    geaendertAm: null,
   };
 }
 
@@ -216,6 +219,7 @@ export function seedDaten(): BaubetriebDaten {
         art: 'A',
         anmeldeId: 'A-4000-0812',
         bbk: 'Fr. Weber',
+        anmelder: 'Projektleitung, Fr. Lehmann',
         verlauf: [
           ['W0', `${jahr - 1}-02-10`],
           ['W2', `${jahr - 1}-03-20`],
@@ -254,6 +258,7 @@ export function seedDaten(): BaubetriebDaten {
         art: 'B',
         anmeldeId: 'B-4000-2231',
         bbk: 'Fr. Weber',
+        anmelder: 'Projektleitung, Fr. Lehmann',
         verlauf: [
           ['Y0', tag(-110)],
           ['Y2', tag(-95)],
@@ -289,6 +294,7 @@ export function seedDaten(): BaubetriebDaten {
         art: 'B(S)',
         anmeldeId: 'BS-4000-1187',
         bbk: 'Hr. Kaya',
+        anmelder: 'Projektleitung, Hr. Sommer',
         verlauf: [
           ['Y0', tag(-160)],
           ['Y2', tag(-150)],
@@ -314,6 +320,7 @@ export function seedDaten(): BaubetriebDaten {
         art: 'A',
         anmeldeId: 'A-4000-0977',
         bbk: 'Hr. Kaya',
+        anmelder: 'Projektleitung, Hr. Sommer',
         verlauf: [
           ['X0', tag(-420)],
           ['X2', tag(-400)],
