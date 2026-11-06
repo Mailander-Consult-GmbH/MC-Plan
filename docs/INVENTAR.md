@@ -380,7 +380,10 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
    im Ordner `app/` auf `main` ab. Steht Pages auf „Deploy from a branch“ mit
    `main`, liefert GitHub den Zweig selbst aus: Die Wurzel-`index.html`
    verweist auf `/src/main.tsx`, das der Browser nicht ausführen kann; ihr
-   Skript wechselt deshalb nach 1,5 Sekunden auf `app/`. Bei Pull Requests
+   Skript wechselt deshalb nach 1,5 Sekunden auf `app/`. Die Ablage in `app/`
+   folgt erst nach der Bereitstellung (Job `ablage` mit `needs: [build,
+   pages]`), eine abgebrochene Bereitstellung versucht der Job `pages` nach
+   150 Sekunden ein zweites Mal (`zweiter_versuch`). Bei Pull Requests
    baut der Workflow nur (einschließlich Typprüfung). Wegen
    `base: './'` funktioniert die Anwendung auch in einem Unterverzeichnis.
 

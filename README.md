@@ -119,6 +119,14 @@ auf einen anderen Zweig, liefert GitHub dessen Stand aus und überschreibt damit
 Bereitstellung des Workflows. Mit „Deploy from a branch“ auf `main` laufen beide Wege parallel –
 es gilt, was zuletzt fertig wird; eindeutig ist daher „GitHub Actions“.
 
+Die beiden Wege kommen sich ins Gehege: Ein Branch-Build von GitHub bricht eine noch wartende
+Bereitstellung des Workflows ab („Deployment cancelled.“) – nach PR #31 blieb so die Fassung
+von PR #30 online, obwohl der Workflow grün war. Der Workflow legt den Build deshalb erst nach
+der Bereitstellung unter `app/` ab (der Push dorthin stößt den nächsten Branch-Build an) und
+versucht eine abgebrochene Bereitstellung nach 150 Sekunden ein zweites Mal, mit einer Warnung im
+Lauf. Bleibt trotzdem ein alter Stand online, lässt sich der Workflow unter **Actions → Pages →
+Run workflow** auf `main` von Hand erneut starten.
+
 Die Schreibrechte für die Ablage in `gh-pages` und `app/` fordert der Workflow selbst an
 (`permissions: contents: write` im Job `ablage`); die Voreinstellung unter Settings → Actions →
 General → Workflow permissions muss dafür nicht geändert werden. Ist `main` gegen direkte Pushes
