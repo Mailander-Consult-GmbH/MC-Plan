@@ -13,12 +13,14 @@ Startbildschirm wählt:
   Nachhak-Terminen, ausstehenden Erstanmeldungen und dem Anmeldebedarf je Fahrplanjahr.
 * **Projektsteuerung** (erster Entwurf) – je Projekt die Projektbeteiligtenliste mit
   projektübergreifenden Funktionen und Besprechungsprotokolle mit Folgeprotokollen.
-* **Leistungsnachweise** (erster Entwurf) – jede Person erfasst ihre Leistungen je Projekt (von
+* **Leistungsnachweise** (erster Entwurf) – jede Person erfasst nur ihre Leistungen je Projekt (von
   Hand oder per Excel-Import aus der Zeiterfassung); daraus entstehen gemeinsame tages-, wochen- oder
-  monatsscharfe Leistungsnachweise als PDF und Excel.
+  monatsscharfe Leistungsnachweise, die bis zum Abschluss weiterlaufen – bearbeitet und als PDF und
+  Excel ausgegeben im Controlling.
 * **Controlling** (mit PIN) – Projekte für alle Bereiche anlegen, in Bereiche übernehmen, je
   Bereich oder ganz archivieren und löschen; dazu das Controlling der Leistungsnachweise
-  (Auswertung, Abrechnung mit Aufschlägen, Abschluss, Export, Mitarbeiter).
+  (Auswertung, Leistungsnachweise mit Leistungstexten, Aufschlägen, Abschluss und Export, Projekte
+  mit ihren Einstellungen, Mitarbeiter).
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
 Browser, eigene Einstellungen, eigener Router. **Projekte und Projektbeteiligte teilen sie sich**
@@ -739,7 +741,9 @@ Was in die Vorschau fällt (Vorgabe 180 Tage), steht unter „Anmeldebedarf aus 
 Je Anmeldung eine Zeile im Projekt: Anmelde-ID (in Workflows mit ganzem Fahrplanjahr Begriff bzw.
 tVE-Nr, weil es in SKM und MKM noch keine Anmeldungen gibt; im **SKM** führt der
 **Vorhabenname**, die tVE-Nr steht darunter – bei älteren SKM-Einträgen übernimmt
-„als Vorhabenname übernehmen“ im Dialog den bisherigen Begriff), **Zuständiger BBK**, Maßnahmenart (SKM und MKM für die
+„als Vorhabenname übernehmen“ im Dialog den bisherigen Begriff), **Zuständiger BBK**, **Anmelder**
+(wer die Anmeldung eingereicht hat – die Angabe soll aus dem Import der Anmeldungen kommen; bis es
+ihn gibt, wird sie von Hand gepflegt), Maßnahmenart (SKM und MKM für die
 Sammeleinträge dieser Phasen, sonst A, B(0), B(S), B, C, Container – dieselbe Art kann in mehreren
 Phasen vorkommen, getrennt wird nach Workflow), Workflow und Status, Sperrzeitraum (ganzes
 Fahrplanjahr oder tagesscharf – je nach Workflow), Terminfrist, Bf/Strecke, Gewerk/Tätigkeit,
@@ -748,7 +752,10 @@ aktiv; endet sie, werden beide im Statusverlauf festgehalten und in der Anmeldun
 
 Im Projekt stehen die Anmeldungen **je Workflow in einer eigenen Tabelle** (SKM, MKM, KM (n-2 &
 n-1), KKM (unterjährig)) mit den Spalten Anmeldung, Sperrzeitraum, Status, **Zuständig** und
-Terminfrist, dazu „Status ändern …“. „Zuständig“ nennt die Rolle des aktuellen Status samt Namen:
+Terminfrist, dazu **Status ändern** als Haken wie im Planlaufmanagement: Hat der Status nur einen
+möglichen Nachfolger, wählt der Haken ihn direkt; bei mehreren öffnet er ein Menü „Welcher Status
+folgt?“ (wie bei parallelen Schritten im Planlauf). Bestätigt wird der Wechsel im Dialog des
+Statuswechsels. „Zuständig“ nennt die Rolle des aktuellen Status samt Namen:
 BBK mit dem zuständigen BBK der Anmeldung, MIC mit dem Hauptbearbeiter, Projektleitung DB mit dem
 Projektleiter des Projekts. Die Maßnahmenart steht in der zweiten Zeile, wo der Workflow mehrere
 führt (KKM). Jede Anmeldung belegt höchstens zwei Textzeilen; Längeres
@@ -786,8 +793,8 @@ oder „KKM · Entwurf“.
   Sperrzeitraum eines Workflows bleibt fest, solange Anmeldungen darin stehen. Eine Kopie erhält
   „(Kopie)“ an Name und Kurzbezeichnung.
 * **Nachfolger** sind Status desselben Workflows, Status eines anderen Workflows (**Übernahme in
-  eine neue Phase**) oder **Eintrag löschen**. Beim Statuswechsel stehen nur sie zur Wahl – in der
-  Liste („Status ändern …“) und auf der Seite der Anmeldung.
+  eine neue Phase**) oder **Eintrag löschen**. Beim Statuswechsel stehen nur sie zur Wahl – am
+  Haken „Status ändern“ in Übersicht, Terminen und Projekt und auf der Seite der Anmeldung.
 * **Anmeldeleiche:** Jeder Standard-Workflow endet mit dem Status **Anmeldeleiche** (erreichbar aus
   „Entwurf“ und „Abgelehnt“). Er ist ein gewöhnlicher Status mit Datum im Statusverlauf, wird
   **rot** angezeigt, hat keine Terminfrist und deckt keinen Anmeldebedarf mehr ab. Gelöscht wird
@@ -811,7 +818,7 @@ Ril_KM, Ril_KKM A oder Ril_KKM – im Lastenheft Ril_skm, Ril_pze, Ril_N-2, Ril_
 Ril_X –, ggf. abzüglich einiger Tage, etwa „Ril_KKM − 14 Tage“), **nächster Stichtag** („Nächster
 1.8.“ ab dem Statuswechsel), **Nachhak-Termin** (Tage nach dem Statuswechsel, je Status
 einstellbar) oder **keine**; im Workflow-Editor ist die Auswahl nach Phase gegliedert. Die
-Richtlinienfristen werden unter **Einstellungen** gepflegt, nach Phase gegliedert – je Frist als
+Richtlinienfristen werden unter **Einstellungen › Fristen** gepflegt, nach Phase gegliedert – je Frist als
 Stichtag TT.MM. im Jahr N − k des Fahrplanjahres oder als Wochen vor Sperrbeginn. **Die
 vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis sie geändert oder als
 „Geprüft“ bestätigt werden. **Ril_KM** nimmt die N-2-Frist, solange sie am Tag des
@@ -830,8 +837,16 @@ Termin fest, **Termin festlegen …** setzt die Frist im aktuellen Status von Ha
 **Übersicht** (Kennzahlen, anstehende Terminfristen samt ausstehender Erstanmeldungen,
 Anmeldebedarf, Projekte mit ihren Anmeldungen je Workflow), **Termine & Nachhaken** (alle Fristen
 nach Projekten, je Projekt zuerst eine ausstehende Erstanmeldung, Filter
-Überfällig/Fällig/Im Plan/Zum Nachhaken), **Projekte**, **Workflows**, **Einstellungen**.
+Überfällig/Fällig/Im Plan/Zum Nachhaken), **Projekte** und – wie im Planlaufmanagement unter der
+aufklappbaren Gruppe **Einstellungen** – **Workflows** und **Fristen** (Fristen laut Richtlinie,
+Ampel und Nachhaken; früher die Seite „Einstellungen“, deren Adresse weiter gilt).
 **Excel** im Projekt lädt Anmeldungen und Projekt als Arbeitsmappe herunter.
+
+In den anstehenden Terminfristen der Übersicht steht zwischen Terminfrist und „Status ändern“ der
+**Sachstand** – das Datum des letzten Abgleichs bzw. der letzten Änderung: der jüngste Eintrag im
+Statusverlauf (Anlage, Statuswechsel, „Nachgehakt“ und andere Vermerke, je mit ihrem Datum) oder die
+letzte Änderung der Merkmale („Bearbeiten“, Termin von Hand), was später liegt – mit Abstand zu heute
+und Anlass.
 
 ### Daten
 Eigener Schlüssel `baubetrieb-planung.data.v1` im `localStorage`, eigene Demodaten,
@@ -844,7 +859,8 @@ Phasennamen SKM, MKM, KM (n-2 & n-1) und KKM (unterjährig), sofern Name, Kurzbe
 Beschreibung der Standard-Workflows nicht geändert wurden; die Maßnahmenart PzE wird MKM,
 A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A. Aus der bisherigen geplanten Sperrzeit eines
 Projekts werden seine betroffenen Fahrplanjahre. Die Status der Standard-Workflows erhalten ihre
-vorgegebene Zuständigkeit (Fassung 8). Name unter „Angemeldet als“ und Farbmodus gelten
+vorgegebene Zuständigkeit (Fassung 8). Fassung 9 ergänzt an den Anmeldungen den Anmelder und den
+Tag der letzten Änderung der Merkmale (beide leer). Name unter „Angemeldet als“ und Farbmodus gelten
 in allen Bereichen; der Name steht im Statusverlauf und ist Hauptbearbeiter neuer Projekte.
 
 ## Projektsteuerung
@@ -964,9 +980,11 @@ und Farbmodus gelten in allen Bereichen.
 
 ## Leistungsnachweise
 
-Erster Entwurf, übernommen aus dem Testprojekt *KaPlan-Test*. Jede Person erfasst ihre eigenen
-Leistungen je Projekt; daraus entstehen gemeinsame Leistungsnachweise für den Auftraggeber.
-Abgerechnet, abgeschlossen und exportiert wird im [Controlling](#controlling-der-leistungsnachweise).
+Erster Entwurf, übernommen aus dem Testprojekt *KaPlan-Test*. **Im Bereich werden nur Leistungen
+erfasst:** Jede Person erfasst ihre eigenen Leistungen je Projekt; daraus entstehen von selbst
+gemeinsame Leistungsnachweise für den Auftraggeber. Leistungsnachweise und Einstellungen der Projekte
+gibt es nur im [Controlling](#controlling-der-leistungsnachweise) – dort werden sie bearbeitet,
+abgerechnet, abgeschlossen und exportiert.
 
 ### Anmeldung
 **Angemeldet als** unten in der Seitenleiste ist derselbe Name wie in allen Bereichen. Leistungen
@@ -977,13 +995,14 @@ erfassen; *Leistung erfassen* und *Excel-Import* führen dann zuerst in diesen D
 „Controlling“ an Mitarbeitern gibt es – anders als im Testprojekt – nicht: Das Controlling ist der
 PIN-geschützte Controlling-Bereich.
 
-### Projekte
-Projektnummer (eindeutig – daran erkennt der Excel-Import das Projekt), Projektname, Bezeichnung im
-Nachweis, Leistungsbereich, Raster neuer Nachweise (Tag, Woche oder Monat) und die Regel für neue
-Nachweise (*Je Kalendermonat* oder *Fortlaufend bis zum Abschluss*). Im Projekt die Reiter
-**Leistungsnachweise**, **Leistungen** und **Einstellungen** (Vorgaben, Abschnitte, Logos im
-Druckkopf). Hat ein Projekt mindestens zwei Abschnitte (etwa Streckenabschnitte), weist der Nachweis
-die Stunden je Abschnitt in eigenen Spalten aus. Gelöscht wird ein Projekt nur im Controlling.
+### Übersicht und Projekte
+Die **Übersicht** zeigt die eigenen Stunden und Leistungen des Monats, die eigenen Stunden im Jahr,
+die zuletzt erfassten eigenen Leistungen und je Projekt die eigenen Stunden des Monats. Die
+**Projektliste** legt nichts an: Projekte kommen aus dem Projektregister (*Übernehmen* aus anderen
+Bereichen), aus dem Excel-Import oder aus dem Controlling. Ein Projekt öffnet direkt die eigenen
+Leistungen – ohne weitere Reiter. Frühere Adressen der Reiter (`…/projekt/<id>/nachweise` usw.)
+zeigen ebenfalls die Leistungen, die eines Nachweises (`…/projekt/<id>/nachweis/<id>`) führt in die
+Abrechnung im Controlling.
 
 ### Leistungen
 Eigene Leistungen von Hand erfassen (Datum, Text, Stunden, Abschnitt) oder per **Excel-Import** aus
@@ -994,11 +1013,13 @@ nur ihre eigenen Zeilen; Leistungen anderer ändert niemand.
 
 ### Leistungsnachweise
 Ein Nachweis ist ein Zeitraum eines Projekts; welche Leistungen er zeigt, ergibt sich allein aus
-ihrem Datum. Fehlt für eine Leistung ein Nachweis, entsteht er nach der Regel des Projekts. Je Tag,
-Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern, Leistungstext und Stunden.
-Leistungstext und Bemerkung bearbeitet jede angemeldete Person, solange der Nachweis offen ist; ein
-bearbeiteter Text wird nie still überschrieben – neue Leistungen bietet die Zeile zum **Ergänzen**
-an. Eigene Leistungen lassen sich je Zeile aufklappen, die der anderen erscheinen nur als Zahl.
+ihrem Datum. Fehlt für eine Leistung ein Nachweis, entsteht er beim Erfassen oder Importieren von
+selbst. Ein Leistungsnachweis ist **nicht an einen Monat gebunden**: Er läuft weiter – auch über
+mehrere Monate –, bis das Controlling ihn abschließt; danach beginnt mit der nächsten Leistung ein
+neuer (Regel *Fortlaufend bis zum Abschluss*, Vorgabe für alle Projekte). Beim Abschluss endet der
+Zeitraum am letzten Tag mit Leistungen. Wer es so will, stellt ein Projekt im Controlling auf *Je
+Kalendermonat*. Je Tag, Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern,
+Leistungstext und Stunden.
 
 ### Controlling der Leistungsnachweise
 Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
@@ -1008,9 +1029,22 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   Excel.
 * **Leistungsnachweise** – alle Nachweise aller Projekte mit Filter und **Neuer Leistungsnachweis**.
   Ein Klick öffnet die **Abrechnung**: Aufschlag in ± Stunden je Zeile bzw. die abgerechneten
-  Stunden, Vorschau, **Drucken / PDF**, **Excel**, **Abschließen** (der Stand wird festgeschrieben)
-  bzw. **Wieder öffnen**, **Zeitraum ändern** und **Löschen**. Druck und Excel zeigen die
-  abgerechneten Stunden; der Aufschlag selbst erscheint nicht.
+  Stunden, die Ansicht **Leistungstexte** (Text je Zeile bearbeiten, solange der Nachweis offen ist –
+  ein bearbeiteter Text wird nie still überschrieben, neue Leistungen bietet die Zeile zum
+  **Ergänzen** an; die Leistungen aller Mitarbeiter lassen sich je Zeile aufklappen), die
+  **Vorschau**, **Drucken / PDF**, **Excel**, **Abschließen** (der Stand wird festgeschrieben)
+  bzw. **Wieder öffnen**, **Zeitraum ändern**, **Löschen** und die Bemerkung; **Zum Projekt**
+  wechselt zum Projekt. Druck und Excel zeigen die abgerechneten Stunden; der Aufschlag selbst
+  erscheint nicht.
+* **Projekte** – alle Projekte der Leistungsnachweise mit Raster, Regel, offenen Nachweisen,
+  Leistungen ohne Nachweis und Stunden; **Neues Projekt** legt eines nur hier an (für alle Bereiche
+  gibt es die Projekte des Controllings). Im Projekt **Bearbeiten** (Projektnummer – eindeutig,
+  daran erkennt der Excel-Import das Projekt –, Name, Bezeichnung im Nachweis, Leistungsbereich,
+  Raster und Regel neuer Nachweise), **Löschen** und die Reiter **Leistungsnachweise** (mit
+  „Nachweise anlegen“ für Leistungen ohne Nachweis), **Leistungen** (aller Mitarbeiter, nur lesen)
+  und **Einstellungen** (Vorgaben, Abschnitte, Logos im Druckkopf). Hat ein Projekt mindestens zwei
+  Abschnitte (etwa Streckenabschnitte), weist der Nachweis die Stunden je Abschnitt in eigenen
+  Spalten aus.
 * **Mitarbeiter** – anlegen, bearbeiten, als ausgeschieden markieren; löschen nur ohne Leistungen.
 * **Excel-Import (alle Mitarbeiter)** – Sammel-Export der Zeiterfassung, legt unbekannte Mitarbeiter
   an; eine Anmeldung als Mitarbeiter braucht das Controlling nicht.
@@ -1023,7 +1057,8 @@ Eigener Schlüssel `leistungsnachweise.data.v1` im `localStorage`, eigene Demoda
 Mitarbeiter – darunter Anna Becker –, drei Projekte, Leistungen der letzten Monate),
 **Sicherung**/**Einspielen** (JSON mit dem Kennzeichen `"bereich": "leistungsnachweise"`) und
 **Zurücksetzen**. Sicherungen und Stände aus dem Testprojekt lassen sich einspielen; die frühere
-Rolle Controlling entfällt dabei (Fassung 3). Projekte teilt der Bereich über das Projektregister;
+Rolle Controlling entfällt dabei (Fassung 3). Fassung 4 stellt alle Projekte auf *Fortlaufend bis zum
+Abschluss*; vorhandene Nachweise bleiben, wie sie sind. Projekte teilt der Bereich über das Projektregister;
 seine Mitarbeiter sind keine Projektbeteiligten und werden nicht geteilt. Name unter „Angemeldet als“
 und Farbmodus gelten in allen Bereichen.
 
@@ -1222,14 +1257,15 @@ src/
         workflow.ts  Standard-Workflows je Phase, Nachschlagen von Status und Nachfolgern
         workflowPflege.ts  Workflows speichern, duplizieren, löschen – mit Prüfung belegter Status
         fristen.ts   Fahrplanjahr, Terminfrist je Status, Ampel, Anmeldebedarf
-        ablauf.ts    Statuswechsel, Übernahme mit Aufteilung, Rücknahme
+        ablauf.ts    Statuswechsel, Übernahme mit Aufteilung, Rücknahme, Sachstand
         export.ts    Excel-Ausgabe des Monitors
         seed.ts      Platzhalter der Richtlinienfristen und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
       store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe)
       lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
-      pages/         Übersicht, Termine, Projekte, Projekt, Anmeldung, Workflows (mit Editor), Einstellungen
-      components/    Status- und Fristanzeigen, Dialoge (Anmeldung, Statuswechsel, Nachhaken), Sicherung
+      pages/         Übersicht, Termine, Projekte, Projekt, Anmeldung, Workflows (mit Editor), Fristen
+      components/    Status- und Fristanzeigen, „Status ändern“ als Haken mit Auswahl, Dialoge
+                     (Anmeldung, Statuswechsel, Nachhaken), Sicherung; baubetrieb.css (Präfix bb-)
     projektsteuerung/  Bereich „Projektsteuerung“ (erster Entwurf)
       index.tsx  Einstiegspunkt samt Datenbestand und Stylesheet des Bereichs
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
@@ -1267,10 +1303,10 @@ src/
         seed.ts      Standardlogos und Demodaten
       store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe, Rechte)
       lib/router.ts  #/leistungsnachweise/… und #/controlling/leistungsnachweise/…
-      pages/         Übersicht, Projekte, Projekt (Leistungsnachweise, Leistungen, Einstellungen,
-                     Nachweis-Editor) und controlling/ (Auswertung, Nachweisliste, Abrechnung,
-                     Mitarbeiter)
-      components/    Dialoge (Anmeldung, Leistung, Nachweis, Mitarbeiter), Excel-Import, Logos,
+      pages/         Übersicht, Projekte, Projekt (eigene Leistungen) und controlling/ (Auswertung,
+                     Nachweisliste, Abrechnung mit Leistungstexten, Projektliste, Projekt mit
+                     Leistungsnachweisen, Leistungen und Einstellungen, Mitarbeiter)
+      components/    Dialoge (Anmeldung, Leistung, Nachweis, Projekt, Mitarbeiter), Excel-Import, Logos,
                      Sicherung, Druckblatt
     controlling/ Bereich „Controlling“ (mit PIN, ohne eigenen Bestand)
       index.tsx  Einstiegspunkt: PIN-Abfrage, danach der Bereich

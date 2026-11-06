@@ -75,14 +75,20 @@ ignoriert.
   (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis), `domain/rechte.ts` – die
   Rechte an einer Stelle, je **Zugang** (`'bereich'` | `'controlling'`): Der `StoreProvider` erhält
   den Zugang als Eigenschaft (`index.tsx` ohne, `controlling.tsx` mit `'controlling'`); im Bereich
-  erfasst die angemeldete Person nur eigene Leistungen, alles Übrige (Abschluss, Aufschläge,
-  Export, Auswertung, Nachweise verwalten, Sammel-Import, Mitarbeiter) gibt es nur im Controlling.
+  erfasst die angemeldete Person nur eigene Leistungen (Übersicht, Projektliste ohne Anlegen,
+  Projekt = nur `Leistungen`), alles Übrige (Projekte anlegen und einstellen – `projektVerwalten` –,
+  Leistungsnachweise samt Leistungstexten und Bemerkung, Abschluss, Aufschläge, Export,
+  Auswertung, Sammel-Import, Mitarbeiter) gibt es nur im Controlling: Reiter „Projekte“
+  (`pages/controlling/ProjektListe.tsx`, `Projekt.tsx` mit `ProjektNachweise`, `Leistungen`,
+  `ProjektEinstellungen`) und die Abrechnung mit der Ansicht „Leistungstexte“
+  (`pages/controlling/Leistungstexte.tsx`).
   Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). Angemeldet ist der
   aktive Mitarbeiter, dessen Name dem gemeinsamen „Angemeldet als“ entspricht
   (`mitarbeiterZumNamen`; der Store setzt `einstellungen.mitarbeiterId` danach), fehlt er, legt
   „Als Mitarbeiter anmelden“ ihn an. `domain/nachweis.ts`
   Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss (Nachweise eines Projekts überschneiden sich
-  nie; welche Leistungen ein Nachweis zeigt, ergibt sich allein aus dem Datum), `domain/import.ts`
+  nie; welche Leistungen ein Nachweis zeigt, ergibt sich allein aus dem Datum; Vorgabe ist die
+  Zeitraumregel `fortlaufend` – ein Nachweis läuft, bis er abgeschlossen wird), `domain/import.ts`
   Excel-Import, `domain/druck.ts`/`domain/export.ts` PDF und Excel, `lib/router.ts` baut auch die
   Adressen des Controllings (`CONTROLLING_PREFIX`); frühere Adressen
   `#/leistungsnachweise/controlling/…` lenkt `App.tsx` um. Kennungen, die erst in einer Änderung
@@ -123,8 +129,12 @@ ignoriert.
   und Nachschlagen von Status (Anmeldungen verweisen per `statusId` auf einen Status; die
   Workflows liegen im Bestand und sind bearbeitbar), `domain/workflowPflege.ts` Speichern,
   Duplizieren, Löschen von Workflows, `domain/fristen.ts` Fahrplanjahr, Terminfrist, Ampel,
-  Anmeldebedarf, `domain/ablauf.ts` Statuswechsel samt Übernahme/Aufteilung, `store/` mit
-  eigenem Schlüssel `baubetrieb-planung.data.v1`. Neue Felder dort über `DATEN_VERSION`
+  Anmeldebedarf, `domain/ablauf.ts` Statuswechsel samt Übernahme/Aufteilung und `sachstand`
+  (jüngster Verlaufseintrag oder `geaendertAm`, das nur `updateAnmeldung`/`terminSetzen` setzen),
+  `store/` mit eigenem Schlüssel `baubetrieb-planung.data.v1`. Workflows und Fristen stehen in der
+  Seitenleiste unter der aufklappbaren Gruppe „Einstellungen“ (wie im Planlaufmanagement);
+  „Status ändern“ ist `NachfolgerAuswahl` (Haken mit Menü, `components/baubetrieb.css`, Präfix
+  `bb-`). Neue Felder dort über `DATEN_VERSION`
   (`baubetrieb/domain/types.ts`) und `migriere()` (`baubetrieb/store/storage.ts`). Die festen IDs
   der Standard-Status nicht ändern – `STATUS_AUS_NUMMER` ordnet ihnen ältere Stände zu.
 * `src/bereiche/projektsteuerung/` – gleich aufgebaut, Schlüssel `projektsteuerung.data.v1`:
