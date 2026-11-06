@@ -59,7 +59,9 @@ ignoriert.
   Übernahme steht aus) und die Projektbeteiligten mit Kontaktdaten und Funktionen (über
   Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). Jedes Projekt gehört auch in die
   Leistungsnachweise (`JEDES_PROJEKT_IN`: deren Abgleich nimmt alle auf, kein Zurücknehmen);
-  die anderen Bereiche nennen sie in ihren Projektansichten nicht (`genannteBereiche`).
+  die anderen Bereiche nennen sie in ihren Projektansichten nicht (`genannteBereiche`). Die
+  ★-Markierung der Bereiche steht als Spiegel in der Mitgliedschaft (`markiert`); in den
+  Leistungsnachweisen gilt ein anderswo markiertes Projekt als markiert (`markiertAnderswo`).
   `register.ts` Modell, Laden/Speichern,
   `registerAendern`/`useRegister`; `abgleich.ts` reine Funktionen: `uebertragen` (Änderungen
   des Bereichs → Register), `abgleichen` (Unbekanntes eintragen, `Plan` für den Bereich) und die
@@ -142,7 +144,8 @@ ignoriert.
   Workflows liegen im Bestand und sind bearbeitbar), `domain/workflowPflege.ts` Speichern,
   Duplizieren, Löschen von Workflows, `domain/fristen.ts` Fahrplanjahr, Terminfrist, Ampel,
   Anmeldebedarf, `domain/ablauf.ts` Statuswechsel samt Übernahme/Aufteilung und `sachstand`
-  (jüngster Verlaufseintrag oder `geaendertAm`, das nur `updateAnmeldung`/`terminSetzen` setzen),
+  (jüngster Verlaufseintrag oder `geaendertAm`, das nur `updateAnmeldung`/`terminSetzen` setzen;
+  angezeigt in den Anmeldungstabellen des Projekts, `SachstandKompakt`),
   `store/` mit eigenem Schlüssel `baubetrieb-planung.data.v1`. Workflows und Fristen stehen in der
   Seitenleiste unter der aufklappbaren Gruppe „Einstellungen“ (wie im Planlaufmanagement);
   „Status ändern“ ist `NachfolgerAuswahl` (Haken mit Menü, `components/baubetrieb.css`, Präfix

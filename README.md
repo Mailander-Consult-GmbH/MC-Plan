@@ -751,8 +751,11 @@ Bemerkungen. ÄAbst-Nr und AnnexVII-Kennzeichen sind nur in Status der Art „Ä
 aktiv; endet sie, werden beide im Statusverlauf festgehalten und in der Anmeldung geleert.
 
 Im Projekt stehen die Anmeldungen **je Workflow in einer eigenen Tabelle** (SKM, MKM, KM (n-2 &
-n-1), KKM (unterjährig)) mit den Spalten Anmeldung, Sperrzeitraum, Status, **Zuständig** und
-Terminfrist, dazu **Status ändern** als Haken wie im Planlaufmanagement: Hat der Status nur einen
+n-1), KKM (unterjährig)) mit den Spalten Anmeldung, Sperrzeitraum, Status, **Zuständig**,
+Terminfrist und **Sachstand** – dem Datum des letzten Abgleichs bzw. der letzten Änderung: der
+jüngste Eintrag im Statusverlauf (Anlage, Statuswechsel, „Nachgehakt“ und andere Vermerke, je mit
+ihrem Datum) oder die letzte Änderung der Merkmale („Bearbeiten“, Termin von Hand), was später liegt;
+darunter Abstand zu heute und Anlass –, dazu **Status ändern** als Haken wie im Planlaufmanagement: Hat der Status nur einen
 möglichen Nachfolger, wählt der Haken ihn direkt; bei mehreren öffnet er ein Menü „Welcher Status
 folgt?“ (wie bei parallelen Schritten im Planlauf). Bestätigt wird der Wechsel im Dialog des
 Statuswechsels. „Zuständig“ nennt die Rolle des aktuellen Status samt Namen:
@@ -841,12 +844,6 @@ nach Projekten, je Projekt zuerst eine ausstehende Erstanmeldung, Filter
 aufklappbaren Gruppe **Einstellungen** – **Workflows** und **Fristen** (Fristen laut Richtlinie,
 Ampel und Nachhaken; früher die Seite „Einstellungen“, deren Adresse weiter gilt).
 **Excel** im Projekt lädt Anmeldungen und Projekt als Arbeitsmappe herunter.
-
-In den anstehenden Terminfristen der Übersicht steht zwischen Terminfrist und „Status ändern“ der
-**Sachstand** – das Datum des letzten Abgleichs bzw. der letzten Änderung: der jüngste Eintrag im
-Statusverlauf (Anlage, Statuswechsel, „Nachgehakt“ und andere Vermerke, je mit ihrem Datum) oder die
-letzte Änderung der Merkmale („Bearbeiten“, Termin von Hand), was später liegt – mit Abstand zu heute
-und Anlass.
 
 ### Daten
 Eigener Schlüssel `baubetrieb-planung.data.v1` im `localStorage`, eigene Demodaten,
@@ -1122,7 +1119,9 @@ jeder Änderung mit dem Register ab; was ein anderer Bereich oder das Controllin
 erfassen. Ihr Abgleich nimmt alle Projekte des Registers auf, die sie noch nicht führen (zuvor
 verknüpft er eigene Projekte gleicher Nummer); im Controlling archivierte folgen, sobald sie
 zurückgeholt werden. So übernommene Projekte sind dort nicht mit ★ markiert, damit Übersicht und
-Seitenleiste nicht volllaufen – jeder markiert, woran er arbeitet. Die anderen Bereiche nennen die
+Seitenleiste nicht volllaufen. **Was ein Bereich mit ★ markiert, ist in den Leistungsnachweisen
+von selbst markiert** – dort fest (aufheben lässt es sich nur im markierenden Bereich, der Tooltip
+nennt ihn); weitere Projekte lassen sich dort zusätzlich markieren. Die anderen Bereiche nennen die
 Leistungsnachweise in ihren Projektansichten nicht (weder unter „Auch in“ noch unter „Geführt in“
 noch im Löschdialog); die Leistungsnachweise nennen die anderen Bereiche weiter.
 
