@@ -3,15 +3,13 @@
  * Ergänzungen mit eigener Art „Aufgabe“ – mit Ampel nach Termin. Grundlage
  * der Übersicht und der Zähler in der Seitenleiste.
  *
- * Eigene To-Dos sind die Aufgaben der eigenen Funktion (`EIGENE_FUNKTION`):
- * „Verantwortlich“ nennt das Kürzel oder den Namen einer Person, die sie im
- * Projekt oder als Teilnehmende des Protokolls trägt, oder das Kürzel der
- * Funktion selbst.
+ * Eigene To-Dos sind die Aufgaben der angemeldeten Person („Angemeldet als“):
+ * „Verantwortlich“ nennt ihr Kürzel oder ihren Namen aus der
+ * Projektbeteiligtenliste oder aus den Teilnehmenden des Protokolls.
  */
 import { diffDays, today } from '../../../shared/dates';
 import { bezeichnung, eintragText, protokollAufgaben, zuordnung } from './protokoll';
 import {
-  EIGENE_FUNKTION,
   VORLAUF_TAGE,
   kuerzelVon,
   personName,
@@ -58,7 +56,7 @@ export interface Punkt {
   termin: ISODate;
   status: Erledigung;
   ampel: Ampel;
-  /** Aufgabe der eigenen Funktion – ein eigenes To-Do. */
+  /** Aufgabe der angemeldeten Person – ein eigenes To-Do. */
   eigen: boolean;
 }
 
@@ -70,30 +68,36 @@ export function nachDringlichkeit(a: Punkt, b: Punkt): number {
 }
 
 /** Alle Punkte der angegebenen Projekte (ohne Angabe: aller Projekte). */
-const norm = (s: string) => s.trim().toLowerCase();
-const istEigeneFunktion = (bezeichnung: string) => {
-  const b = norm(bezeichnung);
-  const eigene = norm(EIGENE_FUNKTION);
-  return b === eigene || b.startsWith(`${eigene} `);
-};
+const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/** Einträge der angemeldeten Person („Angemeldet als“) in der Projektbeteiligtenliste eines Projekts. */
+function ichImProjekt(d: ProjektsteuerungDaten, projektId: ID) {
+  const ich = norm(d.einstellungen.bearbeiter);
+  return d.beteiligte.filter((b) => b.projektId === projektId && norm(personName(b)) === ich);
+}
+
+/** Steht die angemeldete Person in der Projektbeteiligtenliste eines der Projekte? */
+export const angemeldetBeteiligt = (d: ProjektsteuerungDaten, projektIds: ID[]): boolean =>
+  projektIds.some((id) => ichImProjekt(d, id).length > 0);
 
 /**
- * Werte von „Verantwortlich“, die die eigene Funktion meinen: im Projekt die
- * Kürzel und Namen der Personen mit dieser Funktion und das Kürzel der
- * Funktion; im Protokoll dazu die Teilnehmenden mit dieser Funktion.
+ * Werte von „Verantwortlich“, die die angemeldete Person meinen: Kürzel und
+ * Name ihres Eintrags in der Projektbeteiligtenliste und im Protokoll die der
+ * Teilnehmenden, die sie ist – verknüpft oder gleichen Namens.
  */
 function eigeneZuordnungen(d: ProjektsteuerungDaten, projektId: ID): (p: Protokoll) => Set<string> {
-  const funktionen = d.funktionen.filter((f) => istEigeneFunktion(f.name));
-  const ids = new Set(funktionen.map((f) => f.id));
-  const projektweit = [
-    ...funktionen.map((f) => f.kuerzel),
-    ...d.beteiligte
-      .filter((b) => b.projektId === projektId && b.funktionId && ids.has(b.funktionId))
-      .flatMap((b) => [kuerzelVon(b, d.funktionen), personName(b)]),
-  ];
+  const ich = norm(d.einstellungen.bearbeiter);
+  const personen = ichImProjekt(d, projektId);
+  const ids = new Set(personen.map((b) => b.id));
+  const projektweit = personen.flatMap((b) => [kuerzelVon(b, d.funktionen), personName(b)]);
   return (p) =>
     new Set(
-      [...projektweit, ...p.teilnehmer.filter((t) => istEigeneFunktion(t.funktion)).flatMap((t) => [zuordnung(t), t.name])]
+      [
+        ...projektweit,
+        ...p.teilnehmer
+          .filter((t) => (t.beteiligterId && ids.has(t.beteiligterId)) || norm(t.name) === ich)
+          .flatMap((t) => [zuordnung(t), t.name]),
+      ]
         .map(norm)
         .filter(Boolean),
     );
@@ -130,6 +134,6 @@ export function allePunkte(d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[]
 export const offenePunkte = (d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[] =>
   allePunkte(d, projektIds).filter((p) => p.status !== 'erledigt');
 
-/** Offene Aufgaben der eigenen Funktion (`EIGENE_FUNKTION`). */
+/** Offene Aufgaben der angemeldeten Person („Angemeldet als“). */
 export const eigeneTodos = (d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[] =>
   offenePunkte(d, projektIds).filter((p) => p.eigen);

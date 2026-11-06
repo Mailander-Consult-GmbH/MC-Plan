@@ -6,8 +6,8 @@ import { addDays, today } from '../../../shared/dates';
 import { folgeprotokoll, neuerEintrag, neuerTop, neueReihe, neueZeile, teilnehmerAus } from './protokoll';
 import {
   DATEN_VERSION,
-  STANDARD_BEARBEITER,
   newId,
+  personName,
   type Beteiligter,
   type Eintrag,
   type EintragTyp,
@@ -138,7 +138,7 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
       eintraege: [
         eintrag('I', 'Die Sperrpause für den Einhub des Überbaus ist bestätigt.'),
         eintrag('F', 'Baubesprechungen finden zweiwöchentlich dienstags um 9:00 Uhr im Baucontainer statt.'),
-        // Aufgaben der Projektsteuerung – die eigenen To-Dos der Übersicht
+        // Aufgaben der Projektsteuerung (Lena Roth, angemeldet) – die eigenen To-Dos der Übersicht
         eintrag('A', 'Terminplan mit den Sperrpausen fortschreiben und an den Auftraggeber übergeben.', {
           wer: 'PS',
           termin: tag(-2),
@@ -237,7 +237,8 @@ export function seedDaten(): ProjektsteuerungDaten {
 
   return {
     version: DATEN_VERSION,
-    einstellungen: { bearbeiter: STANDARD_BEARBEITER, farbmodus: 'standard' },
+    // Angemeldet ist die Projektsteuerung der Demoprojekte – so zeigt die Übersicht ihre To-Dos.
+    einstellungen: { bearbeiter: personName(b.ps), farbmodus: 'standard' },
     gewerke: [...STANDARD_GEWERKE],
     funktionen: STANDARD_FUNKTIONEN.map((f) => ({ ...f })),
     projekte: [p1, p2],

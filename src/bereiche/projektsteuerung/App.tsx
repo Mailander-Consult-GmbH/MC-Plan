@@ -252,7 +252,7 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
         <Field
           label="Name"
           full
-          hint="Steht dieser Name in der Projektbeteiligtenliste, übernehmen Sie die Protokollführung neuer Protokollreihen."
+          hint="Steht dieser Name in der Projektbeteiligtenliste, übernehmen Sie die Protokollführung neuer Protokollreihen, und die Übersicht zeigt die Aufgaben mit Ihrem Kürzel oder Namen als eigene To-Dos."
         >
           <TextInput value={name} onChange={setName} placeholder="Vor- und Nachname" />
         </Field>

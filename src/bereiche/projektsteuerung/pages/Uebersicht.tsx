@@ -1,6 +1,6 @@
 /**
  * Startseite des Bereichs: Kennzahlen, die eigenen To-Dos – offene Aufgaben
- * der Protokolle für die eigene Funktion (`EIGENE_FUNKTION`) – nach
+ * der Protokolle für die angemeldete Person („Angemeldet als“) – nach
  * Dringlichkeit und die Projekte mit ihren Besprechungen. Angezeigt werden die
  * markierten Projekte; ohne Markierung alle.
  */
@@ -11,8 +11,8 @@ import { useToast } from '../../../shared/toast';
 import { Card, CardHeader, EmptyState, Segmented, Stat } from '../../../shared/ui';
 import { AmpelBadge, AmpelPunkt } from '../components/common';
 import { reihenVon } from '../domain/protokoll';
-import { eigeneTodos, type Punkt } from '../domain/punkte';
-import { EIGENE_FUNKTION, type Projekt } from '../domain/types';
+import { angemeldetBeteiligt, eigeneTodos, type Punkt } from '../domain/punkte';
+import type { Projekt } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
@@ -48,6 +48,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
   const gefiltert = filter === 'ueberfaellig' ? ueberfaellig : filter === 'faellig' ? faellig : offen;
   const sichtbar = alle ? gefiltert : gefiltert.slice(0, ANZAHL_PUNKTE);
   const alleMarkiert = data.projekte.filter((p) => p.markiert).length;
+  const ich = data.einstellungen.bearbeiter;
   const heute = today();
 
   return (
@@ -58,7 +59,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
           label="Aktive Projekte"
           onClick={() => navigate({ view: 'projekte' })}
         />
-        <Stat wert={offen.length} label={`To-Dos (${EIGENE_FUNKTION})`} ton="blue" onClick={() => setFilter('alle')} />
+        <Stat wert={offen.length} label="Meine To-Dos" ton="blue" onClick={() => setFilter('alle')} />
         <Stat
           wert={ueberfaellig.length}
           label="Überfällig"
@@ -80,10 +81,18 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
         </p>
       ) : null}
 
+      {projekte.length > 0 && !angemeldetBeteiligt(data, ids) ? (
+        <p className="small tertiary">
+          „{ich}“ steht in keiner Projektbeteiligtenliste der angezeigten Projekte. Eigene To-Dos erkennt KaPlan am
+          Namen unter <strong>Angemeldet als</strong> (unten in der Seitenleiste) – bitte so eintragen, wie er in der
+          Projektbeteiligtenliste steht.
+        </p>
+      ) : null}
+
       <Card>
         <CardHeader
-          titel={`Meine To-Dos als ${EIGENE_FUNKTION}`}
-          sub="Offene Aufgaben aus den Protokollen im eigenen Verantwortungsbereich – Überfälliges zuerst"
+          titel="Meine To-Dos"
+          sub={`Offene Aufgaben aus den Protokollen für ${ich} – Überfälliges zuerst`}
           actions={
             <Segmented<Filter>
               value={filter}
@@ -100,7 +109,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
           <EmptyState
             icon="check"
             titel="Nichts offen"
-            text={`Für diese Auswahl liegt keine Aufgabe bei Ihnen. Eigene To-Dos sind Aufgaben, deren Verantwortliche die Funktion „${EIGENE_FUNKTION}“ tragen.`}
+            text="Für diese Auswahl liegt keine Aufgabe bei Ihnen. Eigene To-Dos sind Aufgaben, deren Verantwortlich Ihr Kürzel oder Ihren Namen nennt."
           />
         ) : (
           <div className="table-scroll">

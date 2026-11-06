@@ -24,13 +24,6 @@ export const DATEN_VERSION = 6;
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
 
-/**
- * Die eigene Funktion in allen Projekten. Aufgaben, deren Verantwortliche sie
- * tragen, sind die eigenen To-Dos der Übersicht – wie im Planlaufmanagement
- * die Schritte der eigenen Rolle.
- */
-export const EIGENE_FUNKTION = 'Projektsteuerung';
-
 /** So viele Tage vor dem Termin gilt ein offener Punkt als „demnächst fällig“. */
 export const VORLAUF_TAGE = 7;
 
