@@ -3,8 +3,9 @@
  * sind frei erfunden (Personen, Projekte, Nummern im Format „K9xxx“); ihre
  * Leistungen liegen in den letzten zwei bis drei Monaten vor dem heutigen
  * Tag, die Nachweise entstehen wie im Betrieb über `nachweiseErgaenzen`.
- * Angemeldet ist Anna Becker; über „Angemeldet als“ lässt sich auf eine
- * andere Person umschalten. Abschluss und Aufschläge zeigt das Controlling.
+ * Die Demodaten melden Anna Becker an; maßgeblich ist aber der Name unter
+ * „Angemeldet als“ (gemeinsam für alle Bereiche) – wer dort „Anna Becker“
+ * einträgt, erfasst als sie. Abschluss und Aufschläge zeigt das Controlling.
  */
 import { addDays, istArbeitstag, today } from '../../../shared/dates';
 import {
@@ -100,7 +101,7 @@ function demoLeistungen(regeln: Regel[], von: string, bis: string): Leistung[] {
 }
 
 /**
- * Demodatenbestand: vier Mitarbeiter (Anna Becker angemeldet), drei Projekte, Leistungen der letzten Monate, Nachweise –
+ * Demodatenbestand: vier Mitarbeiter (Anna Becker vorgemerkt), drei Projekte, Leistungen der letzten Monate, Nachweise –
  * der älteste der Brücke abgeschlossen mit einem Aufschlag von +1,5 Std., im
  * offenen Nachweis der Dammsanierung ein Aufschlag von −0,5 Std.
  */
