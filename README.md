@@ -842,8 +842,9 @@ nur in diesem Bereich.
 ## Projektsteuerung
 
 Erster Entwurf für die externe Projektsteuerung. Aufbau und Gestaltung folgen dem
-Planlaufmanagement: Seitenleiste mit **Übersicht**, **Projekte** und **Funktionen**, darunter die
-markierten Projekte; im Projekt zwei Seiten – **Projektbeteiligte** und **Protokolle**.
+Planlaufmanagement: Seitenleiste mit **Übersicht**, **Projekte** und der einklappbaren Gruppe
+**Einstellungen** mit den **Funktionen**, darunter die markierten Projekte; im Projekt zwei Seiten –
+**Projektbeteiligte** und **Protokolle**.
 Die Protokolle übernehmen die Funktionen des bisherigen eigenständigen Protokoll-Tools
 (HTML-Datei), in der Optik von KaPlan.
 
@@ -902,6 +903,9 @@ gewählt und erscheint mit ihrem Kürzel.
   die Auswahl auf. Aufgaben aus Ergänzungen erscheinen in der Übersicht. Ist der Ursprung erledigt,
   laufen offene Ergänzungen mit eigener Art weiter; sobald der Ursprung entfällt, wird die erste
   von ihnen zum Eintrag.
+* **Einträge verschieben**: Die Pfeile am rechten Rand rücken einen Eintrag eine Stelle nach oben
+  oder unten; am Anfang bzw. Ende seines Tagesordnungspunkts wechselt er ans Ende des vorigen bzw.
+  an den Anfang des nächsten. Die Nummern folgen der neuen Reihenfolge.
 * **Löschen heißt Durchstreichen** (Standard) – für Tagesordnungspunkte, Einträge und einzelne
   Zeilen (sobald ein Eintrag mehr als eine hat): Der Papierkorb bietet **Durchstreichen** und
   **Sofort löschen**. Gestrichenes steht im Druck und in der Live-Druckansicht dieses Protokolls
@@ -914,22 +918,30 @@ gewählt und erscheint mit ihrem Kürzel.
   **Live-Druckansicht ↗** – ein eigenes Fenster, etwa für den zweiten Bildschirm in der
   Besprechung, das jeder Eingabe folgt.
 * **Logos im Druckkopf** je Projekt – Standard sind DB InfraGO und Mailänder Consult; eigene
-  Bilder werden verkleinert im Bestand gespeichert.
+  Bilder werden verkleinert im Bestand gespeichert. Jede **Protokollreihe** kann über **Logos …**
+  eigene Logos führen; ohne eigene gelten die des Projekts (**Logos des Projekts** stellt das
+  wieder her). Die Beteiligtenliste druckt stets mit den Logos des Projekts.
 * **Aus Protokoll-Tool** übernimmt Dateien des bisherigen Protokoll-Tools (`.protokoll` oder
   dessen Sicherung `.json`) in das Projekt. Teilnehmende, deren Name in der
   Projektbeteiligtenliste steht, werden mit ihr verknüpft; ein erneuter Import ersetzt die
   Protokolle, statt sie zu verdoppeln.
 
 ### Übersicht
-Kennzahlen (aktive Projekte, offene Punkte, überfällig, demnächst fällig – 7 Tage vorher) und die
-offenen Aufgaben der Protokolle aller markierten Projekte – Einträge vom Typ A und Ergänzungen mit
-eigener Art „Aufgabe“ –, Überfälliges zuerst, mit **Erledigt** je Zeile; dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
-nächstem Termin und offenen bzw. überfälligen Punkten. Die Seitenleiste zählt die überfälligen
-Punkte je Projekt.
+Nur die **eigenen To-Dos**: offene Aufgaben der Protokolle aller markierten Projekte (Einträge vom
+Typ A und Ergänzungen mit eigener Art „Aufgabe“), deren Verantwortlich die Person unter
+**Angemeldet als** nennt – mit ihrem Kürzel oder Namen aus der Projektbeteiligtenliste oder den
+Teilnehmenden; Groß- und Kleinschreibung zählen nicht. Steht der Name in keiner
+Projektbeteiligtenliste der angezeigten Projekte, weist die Übersicht darauf hin. Kennzahlen
+(aktive Projekte, meine To-Dos, überfällig, demnächst fällig – 7 Tage vorher), die Liste
+**Meine To-Dos**, Überfälliges zuerst, mit **Erledigt** je Zeile;
+dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin und ihren
+eigenen To-Dos. Die Seitenleiste zählt die eigenen To-Dos an **Übersicht** und die überfälligen
+Aufgaben je Projekt.
 
 ### Daten
 Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
-mit Projektbeteiligten und zwei Protokollen), **Sicherung**/**Einspielen** (JSON mit dem
+mit Projektbeteiligten und zwei Protokollen, darunter Aufgaben der Projektsteuerung; angemeldet ist
+deren Projektsteuerin Lena Roth), **Sicherung**/**Einspielen** (JSON mit dem
 Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
 Protokoll-Tools werden mit Hinweis abgewiesen) und **Zurücksetzen**. Stände der ersten Fassung
 erhalten beim Laden die mitgelieferten Gewerke; ihre Funktionen gelten als übergreifend. Ältere
@@ -938,8 +950,9 @@ Fassung 3 bestand ein Eintrag aus Text und Ergänzung: Beim Laden wird der Text 
 Protokoll seiner Fundstelle („Prot. 2, Pkt. 1.3“ → „aus Prot. 2“), die Ergänzung eine neue Zeile.
 Bis Fassung 4 führte jedes Projekt eine Liste offener Punkte (LOP); sie entfällt beim Laden samt
 den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die frühere Adresse
-`#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Name unter „Angemeldet als“ und
-Farbmodus gelten nur in diesem Bereich.
+`#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Bis Fassung 5 galten für alle
+Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Name unter „Angemeldet als“
+und Farbmodus gelten nur in diesem Bereich.
 
 ## Gemeinsame Projekte und Controlling
 

@@ -28,6 +28,7 @@ import { blattDrucken, protokollHtml } from '../../domain/druck';
 import {
   bezeichnung,
   eintragEntfaellt,
+  eintragVerschieben,
   freierTeilnehmer,
   mitgehendeEintraege,
   naechsteNr,
@@ -40,7 +41,7 @@ import {
   zuordnung,
 } from '../../domain/protokoll';
 import { ampelFuer } from '../../domain/punkte';
-import { logosVon } from '../../domain/seed';
+import { logosFuer } from '../../domain/seed';
 import {
   BESPRECHUNG_VORSCHLAEGE,
   EINTRAG_TYP_LABEL,
@@ -115,7 +116,7 @@ export function ProtokollEditor({
     data.beteiligte.filter((b) => b.projektId === projekt.id),
     data.funktionen,
   );
-  const inhalt = protokollHtml(p, projekt, logosVon(projekt));
+  const inhalt = protokollHtml(p, projekt, logosFuer(projekt, p.reiheId, data.reihenLogos));
   const titel = `${bezeichnung(p)} – ${projekt.name}`;
   const liveOeffnen = useLiveDruck(titel, inhalt);
   // Für „Verantwortlich“ stehen nur Teilnehmende zur Wahl.
@@ -615,6 +616,14 @@ export function ProtokollEditor({
                         },
                       });
                     };
+                    // Am Anfang bzw. Ende des TOP wechselt der Eintrag in den vorigen bzw. nächsten TOP.
+                    const verschieben = (richtung: -1 | 1) => {
+                      aendern((x) => eintragVerschieben(x, e.id, richtung));
+                      if (richtung < 0 ? ei === 0 : ei === top.eintraege.length - 1) {
+                        toast(`Eintrag in TOP ${ti + 1 + richtung} verschoben.`);
+                      }
+                      setFokus(`ps-${richtung < 0 ? 'hoch' : 'runter'}-${e.id}`);
+                    };
                     const ergaenzungAnlegen = (text: string) => {
                       // Kennung vorab, damit die neue Zeile den Fokus übernehmen kann.
                       const id = newId('z');
@@ -780,35 +789,62 @@ export function ProtokollEditor({
                             {entfaellt ? <span className="ps-haken ps-st">entfällt</span> : <div className="ps-st" />}
                           </>
                         )}
-                        <button
-                          type="button"
-                          className="btn-icon ps-weg"
-                          title="Eintrag löschen"
-                          aria-label={`Eintrag ${nr} löschen`}
-                          onClick={() => {
-                            const entfernen = () =>
-                              topAendern(top.id, (t) => ({ ...t, eintraege: t.eintraege.filter((x) => x.id !== e.id) }));
-                            // Ein leerer neuer Eintrag hinterlässt nichts, was durchzustreichen wäre.
-                            if (!e.vor && !e.zeilen.some((z) => z.text.trim())) {
-                              entfernen();
-                              return;
-                            }
-                            setLoeschen({
-                              was: `Eintrag ${nr}`,
-                              schonGestrichen: e.entfaellt,
-                              streichen: () => {
-                                patch({ entfaellt: true });
-                                toast(`Eintrag ${nr} durchgestrichen.`);
-                              },
-                              sofort: () => {
+                        <div className="ps-aktionen">
+                          <button
+                            id={`ps-hoch-${e.id}`}
+                            type="button"
+                            className="btn-icon"
+                            disabled={ti === 0 && ei === 0}
+                            title="Nach oben"
+                            aria-label={`Eintrag ${nr} nach oben`}
+                            onClick={() => verschieben(-1)}
+                          >
+                            <Icon name="hoch" size={14} />
+                          </button>
+                          <button
+                            id={`ps-runter-${e.id}`}
+                            type="button"
+                            className="btn-icon"
+                            disabled={ti === p.tops.length - 1 && ei === top.eintraege.length - 1}
+                            title="Nach unten"
+                            aria-label={`Eintrag ${nr} nach unten`}
+                            onClick={() => verschieben(1)}
+                          >
+                            <Icon name="runter" size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            title="Eintrag löschen"
+                            aria-label={`Eintrag ${nr} löschen`}
+                            onClick={() => {
+                              const entfernen = () =>
+                                topAendern(top.id, (t) => ({
+                                  ...t,
+                                  eintraege: t.eintraege.filter((x) => x.id !== e.id),
+                                }));
+                              // Ein leerer neuer Eintrag hinterlässt nichts, was durchzustreichen wäre.
+                              if (!e.vor && !e.zeilen.some((z) => z.text.trim())) {
                                 entfernen();
-                                toast(`Eintrag ${nr} gelöscht.`);
-                              },
-                            });
-                          }}
-                        >
-                          <Icon name="loeschen" size={14} />
-                        </button>
+                                return;
+                              }
+                              setLoeschen({
+                                was: `Eintrag ${nr}`,
+                                schonGestrichen: e.entfaellt,
+                                streichen: () => {
+                                  patch({ entfaellt: true });
+                                  toast(`Eintrag ${nr} durchgestrichen.`);
+                                },
+                                sofort: () => {
+                                  entfernen();
+                                  toast(`Eintrag ${nr} gelöscht.`);
+                                },
+                              });
+                            }}
+                          >
+                            <Icon name="loeschen" size={14} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })

@@ -1,15 +1,15 @@
 /**
  * Protokolle eines Projekts: je Besprechungsreihe eine Karte mit ihren
- * Protokollen (öffnen, Folgeprotokoll, löschen), darunter die Logos im
- * Druckkopf. Dateien des eigenständigen Protokoll-Tools lassen sich
- * übernehmen.
+ * Protokollen (öffnen, Folgeprotokoll, löschen) und eigenen Logos, darunter
+ * die Logos des Projekts im Druckkopf. Dateien des eigenständigen
+ * Protokoll-Tools lassen sich übernehmen.
  */
 import { useRef, useState } from 'react';
 import { formatDate, today } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../../../shared/ui';
-import { LogoVerwaltung } from '../../components/Logos';
+import { LogoVerwaltung, ReihenLogosDialog } from '../../components/Logos';
 import {
   ausProtokollTool,
   bezeichnung,
@@ -30,6 +30,7 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
   const toast = useToast();
   const [neu, setNeu] = useState(false);
   const [loeschen, setLoeschen] = useState<Protokoll | null>(null);
+  const [logosReihe, setLogosReihe] = useState<{ id: string; titel: string } | null>(null);
   const datei = useRef<HTMLInputElement>(null);
 
   const protokolle = data.protokolle.filter((p) => p.projektId === projekt.id);
@@ -113,11 +114,21 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
               titel={r.letztes.art || 'Besprechung'}
               sub={`${r.protokolle.length} ${r.protokolle.length === 1 ? 'Protokoll' : 'Protokolle'}${
                 r.letztes.naechster ? ` · nächster Termin ${formatDate(r.letztes.naechster)}` : ''
-              }`}
+              }${r.id in data.reihenLogos ? ' · eigene Logos' : ''}`}
               actions={
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => folge(r.letztes)}>
-                  <Icon name="plus" size={12} /> Folgeprotokoll
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    title="Logos im Druckkopf dieser Protokollreihe"
+                    onClick={() => setLogosReihe({ id: r.id, titel: r.letztes.art || 'Besprechung' })}
+                  >
+                    Logos …
+                  </button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => folge(r.letztes)}>
+                    <Icon name="plus" size={12} /> Folgeprotokoll
+                  </button>
+                </>
               }
             />
             <div className="table-scroll">
@@ -200,6 +211,15 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
       )}
 
       <LogoVerwaltung projekt={projekt} />
+
+      {logosReihe ? (
+        <ReihenLogosDialog
+          projekt={projekt}
+          reiheId={logosReihe.id}
+          titel={logosReihe.titel}
+          onClose={() => setLogosReihe(null)}
+        />
+      ) : null}
 
       {neu ? (
         <NeueReiheDialog

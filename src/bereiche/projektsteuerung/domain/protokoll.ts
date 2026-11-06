@@ -342,6 +342,25 @@ export function folgeprotokoll(
   return { neu, vorher: vorherNeu };
 }
 
+/**
+ * Verschiebt einen Eintrag um eine Stelle nach oben (-1) oder unten (1). Am
+ * Anfang bzw. Ende seines Tagesordnungspunkts wechselt er ans Ende des vorigen
+ * bzw. an den Anfang des nächsten Punkts; weiter geht es nicht.
+ */
+export function eintragVerschieben(p: Protokoll, eintragId: ID, richtung: -1 | 1): Protokoll {
+  const ti = p.tops.findIndex((t) => t.eintraege.some((e) => e.id === eintragId));
+  if (ti < 0) return p;
+  const ei = p.tops[ti].eintraege.findIndex((e) => e.id === eintragId);
+  const tops = p.tops.map((t) => ({ ...t, eintraege: [...t.eintraege] }));
+  const [eintrag] = tops[ti].eintraege.splice(ei, 1);
+  const ziel = ei + richtung;
+  if (ziel >= 0 && ziel <= tops[ti].eintraege.length) tops[ti].eintraege.splice(ziel, 0, eintrag);
+  else if (richtung < 0 && ti > 0) tops[ti - 1].eintraege.push(eintrag);
+  else if (richtung > 0 && ti < tops.length - 1) tops[ti + 1].eintraege.unshift(eintrag);
+  else return p;
+  return { ...p, tops };
+}
+
 /** Zahl der Einträge, die ein Folgeprotokoll aus diesem Protokoll übernähme. */
 export const mitgehendeEintraege = (p: Protokoll): number => uebernahme(p).mitgenommen.size;
 
