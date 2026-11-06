@@ -2,11 +2,13 @@
 
 KaPlan ist eine React-19-/TypeScript-/Vite-Anwendung **ohne Server**; alle Daten liegen im
 `localStorage` des Browsers. Installierbar als PWA, veröffentlicht über GitHub Pages. Sie besteht
-aus drei getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`),
-**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, erster Entwurf) und **Projektsteuerung**
-(`src/bereiche/projektsteuerung/`, erster Entwurf), dazu dem **Controlling**
-(`src/bereiche/controlling/`, mit PIN), das die Projekte aller Bereiche im gemeinsamen
-**Projektregister** (`src/gemeinsam/`) verwaltet. Überblick über Aufbau und
+aus vier getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`),
+**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, erster Entwurf), **Projektsteuerung**
+(`src/bereiche/projektsteuerung/`, erster Entwurf) und **Leistungsnachweise**
+(`src/bereiche/leistungsnachweise/`, erster Entwurf, aus `LR-PMKA/KaPlan-Test`), dazu dem
+**Controlling** (`src/bereiche/controlling/`, mit PIN), das die Projekte aller Bereiche im
+gemeinsamen **Projektregister** (`src/gemeinsam/`) verwaltet und das Controlling der
+Leistungsnachweise einbindet. Überblick über Aufbau und
 Funktionen: `README.md`; belegtes Inventar aller Routen, Aktionen und Meldungen: `docs/INVENTAR.md`.
 
 ## Nach jeder Änderung nachziehen
@@ -46,8 +48,8 @@ ignoriert.
 ## Aufbau
 
 * `src/shell/` – Startbildschirm und Bereichswahl; die erste Wegmarke der Hash-Adresse
-  (`#/planlauf/…`, `#/baubetrieb/…`, `#/projektsteuerung/…`, `#/controlling/…`) bestimmt den
-  Bereich. Ein neuer Bereich braucht einen Eintrag in `BereichId`/`BEREICHE`
+  (`#/planlauf/…`, `#/baubetrieb/…`, `#/projektsteuerung/…`, `#/leistungsnachweise/…`,
+  `#/controlling/…`) bestimmt den Bereich. Ein neuer Bereich braucht einen Eintrag in `BereichId`/`BEREICHE`
   (`src/shell/bereiche.ts`) und in `src/shell/Shell.tsx`; führt er Projekte, zusätzlich einen in
   `ProjektBereich`/`PROJEKT_BEREICHE` (`src/gemeinsam/register.ts`), ein `domain/register.ts`
   und `useRegisterAbgleich` im Store.
@@ -61,9 +63,24 @@ ignoriert.
   Aktionen des Controllings; `useRegisterAbgleich.ts` bindet einen Store an;
   `ProjektBereiche.tsx` Bausteine der Projektlisten („Auch in“, „Projekte aus anderen
   Bereichen“, Archiv, Archivhinweis, Beteiligte).
-* `src/bereiche/controlling/` – ohne eigenen Bestand, arbeitet nur auf dem Register. PIN in
+* `src/bereiche/controlling/` – ohne eigenen Bestand: Projekte und Archiv arbeiten auf dem
+  Register; der Menüpunkt „Leistungsnachweise“ (`#/controlling/leistungsnachweise/…`) bindet
+  `LeistungsnachweiseControlling` aus `src/bereiche/leistungsnachweise/controlling.tsx` ein. PIN in
   `domain/pin.ts` (`CONTROLLING_PIN`, Entsperrung je Sitzung im `sessionStorage`); Gestaltung in
   `controlling.css` (Präfix `ct-`).
+* `src/bereiche/leistungsnachweise/` – Schlüssel `leistungsnachweise.data.v1`: `domain/types.ts`
+  (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis), `domain/rechte.ts` – die
+  Rechte an einer Stelle, je **Zugang** (`'bereich'` | `'controlling'`): Der `StoreProvider` erhält
+  den Zugang als Eigenschaft (`index.tsx` ohne, `controlling.tsx` mit `'controlling'`); im Bereich
+  erfasst die angemeldete Person nur eigene Leistungen, alles Übrige (Abschluss, Aufschläge,
+  Export, Auswertung, Nachweise verwalten, Sammel-Import, Mitarbeiter) gibt es nur im Controlling.
+  Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). `domain/nachweis.ts`
+  Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss (Nachweise eines Projekts überschneiden sich
+  nie; welche Leistungen ein Nachweis zeigt, ergibt sich allein aus dem Datum), `domain/import.ts`
+  Excel-Import, `domain/druck.ts`/`domain/export.ts` PDF und Excel, `lib/router.ts` baut auch die
+  Adressen des Controllings (`CONTROLLING_PREFIX`); frühere Adressen
+  `#/leistungsnachweise/controlling/…` lenkt `App.tsx` um. Kennungen, die erst in einer Änderung
+  anfallen, liefert `idVorrat` (StrictMode). Neue Felder über `DATEN_VERSION` und `migriere()`.
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
   `localStorage`-Schlüssel, eigenen Einstellungen und eigenem Router.
 * `src/shared/` – fachfreie Bausteine (UI, Icons, Datumsrechnung, Excel lesen/schreiben, Druck,
@@ -130,7 +147,9 @@ ignoriert.
 
 * `src/shared/` enthält nur Bausteine ohne fachlichen Bezug und importiert nichts aus
   `src/bereiche/`. Die Bereiche greifen nicht aufeinander zu; gemeinsam nutzen sie nur
-  `src/gemeinsam/` (importiert nichts aus `src/bereiche/`).
+  `src/gemeinsam/` (importiert nichts aus `src/bereiche/`). Einzige Ausnahme: Das Controlling
+  bindet das Controlling eines Bereichs über dessen Einstiegsmodul `controlling.tsx` ein (heute nur
+  die Leistungsnachweise) – nichts sonst aus dem Bereich.
 * **Projektregister:** Ein Bereich schreibt seinen eigenen Bestand nur über sein `mutate()` –
   auch, was aus dem Register kommt (`registerPlanAnwenden` in `domain/register.ts`, reine
   Funktion, liefert ohne Änderung denselben Bestand zurück, damit der Abgleich zur Ruhe kommt).
@@ -194,3 +213,5 @@ ignoriert.
 * Das Projektregister füllt sich erst, wenn ein Bereich geöffnet wird; was das Controlling ändert,
   vollzieht ein Bereich beim nächsten Öffnen. PIN des Controllings: `0000`. Wer den
   `localStorage` leert, leert auch `kaplan-projektregister.v1`.
+* Leistungsnachweise: In den Demodaten ist Anna Becker angemeldet. Abrechnung, Abschluss und
+  Aufschläge prüft man im Controlling (`#/controlling/leistungsnachweise/nachweise`).

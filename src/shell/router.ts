@@ -6,6 +6,7 @@
  *   #/planlauf/…              Planlaufmanagement
  *   #/baubetrieb/…            Baubetriebsplanung
  *   #/projektsteuerung/…      Projektsteuerung
+ *   #/leistungsnachweise/…    Leistungsnachweise
  *   #/controlling/…           Controlling (mit PIN)
  */
 import { useEffect, useState } from 'react';

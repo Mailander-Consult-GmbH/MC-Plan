@@ -891,14 +891,16 @@ a:hover { text-decoration: underline; }
 /* Wie .topbar-logo: mittig in der Kopfzeile (76 px ohne ihre untere Linie) */
 .start-logo { flex: none; display: flex; align-items: center; height: 75.8px; padding-left: 12px; }
 
-/* Die Kacheln stehen hochkant nebeneinander und sind gleich hoch. */
+/* Die Kacheln stehen hochkant nebeneinander und sind gleich hoch: breit alle
+   fünf in einer Reihe, darunter drei bzw. zwei je Reihe, unter 720 px
+   untereinander (siehe Telefonbreiten unten). */
 .start-kacheln {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 20px;
   align-items: stretch;
   width: 100%;
-  max-width: 1240px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 24px;
 }
@@ -1003,7 +1005,10 @@ a:hover { text-decoration: underline; }
 }
 .bereich-wechsel:hover { background: var(--bg-hover); color: var(--accent); }
 
-@media (max-width: 1080px) {
+@media (max-width: 1240px) {
+  .start-kacheln { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 1000px; }
+}
+@media (max-width: 900px) {
   .start-kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 760px; }
 }
 

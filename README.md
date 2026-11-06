@@ -1,6 +1,6 @@
 # KaPlan
 
-KaPlan gliedert sich in drei getrennte Bereiche und das Controlling, zwischen denen der
+KaPlan gliedert sich in vier getrennte Bereiche und das Controlling, zwischen denen der
 Startbildschirm wählt:
 
 * **Planlaufmanagement** – Verwaltungssoftware für Planläufe: Projekte,
@@ -13,8 +13,12 @@ Startbildschirm wählt:
   Nachhak-Terminen, ausstehenden Erstanmeldungen und dem Anmeldebedarf je Fahrplanjahr.
 * **Projektsteuerung** (erster Entwurf) – je Projekt die Projektbeteiligtenliste mit
   projektübergreifenden Funktionen und Besprechungsprotokolle mit Folgeprotokollen.
+* **Leistungsnachweise** (erster Entwurf) – jede Person erfasst ihre Leistungen je Projekt (von
+  Hand oder per Excel-Import aus der Zeiterfassung); daraus entstehen gemeinsame tages-, wochen- oder
+  monatsscharfe Leistungsnachweise als PDF und Excel.
 * **Controlling** (mit PIN) – Projekte für alle Bereiche anlegen, in Bereiche übernehmen, je
-  Bereich oder ganz archivieren und löschen.
+  Bereich oder ganz archivieren und löschen; dazu das Controlling der Leistungsnachweise
+  (Auswertung, Abrechnung mit Aufschlägen, Abschluss, Export, Mitarbeiter).
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
 Browser, eigene Einstellungen, eigener Router. **Projekte und Projektbeteiligte teilen sie sich**
@@ -23,8 +27,9 @@ Funktionen seiner Beteiligten gelten dann überall (siehe
 [**Gemeinsame Projekte und Controlling**](#gemeinsame-projekte-und-controlling)). Der
 Startbildschirm zeigt die Bereiche als Kacheln; in einem Bereich führt **Bereich wechseln** unten
 in der Seitenleiste zurück. Der Abschnitt **Funktionsumfang** beschreibt das Planlaufmanagement,
-die Abschnitte [**Baubetriebsplanung**](#baubetriebsplanung) und
-[**Projektsteuerung**](#projektsteuerung) die beiden anderen Bereiche.
+die Abschnitte [**Baubetriebsplanung**](#baubetriebsplanung),
+[**Projektsteuerung**](#projektsteuerung) und [**Leistungsnachweise**](#leistungsnachweise) die
+übrigen Bereiche.
 
 Dieser Stand ist ein **lauffähiger Prototyp ohne Datenbank**: Alle Daten liegen lokal im Browser
 (`localStorage`). Die Anwendung ist responsiv und als PWA installierbar.
@@ -46,6 +51,7 @@ Die Logos von KaPlan liegen unter `public/logos/`:
 | `Logo_Planlaufmanagement.png` | Kopf der Menüleiste im Planlaufmanagement |
 | `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
 | `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
+| `Logo_Leistungsnachweise.png` | Kopf der Menüleiste in den Leistungsnachweisen |
 | `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
 | `Logo.png` | Symbol; daraus sind Favicons und App-Symbole unter `public/icons/` erzeugt |
 
@@ -953,6 +959,69 @@ den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die
 Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Name unter „Angemeldet als“
 und Farbmodus gelten nur in diesem Bereich.
 
+## Leistungsnachweise
+
+Erster Entwurf, übernommen aus dem Testprojekt *KaPlan-Test*. Jede Person erfasst ihre eigenen
+Leistungen je Projekt; daraus entstehen gemeinsame Leistungsnachweise für den Auftraggeber.
+Abgerechnet, abgeschlossen und exportiert wird im [Controlling](#controlling-der-leistungsnachweise).
+
+### Anmeldung
+**Angemeldet als** unten in der Seitenleiste: Auswahl aus den aktiven Mitarbeitern oder *Ich bin
+noch nicht in der Liste* (legt die Person an). Ohne Anmeldung lässt sich nichts erfassen; *Leistung
+erfassen* und *Excel-Import* führen dann zuerst in die Anmeldung. Solange die Daten nur im Browser
+liegen, ist die Anmeldung eine Auswahl ohne Kennwort. Eine Rolle „Controlling“ an Mitarbeitern gibt
+es – anders als im Testprojekt – nicht: Das Controlling ist der PIN-geschützte Controlling-Bereich.
+
+### Projekte
+Projektnummer (eindeutig – daran erkennt der Excel-Import das Projekt), Projektname, Bezeichnung im
+Nachweis, Leistungsbereich, Raster neuer Nachweise (Tag, Woche oder Monat) und die Regel für neue
+Nachweise (*Je Kalendermonat* oder *Fortlaufend bis zum Abschluss*). Im Projekt die Reiter
+**Leistungsnachweise**, **Leistungen** und **Einstellungen** (Vorgaben, Abschnitte, Logos im
+Druckkopf). Hat ein Projekt mindestens zwei Abschnitte (etwa Streckenabschnitte), weist der Nachweis
+die Stunden je Abschnitt in eigenen Spalten aus. Gelöscht wird ein Projekt nur im Controlling.
+
+### Leistungen
+Eigene Leistungen von Hand erfassen (Datum, Text, Stunden, Abschnitt) oder per **Excel-Import** aus
+dem Export der Zeiterfassung übernehmen – auch mehrere Projekte je Datei. Unbekannte Projekte und
+fehlende Abschnitte (Spalte J „Projektelement“) legt der Import an, doppelte Zeilen überspringt er,
+frühere eigene Importe im Zeitraum der Datei lassen sich ersetzen. Im Bereich übernimmt jede Person
+nur ihre eigenen Zeilen; Leistungen anderer ändert niemand.
+
+### Leistungsnachweise
+Ein Nachweis ist ein Zeitraum eines Projekts; welche Leistungen er zeigt, ergibt sich allein aus
+ihrem Datum. Fehlt für eine Leistung ein Nachweis, entsteht er nach der Regel des Projekts. Je Tag,
+Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern, Leistungstext und Stunden.
+Leistungstext und Bemerkung bearbeitet jede angemeldete Person, solange der Nachweis offen ist; ein
+bearbeiteter Text wird nie still überschrieben – neue Leistungen bietet die Zeile zum **Ergänzen**
+an. Eigene Leistungen lassen sich je Zeile aufklappen, die der anderen erscheinen nur als Zahl.
+
+### Controlling der Leistungsnachweise
+Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
+
+* **Auswertung** – Stunden je Mitarbeiter, je Mitarbeiter und Monat und je Projekt (erfasst,
+  Aufschlag, abgerechnet, ohne Nachweis) für Monat, Quartal, Jahr oder einen freien Zeitraum, mit
+  Excel.
+* **Leistungsnachweise** – alle Nachweise aller Projekte mit Filter und **Neuer Leistungsnachweis**.
+  Ein Klick öffnet die **Abrechnung**: Aufschlag in ± Stunden je Zeile bzw. die abgerechneten
+  Stunden, Vorschau, **Drucken / PDF**, **Excel**, **Abschließen** (der Stand wird festgeschrieben)
+  bzw. **Wieder öffnen**, **Zeitraum ändern** und **Löschen**. Druck und Excel zeigen die
+  abgerechneten Stunden; der Aufschlag selbst erscheint nicht.
+* **Mitarbeiter** – anlegen, bearbeiten, als ausgeschieden markieren; löschen nur ohne Leistungen.
+* **Excel-Import (alle Mitarbeiter)** – Sammel-Export der Zeiterfassung, legt unbekannte Mitarbeiter
+  an; eine Anmeldung als Mitarbeiter braucht das Controlling nicht.
+
+Frühere Adressen des Controllings im Bereich (`#/leistungsnachweise/controlling/…`) führen in den
+Controlling-Bereich.
+
+### Daten
+Eigener Schlüssel `leistungsnachweise.data.v1` im `localStorage`, eigene Demodaten (vier
+Mitarbeiter, drei Projekte, Leistungen der letzten Monate; angemeldet ist Anna Becker),
+**Sicherung**/**Einspielen** (JSON mit dem Kennzeichen `"bereich": "leistungsnachweise"`) und
+**Zurücksetzen**. Sicherungen und Stände aus dem Testprojekt lassen sich einspielen; die frühere
+Rolle Controlling entfällt dabei (Fassung 3). Projekte teilt der Bereich über das Projektregister;
+seine Mitarbeiter sind keine Projektbeteiligten und werden nicht geteilt. Name unter „Angemeldet als“
+und Farbmodus gelten nur in diesem Bereich.
+
 ## Gemeinsame Projekte und Controlling
 
 ### Projektregister
@@ -967,7 +1036,7 @@ Geteilt werden:
 
 * **Stammdaten des Projekts** – Projektnummer und Bezeichnung in allen Bereichen (in der
   Baubetriebsplanung als *MIC-Projektnummer (wiko)*), die Beschreibung zwischen
-  Planlaufmanagement und Projektsteuerung. Status (*Aktiv*, *Pausiert* …), ★-Markierung und alles
+  Planlaufmanagement, Projektsteuerung und Leistungsnachweisen. Status (*Aktiv*, *Pausiert* …), ★-Markierung und alles
   Fachliche (Pläne, Planläufe, Anmeldungen, Protokolle) bleiben im jeweiligen Bereich.
 * **Projektbeteiligte** – Kontakte des Planlaufmanagements und Projektbeteiligte der
   Projektsteuerung sind dieselben Personen: Anrede, Vor- und Nachname, Firma, E-Mail, Telefon,
@@ -985,7 +1054,8 @@ Geteilt werden:
   Funktion **Planlaufmanagement** – sie gehört zum jeweiligen Arbeitsplatz.
 
 Die Baubetriebsplanung führt keine eigenen Personen; im Projekt zeigt die Karte
-**Projektbeteiligte** die geteilten Beteiligten zum Nachschlagen.
+**Projektbeteiligte** die geteilten Beteiligten zum Nachschlagen. Die Leistungsnachweise teilen nur
+ihre Projekte – ihre Mitarbeiter sind keine Projektbeteiligten.
 
 ### In den Bereichen
 * Die **Projektkacheln** nennen nur Projektnummer (in der Baubetriebsplanung die MIC-Projektnummer),
@@ -1005,7 +1075,8 @@ Die Baubetriebsplanung führt keine eigenen Personen; im Projekt zeigt die Karte
   sein.
 * **Löschen** im Projekt entfernt es nur aus diesem Bereich; in den anderen Bereichen bleibt es mit
   seinen Beteiligten erhalten (der Dialog nennt sie). Führt es danach kein Bereich mehr, entfällt es
-  auch im Register – außer es wurde im Controlling angelegt.
+  auch im Register – außer es wurde im Controlling angelegt. In den Leistungsnachweisen gibt es kein
+  Löschen im Projekt; dort löscht das Controlling.
 * Wer ein Projekt mit einer **Projektnummer** anlegt, die es in einem anderen Bereich schon gibt,
   erhält einen Hinweis: Beim Anlegen wird es mit dem vorhandenen verknüpft; Bezeichnung und
   Beteiligte kommen von dort. Ebenso verknüpft der erste Abgleich nach dem Umstieg Projekte gleicher
@@ -1031,6 +1102,9 @@ Datenbestand – es arbeitet auf dem Projektregister:
 * **Neues Projekt**: Projektnummer (eindeutig), Bezeichnung, Beschreibung und die Bereiche, die es
   übernehmen sollen.
 * **Archiv**: die im Controlling archivierten Projekte mit **Aus dem Archiv holen** und Löschen.
+* **Leistungsnachweise** (unter *Bereiche*): das Controlling der Leistungsnachweise – siehe
+  [Controlling der Leistungsnachweise](#controlling-der-leistungsnachweise). Es arbeitet auf dem
+  Bestand des Bereichs Leistungsnachweise, den dieser dafür bereitstellt.
 
 Die Bereiche vollziehen Übernahmen, Archivierung und Löschungen beim nächsten Öffnen.
 
@@ -1039,11 +1113,13 @@ Die Bereiche vollziehen Übernahmen, Archivierung und Löschungen beim nächsten
 Hinweise für die Arbeit am Code – was nach jeder Änderung nachzuziehen ist, wie gebaut und
 veröffentlicht wird und welche Randbedingungen gelten – stehen in [`CLAUDE.md`](CLAUDE.md).
 
-KaPlan besteht aus drei getrennten Bereichen und dem Controlling. Jeder Bereich bringt seinen
+KaPlan besteht aus vier getrennten Bereichen und dem Controlling. Jeder Bereich bringt seinen
 eigenen Datenbestand, seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen
 eigenen Router mit; die Bereiche greifen nicht aufeinander zu. Gemeinsam ist ihnen nur das
 Projektregister in `src/gemeinsam/`: Jeder Store gleicht über `useRegisterAbgleich` ab und
-übernimmt Änderungen über sein eigenes `mutate()` (`domain/register.ts` je Bereich). Die Shell
+übernimmt Änderungen über sein eigenes `mutate()` (`domain/register.ts` je Bereich). Einzige
+Ausnahme: Das Controlling bindet das Controlling der Leistungsnachweise über deren Einstiegsmodul
+`src/bereiche/leistungsnachweise/controlling.tsx` ein. Die Shell
 wählt anhand der ersten Wegmarke der Adresse aus, welcher Bereich geladen wird, und hängt ihn erst
 beim Betreten ein.
 
@@ -1054,7 +1130,8 @@ src/
     Shell.tsx    Wählt Bereichsauswahl oder Bereich
     Start.tsx    Startbildschirm mit den Bereichskacheln
     bereiche.ts  Verzeichnis der Bereiche
-    router.ts    #/ · #/planlauf/… · #/baubetrieb/… · #/projektsteuerung/… · #/controlling/…
+    router.ts    #/ · #/planlauf/… · #/baubetrieb/… · #/projektsteuerung/… · #/leistungsnachweise/…
+                 · #/controlling/…
     BereichWechsel.tsx  Rückweg aus einem Bereich zur Bereichsauswahl
   shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
     ui.tsx       Karten, Felder, Dialoge, Segmented Controls …
@@ -1146,13 +1223,35 @@ src/
       pages/         Übersicht, Projekte, Funktionen, Projekt mit Projektbeteiligten und Protokollen
                      (Liste und Editor)
       components/    Dialoge (Person, Funktion, Gewerk), Excel-Import, Logos, Sicherung, Ampel, Live-Druckansicht
+    leistungsnachweise/  Bereich „Leistungsnachweise“ (erster Entwurf, aus KaPlan-Test)
+      index.tsx  Einstiegspunkt samt Datenbestand des Bereichs (Zugang „bereich“)
+      controlling.tsx  Einstieg für den Controlling-Bereich (Zugang „controlling“)
+      App.tsx    Seitenleiste, Kopfzeile, Anmeldung, Lade- und Anmeldehinweise
+      domain/
+        types.ts     Datenmodell (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis)
+        rechte.ts    Rechte je Zugang – an einer Stelle
+        nachweis.ts  Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss
+        zeitraum.ts  Tage, Kalenderwochen, Monate und Stundenformat
+        import.ts    Excel-Import der Zeiterfassung (Lesen, Planen, Anwenden)
+        auswertung.ts  Stunden je Mitarbeiter, Monat und Projekt
+        druck.ts     Druckfassung (PDF)
+        export.ts    Excel: Nachweis, Auswertung, Leistungen, Importvorlage
+        register.ts  Sicht für das Projektregister und Übernahme von dort
+        seed.ts      Standardlogos und Demodaten
+      store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe, Rechte)
+      lib/router.ts  #/leistungsnachweise/… und #/controlling/leistungsnachweise/…
+      pages/         Übersicht, Projekte, Projekt (Leistungsnachweise, Leistungen, Einstellungen,
+                     Nachweis-Editor) und controlling/ (Auswertung, Nachweisliste, Abrechnung,
+                     Mitarbeiter)
+      components/    Dialoge (Anmeldung, Leistung, Nachweis, Mitarbeiter), Excel-Import, Logos,
+                     Sicherung, Druckblatt
     controlling/ Bereich „Controlling“ (mit PIN, ohne eigenen Bestand)
       index.tsx  Einstiegspunkt: PIN-Abfrage, danach der Bereich
       PinEingabe.tsx  PIN-Abfrage
-      App.tsx    Seitenleiste, Kopfzeile, Projekte bzw. Archiv
+      App.tsx    Seitenleiste, Kopfzeile, Projekte, Archiv bzw. Leistungsnachweise
       controlling.css  Gestaltung (Präfix ct-)
       domain/pin.ts    PIN und Entsperrung für die Sitzung
-      lib/router.ts    #/controlling/projekte · #/controlling/archiv
+      lib/router.ts    #/controlling/projekte · #/controlling/archiv · #/controlling/leistungsnachweise/…
       pages/Projekte.tsx  Projektkarten mit Stand je Bereich, Dialoge Projekt und Löschen
 ```
 

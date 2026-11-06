@@ -8,11 +8,13 @@ jeweilige Fundstelle.
 ## 1. Zweck der Anwendung
 
 **KaPlan** besteht aus den Bereichen **Planlaufmanagement**,
-**Baubetriebsplanung** und **Projektsteuerung**; die beiden letzten liegen als
-erster Entwurf vor. Dazu kommt das **Controlling** (mit PIN), das die Projekte
-aller Bereiche im gemeinsamen Projektregister verwaltet. Die Abschnitte 1 bis 6
+**Baubetriebsplanung**, **Projektsteuerung** und **Leistungsnachweise**; die
+letzten drei liegen als erster Entwurf vor. Dazu kommt das **Controlling** (mit
+PIN), das die Projekte aller Bereiche im gemeinsamen Projektregister verwaltet
+und das Controlling der Leistungsnachweise einbindet. Die Abschnitte 1 bis 6
 beschreiben das Planlaufmanagement, Abschnitt 7 die Baubetriebsplanung,
-Abschnitt 8 die Projektsteuerung, Abschnitt 9 Projektregister und Controlling.
+Abschnitt 8 die Projektsteuerung, Abschnitt 9 Projektregister und Controlling,
+Abschnitt 10 die Leistungsnachweise.
 
 Der Bereich verwaltet die Planläufe von Bauprojekten: Zu
 jedem Plan bzw. Planverzeichnis wird ein Workflow (Prozesskette) gestartet,
@@ -40,16 +42,18 @@ angesprochen (`src/bereiche/planlauf/store/storage.ts`).
 
 ## 2. Routen und Seiten
 
-Die Anwendung besteht aus drei getrennten Bereichen und dem Controlling. Die
+Die Anwendung besteht aus vier getrennten Bereichen und dem Controlling. Die
 erste Wegmarke der Adresse benennt den Bereich; die Shell (`src/shell/router.ts`)
 wählt danach aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
-(`src/shell/Start.tsx`: vier hochkante Kacheln – Planlaufmanagement,
-Baubetriebsplanung, Projektsteuerung und Controlling, die mittleren beiden mit
-dem Kennzeichen „Erster Entwurf“, das Controlling mit „Mit PIN“ aus `marke` in
-`src/shell/bereiche.ts`; unter 1080 px zwei, unter 720 px eine je Zeile),
-`#/planlauf/…` das Planlaufmanagement, `#/baubetrieb/…` die Baubetriebsplanung
-(Abschnitt 7), `#/projektsteuerung/…` die Projektsteuerung (Abschnitt 8),
-`#/controlling/…` das Controlling (Abschnitt 9). Innerhalb des Bereichs adressiert ein Hash-Router ohne
+(`src/shell/Start.tsx`: fünf hochkante Kacheln – Planlaufmanagement,
+Baubetriebsplanung, Projektsteuerung, Leistungsnachweise und Controlling, die
+mittleren drei mit dem Kennzeichen „Erster Entwurf“, das Controlling mit „Mit
+PIN“ aus `marke` in `src/shell/bereiche.ts`; unter 1240 px drei, unter 900 px
+zwei, unter 720 px eine je Zeile), `#/planlauf/…` das Planlaufmanagement,
+`#/baubetrieb/…` die Baubetriebsplanung (Abschnitt 7), `#/projektsteuerung/…`
+die Projektsteuerung (Abschnitt 8), `#/leistungsnachweise/…` die
+Leistungsnachweise (Abschnitt 10), `#/controlling/…` das Controlling
+(Abschnitt 9). Innerhalb des Bereichs adressiert ein Hash-Router ohne
 Bibliothek (`src/bereiche/planlauf/lib/router.ts`); unbekannte Adressen führen
 auf die Übersicht. Adressen aus der Fassung ohne Bereiche (`#/dashboard`,
 `#/projekt/<id>/<reiter>` …) werden beim Aufruf auf `#/planlauf/…` umgelenkt
@@ -251,7 +255,10 @@ Weder `src/bereiche/planlauf/App.tsx` noch der Store (`src/bereiche/planlauf/sto
 Berechtigung; jede Person, die die Anwendung im Browser öffnet, kann alles
 lesen und ändern. Einzig das Controlling fragt eine PIN ab
 (`CONTROLLING_PIN = '0000'` in `src/bereiche/controlling/domain/pin.ts`) – sie
-steht im Quelltext und schützt nur vor versehentlichem Zugriff (Abschnitt 9). Der Bestand liegt ausschließlich im `localStorage` des
+steht im Quelltext und schützt nur vor versehentlichem Zugriff (Abschnitt 9).
+In den Leistungsnachweisen meldet sich eine Person als Mitarbeiter an (eine
+Auswahl ohne Kennwort); die Rechte stehen in
+`src/bereiche/leistungsnachweise/domain/rechte.ts` (Abschnitt 10.3). Der Bestand liegt ausschließlich im `localStorage` des
 jeweiligen Browsers, wird also ohnehin nicht geteilt.
 
 Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
@@ -930,6 +937,10 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
     ihrer Funktion. Je Person bleibt die bisherige Funktion, solange das
     Register sie nennt, sonst gilt die erste vorhandene Funktion des Registers;
     fehlt sie, wird sie als projektübergreifende Funktion angelegt.
+  * Leistungsnachweise (`src/bereiche/leistungsnachweise/domain/register.ts`):
+    Projekte mit Nummer, Name und Beschreibung; keine Personen. Übernommene
+    Projekte erhalten `IMPORT_PROJEKT_VORGABEN` (Leistungsbereich, Raster,
+    Zeitraumregel).
 * Beim ersten Abgleich verknüpft `abgleichen` ein Projekt mit einem nicht
   archivierten Registerprojekt gleicher Projektnummer, das der Bereich noch
   nicht führt (ohne Nummer: gleicher Bezeichnung), und darin Personen gleicher
@@ -985,6 +996,7 @@ nicht; Gestaltung in `src/bereiche/controlling/controlling.css` (Präfix `ct-`).
 | --- | --- | --- |
 | `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich; Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“. |
 | `#/controlling/archiv` | Archiv (dieselbe Seite) | Die im Controlling archivierten Projekte mit „Bearbeiten“, „Aus dem Archiv holen“ und „Löschen“; der Stand je Bereich ohne Schaltflächen. |
+| `#/controlling/leistungsnachweise/<reiter>` bzw. `…/projekt/<id>/nachweis/<id>` | Controlling der Leistungsnachweise (`LeistungsnachweiseControlling` in `src/bereiche/leistungsnachweise/controlling.tsx`), Menüpunkt „Leistungsnachweise“ unter „Bereiche“ | Siehe 10.4. |
 
 Router: `src/bereiche/controlling/lib/router.ts`; unbekannte Adressen führen auf
 die Projekte. Die Aktionen auf dem Register stehen als reine Funktionen in
@@ -1007,3 +1019,102 @@ beim nächsten Abgleich.
 | „Projekt gelöscht.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: Löschen nach der Rückfrage „Projekt löschen?“ („Endgültig löschen“). |
 | „„…“ übernommen – mit … Projektbeteiligten.“ bzw. „„…“ übernommen.“ | `src/gemeinsam/ProjektBereiche.tsx` | Kein Fehler: „Übernehmen in …“ in einem Bereich. |
 | „Das Projektregister ließ sich nicht lesen. …“ bzw. „Das Projektregister stammt aus einer neueren Fassung von KaPlan. …“ | `src/bereiche/controlling/App.tsx` | Gespeichertes Register unlesbar bzw. `version` größer als `REGISTER_VERSION`. |
+
+## 10. Bereich Leistungsnachweise
+
+Erster Entwurf, übernommen aus dem Repository `LR-PMKA/KaPlan-Test`
+(Zweig `claude/gifted-cray-0qdko3`). Jede angemeldete Person erfasst ihre
+eigenen Leistungen je Projekt; daraus entstehen gemeinsame
+Leistungsnachweise. Einstiegspunkt `src/bereiche/leistungsnachweise/index.tsx`,
+Rahmen und Seitenleiste in `src/bereiche/leistungsnachweise/App.tsx`, Logo
+`public/logos/Logo_Leistungsnachweise.png`. Der Bereich greift nicht auf die
+anderen Bereiche zu; seine Projekte teilt er über das Projektregister
+(Abschnitt 9), sein Controlling bindet der Controlling-Bereich über
+`src/bereiche/leistungsnachweise/controlling.tsx` ein.
+
+### 10.1 Datenmodell und Speicherung
+
+* `src/bereiche/leistungsnachweise/domain/types.ts`: `Mitarbeiter` (Kürzel,
+  Vor- und Nachname, `aktiv`), `Projekt` (Nummer, Name, `kurzname`, Status,
+  `leistungsbereich`, `raster` – `tag`, `woche`, `monat` –, `zeitraumregel` –
+  `monat` oder `fortlaufend` –, `abschnitte`, `logos`), `Leistung` (Projekt,
+  Mitarbeiter, Datum, Text, Stunden, Abschnitt, `projektelement`, `quelle`
+  `manuell` oder `import`) und `Leistungsnachweis` (Zeitraum `von`/`bis`,
+  Raster, Status `entwurf` oder `abgeschlossen`, bearbeitete `texte`,
+  `aufschlaege` je Zeile und Abschnitt, `bemerkung`, festgeschriebener
+  `stand`). `einstellungen.mitarbeiterId` ist die angemeldete Person.
+* Schlüssel `leistungsnachweise.data.v1` im `localStorage`
+  (`src/bereiche/leistungsnachweise/store/storage.ts`), `DATEN_VERSION = 3`.
+  Fassung 3 kennt die Rolle Controlling an Mitarbeitern nicht mehr;
+  `aufbereiten()` übernimmt sie nicht. Gespeichert wird nur bei
+  `ladeZustand` 'ok'; vor einer Umstellung legt `ladeDaten` eine Rohkopie
+  `leistungsnachweise.data.v1.vor-fassung-<n>` an. Sicherungen tragen
+  `"bereich": "leistungsnachweise"`.
+* Alle Schreibzugriffe über `mutate()` in
+  `src/bereiche/leistungsnachweise/store/store.tsx`; danach räumt
+  `nachweiseBereinigen` (`src/bereiche/leistungsnachweise/domain/nachweis.ts`)
+  auf, und `useRegisterAbgleich` gleicht die Projekte mit dem Register ab.
+
+### 10.2 Routen im Bereich
+
+| Route | Seite | Aktionen |
+| --- | --- | --- |
+| `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | Kacheln „Aktive Projekte“, „Meine Stunden …“, „In Bearbeitung“, „Ohne Nachweis“; Nachweise in Bearbeitung, Leistungen ohne Nachweis, Projekte. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall. |
+| `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ und „Auch in“; „Neues Projekt“ (ohne Anmeldung zuerst die Anmeldung); darunter „Archiv“ und „Projekte aus anderen Bereichen“ (9.3). |
+| `#/leistungsnachweise/projekt/<id>/<reiter>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`) | Ggf. Archivhinweis (9.3); Reiter `nachweise` („Leistungsnachweise“, mit „Nachweise anlegen“ für Leistungen ohne Nachweis), `leistungen` („Leistungen“: eigene Leistungen, „Leistung erfassen“) und `einstellungen` („Einstellungen“: Vorgaben, Abschnitte, Logos). Ein Löschen gibt es hier nicht (`darf(zugang, 'projektLoeschen')` nur im Controlling). |
+| `#/leistungsnachweise/projekt/<id>/nachweis/<id>` | Nachweis (`src/bereiche/leistungsnachweise/pages/projekt/NachweisEditor.tsx`) | Zeilen je Tag, Woche oder Monat; Leistungstext und Bemerkung bearbeiten, solange offen; „Ergänzen“ bei neuen Leistungen; „Leistung erfassen“. |
+
+Unten in der Seitenleiste „Angemeldet als“ bzw. „Nicht angemeldet“
+(`src/bereiche/leistungsnachweise/components/AnmeldeDialog.tsx`, Auswahl
+„Ich bin …“ mit „Ich bin noch nicht in der Liste“), „Sicherung“,
+„Einspielen“, „Zurücksetzen“ und „Bereich wechseln“; darüber „Excel-Import“
+(`src/bereiche/leistungsnachweise/components/ImportDialog.tsx`). Adressen des
+Controllings – auch frühere unter `#/leistungsnachweise/controlling/…` und
+`#/leistungsnachweise/mitarbeiter` – lenkt `App.tsx` nach
+`#/controlling/leistungsnachweise/…` um (`hashToRoute`, `routeToHash` in
+`src/bereiche/leistungsnachweise/lib/router.ts`).
+
+### 10.3 Rechte
+
+`src/bereiche/leistungsnachweise/domain/rechte.ts` kennt zwei Zugänge
+(`Zugang`): `bereich` (Vorgabe des `StoreProvider` in `index.tsx`) und
+`controlling` (`controlling.tsx`). `darf(zugang, recht)` gewährt die Rechte
+`sammelImport`, `projektLoeschen`, `nachweisVerwalten`, `abschliessen`,
+`aufschlag`, `export`, `auswertung` und `mitarbeiterVerwalten` nur im
+Controlling. Eigene Leistungen ändert nur die angemeldete Person
+(`darfLeistungAendern`); im Controlling sind die Leistungen anderer nur zu
+lesen (`darfLeistungSehen`, `leistungenDerZeile`). Der Store prüft jede
+Änderung auf dem Stand, den sie ändert.
+
+### 10.4 Controlling der Leistungsnachweise
+
+Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigenem
+`StoreProvider` im Zugang `controlling`:
+
+* Reiter (`src/bereiche/leistungsnachweise/pages/controlling/Controlling.tsx`)
+  „Auswertung“ (`Auswertung.tsx`), „Leistungsnachweise“ (`NachweisListe.tsx`,
+  mit „Neuer Leistungsnachweis“) und „Mitarbeiter“ (`Mitarbeiter.tsx`).
+* Darüber „Excel-Import (alle Mitarbeiter)“: der Import als Sammel-Export, ohne
+  Anmeldung; nach dem Übernehmen geht es zu den Leistungsnachweisen des
+  Controllings (`importZiel`).
+* Abrechnung eines Nachweises (`src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx`):
+  „Alle Nachweise“, „Zum Nachweis“ (öffnet ihn im Bereich), „Abrechnung“ bzw.
+  „Vorschau“, „Drucken / PDF“, „Excel“, „Abschließen“ bzw. „Wieder öffnen“,
+  „Zeitraum ändern“, „Löschen“; Aufschläge je Zeile, „Aufschläge zurücksetzen“.
+* Die Kopfzeile nennt „Leistungsnachweise“ mit dem Untertitel aus
+  `leistungsnachweiseUntertitel`.
+
+### 10.5 Meldungen
+
+| Meldung | Fundstelle | Ursache |
+| --- | --- | --- |
+| „Bitte zuerst anmelden.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`NICHT_ANGEMELDET`) | Aktion im Bereich ohne Anmeldung. |
+| „Das ist dem Controlling vorbehalten.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`NUR_CONTROLLING`) | Controlling-Aktion außerhalb des Controllings. |
+| „Bitte einen Projektnamen angeben.“ | `src/bereiche/leistungsnachweise/pages/Projekte.tsx` | Projekt ohne Namen. |
+| „Die Projektnummer „…“ ist bereits vergeben.“ | `src/bereiche/leistungsnachweise/pages/Projekte.tsx` | Projektnummer doppelt. |
+| „Bitte einen Nachnamen angeben.“ / „Das Kürzel „…“ ist bereits vergeben.“ | `src/bereiche/leistungsnachweise/components/MitarbeiterDialog.tsx` | Pflichtangabe fehlt bzw. Kürzel doppelt. |
+| „„…“ hat noch … Leistungen und lässt sich deshalb nicht löschen – stattdessen als ausgeschieden markieren.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`mitarbeiterLoeschenPruefen`) | Mitarbeiter mit Leistungen löschen. |
+| „Die Datei enthält keine Zeile mit Datum, Stunden und Projektnummer.“ | `src/bereiche/leistungsnachweise/components/ImportDialog.tsx` | Excel-Import ohne verwertbare Zeile. |
+| „Die Datei ist keine Sicherung der Leistungsnachweise.“ | `src/bereiche/leistungsnachweise/store/storage.ts` | Einspielen einer fremden Datei. |
+| „Leistungsnachweis wieder geöffnet – er zeigt die aktuellen Leistungen.“ / „Aufschläge zurückgesetzt.“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` | Kein Fehler. |
+| „Der gespeicherte Stand der Leistungsnachweise ließ sich nicht laden bzw. stammt aus einer neueren Fassung. …“ | `src/bereiche/leistungsnachweise/controlling.tsx` | Controlling bei `ladeZustand` ≠ 'ok'. |
