@@ -159,33 +159,27 @@ export function FremdeProjekte({ bereich, suche }: { bereich: ProjektBereich; su
         </span>
       </div>
       <div className="grid grid-2">
-        {liste.map((p) => {
-          const personen = register.personen.filter((x) => x.projektId === p.id).length;
-          return (
-            <div key={p.id} className="card gem-fremd">
-              <div className="card-pad">
-                <div className="mono tertiary">{p.nummer || 'ohne Nummer'}</div>
-                <h2 className="gem-fremd-titel">{p.name || 'Ohne Bezeichnung'}</h2>
-                {p.beschreibung ? <div className="small muted truncate">{p.beschreibung}</div> : null}
-                <div className="row wrap gem-fremd-fuss">
-                  <span className="small muted">
-                    <b>{personen}</b> {personen === 1 ? 'Projektbeteiligter' : 'Projektbeteiligte'}
-                  </span>
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => uebernehmen(p)}>
-                    <Icon name="importieren" size={12} /> Übernehmen in {BEREICH_TITEL[bereich]}
-                  </button>
+        {liste.map((p) => (
+          <div key={p.id} className="card gem-fremd">
+            <div className="card-pad gem-fremd-inhalt">
+              <div className="mono tertiary">{p.nummer}</div>
+              <h2 className="gem-fremd-titel">{p.name || 'Ohne Bezeichnung'}</h2>
+              {p.beschreibung ? <div className="small muted truncate">{p.beschreibung}</div> : null}
+              {Object.keys(p.bereiche).length > 0 ? (
+                <ProjektMarken projekt={p} label="Geführt in" />
+              ) : (
+                <div className="gem-marken">
+                  <span className="gem-marken-label">Im Controlling angelegt, noch in keinem Bereich</span>
                 </div>
-                {Object.keys(p.bereiche).length > 0 ? (
-                  <ProjektMarken projekt={p} label="Geführt in" />
-                ) : (
-                  <div className="gem-marken">
-                    <span className="gem-marken-label">Im Controlling angelegt, noch in keinem Bereich</span>
-                  </div>
-                )}
+              )}
+              <div className="gem-fremd-fuss">
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => uebernehmen(p)}>
+                  <Icon name="importieren" size={12} /> Übernehmen in {BEREICH_TITEL[bereich]}
+                </button>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </section>
   );

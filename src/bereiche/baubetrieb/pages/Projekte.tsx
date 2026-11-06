@@ -1,5 +1,7 @@
 /**
- * Projekte: Liste mit Anlage- und Bearbeitungsdialog. Darunter die im Bereich
+ * Projekte: Liste mit Anlage- und Bearbeitungsdialog. Die Kacheln nennen nur
+ * die MIC-Projektnummer, die Bezeichnung, die Bemerkung und die anderen
+ * Bereiche des Projekts. Darunter die im Bereich
  * archivierten Projekte und – grau hinterlegt – Projekte aus anderen Bereichen
  * zum Übernehmen (Projektregister, src/gemeinsam/).
  */
@@ -15,20 +17,10 @@ import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
-import {
-  anmeldebedarf,
-  erstanmeldungAusstehend,
-  ersterTerminVorschlag,
-  fahrplanjahrBeginn,
-  fahrplanjahrEnde,
-  fahrplanjahrVon,
-  naechsterBedarf,
-  offeneTermine,
-} from '../domain/fristen';
+import { ersterTerminVorschlag, fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon } from '../domain/fristen';
 import {
   ERSTE_PHASE_LABEL,
   PROJEKT_STATUS_LABEL,
-  RIL_LABEL,
   type ErstePhase,
   type Projekt,
   type ProjektStatus,
@@ -58,30 +50,23 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const archivierte = projekte.filter((p) => archiviert.has(p.id));
 
   const karte = (p: Projekt) => {
-    const anzahl = data.anmeldungen.filter((a) => a.projektId === p.id).length;
-    const termine = offeneTermine(data, [p.id]);
-    const ueberfaellig =
-      termine.filter((t) => t.ampel === 'ueberfaellig').length +
-      (erstanmeldungAusstehend(p, data)?.ampel === 'ueberfaellig' ? 1 : 0);
-    const bedarf = naechsterBedarf(anmeldebedarf(p, data));
     return (
       <button
         key={p.id}
         type="button"
-        className="card card-click"
+        className="card card-click gem-kachel"
         onClick={() => navigate({ view: 'projekt', projektId: p.id })}
       >
         <div className="card-pad">
           <div className="row-between" style={{ alignItems: 'flex-start' }}>
             <div style={{ minWidth: 0 }}>
-              <div className="mono tertiary">
-                {[p.dbGNummer, p.projektnummer].filter(Boolean).join(' · ') || 'ohne Nummer'}
-              </div>
+              <div className="mono tertiary">{p.projektnummer}</div>
               <h2 style={{ marginTop: 2 }}>{p.name}</h2>
-              <div className="small muted truncate" style={{ marginTop: 3 }}>
-                {p.fahrplanjahre.length > 0 ? `Fahrplanjahre ${p.fahrplanjahre.join(', ')}` : 'ohne Fahrplanjahr'}
-                {p.hauptbearbeiter ? ` · ${p.hauptbearbeiter}` : ''}
-              </div>
+              {p.bemerkung ? (
+                <div className="small muted truncate" style={{ marginTop: 3 }}>
+                  {p.bemerkung}
+                </div>
+              ) : null}
             </div>
             <span className="row" style={{ gap: 6 }}>
               <Badge ton={PROJEKT_STATUS_TON[p.status]}>{PROJEKT_STATUS_LABEL[p.status]}</Badge>
@@ -107,22 +92,6 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
             </span>
           </div>
 
-          <div className="row wrap" style={{ gap: 16, marginTop: 14 }}>
-            <span className="small muted">
-              <b>{anzahl}</b> {anzahl === 1 ? 'Anmeldung' : 'Anmeldungen'}
-            </span>
-            {ueberfaellig > 0 ? (
-              <Badge ton="red">{ueberfaellig} überfällig</Badge>
-            ) : (
-              <Badge ton="green">im Plan</Badge>
-            )}
-            {bedarf ? (
-              <span className="small muted">
-                Nächste Anmeldung: <b>{RIL_LABEL[bedarf.phase]}</b> FPJ {bedarf.fahrplanjahr} bis{' '}
-                <b>{formatDate(bedarf.frist)}</b>
-              </span>
-            ) : null}
-          </div>
           <BereichsMarken bereich="baubetrieb" lokaleId={p.id} />
         </div>
       </button>

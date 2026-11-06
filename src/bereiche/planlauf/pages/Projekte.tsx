@@ -1,5 +1,7 @@
 /**
- * Projektliste mit Anlage- und Bearbeitungsdialog. Darunter die im Bereich
+ * Projektliste mit Anlage- und Bearbeitungsdialog. Die Kacheln nennen nur
+ * Projektnummer, Projektname, Beschreibung und die anderen Bereiche des
+ * Projekts. Darunter die im Bereich
  * archivierten Projekte und – grau hinterlegt – Projekte aus anderen Bereichen
  * zum Übernehmen (Projektregister, src/gemeinsam/).
  */
@@ -11,7 +13,6 @@ import {
   VerknuepfungsHinweis,
   useArchivierte,
 } from '../../../gemeinsam/ProjektBereiche';
-import { offeneFristen } from '../domain/engine';
 import type { Project, ProjectStatus } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
@@ -44,15 +45,11 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const archivierte = projekte.filter((p) => archiviert.has(p.id));
 
   const karte = (p: Project) => {
-    const fristen = offeneFristen(data, [p.id]);
-    const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig').length;
-    const laeufe = data.runs.filter((r) => r.projectId === p.id && r.status === 'laufend').length;
-    const dokumente = data.documents.filter((d) => d.projectId === p.id).length;
     return (
       <button
         key={p.id}
         type="button"
-        className="card card-click"
+        className="card card-click gem-kachel"
         onClick={() => navigate({ view: 'projekt', projectId: p.id, tab: 'uebersicht' })}
       >
         <div className="card-pad">
@@ -88,16 +85,6 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
                 {p.markiert ? '★' : '☆'}
               </span>
             </span>
-          </div>
-
-          <div className="row wrap" style={{ gap: 16, marginTop: 14 }}>
-            <span className="small muted">
-              <b>{dokumente}</b> Pläne / Pakete
-            </span>
-            <span className="small muted">
-              <b>{laeufe}</b> laufende Planläufe
-            </span>
-            {ueberfaellig > 0 ? <Badge ton="red">{ueberfaellig} überfällig</Badge> : <Badge ton="green">im Plan</Badge>}
           </div>
           <BereichsMarken bereich="planlauf" lokaleId={p.id} />
         </div>

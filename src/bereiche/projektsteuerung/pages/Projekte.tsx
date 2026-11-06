@@ -1,5 +1,7 @@
 /**
- * Projektliste mit Anlage- und Bearbeitungsdialog. Darunter die im Bereich
+ * Projektliste mit Anlage- und Bearbeitungsdialog. Die Kacheln nennen nur
+ * Projektnummer, Projektname, Beschreibung und die anderen Bereiche des
+ * Projekts. Darunter die im Bereich
  * archivierten Projekte und – grau hinterlegt – Projekte aus anderen Bereichen
  * zum Übernehmen (Projektregister, src/gemeinsam/).
  */
@@ -14,7 +16,6 @@ import {
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
-import { offenePunkte } from '../domain/punkte';
 import { PROJEKT_STATUS_LABEL, type Projekt, type ProjektStatus } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
@@ -43,15 +44,11 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const archivierte = projekte.filter((p) => archiviert.has(p.id));
 
   const karte = (p: Projekt) => {
-    const offen = offenePunkte(data, [p.id]);
-    const spaet = offen.filter((x) => x.ampel === 'ueberfaellig').length;
-    const beteiligte = data.beteiligte.filter((b) => b.projektId === p.id).length;
-    const protokolle = data.protokolle.filter((x) => x.projektId === p.id).length;
     return (
       <button
         key={p.id}
         type="button"
-        className="card card-click"
+        className="card card-click gem-kachel"
         onClick={() => navigate({ view: 'projekt', projektId: p.id, tab: 'beteiligte' })}
       >
         <div className="card-pad">
@@ -87,19 +84,6 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
                 {p.markiert ? '★' : '☆'}
               </span>
             </span>
-          </div>
-
-          <div className="row wrap" style={{ gap: 16, marginTop: 14 }}>
-            <span className="small muted">
-              <b>{beteiligte}</b> Beteiligte
-            </span>
-            <span className="small muted">
-              <b>{protokolle}</b> Protokolle
-            </span>
-            <span className="small muted">
-              <b>{offen.length}</b> offene Punkte
-            </span>
-            {spaet > 0 ? <Badge ton="red">{spaet} überfällig</Badge> : <Badge ton="green">im Plan</Badge>}
           </div>
           <BereichsMarken bereich="projektsteuerung" lokaleId={p.id} />
         </div>

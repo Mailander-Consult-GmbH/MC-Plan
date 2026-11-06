@@ -724,8 +724,7 @@ und in den anstehenden Terminfristen der **Übersicht** und zählt bei „überf
 für SKM, MKM, KM N-2 und KM N-1 und ob dafür schon ein Eintrag besteht (ein Eintrag einer späteren
 Phase deckt frühere ab, ein Eintrag im KM oder KKM beide KM-Fristen; Anmeldeleichen zählen nicht).
 Was in die Vorschau fällt (Vorgabe 180 Tage), steht unter „Anmeldebedarf aus den Projekten“ in
-Übersicht und Terminen; die Projektliste nennt die nächste Anmeldung. Die eigene Karte im Projekt
-ist entfallen.
+Übersicht und Terminen. Die eigene Karte im Projekt ist entfallen.
 
 ### Anmeldung
 Je Anmeldung eine Zeile im Projekt: Anmelde-ID (in Workflows mit ganzem Fahrplanjahr Begriff bzw.
@@ -989,12 +988,17 @@ Die Baubetriebsplanung führt keine eigenen Personen; im Projekt zeigt die Karte
 **Projektbeteiligte** die geteilten Beteiligten zum Nachschlagen.
 
 ### In den Bereichen
+* Die **Projektkacheln** nennen nur Projektnummer (in der Baubetriebsplanung die MIC-Projektnummer),
+  Projektname und – falls vorhanden – den Zusatztext (Beschreibung bzw. Bemerkung), dazu oben rechts
+  Status und ★-Markierung. Kennzahlen wie Pläne, Planläufe, Anmeldungen, Beteiligte, Protokolle oder
+  offene Punkte stehen in Übersicht und Projekt, nicht mehr in der Kachel.
 * Unten in jeder Projektkachel nennt die Zeile **Auch in** die anderen Bereiche, die das Projekt
   führen – grau mit *archiviert*, gestrichelt mit *vorgesehen*, solange eine Übernahme aus dem
   Controlling noch aussteht.
 * Unter der Projektliste stehen **grau hinterlegt** die **Projekte aus anderen Bereichen** (und aus
-  dem Controlling), die der Bereich noch nicht führt. **Übernehmen in …** legt das Projekt im
-  Bereich an – samt den Projektbeteiligten.
+  dem Controlling), die der Bereich noch nicht führt – mit Nummer, Name, Zusatztext und den
+  Bereichen, die es führen. **Übernehmen in …** legt das Projekt im Bereich an – samt den
+  Projektbeteiligten.
 * Ist ein Projekt im Bereich archiviert, steht es im aufklappbaren Abschnitt **Archiv** und fehlt in
   Übersicht und Seitenleiste; das Projekt selbst nennt den Archivstand oben. Archiviert wird im
   Controlling – je Bereich: Ein Projekt kann in einem Bereich archiviert und in einem anderen aktiv
@@ -1019,7 +1023,7 @@ Datenbestand – es arbeitet auf dem Projektregister:
 
 * **Projekte**: Kennzahlen (Projekte, aktiv je Bereich) und je Projekt eine Karte mit Nummer,
   Bezeichnung, Beschreibung, dem Stand in jedem Bereich (*Aktiv*, *Archiviert*, *Vorgesehen* oder
-  *nicht geführt*) und den Projektbeteiligten zum Aufklappen. Je Bereich: **Übernehmen**,
+  *nicht geführt*). Je Bereich: **Übernehmen**,
   **Zurücknehmen** (einer noch nicht vollzogenen Übernahme), **Archivieren** bzw. **Zurückholen**.
   Für das ganze Projekt: **Bearbeiten** (Nummer, Bezeichnung, Beschreibung – gelten danach in allen
   Bereichen), **Archivieren** (in allen Bereichen) und **Löschen** – im Register und in allen
