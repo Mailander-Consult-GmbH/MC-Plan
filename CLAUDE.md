@@ -4,7 +4,9 @@ KaPlan ist eine React-19-/TypeScript-/Vite-Anwendung **ohne Server**; alle Daten
 `localStorage` des Browsers. Installierbar als PWA, veröffentlicht über GitHub Pages. Sie besteht
 aus drei getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`),
 **Baubetriebsplanung** (`src/bereiche/baubetrieb/`, erster Entwurf) und **Projektsteuerung**
-(`src/bereiche/projektsteuerung/`, erster Entwurf). Überblick über Aufbau und
+(`src/bereiche/projektsteuerung/`, erster Entwurf), dazu dem **Controlling**
+(`src/bereiche/controlling/`, mit PIN), das die Projekte aller Bereiche im gemeinsamen
+**Projektregister** (`src/gemeinsam/`) verwaltet. Überblick über Aufbau und
 Funktionen: `README.md`; belegtes Inventar aller Routen, Aktionen und Meldungen: `docs/INVENTAR.md`.
 
 ## Nach jeder Änderung nachziehen
@@ -44,8 +46,24 @@ ignoriert.
 ## Aufbau
 
 * `src/shell/` – Startbildschirm und Bereichswahl; die erste Wegmarke der Hash-Adresse
-  (`#/planlauf/…`, `#/baubetrieb/…`, `#/projektsteuerung/…`) bestimmt den Bereich. Ein neuer Bereich braucht einen
-  Eintrag in `BereichId`/`BEREICHE` (`src/shell/bereiche.ts`) und in `src/shell/Shell.tsx`.
+  (`#/planlauf/…`, `#/baubetrieb/…`, `#/projektsteuerung/…`, `#/controlling/…`) bestimmt den
+  Bereich. Ein neuer Bereich braucht einen Eintrag in `BereichId`/`BEREICHE`
+  (`src/shell/bereiche.ts`) und in `src/shell/Shell.tsx`; führt er Projekte, zusätzlich einen in
+  `ProjektBereich`/`PROJEKT_BEREICHE` (`src/gemeinsam/register.ts`), ein `domain/register.ts`
+  und `useRegisterAbgleich` im Store.
+* `src/gemeinsam/` – das **Projektregister**, der einzige Bestand, den sich die Bereiche teilen
+  (Schlüssel `kaplan-projektregister.v1`): Projekte (Nummer, Bezeichnung, Beschreibung), ihre
+  Zugehörigkeit je Bereich mit lokaler Kennung und Archivstand (`Mitgliedschaft`, `offen` =
+  Übernahme steht aus) und die Projektbeteiligten mit Kontaktdaten und Funktionen (über
+  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). `register.ts` Modell, Laden/Speichern,
+  `registerAendern`/`useRegister`; `abgleich.ts` reine Funktionen: `uebertragen` (Änderungen
+  des Bereichs → Register), `abgleichen` (Unbekanntes eintragen, `Plan` für den Bereich) und die
+  Aktionen des Controllings; `useRegisterAbgleich.ts` bindet einen Store an;
+  `ProjektBereiche.tsx` Bausteine der Projektlisten („Auch in“, „Projekte aus anderen
+  Bereichen“, Archiv, Archivhinweis, Beteiligte).
+* `src/bereiche/controlling/` – ohne eigenen Bestand, arbeitet nur auf dem Register. PIN in
+  `domain/pin.ts` (`CONTROLLING_PIN`, Entsperrung je Sitzung im `sessionStorage`); Gestaltung in
+  `controlling.css` (Präfix `ct-`).
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
   `localStorage`-Schlüssel, eigenen Einstellungen und eigenem Router.
 * `src/shared/` – fachfreie Bausteine (UI, Icons, Datumsrechnung, Excel lesen/schreiben, Druck,
@@ -108,7 +126,19 @@ ignoriert.
 ## Randbedingungen
 
 * `src/shared/` enthält nur Bausteine ohne fachlichen Bezug und importiert nichts aus
-  `src/bereiche/`. Die Bereiche greifen nicht aufeinander zu.
+  `src/bereiche/`. Die Bereiche greifen nicht aufeinander zu; gemeinsam nutzen sie nur
+  `src/gemeinsam/` (importiert nichts aus `src/bereiche/`).
+* **Projektregister:** Ein Bereich schreibt seinen eigenen Bestand nur über sein `mutate()` –
+  auch, was aus dem Register kommt (`registerPlanAnwenden` in `domain/register.ts`, reine
+  Funktion, liefert ohne Änderung denselben Bestand zurück, damit der Abgleich zur Ruhe kommt).
+  Das Register ändert nur `registerAendern` (außerhalb von React-Updates). Archivstand und
+  Zugehörigkeit stehen allein im Register, nicht im Bestand der Bereiche. `ersetzeDaten` und
+  `zuruecksetzen` melden vorher `ersetzt()` – ein eingespielter Stand wird nicht übertragen.
+  `sichtFuerRegister` lässt weg, was nicht geteilt wird (im Planlaufmanagement der eigene Kontakt
+  und die Funktion Planlaufmanagement); `funktionenPassen` sagt, wann die Funktionen einer Person
+  so nah am Register sind, wie der Bereich sie abbilden kann (Projektsteuerung: eine Funktion je
+  Person; Planlaufmanagement: eine Funktion hat genau eine Person). Neue Registerfelder in
+  `aufbereiten()` (`register.ts`) nachtragen und `REGISTER_VERSION` erhöhen.
 * **Schreibzugriffe nur über den Store.** Jede Änderung läuft über `mutate()` in
   `store/store.tsx`, das `bestandAendern` (`domain/bestand.ts`) aufruft: danach werden
   automatisch `eigeneKontakteSichern`, `zustaendigkeitenNachziehen` und `recalcRun` für alle
@@ -158,3 +188,6 @@ ignoriert.
   Hash lädt nicht neu, und der laufende Store überschreibt die Änderung.
 * Hilfsserver über ihre Prozessnummer beenden, nicht mit `pkill -f "<Befehl>"`: Das Muster trifft
   auch die eigene Shell, deren Befehlszeile denselben Text enthält.
+* Das Projektregister füllt sich erst, wenn ein Bereich geöffnet wird; was das Controlling ändert,
+  vollzieht ein Bereich beim nächsten Öffnen. PIN des Controllings: `0000`. Wer den
+  `localStorage` leert, leert auch `kaplan-projektregister.v1`.

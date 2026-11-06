@@ -1,6 +1,7 @@
 # KaPlan
 
-KaPlan gliedert sich in drei getrennte Bereiche, zwischen denen der Startbildschirm wählt:
+KaPlan gliedert sich in drei getrennte Bereiche und das Controlling, zwischen denen der
+Startbildschirm wählt:
 
 * **Planlaufmanagement** – Verwaltungssoftware für Planläufe: Projekte,
   Planpakete/Pläne/Planverzeichnisse und die Prozessketten, die diese durchlaufen – mit
@@ -12,13 +13,18 @@ KaPlan gliedert sich in drei getrennte Bereiche, zwischen denen der Startbildsch
   Nachhak-Terminen, ausstehenden Erstanmeldungen und dem Anmeldebedarf je Fahrplanjahr.
 * **Projektsteuerung** (erster Entwurf) – je Projekt die Projektbeteiligtenliste mit
   projektübergreifenden Funktionen und Besprechungsprotokolle mit Folgeprotokollen.
+* **Controlling** (mit PIN) – Projekte für alle Bereiche anlegen, in Bereiche übernehmen, je
+  Bereich oder ganz archivieren und löschen.
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
-Browser, eigene Einstellungen, eigener Router. Der Startbildschirm zeigt sie als Kacheln; in einem
-Bereich führt **Bereich wechseln** unten in der Seitenleiste zurück. Der Abschnitt
-**Funktionsumfang** beschreibt das Planlaufmanagement, die Abschnitte
-[**Baubetriebsplanung**](#baubetriebsplanung) und [**Projektsteuerung**](#projektsteuerung) die
-beiden anderen Bereiche.
+Browser, eigene Einstellungen, eigener Router. **Projekte und Projektbeteiligte teilen sie sich**
+über das Projektregister: Ein Projekt kann in mehreren Bereichen geführt werden, Kontaktdaten und
+Funktionen seiner Beteiligten gelten dann überall (siehe
+[**Gemeinsame Projekte und Controlling**](#gemeinsame-projekte-und-controlling)). Der
+Startbildschirm zeigt die Bereiche als Kacheln; in einem Bereich führt **Bereich wechseln** unten
+in der Seitenleiste zurück. Der Abschnitt **Funktionsumfang** beschreibt das Planlaufmanagement,
+die Abschnitte [**Baubetriebsplanung**](#baubetriebsplanung) und
+[**Projektsteuerung**](#projektsteuerung) die beiden anderen Bereiche.
 
 Dieser Stand ist ein **lauffähiger Prototyp ohne Datenbank**: Alle Daten liegen lokal im Browser
 (`localStorage`). Die Anwendung ist responsiv und als PWA installierbar.
@@ -650,7 +656,9 @@ Schrittangaben.
 
 ### Übersicht und Markierung von Projekten
 Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
-Seitenleiste (mit vorangestellter Projektnummer); ohne Markierung werden alle angezeigt. Die
+Seitenleiste (mit vorangestellter Projektnummer); ohne Markierung werden alle angezeigt –
+archivierte Projekte in keinem Fall (siehe
+[Gemeinsame Projekte und Controlling](#gemeinsame-projekte-und-controlling)). Die
 Übersicht zeigt Kennzahlen, die eigenen **To-Dos** (laufende Schritte des Planlaufmanagements) und
 die laufenden Planläufe nach Projekt gegliedert. In einem markierten Projekt ist die angemeldete
 Person automatisch das **Planlaufmanagement** und ist damit für dessen Schritte zuständig; unter
@@ -933,15 +941,94 @@ den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die
 `#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Name unter „Angemeldet als“ und
 Farbmodus gelten nur in diesem Bereich.
 
+## Gemeinsame Projekte und Controlling
+
+### Projektregister
+Neben den Beständen der Bereiche führt KaPlan ein **Projektregister** (Schlüssel
+`kaplan-projektregister.v1` im `localStorage`). Es kennt jedes Projekt mit **Projektnummer,
+Bezeichnung und Beschreibung**, die Bereiche, in denen es geführt wird – je Bereich aktiv oder
+archiviert –, und die **Projektbeteiligten** des Projekts. Jeder Bereich gleicht seinen Bestand nach
+jeder Änderung mit dem Register ab; was ein anderer Bereich oder das Controlling geändert hat,
+übernimmt er spätestens beim nächsten Öffnen.
+
+Geteilt werden:
+
+* **Stammdaten des Projekts** – Projektnummer und Bezeichnung in allen Bereichen (in der
+  Baubetriebsplanung als *MIC-Projektnummer (wiko)*), die Beschreibung zwischen
+  Planlaufmanagement und Projektsteuerung. Status (*Aktiv*, *Pausiert* …), ★-Markierung und alles
+  Fachliche (Pläne, Planläufe, Anmeldungen, Protokolle) bleiben im jeweiligen Bereich.
+* **Projektbeteiligte** – Kontakte des Planlaufmanagements und Projektbeteiligte der
+  Projektsteuerung sind dieselben Personen: Anrede, Vor- und Nachname, Firma, E-Mail, Telefon,
+  Anschrift und Notiz gelten in beiden Bereichen; Mobilnummer und persönliches Kürzel führt nur die
+  Projektsteuerung, die SharePoint-Links nur das Planlaufmanagement. Wer eine Person in einem
+  Bereich anlegt, ändert oder löscht, tut das auch im anderen.
+* **Funktionen** – eine Funktion gilt in allen Bereichen als dieselbe, wenn Bezeichnung und Gewerk
+  übereinstimmen. Fehlt sie im anderen Bereich, wird sie dort angelegt – im Planlaufmanagement als
+  Projektfunktion, in der Projektsteuerung als projektübergreifende Funktion. Mitgeliefert heißen
+  die Funktionen teils verschieden (etwa *Fachplaner* bzw. *Fachplanung*); wer sie angleicht,
+  vermeidet Doppelungen. Die Projektsteuerung führt je Person **eine** Funktion (die erste bekannte
+  aus dem Register), das Planlaufmanagement mehrere; eine Funktion, die im Planlaufmanagement
+  bereits eine andere Person ausfüllt, bleibt bei dieser.
+* Nicht geteilt wird die angemeldete Person des Planlaufmanagements (*Angemeldet als*) mit der
+  Funktion **Planlaufmanagement** – sie gehört zum jeweiligen Arbeitsplatz.
+
+Die Baubetriebsplanung führt keine eigenen Personen; im Projekt zeigt die Karte
+**Projektbeteiligte** die geteilten Beteiligten zum Nachschlagen.
+
+### In den Bereichen
+* Unten in jeder Projektkachel nennt die Zeile **Auch in** die anderen Bereiche, die das Projekt
+  führen – grau mit *archiviert*, gestrichelt mit *vorgesehen*, solange eine Übernahme aus dem
+  Controlling noch aussteht.
+* Unter der Projektliste stehen **grau hinterlegt** die **Projekte aus anderen Bereichen** (und aus
+  dem Controlling), die der Bereich noch nicht führt. **Übernehmen in …** legt das Projekt im
+  Bereich an – samt den Projektbeteiligten.
+* Ist ein Projekt im Bereich archiviert, steht es im aufklappbaren Abschnitt **Archiv** und fehlt in
+  Übersicht und Seitenleiste; das Projekt selbst nennt den Archivstand oben. Archiviert wird im
+  Controlling – je Bereich: Ein Projekt kann in einem Bereich archiviert und in einem anderen aktiv
+  sein.
+* **Löschen** im Projekt entfernt es nur aus diesem Bereich; in den anderen Bereichen bleibt es mit
+  seinen Beteiligten erhalten (der Dialog nennt sie). Führt es danach kein Bereich mehr, entfällt es
+  auch im Register – außer es wurde im Controlling angelegt.
+* Wer ein Projekt mit einer **Projektnummer** anlegt, die es in einem anderen Bereich schon gibt,
+  erhält einen Hinweis: Beim Anlegen wird es mit dem vorhandenen verknüpft; Bezeichnung und
+  Beteiligte kommen von dort. Ebenso verknüpft der erste Abgleich nach dem Umstieg Projekte gleicher
+  Projektnummer (ohne Nummer: gleicher Bezeichnung) und darin Personen gleicher E-Mail-Adresse bzw.
+  gleichen Namens; bei abweichenden Angaben gilt der Stand des Bereichs, der zuerst geöffnet wurde.
+* Nach **Einspielen** einer Sicherung (*Alles ersetzen*) und nach **Zurücksetzen** gilt für geteilte
+  Projekte und Personen der Stand des Registers; der Abgleich mit Auswahl im Planlaufmanagement
+  zählt dagegen als gewöhnliche Änderung.
+
+### Controlling
+Der vierte Bereich auf dem Startbildschirm ist mit einer **PIN** geschützt (derzeit `0000`; ein
+einfacher Schutz vor versehentlichem Zugriff, keine Sicherheit). Entsperrt bleibt er bis zum
+Schließen des Fensters oder bis **Sperren** in der Seitenleiste. Das Controlling hat keinen eigenen
+Datenbestand – es arbeitet auf dem Projektregister:
+
+* **Projekte**: Kennzahlen (Projekte, aktiv je Bereich) und je Projekt eine Karte mit Nummer,
+  Bezeichnung, Beschreibung, dem Stand in jedem Bereich (*Aktiv*, *Archiviert*, *Vorgesehen* oder
+  *nicht geführt*) und den Projektbeteiligten zum Aufklappen. Je Bereich: **Übernehmen**,
+  **Zurücknehmen** (einer noch nicht vollzogenen Übernahme), **Archivieren** bzw. **Zurückholen**.
+  Für das ganze Projekt: **Bearbeiten** (Nummer, Bezeichnung, Beschreibung – gelten danach in allen
+  Bereichen), **Archivieren** (in allen Bereichen) und **Löschen** – im Register und in allen
+  Bereichen samt allem, was diese dazu gespeichert haben.
+* **Neues Projekt**: Projektnummer (eindeutig), Bezeichnung, Beschreibung und die Bereiche, die es
+  übernehmen sollen.
+* **Archiv**: die im Controlling archivierten Projekte mit **Aus dem Archiv holen** und Löschen.
+
+Die Bereiche vollziehen Übernahmen, Archivierung und Löschungen beim nächsten Öffnen.
+
 ## Aufbau des Codes
 
 Hinweise für die Arbeit am Code – was nach jeder Änderung nachzuziehen ist, wie gebaut und
 veröffentlicht wird und welche Randbedingungen gelten – stehen in [`CLAUDE.md`](CLAUDE.md).
 
-KaPlan besteht aus drei getrennten Bereichen. Jeder Bereich bringt seinen eigenen Datenbestand,
-seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen eigenen Router mit;
-die Bereiche greifen nicht aufeinander zu. Die Shell wählt anhand der ersten Wegmarke der Adresse
-aus, welcher Bereich geladen wird, und hängt ihn erst beim Betreten ein.
+KaPlan besteht aus drei getrennten Bereichen und dem Controlling. Jeder Bereich bringt seinen
+eigenen Datenbestand, seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen
+eigenen Router mit; die Bereiche greifen nicht aufeinander zu. Gemeinsam ist ihnen nur das
+Projektregister in `src/gemeinsam/`: Jeder Store gleicht über `useRegisterAbgleich` ab und
+übernimmt Änderungen über sein eigenes `mutate()` (`domain/register.ts` je Bereich). Die Shell
+wählt anhand der ersten Wegmarke der Adresse aus, welcher Bereich geladen wird, und hängt ihn erst
+beim Betreten ein.
 
 ```
 src/
@@ -950,7 +1037,7 @@ src/
     Shell.tsx    Wählt Bereichsauswahl oder Bereich
     Start.tsx    Startbildschirm mit den Bereichskacheln
     bereiche.ts  Verzeichnis der Bereiche
-    router.ts    #/ · #/planlauf/… · #/baubetrieb/… · #/projektsteuerung/…
+    router.ts    #/ · #/planlauf/… · #/baubetrieb/… · #/projektsteuerung/… · #/controlling/…
     BereichWechsel.tsx  Rückweg aus einem Bereich zur Bereichsauswahl
   shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
     ui.tsx       Karten, Felder, Dialoge, Segmented Controls …
@@ -964,6 +1051,13 @@ src/
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers
     global.css   Design-Tokens im hellen Apple-Erscheinungsbild
+  gemeinsam/     Projektregister – der einzige Bestand, den sich die Bereiche teilen
+    register.ts  Datenmodell, Laden/Speichern, gemeinsamer Zustand (useRegister)
+    abgleich.ts  Abgleich Bereich ↔ Register als reine Funktionen (uebertragen, abgleichen)
+                 und die Aktionen des Controllings
+    useRegisterAbgleich.ts  Bindet den Store eines Bereichs an das Register
+    ProjektBereiche.tsx     Marken „Auch in“, Projekte aus anderen Bereichen, Archiv, Beteiligte
+    gemeinsam.css           Gestaltung dieser Bausteine (Präfix gem-)
   bereiche/
     planlauf/    Bereich „Planlaufmanagement“
       index.tsx  Einstiegspunkt samt Datenbestand des Bereichs
@@ -988,6 +1082,7 @@ src/
         export.ts    Kurz- und Langfassung für Excel und PDF
         importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen
         seed.ts      Standard-Prozessketten und Demodaten
+        register.ts  Sicht für das Projektregister und Übernahme von dort
       store/
         storage.ts   Persistenz (localStorage), Migration, Rohkopie vor der Umstellung, Sicherung
         store.tsx    Zentraler Zustand, alle Schreibzugriffe, Lade- und Speicherzustand
@@ -1009,6 +1104,7 @@ src/
         ablauf.ts    Statuswechsel, Übernahme mit Aufteilung, Rücknahme
         export.ts    Excel-Ausgabe des Monitors
         seed.ts      Platzhalter der Richtlinienfristen und Demodaten
+        register.ts  Sicht für das Projektregister und Übernahme von dort
       store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe)
       lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
       pages/         Übersicht, Termine, Projekte, Projekt, Anmeldung, Workflows (mit Editor), Einstellungen
@@ -1027,11 +1123,20 @@ src/
         druck.ts     Druckfassungen (Protokoll, Beteiligtenliste) samt Gestaltung und Live-Fenster
         export.ts    Excel-Ausgabe und -Vorlage der Projektbeteiligten
         seed.ts      Standard-Funktionen, Standardlogos und Demodaten
+        register.ts  Sicht für das Projektregister und Übernahme von dort
       store/         storage.ts (Laden, Aufbereiten, Sicherung) und store.tsx (alle Schreibzugriffe)
       lib/router.ts  Hash-Adressen unterhalb von #/projektsteuerung
       pages/         Übersicht, Projekte, Funktionen, Projekt mit Projektbeteiligten und Protokollen
                      (Liste und Editor)
       components/    Dialoge (Person, Funktion, Gewerk), Excel-Import, Logos, Sicherung, Ampel, Live-Druckansicht
+    controlling/ Bereich „Controlling“ (mit PIN, ohne eigenen Bestand)
+      index.tsx  Einstiegspunkt: PIN-Abfrage, danach der Bereich
+      PinEingabe.tsx  PIN-Abfrage
+      App.tsx    Seitenleiste, Kopfzeile, Projekte bzw. Archiv
+      controlling.css  Gestaltung (Präfix ct-)
+      domain/pin.ts    PIN und Entsperrung für die Sitzung
+      lib/router.ts    #/controlling/projekte · #/controlling/archiv
+      pages/Projekte.tsx  Projektkarten mit Stand je Bereich, Dialoge Projekt und Löschen
 ```
 
 Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden
@@ -1049,7 +1154,8 @@ transluzente Seitenleiste und Kopfzeile, Segmented Controls und Pill-Buttons. Di
 * Ablösung von `storage.ts` durch eine Datenbank (z.B. PostgreSQL) samt API – das Datenmodell in
   `domain/types.ts` ist bereits auf Tabellen mit ID-Referenzen ausgelegt.
 * Mehrbenutzerbetrieb auf einem gemeinsamen Datenbestand mit Anmeldung und Rechten je Rolle
-  (heute sieht jeder Arbeitsplatz nur seinen lokalen Stand).
+  (heute sieht jeder Arbeitsplatz nur seinen lokalen Stand) – das Projektregister wäre die erste
+  gemeinsame Tabelle; die PIN des Controllings wird dann durch Rechte ersetzt.
 * Automatischer Mailversand über SMTP statt `mailto:` inkl. Erinnerungslauf im Hintergrund.
 * Dateiablage für die eigentlichen Plandateien (PDF/DWG) je Index.
 * Auswertungen: Terminlisten, Planlieferlisten und projektweite Verzugsberichte als Export (heute
