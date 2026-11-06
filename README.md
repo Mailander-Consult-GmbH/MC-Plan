@@ -129,6 +129,15 @@ einen kostenpflichtigen GitHub-Plan voraus.
 Ändert sich die Hülle (Titel, Symbole, Manifest), zusätzlich den Cache-Namen in `public/sw.js`
 hochzählen, damit installierte Fassungen die neuen Dateien laden.
 
+Ein Fenster, das vor einer Veröffentlichung geöffnet wurde (Browser-Tab oder installierte App),
+zeigt bis zum Neuladen weiter die alte Fassung. Deshalb trägt jeder Build eine Kennung aus Commit
+(`GITHUB_SHA` im Workflow) und Bauzeit (`vite.config.ts`): Sie steht als `fassung.json` neben der
+`index.html` und im Programm selbst. Die Anwendung vergleicht beide beim Start, wenn das Fenster
+wieder in den Vordergrund kommt, und alle fünf Minuten (`useNeueFassung` in `src/shared/pwa.ts`).
+Weichen sie ab, erscheint unten rechts **„Neue Fassung von KaPlan verfügbar“** mit **Neu laden**
+und **Später** (`src/shell/NeueFassung.tsx`). Welche Fassung läuft, steht am Fuß des
+Startbildschirms („Fassung vom …“, im Build des Workflows mit dem Commit).
+
 Technische Voraussetzung für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade).
 Ohne diese Einstellung verweisen die Dateien auf `/assets/…` und die Seite bleibt unter einem
 Unterverzeichnis wie `…/MC-Plan/` weiß. Die Navigation arbeitet mit Hash-Adressen (`#/planlauf/fristen`), daher
@@ -1225,7 +1234,8 @@ src/
   main.tsx       Start der Anwendung, Umlenkung alter Lesezeichen
   shell/         Startbildschirm und Bereichswechsel
     Shell.tsx    Wählt Bereichsauswahl oder Bereich
-    Start.tsx    Startbildschirm mit den Bereichskacheln
+    Start.tsx    Startbildschirm mit den Bereichskacheln und der laufenden Fassung
+    NeueFassung.tsx  Hinweis „Neue Fassung von KaPlan verfügbar“ über allen Bereichen
     bereiche.ts  Verzeichnis der Bereiche
     router.ts    #/ · #/planlauf/… · #/baubetrieb/… · #/projektsteuerung/… · #/leistungsnachweise/…
                  · #/controlling/…
@@ -1240,7 +1250,7 @@ src/
     xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe
     zwischenablage.ts  Formatiert (text/html) und als Klartext kopieren
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
-    pwa.ts       Registrierung des Service Workers
+    pwa.ts       Registrierung des Service Workers; Fassung des Builds und Prüfung auf eine neuere
     global.css   Design-Tokens im hellen Apple-Erscheinungsbild
   gemeinsam/     Projektregister – der einzige Bestand, den sich die Bereiche teilen
     register.ts  Datenmodell, Laden/Speichern, gemeinsamer Zustand (useRegister)

@@ -49,7 +49,9 @@ wählt danach aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
 Baubetriebsplanung, Projektsteuerung, Leistungsnachweise und Controlling, die
 mittleren drei mit dem Kennzeichen „Erster Entwurf“, das Controlling mit „Mit
 PIN“ aus `marke` in `src/shell/bereiche.ts`; unter 1240 px drei, unter 900 px
-zwei, unter 720 px eine je Zeile), `#/planlauf/…` das Planlaufmanagement,
+zwei, unter 720 px eine je Zeile; am Fuß „Fassung vom …“ mit Bauzeit und – im
+Build des Workflows – Commit, `fassungText` in `src/shared/pwa.ts`),
+`#/planlauf/…` das Planlaufmanagement,
 `#/baubetrieb/…` die Baubetriebsplanung (Abschnitt 7), `#/projektsteuerung/…`
 die Projektsteuerung (Abschnitt 8), `#/leistungsnachweise/…` die
 Leistungsnachweise (Abschnitt 10), `#/controlling/…` das Controlling
@@ -306,14 +308,17 @@ setzt in laufenden Planläufen die zuständige Person aus der aktuellen Besetzun
 **Eine `.env.example` existiert in diesem Repository nicht**, ebenso wenig eine
 `.env`-Datei oder ein Zugriff auf `process.env` im Anwendungscode. Die
 Anwendung benötigt keine Umgebungsvariablen – es gibt keinen Server, keine
-Datenbank und keine API-Schlüssel.
+Datenbank und keine API-Schlüssel. Nur der Build liest eine optional:
+`GITHUB_SHA` (im Workflow von GitHub gesetzt) über `loadEnv` in
+`vite.config.ts` für die Kennung der Fassung.
 
 Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 
 | Variable | Bedeutung | Pflicht |
 | --- | --- | --- |
 | `import.meta.env.BASE_URL` | Basispfad der Auslieferung; wird für die Pfade der Logos (`public/logos/`) und des Hauslogos verwendet (`src/shared/logos.tsx`). Vite setzt ihn aus `base: './'` in `vite.config.ts`. | von Vite gesetzt, keine eigene Pflege |
-| `import.meta.env.PROD` | Nur im Produktionsbuild wird der Service Worker registriert (`src/shared/pwa.ts`). | von Vite gesetzt, keine eigene Pflege |
+| `import.meta.env.PROD` | Nur im Produktionsbuild wird der Service Worker registriert und auf eine neuere Fassung geprüft (`src/shared/pwa.ts`). | von Vite gesetzt, keine eigene Pflege |
+| `GITHUB_SHA` | Nur beim Bauen: Commit für die Kennung der Fassung (`__FASSUNG__` und `fassung.json`, `vite.config.ts`); fehlt er, heißt die Kennung `lokal-<Bauzeit>`. | nein, im Workflow von GitHub gesetzt |
 
 ## 5. Setup von Null bis zur laufenden Anwendung
 
@@ -450,7 +455,8 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | Konsole: „Service Worker konnte nicht registriert werden: …“ | Registrierung abgelehnt, etwa ohne HTTPS (`src/shared/pwa.ts`). Die Anwendung läuft weiter, nur der Offline-Betrieb entfällt. |
 | Ausnahme: „useStore muss innerhalb des StoreProvider verwendet werden.“ | Entwicklungsfehler: Eine Komponente nutzt `useStore` außerhalb von `StoreProvider` (`src/bereiche/planlauf/store/store.tsx`). |
 | Seite „Nicht gefunden – Der aufgerufene Eintrag existiert nicht (mehr).“ | Die Adresse nennt ein Projekt oder einen Planlauf, den es nicht (mehr) gibt (`src/bereiche/planlauf/App.tsx`). |
-| Ein alter Stand erscheint nach einer Aktualisierung | Entweder liegt unter `app/` noch ein älterer Build (siehe Abschnitt 5, Schritt 7), oder der Service Worker liefert aus seinem Cache, derzeit `mc-plan-v7` (`public/sw.js`). Beim Aktivieren löscht er alle älteren Caches; bis dahin hilft einmal Neuladen bzw. Strg+Umschalt+R. |
+| Ein alter Stand erscheint nach einer Aktualisierung | Meist ist das Fenster (Tab oder installierte App) noch vor der Veröffentlichung geöffnet worden – es behält seine Fassung bis zum Neuladen; GitHub Pages lässt die Startseite außerdem bis zu zehn Minuten im Browser-Cache. Seltener liegt unter `app/` noch ein älterer Build (siehe Abschnitt 5, Schritt 7), oder der Service Worker liefert aus seinem Cache, derzeit `mc-plan-v8` (`public/sw.js`). Abhilfe: Neuladen bzw. Strg+Umschalt+R; welche Fassung läuft, steht am Fuß des Startbildschirms. |
+| Hinweis „Neue Fassung von KaPlan verfügbar“ mit „Neu laden“ und „Später“ | Kein Fehler: Die veröffentlichte `fassung.json` nennt eine andere Kennung als das laufende Programm (`useNeueFassung` in `src/shared/pwa.ts`, geprüft beim Start, bei Rückkehr ins Fenster und alle fünf Minuten; `src/shell/NeueFassung.tsx`). „Später“ blendet den Hinweis für diese Fassung aus. |
 | Planliste: Haken „Pläne einzeln durch den Planlauf führen“ ist ausgegraut – „Es bestehen bereits Planläufe. Die Pläne lassen sich nur noch nachträglich einzeln weiterführen.“ bzw. „Die Pläne laufen bereits einzeln. Über „Pläne wieder bündeln …“ lassen sich ausgewählte Pläne zurückführen.“ | Kein Fehler: Sobald das Verzeichnis oder einer seiner Pläne einen Lauf hat, ist die Wahl gesperrt (`modusGesperrt` in `Plaene.tsx`). Weiter geht es über die Nachträge „Herauslösen …“, „Alle Pläne einzeln weiterführen …“ und „Pläne wieder bündeln …“ bzw. „Bündeln …“ – im Dialog der Planliste, in der Karte „Pläne dieses Verzeichnisses“ des Planlaufs und im Reiter „Planläufe“. |
 | Konsole der Wurzelseite: 404 für `/src/main.tsx` und die Symbole unter `icons/` | Kein Fehler: Die Wurzelseite ist der ausgelieferte Quellcode und springt nur nach `app/` weiter; dort gibt es diese Fehlanfragen nicht. |
 

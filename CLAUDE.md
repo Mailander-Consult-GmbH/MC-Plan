@@ -43,7 +43,9 @@ Tests und Linter gibt es nicht; `typecheck` (strict, `noUnusedLocals`, `noUnused
 Wurzel-`index.html` umschaltet, wenn Pages den Zweig selbst ausliefert („Deploy from a branch“).
 **`app/` in Feature-Branches nicht von Hand neu bauen** – der Workflow erneuert ihn nach dem Merge;
 von Hand gebaute Stände führen nur zu Konflikten zwischen den gehashten Dateinamen. `dist/` ist
-ignoriert.
+ignoriert. Jeder Build trägt eine Kennung (`__FASSUNG__` und `fassung.json` aus `vite.config.ts`,
+Commit aus `GITHUB_SHA`); weicht die veröffentlichte ab, meldet ein offenes Fenster „Neue Fassung
+von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/NeueFassung.tsx`).
 
 ## Aufbau
 
