@@ -8,7 +8,7 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Callout, Modal } from '../../../shared/ui';
+import { Callout, Modal, alsKnopf } from '../../../shared/ui';
 import { tabelleLesen } from '../../../shared/xlsxLesen';
 import { BETEILIGTE_KOPF, beteiligteLesen, funktionsSchluessel, neueFunktion, type ImportZeile } from '../domain/beteiligteImport';
 import { beteiligteVorlageLaden } from '../domain/export';
@@ -119,7 +119,7 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
       <div className="stack" style={{ gap: 14 }}>
         <div
           className={`drop-zone ${ueber ? 'over' : ''}`}
-          onClick={() => eingabe.current?.click()}
+          {...alsKnopf(() => eingabe.current?.click())}
           onDragOver={(e) => {
             e.preventDefault();
             setUeber(true);

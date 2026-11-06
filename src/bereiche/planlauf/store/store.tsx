@@ -292,8 +292,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ),
   );
 
-  // Projekte und Kontakte mit dem Projektregister abgleichen
-  const { ersetzt } = useRegisterAbgleich({
+  // Projekte und Kontakte mit dem Projektregister abgleichen – solange der gespeicherte Stand gelesen werden konnte.
+  // Muss nach dem Speichern stehen: Ein anderes Fenster soll erst den Bestand, dann das Register erhalten.
+  const { ersetzt, nachgeladen } = useRegisterAbgleich({
     bereich: 'planlauf',
     daten: data,
     aktiv: ladeZustand === 'ok',
@@ -302,13 +303,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   });
 
   // Hat ein anderes Fenster den Bestand gespeichert, gilt sein Stand: nachladen,
-  // statt ihn mit dem nächsten Speichern zu überschreiben. Der nachgeladene Stand
-  // ist keine eigene Änderung (`ersetzt`) und wird nicht zurückgeschrieben
-  // (`uebernommen`); stammt er aus einer neueren Fassung, ruht das Speichern.
+  // statt ihn mit dem nächsten Speichern zu überschreiben. Das andere Fenster hat
+  // ihn schon ins Register übertragen und abgeglichen (`nachgeladen`: hier weder
+  // übertragen noch abgleichen, bis sich das Register ändert); er wird nicht
+  // zurückgeschrieben (`uebernommen`). Stammt er aus einer neueren Fassung, ruht das Speichern.
   useFremdeAenderung(SPEICHER_SCHLUESSEL, ladeZustand === 'ok', () => {
     const neu = ladeDaten();
     uebernommen.current = neu.daten;
-    ersetzt();
+    nachgeladen(neu.daten);
     setLadeZustand(neu.zustand);
     setData(neu.daten);
   });

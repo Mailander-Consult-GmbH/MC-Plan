@@ -25,8 +25,9 @@
  * Bereich und Controlling können in zwei Fenstern zugleich offen sein und
  * teilen denselben Schlüssel: Speichert das andere Fenster, übernimmt der
  * Store dessen Stand (`useFremdeAenderung`, `ladeDaten`), ohne ihn
- * zurückzuschreiben und ohne ihn ans Projektregister zu übertragen – so
- * überschreibt keines die Änderungen des anderen; einen Stand aus einer
+ * zurückzuschreiben und ohne ihn mit dem Projektregister abzugleichen
+ * (`nachgeladen`, src/gemeinsam/useRegisterAbgleich.ts) – so überschreibt
+ * keines die Änderungen des anderen; einen Stand aus einer
  * neueren Fassung überschreibt es nicht, sondern speichert nicht mehr. Lässt sich nicht speichern
  * (Speicher voll), meldet `speicherZustand` das für einen dauerhaften Hinweis.
  */
@@ -623,8 +624,9 @@ export function StoreProvider({ zugang = 'bereich', children }: { zugang?: Zugan
       ),
   );
 
-  // Projekte mit dem Projektregister abgleichen – solange der gespeicherte Stand gelesen werden konnte
-  const { ersetzt } = useRegisterAbgleich({
+  // Projekte mit dem Projektregister abgleichen – solange der gespeicherte Stand gelesen werden konnte.
+  // Muss nach dem Speichern stehen: Ein anderes Fenster soll erst den Bestand, dann das Register erhalten.
+  const { ersetzt, nachgeladen } = useRegisterAbgleich({
     bereich: 'leistungsnachweise',
     daten: data,
     aktiv: ladeZustand === 'ok',
@@ -633,13 +635,14 @@ export function StoreProvider({ zugang = 'bereich', children }: { zugang?: Zugan
   });
 
   // Ein anderes Fenster (Bereich bzw. Controlling) hat gespeichert: dessen Stand übernehmen, ohne ihn
-  // zurückzuschreiben (`uebernommen`) oder ans Register zu übertragen (`ersetzt`) – das andere Fenster hat
-  // beides getan. Stammt er aus einer neueren Fassung, zeigt der Bereich wie beim Laden Demodaten und
-  // speichert nicht mehr (`ladeZustand`), statt ihn mit dem älteren Stand zu überschreiben.
+  // zurückzuschreiben (`uebernommen`), ans Register zu übertragen oder abzugleichen (`nachgeladen`, bis
+  // sich das Register ändert) – das andere Fenster hat all das getan. Stammt er aus einer neueren Fassung,
+  // zeigt der Bereich wie beim Laden Demodaten und speichert nicht mehr (`ladeZustand`), statt ihn mit dem
+  // älteren Stand zu überschreiben.
   useFremdeAenderung(SPEICHER_SCHLUESSEL, ladeZustand === 'ok', () => {
     const neu = ladeDaten();
     uebernommen.current = neu.daten;
-    ersetzt();
+    nachgeladen(neu.daten);
     setLadeZustand(neu.zustand);
     setData(neu.daten);
     setSpeicherZustand('ok');

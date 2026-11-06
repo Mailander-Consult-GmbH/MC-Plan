@@ -6,8 +6,10 @@
  * eine Leistung anklicken bearbeitet sie), die zuletzt erfassten eigenen
  * Leistungen und die Projekte mit den eigenen Stunden im Monat. Angezeigt werden die markierten
  * Projekte – auch die in anderen Bereichen markierten (`istMarkiert`); ist kein
- * nicht archiviertes markiert, alle. Gibt es kein Projekt zum Erfassen, sagt ein
- * Hinweis über dem Kalender, woher Projekte kommen. Leistungsnachweise, Abschluss und Abrechnung
+ * nicht archiviertes markiert, alle. Steht kein Projekt zur Wahl, sagt ein
+ * Hinweis über dem Kalender, woher Projekte kommen – bzw., wenn alle archiviert
+ * sind, dass sich im archivierten Projekt selbst (Projekte › Archiv) weiterhin
+ * erfassen lässt. Leistungsnachweise, Abschluss und Abrechnung
  * liegen im Controlling. Ohne Anmeldung steht darüber der Hinweis zum
  * Anmelden (App.tsx, `AnmeldeHinweis`).
  */
@@ -76,7 +78,8 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
   const zuletztProjekt = [...meine].sort((a, b) => b.erfasst.localeCompare(a.erfasst))[0]?.projektId;
   const vorgabeProjekt =
     auswahl.find((p) => p.id === zuletztProjekt) ?? projekte.find((p) => auswahl.includes(p)) ?? auswahl[0];
-  // Kein Projekt zum Erfassen, obwohl es Projekte gibt: Sie sind alle im Bereich archiviert
+  // Kein Projekt zur Wahl, obwohl es Projekte gibt: Sie sind alle im Bereich archiviert. Archivierte stehen hier
+  // nicht zur Wahl; im archivierten Projekt selbst (Projekte › Archiv) lässt sich weiterhin erfassen
   const alleArchiviert = !vorgabeProjekt && data.projekte.length > 0;
   const projektKurz = (id: string) => {
     const p = projektVon.get(id);
@@ -118,8 +121,9 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
         <Callout icon="i">
           {alleArchiviert ? (
             <>
-              Alle Projekte sind archiviert – in ihnen lassen sich keine Leistungen erfassen. Das Controlling kann sie
-              aus dem Archiv zurückholen; erfasste Leistungen bleiben im Kalender sichtbar.
+              Alle Projekte sind archiviert – hier in der Übersicht stehen sie deshalb nicht zur Wahl. Leistungen
+              lassen sich weiterhin im archivierten Projekt erfassen (<strong>Projekte › Archiv</strong>); aus dem
+              Archiv zurückholen kann sie das Controlling. Erfasste Leistungen bleiben im Kalender sichtbar.
             </>
           ) : (
             <>
@@ -139,7 +143,7 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
             ? mitAnmeldung(() => setDialog({ datum }))
             : toast(
                 alleArchiviert
-                  ? 'Kein Projekt zum Erfassen – alle sind archiviert, das Controlling kann sie zurückholen.'
+                  ? 'Kein Projekt zur Wahl – alle sind archiviert. Erfassen lässt sich im Projekt unter Projekte › Archiv.'
                   : 'Kein Projekt zum Erfassen – Projekte legt das Controlling an.',
               )
         }

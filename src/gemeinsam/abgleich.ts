@@ -304,6 +304,12 @@ export function uebertragen(bereich: ProjektBereich, alt: Sicht, neu: Sicht, reg
  * – sonst schaukeln sich die beiden Fenster endlos auf. Nur die ★ eines eben
  * übernommenen Projekts (Mitgliedschaft noch `offen`) übernimmt der Abgleich
  * immer; das geschieht einmal.
+ *
+ * Bestand und Register müssen zueinander passen: Mit einem neueren Bestand
+ * und einem älteren Register (oder umgekehrt) hielte der Abgleich Änderungen
+ * des einen für Rückstände und nähme sie zurück. Einen Bestand, den ein
+ * anderes Fenster gespeichert hat, gleicht `useRegisterAbgleich` deshalb erst
+ * ab, wenn sich danach auch das Register ändert.
  */
 export function abgleichen(
   bereich: ProjektBereich,

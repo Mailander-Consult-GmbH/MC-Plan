@@ -7,10 +7,14 @@
  * einwandfrei geladen wurde (`LadeZustand` 'ok'): Nach einem Ladefehler oder
  * bei einem Stand aus einer neueren Fassung zeigt der Bereich Demodaten und
  * lässt den gespeicherten Stand unberührt. Vor jeder Umstellung auf eine neue
- * Fassung legt `ladeDaten` eine Rohkopie `<Schlüssel>.vor-fassung-<n>` an.
+ * Fassung legt `ladeDaten` eine Rohkopie `<Schlüssel>.vor-fassung-<n>` an,
+ * vor dem Einspielen über einen unlesbaren Stand `rohkopieVorEinspielen` eine
+ * `<Schlüssel>.vor-einspielen-<Zeitpunkt>`.
  * Speichern meldet, ob es gelungen ist (`SpeicherZustand`); ist der Speicher
  * des Browsers voll, zeigt der Bereich einen dauerhaften Hinweis.
  */
+import { today } from '../../../shared/dates';
+import { nachRaeumenSpeichern, rohkopieVorEinspielen as rohkopieAnlegen, speicherVoll, type RohkopieErgebnis } from '../../../shared/speicher';
 import { fahrplanjahreZwischen } from '../domain/fristen';
 import { seedDaten, standardEinstellungen, standardRilFristen } from '../domain/seed';
 import {
@@ -571,19 +575,14 @@ export function ladeDaten(): Geladen {
   }
 }
 
-/** Der Speicher des Browsers ist voll. */
-function speicherVoll(err: unknown): boolean {
-  if (!(err instanceof DOMException)) return false;
-  return err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22 || err.code === 1014;
-}
-
 /** Ergebnis des Speicherns: gespeichert, Speicher voll oder Speicher nicht nutzbar (gesperrt). */
 export type SpeicherZustand = 'ok' | 'voll' | 'gesperrt';
 
 /**
  * Speichert den Bestand; der Store ruft das nur bei `ladeZustand === 'ok'`
- * auf. Ist der Speicher voll, werden zuerst die Rohkopien früherer Fassungen
- * (`<Schlüssel>.vor-fassung-<n>`) entfernt und das Speichern wiederholt.
+ * auf. Ist der Speicher voll, werden Rohkopien (`<Schlüssel>.vor-fassung-<n>`,
+ * `<Schlüssel>.vor-einspielen-…`) entfernt, bis er passt – die eigenen zuerst,
+ * nötigenfalls auch die anderer Bereiche (`nachRaeumenSpeichern`).
  * Liefert, ob der Bestand gespeichert ist bzw. warum nicht – dann zeigt der
  * Bereich einen dauerhaften Hinweis (components/Hinweisleisten.tsx).
  */
@@ -599,15 +598,7 @@ export function speichereDaten(daten: BaubetriebDaten): SpeicherZustand {
     }
   }
   try {
-    const alt: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k?.startsWith(VOR_FASSUNG)) alt.push(k);
-    }
-    if (alt.length === 0) return 'voll';
-    alt.forEach((k) => localStorage.removeItem(k));
-    localStorage.setItem(KEY, inhalt);
-    return 'ok';
+    return nachRaeumenSpeichern(KEY, inhalt) ? 'ok' : 'voll';
   } catch (err) {
     console.warn('Daten konnten nicht lokal gespeichert werden:', err);
     return speicherVoll(err) ? 'voll' : 'gesperrt';
@@ -626,8 +617,20 @@ export function rohdatenHerunterladen(): boolean {
     return false;
   }
   if (roh === null) return false;
-  herunterladen(roh, `baubetrieb-gespeicherter-stand-${new Date().toISOString().slice(0, 10)}.json`);
+  herunterladen(roh, `baubetrieb-gespeicherter-stand-${today()}.json`);
   return true;
+}
+
+/**
+ * Legt den gespeicherten Text unverändert als
+ * `<Schlüssel>.vor-einspielen-<Zeitpunkt>` ab – vor dem Einspielen einer
+ * Sicherung, wenn er sich nicht laden ließ und sonst ohne Kopie überschrieben
+ * würde. Wie die Rohkopien vor einer Umstellung räumt das Speichern sie, wenn
+ * der Speicher voll ist (src/shared/speicher.ts). Liefert `gescheitert`, wenn
+ * die Kopie nicht in den Speicher passt – dann fragt der Dialog nach.
+ */
+export function rohkopieVorEinspielen(): RohkopieErgebnis {
+  return rohkopieAnlegen(KEY);
 }
 
 function herunterladen(inhalt: string, dateiname: string): void {
@@ -643,7 +646,7 @@ function herunterladen(inhalt: string, dateiname: string): void {
 /** Lädt den gesamten Bestand als JSON-Datei herunter. */
 export function exportiereDaten(daten: BaubetriebDaten): void {
   const inhalt = { bereich: SICHERUNG_BEREICH, ...daten };
-  herunterladen(JSON.stringify(inhalt, null, 2), `baubetrieb-sicherung-${new Date().toISOString().slice(0, 10)}.json`);
+  herunterladen(JSON.stringify(inhalt, null, 2), `baubetrieb-sicherung-${today()}.json`);
 }
 
 /**

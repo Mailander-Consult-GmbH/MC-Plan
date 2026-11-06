@@ -334,7 +334,10 @@ function vonFassung3(roh: Roh): Roh {
  * Sicherungen älterer Fassungen laufen hierdurch. Fassung 4 → 5: `nachgereicht`
  * ergänzt `aufbereiten` leer; 5 → 6: `bisFest` ergänzt `aufbereiten` mit false,
  * Zeilen nachgereichter Leistungen erhalten ihren eigenen Schlüssel – in
- * Texten, Aufschlägen und im festgeschriebenen Stand (`nachgereichteZeilenUmstellen`).
+ * Texten, Aufschlägen und im festgeschriebenen Stand; Aufschläge einer Zeile
+ * mit laufenden und nachgereichten Leistungen werden auf beide aufgeteilt,
+ * ohne die abgerechneten Stunden zu ändern – mit Abschnittsspalten auch nicht
+ * die einer Spalte (`nachgereichteZeilenUmstellen`).
  */
 function migriere(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   let stand = roh as unknown as Roh;

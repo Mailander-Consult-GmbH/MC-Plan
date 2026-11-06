@@ -40,6 +40,7 @@ import { anstehendeSchritte, istErledigt, statusAbgleichen, verfolgen } from '..
 import { basisplanFestlegen } from '../domain/simulation';
 import { gliedern } from '../domain/workflowGraph';
 import { formatDate, today } from '../../../shared/dates';
+import { nachRaeumenSpeichern, rohkopieVorEinspielen as rohkopieAnlegen, speicherVoll, type RohkopieErgebnis } from '../../../shared/speicher';
 
 /** Frühere Bezeichnung der eigenen Rolle. */
 const ALTE_EIGENE_ROLLE = 'PLM';
@@ -665,18 +666,14 @@ function laeufeFassung13(daten: AppData): AppData {
   };
 }
 
-/** Der Speicher des Browsers ist voll. */
-function speicherVoll(err: unknown): boolean {
-  if (!(err instanceof DOMException)) return false;
-  return err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22 || err.code === 1014;
-}
-
 /** Ergebnis des Speicherns: gespeichert, Speicher voll oder Speicher nicht nutzbar (gesperrt). */
 export type SpeicherZustand = 'ok' | 'voll' | 'gesperrt';
 
 /**
- * Speichert den Bestand. Ist der Speicher voll, werden zuerst die Rohkopien
- * früherer Fassungen entfernt und das Speichern wiederholt. Liefert, ob der
+ * Speichert den Bestand. Ist der Speicher voll, werden Rohkopien
+ * (`<Schlüssel>.vor-fassung-<n>`, `<Schlüssel>.vor-einspielen-…`) entfernt,
+ * bis er passt – die eigenen zuerst, nötigenfalls auch die anderer Bereiche
+ * (`nachRaeumenSpeichern`). Liefert, ob der
  * Bestand gespeichert ist bzw. warum nicht – dann zeigt die Anwendung einen
  * dauerhaften Hinweis.
  */
@@ -692,15 +689,7 @@ export function speichereDaten(daten: AppData): SpeicherZustand {
     }
   }
   try {
-    const alt: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k?.startsWith(VOR_FASSUNG)) alt.push(k);
-    }
-    if (alt.length === 0) return 'voll';
-    alt.forEach((k) => localStorage.removeItem(k));
-    localStorage.setItem(KEY, text);
-    return 'ok';
+    return nachRaeumenSpeichern(KEY, text) ? 'ok' : 'voll';
   } catch (err) {
     console.warn('Daten konnten nicht lokal gespeichert werden:', err);
     return speicherVoll(err) ? 'voll' : 'gesperrt';
@@ -709,6 +698,18 @@ export function speichereDaten(daten: AppData): SpeicherZustand {
 
 export function loescheDaten(): void {
   localStorage.removeItem(KEY);
+}
+
+/**
+ * Legt den gespeicherten Text unverändert als
+ * `<Schlüssel>.vor-einspielen-<Zeitpunkt>` ab – vor dem Einspielen einer
+ * Sicherung, wenn er sich nicht laden ließ und sonst ohne Kopie überschrieben
+ * würde. Wie die Rohkopien vor einer Umstellung räumt das Speichern sie, wenn
+ * der Speicher voll ist (src/shared/speicher.ts). Liefert `gescheitert`, wenn
+ * die Kopie nicht in den Speicher passt – dann fragt der Dialog nach.
+ */
+export function rohkopieVorEinspielen(): RohkopieErgebnis {
+  return rohkopieAnlegen(KEY);
 }
 
 function herunterladen(text: string, dateiname: string): void {
@@ -722,7 +723,7 @@ function herunterladen(text: string, dateiname: string): void {
 }
 
 export function exportiereDaten(daten: AppData): void {
-  herunterladen(JSON.stringify(daten, null, 2), `planlauf-export-${new Date().toISOString().slice(0, 10)}.json`);
+  herunterladen(JSON.stringify(daten, null, 2), `planlauf-export-${today()}.json`);
 }
 
 /**
@@ -738,6 +739,6 @@ export function rohdatenHerunterladen(): boolean {
     return false;
   }
   if (roh === null) return false;
-  herunterladen(roh, `planlauf-gespeicherter-stand-${new Date().toISOString().slice(0, 10)}.json`);
+  herunterladen(roh, `planlauf-gespeicherter-stand-${today()}.json`);
   return true;
 }

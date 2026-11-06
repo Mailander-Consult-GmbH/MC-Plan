@@ -8,9 +8,17 @@
  * Verwendung im Store eines Bereichs, der `useRegisterAbgleich` nutzt:
  *
  *   useFremdeAenderung(SCHLUESSEL, ladeZustand === 'ok', () => {
- *     ersetzt();               // nachgeladener Stand ist keine eigene Änderung
- *     setData(ladeDaten()...); // bzw. den Text aus dem Ereignis lesen
+ *     const neu = ladeDaten();
+ *     uebernommen.current = neu.daten; // nicht zurückschreiben
+ *     nachgeladen(neu.daten);          // nicht übertragen und nicht abgleichen
+ *     setData(neu.daten);              // genau dieses Objekt
  *   });
+ *
+ * Nicht `ersetzt()` melden: Das gilt nur für „Sicherung einspielen“ und
+ * „Zurücksetzen“ und gleicht den Bestand als maßgeblich ab. Ein nachgeladener
+ * Stand kann hier aber vor dem Register gerendert werden, das das andere
+ * Fenster gleich danach geschrieben hat (eigenes `storage`-Ereignis); ein
+ * Abgleich mit dem noch alten Register nähme dessen Änderungen zurück.
  *
  * `storage`-Ereignisse kommen nur aus anderen Fenstern desselben Ursprungs;
  * das eigene Speichern löst keines aus, ebenso wenig ein Speichern mit
