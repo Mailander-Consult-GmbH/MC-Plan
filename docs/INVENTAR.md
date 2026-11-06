@@ -1096,9 +1096,20 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ohne Anmeldung „Bitte anmelden“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat und „Zuletzt erfasst“. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall. |
+| `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Kalender „Mein Kalender“ über alle nicht archivierten Projekte (siehe unten; die Einträge nennen die Projektnummer, beim Erfassen fragt der Dialog das Projekt ab – `projektAuswahl`, vorgewählt das Projekt der zuletzt erfassten eigenen Leistung); Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ohne Anmeldung „Bitte anmelden“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat und „Zuletzt erfasst“. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall. |
 | `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ und „Auch in“; kein Anlegen („Projekte legt das Controlling an.“); darunter „Archiv“ und „Projekte aus anderen Bereichen“ (9.3). |
-| `#/leistungsnachweise/projekt/<id>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`) | Projektnummer, Status, Leistungsbereich; ggf. Archivhinweis (9.3); darunter ohne Reiter die eigenen Leistungen (`src/bereiche/leistungsnachweise/pages/projekt/Leistungen.tsx`: „Meine Leistungen“, „Leistung erfassen“, „Excel-Import“, Filter nach Monat, Suche, Auswahl löschen; der Nachweis je Leistung steht ohne Verweis). Bearbeiten, Einstellungen und Löschen gibt es nur im Controlling. Frühere Adressen `…/projekt/<id>/<reiter>` zeigen dieselbe Seite; `…/projekt/<id>/nachweis/<id>` führt in die Abrechnung des Controllings. |
+| `#/leistungsnachweise/projekt/<id>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`) | Projektnummer, Status, Leistungsbereich; ggf. Archivhinweis (9.3); darunter ohne Reiter die eigenen Leistungen (`src/bereiche/leistungsnachweise/pages/projekt/Leistungen.tsx`: Umschalter „Kalender“ – Vorgabe, Kalender „Meine Leistungen“ – und „Liste“, dazu „Leistung erfassen“ und „Excel-Import“; die Liste mit Filter nach Monat, Suche, Auswahl löschen; der Nachweis je Leistung steht ohne Verweis). Bearbeiten, Einstellungen und Löschen gibt es nur im Controlling. Frühere Adressen `…/projekt/<id>/<reiter>` zeigen dieselbe Seite; `…/projekt/<id>/nachweis/<id>` führt in die Abrechnung des Controllings. |
+
+Kalender (`LeistungsKalender` in
+`src/bereiche/leistungsnachweise/components/LeistungsKalender.tsx`, Gestaltung
+in `src/bereiche/leistungsnachweise/components/leistungen.css`, Präfix
+`ln-kal-`): je Monat die Wochen von Montag bis Sonntag, je Tag die Leistungen
+mit Stunden und Text und die Tagessumme, rechts „KW …“ mit der Wochensumme;
+im Kopf die Summe des Monats, „Vorheriger Monat“, „Nächster Monat“ und
+„Heute“, darunter „Tag anklicken, um dort eine Leistung zu erfassen – eine
+Leistung anklicken, um sie zu bearbeiten.“ Ein Tag öffnet „Leistung erfassen“
+mit seinem Datum (ohne Anmeldung zuerst die Anmeldung), eine Leistung „Leistung
+bearbeiten“. Bis 760 px Breite zeigt jeder Tag nur Nummer und Stunden.
 
 Unten in der Seitenleiste „Angemeldet als“ (gemeinsam für alle Bereiche,
 Abschnitt 11) und – solange der Name keinem aktiven Mitarbeiter gehört –
@@ -1133,7 +1144,7 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 
 * Reiter (`src/bereiche/leistungsnachweise/pages/controlling/Controlling.tsx`)
   „Auswertung“ (`Auswertung.tsx`), „Leistungsnachweise“ (`NachweisListe.tsx`,
-  mit „Neuer Leistungsnachweis“), „Projekte“ (`ProjektListe.tsx`: Projekte mit
+  mit „Neuer Leistungsnachweis“, siehe unten), „Projekte“ (`ProjektListe.tsx`: Projekte mit
   Raster und Regel, „In Bearbeitung“, „Ohne Nachweis“, Stunden; Suche; „Neues
   Projekt“ über `ProjektDialog` in
   `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx`; archivierte am
@@ -1151,6 +1162,27 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 * Darüber „Excel-Import (alle Mitarbeiter)“: der Import als Sammel-Export, ohne
   Anmeldung; nach dem Übernehmen geht es zu den Leistungsnachweisen des
   Controllings (`importZiel`).
+* „Neuer Leistungsnachweis“ (`NeuerNachweisDialog` in
+  `src/bereiche/leistungsnachweise/components/NachweisDialog.tsx`) fragt keinen
+  Zeitraum ab – nur das Projekt (in der Liste aller Nachweise), „Raster“ und
+  „Überschrift“: Er umfasst alle nicht abgerechneten Leistungen nach dem
+  letzten abgeschlossenen Nachweis (`nichtAbgerechnet` in
+  `src/bereiche/leistungsnachweise/domain/nachweis.ts`; Zeitraum ab dem Tag
+  danach, ohne abgeschlossenen ab der ersten Leistung, bis zum Monatsende bzw.
+  zur letzten Leistung). Offene Nachweise in diesem Bereich gehen darin auf –
+  der erste wird erweitert, Leistungstexte, Aufschläge (summiert) und
+  Bemerkungen der übrigen gehen auf ihn über (`nachweisFuerNichtAbgerechneteAnwenden`,
+  im Store `nachweisFuerNichtAbgerechnete`). Liegt schon alles in genau einem
+  offenen Nachweis, heißt der Knopf „Öffnen“. Leistungen vor dem letzten
+  abgeschlossenen Nachweis nennt der Dialog und lässt sie, wo sie sind.
+  Vorhandene Nachweise korrigiert „Zeitraum ändern“ (`ZeitraumDialog`).
+* Der Zeitraum steht erst beim Abschluss fest: Läuft ein Nachweis bis zum
+  Abschluss (`laeuftBisAbschluss` – offen und Regel `fortlaufend` oder Ende nach
+  heute), zeigen Listen und Abrechnung „ab … · läuft bis zum Abschluss“
+  (`nachweisZeitraumText` in
+  `src/bereiche/leistungsnachweise/components/common.tsx`); beim Abschluss endet
+  er am letzten Tag mit Leistungen, spätestens heute (`abschlussZeitraum`), und
+  die Rückfrage sagt „Der Zeitraum wird jetzt festgelegt: …“.
 * Abrechnung eines Nachweises (`src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx`):
   „Alle Nachweise“, „Zum Projekt“, Ansichten „Abrechnung“, „Leistungstexte“
   (`src/bereiche/leistungsnachweise/pages/controlling/Leistungstexte.tsx`: Text

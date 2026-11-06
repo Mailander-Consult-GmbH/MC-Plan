@@ -75,8 +75,10 @@ ignoriert.
   (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis), `domain/rechte.ts` – die
   Rechte an einer Stelle, je **Zugang** (`'bereich'` | `'controlling'`): Der `StoreProvider` erhält
   den Zugang als Eigenschaft (`index.tsx` ohne, `controlling.tsx` mit `'controlling'`); im Bereich
-  erfasst die angemeldete Person nur eigene Leistungen (Übersicht, Projektliste ohne Anlegen,
-  Projekt = nur `Leistungen`), alles Übrige (Projekte anlegen und einstellen – `projektVerwalten` –,
+  erfasst die angemeldete Person nur eigene Leistungen (Übersicht mit „Mein Kalender“ über alle
+  Projekte, Projektliste ohne Anlegen, Projekt = nur `Leistungen` mit Kalender und Liste;
+  Kalender: `components/LeistungsKalender.tsx`, Projektwahl im `LeistungDialog` über
+  `projektAuswahl`), alles Übrige (Projekte anlegen und einstellen – `projektVerwalten` –,
   Leistungsnachweise samt Leistungstexten und Bemerkung, Abschluss, Aufschläge, Export,
   Auswertung, Sammel-Import, Mitarbeiter) gibt es nur im Controlling: Reiter „Projekte“
   (`pages/controlling/ProjektListe.tsx`, `Projekt.tsx` mit `ProjektNachweise`, `Leistungen`,
@@ -88,7 +90,11 @@ ignoriert.
   „Als Mitarbeiter anmelden“ ihn an. `domain/nachweis.ts`
   Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss (Nachweise eines Projekts überschneiden sich
   nie; welche Leistungen ein Nachweis zeigt, ergibt sich allein aus dem Datum; Vorgabe ist die
-  Zeitraumregel `fortlaufend` – ein Nachweis läuft, bis er abgeschlossen wird), `domain/import.ts`
+  Zeitraumregel `fortlaufend` – ein Nachweis läuft, bis er abgeschlossen wird, und erst der
+  Abschluss legt seinen Zeitraum fest, `laeuftBisAbschluss`/`abschlussZeitraum`; „Neuer
+  Leistungsnachweis“ fragt keinen Zeitraum ab, sondern fasst alle nicht abgerechneten Leistungen
+  und offenen Nachweise zusammen, `nichtAbgerechnet`/`nachweisFuerNichtAbgerechneteAnwenden`),
+  `domain/import.ts`
   Excel-Import, `domain/druck.ts`/`domain/export.ts` PDF und Excel, `lib/router.ts` baut auch die
   Adressen des Controllings (`CONTROLLING_PREFIX`); frühere Adressen
   `#/leistungsnachweise/controlling/…` lenkt `App.tsx` um. Kennungen, die erst in einer Änderung

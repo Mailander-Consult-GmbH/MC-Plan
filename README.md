@@ -997,12 +997,24 @@ PIN-geschützte Controlling-Bereich.
 
 ### Übersicht und Projekte
 Die **Übersicht** zeigt die eigenen Stunden und Leistungen des Monats, die eigenen Stunden im Jahr,
-die zuletzt erfassten eigenen Leistungen und je Projekt die eigenen Stunden des Monats. Die
+den Kalender **Mein Kalender** über alle Projekte (siehe [Kalender](#kalender)), die zuletzt
+erfassten eigenen Leistungen und je Projekt die eigenen Stunden des Monats. Die
 **Projektliste** legt nichts an: Projekte kommen aus dem Projektregister (*Übernehmen* aus anderen
 Bereichen), aus dem Excel-Import oder aus dem Controlling. Ein Projekt öffnet direkt die eigenen
-Leistungen – ohne weitere Reiter. Frühere Adressen der Reiter (`…/projekt/<id>/nachweise` usw.)
+Leistungen – zuerst im Kalender, mit dem Umschalter **Liste** als Tabelle mit Filtern und Auswahl –,
+ohne weitere Reiter. Frühere Adressen der Reiter (`…/projekt/<id>/nachweise` usw.)
 zeigen ebenfalls die Leistungen, die eines Nachweises (`…/projekt/<id>/nachweis/<id>`) führt in die
 Abrechnung im Controlling.
+
+### Kalender
+Ein großer Monatskalender (Montag bis Sonntag) zeigt je Tag die eigenen Leistungen mit Stunden und
+Text sowie die Tagessumme, rechts je Woche die Kalenderwoche und ihre Summe; Wochenenden und Tage
+außerhalb des Monats sind zurückgenommen, heute ist hervorgehoben. **Ein Klick auf einen Tag
+erfasst dort eine Leistung**, ein Klick auf eine Leistung öffnet sie zum Bearbeiten. Mit den Pfeilen
+geht es einen Monat vor oder zurück, **Heute** springt in den laufenden Monat. In der Übersicht
+umfasst der Kalender alle Projekte – jede Leistung nennt ihre Projektnummer, und der Dialog fragt
+das Projekt ab (vorgewählt ist das der zuletzt erfassten Leistung). Auf schmalen Bildschirmen zeigt
+jeder Tag nur seine Stunden; erfasst wird ebenfalls per Klick, bearbeitet über die Liste.
 
 ### Leistungen
 Eigene Leistungen von Hand erfassen (Datum, Text, Stunden, Abschnitt) oder per **Excel-Import** aus
@@ -1016,9 +1028,10 @@ Ein Nachweis ist ein Zeitraum eines Projekts; welche Leistungen er zeigt, ergibt
 ihrem Datum. Fehlt für eine Leistung ein Nachweis, entsteht er beim Erfassen oder Importieren von
 selbst. Ein Leistungsnachweis ist **nicht an einen Monat gebunden**: Er läuft weiter – auch über
 mehrere Monate –, bis das Controlling ihn abschließt; danach beginnt mit der nächsten Leistung ein
-neuer (Regel *Fortlaufend bis zum Abschluss*, Vorgabe für alle Projekte). Beim Abschluss endet der
-Zeitraum am letzten Tag mit Leistungen. Wer es so will, stellt ein Projekt im Controlling auf *Je
-Kalendermonat*. Je Tag, Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern,
+neuer (Regel *Fortlaufend bis zum Abschluss*, Vorgabe für alle Projekte). **Der Zeitraum wird erst
+beim Abschluss festgelegt:** Bis dahin zeigen Listen und Abrechnung „ab … · läuft bis zum
+Abschluss“; beim Abschluss endet er am letzten Tag mit Leistungen (spätestens heute). Wer es so
+will, stellt ein Projekt im Controlling auf *Je Kalendermonat*. Je Tag, Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern,
 Leistungstext und Stunden.
 
 ### Controlling der Leistungsnachweise
@@ -1028,6 +1041,12 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   Aufschlag, abgerechnet, ohne Nachweis) für Monat, Quartal, Jahr oder einen freien Zeitraum, mit
   Excel.
 * **Leistungsnachweise** – alle Nachweise aller Projekte mit Filter und **Neuer Leistungsnachweis**.
+  Der fragt **keinen Zeitraum** ab, nur Projekt, Raster und optional die Überschrift: Er umfasst
+  automatisch alle nicht abgerechneten Leistungen des Projekts (nach dem letzten abgeschlossenen
+  Nachweis); offene Nachweise gehen darin auf, ihre Leistungstexte, Aufschläge und Bemerkungen
+  bleiben erhalten. Später erfasste Leistungen kommen hinzu, den Zeitraum legt der Abschluss fest.
+  Liegt schon alles in einem offenen Nachweis, bietet der Dialog **Öffnen** an. Für Korrekturen
+  gibt es in der Abrechnung weiter **Zeitraum ändern**.
   Ein Klick öffnet die **Abrechnung**: Aufschlag in ± Stunden je Zeile bzw. die abgerechneten
   Stunden, die Ansicht **Leistungstexte** (Text je Zeile bearbeiten, solange der Nachweis offen ist –
   ein bearbeiteter Text wird nie still überschrieben, neue Leistungen bietet die Zeile zum
@@ -1293,7 +1312,8 @@ src/
       domain/
         types.ts     Datenmodell (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis)
         rechte.ts    Rechte je Zugang – an einer Stelle
-        nachweis.ts  Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss
+        nachweis.ts  Zeilen, Zeiträume, Ergänzen, Aufschläge, neuer Nachweis für alle nicht
+                     abgerechneten Leistungen, Abschluss
         zeitraum.ts  Tage, Kalenderwochen, Monate und Stundenformat
         import.ts    Excel-Import der Zeiterfassung (Lesen, Planen, Anwenden)
         auswertung.ts  Stunden je Mitarbeiter, Monat und Projekt
@@ -1306,8 +1326,8 @@ src/
       pages/         Übersicht, Projekte, Projekt (eigene Leistungen) und controlling/ (Auswertung,
                      Nachweisliste, Abrechnung mit Leistungstexten, Projektliste, Projekt mit
                      Leistungsnachweisen, Leistungen und Einstellungen, Mitarbeiter)
-      components/    Dialoge (Anmeldung, Leistung, Nachweis, Projekt, Mitarbeiter), Excel-Import, Logos,
-                     Sicherung, Druckblatt
+      components/    Dialoge (Anmeldung, Leistung, Nachweis, Projekt, Mitarbeiter), Kalender zum Erfassen,
+                     Excel-Import, Logos, Sicherung, Druckblatt
     controlling/ Bereich „Controlling“ (mit PIN, ohne eigenen Bestand)
       index.tsx  Einstiegspunkt: PIN-Abfrage, danach der Bereich
       PinEingabe.tsx  PIN-Abfrage
