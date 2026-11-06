@@ -1,6 +1,8 @@
 /**
- * Eine eigene Leistung erfassen oder bearbeiten – aus dem Reiter „Leistungen“
- * und aus dem Nachweis heraus. Erfasst wird immer für die angemeldete Person
+ * Eine eigene Leistung erfassen oder bearbeiten – aus der Liste der Leistungen
+ * und aus dem Kalender (components/LeistungsKalender.tsx). Aus dem
+ * projektübergreifenden Kalender der Übersicht wählt der Dialog auch das
+ * Projekt (`projektAuswahl`). Erfasst wird immer für die angemeldete Person
  * (der Store setzt sie); Leistungen anderer lassen sich nicht ändern, auch
  * nicht im Controlling – der Dialog zeigt sie dann nur an.
  *
@@ -77,20 +79,26 @@ export function LeistungDialog({
   projektId,
   leistung,
   vorgabeDatum,
+  projektAuswahl,
   onClose,
 }: {
+  /** Projekt der Leistung; mit `projektAuswahl` die Vorgabe. */
   projektId: ID;
   /** Ohne Leistung wird eine neue erfasst. */
   leistung?: Leistung;
   /** Datum einer neuen Leistung; ohne Angabe heute. */
   vorgabeDatum?: ISODate;
+  /** Neue Leistung: Projekte zur Wahl im Dialog (projektübergreifender Kalender). */
+  projektAuswahl?: Projekt[];
   onClose: () => void;
 }) {
   const { data, addLeistung, updateLeistung, deleteLeistung } = useStore();
   const toast = useToast();
   const anmeldung = useAnmeldung();
   const stundenFeld = useRef<HTMLInputElement>(null);
-  const projekt = data.projekte.find((p) => p.id === projektId);
+  const waehlbar = !leistung && !!projektAuswahl && projektAuswahl.length > 0;
+  const [gewaehltesProjekt, setGewaehltesProjekt] = useState(projektId);
+  const projekt = data.projekte.find((p) => p.id === (waehlbar ? gewaehltesProjekt : projektId));
   const abschnitte = projekt?.abschnitte ?? [];
 
   const [form, setForm] = useState(() => ({
@@ -108,6 +116,13 @@ export function LeistungDialog({
   const [loeschen, setLoeschen] = useState(false);
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Ein anderes Projekt bringt seine Abschnitte mit – bei genau einem ist er vorausgewählt
+  const projektWechseln = (id: string) => {
+    const p = data.projekte.find((x) => x.id === id);
+    setGewaehltesProjekt(id);
+    setForm((f) => ({ ...f, abschnittId: p && p.abschnitte.length === 1 ? p.abschnitte[0].id : '' }));
+  };
 
   if (!projekt) return null;
 
@@ -253,6 +268,15 @@ export function LeistungDialog({
           ) : null}
           <fieldset className="ln-fieldset" disabled={nurLesen}>
             <div className="form-grid ln-zweispaltig">
+              {waehlbar ? (
+                <Field label="Projekt" full>
+                  <Select
+                    value={projekt.id}
+                    onChange={projektWechseln}
+                    options={projektAuswahl.map((p) => ({ value: p.id, label: [p.nummer, p.name].filter(Boolean).join(' ') }))}
+                  />
+                </Field>
+              ) : null}
               <Field
                 label="Datum"
                 hint={nurLesen ? undefined : datumHinweis(data, projekt, form.datum, !!leistung && leistung.datum === form.datum)}

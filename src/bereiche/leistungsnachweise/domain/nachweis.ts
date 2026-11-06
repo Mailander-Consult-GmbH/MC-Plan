@@ -8,10 +8,13 @@
  *
  * Nachweise eines Projekts überschneiden sich nie (`ueberschneidung`). Fehlt
  * für Leistungen ein Nachweis, legt `nachweiseErgaenzen` ihn nach der
- * Zeitraumregel des Projekts an oder verlängert den offenen. Beim Abschluss
- * eines fortlaufenden Nachweises endet sein Zeitraum am letzten Tag mit
- * Leistungen (`nachweisAbschliessenAnwenden`); abgeschlossene Nachweise
- * wachsen nie.
+ * Zeitraumregel des Projekts an oder verlängert den offenen. „Neuer
+ * Leistungsnachweis“ im Controlling fragt keinen Zeitraum ab: Er umfasst alle
+ * nicht abgerechneten Leistungen (`nichtAbgerechnet`,
+ * `nachweisFuerNichtAbgerechnete`). Der Zeitraum steht erst beim Abschluss
+ * fest – ein laufender Nachweis endet dann am letzten Tag mit Leistungen
+ * (`abschlussZeitraum`, `nachweisAbschliessenAnwenden`); abgeschlossene
+ * Nachweise wachsen nie.
  *
  * Aufschläge des Controllings (`aufschlaege`, ± Stunden je Zeile und
  * Abschnitt) ändern die erfassten Stunden nicht; jede Zeile weist erfasst,
@@ -684,6 +687,107 @@ export function nachweiseSichern(
 }
 
 /* ------------------------------------------------------------------ */
+/* Neuer Leistungsnachweis für alle nicht abgerechneten Leistungen     */
+/* ------------------------------------------------------------------ */
+
+/** Was „Neuer Leistungsnachweis“ (Controlling) für ein Projekt umfasst – `nichtAbgerechnet`. */
+export interface NichtAbgerechnet {
+  /** Leistungen nach dem letzten abgeschlossenen Nachweis, die in keinem abgeschlossenen liegen – sie kommen hinein. */
+  leistungen: Leistung[];
+  /** Offene Nachweise nach dem letzten abgeschlossenen – sie gehen im neuen auf. */
+  offene: Leistungsnachweis[];
+  /** Nicht abgerechnete Leistungen vor dem letzten abgeschlossenen Nachweis – sie bleiben, wo sie sind. */
+  davor: Leistung[];
+  /** Zeitraum bis zum Abschluss: ab dem Tag nach dem letzten abgeschlossenen Nachweis (sonst ab der ersten Leistung). */
+  von: ISODate;
+  bis: ISODate;
+  /** Liegen schon alle in genau einem offenen Nachweis, gibt es nichts anzulegen – das ist er. */
+  vorhanden: Leistungsnachweis | null;
+}
+
+/**
+ * Alle nicht abgerechneten Leistungen eines Projekts für einen neuen
+ * Leistungsnachweis – ohne Zeitraum aus der Oberfläche: Er beginnt am Tag nach
+ * dem letzten abgeschlossenen Nachweis (ohne einen mit der ersten Leistung bzw.
+ * dem ersten offenen Nachweis, spätestens am Monatsanfang) und reicht bis zum
+ * Ende des laufenden Monats, mindestens bis zur letzten Leistung; sein Ende
+ * legt erst der Abschluss fest (`abschlussZeitraum`). Offene Nachweise in
+ * diesem Bereich gehen darin auf. Rein.
+ */
+export function nichtAbgerechnet(daten: LeistungsnachweisDaten, projektId: ID, heute: ISODate): NichtAbgerechnet {
+  const alle = nachweiseVon(daten, projektId);
+  const abgeschlossen = alle.filter((n) => n.status === 'abgeschlossen');
+  const letztesEnde = abgeschlossen.reduce<ISODate | null>((m, n) => (!m || n.bis > m ? n.bis : m), null);
+  const grenze = letztesEnde ? addDays(letztesEnde, 1) : null;
+  const nichtAbgerechnete = daten.leistungen
+    .filter((l) => l.projektId === projektId && !abgeschlossen.some((n) => imZeitraum(l.datum, n.von, n.bis)))
+    .sort(nachDatum);
+  const leistungen = grenze ? nichtAbgerechnete.filter((l) => l.datum >= grenze) : nichtAbgerechnete;
+  const davor = grenze ? nichtAbgerechnete.filter((l) => l.datum < grenze) : [];
+  const offene = alle.filter((n) => n.status === 'entwurf' && (!grenze || n.von >= grenze));
+  const von = grenze ?? [...leistungen.map((l) => l.datum), ...offene.map((n) => n.von), monatsanfang(heute)].sort()[0];
+  const bis = [monatsende(heute), von, ...leistungen.map((l) => l.datum), ...offene.map((n) => n.bis)].sort().at(-1) ?? von;
+  const einziger = offene.length === 1 ? offene[0] : null;
+  const vorhanden = einziger && leistungen.every((l) => imZeitraum(l.datum, einziger.von, einziger.bis)) ? einziger : null;
+  return { leistungen, offene, davor, von, bis, vorhanden };
+}
+
+/**
+ * Legt für alle nicht abgerechneten Leistungen des Projekts einen
+ * Leistungsnachweis an (`nichtAbgerechnet`) – rein; so arbeitet
+ * `nachweisFuerNichtAbgerechnete` im Store. Gibt es offene Nachweise, wird der
+ * erste erweitert und nimmt Leistungstexte, Aufschläge (summiert) und
+ * Bemerkungen der übrigen auf, die entfallen; sonst entsteht ein neuer mit der
+ * Kennung `id`. Raster und – wenn angegeben – Überschrift kommen aus dem
+ * Dialog. Liegt schon alles in genau einem offenen Nachweis, bleibt der Bestand.
+ */
+export function nachweisFuerNichtAbgerechneteAnwenden(
+  daten: LeistungsnachweisDaten,
+  projektId: ID,
+  vorgaben: { raster: Raster; titel: string },
+  id: ID,
+  jetzt: string,
+): LeistungsnachweisDaten {
+  const projekt = daten.projekte.find((p) => p.id === projektId);
+  if (!projekt) return daten;
+  const plan = nichtAbgerechnet(daten, projektId, tagVon(jetzt));
+  if (plan.vorhanden) return daten;
+  const [erster, ...weitere] = plan.offene;
+  const basis = erster ?? neuerNachweis(id, projekt, plan.von, plan.bis, jetzt);
+  const texte = { ...basis.texte };
+  const aufschlaege = { ...basis.aufschlaege };
+  for (const w of weitere) {
+    for (const [k, v] of Object.entries(w.texte)) if (!(k in texte)) texte[k] = v;
+    for (const [k, v] of Object.entries(w.aufschlaege)) aufschlaege[k] = runden((aufschlaege[k] ?? 0) + v);
+  }
+  const bemerkung = [...new Set([basis, ...weitere].map((n) => n.bemerkung.trim()).filter(Boolean))].join('\n');
+  const neu: Leistungsnachweis = {
+    ...basis,
+    von: plan.von,
+    bis: plan.bis,
+    raster: vorgaben.raster,
+    titel: vorgaben.titel.trim() || basis.titel,
+    texte,
+    aufschlaege,
+    bemerkung,
+    geaendert: jetzt,
+  };
+  const weg = new Set(weitere.map((w) => w.id));
+  const nachweise = daten.nachweise.filter((n) => !weg.has(n.id)).map((n) => (n.id === neu.id ? neu : n));
+  return { ...daten, nachweise: erster ? nachweise : [...nachweise, neu] };
+}
+
+/**
+ * Läuft der Nachweis bis zum Abschluss? Offen und nach der Regel
+ * „Fortlaufend bis zum Abschluss“ oder mit einem Ende nach heute – sein
+ * Zeitraum steht dann erst beim Abschluss fest (`abschlussZeitraum`).
+ */
+export function laeuftBisAbschluss(daten: Pick<LeistungsnachweisDaten, 'projekte'>, n: Leistungsnachweis, heute: ISODate): boolean {
+  if (n.status !== 'entwurf') return false;
+  return daten.projekte.find((p) => p.id === n.projektId)?.zeitraumregel === 'fortlaufend' || n.bis > heute;
+}
+
+/* ------------------------------------------------------------------ */
 /* Abschließen                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -694,19 +798,19 @@ export function tagVon(zeitpunkt: string): ISODate {
 }
 
 /**
- * Ende eines Nachweises beim Abschluss: Bei der Regel „Fortlaufend bis zum
- * Abschluss“ endet er am letzten Tag mit Leistungen in ihm, spätestens heute
- * (ohne Leistungen heute) – nie später als bisher und nie vor seinem Beginn.
- * Sonst bleibt `bis`. Dazu die Leistungen, die danach liegen und deshalb in
- * einen neuen Nachweis kommen.
+ * Ende eines Nachweises beim Abschluss – erst hier steht sein Zeitraum fest:
+ * Läuft er bis zum Abschluss (`laeuftBisAbschluss` – Regel „Fortlaufend bis
+ * zum Abschluss“ oder ein Ende nach heute), endet er am letzten Tag mit
+ * Leistungen in ihm, spätestens heute (ohne Leistungen heute) – nie später als
+ * bisher und nie vor seinem Beginn. Sonst bleibt `bis`. Dazu die Leistungen,
+ * die danach liegen und deshalb in einen neuen Nachweis kommen.
  */
 export function abschlussZeitraum(
   daten: LeistungsnachweisDaten,
   n: Leistungsnachweis,
   heute: ISODate,
 ): { bis: ISODate; gekuerzt: boolean; spaetere: Leistung[] } {
-  const projekt = daten.projekte.find((p) => p.id === n.projektId);
-  if (projekt?.zeitraumregel !== 'fortlaufend' || n.status !== 'entwurf') return { bis: n.bis, gekuerzt: false, spaetere: [] };
+  if (!laeuftBisAbschluss(daten, n, heute)) return { bis: n.bis, gekuerzt: false, spaetere: [] };
   const leistungen = leistungenIm(daten, n.projektId, n.von, n.bis);
   const letzte = leistungen.length ? leistungen[leistungen.length - 1].datum : null;
   const ende = letzte && letzte < heute ? letzte : heute;

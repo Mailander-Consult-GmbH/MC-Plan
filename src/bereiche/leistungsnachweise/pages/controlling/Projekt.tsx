@@ -83,18 +83,20 @@ export function ControllingProjekt({
         </div>
       </div>
 
-      <div className="ln-projektinfo">
-        <Badge ton={STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
-        <span title={`Neue Nachweise: ${ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}`}>
-          <RasterBadge raster={projekt.raster} />
-        </span>
-        <span className="small muted">{ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}</span>
-        {projekt.leistungsbereich ? <span className="small muted">{projekt.leistungsbereich}</span> : null}
-        {kurzname !== projekt.name ? (
-          <span className="small tertiary truncate" title="Bezeichnung im Nachweis">
-            im Nachweis: {kurzname}
+      <div className="ln-projektkopf">
+        <div className="ln-projektinfo">
+          <Badge ton={STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
+          <span title={`Neue Nachweise: ${ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}`}>
+            <RasterBadge raster={projekt.raster} />
           </span>
-        ) : null}
+          <span className="small muted">{ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}</span>
+          {projekt.leistungsbereich ? <span className="small muted">{projekt.leistungsbereich}</span> : null}
+          {kurzname !== projekt.name ? (
+            <span className="small tertiary truncate" title="Bezeichnung im Nachweis">
+              im Nachweis: {kurzname}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="tabs">

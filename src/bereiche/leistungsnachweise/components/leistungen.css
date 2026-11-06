@@ -222,3 +222,106 @@
   .table-stack.ln-imp-tabelle td.ln-imp-menge div { display: inline; margin-left: 6px; }
   .table-stack.ln-imp-tabelle .ln-imp-anlegen { margin-top: 4px; }
 }
+
+/* ------------------------------------------------------------------ */
+/* Kalender zum Erfassen (LeistungsKalender.tsx, Präfix ln-kal-)       */
+/* ------------------------------------------------------------------ */
+
+.ln-kal { overflow: hidden; }
+.ln-kal-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 20px 4px; }
+.ln-kal-titel { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ln-kal-titel h2 { margin: 0; font-size: 16px; }
+.ln-kal-nav { display: flex; align-items: center; gap: 6px; }
+.ln-kal-monat { min-width: 128px; text-align: center; font-size: 14px; }
+.ln-kal-hinweis { margin: 0; padding: 0 20px 10px; }
+
+.ln-kal-raster { display: flex; flex-direction: column; gap: 4px; padding: 0 12px 12px; }
+.ln-kal-zeile { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) 64px; gap: 4px; }
+.ln-kal-wt { padding: 4px 6px; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.02em; }
+.ln-kal-wt.ln-kal-we { color: var(--text-tertiary); }
+.ln-kal-summe-kopf { text-align: right; }
+
+.ln-kal-tag {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 96px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.ln-kal-tag:hover { border-color: var(--accent); background: var(--bg-subtle); }
+.ln-kal-tag:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ln-kal-tag.ln-kal-we { background: var(--fill-gruppe); }
+.ln-kal-tag.ln-kal-fremd { opacity: 0.55; }
+.ln-kal-tag.ln-kal-heute { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+.ln-kal-tagkopf { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+.ln-kal-nr { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.ln-kal-heute .ln-kal-nr {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 4px;
+  border-radius: 999px; background: var(--accent); color: #fff;
+}
+.ln-kal-tagsumme { font-size: 12.5px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.ln-kal-eintraege { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ln-kal-eintrag {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 3px 6px;
+  border: none;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.ln-kal-eintrag:hover { background: var(--bg-active); box-shadow: inset 0 0 0 1px var(--accent); }
+.ln-kal-eintrag b { font-variant-numeric: tabular-nums; }
+.ln-kal-projekt { color: var(--accent); font-weight: 600; }
+.ln-kal-text { color: var(--text-secondary); }
+
+.ln-kal-plus {
+  position: absolute; right: 5px; bottom: 5px;
+  display: inline-flex; color: var(--accent);
+  opacity: 0; transition: opacity 0.12s;
+}
+.ln-kal-tag:hover .ln-kal-plus, .ln-kal-tag:focus-visible .ln-kal-plus { opacity: 1; }
+
+.ln-kal-woche {
+  display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px;
+  padding: 6px 4px; border-radius: var(--radius-sm); background: var(--fill-gruppe);
+}
+.ln-kal-kw { font-size: 11px; color: var(--text-tertiary); }
+.ln-kal-wochensumme { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ln-kal-wochensumme.leer { color: var(--text-tertiary); font-weight: 400; }
+
+/* Schmal: je Tag nur Nummer und Stunden – die Einträge öffnet die Liste */
+@media (max-width: 760px) {
+  .ln-kal-kopf { padding: 14px 14px 4px; }
+  .ln-kal-hinweis { padding: 0 14px 8px; }
+  .ln-kal-raster { padding: 0 6px 8px; gap: 3px; }
+  .ln-kal-zeile { grid-template-columns: repeat(7, minmax(0, 1fr)) 40px; gap: 3px; }
+  .ln-kal-wt { padding: 2px; text-align: center; font-size: 10.5px; }
+  .ln-kal-tag { min-height: 54px; padding: 4px 3px; align-items: center; }
+  .ln-kal-tagkopf { flex-direction: column; align-items: center; gap: 2px; }
+  .ln-kal-tagsumme { font-size: 11px; }
+  .ln-kal-eintraege, .ln-kal-plus { display: none; }
+  .ln-kal-tag.ln-kal-belegt { background: var(--accent-soft); }
+  .ln-kal-woche { padding: 4px 2px; }
+  .ln-kal-kw { font-size: 9.5px; }
+  .ln-kal-wochensumme { font-size: 11px; }
+}

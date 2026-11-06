@@ -1,6 +1,8 @@
 /** Fachliche Anzeige-Bausteine und Texte, die in mehreren Ansichten gebraucht werden. */
-import { formatDate, toISO } from '../../../shared/dates';
+import { formatDate, toISO, today } from '../../../shared/dates';
 import { Badge } from '../../../shared/ui';
+import { laeuftBisAbschluss } from '../domain/nachweis';
+import { langDatum } from '../domain/zeitraum';
 import {
   NACHWEIS_STATUS_LABEL,
   QUELLE_LABEL,
@@ -8,6 +10,8 @@ import {
   RASTER_LABEL,
   ZEITRAUMREGEL_LABEL,
   mitarbeiterName,
+  type Leistungsnachweis,
+  type LeistungsnachweisDaten,
   type Mitarbeiter,
   type NachweisStatus,
   type ProjektStatus,
@@ -74,4 +78,15 @@ export function zeitpunkt(iso: string | null): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return `am ${formatDate(toISO(d))} um ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
+}
+
+/**
+ * Zeitraum eines Nachweises in Listen und Köpfen: „01.09.2026 – 30.11.2026“ –
+ * läuft er bis zum Abschluss (`laeuftBisAbschluss`), „ab 01.09.2026 · läuft
+ * bis zum Abschluss“, denn sein Ende legt erst der Abschluss fest.
+ */
+export function nachweisZeitraumText(daten: Pick<LeistungsnachweisDaten, 'projekte'>, n: Leistungsnachweis): string {
+  return laeuftBisAbschluss(daten, n, today())
+    ? `ab ${langDatum(n.von)} · läuft bis zum Abschluss`
+    : `${langDatum(n.von)} – ${langDatum(n.bis)}`;
 }

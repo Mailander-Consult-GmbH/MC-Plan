@@ -34,7 +34,10 @@ import {
   mitAufschlag,
   mitZeilenText,
   nachweisAbschliessenAnwenden,
+  nachweisFuerNichtAbgerechneteAnwenden,
   nachweiseBereinigen,
+  nichtAbgerechnet,
+  tagVon,
   nachweiseSichern,
   ueberschneidung,
 } from '../domain/nachweis';
@@ -61,6 +64,7 @@ import {
   type NachweisZeile,
   type Projekt,
   type Quelle,
+  type Raster,
 } from '../domain/types';
 import { istDatum, runden } from '../domain/zeitraum';
 import { ladeDaten, speichereDaten, type LadeZustand } from './storage';
@@ -121,8 +125,12 @@ interface StoreValue {
   /** Fehlende Nachweise für alle Leistungen ohne Nachweis des Projekts anlegen (nur Controlling); liefert { neu, erweitert } (Anzahl). */
   nachweiseFuerOffeneLeistungen: (projektId: ID) => { neu: number; erweitert: number };
   /* Nachweise */
-  /** Fügt den Nachweis an (nur Controlling, ohne Überschneidung); die ID vorab mit newId('ln') erzeugen. */
-  addNachweis: (n: Leistungsnachweis) => void;
+  /**
+   * „Neuer Leistungsnachweis“ (nur Controlling): ohne Zeitraum, für alle nicht abgerechneten
+   * Leistungen des Projekts (`nichtAbgerechnet`); offene Nachweise gehen darin auf. Liefert die
+   * Kennung des Nachweises – bzw. des vorhandenen, der schon alles enthält – oder null ohne Recht.
+   */
+  nachweisFuerNichtAbgerechnete: (projektId: ID, vorgaben: { raster: Raster; titel: string }) => ID | null;
   /** Zeitraum, Raster, Titel und Bemerkung – nur Controlling (Zeitraum ohne Überschneidung). */
   updateNachweis: (id: ID, patch: Partial<Pick<Leistungsnachweis, 'titel' | 'von' | 'bis' | 'raster' | 'bemerkung'>>) => void;
   /**
@@ -410,19 +418,14 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       return { neu: ergaenzung.neu.length, erweitert: ergaenzung.erweitert.length };
     },
 
-    addNachweis: (n) =>
-      mutate(
-        controllingNur((d) =>
-          d.nachweise.some((x) => x.id === n.id) ||
-          !d.projekte.some((p) => p.id === n.projektId) ||
-          !istDatum(n.von) ||
-          !istDatum(n.bis) ||
-          n.von > n.bis ||
-          ueberschneidung(d, n.projektId, n.von, n.bis)
-            ? d
-            : { ...d, nachweise: [...d.nachweise, { ...n, aufschlaege: n.aufschlaege ?? {} }] },
-        ),
-      ),
+    nachweisFuerNichtAbgerechnete: (projektId, vorgaben) => {
+      if (!darf(zugang, 'nachweisVerwalten') || !data.projekte.some((p) => p.id === projektId)) return null;
+      const id = newId('ln');
+      // Die Kennung auf dem angezeigten Stand – die Änderung rechnet denselben Plan
+      const plan = nichtAbgerechnet(data, projektId, tagVon(new Date().toISOString()));
+      mutate(controllingNur((d, jetzt) => nachweisFuerNichtAbgerechneteAnwenden(d, projektId, vorgaben, id, jetzt)));
+      return plan.vorhanden?.id ?? plan.offene[0]?.id ?? id;
+    },
     updateNachweis: (id, patch) => {
       const sauber = ohneLeere(patch);
       if (Object.keys(sauber).length === 0) return;

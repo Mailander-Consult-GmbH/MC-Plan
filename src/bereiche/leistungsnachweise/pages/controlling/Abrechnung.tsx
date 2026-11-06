@@ -24,7 +24,7 @@ import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Modal, Seg
 import { Druckblatt } from '../../components/Druckblatt';
 import { NachweisDialog } from '../../components/NachweisDialog';
 import { Textfeld } from '../../components/Textfeld';
-import { NachweisStatusBadge, anzahl, zeitpunkt } from '../../components/common';
+import { NachweisStatusBadge, anzahl, nachweisZeitraumText, zeitpunkt } from '../../components/common';
 import { GESAMT, nachweisDrucken, nachweisFassung, nachweisHtml, type NachweisFassung } from '../../domain/druck';
 import { nachweisExportieren } from '../../domain/export';
 import {
@@ -217,7 +217,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
       summen.aufschlag ? ` (erfasst ${stundenText(summen.erfasst)}, Aufschlag ${aufschlagText(summen.aufschlag)})` : ''
     }. Spätere Leistungen im Zeitraum ändern ihn nicht mehr; „Wieder öffnen“ hebt den Abschluss auf.`,
     abschluss.gekuerzt
-      ? `Nach der Regel „Fortlaufend bis zum Abschluss“ endet der Zeitraum am ${langDatum(abschluss.bis)}, dem letzten Tag mit Leistungen.`
+      ? `Der Zeitraum wird jetzt festgelegt: Er endet am ${langDatum(abschluss.bis)}, dem letzten Tag mit Leistungen.`
       : '',
     abschluss.spaetere.length
       ? `${anzahl(abschluss.spaetere.length, 'spätere Leistung kommt', 'spätere Leistungen kommen')} in einen neuen Leistungsnachweis.`
@@ -250,7 +250,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
     </Card>
   );
 
-  const kopfSub = `${langDatum(n.von)} – ${langDatum(n.bis)} · ${projektTitel(projekt)} · ${RASTER_LABEL[n.raster]}`;
+  const kopfSub = `${nachweisZeitraumText(data, n)} · ${projektTitel(projekt)} · ${RASTER_LABEL[n.raster]}`;
   const spaltenzahl = spalten ? 7 : 6;
 
   return (
