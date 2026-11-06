@@ -675,12 +675,16 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
   dem Ursprung mit), `entfaellt` und `vor` (`ZeileVorstand`) –; `vor`
   (`EintragVorstand`) hält den Stand im Vorprotokoll, `uebernommenIn` das
   Folgeprotokoll eines weitergeführten Eintrags mit Aufgaben, `entfaellt`
-  einen gestrichenen Eintrag). Teilnahmestatus in `TEILNAHME` (anwesend, entschuldigt, abwesend, nur
-  Verteiler).
+  einen gestrichenen Eintrag) sowie `reihenLogos` – Logos je Protokollreihe
+  (Schlüssel `reiheId`; fehlt eine Reihe, gelten die des Projekts, `logosFuer`
+  in `src/bereiche/projektsteuerung/domain/seed.ts`). Teilnahmestatus in `TEILNAHME` (anwesend,
+  entschuldigt, abwesend, nur Verteiler). `EIGENE_FUNKTION = 'Projektsteuerung'`
+  ist die eigene Funktion für die To-Dos der Übersicht.
 * Schlüssel `projektsteuerung.data.v1` im `localStorage`
-  (`src/bereiche/projektsteuerung/store/storage.ts`), `DATEN_VERSION = 5`. `aufbereiten()` ergänzt
-  fehlende Felder (`entfaellt` als false, `typ` einer Zeile als `null`) und
-  die Gewerke der Funktionen in `gewerke`. `migriere()` hebt Fassung 1 (ohne
+  (`src/bereiche/projektsteuerung/store/storage.ts`), `DATEN_VERSION = 6`. `aufbereiten()` ergänzt
+  fehlende Felder (`entfaellt` als false, `typ` einer Zeile als `null`,
+  `reihenLogos` leer und nur für vorhandene Reihen) und die Gewerke der
+  Funktionen in `gewerke`. `migriere()` hebt Fassung 1 (ohne
   Gewerke) an: Sie erhält `STANDARD_GEWERKE`, ihre Funktionen gelten als
   übergreifend; Fassung 2 kannte keine gestrichenen Einträge. Bis Fassung 3
   bestand ein Eintrag aus Text, Ergänzung und Fundstelle: `zeilenAusAltform`
@@ -691,8 +695,8 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
   (`src/bereiche/projektsteuerung/domain/seed.ts`) die Gewerke (`STANDARD_GEWERKE`: 50 Hz, KIB, LST, OLA,
   TK), die Standard-Funktionen (`STANDARD_FUNKTIONEN`, je Gewerk die
   Fachplanung, für LST und OLA zusätzlich die Bauüberwachung) und zwei
-  Projekte mit Projektbeteiligten und zwei Protokollen einer Reihe; Termine
-  relativ zum heutigen Tag.
+  Projekte mit Projektbeteiligten und zwei Protokollen einer Reihe, darunter
+  Aufgaben der Projektsteuerung; Termine relativ zum heutigen Tag.
 * Alle Schreibzugriffe über `mutate()` in `src/bereiche/projektsteuerung/store/store.tsx`. Danach
   gleicht `teilnehmerNachziehen` (`src/bereiche/projektsteuerung/domain/protokoll.ts`) Name, Funktion,
   Firma und Kürzel verknüpfter Teilnehmender mit der Projektbeteiligtenliste
@@ -703,7 +707,7 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/projektsteuerung` bzw. `#/projektsteuerung/uebersicht` | Übersicht (`src/bereiche/projektsteuerung/pages/Uebersicht.tsx`) | Kacheln „Aktive Projekte“, „Offene Punkte“, „Überfällig“, „Demnächst fällig“. Karte „Offene Punkte“ mit den Aufgaben der Protokolle – Einträge vom Typ A und Ergänzungen mit eigener Art „Aufgabe“ (`offenePunkte` in `src/bereiche/projektsteuerung/domain/punkte.ts`, `protokollAufgaben`) –, Filter Alle / Überfällig / Fällig, zunächst zehn Zeilen (`ANZAHL_PUNKTE`), je Zeile „Erledigt“ (Store `punktErledigen`, auch für Ergänzungen); ein Klick führt zum Protokoll (`punktZiel`). Karte „Projekte“ mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin, offenen und überfälligen Punkten und „Protokolle“. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
+| `#/projektsteuerung` bzw. `#/projektsteuerung/uebersicht` | Übersicht (`src/bereiche/projektsteuerung/pages/Uebersicht.tsx`) | Nur eigene To-Dos (`eigeneTodos` in `src/bereiche/projektsteuerung/domain/punkte.ts`): offene Aufgaben der Protokolle – Einträge vom Typ A und Ergänzungen mit eigener Art „Aufgabe“ (`protokollAufgaben`) –, deren „Verantwortlich“ das Kürzel oder den Namen einer Person mit der Funktion `EIGENE_FUNKTION` im Projekt oder unter den Teilnehmenden nennt oder das Kürzel der Funktion selbst (`eigeneZuordnungen`). Kacheln „Aktive Projekte“, „To-Dos (…)“ mit dem Namen der eigenen Funktion, „Überfällig“, „Demnächst fällig“. Karte „Meine To-Dos als …“, Filter Alle / Überfällig / Fällig, zunächst zehn Zeilen (`ANZAHL_PUNKTE`), je Zeile „Erledigt“ (Store `punktErledigen`, auch für Ergänzungen); ein Klick führt zum Protokoll (`punktZiel`). Karte „Projekte“ mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin, eigenen To-Dos („To-Dos“, „Überfällig“) und „Protokolle“. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
 | `#/projektsteuerung/projekte` | Projekte (`src/bereiche/projektsteuerung/pages/Projekte.tsx`) | Projektkarten mit Nummer, Status, ★-Markierung, der Zahl der Beteiligten, Protokolle und offenen Punkte und „Auch in“; „Neues Projekt“ (`ProjektDialog`: Projektnummer, Status, Projektname, Beschreibung). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Projektsteuerung“ (siehe 9.3). |
 | `#/projektsteuerung/funktionen` | Funktionen (`src/bereiche/projektsteuerung/pages/Funktionen.tsx`) | Reiter „Übergreifend“ und je Gewerk, **+** legt ein Gewerk an (`GewerkDialog` in `src/bereiche/projektsteuerung/components/GewerkDialog.tsx`). Je Seite die Funktionen mit Suche und Spalten Kürzel, Gewerk, Beschreibung, „Verwendet“; „Neue Funktion“ und Bearbeiten per Klick (`FunktionDialog` in `src/bereiche/projektsteuerung/components/FunktionDialog.tsx`: Bezeichnung, Gewerk mit „Gewerk“ zum Anlegen, Kürzel – leer aus der Bezeichnung gebildet, `kuerzelAus` –, Farbe, Beschreibung); auf Gewerkseiten „Vorhandene Funktion“ (Funktion eines anderen Gewerks übernehmen, Kürzel nach `kuerzelFuer`) und „Gewerk „…“ löschen“ (`GewerkLoeschenDialog`, entfernt das Gewerk samt Funktionen). Funktionen und Gewerke, die Projektbeteiligte tragen, lassen sich nicht löschen. |
 | `#/projektsteuerung/projekt/<id>/<seite>` | Projekt (`src/bereiche/projektsteuerung/pages/ProjektDetail.tsx`) | Kopfzeile mit Nummer, Status, Beschreibung, „Bearbeiten“ und „Löschen“ (samt Beteiligten und Protokollen; nur in diesem Bereich), darunter ggf. der Archivhinweis (9.3). Seiten `beteiligte` („Projektbeteiligte“) und `protokolle` („Protokolle“); die frühere Seite `lop` führt zu `protokolle`, ohne gültige Angabe `beteiligte`. Siehe 8.3 und 8.4. |
@@ -746,18 +750,21 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
 ### 8.4 Protokolle
 
 * Liste (`src/bereiche/projektsteuerung/pages/projekt/Protokolle.tsx`): je Reihe (`reihenVon`) eine
-  Karte mit „Folgeprotokoll“ und den Protokollen (Datum, Bezeichnung,
-  Anwesende, übernommene Einträge, offene Aufgaben; „Öffnen“,
-  „Folgeprotokoll“, Löschen). „Neue Protokollreihe“ (`NeueReiheDialog`:
+  Karte mit „Logos …“ (`ReihenLogosDialog` in
+  `src/bereiche/projektsteuerung/components/Logos.tsx`: eigene Logos der Reihe, „Logos des
+  Projekts“ hebt sie auf; die Karte nennt dann „eigene Logos“), „Folgeprotokoll“
+  und den Protokollen (Datum, Bezeichnung, Anwesende, übernommene Einträge,
+  offene Aufgaben; „Öffnen“, „Folgeprotokoll“, Löschen). „Neue Protokollreihe“ (`NeueReiheDialog`:
   Besprechung mit Vorschlägen aus `BESPRECHUNG_VORSCHLAEGE`, Datum, Beginn,
   Ort; die Protokollführung übernimmt die angemeldete Person, wenn ihr Name in
   der Projektbeteiligtenliste steht). „Aus Protokoll-Tool“ liest `.protokoll`-
   und `.json`-Dateien des Protokoll-Tools (`ausProtokollTool`); Teilnehmende
   gleichen Namens werden mit der Projektbeteiligtenliste verknüpft,
   Protokolle gleicher Kennung im Projekt ersetzt. Karte „Logos im Druckkopf“
-  (`src/bereiche/projektsteuerung/components/Logos.tsx`): „Logo hinzufügen“ (PNG, JPEG, SVG, WebP;
-  Rasterbilder auf `LOGO_HOEHE` = 240 px Höhe verkleinert), Reihenfolge,
-  Entfernen, „Standardlogos“.
+  (`LogoVerwaltung`, Logos des Projekts – Vorgabe für Protokollreihen ohne
+  eigene Logos und für die Beteiligtenliste): „Logo hinzufügen“ (PNG, JPEG,
+  SVG, WebP; Rasterbilder auf `LOGO_HOEHE` = 240 px Höhe verkleinert),
+  Reihenfolge, Entfernen, „Standardlogos“.
 * Editor (`src/bereiche/projektsteuerung/pages/projekt/ProtokollEditor.tsx`): Umschalter „Bearbeiten“ /
   „Druckansicht“, „Live-Druckansicht ↗“ (`useLiveDruck` in
   `src/bereiche/projektsteuerung/components/common.tsx`: ein eigenes Fenster, das der jeweils
@@ -768,7 +775,9 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
   mit Mehrfachauswahl und „Neue Person …“, „Weitere Person“ für Gäste,
   Status aus `TEILNAHME`; das Personensymbol nimmt Gäste in die
   Projektbeteiligtenliste auf); „Tagesordnung“ („TOP hinzufügen“,
-  verschieben, löschen; Einträge mit Umschalter I/F/A, Verantwortlich als
+  verschieben, löschen; Einträge mit Umschalter I/F/A, „Nach oben“ und „Nach
+  unten“ – am Anfang bzw. Ende eines TOP in den vorigen bzw. nächsten TOP
+  (`eintragVerschieben` in `src/bereiche/projektsteuerung/domain/protokoll.ts`) –, Verantwortlich als
   Auswahl aus den Teilnehmenden – Kürzel und Name, gespeichert wird das
   Kürzel (`zuordnung`) –, bei Aufgaben Termin und „erledigt“); Karte
   „Abschluss“ („Hinweis am Protokollende“, Vorgabe `STANDARD_HINWEIS`).
@@ -822,9 +831,10 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
 
 ### 8.5 Übergreifende Bedienelemente
 
-* Seitenleiste: Übersicht (mit der Zahl überfälliger Punkte), Projekte,
-  Funktionen, darunter die markierten Projekte mit ihren überfälligen
-  Punkten; unten „Angemeldet als“ (Name, Vorgabe `STANDARD_BEARBEITER =
+* Seitenleiste: Übersicht (mit der Zahl eigener To-Dos), Projekte, die
+  einklappbare Gruppe „Einstellungen“ mit „Funktionen“ (aufgeklappt, solange
+  die Seite Funktionen offen ist), darunter die markierten Projekte mit ihren
+  überfälligen Aufgaben; unten „Angemeldet als“ (Name, Vorgabe `STANDARD_BEARBEITER =
   'Projektsteuerung MIC'`, und „Farbmodus für Rot-Grün-Sehschwäche (hoher
   Kontrast)“), „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich
   wechseln“.
@@ -850,6 +860,7 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
 | „In der Datei fehlt eine Spalte „Nachname“ oder „Name“.“ | `src/bereiche/projektsteuerung/domain/beteiligteImport.ts` | Excel-Import ohne erkennbare Kopfzeile. |
 | „Die Datei enthält keine Zeile mit einem Nachnamen.“ | `src/bereiche/projektsteuerung/components/BeteiligteImport.tsx` | Excel-Import ohne verwertbare Zeile. |
 | „Eintrag … durchgestrichen.“ / „Eintrag … gelöscht.“, ebenso für „TOP …“ und „Zeile … von Eintrag …“ | `src/bereiche/projektsteuerung/pages/projekt/ProtokollEditor.tsx` | Kein Fehler: „Durchstreichen“ bzw. „Sofort löschen“ im Dialog „… aus dem Protokoll löschen?“. |
+| „Eintrag in TOP … verschoben.“ | `src/bereiche/projektsteuerung/pages/projekt/ProtokollEditor.tsx` | Kein Fehler: Ein Eintrag wechselte über „Nach oben“ bzw. „Nach unten“ in einen anderen TOP. |
 | „„…“ ist noch … Projektbeteiligten zugeordnet und lässt sich deshalb nicht löschen.“ | `src/bereiche/projektsteuerung/pages/Funktionen.tsx` | Löschen einer Funktion, die Personen tragen. |
 | „Bitte eine Funktion wählen.“ / „Bitte einen Nachnamen angeben.“ | `src/bereiche/projektsteuerung/components/BeteiligterDialog.tsx` | Pflichtangaben einer Person fehlen. |
 | „Bitte die Besprechung benennen.“ / „Bitte das Datum angeben.“ | `src/bereiche/projektsteuerung/pages/projekt/Protokolle.tsx` | Neue Protokollreihe ohne Besprechung bzw. Datum. |

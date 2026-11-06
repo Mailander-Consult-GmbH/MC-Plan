@@ -117,7 +117,10 @@ ignoriert.
   `termin` und `status`; ohne Art läuft sie unter dem Ursprung mit. TOPs, Einträge und Zeilen
   werden standardmäßig gestrichen statt gelöscht (`entfaellt`) und entfallen im Folgeprotokoll;
   erledigte Aufgaben gehen noch einmal mit. Was ins Folgeprotokoll geht, entscheidet allein
-  `uebernahme` mit `eintragUebernehmen` (`domain/protokoll.ts`). Eigene
+  `uebernahme` mit `eintragUebernehmen` (`domain/protokoll.ts`). Die Übersicht zeigt nur eigene
+  To-Dos – Aufgaben der Funktion `EIGENE_FUNKTION` (`eigeneTodos`, `domain/punkte.ts`). Logos im
+  Druckkopf führt jede Protokollreihe selbst oder erbt die des Projekts (`reihenLogos`,
+  `logosFuer`). Eigene
   Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens). Neue Felder
   über `DATEN_VERSION` (`projektsteuerung/domain/types.ts`) und `migriere()`
   (`projektsteuerung/store/storage.ts`). IDs, die die Oberfläche braucht (Fokus, Navigation),
