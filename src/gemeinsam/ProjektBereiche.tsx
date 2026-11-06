@@ -97,10 +97,10 @@ export function ArchivHinweis({ bereich, lokaleId }: { bereich: ProjektBereich; 
   const register = useRegister();
   const p = projektImBereich(register, bereich, lokaleId);
   if (!p || !istArchiviert(p, bereich)) return null;
+  const wo = p.archiviert ? 'im Controlling für alle Bereiche' : `in ${BEREICH_TITEL[bereich]}`;
   return (
     <Callout icon="🗄">
-      Dieses Projekt ist {p.archiviert ? 'im Controlling für alle Bereiche' : `in ${BEREICH_TITEL[bereich]}`} archiviert. Es
-      erscheint nicht in Übersicht und Seitenleiste; zurückholen lässt es sich im Controlling.
+      {`Dieses Projekt ist ${wo} archiviert. Es erscheint nicht in Übersicht und Seitenleiste; zurückholen lässt es sich im Controlling.`}
     </Callout>
   );
 }
@@ -203,8 +203,7 @@ export function VerknuepfungsHinweis({ bereich, nummer }: { bereich: ProjektBere
   if (!p) return null;
   return (
     <Callout icon="↔">
-      Die Projektnummer gehört zu „{projektTitel(p)}“. Beim Anlegen wird es damit verknüpft: Bezeichnung und
-      Projektbeteiligte kommen von dort und gelten in allen Bereichen.
+      {`Die Projektnummer gehört zu „${projektTitel(p)}“. Beim Anlegen wird es damit verknüpft: Bezeichnung und Projektbeteiligte kommen von dort und gelten in allen Bereichen.`}
     </Callout>
   );
 }
