@@ -7,7 +7,7 @@
  */
 import type { IconName } from '../shared/icons';
 
-export type BereichId = 'planlauf' | 'baubetrieb' | 'projektsteuerung' | 'controlling';
+export type BereichId = 'planlauf' | 'baubetrieb' | 'projektsteuerung' | 'leistungsnachweise' | 'controlling';
 
 export interface Bereich {
   id: BereichId;
@@ -44,6 +44,15 @@ export const BEREICHE: Bereich[] = [
     beschreibung:
       'Projektbeteiligte mit projektübergreifenden Funktionen führen, Besprechungen protokollieren und offene Punkte in einer fortgeschriebenen Liste verfolgen.',
     icon: 'protokoll',
+    marke: 'Erster Entwurf',
+  },
+  {
+    id: 'leistungsnachweise',
+    titel: 'Leistungsnachweise',
+    untertitel: 'Stunden und Leistungen je Projekt',
+    beschreibung:
+      'Leistungen händisch oder per Excel-Import erfassen und je Projekt tages-, wochen- oder monatsscharfe Leistungsnachweise erstellen – gemeinsam im Team, als PDF und Excel.',
+    icon: 'stunden',
     marke: 'Erster Entwurf',
   },
   {

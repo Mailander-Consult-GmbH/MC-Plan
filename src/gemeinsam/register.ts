@@ -24,18 +24,20 @@ import { useSyncExternalStore } from 'react';
 export type ID = string;
 
 /** Bereiche, in denen Projekte geführt werden. */
-export type ProjektBereich = 'planlauf' | 'baubetrieb' | 'projektsteuerung';
+export type ProjektBereich = 'planlauf' | 'baubetrieb' | 'projektsteuerung' | 'leistungsnachweise';
 
 export const PROJEKT_BEREICHE: { id: ProjektBereich; titel: string }[] = [
   { id: 'planlauf', titel: 'Planlaufmanagement' },
   { id: 'baubetrieb', titel: 'Baubetriebsplanung' },
   { id: 'projektsteuerung', titel: 'Projektsteuerung' },
+  { id: 'leistungsnachweise', titel: 'Leistungsnachweise' },
 ];
 
 export const BEREICH_TITEL: Record<ProjektBereich, string> = {
   planlauf: 'Planlaufmanagement',
   baubetrieb: 'Baubetriebsplanung',
   projektsteuerung: 'Projektsteuerung',
+  leistungsnachweise: 'Leistungsnachweise',
 };
 
 /** Fassung des gespeicherten Registers. Neue Felder in `aufbereiten()` nachtragen und die Zahl erhöhen. */

@@ -1,10 +1,16 @@
-/** Rahmen des Controllings: Seitenleiste, Kopfzeile und Auswahl der Ansicht. */
+/**
+ * Rahmen des Controllings: Seitenleiste, Kopfzeile und Auswahl der Ansicht –
+ * Projekte und Archiv auf dem Projektregister, dazu das Controlling der
+ * Leistungsnachweise, das der Bereich selbst bereitstellt
+ * (`LeistungsnachweiseControlling`, src/bereiche/leistungsnachweise/controlling.tsx).
+ */
 import { useEffect, useState } from 'react';
 import { useRegister, useRegisterZustand } from '../../gemeinsam/register';
 import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { Callout } from '../../shared/ui';
 import { BereichWechsel } from '../../shell/BereichWechsel';
+import { LeistungsnachweiseControlling, leistungsnachweiseUntertitel } from '../leistungsnachweise/controlling';
 import { useRoute, type Route } from './lib/router';
 import { Projekte } from './pages/Projekte';
 
@@ -29,7 +35,9 @@ export function App({ onSperren }: { onSperren: () => void }) {
   const kopf =
     route.view === 'archiv'
       ? { titel: 'Archiv', sub: 'Im Controlling archivierte Projekte – in allen Bereichen archiviert' }
-      : { titel: 'Projekte', sub: 'Alle Projekte der Bereiche – anlegen, übernehmen, archivieren, löschen' };
+      : route.view === 'leistungsnachweise'
+        ? { titel: 'Leistungsnachweise', sub: leistungsnachweiseUntertitel(window.location.hash) }
+        : { titel: 'Projekte', sub: 'Alle Projekte der Bereiche – anlegen, übernehmen, archivieren, löschen' };
 
   return (
     <div className="app">
@@ -52,6 +60,14 @@ export function App({ onSperren }: { onSperren: () => void }) {
           aktiv={route.view === 'archiv'}
           badge={archiviert > 0 ? String(archiviert) : undefined}
           onClick={() => gehe({ view: 'archiv' })}
+        />
+
+        <div className="nav-group-label">Bereiche</div>
+        <NavItem
+          icon="stunden"
+          label="Leistungsnachweise"
+          aktiv={route.view === 'leistungsnachweise'}
+          onClick={() => gehe({ view: 'leistungsnachweise' })}
         />
 
         <div className="sidebar-footer">
@@ -79,7 +95,9 @@ export function App({ onSperren }: { onSperren: () => void }) {
 
         <div className="content">
           <div className="content-inner">
-            {zustand !== 'ok' ? (
+            {route.view === 'leistungsnachweise' ? (
+              <LeistungsnachweiseControlling />
+            ) : zustand !== 'ok' ? (
               <Callout ton="error" icon="!">
                 {zustand === 'neuere_fassung'
                   ? 'Das Projektregister stammt aus einer neueren Fassung von KaPlan. Bitte die Seite neu laden (Strg+Umschalt+R). Bis dahin bleibt es unverändert, und die Bereiche gleichen nicht ab.'
