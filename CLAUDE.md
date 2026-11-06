@@ -57,7 +57,10 @@ ignoriert.
   (Schlüssel `kaplan-projektregister.v1`): Projekte (Nummer, Bezeichnung, Beschreibung), ihre
   Zugehörigkeit je Bereich mit lokaler Kennung und Archivstand (`Mitgliedschaft`, `offen` =
   Übernahme steht aus) und die Projektbeteiligten mit Kontaktdaten und Funktionen (über
-  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). `register.ts` Modell, Laden/Speichern,
+  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). Jedes Projekt gehört auch in die
+  Leistungsnachweise (`JEDES_PROJEKT_IN`: deren Abgleich nimmt alle auf, kein Zurücknehmen);
+  die anderen Bereiche nennen sie in ihren Projektansichten nicht (`genannteBereiche`).
+  `register.ts` Modell, Laden/Speichern,
   `registerAendern`/`useRegister`; `abgleich.ts` reine Funktionen: `uebertragen` (Änderungen
   des Bereichs → Register), `abgleichen` (Unbekanntes eintragen, `Plan` für den Bereich) und die
   Aktionen des Controllings; `useRegisterAbgleich.ts` bindet einen Store an;

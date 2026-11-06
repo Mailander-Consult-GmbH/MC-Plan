@@ -927,6 +927,10 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   Oberfläche (`useSyncExternalStore`).
 * Funktionen gelten bereichsübergreifend als dieselben, wenn Bezeichnung und
   Gewerk übereinstimmen (`funktionsSchluessel`).
+* `JEDES_PROJEKT_IN` (`'leistungsnachweise'`): Bereich, in dem jedes Projekt
+  geführt wird. `genannteBereiche(bereich)` liefert die Bereiche, die eine
+  Projektansicht nennt – im Bereich die anderen ohne `JEDES_PROJEKT_IN` (außer
+  dort selbst), im Controlling (`null`) alle.
 
 ### 9.2 Abgleich mit den Bereichen
 
@@ -961,7 +965,14 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   * Leistungsnachweise (`src/bereiche/leistungsnachweise/domain/register.ts`):
     Projekte mit Nummer, Name und Beschreibung; keine Personen. Übernommene
     Projekte erhalten `IMPORT_PROJEKT_VORGABEN` (Leistungsbereich, Raster,
-    Zeitraumregel).
+    Zeitraumregel) und sind nicht markiert (`markiert: false`).
+* Jedes Projekt auch in den Leistungsnachweisen: Im Abgleich von
+  `JEDES_PROJEKT_IN` erhält – nach dem Verknüpfen gleicher Projektnummern –
+  jedes nicht archivierte Registerprojekt ohne Mitgliedschaft dort eine
+  (`offen`; als archiviert, wenn das Projekt in allen seinen Bereichen
+  archiviert ist), und der Plan legt es an (Kennung = die des Registers, bei
+  Belegung eine neue). `projektAnlegen` sieht `JEDES_PROJEKT_IN` stets vor;
+  `uebernahmeZuruecknehmen` ändert dort nichts.
 * Beim ersten Abgleich verknüpft `abgleichen` ein Projekt mit einem nicht
   archivierten Registerprojekt gleicher Projektnummer, das der Bereich noch
   nicht führt (ohne Nummer: gleicher Bezeichnung), und darin Personen gleicher
@@ -969,7 +980,8 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   Registers füllt der Bereich, sonst gilt das Register.
 * Führt ein Bereich ein Projekt nicht mehr, entfällt seine Mitgliedschaft; ohne
   weitere Mitgliedschaft entfällt das Projekt samt Personen auch im Register,
-  außer es stammt aus dem Controlling (`mitgliedschaftLoesen`). Löscht ein
+  außer es stammt aus dem Controlling und der löschende Bereich ist nicht
+  `JEDES_PROJEKT_IN` (`mitgliedschaftLoesen`). Löscht ein
   Bereich eine Person, entfernt das Register sie und vermerkt die Löschung für
   die anderen Bereiche.
 
@@ -979,13 +991,17 @@ Bausteine in `src/gemeinsam/ProjektBereiche.tsx` (Gestaltung in
 `src/gemeinsam/gemeinsam.css`, Präfix `gem-`):
 
 * `BereichsMarken` unten in jeder Projektkachel: „Auch in“ mit den anderen
-  Bereichen des Projekts, als „… · archiviert“ bzw. „… · vorgesehen“.
+  Bereichen des Projekts (`genannteBereiche` – außerhalb der
+  Leistungsnachweise ohne diese), als „… · archiviert“ bzw. „… · vorgesehen“.
+  Ebenso nennen „Geführt in“ und der Löschhinweis (`andereBereiche`,
+  `useLoeschHinweis`) die Leistungsnachweise nur dort selbst.
 * `FremdeProjekte`: grau hinterlegter Abschnitt „Projekte aus anderen
   Bereichen“ mit den nicht archivierten Registerprojekten, die der Bereich nicht
   führt (mit der Suche der Projektliste gefiltert), je Karte Nummer,
-  Bezeichnung, Beschreibung (falls vorhanden), „Geführt in“ bzw. „Im
-  Controlling angelegt, noch in keinem Bereich“ und „Übernehmen in …“
-  (`inBereichUebernehmen`).
+  Bezeichnung, Beschreibung (falls vorhanden), „Geführt in“ (ohne genannte
+  Bereiche bei Projekten aus dem Controlling „Im Controlling angelegt“) und
+  „Übernehmen in …“ (`inBereichUebernehmen`). In den Leistungsnachweisen ist
+  der Abschnitt leer, weil sie jedes Projekt führen.
 * `ArchivAbschnitt`: aufklappbares „Archiv“ mit den im Bereich archivierten
   Projekten und dem Hinweis „Archiviert wird im Controlling – je Bereich oder
   für alle.“ Archivierte Projekte fehlen in Übersicht und Seitenleiste
@@ -1015,7 +1031,7 @@ nicht; Gestaltung in `src/bereiche/controlling/controlling.css` (Präfix `ct-`).
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich; Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“. |
+| `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich; Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich; „Leistungsnachweise“ fest angehakt mit „(immer)“). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“ – in den Leistungsnachweisen (`JEDES_PROJEKT_IN`) ohne Übernehmen und Zurücknehmen, ohne Mitgliedschaft „Vorgesehen“. |
 | `#/controlling/archiv` | Archiv (dieselbe Seite) | Die im Controlling archivierten Projekte mit „Bearbeiten“, „Aus dem Archiv holen“ und „Löschen“; der Stand je Bereich ohne Schaltflächen. |
 | `#/controlling/leistungsnachweise/<reiter>`, `…/projekt/<id>/<reiter>` bzw. `…/projekt/<id>/nachweis/<id>` | Controlling der Leistungsnachweise (`LeistungsnachweiseControlling` in `src/bereiche/leistungsnachweise/controlling.tsx`), Menüpunkt „Leistungsnachweise“ unter „Bereiche“ | Siehe 10.4. |
 
@@ -1102,7 +1118,7 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
 | Route | Seite | Aktionen |
 | --- | --- | --- |
 | `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Kalender „Mein Kalender“ über alle nicht archivierten Projekte (siehe unten; die Einträge nennen die Projektnummer, beim Erfassen fragt der Dialog das Projekt ab – `projektAuswahl`, vorgewählt das Projekt der zuletzt erfassten eigenen Leistung); Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ohne Anmeldung „Bitte anmelden“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat und „Zuletzt erfasst“. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall. |
-| `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ und „Auch in“; kein Anlegen („Projekte legt das Controlling an.“); darunter „Archiv“ und „Projekte aus anderen Bereichen“ (9.3). |
+| `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ und „Auch in“; kein Anlegen („Projekte legt das Controlling an.“); jedes Projekt des Registers steht von selbst hier (9.2); darunter „Archiv“ (9.3). |
 | `#/leistungsnachweise/projekt/<id>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`) | Projektnummer, Status, Leistungsbereich; ggf. Archivhinweis (9.3); darunter ohne Reiter die eigenen Leistungen (`src/bereiche/leistungsnachweise/pages/projekt/Leistungen.tsx`: Umschalter „Kalender“ – Vorgabe, Kalender „Meine Leistungen“ – und „Liste“, dazu „Leistung erfassen“ und „Excel-Import“; die Liste mit Filter nach Monat, Suche, Auswahl löschen; der Nachweis je Leistung steht ohne Verweis). Bearbeiten, Einstellungen und Löschen gibt es nur im Controlling. Frühere Adressen `…/projekt/<id>/<reiter>` zeigen dieselbe Seite; `…/projekt/<id>/nachweis/<id>` führt in die Abrechnung des Controllings. |
 
 Kalender (`LeistungsKalender` in
@@ -1157,7 +1173,9 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 * Projekt (`ControllingProjekt` in
   `src/bereiche/leistungsnachweise/pages/controlling/Projekt.tsx`, Adresse
   `#/controlling/leistungsnachweise/projekt/<id>/<reiter>`): „Alle Projekte“,
-  „Bearbeiten“ (`ProjektDialog`), „Löschen“; Reiter „Leistungsnachweise“
+  „Bearbeiten“ (`ProjektDialog`), „Löschen“ – gesperrt, solange ein anderer
+  Bereich das Projekt führt (Hinweis „Auch in … geführt – löschen lässt sich
+  das Projekt nur im Controlling unter „Projekte“, für alle Bereiche.“); Reiter „Leistungsnachweise“
   (`ProjektNachweise.tsx`: Nachweise des Projekts, „Nachweise anlegen“ für
   Leistungen ohne Nachweis, „Neuer Leistungsnachweis“; ein Klick öffnet die
   Abrechnung), „Leistungen“ (`Leistungen.tsx` im Controlling: die Leistungen

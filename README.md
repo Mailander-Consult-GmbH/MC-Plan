@@ -999,8 +999,8 @@ PIN-geschützte Controlling-Bereich.
 Die **Übersicht** zeigt die eigenen Stunden und Leistungen des Monats, die eigenen Stunden im Jahr,
 den Kalender **Mein Kalender** über alle Projekte (siehe [Kalender](#kalender)), die zuletzt
 erfassten eigenen Leistungen und je Projekt die eigenen Stunden des Monats. Die
-**Projektliste** legt nichts an: Projekte kommen aus dem Projektregister (*Übernehmen* aus anderen
-Bereichen), aus dem Excel-Import oder aus dem Controlling. Ein Projekt öffnet direkt die eigenen
+**Projektliste** legt nichts an: Jedes Projekt der anderen Bereiche und des Controllings steht von
+selbst hier (Projektregister); unbekannte Projekte legt auch der Excel-Import an. Ein Projekt öffnet direkt die eigenen
 Leistungen – zuerst im Kalender, mit dem Umschalter **Liste** als Tabelle mit Filtern und Auswahl –,
 ohne weitere Reiter. Frühere Adressen der Reiter (`…/projekt/<id>/nachweise` usw.)
 zeigen ebenfalls die Leistungen, die eines Nachweises (`…/projekt/<id>/nachweis/<id>`) führt in die
@@ -1118,6 +1118,14 @@ archiviert –, und die **Projektbeteiligten** des Projekts. Jeder Bereich gleic
 jeder Änderung mit dem Register ab; was ein anderer Bereich oder das Controlling geändert hat,
 übernimmt er spätestens beim nächsten Öffnen.
 
+**Jedes Projekt steht auch in den Leistungsnachweisen** – auf jedes Projekt lassen sich Leistungen
+erfassen. Ihr Abgleich nimmt alle Projekte des Registers auf, die sie noch nicht führen (zuvor
+verknüpft er eigene Projekte gleicher Nummer); im Controlling archivierte folgen, sobald sie
+zurückgeholt werden. So übernommene Projekte sind dort nicht mit ★ markiert, damit Übersicht und
+Seitenleiste nicht volllaufen – jeder markiert, woran er arbeitet. Die anderen Bereiche nennen die
+Leistungsnachweise in ihren Projektansichten nicht (weder unter „Auch in“ noch unter „Geführt in“
+noch im Löschdialog); die Leistungsnachweise nennen die anderen Bereiche weiter.
+
 Geteilt werden:
 
 * **Stammdaten des Projekts** – Projektnummer und Bezeichnung in allen Bereichen (in der
@@ -1150,7 +1158,8 @@ ihre Projekte – ihre Mitarbeiter sind keine Projektbeteiligten.
   offene Punkte stehen in Übersicht und Projekt, nicht mehr in der Kachel.
 * Unten in jeder Projektkachel nennt die Zeile **Auch in** die anderen Bereiche, die das Projekt
   führen – grau mit *archiviert*, gestrichelt mit *vorgesehen*, solange eine Übernahme aus dem
-  Controlling noch aussteht.
+  Controlling noch aussteht. Die Leistungsnachweise erscheinen dort nur in ihrem eigenen Bereich
+  nicht – außerhalb werden sie nicht genannt.
 * Unter der Projektliste stehen **grau hinterlegt** die **Projekte aus anderen Bereichen** (und aus
   dem Controlling), die der Bereich noch nicht führt – mit Nummer, Name, Zusatztext und den
   Bereichen, die es führen. **Übernehmen in …** legt das Projekt im Bereich an – samt den
@@ -1160,9 +1169,10 @@ ihre Projekte – ihre Mitarbeiter sind keine Projektbeteiligten.
   Controlling – je Bereich: Ein Projekt kann in einem Bereich archiviert und in einem anderen aktiv
   sein.
 * **Löschen** im Projekt entfernt es nur aus diesem Bereich; in den anderen Bereichen bleibt es mit
-  seinen Beteiligten erhalten (der Dialog nennt sie). Führt es danach kein Bereich mehr, entfällt es
-  auch im Register – außer es wurde im Controlling angelegt. In den Leistungsnachweisen gibt es kein
-  Löschen im Projekt; dort löscht das Controlling.
+  seinen Beteiligten erhalten (der Dialog nennt sie). In den Leistungsnachweisen bleibt es stets
+  erhalten. Im Bereich Leistungsnachweise gibt es kein Löschen im Projekt; im Controlling der
+  Leistungsnachweise lässt sich nur ein Projekt löschen, das kein anderer Bereich führt – es entfällt
+  dann auch im Register. Projekte mehrerer Bereiche löscht das Controlling unter **Projekte**.
 * Wer ein Projekt mit einer **Projektnummer** anlegt, die es in einem anderen Bereich schon gibt,
   erhält einen Hinweis: Beim Anlegen wird es mit dem vorhandenen verknüpft; Bezeichnung und
   Beteiligte kommen von dort. Ebenso verknüpft der erste Abgleich nach dem Umstieg Projekte gleicher
@@ -1182,11 +1192,13 @@ Datenbestand – es arbeitet auf dem Projektregister:
   Bezeichnung, Beschreibung, dem Stand in jedem Bereich (*Aktiv*, *Archiviert*, *Vorgesehen* oder
   *nicht geführt*). Je Bereich: **Übernehmen**,
   **Zurücknehmen** (einer noch nicht vollzogenen Übernahme), **Archivieren** bzw. **Zurückholen**.
+  In den Leistungsnachweisen steht jedes Projekt – bis zu ihrem nächsten Abgleich als *Vorgesehen*;
+  dort gibt es nur Archivieren bzw. Zurückholen.
   Für das ganze Projekt: **Bearbeiten** (Nummer, Bezeichnung, Beschreibung – gelten danach in allen
   Bereichen), **Archivieren** (in allen Bereichen) und **Löschen** – im Register und in allen
   Bereichen samt allem, was diese dazu gespeichert haben.
 * **Neues Projekt**: Projektnummer (eindeutig), Bezeichnung, Beschreibung und die Bereiche, die es
-  übernehmen sollen.
+  übernehmen sollen; *Leistungsnachweise* ist fest angehakt („immer“).
 * **Archiv**: die im Controlling archivierten Projekte mit **Aus dem Archiv holen** und Löschen.
 * **Leistungsnachweise** (unter *Bereiche*): das Controlling der Leistungsnachweise – siehe
   [Controlling der Leistungsnachweise](#controlling-der-leistungsnachweise). Es arbeitet auf dem
