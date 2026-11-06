@@ -188,6 +188,18 @@ erhält den Fokus, Pfeiltasten sowie Pos1/Ende wechseln den Eintrag; Escape schl
 gibt den Fokus an den Knopf zurück. Tab, ein Klick oder Tippen daneben, Scrollen, eine
 Größenänderung des Fensters und ein zweiter Klick auf den Knopf schließen es ebenfalls.
 
+Dialoge sind ebenfalls ein gemeinsamer Baustein (`Modal` in `src/shared/ui.tsx`). Beim Öffnen
+behält ein Feld mit `autoFocus` den Fokus; sonst bekommt ihn das erste Eingabefeld (Text, Zahl,
+Datum, Auswahlliste), wenn es ohne Scrollen zu sehen ist, ansonsten der Dialog selbst. Kästchen und
+Knöpfe erhalten nie den Anfangsfokus, und gescrollt wird dabei nie; auf Touch-Geräten bekommt immer
+der Dialog selbst den Fokus, damit sich die Bildschirmtastatur nicht ungefragt öffnet. Tab und
+Umschalt+Tab bleiben im obersten Dialog, Escape und ein Klick daneben schließen nur ihn. Verschwindet
+das fokussierte Element, bleibt der Fokus im Dialog. Nach dem Schließen – auch per Klick daneben –
+geht er an das Element zurück, von dem der Dialog kam, bzw. an den Knopf des Aufklappmenüs, sofern es
+noch da ist; löst ein Dialog einen anderen ab, landet er im neuen. Die Ablageflächen der Importe von
+Plänen, Funktionen, Projektbeteiligten und Leistungen sind per Tab erreichbar; Enter oder Leertaste
+öffnen die Dateiauswahl.
+
 ## Funktionsumfang
 
 ### Projekte
@@ -739,7 +751,16 @@ herunterladen*) – und einmalig, wenn ein selbst geänderter Standard-Workflow 
 wurde. Bei einem Lade- oder Fassungsfehler zeigt die Anwendung Demodaten und speichert nicht, damit
 der gespeicherte Stand erhalten bleibt. Vor jeder Umstellung auf eine neue Fassung legt sie den
 gespeicherten Text als **Sicherungskopie** im Browser ab (Schlüssel
-`planlauf-management.data.v1.vor-fassung-<n>`); wird der Speicher knapp, entfällt diese Kopie zuerst.
+`planlauf-management.data.v1.vor-fassung-<n>`). Nach einem Lade- oder Fassungsfehler bietet der
+Dialog *Sicherung einspielen* statt *Aktuellen Stand sichern* **Gespeicherten Stand herunterladen**
+an, das den gespeicherten Text unverändert herunterlädt. Ersetzt *Alles ersetzen* einen Stand, der
+sich nicht laden ließ, bleibt davon ebenfalls eine Kopie im Browser
+(`planlauf-management.data.v1.vor-einspielen-<Zeitpunkt>`); passt sie nicht mehr in den Speicher,
+ersetzt der Dialog nichts, sondern sagt das und bietet **Ohne Kopie ersetzen** an. Wird der Speicher
+knapp, räumt das Speichern solche Kopien einzeln, bis der Bestand passt – zuerst die vor einer
+Umstellung (die eigenen zuerst), dann die vor dem Einspielen (die älteste zuerst), nötigenfalls auch
+die anderer Bereiche (`nachRaeumenSpeichern` in `src/shared/speicher.ts`); reicht das nicht, kommen
+sie zurück.
 Speichert ein anderes Fenster (Tab oder installierte App) den Bestand, lädt die Anwendung dessen
 Stand nach, statt ihn mit dem eigenen älteren zu überschreiben (`useFremdeAenderung`).
 
@@ -899,7 +920,8 @@ A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A. Aus der bisherigen geplanten Sper
 Projekts werden seine betroffenen Fahrplanjahre. Die Status der Standard-Workflows erhalten ihre
 vorgegebene Zuständigkeit (Fassung 8). Fassung 9 ergänzt an den Anmeldungen den Anmelder und den
 Tag der letzten Änderung der Merkmale (beide leer; gesetzt wird er nur bei einer tatsächlichen
-Änderung – „Speichern“ ohne Änderung lässt den Sachstand stehen). Name unter „Angemeldet als“ und
+Änderung – „Speichern“ ohne Änderung schließt den Dialog nur, ohne „Anmeldung gespeichert.“, und
+lässt den Sachstand stehen). Name unter „Angemeldet als“ und
 Farbmodus gelten in allen Bereichen; der Name steht im Statusverlauf und ist Hauptbearbeiter neuer
 Projekte.
 
@@ -909,10 +931,14 @@ entsteht die Rohkopie `<Schlüssel>.vor-fassung-<n>`. Nach einem Ladefehler zeig
 **„Der gespeicherte Stand ließ sich nicht laden.“** mit **Gespeicherten Stand herunterladen** und
 **Mit Demodaten neu beginnen** (Rückfrage „Mit Demodaten neu beginnen?“); stammt der Stand aus einer
 neueren Fassung, **„Die gespeicherten Daten stammen aus einer neueren Fassung von KaPlan.“** mit
-**Seite neu laden** – dann sind *Einspielen* und *Zurücksetzen* gesperrt, und **Sicherung** lädt den
-gespeicherten Stand unverändert herunter (`baubetrieb-gespeicherter-stand-<Datum>.json`). Der Abgleich mit
+**Seite neu laden** – dann sind *Einspielen* (auch im Dialog) und *Zurücksetzen* gesperrt, und **Sicherung** lädt den
+gespeicherten Stand unverändert herunter (`baubetrieb-gespeicherter-stand-<Datum>.json`, Datum nach
+Ortszeit). Nach einem Lade- oder Fassungsfehler bietet auch der Dialog *Sicherung einspielen?* statt
+*Aktuellen Stand sichern* **Gespeicherten Stand herunterladen** an. Wer über einen unlesbaren Stand
+einspielt, behält eine Rohkopie `<Schlüssel>.vor-einspielen-<Zeitpunkt>` im Browser; passt sie nicht
+in den Speicher, sagt der Dialog das und spielt erst auf **Ohne Kopie einspielen** ein. Der Abgleich mit
 dem Projektregister ruht, solange der Stand nicht geladen ist. Ist der Speicher des Browsers voll,
-räumt das Speichern zuerst die Rohkopien und meldet sonst **„Nicht gespeichert – bitte Sicherung
+räumt das Speichern die Rohkopien einzeln wie im Planlaufmanagement und meldet sonst **„Nicht gespeichert – bitte Sicherung
 herunterladen.“** mit **Sicherung herunterladen** (`components/Hinweisleisten.tsx`). Speichert ein
 anderes Fenster denselben Bereich, lädt der Store dessen Stand nach (`useFremdeAenderung`).
 
@@ -1038,10 +1064,14 @@ entsteht die Rohkopie `<Schlüssel>.vor-fassung-<n>`. Nach einem Ladefehler zeig
 **„Der gespeicherte Stand ließ sich nicht laden.“** mit **Gespeicherten Stand herunterladen** und
 **Mit Demodaten neu beginnen** (Rückfrage „Mit Demodaten neu beginnen?“); stammt der Stand aus einer
 neueren Fassung, **„Die gespeicherten Daten stammen aus einer neueren Fassung von KaPlan.“** mit
-**Seite neu laden** – dann sind *Einspielen* und *Zurücksetzen* gesperrt, und **Sicherung** lädt den
-gespeicherten Stand unverändert herunter (`projektsteuerung-gespeicherter-stand-<Datum>.json`). Der Abgleich mit
+**Seite neu laden** – dann sind *Einspielen* (auch im Dialog) und *Zurücksetzen* gesperrt, und **Sicherung** lädt den
+gespeicherten Stand unverändert herunter (`projektsteuerung-gespeicherter-stand-<Datum>.json`). Wie in
+der Baubetriebsplanung bietet der Dialog *Sicherung einspielen?* nach einem Lade- oder Fassungsfehler
+**Gespeicherten Stand herunterladen** an, hinterlässt beim Einspielen über einen unlesbaren Stand die
+Rohkopie `<Schlüssel>.vor-einspielen-<Zeitpunkt>` und fragt mit **Ohne Kopie einspielen** nach, wenn
+sie nicht in den Speicher passt. Der Abgleich mit
 dem Projektregister ruht, solange der Stand nicht geladen ist. Ist der Speicher des Browsers voll,
-räumt das Speichern zuerst die Rohkopien und meldet sonst **„Nicht gespeichert – bitte Sicherung
+räumt das Speichern die Rohkopien einzeln wie im Planlaufmanagement und meldet sonst **„Nicht gespeichert – bitte Sicherung
 herunterladen.“** mit **Sicherung herunterladen** (`components/Hinweisleisten.tsx`). Speichert ein
 anderes Fenster denselben Bereich, lädt der Store dessen Stand nach (`useFremdeAenderung`).
 
@@ -1068,7 +1098,8 @@ den Kalender **Mein Kalender** mit allen eigenen Leistungen über alle Projekte 
 [Kalender](#kalender)), die zuletzt erfassten eigenen Leistungen und je Projekt die eigenen Stunden
 des Monats. Gibt es kein nicht archiviertes Projekt, steht der Kalender trotzdem da (eigene
 Leistungen lassen sich öffnen), darüber ein Hinweis, dass Projekte das Controlling anlegt bzw. dass
-alle archiviert sind. Der Hinweis „Kein Projekt markiert – es werden alle angezeigt.“ erscheint, wenn
+alle archiviert sind – erfassen lässt sich dann weiterhin im archivierten Projekt unter *Projekte ›
+Archiv*. Der Hinweis „Kein Projekt markiert – es werden alle angezeigt.“ erscheint, wenn
 es nicht archivierte Projekte gibt und keines davon markiert ist (auch in einem anderen Bereich
 markierte zählen als markiert). Die
 **Projektliste** legt nichts an: Jedes Projekt der anderen Bereiche und des Controllings steht von
@@ -1139,10 +1170,13 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   Texte oder Aufschläge nicht mehr angezeigt werden (sie bleiben gespeichert und kehren mit dem
   alten Raster zurück). Später erfasste Leistungen kommen hinzu, den Zeitraum legt der Abschluss fest.
   Liegt schon alles in einem offenen Nachweis, bietet der Dialog **Öffnen** an. Für Korrekturen
-  gibt es in der Abrechnung weiter **Zeitraum ändern**: Ein geändertes Ende steht danach fest;
-  läuft der Nachweis bis zum Abschluss, legt der Haken **Ende festlegen** das Ende auch ohne
-  Änderung fest (er ist bei geändertem Ende vorgewählt, lässt sich aber abwählen), bei festgelegtem
-  Ende hebt **Wieder bis zum Abschluss laufen lassen** es auf.
+  gibt es in der Abrechnung weiter **Zeitraum ändern**: Ein geändertes Ende steht danach fest – auch
+  bei der Regel *Je Kalendermonat* mit einem Ende bis heute, wo das erst nach einem Wechsel auf
+  *Fortlaufend bis zum Abschluss* etwas ändert. Liefe der Nachweis mit dem neuen Ende bis zum
+  Abschluss, legt der Haken **Ende festlegen** das Ende auch ohne Änderung fest (er ist bei
+  geändertem Ende vorgewählt, lässt sich aber abwählen), bei festgelegtem Ende hebt **Wieder bis zum
+  Abschluss laufen lassen** es auf. Beide Haken gibt es nur, wo ein festgelegtes Ende etwas bewirkt –
+  bei der Regel *Fortlaufend bis zum Abschluss* oder einem Ende nach heute.
   **Nicht erfasste Leistungen:** Abgerechnet ist, was im festgeschriebenen Stand eines
   abgeschlossenen Nachweises steht. Leistungen aus schon abgerechneten Zeiträumen, die dort fehlen
   (etwa nach dem Abschluss nachgetragen), meldet der Dialog – und die Abrechnung des laufenden
@@ -1192,10 +1226,14 @@ Abschluss*; vorhandene Nachweise bleiben, wie sie sind. Fassung 5 ergänzt an de
 nachgereichten Leistungen (leer). Fassung 6 ergänzt das von Hand festgelegte Ende (`bisFest`, nicht
 gesetzt) und stellt die Zeilen nachgereichter Leistungen in Texten, Aufschlägen und im
 festgeschriebenen Stand auf eigene Schlüssel um (`nachgereichteZeilenUmstellen`); die abgerechneten
-Stunden bleiben gleich. Demodaten gibt es nur, solange weder ein Bestand noch Projekte im
+Stunden bleiben gleich. Texte und Aufschläge einer Zeile, in der laufende und nachgereichte
+Leistungen zusammenstanden, werden auf die beiden neuen Zeilen aufgeteilt, ohne die abgerechneten
+Stunden zu ändern – bei Nachweisen mit Abschnittsspalten auch nicht die einer Spalte –, sodass
+abgeschlossene Nachweise nicht als geändert gelten. Demodaten gibt es nur, solange weder ein Bestand noch Projekte im
 Projektregister vorhanden sind; wer zuvor einen anderen Bereich geöffnet hat, beginnt mit leeren
 Leistungsnachweisen und den Projekten des Registers. Gespeichert wird nur bei einwandfrei geladenem
-Stand; ist der Speicher voll, räumt das Speichern zuerst die Rohkopien `…vor-fassung-<n>` und zeigt
+Stand; ist der Speicher voll, räumt das Speichern nach Bedarf Rohkopien (`…vor-fassung-<n>`,
+`…vor-einspielen-…`, auch die anderer Bereiche; `nachRaeumenSpeichern`) und zeigt
 sonst „Nicht gespeichert – bitte Sicherung herunterladen.“ mit **Sicherung herunterladen**
 (`components/SpeicherHinweis.tsx`, auch im Controlling). Speichert ein anderes Fenster den Bereich,
 lädt der Store dessen Stand nach (`useFremdeAenderung`) – stammt er aus einer neueren Fassung,
@@ -1234,7 +1272,9 @@ archiviert –, und die **Projektbeteiligten** des Projekts. Jeder Bereich gleic
 jeder Änderung mit dem Register ab; was ein anderer Bereich oder das Controlling geändert hat,
 übernimmt er spätestens beim nächsten Öffnen. Speichert ein anderes Fenster denselben Bereich, lädt
 der Store dessen Stand sofort nach (`src/gemeinsam/useFremdeAenderung.ts`), statt ihn mit dem
-älteren eigenen zu überschreiben.
+älteren eigenen zu überschreiben. Diesen Stand gleicht das Fenster nicht selbst mit dem Register ab,
+denn das hat das andere Fenster getan; erst wenn sich danach das Register ändert, gleicht es mit
+beiden aktuellen Ständen ab (`nachgeladen` in `src/gemeinsam/useRegisterAbgleich.ts`).
 
 Mit mehreren Fenstern kommt der Abgleich zur Ruhe: Mitgliedschaften nicht mehr geführter Projekte
 löst er und die ★ aus dem Bestand übernimmt er nur beim ersten Abgleich nach dem Laden und nach
@@ -1376,13 +1416,16 @@ src/
                  · #/controlling/…
     BereichWechsel.tsx  Rückweg aus einem Bereich zur Bereichsauswahl
   shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
-    ui.tsx       Karten, Felder, Dialoge, Segmented Controls …
+    ui.tsx       Karten, Felder, Dialoge (Modal: Fokus, Tab, Escape, Fokus zurück), Segmented
+                 Controls, alsKnopf …
     icons.tsx    Strichsymbole
     logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen
     menue.tsx    Aufklappmenü an einem Knopf (AufklappMenue): Portal, bleibt im Fenster, Tastatur
     tabellen.ts  Breite Tabellen scrollen quer (tabellenBreiteBeobachten, Klasse table-scroll-quer)
     scrollen.ts  Eine neue Seite beginnt oben (useNachObenBeiSeitenwechsel)
+    speicher.ts  Rohkopien im localStorage: anlegen vor dem Einspielen, bei vollem Speicher
+                 einzeln räumen (nachRaeumenSpeichern)
     dates.ts     Fristen- und Datumsrechnung
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit (mit Zellformaten)
     xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe (Zahlenformate aus Nullen wie „00000“

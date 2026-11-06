@@ -201,12 +201,31 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   (`src/bereiche/planlauf/store/storage.ts`, Anhebung wie beim Laden) und
   zeigt „Sicherung einspielen“ – mit der Zahl der Projekte, Pläne und
   Planverzeichnisse und Planläufe, der Warnung, dass der jetzige Bestand
-  ersetzt wird, „Aktuellen Stand sichern“ und, wenn die Namen abweichen, dem
+  ersetzt wird, „Aktuellen Stand sichern“ (Titel „Den jetzigen Bestand vorher
+  als JSON sichern“; nach einem Lade- oder Fassungsfehler stattdessen
+  „Gespeicherten Stand herunterladen“, Titel „Gespeicherten Stand unverändert
+  herunterladen“, `rohdatenHerunterladen` – ohne gespeicherten Stand „Es ist
+  kein gespeicherter Stand vorhanden, der sich herunterladen ließe.“) und, wenn die Namen abweichen, dem
   Haken „„Angemeldet als“ aus der Sicherung übernehmen“ (vorgewählt, solange
   der Name `STANDARD_BEARBEITER` ist; mit Haken gelten Name und Farbmodus der
   Sicherung danach in allen Bereichen, `benutzerAendern`); ohne gesetzten Haken
   bleiben Name, Farbmodus und E-Mail-Nachfrage der Person am Rechner. „Alles ersetzen“ ersetzt den Bestand über
-  `ersetzeDaten` und wechselt zur Übersicht. „Abgleichen und auswählen …“
+  `ersetzeDaten` und wechselt zur Übersicht. Nach einem Ladefehler sagt der
+  Dialog „Der gespeicherte Stand ließ sich nicht laden; abgleichen ist deshalb
+  nicht möglich. „Alles ersetzen“ überschreibt ihn; eine unveränderte Kopie
+  bleibt im Browser, solange der Speicher reicht. Wer ihn noch braucht, lädt
+  ihn vorher mit „Gespeicherten Stand herunterladen“ herunter.“ Vor dem
+  Ersetzen des unlesbaren Stands legt `rohkopieVorEinspielen`
+  (`src/bereiche/planlauf/store/storage.ts`, umgesetzt in
+  `src/shared/speicher.ts`, Ergebnis `RohkopieErgebnis`: `'angelegt'`,
+  `'kein-stand'` oder `'gescheitert'`) die Rohkopie
+  `planlauf-management.data.v1.vor-einspielen-<Zeitpunkt>` an (ISO-Zeitpunkt,
+  UTC). Passt sie nicht in den Speicher, ersetzt der Dialog nichts, sondern
+  meldet „Für eine Kopie des gespeicherten Stands reicht der Speicher des
+  Browsers nicht. Wer ihn noch braucht, lädt ihn jetzt mit „Gespeicherten
+  Stand herunterladen“ herunter; „Ohne Kopie ersetzen“ überschreibt ihn
+  endgültig.“ (`role="alert"`, der Fokus springt auf das Herunterladen); erst
+  „Ohne Kopie ersetzen“ ersetzt den Stand. „Abgleichen und auswählen …“
   öffnet „Sicherung abgleichen“ (`src/bereiche/planlauf/components/Abgleich.tsx`,
   Logik `abgleichErmitteln`/`abgleichAnwenden` in
   `src/bereiche/planlauf/domain/abgleich.ts`): ein Baum mit Kästchen –
@@ -241,6 +260,33 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   bleibt im Fenster und scrollt selbst; der erste Eintrag erhält den Fokus, Pfeiltasten,
   Home und End wechseln den Eintrag, Escape schließt und gibt den Fokus an den Knopf zurück;
   Tab, ein Klick oder Tippen daneben, Scrollen und eine Größenänderung schließen es ebenfalls.
+* **Dialoge** (alle Bereiche; `Modal` in `src/shared/ui.tsx`, `role="dialog"` mit
+  `aria-modal` und `aria-labelledby` auf den Titel): Beim Öffnen behält ein Feld mit
+  `autoFocus` den Fokus; sonst setzt ihn `anfangsFokus` auf das erste Eingabefeld des Inhalts
+  (`eingabeFeld`: Text-, Zahl- und Datumsfelder, Textbereiche, Auswahllisten – keine Kästchen,
+  Optionsfelder oder Knöpfe), wenn es ohne Scrollen ganz zu sehen ist (`ganzSichtbar`), sonst
+  auf den Dialog selbst (`tabIndex={-1}`); auf Touch-Geräten (`(pointer: coarse)`) immer auf
+  den Dialog selbst. Fokussiert wird mit `preventScroll`. Tab und Umschalt+Tab bleiben im
+  obersten Dialog (`fokusHalten`; Optionsfelder einer Gruppe sind ein Tab-Halt), Escape schließt
+  nur ihn (`obersterDialog`; ein Listener `dialogTaste` am `window`, solange ein Dialog offen
+  ist – was ein Feld oder Menü selbst mit `preventDefault` behandelt, erreicht ihn nicht). Liegt
+  ein eigener Dialog mit `role="dialog"` und `aria-modal="true"` darüber (der Workflow-Editor
+  `src/bereiche/planlauf/components/WorkflowEditor.tsx`, „Sicherung abgleichen“ in
+  `src/bereiche/planlauf/components/Abgleich.tsx`), regelt er die Tasten selbst. Ein Klick neben
+  den Dialog (`mousedown` auf dem Overlay, mit `preventDefault`) schließt ihn ebenfalls.
+  Verschwindet das fokussierte Element, bleibt der Fokus im Dialog (`MutationObserver`). Nach dem
+  Schließen geht der Fokus an das Element zurück, das ihn vor dem Öffnen hatte
+  (`fokusVorDemOeffnen`; kam die Wahl aus einem Aufklappmenü, an dessen Knopf mit
+  `aria-haspopup="menu"` und `aria-expanded="true"`), sofern es noch im Dokument steht; löst ein
+  Dialog einen anderen ab, landet der Fokus im neuen. Das Overlay hat eine Spalte
+  `minmax(0, 1fr)`, damit breiter Inhalt den Dialog auf schmalen Bildschirmen nicht
+  verbreitert. `Callout` nimmt eine `role` („alert“ für Hinweise, die erst auf eine Handlung hin
+  erscheinen). Die Ablagefläche `.drop-zone` der Import-Dialoge `PlaeneImport.tsx`,
+  `RollenImport.tsx` (`src/bereiche/planlauf/pages/projekt/`),
+  `src/bereiche/projektsteuerung/components/BeteiligteImport.tsx` und
+  `src/bereiche/leistungsnachweise/components/ImportDialog.tsx` ist über `alsKnopf`
+  (`src/shared/ui.tsx`) per Tastatur bedienbar: `role="button"`, Tab-Halt, Enter und Leertaste
+  öffnen die Dateiauswahl.
 * **Tabellen** (alle Bereiche): `.table-scroll` schneidet ab 861 px quer ab, damit die
   Kopfzeile stehen bleibt; passt eine Tabelle nicht in ihre Karte, setzt
   `tabellenBreiteBeobachten` (`src/shared/tabellen.ts`, aufgerufen in `src/main.tsx`) die
@@ -352,8 +398,14 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
    (`src/bereiche/planlauf/store/storage.ts`). Vor einer Umstellung auf eine
    neue Daten- oder Stammdatenfassung legt `ladeDaten` den gespeicherten Text
    einmalig unter `planlauf-management.data.v1.vor-fassung-<n>` ab (n = bisherige
-   `version`); ist der Speicher voll, entfernt `speichereDaten` diese Kopien
-   zuerst und versucht es erneut.
+   `version`); vor dem Einspielen über einen unlesbaren Stand entsteht ebenso
+   `planlauf-management.data.v1.vor-einspielen-<Zeitpunkt>` (2.4). Ist der
+   Speicher voll, entfernt `speichereDaten` Rohkopien einzeln und versucht es
+   nach jeder erneut (`nachRaeumenSpeichern` und `rohkopienZumRaeumen` in
+   `src/shared/speicher.ts`): zuerst die `…vor-fassung-…` – die eigenen vor
+   denen anderer Bereiche und des Projektregisters –, dann die
+   `…vor-einspielen-…`, die älteste zuerst. Passt der Bestand auch ohne alle
+   nicht, stellt es die Kopien zurück.
 4. **Migrationen**: laufen automatisch beim Laden. `DATEN_VERSION = 14` und
    `STAMMDATEN_VERSION = 6` (`src/bereiche/planlauf/domain/types.ts`) steuern, ob `migriere()`
    einen älteren Bestand auf die aktuelle Struktur hebt und ob neue Stammdaten
@@ -466,7 +518,7 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | --- | --- |
 | „Kopieren nicht möglich – bitte Text manuell markieren.“ | `navigator.clipboard.writeText` wurde abgelehnt (fehlende Berechtigung oder unsicherer Kontext), `src/bereiche/planlauf/components/EmailDialog.tsx`. |
 | „Druckdialog geöffnet – dort ‚Als PDF sichern‘ wählen.“ | Kein Fehler: Der PDF-Export läuft über den Druckdialog des Browsers (`src/shared/print.ts`). |
-| Konsole: „Daten konnten nicht lokal gespeichert werden: …“ | `localStorage.setItem` schlug fehl – Speicher voll oder gesperrt (privates Fenster), `src/bereiche/planlauf/store/storage.ts`. `speichereDaten` liefert dann `voll` oder `gesperrt` (bei vollem Speicher erst nach dem Entfernen der Rohkopien `…vor-fassung-…`). |
+| Konsole: „Daten konnten nicht lokal gespeichert werden: …“ | `localStorage.setItem` schlug aus einem anderen Grund als vollem Speicher fehl – etwa gesperrt (privates Fenster), `src/bereiche/planlauf/store/storage.ts`; `speichereDaten` liefert dann `gesperrt`. Bei vollem Speicher liefert es ohne diese Meldung `voll`, wenn der Bestand auch nach dem einzelnen Räumen aller Rohkopien (`…vor-fassung-…`, `…vor-einspielen-…`, auch die anderer Bereiche; `nachRaeumenSpeichern` in `src/shared/speicher.ts`) nicht passt – die Kopien werden dann zurückgestellt. |
 | Hinweisleiste „Nicht gespeichert – bitte Sicherung herunterladen.“ | Derselbe Fall in der Oberfläche (`speicherZustand`), mit „Der Speicher des Browsers ist voll“ bzw. „Der Browser lässt das Speichern nicht zu (etwa durch Datenschutzeinstellungen)“ (`src/bereiche/planlauf/components/Hinweisleisten.tsx`). |
 | Hinweisleiste „Der gespeicherte Stand ließ sich nicht laden.“ | `ladeDaten` konnte den gespeicherten Text nicht lesen oder aufbereiten (`ladefehler`). Angezeigt werden Demodaten, gespeichert wird nicht; „Mit Demodaten neu beginnen?“ ersetzt den Stand erst nach Rückfrage. |
 | Hinweisleiste „Die gespeicherten Daten stammen aus einer neueren Fassung von KaPlan.“ | `version` des gespeicherten Stands ist größer als `DATEN_VERSION` (`neuere_fassung`): Demodaten, kein Speichern, Einspielen und Zurücksetzen gesperrt; Abhilfe „Seite neu laden“. |
@@ -514,7 +566,11 @@ N-x und unterjährige Anmeldung.
   von Hand) und `geaendertAm` (Tag der letzten Änderung der Merkmale – gesetzt
   von `updateAnmeldung` und `terminSetzen` im Store, nur bei einer tatsächlichen
   Änderung: `updateAnmeldung` vergleicht feldweise mit dem bisherigen Stand,
-  `unterscheidet`; ohne Änderung bleibt der Bestand unverändert).
+  `unterscheidet`; ohne Änderung bleibt der Bestand unverändert). „Speichern“
+  in „Anmeldung bearbeiten“ (`src/bereiche/baubetrieb/components/AnmeldungDialog.tsx`)
+  prüft das vorab ebenso (beide Stände über `bauzeitraumAbgleichen`) und ruft
+  `updateAnmeldung` samt Meldung „Anmeldung gespeichert.“ nur bei einer
+  Änderung auf; sonst schließt es den Dialog nur.
 * Sachstand (`sachstand` in `src/bereiche/baubetrieb/domain/ablauf.ts`): Datum
   und Anlass des jüngsten Eintrags im Verlauf (fachliches Datum; Anlass
   „Statuswechsel“, „Angelegt“ oder der Text des Vermerks, etwa „Nachgehakt“)
@@ -558,10 +614,14 @@ N-x und unterjährige Anmeldung.
   mit `LadeZustand` `'ok'`, `'ladefehler'` (Text nicht lesbar, kein Objekt, ab
   Fassung 2 ohne `projekte`, Fehler beim Aufbereiten) oder `'neuere_fassung'`
   (`version` größer als `DATEN_VERSION`). Vor einer Umstellung legt `ladeDaten`
-  einmalig die Rohkopie `baubetrieb-planung.data.v1.vor-fassung-<n>` an. Der
+  einmalig die Rohkopie `baubetrieb-planung.data.v1.vor-fassung-<n>` an, vor
+  dem Einspielen über einen unlesbaren Stand `rohkopieVorEinspielen` die
+  Rohkopie `baubetrieb-planung.data.v1.vor-einspielen-<Zeitpunkt>` (7.4). Der
   Store speichert und gleicht mit dem Projektregister nur bei `'ok'` ab;
   `speichereDaten` liefert `SpeicherZustand` (`'ok'`, `'voll'`, `'gesperrt'`)
-  und räumt bei vollem Speicher zuerst die Rohkopien. Hinweisleisten
+  und räumt bei vollem Speicher die Rohkopien einzeln wie im
+  Planlaufmanagement (`nachRaeumenSpeichern` in `src/shared/speicher.ts`,
+  Abschnitt 5). Hinweisleisten
   (`src/bereiche/baubetrieb/components/Hinweisleisten.tsx`, oben im Inhalt):
   „Der gespeicherte Stand ließ sich nicht laden.“ mit „Gespeicherten Stand
   herunterladen“ und „Mit Demodaten neu beginnen“ (Rückfrage „Mit Demodaten neu
@@ -572,9 +632,9 @@ N-x und unterjährige Anmeldung.
   (etwa durch Datenschutzeinstellungen)“ und „Sicherung herunterladen“. Bei
   einem Stand aus einer neueren Fassung sind „Einspielen“ und „Zurücksetzen“
   gesperrt („Gesperrt, damit der Stand aus der neueren Fassung erhalten
-  bleibt“). „Sicherung“ lädt dann wie nach einem Ladefehler den gespeicherten
+  bleibt“; „Einspielen“ auch im Dialog, 7.4). „Sicherung“ lädt dann wie nach einem Ladefehler den gespeicherten
   Stand unverändert (`rohdatenHerunterladen`, Datei
-  `baubetrieb-gespeicherter-stand-<Datum>.json`, Titel „Gespeicherten Stand
+  `baubetrieb-gespeicherter-stand-<Datum>.json`, Datum nach Ortszeit, Titel „Gespeicherten Stand
   unverändert herunterladen“; ohne gespeicherten Stand „Es ist kein
   gespeicherter Stand vorhanden, der sich herunterladen ließe.“), sonst den
   Bestand („Gesamten Datenbestand der Baubetriebsplanung als JSON sichern“).
@@ -698,12 +758,33 @@ die Übersicht.
   `einstellungen.bearbeiter` und `einstellungen.farbmodus` spiegeln sie),
   „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich wechseln“.
 * Sicherung (`exportiereDaten`) lädt `baubetrieb-sicherung-<Datum>.json` mit
-  `"bereich": "baubetrieb"`. Einspielen
+  `"bereich": "baubetrieb"` (Datum nach Ortszeit, `today()` aus
+  `src/shared/dates.ts`). Einspielen
   (`src/bereiche/baubetrieb/components/Sicherung.tsx`) fragt „Sicherung
-  einspielen?“, bietet „Aktuellen Stand sichern“ und übernimmt „Angemeldet
+  einspielen?“ – mit „Der gesamte jetzige Bestand der Baubetriebsplanung in
+  diesem Browser wird ersetzt. Die anderen Bereiche bleiben unberührt.“ –,
+  bietet „Aktuellen Stand sichern“ (Titel „Den jetzigen Bestand vorher als
+  JSON sichern“) und übernimmt „Angemeldet
   als“ und Farbmodus – dann für alle Bereiche – nur mit dem Haken „Auch
   „Angemeldet als“ und Farbmodus aus der Sicherung übernehmen – gilt dann in
-  allen Bereichen“.
+  allen Bereichen“. Nach einem Lade- oder Fassungsfehler heißt der erste Knopf
+  „Gespeicherten Stand herunterladen“ (Titel „Gespeicherten Stand unverändert
+  herunterladen“, `rohdatenHerunterladen`; ohne gespeicherten Stand „Es ist
+  kein gespeicherter Stand vorhanden, der sich herunterladen ließe.“). Nach
+  einem Ladefehler warnt der Dialog „Der gespeicherte Stand ließ sich nicht
+  laden. Das Einspielen ersetzt ihn; eine unveränderte Kopie bleibt im Browser,
+  solange der Speicher reicht. Wer ihn noch braucht, lädt ihn vorher mit
+  „Gespeicherten Stand herunterladen“ herunter.“ und legt vor dem Ersetzen mit
+  `rohkopieVorEinspielen` (`src/bereiche/baubetrieb/store/storage.ts`) die
+  Rohkopie `baubetrieb-planung.data.v1.vor-einspielen-<Zeitpunkt>` an. Passt
+  sie nicht in den Speicher, ersetzt er nichts und meldet „Für eine Kopie des
+  gespeicherten Stands reicht der Speicher des Browsers nicht. Wer ihn noch
+  braucht, lädt ihn jetzt mit „Gespeicherten Stand herunterladen“ herunter;
+  „Ohne Kopie einspielen“ ersetzt ihn endgültig.“; erst „Ohne Kopie
+  einspielen“ ersetzt den Stand. Bei einem Stand aus einer neueren Fassung ist
+  „Einspielen“ auch im Dialog gesperrt: „Gespeichert ist ein Stand aus einer
+  neueren Fassung von KaPlan. Damit er nicht überschrieben wird, lässt sich
+  hier nichts einspielen – bitte zuerst die Seite neu laden.“
 * Excel (`monitorExportieren` in `src/bereiche/baubetrieb/domain/export.ts`):
   Blätter „Anmeldungen“ (mit den Spalten „Workflow“, „Status“ und „Anmelder“) und
   „Projekte“, Terminfristen bei überfälligen Anmeldungen rot, bei fälligen
@@ -784,9 +865,11 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
   `useBenutzerAbgleich` sofort ersetzt). Termine relativ zum heutigen Tag.
 * Ladezustand, Rohkopie, Speicherzustand, Hinweisleisten und Nachladen aus
   anderen Fenstern wie in der Baubetriebsplanung (7.1): `ladeDaten` liefert
-  `LadeZustand` (`'ladefehler'` auch ohne `projekte`), Rohkopie
-  `projektsteuerung.data.v1.vor-fassung-<n>`, `speichereDaten` liefert
-  `SpeicherZustand`; Hinweisleisten in
+  `LadeZustand` (`'ladefehler'` auch ohne `projekte`), Rohkopien
+  `projektsteuerung.data.v1.vor-fassung-<n>` und – vor dem Einspielen über
+  einen unlesbaren Stand – `projektsteuerung.data.v1.vor-einspielen-<Zeitpunkt>`
+  (8.5), `speichereDaten` liefert `SpeicherZustand` und räumt bei vollem
+  Speicher wie dort (`nachRaeumenSpeichern`); Hinweisleisten in
   `src/bereiche/projektsteuerung/components/Hinweisleisten.tsx` mit denselben
   Texten; „Sicherung“ lädt nach einem Ladefehler bzw. bei neuerer Fassung
   `projektsteuerung-gespeicherter-stand-<Datum>.json` („Gespeicherten Stand
@@ -941,10 +1024,21 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
   Tage vorher), im Plan, ohne Termin.
 * Sicherung (`exportiereDaten`) lädt `projektsteuerung-sicherung-<Datum>.json`
   mit `"bereich": "projektsteuerung"`. Einspielen
-  (`src/bereiche/projektsteuerung/components/Sicherung.tsx`) fragt „Sicherung einspielen?“, bietet
+  (`src/bereiche/projektsteuerung/components/Sicherung.tsx`) fragt „Sicherung einspielen?“ – mit
+  „Der gesamte jetzige Bestand der Projektsteuerung in diesem Browser wird ersetzt. Die anderen
+  Bereiche bleiben unberührt.“ –, bietet
   „Aktuellen Stand sichern“ und übernimmt „Angemeldet als“ und Farbmodus –
   dann für alle Bereiche – nur mit dem Haken „Auch „Angemeldet als“ und
   Farbmodus aus der Sicherung übernehmen – gilt dann in allen Bereichen“.
+  Wie in der Baubetriebsplanung (7.4) heißt der erste Knopf nach einem Lade-
+  oder Fassungsfehler „Gespeicherten Stand herunterladen“
+  (`rohdatenHerunterladen`); nach einem Ladefehler warnt der Dialog mit
+  demselben Text, legt vor dem Ersetzen mit `rohkopieVorEinspielen`
+  (`src/bereiche/projektsteuerung/store/storage.ts`) die Rohkopie
+  `projektsteuerung.data.v1.vor-einspielen-<Zeitpunkt>` an und ersetzt, wenn
+  sie nicht in den Speicher passt, erst auf „Ohne Kopie einspielen“; bei
+  einem Stand aus einer neueren Fassung ist „Einspielen“ auch im Dialog
+  gesperrt.
 
 ### 8.6 Meldungen
 
@@ -993,7 +1087,10 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   `kaplan-projektregister.v1.vor-fassung-<n>`); `aufbereiten()` ergänzt fehlende Felder. Lässt sich der gespeicherte Stand
   nicht lesen oder stammt er aus einer neueren Fassung, bleibt er unberührt
   (`registerZustand`), und die Bereiche gleichen nicht ab. Ein Fenster lädt das
-  Register neu, wenn ein anderes es ändert (`storage`-Ereignis).
+  Register neu, wenn ein anderes es ändert (`storage`-Ereignis). Ist der Speicher
+  voll, räumt `speichern` Rohkopien über `nachRaeumenSpeichern`
+  (`src/shared/speicher.ts`) und meldet sonst in der Konsole „Projektregister konnte
+  nicht gespeichert werden: …“.
 * `registerAendern` ändert das Register über eine Funktion und benachrichtigt
   nur bei einer tatsächlichen Änderung; `useRegister` liefert es für die
   Oberfläche (`useSyncExternalStore`).
@@ -1011,7 +1108,8 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
 * `src/gemeinsam/useRegisterAbgleich.ts`: Jeder Store
   (`src/bereiche/planlauf/store/store.tsx`, `src/bereiche/baubetrieb/store/store.tsx`,
   `src/bereiche/projektsteuerung/store/store.tsx`, `src/bereiche/leistungsnachweise/store/store.tsx`)
-  gleicht nach jeder Änderung seines Bestands und jeder Änderung des Registers ab – alle vier nur
+  gleicht nach jeder Änderung seines Bestands und jeder Änderung des Registers ab – außer
+  einem aus einem anderen Fenster nachgeladenen Stand (siehe unten, *Mehrere Fenster*) –, alle vier nur
   bei `ladeZustand === 'ok'`. Zuerst überträgt `uebertragen`
   (`src/gemeinsam/abgleich.ts`) die Änderungen des Bereichs (alter gegen neuen
   Stand) ins Register, dann trägt `abgleichen` Unbekanntes ein und liefert einen
@@ -1029,8 +1127,17 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
 * Mehrere Fenster: Jeder Store lädt seinen Bestand nach, wenn ein anderes
   Fenster ihn speichert (`useFremdeAenderung` in `src/gemeinsam/useFremdeAenderung.ts`,
   `storage`-Ereignis auf `SPEICHER_SCHLUESSEL` des Bereichs, nur bei
-  `ladeZustand === 'ok'`). Der nachgeladene Stand gilt als eingespielt
-  (`ersetzt()`, kein Übertragen) und wird nicht zurückgeschrieben; stammt er aus
+  `ladeZustand === 'ok'`). Den nachgeladenen Stand meldet der Store vorher mit
+  `nachgeladen(daten)` (`useRegisterAbgleich` in `src/gemeinsam/useRegisterAbgleich.ts`,
+  dasselbe Objekt, das danach der Bestand wird) – nicht mit `ersetzt()`, ein noch offenes
+  `ersetzt()` verfällt. Dieser Stand wird weder übertragen noch abgeglichen, nur als
+  Ausgangspunkt (`vorher`) für die nächste eigene Änderung vermerkt: Das andere Fenster hat
+  beides schon getan, und sein Register kommt als eigenes `storage`-Ereignis, oft erst nach
+  dem Bestand – ein Abgleich dazwischen nähme dessen Änderungen zurück. Erst wenn sich danach
+  das Register ändert, gleicht der Store mit beiden aktuellen Ständen ab (nicht
+  `vollstaendig`). Deshalb steht in jedem Store der Abgleich-Effekt (`useRegisterAbgleich`)
+  nach dem Speicher-Effekt: Ein anderes Fenster erhält erst den Bestand, dann das Register.
+  Der nachgeladene Stand wird nicht zurückgeschrieben (`uebernommen`); stammt er aus
   einer neueren Fassung, übernimmt der Store den Ladezustand und speichert nicht
   mehr.
 * Je Bereich beschreibt `sichtFuerRegister` den Bestand und wendet
@@ -1223,14 +1330,26 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   Fassung 5: `nachgereicht` ergänzt `aufbereiten()` leer. Fassung 6: `bisFest`
   ergänzt `aufbereiten()` als false; `migriere()` stellt mit
   `nachgereichteZeilenUmstellen` die Zeilen nachgereichter Leistungen in
-  Texten, Aufschlägen und im festgeschriebenen Stand auf N-Schlüssel um, ohne
+  Texten, Aufschlägen und im festgeschriebenen Stand auf N-Schlüssel um – bei
+  Zeilen, in denen laufende und nachgereichte Leistungen zusammenstanden, zieht
+  ein Text, dessen `leistungIds` nur nachgereichte enthalten, auf den
+  N-Schlüssel um, und `aufschlaegeAufteilen` teilt die Aufschläge auf beide
+  Zeilen auf: mit Abschnittsspalten so, dass jede Spalte abgerechnet bleibt,
+  wie sie war (ein Abzug auf die ganze Zeile wird zu Abzügen auf die
+  getroffenen Abschnitte), sonst über den Aufschlag auf die ganze Zeile (ein
+  Abzug mindert zuerst die laufende Zeile bis 0). Im festgeschriebenen Stand
+  ersetzt das Zeilenpaar die alte Zeile nur, wenn Leistungen, erfasste Stunden
+  (auch je Abschnitt und Mitarbeiter) und abgerechnete Stunden übereinstimmen –
+  zeigt der Stand Abschnittsspalten, auch je Spalte –, ohne
   die abgerechneten Stunden zu ändern. Gespeichert wird nur bei
   `ladeZustand` 'ok'; vor einer Umstellung legt `ladeDaten` eine Rohkopie
   `leistungsnachweise.data.v1.vor-fassung-<n>` an. Ohne gespeicherten Bestand
   gibt es die Demodaten nur, solange das Projektregister leer ist; sonst beginnt
   der Bereich leer und nimmt die Registerprojekte auf (`ladeDaten`).
   `speichereDaten` liefert `SpeicherZustand` (`'ok'`, `'voll'`, `'gesperrt'`)
-  und räumt bei vollem Speicher zuerst die Rohkopien; dann zeigt
+  und räumt bei vollem Speicher Rohkopien einzeln (`nachRaeumenSpeichern` in
+  `src/shared/speicher.ts`, auch die anderer Bereiche, zurückgestellt, wenn es nicht
+  reicht); dann zeigt
   `SpeicherHinweis` (`src/bereiche/leistungsnachweise/components/SpeicherHinweis.tsx`,
   im Bereich und im Controlling) „Nicht gespeichert – bitte Sicherung
   herunterladen.“ mit „Der Speicher des Browsers ist voll“ bzw. „Der Browser
@@ -1257,7 +1376,7 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Kalender „Mein Kalender“ über alle eigenen Leistungen, auch in archivierten Projekten (siehe unten; die Einträge nennen die Projektnummer, beim Erfassen fragt der Dialog das Projekt ab – `projektAuswahl`, zur Wahl stehen nur nicht archivierte Projekte, vorgewählt das Projekt der zuletzt erfassten eigenen Leistung). Gibt es kein nicht archiviertes Projekt, steht der Kalender trotzdem da, darüber „Es gibt noch kein Projekt, in dem Sie Leistungen erfassen können. Projekte legt das Controlling an; Projekte der anderen Bereiche erscheinen hier von selbst, unbekannte legt auch der Excel-Import an.“ bzw. – sind alle archiviert – „Alle Projekte sind archiviert – in ihnen lassen sich keine Leistungen erfassen. Das Controlling kann sie aus dem Archiv zurückholen; erfasste Leistungen bleiben im Kalender sichtbar.“; ein Klick auf einen Tag meldet dann „Kein Projekt zum Erfassen – Projekte legt das Controlling an.“ bzw. „Kein Projekt zum Erfassen – alle sind archiviert, das Controlling kann sie zurückholen.“; Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ohne Anmeldung „Bitte anmelden“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat und „Zuletzt erfasst“. Angezeigt werden markierte Projekte – auch die in anderen Bereichen markierten (`istMarkiert`) –, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall; „Kein Projekt markiert – es werden alle angezeigt.“ nach derselben Regel (9.3). |
+| `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Kalender „Mein Kalender“ über alle eigenen Leistungen, auch in archivierten Projekten (siehe unten; die Einträge nennen die Projektnummer, beim Erfassen fragt der Dialog das Projekt ab – `projektAuswahl`, zur Wahl stehen nur nicht archivierte Projekte, vorgewählt das Projekt der zuletzt erfassten eigenen Leistung). Gibt es kein nicht archiviertes Projekt, steht der Kalender trotzdem da, darüber „Es gibt noch kein Projekt, in dem Sie Leistungen erfassen können. Projekte legt das Controlling an; Projekte der anderen Bereiche erscheinen hier von selbst, unbekannte legt auch der Excel-Import an.“ bzw. – sind alle archiviert – „Alle Projekte sind archiviert – hier in der Übersicht stehen sie deshalb nicht zur Wahl. Leistungen lassen sich weiterhin im archivierten Projekt erfassen (…); aus dem Archiv zurückholen kann sie das Controlling. Erfasste Leistungen bleiben im Kalender sichtbar.“ (in der Klammer fett „Projekte › Archiv“); ein Klick auf einen Tag meldet dann „Kein Projekt zum Erfassen – Projekte legt das Controlling an.“ bzw. „Kein Projekt zur Wahl – alle sind archiviert. Erfassen lässt sich im Projekt unter Projekte › Archiv.“; Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ohne Anmeldung „Bitte anmelden“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat und „Zuletzt erfasst“. Angezeigt werden markierte Projekte – auch die in anderen Bereichen markierten (`istMarkiert`) –, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall; „Kein Projekt markiert – es werden alle angezeigt.“ nach derselben Regel (9.3). |
 | `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ (in einem anderen Bereich markierte fest – `useMarkiertAnderswo`, Tooltip „In … markiert – deshalb auch hier markiert; aufheben lässt es sich nur dort“ – sonst umschaltbar) und „Auch in“; kein Anlegen („Projekte legt das Controlling an, unbekannte auch der Excel-Import.“); jedes Projekt des Registers steht von selbst hier (9.2); darunter „Archiv“ (9.3). |
 | `#/leistungsnachweise/projekt/<id>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`) | Projektnummer, Status, Leistungsbereich; ggf. Archivhinweis (9.3); darunter ohne Reiter die eigenen Leistungen (`src/bereiche/leistungsnachweise/pages/projekt/Leistungen.tsx`: Umschalter „Kalender“ – Vorgabe, Kalender „Meine Leistungen“ – und „Liste“, dazu „Leistung erfassen“ und „Excel-Import“; die Liste mit Filter nach Monat, Suche, Auswahl löschen; der Nachweis je Leistung steht ohne Verweis). Bearbeiten, Einstellungen und Löschen gibt es nur im Controlling. Frühere Adressen `…/projekt/<id>/<reiter>` zeigen dieselbe Seite; `…/projekt/<id>/nachweis/<id>` führt in die Abrechnung des Controllings. |
 
@@ -1379,16 +1498,26 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   zurück, wenn das Raster wieder umgestellt wird.“; der Satz über die offenen
   Nachweise endet dann mit „bleiben gespeichert“ statt „bleiben erhalten“.
   Liegt schon alles in genau einem offenen Nachweis, heißt der Knopf „Öffnen“.
-  Vorhandene Nachweise korrigiert „Zeitraum ändern“ (`ZeitraumDialog`): Ein
-  geändertes Ende setzt `bisFest` (Hinweis „Das Ende steht damit fest: Der
-  Leistungsnachweis endet am …, läuft nicht mehr bis zum Abschluss und wird
-  beim Abschluss nicht gekürzt. Spätere Leistungen kommen in einen neuen
-  Leistungsnachweis.“). Läuft der Nachweis bis zum Abschluss, legt das Kästchen
-  „Ende festlegen – der Leistungsnachweis läuft nicht mehr bis zum Abschluss“
-  das Ende auch ohne Änderung fest (bei geändertem Ende vorgewählt, abwählbar);
-  bei festgelegtem Ende hebt „Wieder bis zum Abschluss laufen lassen (das Ende
-  ist von Hand festgelegt)“ es auf. Der Dialog übergibt `bisFest` stets
-  ausdrücklich an `updateNachweis`.
+  Vorhandene Nachweise korrigiert „Zeitraum ändern“ (`ZeitraumDialog`). Ob ein
+  festgelegtes Ende (`bisFest`) mit dem eingegebenen Ende etwas bewirkt, sagt
+  `endeFestlegenWirkt` (`src/bereiche/leistungsnachweise/domain/nachweis.ts`:
+  offen und Regel `fortlaufend` oder Ende nach heute – ohne `bisFest` liefe er
+  dann bis zum Abschluss). Nur dann bietet der Dialog die Kästchen an: ohne
+  `bisFest` „Ende festlegen – der Leistungsnachweis läuft nicht mehr bis zum
+  Abschluss“ (lief er bisher nicht bis zum Abschluss: „Ende festlegen – der
+  Leistungsnachweis läuft nicht bis zum Abschluss“), das das Ende auch ohne
+  Änderung festlegt und bei geändertem Ende vorgewählt, aber abwählbar ist;
+  mit `bisFest` „Wieder bis zum Abschluss laufen lassen (das Ende ist von Hand
+  festgelegt)“, das es aufhebt. Wo ein festgelegtes Ende nichts bewirkt (Regel
+  `monat`, Ende nicht nach heute), setzt ein geändertes Ende `bisFest`
+  trotzdem – es wirkt, sobald das Projekt auf `fortlaufend` wechselt –, und ein
+  gesetztes bleibt. Läuft der Nachweis danach nicht bis zum Abschluss, obwohl
+  er es bisher tat bzw. mit dem geänderten Ende ohne Festlegung täte, sagt der
+  Hinweis „Das Ende steht damit fest: Der Leistungsnachweis endet am …, läuft
+  nicht mehr bis zum Abschluss und wird beim Abschluss nicht gekürzt. Spätere
+  Leistungen kommen in einen neuen Leistungsnachweis.“ – lief er bisher nicht
+  bis zum Abschluss, heißt es „… läuft nicht bis zum Abschluss …“. Der Dialog
+  übergibt `bisFest` stets ausdrücklich an `updateNachweis`.
 * Nicht erfasste Leistungen: Abgerechnet ist, was im festgeschriebenen Stand
   der abgeschlossenen Nachweise steht (`abgerechneteLeistungen`). Leistungen vor
   dem letzten abgeschlossenen Nachweis, die dort fehlen und in keinem offenen
@@ -1457,7 +1586,7 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 | „Leistungsnachweis wieder geöffnet – er zeigt die aktuellen Leistungen.“ / „Aufschläge zurückgesetzt.“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` | Kein Fehler. |
 | „Der gespeicherte Stand der Leistungsnachweise ließ sich nicht laden bzw. stammt aus einer neueren Fassung. …“ | `src/bereiche/leistungsnachweise/controlling.tsx` | Controlling bei `ladeZustand` ≠ 'ok'. |
 | „Nicht gespeichert – bitte Sicherung herunterladen.“ | `src/bereiche/leistungsnachweise/components/SpeicherHinweis.tsx` | `speicherZustand` ≠ 'ok': Speicher voll oder gesperrt; Änderungen gehen beim Schließen verloren. |
-| „Kein Projekt zum Erfassen – Projekte legt das Controlling an.“ / „Kein Projekt zum Erfassen – alle sind archiviert, das Controlling kann sie zurückholen.“ | `src/bereiche/leistungsnachweise/pages/Uebersicht.tsx` | Klick auf einen Tag in „Mein Kalender“ ohne nicht archiviertes Projekt. |
+| „Kein Projekt zum Erfassen – Projekte legt das Controlling an.“ / „Kein Projekt zur Wahl – alle sind archiviert. Erfassen lässt sich im Projekt unter Projekte › Archiv.“ | `src/bereiche/leistungsnachweise/pages/Uebersicht.tsx` | Klick auf einen Tag in „Mein Kalender“ ohne nicht archiviertes Projekt. |
 
 ## 11. Angemeldet als – für alle Bereiche
 

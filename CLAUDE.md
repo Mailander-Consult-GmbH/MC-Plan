@@ -74,7 +74,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   als Vermerk in der Beschreibung) und die Aktionen des Controllings; `useRegisterAbgleich.ts`
   bindet einen Store an; `useFremdeAenderung.ts` lädt den Bestand eines Stores nach, wenn ein
   anderes Fenster seinen Schlüssel (`SPEICHER_SCHLUESSEL` aus `store/storage.ts`) speichert –
-  jeder der vier Stores nutzt ihn (`ersetzt()` vor `setData`, nicht zurückschreiben);
+  jeder der vier Stores nutzt ihn (`nachgeladen(daten)` aus `useRegisterAbgleich` vor
+  `setData(daten)` – derselbe Stand wird weder übertragen noch abgeglichen, bis sich das Register
+  ändert; nicht zurückschreiben; nicht `ersetzt()`);
   `ProjektBereiche.tsx` Bausteine der Projektlisten („Auch in“, „Projekte aus anderen
   Bereichen“, Archiv, Archivhinweis, Beteiligte). Dazu **„Angemeldet als“ für alle Bereiche**:
   `benutzer.ts` (Name und Farbmodus, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
@@ -116,7 +118,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   ist, was im Stand abgeschlossener Nachweise steht, `abgerechneteLeistungen`; Vorgabe ist die
   Zeitraumregel `fortlaufend` – ein Nachweis läuft, bis er abgeschlossen wird, und erst der
   Abschluss legt seinen Zeitraum fest, `laeuftBisAbschluss`/`abschlussZeitraum`, außer das
-  Controlling hat das Ende festgelegt (`bisFest`, „Zeitraum ändern“); „Neuer
+  Controlling hat das Ende festgelegt (`bisFest`, „Zeitraum ändern“, angeboten nur, wo es wirkt:
+  `endeFestlegenWirkt`); „Neuer
   Leistungsnachweis“ fragt keinen Zeitraum ab, sondern fasst alle nicht abgerechneten Leistungen
   und offenen Nachweise zusammen, `nichtAbgerechnet`/`nachweisFuerNichtAbgerechneteAnwenden`),
   `domain/import.ts`
@@ -132,7 +135,11 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   (`menue.tsx`: Portal, bleibt im Fenster, Tastatur; eigene Menüs werden von `.card`/`.table-scroll`
   abgeschnitten); `tabellen.ts` (`tabellenBreiteBeobachten`, in `main.tsx`) lässt überbreite
   Tabellen quer scrollen (`table-scroll-quer`); `scrollen.ts` (`useNachObenBeiSeitenwechsel`)
-  hängt am `.content` jedes Bereichs. `main.tsx` importiert `global.css` vor der Shell, damit
+  hängt am `.content` jedes Bereichs. Dialoge immer über `Modal` (`ui.tsx`: Fokus beim Öffnen,
+  Tab bleibt im Dialog, Escape schließt nur den obersten, Fokus zurück an den Öffner); Elemente,
+  die nur auf Klicks hören (Ablageflächen `.drop-zone`), mit `alsKnopf` tastaturbedienbar machen.
+  `speicher.ts` verwaltet Rohkopien im `localStorage` (`rohkopieVorEinspielen`,
+  `nachRaeumenSpeichern`). `main.tsx` importiert `global.css` vor der Shell, damit
   Bereichsregeln gleicher Spezifität gewinnen – Reihenfolge nicht umdrehen.
 * `src/bereiche/planlauf/`:
   * `domain/types.ts` Datenmodell (flache Listen in `AppData`, Verweise über IDs – außer: Schritte
@@ -215,6 +222,10 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Das Register ändert nur `registerAendern` (außerhalb von React-Updates). Archivstand und
   Zugehörigkeit stehen allein im Register, nicht im Bestand der Bereiche. `ersetzeDaten` und
   `zuruecksetzen` melden vorher `ersetzt()` – ein eingespielter Stand wird nicht übertragen.
+  Einen aus einem anderen Fenster nachgeladenen Stand melden die Stores dagegen mit
+  `nachgeladen()`, nicht mit `ersetzt()`: Bestand und Register kommen dort als zwei getrennte
+  `storage`-Ereignisse an, ein Abgleich dazwischen nähme die Änderungen des anderen Fensters
+  zurück. Im Store steht der Abgleich-Effekt nach dem Speicher-Effekt.
   `sichtFuerRegister` lässt weg, was nicht geteilt wird (im Planlaufmanagement der eigene Kontakt
   und die Funktion Planlaufmanagement); `funktionenPassen` sagt, wann die Funktionen einer Person
   so nah am Register sind, wie der Bereich sie abbilden kann (Projektsteuerung: eine Funktion je
@@ -238,8 +249,12 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 * Gespeichert wird – in allen vier Bereichen – nur bei `ladeZustand === 'ok'`, und nur dann gleicht
   der Store mit dem Register ab: Nach einem Ladefehler oder bei einem Stand aus einer neueren
   Fassung zeigt der Bereich Demodaten (mit Hinweisleiste) und lässt den gespeicherten Stand
-  unberührt. Vor jeder Umstellung legt `ladeDaten` eine Rohkopie `<Schlüssel>.vor-fassung-<n>` an;
-  `speichereDaten` liefert `SpeicherZustand` und räumt bei vollem Speicher zuerst diese Kopien.
+  unberührt. Vor jeder Umstellung legt `ladeDaten` eine Rohkopie `<Schlüssel>.vor-fassung-<n>` an,
+  vor dem Einspielen einer Sicherung über einen unlesbaren Stand `rohkopieVorEinspielen` eine
+  `<Schlüssel>.vor-einspielen-<Zeitpunkt>`; „Gespeicherten Stand herunterladen“ liefert dann den
+  Rohtext statt der Demodaten. `speichereDaten` liefert `SpeicherZustand` und räumt bei vollem
+  Speicher über `nachRaeumenSpeichern` (`src/shared/speicher.ts`) nach Bedarf diese Kopien – auch
+  die anderer Bereiche; das Register räumt ebenso.
 * Der localStorage-Schlüssel `planlauf-management.data.v1` bleibt unverändert. Neue Felder am
   Datenmodell sind optional oder werden in `migriere()` (`store/storage.ts`) nachgetragen – dann
   **`DATEN_VERSION`** (`domain/types.ts`) erhöhen: `migriere()` läuft nur, wenn die gespeicherte
