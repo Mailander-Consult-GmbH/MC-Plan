@@ -20,6 +20,7 @@ import {
   type Einstellungen,
   type Funktion,
   type ID,
+  type Logo,
   type Projekt,
   type ProjektsteuerungDaten,
   type Protokoll,
@@ -28,6 +29,14 @@ import type { Punkt } from '../domain/punkte';
 import { ladeDaten, speichereDaten } from './storage';
 
 export { newId };
+
+/** Lässt Logos von Protokollreihen fallen, die es nicht mehr gibt. */
+function reihenLogosBereinigen(d: ProjektsteuerungDaten): ProjektsteuerungDaten {
+  const reihen = new Set(d.protokolle.map((p) => p.reiheId));
+  const ids = Object.keys(d.reihenLogos);
+  if (ids.every((id) => reihen.has(id))) return d;
+  return { ...d, reihenLogos: Object.fromEntries(ids.filter((id) => reihen.has(id)).map((id) => [id, d.reihenLogos[id]])) };
+}
 
 interface StoreValue {
   data: ProjektsteuerungDaten;
@@ -63,6 +72,8 @@ interface StoreValue {
   folgeprotokollAnlegen: (id: ID) => ID | null;
   /** Übernimmt Protokolle (etwa aus dem Protokoll-Tool); gleiche Kennungen werden ersetzt. */
   protokolleUebernehmen: (liste: Protokoll[]) => void;
+  /** Eigene Logos einer Protokollreihe; null = wieder die Logos des Projekts. */
+  setReihenLogos: (reiheId: ID, logos: Logo[] | null) => void;
   /* Aufgaben aus den Protokollen */
   /** Setzt „erledigt“ an einer Aufgabe – Eintrag oder Ergänzung mit eigener Art. */
   punktErledigen: (punkt: Punkt, erledigt: boolean) => void;
@@ -159,12 +170,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateProjekt: (id, patch) =>
         mutate((d) => ({ ...d, projekte: d.projekte.map((p) => (p.id === id ? { ...p, ...patch, id } : p)) })),
       deleteProjekt: (id) =>
-        mutate((d) => ({
-          ...d,
-          projekte: d.projekte.filter((p) => p.id !== id),
-          beteiligte: d.beteiligte.filter((b) => b.projektId !== id),
-          protokolle: d.protokolle.filter((p) => p.projektId !== id),
-        })),
+        mutate((d) =>
+          reihenLogosBereinigen({
+            ...d,
+            projekte: d.projekte.filter((p) => p.id !== id),
+            beteiligte: d.beteiligte.filter((b) => b.projektId !== id),
+            protokolle: d.protokolle.filter((p) => p.projektId !== id),
+          }),
+        ),
       toggleMarkiert: (id) =>
         mutate((d) => ({
           ...d,
@@ -186,22 +199,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addProtokoll: (p) => mutate((d) => ({ ...d, protokolle: [...d.protokolle, p] })),
       updateProtokoll: protokollAendern,
       deleteProtokoll: (id) =>
-        mutate((d) => ({
-          ...d,
-          protokolle: d.protokolle
-            .filter((p) => p.id !== id)
-            .map((p) =>
-              p.tops.some((t) => t.eintraege.some((e) => e.uebernommenIn === id))
-                ? {
-                    ...p,
-                    tops: p.tops.map((t) => ({
-                      ...t,
-                      eintraege: t.eintraege.map((e) => (e.uebernommenIn === id ? { ...e, uebernommenIn: null } : e)),
-                    })),
-                  }
-                : p,
-            ),
-        })),
+        mutate((d) =>
+          reihenLogosBereinigen({
+            ...d,
+            protokolle: d.protokolle
+              .filter((p) => p.id !== id)
+              .map((p) =>
+                p.tops.some((t) => t.eintraege.some((e) => e.uebernommenIn === id))
+                  ? {
+                      ...p,
+                      tops: p.tops.map((t) => ({
+                        ...t,
+                        eintraege: t.eintraege.map((e) => (e.uebernommenIn === id ? { ...e, uebernommenIn: null } : e)),
+                      })),
+                    }
+                  : p,
+              ),
+          }),
+        ),
       folgeprotokollAnlegen: (id) => {
         if (!data.protokolle.some((p) => p.id === id)) return null;
         // Die Kennung entsteht außerhalb von mutate, damit sie beim doppelten
@@ -219,6 +234,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         mutate((d) => {
           const ids = new Set(liste.map((p) => p.id));
           return { ...d, protokolle: [...d.protokolle.filter((p) => !ids.has(p.id)), ...liste] };
+        }),
+      setReihenLogos: (reiheId, logos) =>
+        mutate((d) => {
+          const { [reiheId]: _alt, ...andere } = d.reihenLogos;
+          return { ...d, reihenLogos: logos ? { ...andere, [reiheId]: logos } : andere };
         }),
 
       punktErledigen: (punkt, erledigt) => {

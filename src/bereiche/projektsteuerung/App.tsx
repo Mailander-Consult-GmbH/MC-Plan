@@ -7,7 +7,7 @@ import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { bezeichnung } from './domain/protokoll';
-import { offenePunkte } from './domain/punkte';
+import { eigeneTodos, offenePunkte } from './domain/punkte';
 import { STANDARD_BEARBEITER } from './domain/types';
 import { useRoute, type Route } from './lib/router';
 import { Funktionen } from './pages/Funktionen';
@@ -24,6 +24,12 @@ export function App() {
   const toast = useToast();
   const [route, navigate] = useRoute();
   const [menuOffen, setMenuOffen] = useState(false);
+  const inEinstellungen = route.view === 'funktionen';
+  const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
+  // Wer eine der Seiten unter „Einstellungen“ aufruft, sieht die Gruppe aufgeklappt
+  useEffect(() => {
+    if (inEinstellungen) setEinstellungenOffen(true);
+  }, [inEinstellungen]);
   const [bearbeiterDialog, setBearbeiterDialog] = useState(false);
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
@@ -32,6 +38,7 @@ export function App() {
   const markierte = sichtbareProjekte(data.projekte, archiviert);
   const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
   const ueberfaellig = offenePunkte(data, markierte.map((p) => p.id)).filter((p) => p.ampel === 'ueberfaellig');
+  const todos = eigeneTodos(data, markierte.map((p) => p.id)).length;
   const projekt =
     route.view === 'projekt' || route.view === 'protokoll'
       ? data.projekte.find((p) => p.id === route.projektId)
@@ -65,12 +72,27 @@ export function App() {
           icon="dashboard"
           label="Übersicht"
           aktiv={route.view === 'uebersicht'}
-          badge={ueberfaellig.length > 0 ? String(ueberfaellig.length) : undefined}
-          badgeAlarm
+          badge={todos > 0 ? String(todos) : undefined}
           onClick={() => gehe({ view: 'uebersicht' })}
         />
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
-        <NavItem icon="person" label="Funktionen" aktiv={route.view === 'funktionen'} onClick={() => gehe({ view: 'funktionen' })} />
+        {/* Funktionen unter „Einstellungen“ – wie im Planlaufmanagement */}
+        <NavItem
+          icon="einstellungen"
+          label="Einstellungen"
+          aktiv={false}
+          offen={einstellungenOffen}
+          onClick={() => setEinstellungenOffen((o) => !o)}
+        />
+        {einstellungenOffen ? (
+          <NavItem
+            unter
+            icon="person"
+            label="Funktionen"
+            aktiv={route.view === 'funktionen'}
+            onClick={() => gehe({ view: 'funktionen' })}
+          />
+        ) : null}
 
         <div className="nav-group-label">
           Projekte
@@ -258,6 +280,8 @@ function NavItem({
   aktiv,
   badge,
   badgeAlarm,
+  unter,
+  offen,
   onClick,
 }: {
   icon: IconName;
@@ -265,15 +289,30 @@ function NavItem({
   aktiv: boolean;
   badge?: string;
   badgeAlarm?: boolean;
+  /** Unterpunkt einer aufklappbaren Gruppe (eingerückt). */
+  unter?: boolean;
+  /** Nur Gruppen: aufgeklappt? Zeigt den Pfeil. */
+  offen?: boolean;
   onClick: () => void;
 }) {
   return (
-    <button type="button" className={`nav-item ${aktiv ? 'active' : ''}`} onClick={onClick} title={label}>
+    <button
+      type="button"
+      className={`nav-item ${aktiv ? 'active' : ''} ${unter ? 'unter' : ''}`}
+      onClick={onClick}
+      title={label}
+      aria-expanded={offen}
+    >
       <span className="nav-icon">
         <Icon name={icon} size={16} />
       </span>
       <span className="nav-label">{label}</span>
       {badge ? <span className={`nav-badge ${badgeAlarm ? 'alert' : ''}`}>{badge}</span> : null}
+      {offen !== undefined ? (
+        <span className={`nav-pfeil ${offen ? 'offen' : ''}`}>
+          <Icon name="chevron" size={13} />
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -298,7 +337,7 @@ function NichtGefunden({ onZurueck }: { onZurueck: () => void }) {
 function kopfzeile(route: Route, projektName?: string, protokollName?: string): { titel: string; sub?: string } {
   switch (route.view) {
     case 'uebersicht':
-      return { titel: 'Übersicht', sub: 'Offene Punkte und Besprechungen aller Projekte' };
+      return { titel: 'Übersicht', sub: 'Eigene To-Dos und Besprechungen aller Projekte' };
     case 'projekte':
       return { titel: 'Projekte', sub: 'Projektverwaltung' };
     case 'funktionen':

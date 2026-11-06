@@ -71,6 +71,11 @@ export function logosVon(projekt: Projekt): Logo[] {
   return projekt.logos ?? STANDARD_LOGOS;
 }
 
+/** Logos einer Protokollreihe: eigene, sonst die des Projekts. */
+export function logosFuer(projekt: Projekt, reiheId: ID, reihenLogos: Record<ID, Logo[]>): Logo[] {
+  return reihenLogos[reiheId] ?? logosVon(projekt);
+}
+
 /* ------------------------------------------------------------------ */
 /* Demodaten                                                           */
 /* ------------------------------------------------------------------ */
@@ -133,6 +138,11 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
       eintraege: [
         eintrag('I', 'Die Sperrpause für den Einhub des Überbaus ist bestätigt.'),
         eintrag('F', 'Baubesprechungen finden zweiwöchentlich dienstags um 9:00 Uhr im Baucontainer statt.'),
+        // Aufgaben der Projektsteuerung – die eigenen To-Dos der Übersicht
+        eintrag('A', 'Terminplan mit den Sperrpausen fortschreiben und an den Auftraggeber übergeben.', {
+          wer: 'PS',
+          termin: tag(-2),
+        }),
       ],
     },
     {
@@ -154,6 +164,10 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
       eintraege: [
         eintrag('I', 'Die Baustelleneinrichtung ist abgeschlossen.'),
         eintrag('A', 'Bauzeitenplan mit den Sperrpausen aktualisieren und verteilen.', { wer: 'AN', termin: tag(5) }),
+        eintrag('A', 'Mehrkostenanzeige des Auftragnehmers prüfen und Stellungnahme vorbereiten.', {
+          wer: 'PS',
+          termin: tag(9),
+        }),
       ],
     },
   ];
@@ -229,5 +243,6 @@ export function seedDaten(): ProjektsteuerungDaten {
     projekte: [p1, p2],
     beteiligte: [...Object.values(b), ...zweite],
     protokolle: demoProtokolle(p1.id, b),
+    reihenLogos: {},
   };
 }

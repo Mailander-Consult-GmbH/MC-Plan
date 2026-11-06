@@ -1,7 +1,8 @@
 /**
- * Startseite des Bereichs: Kennzahlen, die offenen Aufgaben der Protokolle
- * nach Dringlichkeit und die Projekte mit ihren Besprechungen.
- * Angezeigt werden die markierten Projekte; ohne Markierung alle.
+ * Startseite des Bereichs: Kennzahlen, die eigenen To-Dos – offene Aufgaben
+ * der Protokolle für die eigene Funktion (`EIGENE_FUNKTION`) – nach
+ * Dringlichkeit und die Projekte mit ihren Besprechungen. Angezeigt werden die
+ * markierten Projekte; ohne Markierung alle.
  */
 import { useState } from 'react';
 import { formatDate, relativeLabel, today } from '../../../shared/dates';
@@ -10,8 +11,8 @@ import { useToast } from '../../../shared/toast';
 import { Card, CardHeader, EmptyState, Segmented, Stat } from '../../../shared/ui';
 import { AmpelBadge, AmpelPunkt } from '../components/common';
 import { reihenVon } from '../domain/protokoll';
-import { offenePunkte, type Punkt } from '../domain/punkte';
-import type { Projekt } from '../domain/types';
+import { eigeneTodos, type Punkt } from '../domain/punkte';
+import { EIGENE_FUNKTION, type Projekt } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
@@ -41,7 +42,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
 
   const projekte = sichtbareProjekte(data.projekte, useArchivierte('projektsteuerung'));
   const ids = projekte.map((p) => p.id);
-  const offen = offenePunkte(data, ids);
+  const offen = eigeneTodos(data, ids);
   const ueberfaellig = offen.filter((p) => p.ampel === 'ueberfaellig');
   const faellig = offen.filter((p) => p.ampel === 'faellig');
   const gefiltert = filter === 'ueberfaellig' ? ueberfaellig : filter === 'faellig' ? faellig : offen;
@@ -57,7 +58,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
           label="Aktive Projekte"
           onClick={() => navigate({ view: 'projekte' })}
         />
-        <Stat wert={offen.length} label="Offene Punkte" ton="blue" onClick={() => setFilter('alle')} />
+        <Stat wert={offen.length} label={`To-Dos (${EIGENE_FUNKTION})`} ton="blue" onClick={() => setFilter('alle')} />
         <Stat
           wert={ueberfaellig.length}
           label="Überfällig"
@@ -81,8 +82,8 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
 
       <Card>
         <CardHeader
-          titel="Offene Punkte"
-          sub="Aufgaben aus den Protokollen – Überfälliges zuerst"
+          titel={`Meine To-Dos als ${EIGENE_FUNKTION}`}
+          sub="Offene Aufgaben aus den Protokollen im eigenen Verantwortungsbereich – Überfälliges zuerst"
           actions={
             <Segmented<Filter>
               value={filter}
@@ -96,7 +97,11 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
           }
         />
         {gefiltert.length === 0 ? (
-          <EmptyState icon="check" titel="Nichts offen" text="Für diese Auswahl gibt es keine offenen Punkte." />
+          <EmptyState
+            icon="check"
+            titel="Nichts offen"
+            text={`Für diese Auswahl liegt keine Aufgabe bei Ihnen. Eigene To-Dos sind Aufgaben, deren Verantwortliche die Funktion „${EIGENE_FUNKTION}“ tragen.`}
+          />
         ) : (
           <div className="table-scroll">
             <table className="table table-stack">
@@ -162,7 +167,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
       </Card>
 
       <Card>
-        <CardHeader titel="Projekte" sub="Beteiligte, Besprechungen und offene Punkte je Projekt" />
+        <CardHeader titel="Projekte" sub="Beteiligte, Besprechungen und eigene To-Dos je Projekt" />
         {projekte.length === 0 ? (
           <EmptyState icon="projekt" titel="Kein Projekt" text="Legen Sie unter „Projekte“ ein Projekt an." />
         ) : (
@@ -175,7 +180,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                   <th className="zahl col-optional">Protokolle</th>
                   <th className="col-optional">Letzte Besprechung</th>
                   <th>Nächster Termin</th>
-                  <th className="zahl">Offene Punkte</th>
+                  <th className="zahl">To-Dos</th>
                   <th className="zahl">Überfällig</th>
                   <th className="actions" />
                 </tr>

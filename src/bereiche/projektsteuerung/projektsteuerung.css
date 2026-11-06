@@ -85,6 +85,8 @@
 .ps-eintrag:not(.ps-gestrichen) .ps-zeile-gestrichen > .ps-orig,
 .ps-eintrag:not(.ps-gestrichen) .ps-zeile-gestrichen > .ps-zeile-feld { opacity: 0.62; }
 .ps-link.ps-wieder { display: inline-block; margin-top: 4px; }
+/* Nach oben, nach unten, löschen – untereinander am rechten Rand */
+.ps-aktionen { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .ps-nr { font-weight: 600; padding-top: 7px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 
 /* Umschalter I / F / A */
@@ -143,7 +145,7 @@
   .ps-eintrag > .ps-wer { grid-area: wer; }
   .ps-eintrag > .ps-termin { grid-area: termin; }
   .ps-eintrag > .ps-st { grid-area: haken; }
-  .ps-eintrag > .ps-weg { grid-area: weg; justify-self: end; }
+  .ps-eintrag > .ps-aktionen { grid-area: weg; justify-self: end; flex-direction: row; }
 }
 @media (max-width: 640px) {
   .ps-eintrag { grid-template-areas: 'nr typ . weg' 'text text text text' 'wer wer wer wer' 'termin termin haken haken'; }

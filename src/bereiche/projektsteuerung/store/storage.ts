@@ -47,6 +47,12 @@ const typVon = (w: unknown): EintragTyp => (w === 'F' || w === 'A' ? w : 'I');
 const artVon = (w: unknown): EintragTyp | null => (w === 'I' || w === 'F' || w === 'A' ? w : null);
 const objekt = (w: unknown): Roh | null => (w && typeof w === 'object' ? (w as Roh) : null);
 
+function logosAufbereiten(w: unknown): Logo[] {
+  return liste(w)
+    .filter((l) => text(l.src))
+    .map((l): Logo => ({ id: text(l.id) || zufallsId('logo'), name: text(l.name), src: text(l.src) }));
+}
+
 function zeileAufbereiten(z: Roh): Zeile {
   const vor = objekt(z.vor);
   const typ = artVon(z.typ);
@@ -180,11 +186,7 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
       status: p.status === 'pausiert' || p.status === 'abgeschlossen' ? p.status : 'aktiv',
       markiert: p.markiert !== false,
       beschreibung: text(p.beschreibung),
-      logos: Array.isArray(p.logos)
-        ? liste(p.logos)
-            .filter((l) => text(l.src))
-            .map((l): Logo => ({ id: text(l.id) || zufallsId('logo'), name: text(l.name), src: text(l.src) }))
-        : null,
+      logos: Array.isArray(p.logos) ? logosAufbereiten(p.logos) : null,
     }),
   );
   const projektIds = new Set(projekte.map((p) => p.id));
@@ -210,6 +212,14 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
   const protokolle = liste(roh.protokolle)
     .filter((p) => projektIds.has(text(p.projektId)))
     .map(protokollAufbereiten);
+  // Logos je Protokollreihe – nur für Reihen, die es noch gibt
+  const reihen = new Set(protokolle.map((p) => p.reiheId));
+  const reihenRoh = roh.reihenLogos && typeof roh.reihenLogos === 'object' ? (roh.reihenLogos as Record<string, unknown>) : {};
+  const reihenLogos = Object.fromEntries(
+    Object.entries(reihenRoh)
+      .filter(([id, w]) => reihen.has(id) && Array.isArray(w))
+      .map(([id, w]) => [id, logosAufbereiten(w)]),
+  );
   return {
     version: DATEN_VERSION,
     einstellungen: {
@@ -221,6 +231,7 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
     projekte,
     beteiligte,
     protokolle,
+    reihenLogos,
   };
 }
 
@@ -233,7 +244,8 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
  * Ergänzung; `aufbereiten` bildet daraus Zeilen. Bis Fassung 4 führte jedes
  * Projekt eine Liste offener Punkte (LOP); `aufbereiten` lässt sie samt den
  * Verweisen der Aufgaben fallen, Zeilen ohne eigene Art laufen unter dem
- * Ursprung mit.
+ * Ursprung mit. Fassung 5 kannte keine Logos je Protokollreihe; `aufbereiten`
+ * setzt `reihenLogos` leer – es gelten die Logos des Projekts.
  */
 function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   let stand = roh;

@@ -17,11 +17,19 @@ export type ISODate = string;
  * Fassung 4: Einträge aus Zeilen mit Ursprungsprotokoll, gestrichene
  * Tagesordnungspunkte, Bemerkung der LOP-Punkte; die LOP ohne Kopfangaben.
  * Fassung 5: ohne LOP; Ergänzungen mit eigener Art (`Zeile.typ`).
+ * Fassung 6: Logos je Protokollreihe (`reihenLogos`).
  */
-export const DATEN_VERSION = 5;
+export const DATEN_VERSION = 6;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
+
+/**
+ * Die eigene Funktion in allen Projekten. Aufgaben, deren Verantwortliche sie
+ * tragen, sind die eigenen To-Dos der Übersicht – wie im Planlaufmanagement
+ * die Schritte der eigenen Rolle.
+ */
+export const EIGENE_FUNKTION = 'Projektsteuerung';
 
 /** So viele Tage vor dem Termin gilt ein offener Punkt als „demnächst fällig“. */
 export const VORLAUF_TAGE = 7;
@@ -279,6 +287,11 @@ export interface ProjektsteuerungDaten {
   projekte: Projekt[];
   beteiligte: Beteiligter[];
   protokolle: Protokoll[];
+  /**
+   * Logos im Druckkopf je Protokollreihe (Schlüssel `reiheId`). Fehlt eine
+   * Reihe, gelten die Logos des Projekts.
+   */
+  reihenLogos: Record<ID, Logo[]>;
 }
 
 /* ------------------------------------------------------------------ */
