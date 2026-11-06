@@ -5,7 +5,7 @@
  * (Tag anklicken erfasst dort eine Leistung, das Projekt wählt der Dialog;
  * eine Leistung anklicken bearbeitet sie), die zuletzt erfassten eigenen
  * Leistungen und die Projekte mit den eigenen Stunden im Monat. Angezeigt werden die markierten
- * Projekte; ohne Markierung alle. Leistungsnachweise, Abschluss und Abrechnung
+ * Projekte – auch die in anderen Bereichen markierten (`istMarkiert`); ohne Markierung alle. Leistungsnachweise, Abschluss und Abrechnung
  * liegen im Controlling. Ohne Anmeldung steht darüber der Hinweis zum
  * Anmelden (App.tsx, `AnmeldeHinweis`).
  */
@@ -22,15 +22,21 @@ import { projektKurzname, type ISODate, type Leistung, type Projekt } from '../d
 import { MONATSNAMEN, monatsanfang, monatsende, stundenText } from '../domain/zeitraum';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
-import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
+import { useArchivierte, useMarkiertAnderswo } from '../../../gemeinsam/ProjektBereiche';
 
 /** So viele eigene Leistungen nennt „Zuletzt erfasst“. */
 const LETZTE = 8;
 
-/** Markierte Projekte; ohne Markierung alle. */
-export function sichtbareProjekte(projekte: Projekt[], archiviert: Set<string>): Projekt[] {
+/**
+ * Ist das Projekt markiert – hier oder in einem anderen Bereich? Was ein
+ * anderer Bereich mit ★ markiert, gilt hier von selbst (`useMarkiertAnderswo`).
+ */
+export const istMarkiert = (p: Projekt, anderswo: Map<string, string[]>) => p.markiert || anderswo.has(p.id);
+
+/** Markierte Projekte (auch die in anderen Bereichen markierten); ohne Markierung alle. */
+export function sichtbareProjekte(projekte: Projekt[], archiviert: Set<string>, anderswo: Map<string, string[]>): Projekt[] {
   const aktiv = projekte.filter((p) => !archiviert.has(p.id));
-  const markiert = aktiv.filter((p) => p.markiert);
+  const markiert = aktiv.filter((p) => istMarkiert(p, anderswo));
   return markiert.length > 0 ? markiert : aktiv;
 }
 
@@ -42,7 +48,8 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
   const [dialog, setDialog] = useState<{ leistung?: Leistung; datum?: ISODate } | null>(null);
 
   const archiviert = useArchivierte('leistungsnachweise');
-  const projekte = sichtbareProjekte(data.projekte, archiviert);
+  const anderswo = useMarkiertAnderswo('leistungsnachweise');
+  const projekte = sichtbareProjekte(data.projekte, archiviert, anderswo);
   const heute = today();
   const anfang = monatsanfang(heute);
   const ende = monatsende(heute);
@@ -54,7 +61,7 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
   const meineImMonat = meine.filter((l) => l.datum >= anfang && l.datum <= ende);
   const meineImJahr = meine.filter((l) => l.datum.startsWith(jahr));
   const letzte = [...meine].sort((a, b) => b.datum.localeCompare(a.datum) || b.erfasst.localeCompare(a.erfasst)).slice(0, LETZTE);
-  const alleMarkiert = data.projekte.filter((p) => p.markiert).length;
+  const alleMarkiert = data.projekte.filter((p) => istMarkiert(p, anderswo)).length;
   const projektVon = new Map(data.projekte.map((p) => [p.id, p]));
 
   // Projekte zur Wahl beim Erfassen aus dem Kalender: alle nicht archivierten; vorgewählt ist das

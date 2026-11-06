@@ -49,6 +49,8 @@ export interface LokalesProjekt {
   name: string;
   /** null: Der Bereich führt keine Beschreibung. */
   beschreibung: string | null;
+  /** Mit ★ markiert; ohne Angabe teilt der Bereich seine Markierung nicht. */
+  markiert?: boolean;
 }
 
 /** Person im Bereich; Felder, die der Bereich nicht führt, fehlen. */
@@ -273,6 +275,7 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
       continue;
     }
     m.offen = false;
+    if (l.markiert !== undefined) m.markiert = l.markiert;
     if (!projektWeg.has(l.id) && stammdatenWeichen(l, p)) {
       plan.projekteAendern.push({ id: l.id, nummer: p.nummer, name: p.name, beschreibung: p.beschreibung });
     }
@@ -284,7 +287,7 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
     if (projektWeg.has(l.id) || projektImBereich(r, bereich, l.id)) continue;
     const gleich = r.projekte.find((p) => !p.bereiche[bereich] && !p.archiviert && gleichesProjekt(p, l));
     if (gleich) {
-      gleich.bereiche[bereich] = { id: l.id, archiviert: false, offen: false };
+      gleich.bereiche[bereich] = { id: l.id, archiviert: false, offen: false, markiert: l.markiert ?? false };
       // Lücken im Register füllt der Bereich, sonst gilt das Register
       if (!gleich.nummer.trim() && l.nummer.trim()) gleich.nummer = l.nummer;
       if (!gleich.name.trim() && l.name.trim()) gleich.name = l.name;
@@ -303,7 +306,7 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
       herkunft: bereich,
       angelegtAm: jetzt,
       geaendertAm: jetzt,
-      bereiche: { [bereich]: { id: l.id, archiviert: false, offen: false } },
+      bereiche: { [bereich]: { id: l.id, archiviert: false, offen: false, markiert: l.markiert ?? false } },
     });
   }
 
@@ -323,7 +326,7 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
       belegt.add(id);
       const mitglieder = Object.values(p.bereiche);
       const archiviert = mitglieder.length > 0 && mitglieder.every((m) => m?.archiviert);
-      p.bereiche[bereich] = { id, archiviert, offen: true };
+      p.bereiche[bereich] = { id, archiviert, offen: true, markiert: false };
       plan.projekteAnlegen.push({ id, projekt: p });
     }
   }
@@ -403,7 +406,7 @@ export function projektAnlegen(
     angelegtAm: jetzt,
     geaendertAm: jetzt,
     bereiche: Object.fromEntries(
-      [...new Set([...bereiche, JEDES_PROJEKT_IN])].map((b) => [b, { id, archiviert: false, offen: true }]),
+      [...new Set([...bereiche, JEDES_PROJEKT_IN])].map((b) => [b, { id, archiviert: false, offen: true, markiert: false }]),
     ),
   });
   return r;
@@ -449,7 +452,7 @@ export function inBereichUebernehmen(register: Register, id: ID, bereich: Projek
   const r = klon(register);
   const p = r.projekte.find((x) => x.id === id);
   if (!p || p.bereiche[bereich]) return register;
-  p.bereiche[bereich] = { id: lokaleId, archiviert: false, offen: true };
+  p.bereiche[bereich] = { id: lokaleId, archiviert: false, offen: true, markiert: false };
   return r;
 }
 

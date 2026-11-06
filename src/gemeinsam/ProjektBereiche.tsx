@@ -22,6 +22,7 @@ import {
   archivierteIds,
   funktionText,
   genannteBereiche,
+  markiertAnderswo,
   istArchiviert,
   personName,
   projektImBereich,
@@ -39,6 +40,15 @@ import './gemeinsam.css';
 export function useArchivierte(bereich: ProjektBereich): Set<ID> {
   const register = useRegister();
   return useMemo(() => archivierteIds(register, bereich), [register, bereich]);
+}
+
+/**
+ * Projekte des Bereichs, die ein anderer Bereich mit ★ markiert hat – je
+ * Kennung die Titel dieser Bereiche (`markiertAnderswo`).
+ */
+export function useMarkiertAnderswo(bereich: ProjektBereich): Map<ID, string[]> {
+  const register = useRegister();
+  return useMemo(() => markiertAnderswo(register, bereich), [register, bereich]);
 }
 
 /**
