@@ -118,7 +118,7 @@ ignoriert.
   werden standardmäßig gestrichen statt gelöscht (`entfaellt`) und entfallen im Folgeprotokoll;
   erledigte Aufgaben gehen noch einmal mit. Was ins Folgeprotokoll geht, entscheidet allein
   `uebernahme` mit `eintragUebernehmen` (`domain/protokoll.ts`). Die Übersicht zeigt nur eigene
-  To-Dos – Aufgaben der Funktion `EIGENE_FUNKTION` (`eigeneTodos`, `domain/punkte.ts`). Logos im
+  To-Dos – Aufgaben der Person unter „Angemeldet als“ (`eigeneTodos`, `domain/punkte.ts`). Logos im
   Druckkopf führt jede Protokollreihe selbst oder erbt die des Projekts (`reihenLogos`,
   `logosFuer`). Eigene
   Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens). Neue Felder

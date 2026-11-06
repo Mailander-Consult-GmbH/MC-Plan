@@ -927,19 +927,21 @@ gewählt und erscheint mit ihrem Kürzel.
   Protokolle, statt sie zu verdoppeln.
 
 ### Übersicht
-Nur die **eigenen To-Dos** – wie im Planlaufmanagement die Schritte der eigenen Rolle: offene
-Aufgaben der Protokolle aller markierten Projekte (Einträge vom Typ A und Ergänzungen mit eigener
-Art „Aufgabe“), deren Verantwortliche die Funktion **Projektsteuerung** tragen – erkannt am Kürzel
-oder Namen der Personen mit dieser Funktion im Projekt oder unter den Teilnehmenden und am Kürzel
-der Funktion. Kennzahlen (aktive Projekte, To-Dos, überfällig, demnächst fällig – 7 Tage vorher),
-die Liste **Meine To-Dos als Projektsteuerung**, Überfälliges zuerst, mit **Erledigt** je Zeile;
+Nur die **eigenen To-Dos**: offene Aufgaben der Protokolle aller markierten Projekte (Einträge vom
+Typ A und Ergänzungen mit eigener Art „Aufgabe“), deren Verantwortlich die Person unter
+**Angemeldet als** nennt – mit ihrem Kürzel oder Namen aus der Projektbeteiligtenliste oder den
+Teilnehmenden; Groß- und Kleinschreibung zählen nicht. Steht der Name in keiner
+Projektbeteiligtenliste der angezeigten Projekte, weist die Übersicht darauf hin. Kennzahlen
+(aktive Projekte, meine To-Dos, überfällig, demnächst fällig – 7 Tage vorher), die Liste
+**Meine To-Dos**, Überfälliges zuerst, mit **Erledigt** je Zeile;
 dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin und ihren
 eigenen To-Dos. Die Seitenleiste zählt die eigenen To-Dos an **Übersicht** und die überfälligen
 Aufgaben je Projekt.
 
 ### Daten
 Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
-mit Projektbeteiligten und zwei Protokollen, darunter Aufgaben der Projektsteuerung), **Sicherung**/**Einspielen** (JSON mit dem
+mit Projektbeteiligten und zwei Protokollen, darunter Aufgaben der Projektsteuerung; angemeldet ist
+deren Projektsteuerin Lena Roth), **Sicherung**/**Einspielen** (JSON mit dem
 Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
 Protokoll-Tools werden mit Hinweis abgewiesen) und **Zurücksetzen**. Stände der ersten Fassung
 erhalten beim Laden die mitgelieferten Gewerke; ihre Funktionen gelten als übergreifend. Ältere
