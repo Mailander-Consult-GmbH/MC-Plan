@@ -57,7 +57,12 @@ ignoriert.
   (Schlüssel `kaplan-projektregister.v1`): Projekte (Nummer, Bezeichnung, Beschreibung), ihre
   Zugehörigkeit je Bereich mit lokaler Kennung und Archivstand (`Mitgliedschaft`, `offen` =
   Übernahme steht aus) und die Projektbeteiligten mit Kontaktdaten und Funktionen (über
-  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). `register.ts` Modell, Laden/Speichern,
+  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). Jedes Projekt gehört auch in die
+  Leistungsnachweise (`JEDES_PROJEKT_IN`: deren Abgleich nimmt alle auf, kein Zurücknehmen);
+  die anderen Bereiche nennen sie in ihren Projektansichten nicht (`genannteBereiche`). Die
+  ★-Markierung der Bereiche steht als Spiegel in der Mitgliedschaft (`markiert`); in den
+  Leistungsnachweisen gilt ein anderswo markiertes Projekt als markiert (`markiertAnderswo`).
+  `register.ts` Modell, Laden/Speichern,
   `registerAendern`/`useRegister`; `abgleich.ts` reine Funktionen: `uebertragen` (Änderungen
   des Bereichs → Register), `abgleichen` (Unbekanntes eintragen, `Plan` für den Bereich) und die
   Aktionen des Controllings; `useRegisterAbgleich.ts` bindet einen Store an;
@@ -75,8 +80,10 @@ ignoriert.
   (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis), `domain/rechte.ts` – die
   Rechte an einer Stelle, je **Zugang** (`'bereich'` | `'controlling'`): Der `StoreProvider` erhält
   den Zugang als Eigenschaft (`index.tsx` ohne, `controlling.tsx` mit `'controlling'`); im Bereich
-  erfasst die angemeldete Person nur eigene Leistungen (Übersicht, Projektliste ohne Anlegen,
-  Projekt = nur `Leistungen`), alles Übrige (Projekte anlegen und einstellen – `projektVerwalten` –,
+  erfasst die angemeldete Person nur eigene Leistungen (Übersicht mit „Mein Kalender“ über alle
+  Projekte, Projektliste ohne Anlegen, Projekt = nur `Leistungen` mit Kalender und Liste;
+  Kalender: `components/LeistungsKalender.tsx`, Projektwahl im `LeistungDialog` über
+  `projektAuswahl`), alles Übrige (Projekte anlegen und einstellen – `projektVerwalten` –,
   Leistungsnachweise samt Leistungstexten und Bemerkung, Abschluss, Aufschläge, Export,
   Auswertung, Sammel-Import, Mitarbeiter) gibt es nur im Controlling: Reiter „Projekte“
   (`pages/controlling/ProjektListe.tsx`, `Projekt.tsx` mit `ProjektNachweise`, `Leistungen`,
@@ -87,8 +94,15 @@ ignoriert.
   (`mitarbeiterZumNamen`; der Store setzt `einstellungen.mitarbeiterId` danach), fehlt er, legt
   „Als Mitarbeiter anmelden“ ihn an. `domain/nachweis.ts`
   Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss (Nachweise eines Projekts überschneiden sich
-  nie; welche Leistungen ein Nachweis zeigt, ergibt sich allein aus dem Datum; Vorgabe ist die
-  Zeitraumregel `fortlaufend` – ein Nachweis läuft, bis er abgeschlossen wird), `domain/import.ts`
+  nie; welche Leistungen ein Nachweis zeigt, ergibt sich aus dem Datum – außer nachgereichten
+  Leistungen, die ein späterer Nachweis nach Rückfrage übernommen hat (`nachgereicht`); deshalb
+  immer `leistungenDesNachweises` bzw. `nachweisDerLeistung` statt Datumsvergleichen; abgerechnet
+  ist, was im Stand abgeschlossener Nachweise steht, `abgerechneteLeistungen`; Vorgabe ist die
+  Zeitraumregel `fortlaufend` – ein Nachweis läuft, bis er abgeschlossen wird, und erst der
+  Abschluss legt seinen Zeitraum fest, `laeuftBisAbschluss`/`abschlussZeitraum`; „Neuer
+  Leistungsnachweis“ fragt keinen Zeitraum ab, sondern fasst alle nicht abgerechneten Leistungen
+  und offenen Nachweise zusammen, `nichtAbgerechnet`/`nachweisFuerNichtAbgerechneteAnwenden`),
+  `domain/import.ts`
   Excel-Import, `domain/druck.ts`/`domain/export.ts` PDF und Excel, `lib/router.ts` baut auch die
   Adressen des Controllings (`CONTROLLING_PREFIX`); frühere Adressen
   `#/leistungsnachweise/controlling/…` lenkt `App.tsx` um. Kennungen, die erst in einer Änderung
@@ -130,7 +144,8 @@ ignoriert.
   Workflows liegen im Bestand und sind bearbeitbar), `domain/workflowPflege.ts` Speichern,
   Duplizieren, Löschen von Workflows, `domain/fristen.ts` Fahrplanjahr, Terminfrist, Ampel,
   Anmeldebedarf, `domain/ablauf.ts` Statuswechsel samt Übernahme/Aufteilung und `sachstand`
-  (jüngster Verlaufseintrag oder `geaendertAm`, das nur `updateAnmeldung`/`terminSetzen` setzen),
+  (jüngster Verlaufseintrag oder `geaendertAm`, das nur `updateAnmeldung`/`terminSetzen` setzen;
+  angezeigt in den Anmeldungstabellen des Projekts, `SachstandKompakt`),
   `store/` mit eigenem Schlüssel `baubetrieb-planung.data.v1`. Workflows und Fristen stehen in der
   Seitenleiste unter der aufklappbaren Gruppe „Einstellungen“ (wie im Planlaufmanagement);
   „Status ändern“ ist `NachfolgerAuswahl` (Haken mit Menü, `components/baubetrieb.css`, Präfix

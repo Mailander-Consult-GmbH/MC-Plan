@@ -40,8 +40,47 @@ export const BEREICH_TITEL: Record<ProjektBereich, string> = {
   leistungsnachweise: 'Leistungsnachweise',
 };
 
-/** Fassung des gespeicherten Registers. Neue Felder in `aufbereiten()` nachtragen und die Zahl erhöhen. */
-export const REGISTER_VERSION = 1;
+/**
+ * Bereich, in dem grundsätzlich jedes Projekt geführt wird – auf jedes Projekt
+ * lassen sich Leistungen erfassen. Sein Abgleich nimmt Projekte, die er noch
+ * nicht führt, von selbst auf (`abgleichen` in abgleich.ts); zurücknehmen
+ * lässt sich das nicht. Die anderen Bereiche nennen ihn in ihren
+ * Projektansichten nicht (`genannteBereiche`).
+ */
+export const JEDES_PROJEKT_IN: ProjektBereich = 'leistungsnachweise';
+
+/**
+ * Bereiche, die eine Projektansicht nennt: im Bereich `bereich` die anderen
+ * Bereiche – ohne `JEDES_PROJEKT_IN`, außer dort selbst; im Controlling
+ * (`null`) alle.
+ */
+export function genannteBereiche(bereich: ProjektBereich | null): ProjektBereich[] {
+  return PROJEKT_BEREICHE.map((b) => b.id).filter(
+    (b) => bereich === null || (b !== bereich && (b !== JEDES_PROJEKT_IN || bereich === JEDES_PROJEKT_IN)),
+  );
+}
+
+/**
+ * Projekte, die in einem anderen Bereich als `bereich` mit ★ markiert sind –
+ * je Kennung im Bereich die Titel der Bereiche, die sie markiert haben. Die
+ * Leistungsnachweise zeigen solche Projekte als markiert.
+ */
+export function markiertAnderswo(register: Register, bereich: ProjektBereich): Map<ID, string[]> {
+  const ergebnis = new Map<ID, string[]>();
+  for (const p of register.projekte) {
+    const eigen = p.bereiche[bereich];
+    if (!eigen) continue;
+    const titel = PROJEKT_BEREICHE.filter((b) => b.id !== bereich && p.bereiche[b.id]?.markiert).map((b) => b.titel);
+    if (titel.length > 0) ergebnis.set(eigen.id, titel);
+  }
+  return ergebnis;
+}
+
+/**
+ * Fassung des gespeicherten Registers. Neue Felder in `aufbereiten()` nachtragen und die Zahl erhöhen.
+ * Fassung 2: ★-Markierung je Bereich (`Mitgliedschaft.markiert`).
+ */
+export const REGISTER_VERSION = 2;
 
 const KEY = 'kaplan-projektregister.v1';
 
@@ -56,6 +95,12 @@ export interface Mitgliedschaft {
    * legt das Projekt beim nächsten Abgleich an; danach entfällt die Angabe.
    */
   offen: boolean;
+  /**
+   * Im Bereich mit ★ markiert – Spiegel der Markierung des Bereichs (sein
+   * Abgleich trägt sie ein). In `JEDES_PROJEKT_IN` gilt ein Projekt als
+   * markiert, wenn es ein anderer Bereich ist (`markiertAnderswo`).
+   */
+  markiert: boolean;
 }
 
 export interface RegisterProjekt {
@@ -219,7 +264,9 @@ export function aufbereiten(roh: Roh): Register {
       const bereiche: RegisterProjekt['bereiche'] = {};
       for (const id of BEREICH_IDS) {
         const m = b[id] && typeof b[id] === 'object' ? (b[id] as Roh) : null;
-        if (m && text(m.id)) bereiche[id] = { id: text(m.id), archiviert: m.archiviert === true, offen: m.offen === true };
+        if (m && text(m.id)) {
+          bereiche[id] = { id: text(m.id), archiviert: m.archiviert === true, offen: m.offen === true, markiert: m.markiert === true };
+        }
       }
       const herkunft = text(p.herkunft);
       return {

@@ -64,3 +64,6 @@ fieldset.ln-fieldset:not(.card-pad) { display: contents; padding: 0; }
   /* Knöpfe, die auf dem Telefon entfallen, weil die ganze Karte dasselbe tut */
   .table.table-stack td.actions.ln-nur-breit { display: none; }
 }
+
+/* ★ aus einem anderen Bereich: fest, nicht umschaltbar */
+.stern.ln-stern-fest { cursor: default; opacity: 0.75; }

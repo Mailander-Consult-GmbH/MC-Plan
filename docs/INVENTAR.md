@@ -541,10 +541,10 @@ N-x und unterjährige Anmeldung.
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`, samt ausstehender Erstanmeldungen, diese mit Prozessphase und Projekt) mit den Spalten Anmeldung, Projekt, Status, Terminfrist, „Sachstand“ (`sachstand`: Datum, Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; bei ausstehenden Erstanmeldungen „–“) und „Status ändern“ je Zeile (Haken, siehe 7.3); Karte „Anmeldebedarf aus den Projekten“ (nur wenn Bedarf besteht); Karte „Projekte“ mit der Zahl der Anmeldungen je Workflow, überfälligen Fristen (samt überfälliger Erstanmeldung) und nächster Frist (ohne Anmeldung die der Erstanmeldung). Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
+| `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`, samt ausstehender Erstanmeldungen, diese mit Prozessphase und Projekt) mit den Spalten Anmeldung, Projekt, Status, Terminfrist und „Status ändern“ je Zeile (Haken, siehe 7.3); Karte „Anmeldebedarf aus den Projekten“ (nur wenn Bedarf besteht); Karte „Projekte“ mit der Zahl der Anmeldungen je Workflow, überfälligen Fristen (samt überfälliger Erstanmeldung) und nächster Frist (ohne Anmeldung die der Erstanmeldung). Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
 | `#/baubetrieb/termine` | Termine & Nachhaken (`src/bereiche/baubetrieb/pages/Termine.tsx`) | Alle Anmeldungen mit Terminfrist über alle Projekte, gegliedert nach Projekt; Filter Alle / Überfällig / Fällig / Im Plan / Zum Nachhaken, Suche; je Zeile „Nachgehakt“ (bei Status zum Nachhaken) und „Status ändern“ (Haken, siehe 7.3); je Projekt zuerst eine Zeile „Erstanmeldung ausstehend“ (`ausstehendeErstanmeldungen`) mit „Ausstehend“, Terminfrist und „Zum Projekt“ – sie zählt in den Filtern mit. Darunter „Anmeldebedarf aus den Projekten“. |
 | `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit MIC-Projektnummer, Bezeichnung, Bemerkung (falls vorhanden), Status der Betreuung, ★-Markierung und „Auch in“; Suche auch über DB-G-Nummer, Projektleiter und Hauptbearbeiter; „Neues Projekt“ (`ProjektDialog`). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Baubetriebsplanung“ (siehe 9.3). |
-| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen; nur in diesem Bereich); Archivhinweis (9.3); Stammdaten; am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; die Maßnahmenart in der zweiten Zeile nur, wo der Workflow mehrere führt), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip) und „Status ändern“ (Haken, siehe 7.3). Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
+| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen; nur in diesem Bereich); Archivhinweis (9.3); Stammdaten; am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; die Maßnahmenart in der zweiten Zeile nur, wo der Workflow mehrere führt), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip), Sachstand (`SachstandKompakt` in `src/bereiche/baubetrieb/components/common.tsx`: Datum, darunter Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; alles im Tooltip) und „Status ändern“ (Haken, siehe 7.3). Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
 | `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“, „Letzten Wechsel zurücknehmen“, dazu „Zuständig:“ mit Rolle und Namen; Karte „Merkmale“ („Vorhabenname“ im SKM und wo er gesetzt ist, die Nummer als „tVE-Nr“ – bei älteren SKM-Einträgen ohne Vorhabenname weiter „Begriff / tVE-Nr“ –, „Zuständiger BBK“, „Anmelder“, Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; oben rechts „Bearbeiten“, „Duplizieren“ (Kopie mit aktuellem Stand und Statusverlauf, Vermerk „Dupliziert aus …“, „(Kopie)“ an der führenden Bezeichnung; öffnet die Kopie) und „Löschen“. |
 | `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Liste „Workflows“ mit Kennzeichen „Standard“ bzw. „Eigener Workflow“, Zahl der Status und Anmeldungen, den Status in ihrer Reihenfolge, „Öffnen“, „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
 | `#/baubetrieb/fristen` | Fristen (`src/bereiche/baubetrieb/pages/Fristen.tsx`), Menügruppe „Einstellungen“ | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase eine Gruppenzeile mit Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. Die frühere Adresse `#/baubetrieb/einstellungen` zeigt dieselbe Seite. |
@@ -912,13 +912,15 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   `nummer`, `name`, `beschreibung`, `archiviert` – im Controlling für alle
   Bereiche –, `herkunft` – Bereich oder `'controlling'` –, `bereiche` mit je
   einer `Mitgliedschaft`: `id` des Projekts im Bereich, `archiviert`, `offen` für
-  eine noch nicht vollzogene Übernahme), `personen` (`RegisterPerson` mit den
+  eine noch nicht vollzogene Übernahme, `markiert` als Spiegel der ★-Markierung
+  im Bereich), `personen` (`RegisterPerson` mit den
   `PERSON_FELDER` Anrede, Vorname, Nachname, Firma, Kürzel, E-Mail, Telefon,
   Mobil, Anschrift, Notiz, `funktionen` als `FunktionsBezug` – Bezeichnung,
   Gewerk, Kürzel – und `ids` je Bereich) und `geloescht` (`Grabstein` mit den
   Bereichen, die eine Löschung noch nachziehen müssen). Schlüssel
-  `kaplan-projektregister.v1` im `localStorage`, `REGISTER_VERSION = 1`;
-  `aufbereiten()` ergänzt fehlende Felder. Lässt sich der gespeicherte Stand
+  `kaplan-projektregister.v1` im `localStorage`, `REGISTER_VERSION = 2`
+  (Fassung 2: `markiert`, vor der Umstellung eine Rohkopie
+  `kaplan-projektregister.v1.vor-fassung-<n>`); `aufbereiten()` ergänzt fehlende Felder. Lässt sich der gespeicherte Stand
   nicht lesen oder stammt er aus einer neueren Fassung, bleibt er unberührt
   (`registerZustand`), und die Bereiche gleichen nicht ab. Ein Fenster lädt das
   Register neu, wenn ein anderes es ändert (`storage`-Ereignis).
@@ -927,6 +929,12 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   Oberfläche (`useSyncExternalStore`).
 * Funktionen gelten bereichsübergreifend als dieselben, wenn Bezeichnung und
   Gewerk übereinstimmen (`funktionsSchluessel`).
+* `JEDES_PROJEKT_IN` (`'leistungsnachweise'`): Bereich, in dem jedes Projekt
+  geführt wird. `genannteBereiche(bereich)` liefert die Bereiche, die eine
+  Projektansicht nennt – im Bereich die anderen ohne `JEDES_PROJEKT_IN` (außer
+  dort selbst), im Controlling (`null`) alle. `markiertAnderswo(register,
+  bereich)` nennt je Kennung im Bereich die anderen Bereiche, die das Projekt
+  mit ★ markiert haben.
 
 ### 9.2 Abgleich mit den Bereichen
 
@@ -961,7 +969,17 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   * Leistungsnachweise (`src/bereiche/leistungsnachweise/domain/register.ts`):
     Projekte mit Nummer, Name und Beschreibung; keine Personen. Übernommene
     Projekte erhalten `IMPORT_PROJEKT_VORGABEN` (Leistungsbereich, Raster,
-    Zeitraumregel).
+    Zeitraumregel) und sind nicht markiert (`markiert: false`).
+* Jedes Projekt auch in den Leistungsnachweisen: Im Abgleich von
+  `JEDES_PROJEKT_IN` erhält – nach dem Verknüpfen gleicher Projektnummern –
+  jedes nicht archivierte Registerprojekt ohne Mitgliedschaft dort eine
+  (`offen`; als archiviert, wenn das Projekt in allen seinen Bereichen
+  archiviert ist), und der Plan legt es an (Kennung = die des Registers, bei
+  Belegung eine neue). `projektAnlegen` sieht `JEDES_PROJEKT_IN` stets vor;
+  `uebernahmeZuruecknehmen` ändert dort nichts.
+* Markierung: Planlaufmanagement, Baubetriebsplanung und Projektsteuerung geben
+  in ihrer Sicht `markiert` mit; `abgleichen` trägt es in die Mitgliedschaft
+  ein. Die Leistungsnachweise geben keine Markierung weiter.
 * Beim ersten Abgleich verknüpft `abgleichen` ein Projekt mit einem nicht
   archivierten Registerprojekt gleicher Projektnummer, das der Bereich noch
   nicht führt (ohne Nummer: gleicher Bezeichnung), und darin Personen gleicher
@@ -969,7 +987,8 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   Registers füllt der Bereich, sonst gilt das Register.
 * Führt ein Bereich ein Projekt nicht mehr, entfällt seine Mitgliedschaft; ohne
   weitere Mitgliedschaft entfällt das Projekt samt Personen auch im Register,
-  außer es stammt aus dem Controlling (`mitgliedschaftLoesen`). Löscht ein
+  außer es stammt aus dem Controlling und der löschende Bereich ist nicht
+  `JEDES_PROJEKT_IN` (`mitgliedschaftLoesen`). Löscht ein
   Bereich eine Person, entfernt das Register sie und vermerkt die Löschung für
   die anderen Bereiche.
 
@@ -979,13 +998,17 @@ Bausteine in `src/gemeinsam/ProjektBereiche.tsx` (Gestaltung in
 `src/gemeinsam/gemeinsam.css`, Präfix `gem-`):
 
 * `BereichsMarken` unten in jeder Projektkachel: „Auch in“ mit den anderen
-  Bereichen des Projekts, als „… · archiviert“ bzw. „… · vorgesehen“.
+  Bereichen des Projekts (`genannteBereiche` – außerhalb der
+  Leistungsnachweise ohne diese), als „… · archiviert“ bzw. „… · vorgesehen“.
+  Ebenso nennen „Geführt in“ und der Löschhinweis (`andereBereiche`,
+  `useLoeschHinweis`) die Leistungsnachweise nur dort selbst.
 * `FremdeProjekte`: grau hinterlegter Abschnitt „Projekte aus anderen
   Bereichen“ mit den nicht archivierten Registerprojekten, die der Bereich nicht
   führt (mit der Suche der Projektliste gefiltert), je Karte Nummer,
-  Bezeichnung, Beschreibung (falls vorhanden), „Geführt in“ bzw. „Im
-  Controlling angelegt, noch in keinem Bereich“ und „Übernehmen in …“
-  (`inBereichUebernehmen`).
+  Bezeichnung, Beschreibung (falls vorhanden), „Geführt in“ (ohne genannte
+  Bereiche bei Projekten aus dem Controlling „Im Controlling angelegt“) und
+  „Übernehmen in …“ (`inBereichUebernehmen`). In den Leistungsnachweisen ist
+  der Abschnitt leer, weil sie jedes Projekt führen.
 * `ArchivAbschnitt`: aufklappbares „Archiv“ mit den im Bereich archivierten
   Projekten und dem Hinweis „Archiviert wird im Controlling – je Bereich oder
   für alle.“ Archivierte Projekte fehlen in Übersicht und Seitenleiste
@@ -1015,7 +1038,7 @@ nicht; Gestaltung in `src/bereiche/controlling/controlling.css` (Präfix `ct-`).
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich; Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“. |
+| `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich; Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich; „Leistungsnachweise“ fest angehakt mit „(immer)“). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“ – in den Leistungsnachweisen (`JEDES_PROJEKT_IN`) ohne Übernehmen und Zurücknehmen, ohne Mitgliedschaft „Vorgesehen“. |
 | `#/controlling/archiv` | Archiv (dieselbe Seite) | Die im Controlling archivierten Projekte mit „Bearbeiten“, „Aus dem Archiv holen“ und „Löschen“; der Stand je Bereich ohne Schaltflächen. |
 | `#/controlling/leistungsnachweise/<reiter>`, `…/projekt/<id>/<reiter>` bzw. `…/projekt/<id>/nachweis/<id>` | Controlling der Leistungsnachweise (`LeistungsnachweiseControlling` in `src/bereiche/leistungsnachweise/controlling.tsx`), Menüpunkt „Leistungsnachweise“ unter „Bereiche“ | Siehe 10.4. |
 
@@ -1067,13 +1090,18 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   Mitarbeiter, Datum, Text, Stunden, Abschnitt, `projektelement`, `quelle`
   `manuell` oder `import`) und `Leistungsnachweis` (Zeitraum `von`/`bis`,
   Raster, Status `entwurf` oder `abgeschlossen`, bearbeitete `texte`,
-  `aufschlaege` je Zeile und Abschnitt, `bemerkung`, festgeschriebener
-  `stand`). `einstellungen.mitarbeiterId` ist die angemeldete Person.
+  `aufschlaege` je Zeile und Abschnitt, `bemerkung`, `nachgereicht` –
+  Kennungen übernommener Leistungen aus früheren Zeiträumen –, festgeschriebener
+  `stand`). Welche Leistungen ein Nachweis zeigt, ergibt sich aus ihrem Datum,
+  nachgereichte stehen statt dessen in dem Nachweis, der sie übernommen hat
+  (`leistungenDesNachweises`, `nachweisDerLeistung` in
+  `src/bereiche/leistungsnachweise/domain/nachweis.ts`). `einstellungen.mitarbeiterId` ist die angemeldete Person.
 * Schlüssel `leistungsnachweise.data.v1` im `localStorage`
-  (`src/bereiche/leistungsnachweise/store/storage.ts`), `DATEN_VERSION = 4`.
+  (`src/bereiche/leistungsnachweise/store/storage.ts`), `DATEN_VERSION = 5`.
   Fassung 3 kennt die Rolle Controlling an Mitarbeitern nicht mehr;
   `aufbereiten()` übernimmt sie nicht. Fassung 4 (`vonFassung3`) stellt alle
-  Projekte auf `zeitraumregel` `fortlaufend`; vorhandene Nachweise bleiben. Gespeichert wird nur bei
+  Projekte auf `zeitraumregel` `fortlaufend`; vorhandene Nachweise bleiben.
+  Fassung 5: `nachgereicht` ergänzt `aufbereiten()` leer. Gespeichert wird nur bei
   `ladeZustand` 'ok'; vor einer Umstellung legt `ladeDaten` eine Rohkopie
   `leistungsnachweise.data.v1.vor-fassung-<n>` an. Sicherungen tragen
   `"bereich": "leistungsnachweise"`.
@@ -1096,9 +1124,20 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ohne Anmeldung „Bitte anmelden“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat und „Zuletzt erfasst“. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall. |
-| `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ und „Auch in“; kein Anlegen („Projekte legt das Controlling an.“); darunter „Archiv“ und „Projekte aus anderen Bereichen“ (9.3). |
-| `#/leistungsnachweise/projekt/<id>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`) | Projektnummer, Status, Leistungsbereich; ggf. Archivhinweis (9.3); darunter ohne Reiter die eigenen Leistungen (`src/bereiche/leistungsnachweise/pages/projekt/Leistungen.tsx`: „Meine Leistungen“, „Leistung erfassen“, „Excel-Import“, Filter nach Monat, Suche, Auswahl löschen; der Nachweis je Leistung steht ohne Verweis). Bearbeiten, Einstellungen und Löschen gibt es nur im Controlling. Frühere Adressen `…/projekt/<id>/<reiter>` zeigen dieselbe Seite; `…/projekt/<id>/nachweis/<id>` führt in die Abrechnung des Controllings. |
+| `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Kalender „Mein Kalender“ über alle nicht archivierten Projekte (siehe unten; die Einträge nennen die Projektnummer, beim Erfassen fragt der Dialog das Projekt ab – `projektAuswahl`, vorgewählt das Projekt der zuletzt erfassten eigenen Leistung); Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ohne Anmeldung „Bitte anmelden“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat und „Zuletzt erfasst“. Angezeigt werden markierte Projekte – auch die in anderen Bereichen markierten (`istMarkiert`) –, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall. |
+| `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ (in einem anderen Bereich markierte fest – `useMarkiertAnderswo`, Tooltip „In … markiert – deshalb auch hier markiert; aufheben lässt es sich nur dort“ – sonst umschaltbar) und „Auch in“; kein Anlegen („Projekte legt das Controlling an.“); jedes Projekt des Registers steht von selbst hier (9.2); darunter „Archiv“ (9.3). |
+| `#/leistungsnachweise/projekt/<id>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`) | Projektnummer, Status, Leistungsbereich; ggf. Archivhinweis (9.3); darunter ohne Reiter die eigenen Leistungen (`src/bereiche/leistungsnachweise/pages/projekt/Leistungen.tsx`: Umschalter „Kalender“ – Vorgabe, Kalender „Meine Leistungen“ – und „Liste“, dazu „Leistung erfassen“ und „Excel-Import“; die Liste mit Filter nach Monat, Suche, Auswahl löschen; der Nachweis je Leistung steht ohne Verweis). Bearbeiten, Einstellungen und Löschen gibt es nur im Controlling. Frühere Adressen `…/projekt/<id>/<reiter>` zeigen dieselbe Seite; `…/projekt/<id>/nachweis/<id>` führt in die Abrechnung des Controllings. |
+
+Kalender (`LeistungsKalender` in
+`src/bereiche/leistungsnachweise/components/LeistungsKalender.tsx`, Gestaltung
+in `src/bereiche/leistungsnachweise/components/leistungen.css`, Präfix
+`ln-kal-`): je Monat die Wochen von Montag bis Sonntag, je Tag die Leistungen
+mit Stunden und Text und die Tagessumme, rechts „KW …“ mit der Wochensumme;
+im Kopf die Summe des Monats, „Vorheriger Monat“, „Nächster Monat“ und
+„Heute“, darunter „Tag anklicken, um dort eine Leistung zu erfassen – eine
+Leistung anklicken, um sie zu bearbeiten.“ Ein Tag öffnet „Leistung erfassen“
+mit seinem Datum (ohne Anmeldung zuerst die Anmeldung), eine Leistung „Leistung
+bearbeiten“. Bis 760 px Breite zeigt jeder Tag nur Nummer und Stunden.
 
 Unten in der Seitenleiste „Angemeldet als“ (gemeinsam für alle Bereiche,
 Abschnitt 11) und – solange der Name keinem aktiven Mitarbeiter gehört –
@@ -1133,7 +1172,7 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 
 * Reiter (`src/bereiche/leistungsnachweise/pages/controlling/Controlling.tsx`)
   „Auswertung“ (`Auswertung.tsx`), „Leistungsnachweise“ (`NachweisListe.tsx`,
-  mit „Neuer Leistungsnachweis“), „Projekte“ (`ProjektListe.tsx`: Projekte mit
+  mit „Neuer Leistungsnachweis“, siehe unten), „Projekte“ (`ProjektListe.tsx`: Projekte mit
   Raster und Regel, „In Bearbeitung“, „Ohne Nachweis“, Stunden; Suche; „Neues
   Projekt“ über `ProjektDialog` in
   `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx`; archivierte am
@@ -1141,7 +1180,9 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 * Projekt (`ControllingProjekt` in
   `src/bereiche/leistungsnachweise/pages/controlling/Projekt.tsx`, Adresse
   `#/controlling/leistungsnachweise/projekt/<id>/<reiter>`): „Alle Projekte“,
-  „Bearbeiten“ (`ProjektDialog`), „Löschen“; Reiter „Leistungsnachweise“
+  „Bearbeiten“ (`ProjektDialog`), „Löschen“ – gesperrt, solange ein anderer
+  Bereich das Projekt führt (Hinweis „Auch in … geführt – löschen lässt sich
+  das Projekt nur im Controlling unter „Projekte“, für alle Bereiche.“); Reiter „Leistungsnachweise“
   (`ProjektNachweise.tsx`: Nachweise des Projekts, „Nachweise anlegen“ für
   Leistungen ohne Nachweis, „Neuer Leistungsnachweis“; ein Klick öffnet die
   Abrechnung), „Leistungen“ (`Leistungen.tsx` im Controlling: die Leistungen
@@ -1151,6 +1192,42 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 * Darüber „Excel-Import (alle Mitarbeiter)“: der Import als Sammel-Export, ohne
   Anmeldung; nach dem Übernehmen geht es zu den Leistungsnachweisen des
   Controllings (`importZiel`).
+* „Neuer Leistungsnachweis“ (`NeuerNachweisDialog` in
+  `src/bereiche/leistungsnachweise/components/NachweisDialog.tsx`) fragt keinen
+  Zeitraum ab – nur das Projekt (in der Liste aller Nachweise), „Raster“ und
+  „Überschrift“: Er umfasst alle nicht abgerechneten Leistungen nach dem
+  letzten abgeschlossenen Nachweis (`nichtAbgerechnet` in
+  `src/bereiche/leistungsnachweise/domain/nachweis.ts`; Zeitraum ab dem Tag
+  danach, ohne abgeschlossenen ab der ersten Leistung, bis zum Monatsende bzw.
+  zur letzten Leistung). Offene Nachweise in diesem Bereich gehen darin auf –
+  der erste wird erweitert, Leistungstexte, Aufschläge (summiert) und
+  Bemerkungen der übrigen gehen auf ihn über (`nachweisFuerNichtAbgerechneteAnwenden`,
+  im Store `nachweisFuerNichtAbgerechnete`). Liegt schon alles in genau einem
+  offenen Nachweis, heißt der Knopf „Öffnen“.
+  Vorhandene Nachweise korrigiert „Zeitraum ändern“ (`ZeitraumDialog`).
+* Nicht erfasste Leistungen: Abgerechnet ist, was im festgeschriebenen Stand
+  der abgeschlossenen Nachweise steht (`abgerechneteLeistungen`). Leistungen vor
+  dem letzten abgeschlossenen Nachweis, die dort fehlen und in keinem offenen
+  Nachweis liegen, nennt `nichtAbgerechnet` als `nichtErfasst`. Der Dialog
+  „Neuer Leistungsnachweis“ und die Abrechnung des laufenden Nachweises zeigen
+  sie (`NichtErfasstHinweis` in
+  `src/bereiche/leistungsnachweise/components/NachweisDialog.tsx`: „… noch nicht
+  erfasst“, je Leistung Datum, Person, Stunden, Text und Grund – „nach dem
+  Abschluss von „…“ erfasst“ bzw. „in keinem Leistungsnachweis“). Übernommen
+  werden sie nur nach Bestätigung: im Dialog mit dem Haken „In diesen
+  Leistungsnachweis übernehmen“ bzw. „Alle in diesen Leistungsnachweis
+  übernehmen“ (Knopf dann „Übernehmen und öffnen“ bzw. „Anlegen“), in der
+  Abrechnung mit „In diesen Leistungsnachweis übernehmen …“ und der Rückfrage
+  „Nicht erfasste Leistungen übernehmen?“ (`leistungenNachreichen`,
+  `nachreichenAnwenden`). Sie stehen danach in `nachgereicht`; ihre Zeilen sind
+  in Abrechnung und Leistungstexten mit „nachgereicht“ gekennzeichnet.
+* Der Zeitraum steht erst beim Abschluss fest: Läuft ein Nachweis bis zum
+  Abschluss (`laeuftBisAbschluss` – offen und Regel `fortlaufend` oder Ende nach
+  heute), zeigen Listen und Abrechnung „ab … · läuft bis zum Abschluss“
+  (`nachweisZeitraumText` in
+  `src/bereiche/leistungsnachweise/components/common.tsx`); beim Abschluss endet
+  er am letzten Tag mit Leistungen, spätestens heute (`abschlussZeitraum`), und
+  die Rückfrage sagt „Der Zeitraum wird jetzt festgelegt: …“.
 * Abrechnung eines Nachweises (`src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx`):
   „Alle Nachweise“, „Zum Projekt“, Ansichten „Abrechnung“, „Leistungstexte“
   (`src/bereiche/leistungsnachweise/pages/controlling/Leistungstexte.tsx`: Text

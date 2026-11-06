@@ -1,10 +1,11 @@
 /** Fachliche Anzeige-Bausteine der Baubetriebsplanung, die mehrere Ansichten brauchen. */
 import { useEffect, useRef, useState } from 'react';
-import { formatDate, relativeLabel } from '../../../shared/dates';
+import { diffDays, formatDate, relativeLabel, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { Badge } from '../../../shared/ui';
+import { sachstand } from '../domain/ablauf';
 import { AMPEL_LABEL, type Ampel, type Terminfrist } from '../domain/fristen';
-import { LOESCHEN, type ID, type StatusArt, type StatusZiel, type Workflow } from '../domain/types';
+import { LOESCHEN, type Anmeldung, type ID, type StatusArt, type StatusZiel, type Workflow } from '../domain/types';
 import { istUebernahme, nachfolgerVon, statusInfo, statusVon, statusText } from '../domain/workflow';
 import { useStore } from '../store/store';
 import './baubetrieb.css';
@@ -95,6 +96,28 @@ export function TerminKompakt({ frist, ampel }: { frist: Terminfrist; ampel: Amp
       </div>
       <div className="tertiary" style={EINZEILIG}>
         {relativeLabel(frist.datum)}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Sachstand einer Anmeldung in höchstens zwei Zeilen – Datum des letzten
+ * Abgleichs bzw. der letzten Änderung (`sachstand`), darunter Abstand zu heute
+ * und Anlass; alles im Tooltip. Für die Anmeldungstabellen im Projekt.
+ */
+export function SachstandKompakt({ anmeldung }: { anmeldung: Pick<Anmeldung, 'verlauf' | 'geaendertAm'> }) {
+  const stand = sachstand(anmeldung);
+  if (!stand) return <span className="small tertiary">–</span>;
+  const tage = diffDays(stand.datum, today());
+  const abstand = tage === 0 ? 'heute' : tage === 1 ? 'gestern' : tage > 1 ? `vor ${tage} Tagen` : `in ${-tage} Tagen`;
+  return (
+    <div className="small" title={`Sachstand ${formatDate(stand.datum)} (${abstand}) – letzter Abgleich bzw. letzte Änderung: ${stand.anlass}`}>
+      <div style={EINZEILIG}>
+        <b>{formatDate(stand.datum)}</b>
+      </div>
+      <div className="tertiary" style={EINZEILIG}>
+        {abstand} · {stand.anlass}
       </div>
     </div>
   );

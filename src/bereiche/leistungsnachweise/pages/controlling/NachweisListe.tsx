@@ -2,13 +2,15 @@
  * Reiter „Leistungsnachweise“ des Controllings: alle Nachweise aller Projekte
  * mit erfassten Stunden, Aufschlag und abgerechneten Stunden – gefiltert nach
  * Status, Projekt und Zeitraum (Jahr oder Monat). Ein Klick öffnet die
- * Abrechnung des Nachweises; „Neuer Leistungsnachweis“ fragt nach dem Projekt.
+ * Abrechnung des Nachweises; „Neuer Leistungsnachweis“ fragt nur nach dem
+ * Projekt – er umfasst alle nicht abgerechneten Leistungen, den Zeitraum legt
+ * erst der Abschluss fest.
  */
 import { useState } from 'react';
 import { Icon } from '../../../../shared/icons';
 import { Badge, Callout, Card, CardHeader, EmptyState, Field, Segmented, Select } from '../../../../shared/ui';
 import { NachweisDialog } from '../../components/NachweisDialog';
-import { NachweisStatusBadge, anzahl } from '../../components/common';
+import { NachweisStatusBadge, anzahl, nachweisZeitraumText } from '../../components/common';
 import {
   anzahlAufschlaege,
   leistungenOhneNachweis,
@@ -18,7 +20,7 @@ import {
   zeilenFuerAnzeige,
 } from '../../domain/nachweis';
 import { RASTER_KURZ, projektTitel, type Leistungsnachweis, type NachweisStatus, type Projekt } from '../../domain/types';
-import { langDatum, monatText, monatVersetzt, monatsanfang, runden, stundenText } from '../../domain/zeitraum';
+import { monatText, monatVersetzt, monatsanfang, runden, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { nachweisAuswahl, type NachweisAuswahl } from './auswahl';
@@ -134,7 +136,7 @@ export function NachweisListe({ navigate }: { navigate: (r: Route) => void }) {
             text={
               gefiltert
                 ? 'Für Status, Projekt und Zeitraum gibt es keinen Leistungsnachweis – ändern Sie die Auswahl.'
-                : 'Leistungsnachweise entstehen beim Erfassen und Importieren von Leistungen von selbst; hier lässt sich einer auch für einen freien Zeitraum anlegen.'
+                : 'Leistungsnachweise entstehen beim Erfassen und Importieren von Leistungen von selbst; „Neuer Leistungsnachweis“ fasst alle nicht abgerechneten Leistungen eines Projekts zusammen.'
             }
           />
         </Card>
@@ -173,9 +175,7 @@ export function NachweisListe({ navigate }: { navigate: (r: Route) => void }) {
                       </td>
                       <td>
                         <strong>{titel}</strong>
-                        <div className="small tertiary">
-                          {langDatum(n.von)} – {langDatum(n.bis)}
-                        </div>
+                        <div className="small tertiary">{nachweisZeitraumText(data, n)}</div>
                       </td>
                       <td className="col-optional ln-spalte-weit small muted">{RASTER_KURZ[n.raster]}</td>
                       <td>

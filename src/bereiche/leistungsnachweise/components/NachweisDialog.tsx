@@ -1,24 +1,34 @@
 /**
- * Neuer Leistungsnachweis bzw. Zeitraum, Raster und Überschrift eines
- * vorhandenen ändern – dem Controlling vorbehalten (domain/rechte.ts). Der
- * Zeitraum ist ein Kalendermonat (Schnellwahl) oder frei mit Beginn und Ende –
- * auch über mehrere Monate. Nachweise eines Projekts überschneiden sich nie;
- * welche Leistungen ein Nachweis zeigt, ergibt sich allein aus seinem Zeitraum.
+ * Leistungsnachweise anlegen und ändern – dem Controlling vorbehalten
+ * (domain/rechte.ts).
+ *
+ * * **Neuer Leistungsnachweis** (`NeuerNachweisDialog`) fragt keinen Zeitraum
+ *   ab: Er umfasst alle nicht abgerechneten Leistungen des Projekts
+ *   (`nichtAbgerechnet`); offene Nachweise gehen darin auf. Der Zeitraum steht
+ *   erst beim Abschluss fest. Liegt schon alles in einem offenen Nachweis,
+ *   bietet der Dialog „Öffnen“ an. Das Projekt lässt sich im Dialog wählen
+ *   (`projektWahl`). Nicht erfasste Leistungen aus schon abgerechneten
+ *   Zeiträumen nennt der Dialog (`NichtErfasstHinweis`); übernommen werden sie
+ *   erst nach Bestätigung – als nachgereichte.
+ * * **Zeitraum ändern** (`ZeitraumDialog`) korrigiert Zeitraum, Raster und
+ *   Überschrift eines vorhandenen: ein Kalendermonat (Schnellwahl) oder frei
+ *   mit Beginn und Ende – auch über mehrere Monate. Nachweise eines Projekts
+ *   überschneiden sich nie; welche Leistungen ein Nachweis zeigt, ergibt sich
+ *   allein aus seinem Zeitraum.
  *
  * Wechselt das Raster, warnt der Dialog, wenn dadurch von Hand bearbeitete
  * Texte oder Aufschläge nicht mehr angezeigt werden (`rasterwechselHinweis`) –
- * sie bleiben gespeichert und kehren mit dem alten Raster zurück. Im
- * Controlling lässt sich das Projekt im Dialog wählen (`projektWahl`).
+ * sie bleiben gespeichert und kehren mit dem alten Raster zurück.
  */
-import { useState } from 'react';
-import { addDays, today } from '../../../shared/dates';
+import { useState, type ReactNode } from 'react';
+import { today, wochentag } from '../../../shared/dates';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Segmented, Select, TextInput } from '../../../shared/ui';
 import {
   leistungenIm,
+  nachweisDerLeistung,
   nachweisTitel,
-  nachweiseVon,
-  neuerNachweis,
+  nichtAbgerechnet,
   rasterwechselHinweis,
   rasterwechselVerdeckt,
   stundenVon,
@@ -26,13 +36,15 @@ import {
 } from '../domain/nachweis';
 import {
   RASTER_LABEL,
-  newId,
+  mitarbeiterName,
   projektTitel,
+  type Leistung,
   type Leistungsnachweis,
+  type LeistungsnachweisDaten,
   type Projekt,
   type Raster,
 } from '../domain/types';
-import { imZeitraum, istDatum, monatsanfang, monatsende, stundenText, zeitraumText } from '../domain/zeitraum';
+import { imZeitraum, istDatum, kurzDatum, langDatum, monatsanfang, monatsende, stundenText, zeitraumText } from '../domain/zeitraum';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { RASTER_OPTIONEN, anzahl } from './common';
@@ -54,56 +66,250 @@ function monatLesen(wert: string): string | null {
 }
 
 export function NachweisDialog({
-  projekt: vorgabe,
+  projekt,
   nachweis,
   onClose,
   navigate,
   projektWahl = false,
 }: {
   projekt: Projekt;
+  /** Vorhandener Nachweis: Zeitraum ändern; ohne: neuer Nachweis. */
   nachweis?: Leistungsnachweis;
   onClose: () => void;
   navigate?: (r: Route) => void;
-  /** Neuer Nachweis: das Projekt im Dialog wählen (Vorgabe `projekt`) – im Controlling. */
+  /** Neuer Nachweis: das Projekt im Dialog wählen (Vorgabe `projekt`). */
   projektWahl?: boolean;
 }) {
-  const { data, addNachweis, updateNachweis } = useStore();
+  return nachweis ? (
+    <ZeitraumDialog projekt={projekt} nachweis={nachweis} onClose={onClose} />
+  ) : (
+    <NeuerNachweisDialog projekt={projekt} onClose={onClose} navigate={navigate} projektWahl={projektWahl} />
+  );
+}
+
+/** „Neuer Leistungsnachweis“: ohne Zeitraum – alle nicht abgerechneten Leistungen des Projekts. */
+function NeuerNachweisDialog({
+  projekt: vorgabe,
+  onClose,
+  navigate,
+  projektWahl,
+}: {
+  projekt: Projekt;
+  onClose: () => void;
+  navigate?: (r: Route) => void;
+  projektWahl: boolean;
+}) {
+  const { data, nachweisFuerNichtAbgerechnete, leistungenNachreichen } = useStore();
   const toast = useToast();
-  const abgeschlossen = nachweis?.status === 'abgeschlossen';
-  const waehlbar = projektWahl && !nachweis;
   const [projektId, setProjektId] = useState(vorgabe.id);
-  const projekt = (waehlbar ? data.projekte.find((p) => p.id === projektId) : undefined) ?? vorgabe;
+  // Nicht erfasste Leistungen kommen nur nach Bestätigung hinein
+  const [nachreichen, setNachreichen] = useState(false);
+  const projekt = (projektWahl ? data.projekte.find((p) => p.id === projektId) : undefined) ?? vorgabe;
+  const plan = nichtAbgerechnet(data, projekt.id, today());
+  const [raster, setRaster] = useState<Raster>(plan.offene[0]?.raster ?? projekt.raster);
+  const [titel, setTitel] = useState('');
 
-  // Vorschlag für einen neuen Nachweis: der laufende Monat, sonst der Monat nach dem letzten Nachweis
-  const vorschlag = (p: Projekt = projekt) => {
-    const heute = monatsanfang(today());
-    if (!ueberschneidung(data, p.id, heute, monatsende(heute))) return heute.slice(0, 7);
-    const letzter = nachweiseVon(data, p.id).at(-1);
-    const danach = letzter ? monatsanfang(addDays(letzter.bis, 1)) : heute;
-    return (ueberschneidung(data, p.id, danach, monatsende(danach)) ? heute : danach).slice(0, 7);
-  };
-
-  const [art, setArt] = useState<Art>(() => (!nachweis || istMonat(nachweis.von, nachweis.bis) ? 'monat' : 'frei'));
-  const [monat, setMonat] = useState(() => (nachweis ? nachweis.von.slice(0, 7) : vorschlag()));
-  const [von, setVon] = useState(nachweis?.von ?? '');
-  const [bis, setBis] = useState(nachweis?.bis ?? '');
-  const [raster, setRaster] = useState<Raster>(nachweis?.raster ?? projekt.raster);
-  const [titel, setTitel] = useState(nachweis?.titel ?? '');
-
-  // Ein anderes Projekt bringt seine Vorgaben mit: Raster und vorgeschlagener Monat
+  // Ein anderes Projekt bringt sein Raster mit
   const projektWechseln = (id: string) => {
     const p = data.projekte.find((x) => x.id === id);
     if (!p) return;
     setProjektId(id);
-    setRaster(p.raster);
-    setMonat(vorschlag(p));
+    setRaster(nichtAbgerechnet(data, id, today()).offene[0]?.raster ?? p.raster);
+    setNachreichen(false);
   };
   const projektOptionen = [...data.projekte]
     .sort((a, b) => a.nummer.localeCompare(b.nummer, 'de', { numeric: true }) || a.name.localeCompare(b.name, 'de'))
     .map((p) => ({ value: p.id, label: projektTitel(p) }));
 
+  const stunden = stundenVon(plan.leistungen);
+  const erste = plan.leistungen[0]?.datum;
+  const letzte = plan.leistungen.at(-1)?.datum;
+  const umfang = plan.leistungen.length
+    ? `${anzahl(plan.leistungen.length, 'nicht abgerechnete Leistung', 'nicht abgerechnete Leistungen')} mit ${stundenText(stunden)} Std.${
+        erste && letzte ? ` (${erste === letzte ? `am ${langDatum(erste)}` : `vom ${langDatum(erste)} bis ${langDatum(letzte)}`})` : ''
+      }`
+    : 'Noch keine nicht abgerechnete Leistung';
+  const vorhanden = plan.vorhanden;
+  const nachgereicht = nachreichen ? plan.nichtErfasst.length : 0;
+
+  const oeffnen = (id: string) => navigate?.({ view: 'abrechnung', projektId: projekt.id, nachweisId: id });
+
+  const nachgereichtText = nachgereicht
+    ? ` ${anzahl(nachgereicht, 'Leistung', 'Leistungen')} nachgereicht übernommen.`
+    : '';
+
+  const anlegen = () => {
+    if (vorhanden) {
+      if (nachgereicht) {
+        leistungenNachreichen(vorhanden.id);
+        toast(nachgereichtText.trim());
+      }
+      onClose();
+      oeffnen(vorhanden.id);
+      return;
+    }
+    const id = nachweisFuerNichtAbgerechnete(projekt.id, { raster, titel, nachreichen });
+    if (!id) {
+      toast('Das ist dem Controlling vorbehalten.');
+      return;
+    }
+    toast(
+      (plan.offene.length > 1
+        ? `${anzahl(plan.offene.length, 'offener Leistungsnachweis', 'offene Leistungsnachweise')} zu einem zusammengefasst.`
+        : plan.offene.length === 1
+          ? 'Der offene Leistungsnachweis umfasst jetzt alle nicht abgerechneten Leistungen.'
+          : 'Leistungsnachweis angelegt.') + nachgereichtText,
+    );
+    onClose();
+    oeffnen(id);
+  };
+
+  return (
+    <Modal
+      titel="Neuer Leistungsnachweis"
+      sub={projektWahl ? 'Alle nicht abgerechneten Leistungen eines Projekts' : projektTitel(projekt)}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button type="button" className="btn btn-primary" onClick={anlegen}>
+            {vorhanden ? (nachgereicht ? 'Übernehmen und öffnen' : 'Öffnen') : 'Anlegen'}
+          </button>
+        </>
+      }
+    >
+      <div className="stack ln-nachweisdialog">
+        {projektWahl ? (
+          <div className="form-grid">
+            <Field label="Projekt" full>
+              <Select value={projekt.id} onChange={projektWechseln} options={projektOptionen} />
+            </Field>
+          </div>
+        ) : null}
+
+        {vorhanden ? (
+          <Callout icon="i">
+            {umfang} – {plan.leistungen.length === 1 ? 'sie liegt' : 'sie liegen'} bereits im offenen Leistungsnachweis „
+            {nachweisTitel(vorhanden)}“. Er läuft bis zum Abschluss; sein Zeitraum wird beim Abschluss festgelegt.
+          </Callout>
+        ) : (
+          <>
+            <Callout icon="i">
+              Der Leistungsnachweis umfasst ohne Zeitraumwahl alle nicht abgerechneten Leistungen: {umfang}. Später
+              erfasste kommen hinzu; der Zeitraum wird erst beim Abschluss festgelegt.
+              {plan.offene.length
+                ? ` ${
+                    plan.offene.length === 1 ? 'Der offene Leistungsnachweis' : 'Die offenen Leistungsnachweise'
+                  } ${plan.offene.map((n) => `„${nachweisTitel(n)}“`).join(', ')} ${
+                    plan.offene.length === 1 ? 'geht' : 'gehen'
+                  } darin auf – Leistungstexte, Aufschläge und Bemerkungen bleiben erhalten.`
+                : ''}
+            </Callout>
+            <div className="form-grid">
+              <Field label="Raster" full hint={`Vorgabe des Projekts: ${RASTER_LABEL[projekt.raster]}`}>
+                <Segmented<Raster> value={raster} onChange={setRaster} options={RASTER_OPTIONEN} />
+              </Field>
+              <Field label="Überschrift" full hint="Optional – leer lassen für die automatische Überschrift.">
+                <TextInput value={titel} onChange={setTitel} placeholder={plan.offene[0]?.titel || 'Leistungsnachweis'} />
+              </Field>
+            </div>
+          </>
+        )}
+
+        {plan.nichtErfasst.length ? (
+          <NichtErfasstHinweis daten={data} leistungen={plan.nichtErfasst}>
+            <label className="checkbox">
+              <input type="checkbox" checked={nachreichen} onChange={(e) => setNachreichen(e.target.checked)} />
+              {plan.nichtErfasst.length === 1 ? 'In diesen Leistungsnachweis übernehmen' : 'Alle in diesen Leistungsnachweis übernehmen'}{' '}
+              (nachgereicht)
+            </label>
+          </NichtErfasstHinweis>
+        ) : null}
+      </div>
+    </Modal>
+  );
+}
+
+/** So viele nicht erfasste Leistungen nennt der Hinweis einzeln. */
+const NICHT_ERFASST_EINZELN = 8;
+
+/**
+ * Mitteilung über nicht erfasste Leistungen (`nichtAbgerechnet().nichtErfasst`):
+ * Leistungen aus schon abgerechneten Zeiträumen, die in keinem abgerechneten
+ * Leistungsnachweis stehen – je mit Datum, Person, Stunden, Text und dem Grund.
+ * Darunter (`children`) die Bestätigung zum Übernehmen.
+ */
+export function NichtErfasstHinweis({
+  daten,
+  leistungen,
+  children,
+}: {
+  daten: LeistungsnachweisDaten;
+  leistungen: Leistung[];
+  children?: ReactNode;
+}) {
+  const mitarbeiter = new Map(daten.mitarbeiter.map((m) => [m.id, m]));
+  const grund = (l: Leistung) => {
+    const n = nachweisDerLeistung(daten, l);
+    return n ? `nach dem Abschluss von „${nachweisTitel(n)}“ erfasst` : 'in keinem Leistungsnachweis';
+  };
+  const gezeigt = leistungen.slice(0, NICHT_ERFASST_EINZELN);
+  return (
+    <Callout ton="warn" icon="!">
+      <div className="stack" style={{ gap: 8 }}>
+        <span>
+          <strong>
+            {anzahl(leistungen.length, 'Leistung', 'Leistungen')} mit {stundenText(stundenVon(leistungen))} Std.{' '}
+            {leistungen.length === 1 ? 'ist' : 'sind'} noch nicht erfasst
+          </strong>{' '}
+          – {leistungen.length === 1 ? 'sie liegt' : 'sie liegen'} in bereits abgerechneten Zeiträumen, aber in keinem
+          abgerechneten Leistungsnachweis.
+        </span>
+        <ul className="ln-nicht-erfasst">
+          {gezeigt.map((l) => {
+            const m = mitarbeiter.get(l.mitarbeiterId);
+            return (
+              <li key={l.id}>
+                {wochentag(l.datum)} {kurzDatum(l.datum)} · {m ? mitarbeiterName(m) || m.kuerzel : '?'} ·{' '}
+                {stundenText(l.stunden)} Std. – {l.text || 'ohne Text'} <span className="tertiary">({grund(l)})</span>
+              </li>
+            );
+          })}
+          {leistungen.length > gezeigt.length ? (
+            <li className="tertiary">und {anzahl(leistungen.length - gezeigt.length, 'weitere', 'weitere')}</li>
+          ) : null}
+        </ul>
+        {children}
+      </div>
+    </Callout>
+  );
+}
+
+/** „Zeitraum ändern“: Zeitraum, Raster und Überschrift eines vorhandenen Nachweises. */
+function ZeitraumDialog({
+  projekt,
+  nachweis,
+  onClose,
+}: {
+  projekt: Projekt;
+  nachweis: Leistungsnachweis;
+  onClose: () => void;
+}) {
+  const { data, updateNachweis } = useStore();
+  const toast = useToast();
+  const abgeschlossen = nachweis.status === 'abgeschlossen';
+
+  const [art, setArt] = useState<Art>(() => (istMonat(nachweis.von, nachweis.bis) ? 'monat' : 'frei'));
+  const [monat, setMonat] = useState(() => nachweis.von.slice(0, 7));
+  const [von, setVon] = useState(nachweis.von);
+  const [bis, setBis] = useState(nachweis.bis);
+  const [raster, setRaster] = useState<Raster>(nachweis.raster);
+  const [titel, setTitel] = useState(nachweis.titel);
+
   // Rasterwechsel: Was von Hand bearbeitet wurde, verschwindet aus der Anzeige (bleibt aber gespeichert)
-  const rasterHinweis = nachweis ? rasterwechselHinweis(rasterwechselVerdeckt(nachweis, raster)) : null;
+  const rasterHinweis = rasterwechselHinweis(rasterwechselVerdeckt(nachweis, raster));
 
   const gewaehlt = monatLesen(monat);
   const zeitraum =
@@ -113,14 +319,14 @@ export function NachweisDialog({
         : { von: '', bis: '' }
       : { von, bis };
   const gueltig = istDatum(zeitraum.von) && istDatum(zeitraum.bis) && zeitraum.von <= zeitraum.bis;
-  const andere = gueltig ? ueberschneidung(data, projekt.id, zeitraum.von, zeitraum.bis, nachweis?.id) : undefined;
+  const andere = gueltig ? ueberschneidung(data, projekt.id, zeitraum.von, zeitraum.bis, nachweis.id) : undefined;
   const automatisch = gueltig ? nachweisTitel({ titel: '', ...zeitraum }) : 'Leistungsnachweis';
 
   // Was im neuen Zeitraum liegt – und was beim Verkleinern aus jedem Nachweis fiele
   const darin = gueltig ? leistungenIm(data, projekt.id, zeitraum.von, zeitraum.bis) : [];
   const stunden = stundenVon(darin);
   const herausfallend =
-    nachweis && gueltig
+    gueltig
       ? data.leistungen.filter(
           (l) =>
             l.projektId === projekt.id &&
@@ -160,28 +366,15 @@ export function NachweisDialog({
       toast(`Der Zeitraum überschneidet sich mit „${nachweisTitel(andere)}“.`);
       return;
     }
-    if (nachweis) {
-      updateNachweis(nachweis.id, { von: beginn, bis: ende, raster, titel: titel.trim() });
-      toast('Leistungsnachweis gespeichert.');
-      onClose();
-      return;
-    }
-    const id = newId('ln');
-    const neu: Leistungsnachweis = {
-      ...neuerNachweis(id, projekt, beginn, ende, new Date().toISOString()),
-      raster,
-      titel: titel.trim(),
-    };
-    addNachweis(neu);
-    toast(`„${nachweisTitel(neu)}“ angelegt.`);
+    updateNachweis(nachweis.id, { von: beginn, bis: ende, raster, titel: titel.trim() });
+    toast('Leistungsnachweis gespeichert.');
     onClose();
-    navigate?.({ view: 'abrechnung', projektId: projekt.id, nachweisId: id });
   };
 
   return (
     <Modal
-      titel={nachweis ? 'Zeitraum ändern' : 'Neuer Leistungsnachweis'}
-      sub={waehlbar ? 'Leistungsnachweis für ein Projekt' : projektTitel(projekt)}
+      titel="Zeitraum ändern"
+      sub={projektTitel(projekt)}
       onClose={onClose}
       footer={
         <>
@@ -190,7 +383,7 @@ export function NachweisDialog({
           </button>
           {abgeschlossen ? null : (
             <button type="button" className="btn btn-primary" onClick={speichern}>
-              {nachweis ? 'Speichern' : 'Anlegen'}
+              Speichern
             </button>
           )}
         </>
@@ -204,11 +397,6 @@ export function NachweisDialog({
       ) : (
         <div className="stack ln-nachweisdialog">
           <div className="form-grid">
-            {waehlbar ? (
-              <Field label="Projekt" full>
-                <Select value={projekt.id} onChange={projektWechseln} options={projektOptionen} />
-              </Field>
-            ) : null}
             <Field label="Zeitraum" full>
               <Segmented<Art>
                 value={art}

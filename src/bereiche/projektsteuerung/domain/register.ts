@@ -20,7 +20,7 @@ import { kuerzelAus, newId, type Beteiligter, type Funktion, type ID, type Proje
 export function sichtFuerRegister(d: ProjektsteuerungDaten): Sicht {
   const funktionen = new Map(d.funktionen.map((f) => [f.id, f]));
   return {
-    projekte: d.projekte.map((p) => ({ id: p.id, nummer: p.nummer, name: p.name, beschreibung: p.beschreibung })),
+    projekte: d.projekte.map((p) => ({ id: p.id, nummer: p.nummer, name: p.name, beschreibung: p.beschreibung, markiert: p.markiert })),
     personen: d.beteiligte.map((b) => {
       const f = b.funktionId ? funktionen.get(b.funktionId) : undefined;
       return {

@@ -6,6 +6,10 @@
  * ergibt sich allein aus dem Datum. Mehrere Leistungen lassen sich mit Haken
  * auswählen und gemeinsam löschen.
  *
+ * Im Bereich zeigt die Seite zuerst den Kalender (components/LeistungsKalender.tsx):
+ * Tag anklicken erfasst dort eine Leistung, eine Leistung anklicken bearbeitet
+ * sie; „Liste“ schaltet auf die Tabelle mit Filtern und Auswahl um.
+ *
  * Im Controlling (Reiter „Leistungen“ des Projekts, pages/controlling/Projekt.tsx)
  * die Leistungen aller Mitarbeiter mit Filter nach Mitarbeiter – nur zum
  * Lesen, ohne Stift und Haken (domain/rechte.ts); der Nachweis öffnet die
@@ -15,14 +19,15 @@ import { useState } from 'react';
 import { wochentag } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Callout, Card, CardHeader, ConfirmDialog, EmptyState, Search, Select } from '../../../../shared/ui';
+import { Callout, Card, CardHeader, ConfirmDialog, EmptyState, Search, Segmented, Select } from '../../../../shared/ui';
 import { useAnmeldung, useMitAnmeldung } from '../../components/AnmeldeDialog';
 import { ImportDialog } from '../../components/ImportDialog';
 import { LeistungDialog, abgeschlossenHinweis, nachweisName } from '../../components/LeistungDialog';
+import { LeistungsKalender } from '../../components/LeistungsKalender';
 import { QuelleBadge, anzahl, mitarbeiterAuswahlText } from '../../components/common';
-import { nachweiseVon, nachweisTitel, stundenVon } from '../../domain/nachweis';
+import { nachweisDerLeistung, nachweisTitel, stundenVon } from '../../domain/nachweis';
 import { angemeldet, darfLeistungAendern, darfLeistungSehen, eigeneLeistungen } from '../../domain/rechte';
-import { QUELLE_LABEL, mitarbeiterName, type Leistung, type Leistungsnachweis, type Projekt } from '../../domain/types';
+import { QUELLE_LABEL, mitarbeiterName, type ISODate, type Leistung, type Leistungsnachweis, type Projekt } from '../../domain/types';
 import { langDatum, monatText, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
@@ -30,6 +35,9 @@ import '../../components/leistungen.css';
 
 /** Filterwert für alle Monate bzw. alle Mitarbeiter. */
 const ALLE = '';
+
+/** Darstellung im Bereich: Kalender (Vorgabe) oder Liste. */
+type Ansicht = 'kalender' | 'liste';
 
 /** Neueste zuerst; am selben Tag nach Person und Erfassung. */
 function nachDatum(namen: Map<string, string>) {
@@ -48,10 +56,12 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
   const [monat, setMonat] = useState(ALLE);
   const [person, setPerson] = useState(ALLE);
   const [auswahl, setAuswahl] = useState<Set<string>>(() => new Set());
-  const [dialog, setDialog] = useState<{ leistung?: Leistung } | null>(null);
+  const [dialog, setDialog] = useState<{ leistung?: Leistung; datum?: ISODate } | null>(null);
   const [loeschen, setLoeschen] = useState<Leistung | null>(null);
   const [auswahlLoeschen, setAuswahlLoeschen] = useState(false);
   const [importOffen, setImportOffen] = useState(false);
+  // Das Controlling liest nur – dort gibt es nur die Liste
+  const [ansicht, setAnsicht] = useState<Ansicht>('kalender');
 
   const mitarbeiter = new Map(data.mitarbeiter.map((m) => [m.id, m]));
   const name = (id: string) => {
@@ -61,8 +71,8 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
   const namen = new Map(data.mitarbeiter.map((m) => [m.id, mitarbeiterName(m)]));
   const abschnitte = new Map(projekt.abschnitte.map((a) => [a.id, a]));
   const mitAbschnitten = projekt.abschnitte.length > 0;
-  const nachweise = nachweiseVon(data, projekt.id);
-  const nachweisZu = (l: Leistung): Leistungsnachweis | undefined => nachweise.find((n) => l.datum >= n.von && l.datum <= n.bis);
+  // Nachgereichte Leistungen stehen in dem Nachweis, der sie übernommen hat
+  const nachweisZu = (l: Leistung): Leistungsnachweis | undefined => nachweisDerLeistung(data, l);
 
   const ich = angemeldet(data);
   // Im Controlling die aller Mitarbeiter – sonst stets die eigenen
@@ -127,6 +137,8 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
     </button>
   );
 
+  const kalender = !controlling && ansicht === 'kalender';
+
   if (!ich && !controlling) {
     return (
       <Card>
@@ -148,15 +160,29 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
     <div className="stack">
       <div className="row-between wrap">
         <div className="ln-le-filter">
-          <Search value={suche} onChange={setSuche} placeholder={alleSicht ? 'Text, Mitarbeiter, Abschnitt …' : 'Text, Abschnitt …'} />
-          <Select
-            value={aktiverMonat}
-            onChange={setMonat}
-            options={[
-              { value: ALLE, label: 'Alle Monate' },
-              ...monate.map(([m, n]) => ({ value: m, label: `${monatText(`${m}-01`)} (${n})` })),
-            ]}
-          />
+          {controlling ? null : (
+            <Segmented<Ansicht>
+              value={ansicht}
+              onChange={setAnsicht}
+              options={[
+                { value: 'kalender', label: 'Kalender' },
+                { value: 'liste', label: 'Liste' },
+              ]}
+            />
+          )}
+          {kalender ? null : (
+            <>
+              <Search value={suche} onChange={setSuche} placeholder={alleSicht ? 'Text, Mitarbeiter, Abschnitt …' : 'Text, Abschnitt …'} />
+              <Select
+                value={aktiverMonat}
+                onChange={setMonat}
+                options={[
+                  { value: ALLE, label: 'Alle Monate' },
+                  ...monate.map(([m, n]) => ({ value: m, label: `${monatText(`${m}-01`)} (${n})` })),
+                ]}
+              />
+            </>
+          )}
           {alleSicht ? (
             <Select
               value={aktivePerson}
@@ -186,233 +212,243 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
         </Callout>
       ) : null}
 
-      <Card>
-        <CardHeader
-          titel={alleSicht ? 'Leistungen aller Mitarbeiter' : 'Meine Leistungen'}
-          sub={`${anzahl(sichtbar.length, 'Leistung', 'Leistungen')}${
-            gefiltert ? ` von ${alle.length}` : ''
-          } · ${stundenText(summe)} Std. · Jede Leistung erscheint im Leistungsnachweis ihres Zeitraums`}
+      {kalender ? (
+        <LeistungsKalender
+          titel="Meine Leistungen"
+          leistungen={alle}
+          onNeu={(datum) => mitAnmeldung(() => setDialog({ datum }))}
+          onOeffnen={(leistung) => setDialog({ leistung })}
         />
+      ) : (
+        <Card>
+          <CardHeader
+            titel={alleSicht ? 'Leistungen aller Mitarbeiter' : 'Meine Leistungen'}
+            sub={`${anzahl(sichtbar.length, 'Leistung', 'Leistungen')}${
+              gefiltert ? ` von ${alle.length}` : ''
+            } · ${stundenText(summe)} Std. · Jede Leistung erscheint im Leistungsnachweis ihres Zeitraums`}
+          />
 
-        {gewaehlt.length > 0 ? (
-          <div className="ln-le-auswahl">
-            <span>
-              <strong>{gewaehlt.length}</strong> ausgewählt ·{' '}
-              <strong>{stundenText(stundenVon(gewaehlt))}</strong> Std.
-            </span>
-            <span className="spacer" />
-            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setAuswahl(new Set())}>
-              Auswahl aufheben
-            </button>
-            <button type="button" className="btn btn-sm btn-danger" onClick={() => setAuswahlLoeschen(true)}>
-              <Icon name="loeschen" size={12} /> Auswahl löschen
-            </button>
-          </div>
-        ) : null}
+          {gewaehlt.length > 0 ? (
+            <div className="ln-le-auswahl">
+              <span>
+                <strong>{gewaehlt.length}</strong> ausgewählt ·{' '}
+                <strong>{stundenText(stundenVon(gewaehlt))}</strong> Std.
+              </span>
+              <span className="spacer" />
+              <button type="button" className="btn btn-sm btn-ghost" onClick={() => setAuswahl(new Set())}>
+                Auswahl aufheben
+              </button>
+              <button type="button" className="btn btn-sm btn-danger" onClick={() => setAuswahlLoeschen(true)}>
+                <Icon name="loeschen" size={12} /> Auswahl löschen
+              </button>
+            </div>
+          ) : null}
 
-        {sichtbar.length === 0 ? (
-          alle.length === 0 ? (
-            <EmptyState
-              icon="stunden"
-              titel={alleSicht ? 'Noch keine Leistungen' : 'Noch keine eigenen Leistungen'}
-              text={
-                alleSicht
-                  ? 'Die Mitarbeiter erfassen ihre Leistungen im Bereich Leistungsnachweise – jede Leistung erscheint automatisch im Leistungsnachweis ihres Zeitraums.'
-                  : 'Eigene Leistungen lassen sich von Hand erfassen oder mit dem Excel-Import aus der Zeiterfassung übernehmen – jede Leistung erscheint automatisch im Leistungsnachweis ihres Zeitraums, den das Controlling abrechnet.'
-              }
-              action={
-                alleSicht ? undefined : (
-                  <div className="row wrap" style={{ justifyContent: 'center' }}>
-                    {importKnopf}
-                    {neuKnopf}
-                  </div>
-                )
-              }
-            />
+          {sichtbar.length === 0 ? (
+            alle.length === 0 ? (
+              <EmptyState
+                icon="stunden"
+                titel={alleSicht ? 'Noch keine Leistungen' : 'Noch keine eigenen Leistungen'}
+                text={
+                  alleSicht
+                    ? 'Die Mitarbeiter erfassen ihre Leistungen im Bereich Leistungsnachweise – jede Leistung erscheint automatisch im Leistungsnachweis ihres Zeitraums.'
+                    : 'Eigene Leistungen lassen sich von Hand erfassen oder mit dem Excel-Import aus der Zeiterfassung übernehmen – jede Leistung erscheint automatisch im Leistungsnachweis ihres Zeitraums, den das Controlling abrechnet.'
+                }
+                action={
+                  alleSicht ? undefined : (
+                    <div className="row wrap" style={{ justifyContent: 'center' }}>
+                      {importKnopf}
+                      {neuKnopf}
+                    </div>
+                  )
+                }
+              />
+            ) : (
+              <EmptyState
+                icon="suche"
+                titel="Keine Leistung gefunden"
+                text="Für diese Auswahl gibt es keinen Treffer."
+                action={
+                  <button type="button" className="btn btn-outline" onClick={filterZuruecksetzen}>
+                    Filter zurücksetzen
+                  </button>
+                }
+              />
+            )
           ) : (
-            <EmptyState
-              icon="suche"
-              titel="Keine Leistung gefunden"
-              text="Für diese Auswahl gibt es keinen Treffer."
-              action={
-                <button type="button" className="btn btn-outline" onClick={filterZuruecksetzen}>
-                  Filter zurücksetzen
-                </button>
-              }
-            />
-          )
-        ) : (
-          <>
-            <div className="table-scroll">
-              <table className="table table-stack ln-le-tabelle">
-                <thead>
-                  <tr>
-                    <th className="ln-le-haken">
-                      <input
-                        type="checkbox"
-                        checked={alleGewaehlt}
-                        disabled={waehlbar.length === 0}
-                        ref={(el) => {
-                          if (el) el.indeterminate = gewaehlt.length > 0 && !alleGewaehlt;
-                        }}
-                        onChange={() =>
-                          setAuswahl((alt) => {
-                            const neu = new Set(alt);
-                            for (const l of waehlbar) {
-                              if (alleGewaehlt) neu.delete(l.id);
-                              else neu.add(l.id);
-                            }
-                            return neu;
-                          })
-                        }
-                        aria-label={alleSicht ? 'Alle angezeigten eigenen Leistungen auswählen' : 'Alle angezeigten Leistungen auswählen'}
-                        title={alleSicht ? 'Alle angezeigten eigenen Leistungen auswählen' : 'Alle angezeigten Leistungen auswählen'}
-                      />
-                    </th>
-                    <th>Datum</th>
-                    {alleSicht ? <th className="ln-le-spalte-wer">Mitarbeiter</th> : null}
-                    <th>Leistungstext</th>
-                    {mitAbschnitten ? <th className="col-optional ln-le-breit">Abschnitt</th> : null}
-                    <th className="ln-stunden">Stunden</th>
-                    <th>Nachweis</th>
-                    <th className="col-optional ln-le-breit">Quelle</th>
-                    <th className="actions" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {sichtbar.map((l) => {
-                    const m = mitarbeiter.get(l.mitarbeiterId);
-                    const a = l.abschnittId ? abschnitte.get(l.abschnittId) : undefined;
-                    const n = nachweisZu(l);
-                    const geschlossen = n?.status === 'abgeschlossen';
-                    const markiert = auswahl.has(l.id);
-                    const aendern = eigen(l);
-                    return (
-                      <tr
-                        key={l.id}
-                        className={`${aendern ? 'clickable' : 'ln-le-fremd'} ${markiert ? 'ln-le-gewaehlt' : ''}`}
-                        onClick={aendern ? () => setDialog({ leistung: l }) : undefined}
-                        title={aendern ? undefined : `Leistung von ${name(l.mitarbeiterId)} – nur zu lesen`}
-                      >
-                        <td className="ln-le-haken" onClick={(e) => e.stopPropagation()}>
-                          {aendern ? (
-                            <input
-                              type="checkbox"
-                              checked={markiert}
-                              onChange={() => umschalten(l.id)}
-                              aria-label="Leistung auswählen"
-                            />
-                          ) : null}
-                        </td>
-                        <td className="ln-le-datum">
-                          <span className="ln-le-wochentag">{wochentag(l.datum)}</span> {langDatum(l.datum)}
-                          {alleSicht ? <span className="ln-le-wer">{name(l.mitarbeiterId)}</span> : null}
-                        </td>
-                        {alleSicht ? (
-                          <td
-                            className="ln-le-person ln-le-spalte-wer"
-                            title={m ? `${m.kuerzel} – ${mitarbeiterName(m)}` : 'Unbekannter Mitarbeiter'}
-                          >
-                            {name(l.mitarbeiterId)}
-                            {m && !m.aktiv ? <span className="small tertiary"> (ausgeschieden)</span> : null}
+            <>
+              <div className="table-scroll">
+                <table className="table table-stack ln-le-tabelle">
+                  <thead>
+                    <tr>
+                      <th className="ln-le-haken">
+                        <input
+                          type="checkbox"
+                          checked={alleGewaehlt}
+                          disabled={waehlbar.length === 0}
+                          ref={(el) => {
+                            if (el) el.indeterminate = gewaehlt.length > 0 && !alleGewaehlt;
+                          }}
+                          onChange={() =>
+                            setAuswahl((alt) => {
+                              const neu = new Set(alt);
+                              for (const l of waehlbar) {
+                                if (alleGewaehlt) neu.delete(l.id);
+                                else neu.add(l.id);
+                              }
+                              return neu;
+                            })
+                          }
+                          aria-label={alleSicht ? 'Alle angezeigten eigenen Leistungen auswählen' : 'Alle angezeigten Leistungen auswählen'}
+                          title={alleSicht ? 'Alle angezeigten eigenen Leistungen auswählen' : 'Alle angezeigten Leistungen auswählen'}
+                        />
+                      </th>
+                      <th>Datum</th>
+                      {alleSicht ? <th className="ln-le-spalte-wer">Mitarbeiter</th> : null}
+                      <th>Leistungstext</th>
+                      {mitAbschnitten ? <th className="col-optional ln-le-breit">Abschnitt</th> : null}
+                      <th className="ln-stunden">Stunden</th>
+                      <th>Nachweis</th>
+                      <th className="col-optional ln-le-breit">Quelle</th>
+                      <th className="actions" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sichtbar.map((l) => {
+                      const m = mitarbeiter.get(l.mitarbeiterId);
+                      const a = l.abschnittId ? abschnitte.get(l.abschnittId) : undefined;
+                      const n = nachweisZu(l);
+                      const geschlossen = n?.status === 'abgeschlossen';
+                      const markiert = auswahl.has(l.id);
+                      const aendern = eigen(l);
+                      return (
+                        <tr
+                          key={l.id}
+                          className={`${aendern ? 'clickable' : 'ln-le-fremd'} ${markiert ? 'ln-le-gewaehlt' : ''}`}
+                          onClick={aendern ? () => setDialog({ leistung: l }) : undefined}
+                          title={aendern ? undefined : `Leistung von ${name(l.mitarbeiterId)} – nur zu lesen`}
+                        >
+                          <td className="ln-le-haken" onClick={(e) => e.stopPropagation()}>
+                            {aendern ? (
+                              <input
+                                type="checkbox"
+                                checked={markiert}
+                                onChange={() => umschalten(l.id)}
+                                aria-label="Leistung auswählen"
+                              />
+                            ) : null}
                           </td>
-                        ) : null}
-                        <td className="ln-le-text">
-                          {l.text}
-                          {l.projektelement && !a ? <span className="ln-le-element">{l.projektelement}</span> : null}
-                          {a || l.quelle === 'import' ? (
-                            <span className="ln-le-meta">{[a?.kurz, l.quelle === 'import' ? QUELLE_LABEL.import : ''].filter(Boolean).join(' · ')}</span>
-                          ) : null}
-                        </td>
-                        {mitAbschnitten ? (
-                          <td className="small col-optional ln-le-breit" title={a?.name}>
-                            {a ? a.kurz : <span className="tertiary">ohne</span>}
+                          <td className="ln-le-datum">
+                            <span className="ln-le-wochentag">{wochentag(l.datum)}</span> {langDatum(l.datum)}
+                            {alleSicht ? <span className="ln-le-wer">{name(l.mitarbeiterId)}</span> : null}
                           </td>
-                        ) : null}
-                        <td className="ln-stunden">{stundenText(l.stunden)}</td>
-                        <td className="ln-le-nachweis" onClick={(e) => e.stopPropagation()}>
-                          {n ? (
-                            <>
-                              {controlling ? (
+                          {alleSicht ? (
+                            <td
+                              className="ln-le-person ln-le-spalte-wer"
+                              title={m ? `${m.kuerzel} – ${mitarbeiterName(m)}` : 'Unbekannter Mitarbeiter'}
+                            >
+                              {name(l.mitarbeiterId)}
+                              {m && !m.aktiv ? <span className="small tertiary"> (ausgeschieden)</span> : null}
+                            </td>
+                          ) : null}
+                          <td className="ln-le-text">
+                            {l.text}
+                            {l.projektelement && !a ? <span className="ln-le-element">{l.projektelement}</span> : null}
+                            {a || l.quelle === 'import' ? (
+                              <span className="ln-le-meta">{[a?.kurz, l.quelle === 'import' ? QUELLE_LABEL.import : ''].filter(Boolean).join(' · ')}</span>
+                            ) : null}
+                          </td>
+                          {mitAbschnitten ? (
+                            <td className="small col-optional ln-le-breit" title={a?.name}>
+                              {a ? a.kurz : <span className="tertiary">ohne</span>}
+                            </td>
+                          ) : null}
+                          <td className="ln-stunden">{stundenText(l.stunden)}</td>
+                          <td className="ln-le-nachweis" onClick={(e) => e.stopPropagation()}>
+                            {n ? (
+                              <>
+                                {controlling ? (
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    title={`${nachweisTitel(n)} öffnen`}
+                                    onClick={() => navigate({ view: 'abrechnung', projektId: projekt.id, nachweisId: n.id })}
+                                  >
+                                    {nachweisName(n)}
+                                  </button>
+                                ) : (
+                                  <span title={nachweisTitel(n)}>{nachweisName(n)}</span>
+                                )}
+                                {geschlossen ? <span className="ln-le-zu">abgeschlossen</span> : null}
+                              </>
+                            ) : (
+                              <span className="ln-le-ohne" title="Liegt in keinem Leistungsnachweis">
+                                ohne
+                              </span>
+                            )}
+                          </td>
+                          <td className="col-optional ln-le-breit">
+                            <QuelleBadge quelle={l.quelle} />
+                          </td>
+                          <td className="actions">
+                            {aendern ? (
+                              <>
                                 <button
                                   type="button"
-                                  className="link-btn"
-                                  title={`${nachweisTitel(n)} öffnen`}
-                                  onClick={() => navigate({ view: 'abrechnung', projektId: projekt.id, nachweisId: n.id })}
+                                  className="btn-icon ln-le-bearbeiten"
+                                  aria-label="Leistung bearbeiten"
+                                  title={
+                                    geschlossen && n
+                                      ? `Leistung bearbeiten – sie liegt im abgeschlossenen Nachweis „${nachweisName(n)}“`
+                                      : 'Leistung bearbeiten'
+                                  }
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDialog({ leistung: l });
+                                  }}
                                 >
-                                  {nachweisName(n)}
+                                  <Icon name="bearbeiten" size={15} />
                                 </button>
-                              ) : (
-                                <span title={nachweisTitel(n)}>{nachweisName(n)}</span>
-                              )}
-                              {geschlossen ? <span className="ln-le-zu">abgeschlossen</span> : null}
-                            </>
-                          ) : (
-                            <span className="ln-le-ohne" title="Liegt in keinem Leistungsnachweis">
-                              ohne
-                            </span>
-                          )}
-                        </td>
-                        <td className="col-optional ln-le-breit">
-                          <QuelleBadge quelle={l.quelle} />
-                        </td>
-                        <td className="actions">
-                          {aendern ? (
-                            <>
-                              <button
-                                type="button"
-                                className="btn-icon ln-le-bearbeiten"
-                                aria-label="Leistung bearbeiten"
-                                title={
-                                  geschlossen && n
-                                    ? `Leistung bearbeiten – sie liegt im abgeschlossenen Nachweis „${nachweisName(n)}“`
-                                    : 'Leistung bearbeiten'
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDialog({ leistung: l });
-                                }}
-                              >
-                                <Icon name="bearbeiten" size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-icon"
-                                aria-label="Leistung löschen"
-                                title="Leistung löschen"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setLoeschen(l);
-                                }}
-                              >
-                                <Icon name="loeschen" size={15} />
-                              </button>
-                            </>
-                          ) : (
-                            <span className="ln-le-nurlesen">nur lesen</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="ln-le-summe">
-              <span>
-                Summe{gefiltert ? ' der angezeigten Leistungen' : ''} ({sichtbar.length})
-              </span>
-              <strong>{stundenText(summe)} Std.</strong>
-            </div>
-          </>
-        )}
-      </Card>
+                                <button
+                                  type="button"
+                                  className="btn-icon"
+                                  aria-label="Leistung löschen"
+                                  title="Leistung löschen"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLoeschen(l);
+                                  }}
+                                >
+                                  <Icon name="loeschen" size={15} />
+                                </button>
+                              </>
+                            ) : (
+                              <span className="ln-le-nurlesen">nur lesen</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="ln-le-summe">
+                <span>
+                  Summe{gefiltert ? ' der angezeigten Leistungen' : ''} ({sichtbar.length})
+                </span>
+                <strong>{stundenText(summe)} Std.</strong>
+              </div>
+            </>
+          )}
+        </Card>
+      )}
 
       {dialog ? (
         <LeistungDialog
-          key={dialog.leistung?.id ?? 'neu'}
+          key={dialog.leistung?.id ?? `neu-${dialog.datum ?? ''}`}
           projektId={projekt.id}
           leistung={dialog.leistung}
+          vorgabeDatum={dialog.datum}
           onClose={() => setDialog(null)}
         />
       ) : null}

@@ -17,12 +17,17 @@
  *   Personen auf den Stand des Registers bringen. Ein zweiter Aufruf auf dem
  *   so geänderten Bestand liefert einen leeren Plan.
  *
+ * Jedes Projekt gehört auch in `JEDES_PROJEKT_IN` (die Leistungsnachweise):
+ * Deren Abgleich nimmt Projekte, die sie noch nicht führen, von selbst auf –
+ * nachdem eigene Projekte gleicher Nummer verknüpft sind.
+ *
  * Personen gelten als dieselben, wenn sie im Register mit ihrer Kennung im
  * Bereich verknüpft sind. Beim ersten Abgleich eines Projekts werden Personen
  * gleicher E-Mail-Adresse bzw. gleichen Namens verknüpft, Projekte gleicher
  * Projektnummer (ohne Nummer: gleicher Bezeichnung).
  */
 import {
+  JEDES_PROJEKT_IN,
   PERSON_FELDER,
   funktionsSchluessel,
   newId,
@@ -44,6 +49,8 @@ export interface LokalesProjekt {
   name: string;
   /** null: Der Bereich führt keine Beschreibung. */
   beschreibung: string | null;
+  /** Mit ★ markiert; ohne Angabe teilt der Bereich seine Markierung nicht. */
+  markiert?: boolean;
 }
 
 /** Person im Bereich; Felder, die der Bereich nicht führt, fehlen. */
@@ -139,14 +146,16 @@ function neuePerson(l: LokalePerson, projektId: ID, bereich: ProjektBereich, id:
 
 /**
  * Das Projekt wird im Bereich nicht mehr geführt. Bleibt es in keinem Bereich
- * und stammt es nicht aus dem Controlling, entfällt es samt seinen Personen.
+ * und stammt es nicht aus dem Controlling, entfällt es samt seinen Personen –
+ * ebenso, wenn es zuletzt `JEDES_PROJEKT_IN` gelöscht hat (sonst nähme dessen
+ * Abgleich es gleich wieder auf).
  */
 function mitgliedschaftLoesen(r: Register, projektId: ID, bereich: ProjektBereich): void {
   const p = r.projekte.find((x) => x.id === projektId);
   if (!p) return;
   delete p.bereiche[bereich];
   r.personen.filter((x) => x.projektId === projektId).forEach((x) => delete x.ids[bereich]);
-  if (Object.keys(p.bereiche).length === 0 && p.herkunft !== 'controlling') {
+  if (Object.keys(p.bereiche).length === 0 && (p.herkunft !== 'controlling' || bereich === JEDES_PROJEKT_IN)) {
     r.projekte = r.projekte.filter((x) => x.id !== projektId);
     r.personen = r.personen.filter((x) => x.projektId !== projektId);
   }
@@ -266,6 +275,7 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
       continue;
     }
     m.offen = false;
+    if (l.markiert !== undefined) m.markiert = l.markiert;
     if (!projektWeg.has(l.id) && stammdatenWeichen(l, p)) {
       plan.projekteAendern.push({ id: l.id, nummer: p.nummer, name: p.name, beschreibung: p.beschreibung });
     }
@@ -277,7 +287,7 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
     if (projektWeg.has(l.id) || projektImBereich(r, bereich, l.id)) continue;
     const gleich = r.projekte.find((p) => !p.bereiche[bereich] && !p.archiviert && gleichesProjekt(p, l));
     if (gleich) {
-      gleich.bereiche[bereich] = { id: l.id, archiviert: false, offen: false };
+      gleich.bereiche[bereich] = { id: l.id, archiviert: false, offen: false, markiert: l.markiert ?? false };
       // Lücken im Register füllt der Bereich, sonst gilt das Register
       if (!gleich.nummer.trim() && l.nummer.trim()) gleich.nummer = l.nummer;
       if (!gleich.name.trim() && l.name.trim()) gleich.name = l.name;
@@ -296,8 +306,29 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
       herkunft: bereich,
       angelegtAm: jetzt,
       geaendertAm: jetzt,
-      bereiche: { [bereich]: { id: l.id, archiviert: false, offen: false } },
+      bereiche: { [bereich]: { id: l.id, archiviert: false, offen: false, markiert: l.markiert ?? false } },
     });
+  }
+
+  // 3b. Jedes Projekt gehört auch in `JEDES_PROJEKT_IN`: Was dieser Bereich noch
+  //     nicht führt, nimmt er auf – nach dem Verknüpfen in Schritt 3, damit
+  //     eigene Projekte gleicher Nummer nicht doppelt entstehen. Im Controlling
+  //     archivierte Projekte folgen, sobald sie zurückgeholt werden; ist ein
+  //     Projekt in allen seinen Bereichen archiviert, ist es das hier auch.
+  if (bereich === JEDES_PROJEKT_IN) {
+    const belegt = new Set<ID>([
+      ...lokal.keys(),
+      ...r.projekte.flatMap((p) => (p.bereiche[bereich] ? [p.bereiche[bereich]!.id] : [])),
+    ]);
+    for (const p of r.projekte) {
+      if (p.bereiche[bereich] || p.archiviert) continue;
+      const id = belegt.has(p.id) ? newId('pr') : p.id;
+      belegt.add(id);
+      const mitglieder = Object.values(p.bereiche);
+      const archiviert = mitglieder.length > 0 && mitglieder.every((m) => m?.archiviert);
+      p.bereiche[bereich] = { id, archiviert, offen: true, markiert: false };
+      plan.projekteAnlegen.push({ id, projekt: p });
+    }
   }
 
   // 4. Personen der Projekte, die der Bereich führt bzw. jetzt anlegt.
@@ -355,7 +386,10 @@ export function abgleichen(bereich: ProjektBereich, sicht: Sicht, register: Regi
 /* Aktionen auf dem Register (Controlling und „Übernehmen in …“)       */
 /* ------------------------------------------------------------------ */
 
-/** Legt ein Projekt im Register an; die genannten Bereiche übernehmen es beim nächsten Öffnen. */
+/**
+ * Legt ein Projekt im Register an; die genannten Bereiche – und stets
+ * `JEDES_PROJEKT_IN` – übernehmen es beim nächsten Öffnen.
+ */
 export function projektAnlegen(
   register: Register,
   werte: Pick<RegisterProjekt, 'nummer' | 'name' | 'beschreibung'>,
@@ -371,7 +405,9 @@ export function projektAnlegen(
     herkunft: 'controlling',
     angelegtAm: jetzt,
     geaendertAm: jetzt,
-    bereiche: Object.fromEntries(bereiche.map((b) => [b, { id, archiviert: false, offen: true }])),
+    bereiche: Object.fromEntries(
+      [...new Set([...bereiche, JEDES_PROJEKT_IN])].map((b) => [b, { id, archiviert: false, offen: true, markiert: false }]),
+    ),
   });
   return r;
 }
@@ -416,12 +452,13 @@ export function inBereichUebernehmen(register: Register, id: ID, bereich: Projek
   const r = klon(register);
   const p = r.projekte.find((x) => x.id === id);
   if (!p || p.bereiche[bereich]) return register;
-  p.bereiche[bereich] = { id: lokaleId, archiviert: false, offen: true };
+  p.bereiche[bereich] = { id: lokaleId, archiviert: false, offen: true, markiert: false };
   return r;
 }
 
-/** Nimmt eine noch nicht vollzogene Übernahme zurück. */
+/** Nimmt eine noch nicht vollzogene Übernahme zurück – nicht in `JEDES_PROJEKT_IN`. */
 export function uebernahmeZuruecknehmen(register: Register, id: ID, bereich: ProjektBereich): Register {
+  if (bereich === JEDES_PROJEKT_IN) return register;
   const r = klon(register);
   const p = r.projekte.find((x) => x.id === id);
   if (!p?.bereiche[bereich]?.offen) return register;

@@ -2,7 +2,8 @@
  * Oberflächenbausteine zum Projektregister, die alle Bereiche verwenden:
  *
  * * `BereichsMarken` – unten in der Projektkachel: in welchen anderen
- *   Bereichen das Projekt noch geführt wird,
+ *   Bereichen das Projekt noch geführt wird – ohne die Leistungsnachweise,
+ *   die jedes Projekt führen (`genannteBereiche`), außer dort selbst,
  * * `FremdeProjekte` – grau hinterlegter Abschnitt „Projekte aus anderen
  *   Bereichen“ mit „Übernehmen in …“,
  * * `ArchivAbschnitt`, `ArchivHinweis`, `useArchivierte` – im Bereich
@@ -20,6 +21,8 @@ import {
   PROJEKT_BEREICHE,
   archivierteIds,
   funktionText,
+  genannteBereiche,
+  markiertAnderswo,
   istArchiviert,
   personName,
   projektImBereich,
@@ -39,11 +42,24 @@ export function useArchivierte(bereich: ProjektBereich): Set<ID> {
   return useMemo(() => archivierteIds(register, bereich), [register, bereich]);
 }
 
-/** Titel der anderen Bereiche, die das Projekt führen, etwa „Planlaufmanagement und Projektsteuerung“. */
+/**
+ * Projekte des Bereichs, die ein anderer Bereich mit ★ markiert hat – je
+ * Kennung die Titel dieser Bereiche (`markiertAnderswo`).
+ */
+export function useMarkiertAnderswo(bereich: ProjektBereich): Map<ID, string[]> {
+  const register = useRegister();
+  return useMemo(() => markiertAnderswo(register, bereich), [register, bereich]);
+}
+
+/**
+ * Titel der anderen Bereiche, die das Projekt führen, etwa „Planlaufmanagement
+ * und Projektsteuerung“ – ohne die Leistungsnachweise, außer dort selbst (`genannteBereiche`).
+ */
 export function andereBereiche(register: Register, bereich: ProjektBereich, lokaleId: ID): string {
   const p = projektImBereich(register, bereich, lokaleId);
   if (!p) return '';
-  const titel = PROJEKT_BEREICHE.filter((b) => b.id !== bereich && p.bereiche[b.id] && !p.bereiche[b.id]!.offen).map((b) => b.titel);
+  const genannt = genannteBereiche(bereich);
+  const titel = PROJEKT_BEREICHE.filter((b) => genannt.includes(b.id) && p.bereiche[b.id] && !p.bereiche[b.id]!.offen).map((b) => b.titel);
   return titel.length <= 1 ? (titel[0] ?? '') : `${titel.slice(0, -1).join(', ')} und ${titel[titel.length - 1]}`;
 }
 
@@ -54,9 +70,14 @@ export function useLoeschHinweis(bereich: ProjektBereich, lokaleId: ID): string 
   return andere ? ` In ${andere} bleibt das Projekt mit seinen Projektbeteiligten erhalten.` : '';
 }
 
-/** Marken der Bereiche eines Registerprojekts (ohne `ohne`). */
-export function ProjektMarken({ projekt, ohne, label }: { projekt: RegisterProjekt; ohne?: ProjektBereich; label?: string }) {
-  const marken = PROJEKT_BEREICHE.filter((b) => b.id !== ohne && projekt.bereiche[b.id]);
+/**
+ * Marken der Bereiche eines Registerprojekts – aus Sicht des Bereichs `aus`
+ * (dessen eigene Marke und die der Leistungsnachweise entfallen,
+ * `genannteBereiche`); ohne `aus` alle.
+ */
+export function ProjektMarken({ projekt, aus, label }: { projekt: RegisterProjekt; aus?: ProjektBereich; label?: string }) {
+  const genannt = genannteBereiche(aus ?? null);
+  const marken = PROJEKT_BEREICHE.filter((b) => genannt.includes(b.id) && projekt.bereiche[b.id]);
   if (marken.length === 0) return null;
   return (
     <div className="gem-marken">
@@ -89,7 +110,7 @@ export function BereichsMarken({ bereich, lokaleId }: { bereich: ProjektBereich;
   const register = useRegister();
   const p = projektImBereich(register, bereich, lokaleId);
   if (!p) return null;
-  return <ProjektMarken projekt={p} ohne={bereich} label="Auch in" />;
+  return <ProjektMarken projekt={p} aus={bereich} label="Auch in" />;
 }
 
 /** Archivhinweis oben im Projekt. */
@@ -165,13 +186,13 @@ export function FremdeProjekte({ bereich, suche }: { bereich: ProjektBereich; su
               <div className="mono tertiary">{p.nummer}</div>
               <h2 className="gem-fremd-titel">{p.name || 'Ohne Bezeichnung'}</h2>
               {p.beschreibung ? <div className="small muted truncate">{p.beschreibung}</div> : null}
-              {Object.keys(p.bereiche).length > 0 ? (
-                <ProjektMarken projekt={p} label="Geführt in" />
-              ) : (
+              {genannteBereiche(bereich).some((b) => p.bereiche[b]) ? (
+                <ProjektMarken projekt={p} aus={bereich} label="Geführt in" />
+              ) : p.herkunft === 'controlling' ? (
                 <div className="gem-marken">
-                  <span className="gem-marken-label">Im Controlling angelegt, noch in keinem Bereich</span>
+                  <span className="gem-marken-label">Im Controlling angelegt</span>
                 </div>
-              )}
+              ) : null}
               <div className="gem-fremd-fuss">
                 <button type="button" className="btn btn-sm btn-outline" onClick={() => uebernehmen(p)}>
                   <Icon name="importieren" size={12} /> Übernehmen in {BEREICH_TITEL[bereich]}

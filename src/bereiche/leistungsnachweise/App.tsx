@@ -19,7 +19,7 @@ import { useToast } from '../../shared/toast';
 import { Callout, Card, ConfirmDialog, EmptyState } from '../../shared/ui';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
-import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
+import { useArchivierte, useMarkiertAnderswo } from '../../gemeinsam/ProjektBereiche';
 import { AnmeldeDialog, AnmeldeHinweis, AnmeldungBereitstellen, type AnmeldungOeffnen } from './components/AnmeldeDialog';
 import { ImportDialog } from './components/ImportDialog';
 import { SicherungEinspielenDialog, SicherungKnopf, SicherungWaehlen, type Sicherung } from './components/Sicherung';
@@ -43,7 +43,8 @@ export function App() {
   const [importOffen, setImportOffen] = useState(false);
 
   const archiviert = useArchivierte('leistungsnachweise');
-  const markierte = sichtbareProjekte(data.projekte, archiviert);
+  const anderswo = useMarkiertAnderswo('leistungsnachweise');
+  const markierte = sichtbareProjekte(data.projekte, archiviert, anderswo);
   const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
   const projekt = route.view === 'projekt' ? data.projekte.find((p) => p.id === route.projektId) : undefined;
   const ich = angemeldet(data);

@@ -11,7 +11,7 @@ import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Search } from '../../../shared/ui';
 import { AnmeldungDialog } from '../components/AnmeldungDialog';
-import { AmpelBadge, AmpelPunkt, NachfolgerAuswahl, StatusBadge, TerminKompakt } from '../components/common';
+import { AmpelBadge, AmpelPunkt, NachfolgerAuswahl, SachstandKompakt, StatusBadge, TerminKompakt } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import { monitorExportieren } from '../domain/export';
 import {
@@ -263,7 +263,11 @@ function ErstanmeldungKarte({ eintrag, onBearbeiten }: { eintrag: ErstanmeldungE
   );
 }
 
-/** Anmeldungen eines Workflows – Spalten Anmeldung, Sperrzeitraum, Status, Zuständig, Terminfrist. */
+/**
+ * Anmeldungen eines Workflows – Spalten Anmeldung, Sperrzeitraum, Status,
+ * Zuständig, Terminfrist, Sachstand (letzter Abgleich bzw. letzte Änderung,
+ * `SachstandKompakt`) und „Status ändern“ (Haken mit Auswahl).
+ */
 function AnmeldungenTabelle({
   titel,
   anzahl,
@@ -290,7 +294,7 @@ function AnmeldungenTabelle({
       {zeilen.length === 0 ? null : (
         <div className="table-scroll">
           {/* Feste Breiten: Anmeldung nimmt den Rest und kürzt, alle anderen Spalten passen einzeilig. */}
-          <table className="table" style={{ tableLayout: 'fixed', minWidth: 1020 }}>
+          <table className="table" style={{ tableLayout: 'fixed', minWidth: 1100 }}>
             <thead>
               <tr>
                 <th>Anmeldung</th>
@@ -298,7 +302,8 @@ function AnmeldungenTabelle({
                 <th style={{ width: 206 }}>Status</th>
                 <th style={{ width: 150 }}>Zuständig</th>
                 <th style={{ width: 152 }}>Terminfrist</th>
-                <th className="actions" style={{ width: 176 }} />
+                <th style={{ width: 200 }}>Sachstand</th>
+                <th className="actions" style={{ width: 64 }} />
               </tr>
             </thead>
             <tbody>
@@ -349,6 +354,9 @@ function AnmeldungenTabelle({
                     </td>
                     <td>
                       <TerminKompakt frist={frist} ampel={ampel} />
+                    </td>
+                    <td>
+                      <SachstandKompakt anmeldung={a} />
                     </td>
                     <td className="actions" onClick={(e) => e.stopPropagation()}>
                       <NachfolgerAuswahl statusId={a.statusId} onWaehle={(nach) => onWechsel(a, nach)} />

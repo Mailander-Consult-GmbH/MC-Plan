@@ -751,8 +751,11 @@ Bemerkungen. ÄAbst-Nr und AnnexVII-Kennzeichen sind nur in Status der Art „Ä
 aktiv; endet sie, werden beide im Statusverlauf festgehalten und in der Anmeldung geleert.
 
 Im Projekt stehen die Anmeldungen **je Workflow in einer eigenen Tabelle** (SKM, MKM, KM (n-2 &
-n-1), KKM (unterjährig)) mit den Spalten Anmeldung, Sperrzeitraum, Status, **Zuständig** und
-Terminfrist, dazu **Status ändern** als Haken wie im Planlaufmanagement: Hat der Status nur einen
+n-1), KKM (unterjährig)) mit den Spalten Anmeldung, Sperrzeitraum, Status, **Zuständig**,
+Terminfrist und **Sachstand** – dem Datum des letzten Abgleichs bzw. der letzten Änderung: der
+jüngste Eintrag im Statusverlauf (Anlage, Statuswechsel, „Nachgehakt“ und andere Vermerke, je mit
+ihrem Datum) oder die letzte Änderung der Merkmale („Bearbeiten“, Termin von Hand), was später liegt;
+darunter Abstand zu heute und Anlass –, dazu **Status ändern** als Haken wie im Planlaufmanagement: Hat der Status nur einen
 möglichen Nachfolger, wählt der Haken ihn direkt; bei mehreren öffnet er ein Menü „Welcher Status
 folgt?“ (wie bei parallelen Schritten im Planlauf). Bestätigt wird der Wechsel im Dialog des
 Statuswechsels. „Zuständig“ nennt die Rolle des aktuellen Status samt Namen:
@@ -841,12 +844,6 @@ nach Projekten, je Projekt zuerst eine ausstehende Erstanmeldung, Filter
 aufklappbaren Gruppe **Einstellungen** – **Workflows** und **Fristen** (Fristen laut Richtlinie,
 Ampel und Nachhaken; früher die Seite „Einstellungen“, deren Adresse weiter gilt).
 **Excel** im Projekt lädt Anmeldungen und Projekt als Arbeitsmappe herunter.
-
-In den anstehenden Terminfristen der Übersicht steht zwischen Terminfrist und „Status ändern“ der
-**Sachstand** – das Datum des letzten Abgleichs bzw. der letzten Änderung: der jüngste Eintrag im
-Statusverlauf (Anlage, Statuswechsel, „Nachgehakt“ und andere Vermerke, je mit ihrem Datum) oder die
-letzte Änderung der Merkmale („Bearbeiten“, Termin von Hand), was später liegt – mit Abstand zu heute
-und Anlass.
 
 ### Daten
 Eigener Schlüssel `baubetrieb-planung.data.v1` im `localStorage`, eigene Demodaten,
@@ -997,12 +994,24 @@ PIN-geschützte Controlling-Bereich.
 
 ### Übersicht und Projekte
 Die **Übersicht** zeigt die eigenen Stunden und Leistungen des Monats, die eigenen Stunden im Jahr,
-die zuletzt erfassten eigenen Leistungen und je Projekt die eigenen Stunden des Monats. Die
-**Projektliste** legt nichts an: Projekte kommen aus dem Projektregister (*Übernehmen* aus anderen
-Bereichen), aus dem Excel-Import oder aus dem Controlling. Ein Projekt öffnet direkt die eigenen
-Leistungen – ohne weitere Reiter. Frühere Adressen der Reiter (`…/projekt/<id>/nachweise` usw.)
+den Kalender **Mein Kalender** über alle Projekte (siehe [Kalender](#kalender)), die zuletzt
+erfassten eigenen Leistungen und je Projekt die eigenen Stunden des Monats. Die
+**Projektliste** legt nichts an: Jedes Projekt der anderen Bereiche und des Controllings steht von
+selbst hier (Projektregister); unbekannte Projekte legt auch der Excel-Import an. Ein Projekt öffnet direkt die eigenen
+Leistungen – zuerst im Kalender, mit dem Umschalter **Liste** als Tabelle mit Filtern und Auswahl –,
+ohne weitere Reiter. Frühere Adressen der Reiter (`…/projekt/<id>/nachweise` usw.)
 zeigen ebenfalls die Leistungen, die eines Nachweises (`…/projekt/<id>/nachweis/<id>`) führt in die
 Abrechnung im Controlling.
+
+### Kalender
+Ein großer Monatskalender (Montag bis Sonntag) zeigt je Tag die eigenen Leistungen mit Stunden und
+Text sowie die Tagessumme, rechts je Woche die Kalenderwoche und ihre Summe; Wochenenden und Tage
+außerhalb des Monats sind zurückgenommen, heute ist hervorgehoben. **Ein Klick auf einen Tag
+erfasst dort eine Leistung**, ein Klick auf eine Leistung öffnet sie zum Bearbeiten. Mit den Pfeilen
+geht es einen Monat vor oder zurück, **Heute** springt in den laufenden Monat. In der Übersicht
+umfasst der Kalender alle Projekte – jede Leistung nennt ihre Projektnummer, und der Dialog fragt
+das Projekt ab (vorgewählt ist das der zuletzt erfassten Leistung). Auf schmalen Bildschirmen zeigt
+jeder Tag nur seine Stunden; erfasst wird ebenfalls per Klick, bearbeitet über die Liste.
 
 ### Leistungen
 Eigene Leistungen von Hand erfassen (Datum, Text, Stunden, Abschnitt) oder per **Excel-Import** aus
@@ -1016,9 +1025,10 @@ Ein Nachweis ist ein Zeitraum eines Projekts; welche Leistungen er zeigt, ergibt
 ihrem Datum. Fehlt für eine Leistung ein Nachweis, entsteht er beim Erfassen oder Importieren von
 selbst. Ein Leistungsnachweis ist **nicht an einen Monat gebunden**: Er läuft weiter – auch über
 mehrere Monate –, bis das Controlling ihn abschließt; danach beginnt mit der nächsten Leistung ein
-neuer (Regel *Fortlaufend bis zum Abschluss*, Vorgabe für alle Projekte). Beim Abschluss endet der
-Zeitraum am letzten Tag mit Leistungen. Wer es so will, stellt ein Projekt im Controlling auf *Je
-Kalendermonat*. Je Tag, Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern,
+neuer (Regel *Fortlaufend bis zum Abschluss*, Vorgabe für alle Projekte). **Der Zeitraum wird erst
+beim Abschluss festgelegt:** Bis dahin zeigen Listen und Abrechnung „ab … · läuft bis zum
+Abschluss“; beim Abschluss endet er am letzten Tag mit Leistungen (spätestens heute). Wer es so
+will, stellt ein Projekt im Controlling auf *Je Kalendermonat*. Je Tag, Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern,
 Leistungstext und Stunden.
 
 ### Controlling der Leistungsnachweise
@@ -1028,6 +1038,19 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   Aufschlag, abgerechnet, ohne Nachweis) für Monat, Quartal, Jahr oder einen freien Zeitraum, mit
   Excel.
 * **Leistungsnachweise** – alle Nachweise aller Projekte mit Filter und **Neuer Leistungsnachweis**.
+  Der fragt **keinen Zeitraum** ab, nur Projekt, Raster und optional die Überschrift: Er umfasst
+  automatisch alle nicht abgerechneten Leistungen des Projekts (nach dem letzten abgeschlossenen
+  Nachweis); offene Nachweise gehen darin auf, ihre Leistungstexte, Aufschläge und Bemerkungen
+  bleiben erhalten. Später erfasste Leistungen kommen hinzu, den Zeitraum legt der Abschluss fest.
+  Liegt schon alles in einem offenen Nachweis, bietet der Dialog **Öffnen** an. Für Korrekturen
+  gibt es in der Abrechnung weiter **Zeitraum ändern**.
+  **Nicht erfasste Leistungen:** Abgerechnet ist, was im festgeschriebenen Stand eines
+  abgeschlossenen Nachweises steht. Leistungen aus schon abgerechneten Zeiträumen, die dort fehlen
+  (etwa nach dem Abschluss nachgetragen), meldet der Dialog – und die Abrechnung des laufenden
+  Nachweises – mit Datum, Person, Stunden, Text und Grund. Übernommen werden sie **erst nach
+  Bestätigung** (Haken im Dialog bzw. Rückfrage in der Abrechnung) – als **nachgereichte** Leistungen
+  mit ihrem Datum als eigene Zeile, gekennzeichnet „nachgereicht“. Der abgeschlossene Nachweis
+  bleibt unverändert.
   Ein Klick öffnet die **Abrechnung**: Aufschlag in ± Stunden je Zeile bzw. die abgerechneten
   Stunden, die Ansicht **Leistungstexte** (Text je Zeile bearbeiten, solange der Nachweis offen ist –
   ein bearbeiteter Text wird nie still überschrieben, neue Leistungen bietet die Zeile zum
@@ -1058,7 +1081,8 @@ Mitarbeiter – darunter Anna Becker –, drei Projekte, Leistungen der letzten 
 **Sicherung**/**Einspielen** (JSON mit dem Kennzeichen `"bereich": "leistungsnachweise"`) und
 **Zurücksetzen**. Sicherungen und Stände aus dem Testprojekt lassen sich einspielen; die frühere
 Rolle Controlling entfällt dabei (Fassung 3). Fassung 4 stellt alle Projekte auf *Fortlaufend bis zum
-Abschluss*; vorhandene Nachweise bleiben, wie sie sind. Projekte teilt der Bereich über das Projektregister;
+Abschluss*; vorhandene Nachweise bleiben, wie sie sind. Fassung 5 ergänzt an den Nachweisen die
+nachgereichten Leistungen (leer). Projekte teilt der Bereich über das Projektregister;
 seine Mitarbeiter sind keine Projektbeteiligten und werden nicht geteilt. Name unter „Angemeldet als“
 und Farbmodus gelten in allen Bereichen.
 
@@ -1090,6 +1114,16 @@ Bezeichnung und Beschreibung**, die Bereiche, in denen es geführt wird – je B
 archiviert –, und die **Projektbeteiligten** des Projekts. Jeder Bereich gleicht seinen Bestand nach
 jeder Änderung mit dem Register ab; was ein anderer Bereich oder das Controlling geändert hat,
 übernimmt er spätestens beim nächsten Öffnen.
+
+**Jedes Projekt steht auch in den Leistungsnachweisen** – auf jedes Projekt lassen sich Leistungen
+erfassen. Ihr Abgleich nimmt alle Projekte des Registers auf, die sie noch nicht führen (zuvor
+verknüpft er eigene Projekte gleicher Nummer); im Controlling archivierte folgen, sobald sie
+zurückgeholt werden. So übernommene Projekte sind dort nicht mit ★ markiert, damit Übersicht und
+Seitenleiste nicht volllaufen. **Was ein Bereich mit ★ markiert, ist in den Leistungsnachweisen
+von selbst markiert** – dort fest (aufheben lässt es sich nur im markierenden Bereich, der Tooltip
+nennt ihn); weitere Projekte lassen sich dort zusätzlich markieren. Die anderen Bereiche nennen die
+Leistungsnachweise in ihren Projektansichten nicht (weder unter „Auch in“ noch unter „Geführt in“
+noch im Löschdialog); die Leistungsnachweise nennen die anderen Bereiche weiter.
 
 Geteilt werden:
 
@@ -1123,7 +1157,8 @@ ihre Projekte – ihre Mitarbeiter sind keine Projektbeteiligten.
   offene Punkte stehen in Übersicht und Projekt, nicht mehr in der Kachel.
 * Unten in jeder Projektkachel nennt die Zeile **Auch in** die anderen Bereiche, die das Projekt
   führen – grau mit *archiviert*, gestrichelt mit *vorgesehen*, solange eine Übernahme aus dem
-  Controlling noch aussteht.
+  Controlling noch aussteht. Die Leistungsnachweise erscheinen dort nur in ihrem eigenen Bereich
+  nicht – außerhalb werden sie nicht genannt.
 * Unter der Projektliste stehen **grau hinterlegt** die **Projekte aus anderen Bereichen** (und aus
   dem Controlling), die der Bereich noch nicht führt – mit Nummer, Name, Zusatztext und den
   Bereichen, die es führen. **Übernehmen in …** legt das Projekt im Bereich an – samt den
@@ -1133,9 +1168,10 @@ ihre Projekte – ihre Mitarbeiter sind keine Projektbeteiligten.
   Controlling – je Bereich: Ein Projekt kann in einem Bereich archiviert und in einem anderen aktiv
   sein.
 * **Löschen** im Projekt entfernt es nur aus diesem Bereich; in den anderen Bereichen bleibt es mit
-  seinen Beteiligten erhalten (der Dialog nennt sie). Führt es danach kein Bereich mehr, entfällt es
-  auch im Register – außer es wurde im Controlling angelegt. In den Leistungsnachweisen gibt es kein
-  Löschen im Projekt; dort löscht das Controlling.
+  seinen Beteiligten erhalten (der Dialog nennt sie). In den Leistungsnachweisen bleibt es stets
+  erhalten. Im Bereich Leistungsnachweise gibt es kein Löschen im Projekt; im Controlling der
+  Leistungsnachweise lässt sich nur ein Projekt löschen, das kein anderer Bereich führt – es entfällt
+  dann auch im Register. Projekte mehrerer Bereiche löscht das Controlling unter **Projekte**.
 * Wer ein Projekt mit einer **Projektnummer** anlegt, die es in einem anderen Bereich schon gibt,
   erhält einen Hinweis: Beim Anlegen wird es mit dem vorhandenen verknüpft; Bezeichnung und
   Beteiligte kommen von dort. Ebenso verknüpft der erste Abgleich nach dem Umstieg Projekte gleicher
@@ -1155,11 +1191,13 @@ Datenbestand – es arbeitet auf dem Projektregister:
   Bezeichnung, Beschreibung, dem Stand in jedem Bereich (*Aktiv*, *Archiviert*, *Vorgesehen* oder
   *nicht geführt*). Je Bereich: **Übernehmen**,
   **Zurücknehmen** (einer noch nicht vollzogenen Übernahme), **Archivieren** bzw. **Zurückholen**.
+  In den Leistungsnachweisen steht jedes Projekt – bis zu ihrem nächsten Abgleich als *Vorgesehen*;
+  dort gibt es nur Archivieren bzw. Zurückholen.
   Für das ganze Projekt: **Bearbeiten** (Nummer, Bezeichnung, Beschreibung – gelten danach in allen
   Bereichen), **Archivieren** (in allen Bereichen) und **Löschen** – im Register und in allen
   Bereichen samt allem, was diese dazu gespeichert haben.
 * **Neues Projekt**: Projektnummer (eindeutig), Bezeichnung, Beschreibung und die Bereiche, die es
-  übernehmen sollen.
+  übernehmen sollen; *Leistungsnachweise* ist fest angehakt („immer“).
 * **Archiv**: die im Controlling archivierten Projekte mit **Aus dem Archiv holen** und Löschen.
 * **Leistungsnachweise** (unter *Bereiche*): das Controlling der Leistungsnachweise – siehe
   [Controlling der Leistungsnachweise](#controlling-der-leistungsnachweise). Es arbeitet auf dem
@@ -1293,7 +1331,8 @@ src/
       domain/
         types.ts     Datenmodell (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis)
         rechte.ts    Rechte je Zugang – an einer Stelle
-        nachweis.ts  Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss
+        nachweis.ts  Zeilen, Zeiträume, Ergänzen, Aufschläge, neuer Nachweis für alle nicht
+                     abgerechneten Leistungen, Abschluss
         zeitraum.ts  Tage, Kalenderwochen, Monate und Stundenformat
         import.ts    Excel-Import der Zeiterfassung (Lesen, Planen, Anwenden)
         auswertung.ts  Stunden je Mitarbeiter, Monat und Projekt
@@ -1306,8 +1345,8 @@ src/
       pages/         Übersicht, Projekte, Projekt (eigene Leistungen) und controlling/ (Auswertung,
                      Nachweisliste, Abrechnung mit Leistungstexten, Projektliste, Projekt mit
                      Leistungsnachweisen, Leistungen und Einstellungen, Mitarbeiter)
-      components/    Dialoge (Anmeldung, Leistung, Nachweis, Projekt, Mitarbeiter), Excel-Import, Logos,
-                     Sicherung, Druckblatt
+      components/    Dialoge (Anmeldung, Leistung, Nachweis, Projekt, Mitarbeiter), Kalender zum Erfassen,
+                     Excel-Import, Logos, Sicherung, Druckblatt
     controlling/ Bereich „Controlling“ (mit PIN, ohne eigenen Bestand)
       index.tsx  Einstiegspunkt: PIN-Abfrage, danach der Bereich
       PinEingabe.tsx  PIN-Abfrage

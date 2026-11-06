@@ -32,8 +32,9 @@ export type ISODate = string;
  * Fassung 3: ohne Rolle – das Controlling ist ein eigener Bereich mit PIN.
  * Fassung 4: Nachweise laufen bis zum Abschluss – alle Projekte erhalten die
  * Zeitraumregel „fortlaufend“.
+ * Fassung 5: nachgereichte Leistungen am Nachweis (`nachgereicht`, leer).
  */
-export const DATEN_VERSION = 4;
+export const DATEN_VERSION = 5;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Mitarbeiter MIC';
@@ -323,6 +324,13 @@ export interface Leistungsnachweis {
   aufschlaege: Record<string, number>;
   /** Hinweis unter der Tabelle (Freitext). */
   bemerkung: string;
+  /**
+   * Nachgereichte Leistungen: Kennungen von Leistungen aus früheren, schon
+   * abgerechneten Zeiträumen, die in keinem abgerechneten Nachweis stehen und
+   * die das Controlling nach Rückfrage hierher übernommen hat. Sie erscheinen
+   * hier statt im Nachweis ihres Datums (`leistungenDesNachweises`).
+   */
+  nachgereicht: ID[];
   /** Zeitpunkte (ISO). */
   erstellt: string;
   geaendert: string;

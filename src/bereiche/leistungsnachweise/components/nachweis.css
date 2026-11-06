@@ -98,3 +98,6 @@
 
 /* Kontrastmodus: Randlinie bearbeiteter Zeilen kräftiger */
 :root[data-farbmodus='kontrast'] .ln-zeile.ln-zeile-bearbeitet { box-shadow: inset 4px 0 0 var(--accent), var(--shadow-sm); }
+
+/* Nicht erfasste Leistungen (NachweisDialog.tsx, `NichtErfasstHinweis`) */
+.ln-nicht-erfasst { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }

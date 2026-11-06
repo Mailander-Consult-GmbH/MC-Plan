@@ -3,7 +3,8 @@
  * Nachweise (Zeitraum und Überschrift, Raster, Bearbeiter, erfasste Stunden,
  * Status; ein Klick öffnet die Abrechnung) und ein Hinweis, wenn Leistungen in
  * keinem Nachweis liegen – mit „Nachweise anlegen“ nach der Zeitraumregel des
- * Projekts. Dazu „Neuer Leistungsnachweis“ für einen freien Zeitraum; sonst
+ * Projekts. Dazu „Neuer Leistungsnachweis“ – ohne Zeitraum, für alle nicht
+ * abgerechneten Leistungen (components/NachweisDialog.tsx); sonst
  * entstehen Nachweise beim Erfassen und Importieren von selbst.
  */
 import { useState } from 'react';
@@ -11,7 +12,7 @@ import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Callout, Card, CardHeader, EmptyState } from '../../../../shared/ui';
 import { NachweisDialog } from '../../components/NachweisDialog';
-import { NachweisStatusBadge, RasterBadge, anzahl, nachweiseAngelegtText } from '../../components/common';
+import { NachweisStatusBadge, RasterBadge, anzahl, nachweisZeitraumText, nachweiseAngelegtText } from '../../components/common';
 import {
   bearbeiterVon,
   leistungenOhneNachweis,
@@ -23,7 +24,7 @@ import {
 } from '../../domain/nachweis';
 import { darf } from '../../domain/rechte';
 import { RASTER_LABEL, ZEITRAUMREGEL_LABEL, type Leistungsnachweis, type Projekt } from '../../domain/types';
-import { langDatum, stundenText } from '../../domain/zeitraum';
+import { stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import '../../components/nachweis.css';
@@ -40,7 +41,7 @@ export function ProjektNachweise({ projekt, navigate }: { projekt: Projekt; navi
   const oeffne = (n: Leistungsnachweis) => navigate({ view: 'abrechnung', projektId: projekt.id, nachweisId: n.id });
   const anlegen = () => toast(nachweiseAngelegtText(nachweiseFuerOffeneLeistungen(projekt.id)));
 
-  // Nachweise für einen freien Zeitraum legt nur das Controlling an
+  // Neue Nachweise legt nur das Controlling an – ohne Zeitraum, für alle nicht abgerechneten Leistungen
   const neuKnopf = verwalten ? (
     <button type="button" className="btn btn-primary" onClick={() => setNeu(true)}>
       <Icon name="plus" size={14} /> Neuer Leistungsnachweis
@@ -81,7 +82,7 @@ export function ProjektNachweise({ projekt, navigate }: { projekt: Projekt; navi
             titel="Noch keine Leistungsnachweise"
             text={
               verwalten
-                ? 'Leistungsnachweise entstehen beim Erfassen oder beim Excel-Import von Leistungen von selbst und laufen, bis sie abgeschlossen werden – oder je Kalendermonat, wie es das Projekt vorgibt. Hier lässt sich ein Nachweis auch für einen freien Zeitraum anlegen.'
+                ? 'Leistungsnachweise entstehen beim Erfassen oder beim Excel-Import von Leistungen von selbst und laufen, bis sie abgeschlossen werden – oder je Kalendermonat, wie es das Projekt vorgibt. „Neuer Leistungsnachweis“ fasst alle nicht abgerechneten Leistungen zusammen – den Zeitraum legt erst der Abschluss fest.'
                 : 'Leistungsnachweise entstehen beim Erfassen oder beim Excel-Import von Leistungen von selbst und laufen, bis sie abgeschlossen werden – oder je Kalendermonat, wie es das Projekt vorgibt.'
             }
             action={neuKnopf ?? undefined}
@@ -118,9 +119,7 @@ export function ProjektNachweise({ projekt, navigate }: { projekt: Projekt; navi
                     <tr key={n.id} className="clickable" onClick={() => oeffne(n)}>
                       <td>
                         <strong>{n.status === 'abgeschlossen' && n.stand ? n.stand.titel : nachweisTitel(n)}</strong>
-                        <div className="small tertiary">
-                          {langDatum(n.von)} – {langDatum(n.bis)}
-                        </div>
+                        <div className="small tertiary">{nachweisZeitraumText(data, n)}</div>
                       </td>
                       <td className="col-optional">
                         <RasterBadge raster={n.raster} />
