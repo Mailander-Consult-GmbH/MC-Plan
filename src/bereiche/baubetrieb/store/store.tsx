@@ -42,7 +42,7 @@ export { newId };
 /** Angaben zur Neuanlage einer Anmeldung; Verlauf und Änderungsmerkmale entstehen im Store. */
 export type NeueAnmeldung = Omit<
   Anmeldung,
-  'id' | 'verlauf' | 'herkunftId' | 'aenderungsNr' | 'annexVII' | 'terminManuell'
+  'id' | 'verlauf' | 'herkunftId' | 'aenderungsNr' | 'annexVII' | 'terminManuell' | 'geaendertAm'
 >;
 
 interface StoreValue {
@@ -68,7 +68,8 @@ interface StoreValue {
   toggleMarkiert: (id: ID) => void;
   /* Anmeldungen */
   addAnmeldung: (a: NeueAnmeldung) => ID;
-  updateAnmeldung: (id: ID, patch: Partial<Omit<Anmeldung, 'id' | 'statusId' | 'verlauf'>>) => void;
+  /** Ändert Merkmale; setzt `geaendertAm` auf heute. */
+  updateAnmeldung: (id: ID, patch: Partial<Omit<Anmeldung, 'id' | 'statusId' | 'verlauf' | 'geaendertAm'>>) => void;
   deleteAnmeldung: (id: ID) => void;
   /** Legt eine Kopie mit aktuellem Stand und Statusverlauf an und liefert ihre Kennung. */
   duplicateAnmeldung: (id: ID) => ID;
@@ -81,7 +82,7 @@ interface StoreValue {
   statusZuruecknehmen: (id: ID) => void;
   /** Hält fest, dass nachgehakt wurde, und setzt ggf. einen neuen Termin. */
   nachgehakt: (id: ID, datum: ISODate, notiz: string, neuerTermin: ISODate | null) => void;
-  /** Legt die Terminfrist im aktuellen Status von Hand fest (null: berechnen). */
+  /** Legt die Terminfrist im aktuellen Status von Hand fest (null: berechnen); setzt `geaendertAm`. */
   terminSetzen: (id: ID, termin: ISODate | null) => void;
   /* Verwaltung */
   ersetzeDaten: (d: BaubetriebDaten) => void;
@@ -180,6 +181,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             annexVII: null,
             terminManuell: null,
             herkunftId: null,
+            geaendertAm: null,
             verlauf: [
               {
                 id: verlaufId,
@@ -201,13 +203,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         });
         return id;
       },
-      updateAnmeldung: (id, patch) =>
+      updateAnmeldung: (id, patch) => {
+        const heute = today();
         mutate((d) => ({
           ...d,
           anmeldungen: d.anmeldungen.map((a) =>
-            a.id === id ? bauzeitraumAbgleichen({ ...a, ...patch, id }, d.workflows) : a,
+            a.id === id ? bauzeitraumAbgleichen({ ...a, ...patch, id, geaendertAm: heute }, d.workflows) : a,
           ),
-        })),
+        }));
+      },
       deleteAnmeldung: (id) =>
         mutate((d) => ({
           ...d,
@@ -271,7 +275,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ),
         }));
       },
-      terminSetzen: (id, termin) => anmeldungAendern(id, (a) => ({ ...a, terminManuell: termin })),
+      terminSetzen: (id, termin) => {
+        const heute = today();
+        anmeldungAendern(id, (a) => ({ ...a, terminManuell: termin, geaendertAm: heute }));
+      },
 
       ersetzeDaten: (d) => {
         ersetzt();

@@ -1,10 +1,13 @@
 /** Fachliche Anzeige-Bausteine der Baubetriebsplanung, die mehrere Ansichten brauchen. */
+import { useEffect, useRef, useState } from 'react';
 import { formatDate, relativeLabel } from '../../../shared/dates';
+import { Icon } from '../../../shared/icons';
 import { Badge } from '../../../shared/ui';
 import { AMPEL_LABEL, type Ampel, type Terminfrist } from '../domain/fristen';
 import { LOESCHEN, type ID, type StatusArt, type StatusZiel, type Workflow } from '../domain/types';
 import { istUebernahme, nachfolgerVon, statusInfo, statusVon, statusText } from '../domain/workflow';
 import { useStore } from '../store/store';
+import './baubetrieb.css';
 
 type Ton = '' | 'green' | 'orange' | 'red' | 'blue' | 'purple' | 'gelb';
 
@@ -98,8 +101,11 @@ export function TerminKompakt({ frist, ampel }: { frist: Terminfrist; ampel: Amp
 }
 
 /**
- * Auswahl des nächsten Status – angeboten werden nur die möglichen
- * Nachfolger des aktuellen Status.
+ * „Status ändern“ – wie der Erledigt-Haken im Planlaufmanagement: ein Haken;
+ * hat der Status nur einen möglichen Nachfolger, wählt ihn der Haken direkt,
+ * sonst öffnet er ein kleines Menü mit den möglichen Nachfolgern (wie bei
+ * parallelen Schritten im Planlauf). Den Wechsel selbst bestätigt danach der
+ * Dialog des Statuswechsels.
  */
 export function NachfolgerAuswahl({
   statusId,
@@ -109,27 +115,68 @@ export function NachfolgerAuswahl({
   onWaehle: (nach: StatusZiel) => void;
 }) {
   const { data } = useStore();
+  const [menue, setMenue] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  // Menü schließt bei einem Klick daneben und mit Escape
+  useEffect(() => {
+    if (!menue) return;
+    const daneben = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setMenue(false);
+    };
+    const taste = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenue(false);
+    };
+    document.addEventListener('mousedown', daneben);
+    document.addEventListener('keydown', taste);
+    return () => {
+      document.removeEventListener('mousedown', daneben);
+      document.removeEventListener('keydown', taste);
+    };
+  }, [menue]);
+
   const nachfolger = nachfolgerVon(data.workflows, statusId);
   if (nachfolger.length === 0) return null;
+  const einer = nachfolger.length === 1;
+  const waehle = (nach: StatusZiel) => {
+    setMenue(false);
+    onWaehle(nach);
+  };
+
   return (
-    <select
-      className="select"
-      value=""
-      aria-label="Status ändern"
-      title="Nur die möglichen Nachfolge-Status stehen zur Wahl"
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => {
-        if (e.target.value) onWaehle(e.target.value);
-      }}
-      style={{ minWidth: 150 }}
-    >
-      <option value="">Status ändern …</option>
-      {nachfolger.map((n) => (
-        <option key={n} value={n}>
-          {nachfolgerText(data.workflows, statusId, n)}
-        </option>
-      ))}
-    </select>
+    <span className="bb-haken" ref={ref} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="btn btn-sm btn-haken"
+        title={
+          einer
+            ? `Status ändern: ${nachfolgerText(data.workflows, statusId, nachfolger[0])}`
+            : 'Status ändern – nächsten Status wählen'
+        }
+        aria-label="Status ändern"
+        aria-haspopup={einer ? undefined : 'menu'}
+        aria-expanded={einer ? undefined : menue}
+        onClick={() => (einer ? waehle(nachfolger[0]) : setMenue((m) => !m))}
+      >
+        <Icon name="check" size={13} />
+      </button>
+      {menue ? (
+        <div className="bb-haken-menue" role="menu">
+          <div className="bb-haken-titel">Welcher Status folgt?</div>
+          {nachfolger.map((n) => (
+            <button
+              key={n}
+              type="button"
+              role="menuitem"
+              className={n === LOESCHEN ? 'bb-haken-loeschen' : undefined}
+              onClick={() => waehle(n)}
+            >
+              {nachfolgerText(data.workflows, statusId, n)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </span>
   );
 }
 

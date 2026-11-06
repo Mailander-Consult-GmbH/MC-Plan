@@ -1,20 +1,21 @@
 /**
- * Reiter „Leistungen“ eines Projekts: die eigenen erfassten und importierten
- * Leistungen der angemeldeten Person mit Filter nach Monat, Suche und Summe
- * der angezeigten Stunden. Jede Zeile nennt den Leistungsnachweis, in dem sie
- * erscheint – das ergibt sich allein aus dem Datum. Mehrere Leistungen lassen
- * sich mit Haken auswählen und gemeinsam löschen.
+ * Leistungen eines Projekts. Im Bereich (ProjektDetail.tsx) die eigenen
+ * erfassten und importierten Leistungen der angemeldeten Person mit „Leistung
+ * erfassen“, Excel-Import, Filter nach Monat, Suche und Summe der angezeigten
+ * Stunden. Jede Zeile nennt den Leistungsnachweis, in dem sie erscheint – das
+ * ergibt sich allein aus dem Datum. Mehrere Leistungen lassen sich mit Haken
+ * auswählen und gemeinsam löschen.
  *
- * Im Controlling-Zugang schaltet „Meine / Alle“ auf die Leistungen aller
- * Mitarbeiter um (mit Filter nach Mitarbeiter) – die der anderen nur zum
- * Lesen, ohne Stift und Haken (domain/rechte.ts). Die Excel-Liste gibt es im
- * Controlling.
+ * Im Controlling (Reiter „Leistungen“ des Projekts, pages/controlling/Projekt.tsx)
+ * die Leistungen aller Mitarbeiter mit Filter nach Mitarbeiter – nur zum
+ * Lesen, ohne Stift und Haken (domain/rechte.ts); der Nachweis öffnet die
+ * Abrechnung. Die Excel-Liste gibt es in der Auswertung.
  */
 import { useState } from 'react';
 import { wochentag } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Callout, Card, CardHeader, ConfirmDialog, EmptyState, Search, Segmented, Select } from '../../../../shared/ui';
+import { Callout, Card, CardHeader, ConfirmDialog, EmptyState, Search, Select } from '../../../../shared/ui';
 import { useAnmeldung, useMitAnmeldung } from '../../components/AnmeldeDialog';
 import { ImportDialog } from '../../components/ImportDialog';
 import { LeistungDialog, abgeschlossenHinweis, nachweisName } from '../../components/LeistungDialog';
@@ -30,9 +31,6 @@ import '../../components/leistungen.css';
 /** Filterwert für alle Monate bzw. alle Mitarbeiter. */
 const ALLE = '';
 
-/** Eigene Leistungen oder (nur Controlling) die aller Mitarbeiter. */
-type Sicht = 'meine' | 'alle';
-
 /** Neueste zuerst; am selben Tag nach Person und Erfassung. */
 function nachDatum(namen: Map<string, string>) {
   return (a: Leistung, b: Leistung) =>
@@ -46,7 +44,6 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
   const toast = useToast();
   const anmeldung = useAnmeldung();
   const mitAnmeldung = useMitAnmeldung();
-  const [sicht, setSicht] = useState<Sicht>('meine');
   const [suche, setSuche] = useState('');
   const [monat, setMonat] = useState(ALLE);
   const [person, setPerson] = useState(ALLE);
@@ -68,14 +65,15 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
   const nachweisZu = (l: Leistung): Leistungsnachweis | undefined => nachweise.find((n) => l.datum >= n.von && l.datum <= n.bis);
 
   const ich = angemeldet(data);
-  // „Alle“ nur im Controlling – sonst stets die eigenen
-  const alleSicht = controlling && sicht === 'alle';
+  // Im Controlling die aller Mitarbeiter – sonst stets die eigenen
+  const alleSicht = controlling;
   const imProjekt = data.leistungen.filter((l) => l.projektId === projekt.id);
   // Wer was einzeln sieht, entscheidet domain/rechte.ts: eigene, im Controlling alle (nur lesen)
   const alle = (alleSicht ? imProjekt.filter((l) => darfLeistungSehen(data, l, zugang)) : eigeneLeistungen(data, imProjekt)).sort(
     nachDatum(namen),
   );
-  const eigen = (l: Leistung) => darfLeistungAendern(data, l);
+  // Ändern nur im Bereich und nur eigene; das Controlling liest
+  const eigen = (l: Leistung) => !controlling && darfLeistungAendern(data, l);
 
   // Auswahlfelder aus den vorhandenen Leistungen
   const monate = [...alle.reduce((m, l) => m.set(l.datum.slice(0, 7), (m.get(l.datum.slice(0, 7)) ?? 0) + 1), new Map<string, number>())];
@@ -129,7 +127,7 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
     </button>
   );
 
-  if (!ich) {
+  if (!ich && !controlling) {
     return (
       <Card>
         <EmptyState
@@ -150,19 +148,6 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
     <div className="stack">
       <div className="row-between wrap">
         <div className="ln-le-filter">
-          {controlling ? (
-            <Segmented<Sicht>
-              value={sicht}
-              onChange={(v) => {
-                setSicht(v);
-                setAuswahl(new Set());
-              }}
-              options={[
-                { value: 'meine', label: 'Meine' },
-                { value: 'alle', label: 'Alle' },
-              ]}
-            />
-          ) : null}
           <Search value={suche} onChange={setSuche} placeholder={alleSicht ? 'Text, Mitarbeiter, Abschnitt …' : 'Text, Abschnitt …'} />
           <Select
             value={aktiverMonat}
@@ -186,16 +171,18 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
             />
           ) : null}
         </div>
-        <div className="row wrap">
-          {importKnopf}
-          {neuKnopf}
-        </div>
+        {controlling ? null : (
+          <div className="row wrap">
+            {importKnopf}
+            {neuKnopf}
+          </div>
+        )}
       </div>
 
       {alleSicht ? (
         <Callout icon="i">
-          Leistungen aller Mitarbeiter – die der anderen nur zum Lesen: Ändern und löschen kann eine Leistung nur die Person,
-          die sie erbracht hat. Die Excel-Liste gibt es im Controlling.
+          Leistungen aller Mitarbeiter – nur zum Lesen: Ändern und löschen kann eine Leistung nur die Person, die sie
+          erbracht hat, im Bereich Leistungsnachweise. Die Excel-Liste gibt es unter „Auswertung“.
         </Callout>
       ) : null}
 
@@ -228,12 +215,18 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
             <EmptyState
               icon="stunden"
               titel={alleSicht ? 'Noch keine Leistungen' : 'Noch keine eigenen Leistungen'}
-              text="Eigene Leistungen lassen sich von Hand erfassen oder mit dem Excel-Import aus der Zeiterfassung übernehmen – jede Leistung erscheint automatisch im gemeinsamen Leistungsnachweis ihres Zeitraums."
+              text={
+                alleSicht
+                  ? 'Die Mitarbeiter erfassen ihre Leistungen im Bereich Leistungsnachweise – jede Leistung erscheint automatisch im Leistungsnachweis ihres Zeitraums.'
+                  : 'Eigene Leistungen lassen sich von Hand erfassen oder mit dem Excel-Import aus der Zeiterfassung übernehmen – jede Leistung erscheint automatisch im Leistungsnachweis ihres Zeitraums, den das Controlling abrechnet.'
+              }
               action={
-                <div className="row wrap" style={{ justifyContent: 'center' }}>
-                  {importKnopf}
-                  {neuKnopf}
-                </div>
+                alleSicht ? undefined : (
+                  <div className="row wrap" style={{ justifyContent: 'center' }}>
+                    {importKnopf}
+                    {neuKnopf}
+                  </div>
+                )
               }
             />
           ) : (
@@ -340,14 +333,18 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
                         <td className="ln-le-nachweis" onClick={(e) => e.stopPropagation()}>
                           {n ? (
                             <>
-                              <button
-                                type="button"
-                                className="link-btn"
-                                title={`${nachweisTitel(n)} öffnen`}
-                                onClick={() => navigate({ view: 'nachweis', projektId: projekt.id, nachweisId: n.id })}
-                              >
-                                {nachweisName(n)}
-                              </button>
+                              {controlling ? (
+                                <button
+                                  type="button"
+                                  className="link-btn"
+                                  title={`${nachweisTitel(n)} öffnen`}
+                                  onClick={() => navigate({ view: 'abrechnung', projektId: projekt.id, nachweisId: n.id })}
+                                >
+                                  {nachweisName(n)}
+                                </button>
+                              ) : (
+                                <span title={nachweisTitel(n)}>{nachweisName(n)}</span>
+                              )}
                               {geschlossen ? <span className="ln-le-zu">abgeschlossen</span> : null}
                             </>
                           ) : (

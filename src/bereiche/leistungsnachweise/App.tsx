@@ -7,8 +7,9 @@
  * allen Bereichen (src/gemeinsam/AngemeldetAls.tsx). Die Anmeldung als
  * Mitarbeiter (components/AnmeldeDialog.tsx) wird hier bereitgestellt: Jede
  * Ansicht kann sie öffnen – „Leistung erfassen“ und „Excel-Import“ führen ohne
- * Anmeldung zuerst dorthin. Das Controlling (Auswertung, Abrechnung,
- * Abschluss, Export, Mitarbeiter) liegt im Controlling-Bereich von KaPlan
+ * Anmeldung zuerst dorthin. Im Bereich werden nur Leistungen erfasst; alles
+ * Übrige – Leistungsnachweise, Projekteinstellungen, Auswertung, Abschluss,
+ * Export, Mitarbeiter – liegt im Controlling-Bereich von KaPlan
  * (controlling.tsx); Adressen dorthin lenkt der Bereich um.
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -22,13 +23,11 @@ import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AnmeldeDialog, AnmeldeHinweis, AnmeldungBereitstellen, type AnmeldungOeffnen } from './components/AnmeldeDialog';
 import { ImportDialog } from './components/ImportDialog';
 import { SicherungEinspielenDialog, SicherungKnopf, SicherungWaehlen, type Sicherung } from './components/Sicherung';
-import { leistungenOhneNachweis, nachweisTitel } from './domain/nachweis';
 import { angemeldet } from './domain/rechte';
-import { projektTitel, type Leistungsnachweis, type Projekt } from './domain/types';
-import { routeToHash, useRoute, type Route } from './lib/router';
+import { projektTitel, type Projekt } from './domain/types';
+import { istControllingRoute, routeToHash, useRoute, type Route } from './lib/router';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
-import { NachweisEditor } from './pages/projekt/NachweisEditor';
 import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
 import { rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
@@ -46,18 +45,11 @@ export function App() {
   const archiviert = useArchivierte('leistungsnachweise');
   const markierte = sichtbareProjekte(data.projekte, archiviert);
   const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
-  const sichtbar = new Set(markierte.map((p) => p.id));
-  const ohneNachweis = leistungenOhneNachweis(data).filter((l) => sichtbar.has(l.projektId)).length;
-  const projekt =
-    route.view === 'projekt' || route.view === 'nachweis' ? data.projekte.find((p) => p.id === route.projektId) : undefined;
-  const nachweis =
-    route.view === 'nachweis'
-      ? data.nachweise.find((n) => n.id === route.nachweisId && n.projektId === route.projektId)
-      : undefined;
+  const projekt = route.view === 'projekt' ? data.projekte.find((p) => p.id === route.projektId) : undefined;
   const ich = angemeldet(data);
 
   // Controlling-Adressen (auch frühere unter #/leistungsnachweise/controlling/…) führen in den Controlling-Bereich
-  const controllingAnsicht = route.view === 'controlling' || route.view === 'abrechnung';
+  const controllingAnsicht = istControllingRoute(route);
   useEffect(() => {
     if (controllingAnsicht) window.location.replace(routeToHash(route));
   }, [controllingAnsicht, route]);
@@ -86,7 +78,7 @@ export function App() {
     document.documentElement.dataset.farbmodus = farbmodus;
   }, [farbmodus]);
 
-  const kopf = kopfzeile(route, projekt, nachweis);
+  const kopf = kopfzeile(route, projekt);
 
   return (
     <AnmeldungBereitstellen value={anmeldungOeffnen}>
@@ -96,15 +88,7 @@ export function App() {
             <KaPlanLogo variante="Leistungsnachweise" width="100%" />
           </button>
 
-          <NavItem
-            icon="dashboard"
-            label="Übersicht"
-            aktiv={route.view === 'uebersicht'}
-            badge={ohneNachweis > 0 ? String(ohneNachweis) : undefined}
-            badgeAlarm
-            titel={ohneNachweis > 0 ? `Übersicht – ${ohneNachweis} Leistungen ohne Leistungsnachweis` : undefined}
-            onClick={() => gehe({ view: 'uebersicht' })}
-          />
+          <NavItem icon="dashboard" label="Übersicht" aktiv={route.view === 'uebersicht'} onClick={() => gehe({ view: 'uebersicht' })} />
           <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
           <NavItem
             icon="importieren"
@@ -121,20 +105,15 @@ export function App() {
             Projekte
             {markierte.length < aktiveAnzahl ? <span className="tertiary"> (markierte)</span> : null}
           </div>
-          {markierte.map((p) => {
-            const offen = data.nachweise.filter((n) => n.projektId === p.id && n.status === 'entwurf').length;
-            return (
-              <NavItem
-                key={p.id}
-                icon="stunden"
-                label={projektTitel(p)}
-                aktiv={projekt?.id === p.id}
-                badge={offen > 0 ? String(offen) : undefined}
-                titel={offen > 0 ? `${projektTitel(p)} – ${offen} Leistungsnachweise in Bearbeitung` : undefined}
-                onClick={() => gehe({ view: 'projekt', projektId: p.id, tab: 'nachweise' })}
-              />
-            );
-          })}
+          {markierte.map((p) => (
+            <NavItem
+              key={p.id}
+              icon="stunden"
+              label={projektTitel(p)}
+              aktiv={projekt?.id === p.id}
+              onClick={() => gehe({ view: 'projekt', projektId: p.id })}
+            />
+          ))}
 
           <div className="sidebar-footer">
             <AngemeldetAls hinweis="Unter diesem Namen erfassen Sie Ihre Leistungen – er muss dem Namen eines Mitarbeiters entsprechen (Vor- und Nachname). Fehlt die Person, lässt sie sich im Bereich als Mitarbeiter anlegen." />
@@ -187,21 +166,9 @@ export function App() {
               {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
               {route.view === 'projekt' ? (
                 projekt ? (
-                  <ProjektDetail projekt={projekt} tab={route.tab} navigate={gehe} />
+                  <ProjektDetail key={projekt.id} projekt={projekt} navigate={gehe} />
                 ) : (
                   <NichtGefunden label="Zu den Projekten" onZurueck={() => gehe({ view: 'projekte' })} />
-                )
-              ) : null}
-              {route.view === 'nachweis' ? (
-                projekt && nachweis ? (
-                  <NachweisEditor key={nachweis.id} projekt={projekt} nachweis={nachweis} navigate={gehe} />
-                ) : (
-                  <NichtGefunden
-                    label={projekt ? 'Zu den Leistungsnachweisen' : 'Zu den Projekten'}
-                    onZurueck={() =>
-                      gehe(projekt ? { view: 'projekt', projektId: projekt.id, tab: 'nachweise' } : { view: 'projekte' })
-                    }
-                  />
                 )
               ) : null}
             </div>
@@ -310,16 +277,12 @@ function NavItem({
   icon,
   label,
   aktiv,
-  badge,
-  badgeAlarm,
   titel,
   onClick,
 }: {
   icon: IconName;
   label: string;
   aktiv: boolean;
-  badge?: string;
-  badgeAlarm?: boolean;
   /** Tooltip; ohne Angabe die Beschriftung. */
   titel?: string;
   onClick: () => void;
@@ -330,7 +293,6 @@ function NavItem({
         <Icon name={icon} size={16} />
       </span>
       <span className="nav-label">{label}</span>
-      {badge ? <span className={`nav-badge ${badgeAlarm ? 'alert' : ''}`}>{badge}</span> : null}
     </button>
   );
 }
@@ -341,7 +303,7 @@ function NichtGefunden({ label, onZurueck }: { label: string; onZurueck: () => v
       <EmptyState
         icon="projekt"
         titel="Nicht gefunden"
-        text="Der aufgerufene Eintrag existiert nicht (mehr) – etwa weil das Projekt oder der Leistungsnachweis gelöscht wurde."
+        text="Das aufgerufene Projekt existiert nicht (mehr) – etwa weil es gelöscht wurde."
         action={
           <button type="button" className="btn btn-primary" onClick={onZurueck}>
             {label}
@@ -352,19 +314,16 @@ function NichtGefunden({ label, onZurueck }: { label: string; onZurueck: () => v
   );
 }
 
-function kopfzeile(route: Route, projekt?: Projekt, nachweis?: Leistungsnachweis): { titel: string; sub?: string } {
+function kopfzeile(route: Route, projekt?: Projekt): { titel: string; sub?: string } {
   switch (route.view) {
     case 'uebersicht':
-      return { titel: 'Übersicht', sub: 'Leistungsnachweise und Stunden aller Projekte' };
+      return { titel: 'Übersicht', sub: 'Eigene Leistungen erfassen und übernehmen' };
     case 'projekte':
-      return { titel: 'Projekte', sub: 'Projektverwaltung' };
-    case 'controlling':
-    case 'abrechnung':
-      // Wird sofort in den Controlling-Bereich umgelenkt
-      return { titel: 'Controlling' };
+      return { titel: 'Projekte', sub: 'Projekte, in denen Leistungen erfasst werden' };
     case 'projekt':
-      return { titel: projekt?.name ?? 'Projekt', sub: 'Projektarbeitsbereich' };
-    case 'nachweis':
-      return { titel: nachweis ? nachweisTitel(nachweis) : 'Leistungsnachweis', sub: projekt ? projektTitel(projekt) : undefined };
+      return { titel: projekt?.name ?? 'Projekt', sub: 'Eigene Leistungen im Projekt' };
+    default:
+      // Controlling-Ansichten werden sofort in den Controlling-Bereich umgelenkt
+      return { titel: 'Controlling' };
   }
 }

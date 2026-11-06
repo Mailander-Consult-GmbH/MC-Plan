@@ -6,6 +6,9 @@
  * Differenz (`aufschlagFuerAbgerechnet`). Erfasste Stunden bleiben, wie sie
  * sind; Druck und Excel zeigen die abgerechneten.
  *
+ * Die Ansicht „Leistungstexte“ (Leistungstexte.tsx) bearbeitet die Texte je
+ * Zeile – mit „Ergänzen“, wenn Leistungen hinzukamen.
+ *
  * Dazu Vorschau, Drucken/PDF, Excel, Abschließen bzw. Wieder öffnen (mit
  * Rückfrage – sie nennt gekürzte Zeiträume, spätere Leistungen und
  * Abweichungen vom festgeschriebenen Stand), Zeitraum ändern und Löschen, die
@@ -53,9 +56,10 @@ import { kurzDatum, langDatum, runden, stundenText } from '../../domain/zeitraum
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
+import { Leistungstexte } from './Leistungstexte';
 import './controlling.css';
 
-type Ansicht = 'abrechnung' | 'vorschau';
+type Ansicht = 'abrechnung' | 'texte' | 'vorschau';
 
 /** Leistungstexte ab dieser Länge erscheinen gekürzt mit „mehr“. */
 const KURZ_AB = 180;
@@ -231,6 +235,21 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
       )} Std. „Wieder öffnen“ verwirft den festgeschriebenen Stand und zeigt die aktuellen Leistungen; die Aufschläge bleiben.`
     : `Der festgeschriebene Stand (${stundenText(vergleich.stand.abgerechnet)} Std. abgerechnet) wird verworfen; der Leistungsnachweis zeigt wieder die aktuellen Leistungen, die Aufschläge bleiben. Er stimmt derzeit mit dem Stand überein.`;
 
+  const bemerkung = (
+    <Card>
+      <CardHeader titel="Bemerkung" sub="Steht im Druck unter der Tabelle" />
+      <div className="card-pad">
+        <Textfeld
+          value={n.bemerkung}
+          onChange={(v) => updateNachweis(n.id, { bemerkung: v })}
+          readOnly={abgeschlossen}
+          placeholder={abgeschlossen ? 'Keine Bemerkung' : 'z. B. Abrechnung nach Aufwand gemäß Vertrag'}
+          aria-label="Bemerkung"
+        />
+      </div>
+    </Card>
+  );
+
   const kopfSub = `${langDatum(n.von)} – ${langDatum(n.bis)} · ${projektTitel(projekt)} · ${RASTER_LABEL[n.raster]}`;
   const spaltenzahl = spalten ? 7 : 6;
 
@@ -250,16 +269,17 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           <button
             type="button"
             className="btn btn-ghost"
-            title="Den gemeinsamen Leistungsnachweis im Bereich Leistungsnachweise öffnen"
-            onClick={() => navigate({ view: 'nachweis', projektId: projekt.id, nachweisId: n.id })}
+            title="Leistungsnachweise, Leistungen und Einstellungen des Projekts"
+            onClick={() => navigate({ view: 'controllingProjekt', projektId: projekt.id, tab: 'nachweise' })}
           >
-            Zum Nachweis
+            Zum Projekt
           </button>
           <Segmented<Ansicht>
             value={ansicht}
             onChange={setAnsicht}
             options={[
               { value: 'abrechnung', label: 'Abrechnung' },
+              { value: 'texte', label: 'Leistungstexte' },
               { value: 'vorschau', label: 'Vorschau' },
             ]}
           />
@@ -326,6 +346,18 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           Seit dem Abschluss haben sich Leistungen im Zeitraum geändert – „Wieder öffnen“ übernimmt sie.
         </Callout>
       ) : null}
+      {zeilenMitNeuen > 0 && ansicht !== 'texte' ? (
+        <Callout ton="warn" icon="!">
+          <div className="row-between wrap">
+            <span>
+              In {anzahl(zeilenMitNeuen, 'Zeile', 'Zeilen')} kamen nach der Bearbeitung des Leistungstexts Leistungen hinzu.
+            </span>
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => setAnsicht('texte')}>
+              Leistungstexte prüfen
+            </button>
+          </div>
+        </Callout>
+      ) : null}
       {unwirksam > 0 ? (
         <Callout icon="i">
           {unwirksam === 1
@@ -337,6 +369,11 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
 
       {ansicht === 'vorschau' ? (
         <Druckblatt inhalt={nachweisHtml(data, n, projekt)} />
+      ) : ansicht === 'texte' ? (
+        <>
+          <Leistungstexte projekt={projekt} nachweis={n} />
+          {bemerkung}
+        </>
       ) : (
         <>
           <Card>
@@ -441,18 +478,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
             <StundenJeMitarbeiter fassung={fassung} leistungen={abgeschlossen ? null : imZeitraum} abschnitte={spalten ? abschnitte : []} />
           ) : null}
 
-          <Card>
-            <CardHeader titel="Bemerkung" sub="Steht im Druck unter der Tabelle" />
-            <div className="card-pad">
-              <Textfeld
-                value={n.bemerkung}
-                onChange={(v) => updateNachweis(n.id, { bemerkung: v })}
-                readOnly={abgeschlossen}
-                placeholder={abgeschlossen ? 'Keine Bemerkung' : 'z. B. Abrechnung nach Aufwand gemäß Vertrag'}
-                aria-label="Bemerkung"
-              />
-            </div>
-          </Card>
+          {bemerkung}
         </>
       )}
 

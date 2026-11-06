@@ -1,0 +1,36 @@
+/*
+ * Gestaltung der Baubetriebsplanung (Präfix bb-, nur Design-Tokens aus
+ * src/shared/global.css).
+ */
+
+/* „Status ändern“: Haken mit Auswahl der Nachfolger – wie der Erledigt-Haken im Planlaufmanagement */
+.bb-haken { position: relative; display: inline-flex; }
+.bb-haken-menue {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  min-width: 220px;
+  max-width: min(320px, 90vw);
+  padding: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--separator-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+.bb-haken-menue button {
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.bb-haken-menue button:hover { background: var(--bg-hover); }
+.bb-haken-menue button.bb-haken-loeschen { color: var(--rot-text); }
+.bb-haken-menue .bb-haken-titel { padding: 5px 10px; font-size: 11.5px; color: var(--text-secondary); }

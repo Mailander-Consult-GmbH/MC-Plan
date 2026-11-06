@@ -169,6 +169,7 @@ function aufbereiten(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
         anmeldeId: text(a.anmeldeId),
         vorhaben: text(a.vorhaben),
         bbk: text(a.bbk),
+        anmelder: text(a.anmelder),
         art,
         statusId,
         statusSeit: datum(a.statusSeit) ?? new Date().toISOString().slice(0, 10),
@@ -182,6 +183,7 @@ function aufbereiten(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
         terminManuell: datum(a.terminManuell),
         bemerkung: text(a.bemerkung),
         herkunftId: typeof a.herkunftId === 'string' ? a.herkunftId : null,
+        geaendertAm: datum(a.geaendertAm),
         verlauf: (Array.isArray(a.verlauf) ? a.verlauf : []).map((v) => ({
           ...v,
           vonText: text(v.vonText),
@@ -483,6 +485,7 @@ function ausFassung7(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt. Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch
  * keinen Inhalt. Sie erhält deshalb die Demodaten und behält ihre Einstellung.
+ * Fassung 8 → 9: Anmelder und Änderungsdatum ergänzt aufbereiten() leer.
  */
 function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   const version = roh.version ?? 1;

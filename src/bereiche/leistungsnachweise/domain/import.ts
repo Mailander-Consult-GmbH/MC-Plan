@@ -530,11 +530,14 @@ export interface ImportVorschau {
   plan: ImportPlan;
 }
 
-/** Vorgaben eines beim Import neu angelegten Projekts. */
+/**
+ * Vorgaben eines neuen Projekts (Import, Projektregister, „Neues Projekt“):
+ * Nachweise laufen bis zum Abschluss.
+ */
 export const IMPORT_PROJEKT_VORGABEN: Pick<Projekt, 'leistungsbereich' | 'raster' | 'zeitraumregel'> = {
   leistungsbereich: 'Projektsteuerung',
   raster: 'monat',
-  zeitraumregel: 'monat',
+  zeitraumregel: 'fortlaufend',
 };
 
 const textNormal = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();

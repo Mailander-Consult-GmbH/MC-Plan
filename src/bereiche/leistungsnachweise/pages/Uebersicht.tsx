@@ -1,32 +1,26 @@
 /**
- * Startseite des Bereichs: Kennzahlen (darunter „Meine Stunden“ der
- * angemeldeten Person im laufenden Monat), die Leistungsnachweise in
- * Bearbeitung, Leistungen ohne Nachweis und die Projekte mit ihren Stunden im
- * laufenden Monat. Angezeigt werden die markierten Projekte; ohne Markierung
- * alle. Ohne Anmeldung steht darüber der Hinweis „Bitte melden Sie sich an …“
- * (App.tsx, `AnmeldeHinweis`).
+ * Startseite des Bereichs – hier geht es nur um die eigenen Leistungen:
+ * Kennzahlen der angemeldeten Person (Stunden und Leistungen im laufenden
+ * Monat, Stunden im Jahr), die zuletzt erfassten eigenen Leistungen und die
+ * Projekte mit den eigenen Stunden im Monat. Angezeigt werden die markierten
+ * Projekte; ohne Markierung alle. Leistungsnachweise, Abschluss und Abrechnung
+ * liegen im Controlling. Ohne Anmeldung steht darüber der Hinweis zum
+ * Anmelden (App.tsx, `AnmeldeHinweis`).
  */
 import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
-import { useToast } from '../../../shared/toast';
 import { Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
 import { useAnmeldung } from '../components/AnmeldeDialog';
-import { NachweisStatusBadge, RasterBadge, anzahl, nachweiseAngelegtText } from '../components/common';
-import {
-  bearbeiterVon,
-  leistungenOhneNachweis,
-  nachweisTitel,
-  nachweiseVon,
-  stundenVon,
-  summeStunden,
-  zeilenFuerAnzeige,
-} from '../domain/nachweis';
+import { stundenVon } from '../domain/nachweis';
 import { angemeldet, eigeneLeistungen } from '../domain/rechte';
 import { projektKurzname, type Projekt } from '../domain/types';
-import { MONATSNAMEN, monatsanfang, monatsende, stundenText, zeitraumText } from '../domain/zeitraum';
+import { MONATSNAMEN, monatsanfang, monatsende, stundenText } from '../domain/zeitraum';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
+
+/** So viele eigene Leistungen nennt „Zuletzt erfasst“. */
+const LETZTE = 8;
 
 /** Markierte Projekte; ohne Markierung alle. */
 export function sichtbareProjekte(projekte: Projekt[], archiviert: Set<string>): Projekt[] {
@@ -36,26 +30,22 @@ export function sichtbareProjekte(projekte: Projekt[], archiviert: Set<string>):
 }
 
 export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => void; onImport: () => void }) {
-  const { data, nachweiseFuerOffeneLeistungen } = useStore();
-  const toast = useToast();
+  const { data } = useStore();
   const anmeldung = useAnmeldung();
   const ich = angemeldet(data);
 
   const projekte = sichtbareProjekte(data.projekte, useArchivierte('leistungsnachweise'));
-  const ids = new Set(projekte.map((p) => p.id));
   const heute = today();
   const anfang = monatsanfang(heute);
   const ende = monatsende(heute);
+  const jahr = heute.slice(0, 4);
   const monat = MONATSNAMEN[Number(heute.slice(5, 7)) - 1];
 
-  const imMonat = data.leistungen.filter((l) => ids.has(l.projektId) && l.datum >= anfang && l.datum <= ende);
-  // Meine Stunden: alle eigenen Leistungen des Monats, auch in nicht markierten Projekten
-  const meineImMonat = eigeneLeistungen(
-    data,
-    data.leistungen.filter((l) => l.datum >= anfang && l.datum <= ende),
-  );
-  const offen = leistungenOhneNachweis(data).filter((l) => ids.has(l.projektId));
-  const inBearbeitung = projekte.flatMap((p) => nachweiseVon(data, p.id).filter((n) => n.status === 'entwurf'));
+  // Alle eigenen Leistungen, auch in nicht markierten Projekten
+  const meine = eigeneLeistungen(data, data.leistungen);
+  const meineImMonat = meine.filter((l) => l.datum >= anfang && l.datum <= ende);
+  const meineImJahr = meine.filter((l) => l.datum.startsWith(jahr));
+  const letzte = [...meine].sort((a, b) => b.datum.localeCompare(a.datum) || b.erfasst.localeCompare(a.erfasst)).slice(0, LETZTE);
   const alleMarkiert = data.projekte.filter((p) => p.markiert).length;
   const projektVon = new Map(data.projekte.map((p) => [p.id, p]));
 
@@ -63,8 +53,9 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
     <div className="stack">
       <div className="row-between wrap">
         <p className="small muted" style={{ maxWidth: 620 }}>
-          Eigene Leistungen aus der Zeiterfassung übernehmen – ein Import kann mehrere Projekte enthalten; übernommen
-          werden nur die eigenen Zeilen der Datei.
+          Hier erfassen Sie Ihre Leistungen – im Projekt von Hand oder aus der Zeiterfassung per Excel-Import; ein Import
+          kann mehrere Projekte enthalten, übernommen werden nur die eigenen Zeilen der Datei. Leistungsnachweise erstellt
+          und rechnet das Controlling ab.
         </p>
         <button type="button" className="btn btn-primary" onClick={onImport}>
           <Icon name="importieren" size={14} /> Excel-Import
@@ -77,13 +68,9 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
           label="Aktive Projekte"
           onClick={() => navigate({ view: 'projekte' })}
         />
-        <Stat
-          wert={ich ? stundenText(stundenVon(meineImMonat)) : '–'}
-          label={`Meine Stunden ${monat}`}
-          ton={ich ? 'blue' : ''}
-        />
-        <Stat wert={inBearbeitung.length} label="In Bearbeitung" />
-        <Stat wert={offen.length} label="Ohne Nachweis" ton={offen.length > 0 ? 'orange' : ''} />
+        <Stat wert={ich ? stundenText(stundenVon(meineImMonat)) : '–'} label={`Meine Stunden ${monat}`} ton={ich ? 'blue' : ''} />
+        <Stat wert={ich ? meineImMonat.length : '–'} label={`Meine Leistungen ${monat}`} />
+        <Stat wert={ich ? stundenText(stundenVon(meineImJahr)) : '–'} label={`Meine Stunden ${jahr}`} />
       </div>
 
       {alleMarkiert === 0 ? (
@@ -94,68 +81,47 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
       ) : null}
 
       <Card>
-        <CardHeader titel="Leistungsnachweise in Bearbeitung" sub="Noch nicht abgeschlossen – Klick öffnet den Nachweis" />
-        {inBearbeitung.length === 0 ? (
+        <CardHeader titel="Zuletzt erfasst" sub="Meine neuesten Leistungen – Klick öffnet das Projekt" />
+        {!ich ? (
           <EmptyState
-            icon="check"
-            titel="Kein Nachweis in Bearbeitung"
-            text="Leistungsnachweise entstehen beim Erfassen oder Importieren von Leistungen – oder im Projekt über „Neuer Leistungsnachweis“."
+            icon="person"
+            titel="Bitte anmelden"
+            text="Leistungen erfasst, wer als Mitarbeiter angemeldet ist."
+            action={
+              <button type="button" className="btn btn-primary" onClick={() => anmeldung()}>
+                Anmelden
+              </button>
+            }
+          />
+        ) : letzte.length === 0 ? (
+          <EmptyState
+            icon="stunden"
+            titel="Noch keine eigenen Leistungen"
+            text="Öffnen Sie ein Projekt und erfassen Sie dort Ihre Leistungen – oder übernehmen Sie sie per Excel-Import."
           />
         ) : (
           <div className="table-scroll">
             <table className="table table-stack">
               <thead>
                 <tr>
-                  <th>Leistungsnachweis</th>
+                  <th>Datum</th>
                   <th>Projekt</th>
-                  <th>Bearbeiter</th>
+                  <th>Leistungstext</th>
                   <th className="ln-stunden">Stunden</th>
-                  <th className="col-optional ln-spalte-weit">Raster</th>
-                  <th className="actions" />
                 </tr>
               </thead>
               <tbody>
-                {inBearbeitung.map((n) => {
-                  const projekt = projektVon.get(n.projektId);
-                  const zeilen = zeilenFuerAnzeige(data, n);
-                  const bearbeiter = bearbeiterVon(zeilen);
+                {letzte.map((l) => {
+                  const projekt = projektVon.get(l.projektId);
                   return (
-                    <tr
-                      key={n.id}
-                      className="clickable"
-                      onClick={() => navigate({ view: 'nachweis', projektId: n.projektId, nachweisId: n.id })}
-                    >
-                      <td>
-                        <strong>{nachweisTitel(n)}</strong>
-                        <div className="small tertiary">
-                          {n.titel.trim() ? `${zeitraumText(n.von, n.bis)} · ` : ''}
-                          {anzahl(zeilen.length, 'Zeile', 'Zeilen')}
-                        </div>
-                      </td>
+                    <tr key={l.id} className="clickable" onClick={() => navigate({ view: 'projekt', projektId: l.projektId })}>
+                      <td>{formatDate(l.datum)}</td>
                       <td className="small">
-                        <span className="num">{projekt?.nummer}</span>
+                        <span className="num tertiary">{projekt?.nummer}</span>
                         <div>{projekt ? projektKurzname(projekt) : '–'}</div>
                       </td>
-                      <td className="small">
-                        {bearbeiter.length ? bearbeiter.join(', ') : <span className="tertiary">noch keine Leistungen</span>}
-                      </td>
-                      <td className="ln-stunden">{stundenText(summeStunden(zeilen))}</td>
-                      <td className="col-optional ln-spalte-weit">
-                        <RasterBadge raster={n.raster} />
-                      </td>
-                      {/* Auf dem Telefon öffnet die ganze Karte den Nachweis */}
-                      <td className="actions ln-nur-breit">
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate({ view: 'nachweis', projektId: n.projektId, nachweisId: n.id });
-                          }}
-                        >
-                          Öffnen <Icon name="chevron" size={13} />
-                        </button>
-                      </td>
+                      <td className="small">{l.text || <span className="tertiary">ohne Text</span>}</td>
+                      <td className="ln-stunden">{stundenText(l.stunden)}</td>
                     </tr>
                   );
                 })}
@@ -165,79 +131,13 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
         )}
       </Card>
 
-      {offen.length > 0 ? (
-        <Card>
-          <CardHeader
-            titel="Leistungen ohne Nachweis"
-            sub="Diese Leistungen liegen in keinem Leistungsnachweis ihres Projekts."
-          />
-          <div className="table-scroll">
-            <table className="table table-stack">
-              <thead>
-                <tr>
-                  <th>Projekt</th>
-                  <th>Leistungen</th>
-                  <th className="ln-stunden">Stunden</th>
-                  <th className="col-optional">Zeitraum</th>
-                  <th className="actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {projekte
-                  .map((p) => ({ projekt: p, leistungen: offen.filter((l) => l.projektId === p.id) }))
-                  .filter((x) => x.leistungen.length > 0)
-                  .map(({ projekt, leistungen }) => {
-                    const daten = leistungen.map((l) => l.datum).sort();
-                    return (
-                      <tr
-                        key={projekt.id}
-                        className="clickable"
-                        onClick={() => navigate({ view: 'projekt', projektId: projekt.id, tab: 'leistungen' })}
-                      >
-                        <td>
-                          <span className="num tertiary">{projekt.nummer}</span>
-                          <div>
-                            <strong>{projekt.name}</strong>
-                          </div>
-                        </td>
-                        <td className="small">{anzahl(leistungen.length, 'Leistung', 'Leistungen')}</td>
-                        <td className="ln-stunden">{stundenText(stundenVon(leistungen))}</td>
-                        <td className="small col-optional">
-                          {formatDate(daten[0])}
-                          {daten.length > 1 && daten[daten.length - 1] !== daten[0]
-                            ? ` – ${formatDate(daten[daten.length - 1])}`
-                            : ''}
-                        </td>
-                        <td className="actions">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Ohne Anmeldung erst anmelden – danach den Knopf erneut wählen
-                              if (ich) toast(nachweiseAngelegtText(nachweiseFuerOffeneLeistungen(projekt.id)));
-                              else anmeldung();
-                            }}
-                          >
-                            <Icon name="plus" size={13} /> Nachweise anlegen
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      ) : null}
-
       <Card>
-        <CardHeader titel="Projekte" sub={`Leistungsnachweise und Stunden je Projekt – im ${monat}`} />
+        <CardHeader titel="Projekte" sub={`Meine Stunden je Projekt – im ${monat}`} />
         {projekte.length === 0 ? (
           <EmptyState
             icon="projekt"
             titel="Kein Projekt"
-            text="Legen Sie unter „Projekte“ ein Projekt an – oder übernehmen Sie Leistungen per Excel-Import; unbekannte Projekte legt der Import an."
+            text="Übernehmen Sie unter „Projekte“ ein Projekt aus einem anderen Bereich – oder Leistungen per Excel-Import; unbekannte Projekte legt der Import an."
           />
         ) : (
           <div className="table-scroll">
@@ -245,54 +145,35 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
               <thead>
                 <tr>
                   <th>Projekt</th>
-                  <th className="ln-spalte-weit">Raster</th>
                   <th className="col-optional ln-spalte-weit">Leistungsbereich</th>
-                  <th className="zahl">Stunden {monat}</th>
-                  <th className="col-optional">Letzter Nachweis</th>
+                  <th className="zahl">Meine Stunden {monat}</th>
+                  <th className="col-optional">Zuletzt erfasst</th>
                   <th className="actions" />
                 </tr>
               </thead>
               <tbody>
                 {projekte.map((projekt) => {
-                  const stunden = stundenVon(imMonat.filter((l) => l.projektId === projekt.id));
-                  const nachweise = nachweiseVon(data, projekt.id);
-                  const letzter = nachweise[nachweise.length - 1];
+                  const eigene = meine.filter((l) => l.projektId === projekt.id);
+                  const stunden = stundenVon(eigene.filter((l) => l.datum >= anfang && l.datum <= ende));
+                  const zuletzt = eigene.reduce((m, l) => (l.datum > m ? l.datum : m), '');
                   return (
-                    <tr
-                      key={projekt.id}
-                      className="clickable"
-                      onClick={() => navigate({ view: 'projekt', projektId: projekt.id, tab: 'nachweise' })}
-                    >
+                    <tr key={projekt.id} className="clickable" onClick={() => navigate({ view: 'projekt', projektId: projekt.id })}>
                       <td>
                         <span className="num tertiary">{projekt.nummer}</span>
                         <div>
                           <strong>{projekt.name}</strong>
                         </div>
                       </td>
-                      <td className="ln-spalte-weit">
-                        <RasterBadge raster={projekt.raster} />
-                      </td>
                       <td className="small muted col-optional ln-spalte-weit">{projekt.leistungsbereich || '–'}</td>
                       <td className={`zahl ${stunden ? '' : 'leer'}`}>{stundenText(stunden)}</td>
-                      <td className="small col-optional">
-                        {letzter ? (
-                          <>
-                            {nachweisTitel(letzter)}
-                            <div style={{ marginTop: 3 }}>
-                              <NachweisStatusBadge status={letzter.status} />
-                            </div>
-                          </>
-                        ) : (
-                          <span className="tertiary">–</span>
-                        )}
-                      </td>
+                      <td className="small col-optional">{zuletzt ? formatDate(zuletzt) : <span className="tertiary">–</span>}</td>
                       <td className="actions">
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate({ view: 'projekt', projektId: projekt.id, tab: 'leistungen' });
+                            navigate({ view: 'projekt', projektId: projekt.id });
                           }}
                         >
                           Leistungen <Icon name="chevron" size={13} />

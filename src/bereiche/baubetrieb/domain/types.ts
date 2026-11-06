@@ -16,8 +16,9 @@ export type ID = string;
 /**
  * Fassung des gespeicherten Bestands. Erhöhen, sobald `migriere()` in
  * `store/storage.ts` ältere Stände anheben muss.
+ * Fassung 9: Anmelder und Datum der letzten Änderung an Anmeldungen.
  */
-export const DATEN_VERSION = 8;
+export const DATEN_VERSION = 9;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -405,6 +406,11 @@ export interface Anmeldung extends AnmeldungStand {
   vorhaben: string;
   /** Zuständiger BBK (Name). */
   bbk: string;
+  /**
+   * Anmelder laut Anmeldung (wer sie eingereicht hat). Soll aus dem Import der
+   * Anmeldungen kommen; bis es ihn gibt, wird er von Hand gepflegt.
+   */
+  anmelder: string;
   /** Bf/Strecke in Stichworten. */
   bfStrecke: string;
   /** Gewerk/Tätigkeit in Stichworten. */
@@ -413,6 +419,12 @@ export interface Anmeldung extends AnmeldungStand {
   /** Eintrag, aus dessen Aufteilung diese Anmeldung bei der Übernahme entstand. */
   herkunftId: ID | null;
   verlauf: VerlaufEintrag[];
+  /**
+   * Tag der letzten Änderung der Merkmale („Bearbeiten“, Terminfrist von Hand);
+   * Anlage, Statuswechsel und Nachhaken stehen mit ihrem Datum im Verlauf.
+   * Zusammen ergeben sie den Sachstand (`sachstand`, domain/ablauf.ts).
+   */
+  geaendertAm: ISODate | null;
 }
 
 export interface Einstellungen {

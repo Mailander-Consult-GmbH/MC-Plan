@@ -1,8 +1,8 @@
 /**
  * Ablauflogik einer Anmeldung: Statuswechsel samt Übernahme in eine neue
  * Phase (einen anderen Workflow) und Aufteilung, Rücknahme des letzten
- * Wechsels, Duplizieren und Abgleich des Sperrzeitraums. Reine Funktionen – der Store ruft
- * sie in `mutate()` auf.
+ * Wechsels, Duplizieren und Abgleich des Sperrzeitraums, dazu der Sachstand. Reine
+ * Funktionen – der Store ruft sie in `mutate()` auf.
  */
 import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon, ganzesFahrplanjahr } from './fristen';
 import {
@@ -287,4 +287,30 @@ export function verwandte(d: BaubetriebDaten, a: Anmeldung): { herkunft: Anmeldu
     herkunft: a.herkunftId ? (d.anmeldungen.find((x) => x.id === a.herkunftId) ?? null) : null,
     aufgeteilt: d.anmeldungen.filter((x) => x.herkunftId === a.id),
   };
+}
+
+/** Sachstand einer Anmeldung: Datum und Anlass des letzten Eintrags. */
+export interface Sachstand {
+  datum: ISODate;
+  /** „Statuswechsel“, „Angelegt“, „Merkmale geändert“ oder der Text eines Vermerks wie „Nachgehakt“. */
+  anlass: string;
+}
+
+/**
+ * Sachstand einer Anmeldung – das Datum des letzten Abgleichs bzw. der
+ * letzten Änderung: der jüngste Eintrag im Verlauf (Anlage, Statuswechsel,
+ * Nachhaken und andere Vermerke, je mit ihrem fachlichen Datum) oder die
+ * letzte Änderung der Merkmale (`geaendertAm`), was später liegt. Bei
+ * gleichem Tag gilt der Eintrag im Verlauf, unter ihnen der zuletzt erfasste.
+ */
+export function sachstand(a: Pick<Anmeldung, 'verlauf' | 'geaendertAm'>): Sachstand | null {
+  let stand: Sachstand | null = null;
+  for (const v of a.verlauf) {
+    if (!v.datum || (stand && v.datum < stand.datum)) continue;
+    const anlass =
+      v.typ === 'wechsel' ? 'Statuswechsel' : v.typ === 'anlage' ? 'Angelegt' : v.text.split(' · ')[0] || 'Vermerk';
+    stand = { datum: v.datum, anlass };
+  }
+  if (a.geaendertAm && (!stand || a.geaendertAm > stand.datum)) stand = { datum: a.geaendertAm, anlass: 'Merkmale geändert' };
+  return stand;
 }

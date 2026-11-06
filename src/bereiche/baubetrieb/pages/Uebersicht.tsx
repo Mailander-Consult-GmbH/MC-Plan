@@ -1,15 +1,18 @@
 /**
  * Startseite des Bereichs: Kennzahlen, anstehende Terminfristen (samt
- * ausstehender Erstanmeldungen), Anmeldebedarf aus den Projekten und die
- * Projekte mit ihren Anmeldungen je Workflow. Angezeigt werden die markierten
- * Projekte.
+ * ausstehender Erstanmeldungen) mit Sachstand – Datum des letzten Abgleichs
+ * bzw. der letzten Änderung (`sachstand`) – und „Status ändern“ (Haken mit
+ * Auswahl der Nachfolger, `NachfolgerAuswahl`), Anmeldebedarf aus den
+ * Projekten und die Projekte mit ihren Anmeldungen je Workflow. Angezeigt
+ * werden die markierten Projekte.
  */
 import { useState } from 'react';
-import { formatDate, relativeLabel } from '../../../shared/dates';
+import { diffDays, formatDate, relativeLabel, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { Badge, Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
 import { AmpelPunkt, NachfolgerAuswahl, StatusBadge, TerminZelle } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
+import { sachstand } from '../domain/ablauf';
 import {
   AMPEL_RANG,
   ERSTANMELDUNG_GRUND,
@@ -115,6 +118,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                   <th className="col-optional">Projekt</th>
                   <th>Status</th>
                   <th>Terminfrist</th>
+                  <th>Sachstand</th>
                   <th className="actions" />
                 </tr>
               </thead>
@@ -149,6 +153,9 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                           <span className="small tertiary">kein erster Anmeldetermin</span>
                         )}
                       </td>
+                      <td>
+                        <span className="small tertiary">–</span>
+                      </td>
                       <td className="actions" />
                     </tr>
                   ) : (
@@ -175,6 +182,9 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                     </td>
                     <td>
                       <TerminZelle frist={t.frist} />
+                    </td>
+                    <td>
+                      <SachstandZelle anmeldung={t.anmeldung} />
                     </td>
                     <td className="actions" onClick={(e) => e.stopPropagation()}>
                       <NachfolgerAuswahl
@@ -302,5 +312,20 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
         <StatusWechselDialog anmeldung={wechsel.anmeldung} nach={wechsel.nach} onClose={() => setWechsel(null)} />
       ) : null}
     </div>
+  );
+}
+
+/** Sachstand in der Tabelle: Datum, Abstand zu heute und Anlass. */
+function SachstandZelle({ anmeldung }: { anmeldung: Anmeldung }) {
+  const stand = sachstand(anmeldung);
+  if (!stand) return <span className="small tertiary">–</span>;
+  const tage = diffDays(stand.datum, today());
+  const abstand = tage === 0 ? 'heute' : tage === 1 ? 'gestern' : tage > 1 ? `vor ${tage} Tagen` : `in ${-tage} Tagen`;
+  return (
+    <span className="small" title={`Letzter Abgleich bzw. letzte Änderung: ${stand.anlass}`}>
+      <b>{formatDate(stand.datum)}</b>
+      <div className="tertiary small">{abstand}</div>
+      <div className="tertiary small">{stand.anlass}</div>
+    </span>
   );
 }

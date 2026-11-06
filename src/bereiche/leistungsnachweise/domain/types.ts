@@ -4,16 +4,19 @@
  *
  * Ein Projekt sammelt die erfassten Leistungen seiner Mitarbeiter (je Tag,
  * Person und Tätigkeit eine `Leistung` mit Stunden). Ein Leistungsnachweis
- * ist ein Zeitraum eines Projekts – ein Monat oder auch mehrere – und fasst
+ * ist ein Zeitraum eines Projekts – er läuft, bis das Controlling ihn
+ * abschließt (`Zeitraumregel`), über einen oder mehrere Monate – und fasst
  * die Leistungen darin je Tag, Woche oder Monat zu Zeilen zusammen
  * (`Raster`). Mehrere Mitarbeiter schreiben so an einem gemeinsamen
  * Nachweis, ohne einander zu überschreiben: Jede Person bringt nur ihre
  * eigenen Leistungen ein, der Nachweis rechnet die Zeilen daraus.
  *
- * Wer angemeldet ist (`Einstellungen.mitarbeiterId`), erfasst nur für sich.
- * Das Controlling (der Controlling-Bereich von KaPlan nach der PIN) schließt
- * Nachweise ab, schlägt Stunden je Zeile auf (`Leistungsnachweis.aufschlaege`)
- * und exportiert – die Rechte stehen zentral in domain/rechte.ts.
+ * Wer angemeldet ist (`Einstellungen.mitarbeiterId`), erfasst nur eigene
+ * Leistungen – sonst nichts. Das Controlling (der Controlling-Bereich von
+ * KaPlan nach der PIN) stellt die Projekte ein, bearbeitet die Nachweise,
+ * schließt sie ab, schlägt Stunden je Zeile auf
+ * (`Leistungsnachweis.aufschlaege`) und exportiert – die Rechte stehen zentral
+ * in domain/rechte.ts.
  *
  * Projekte teilt der Bereich über das Projektregister (`src/gemeinsam/`) mit
  * den anderen Bereichen (domain/register.ts).
@@ -27,8 +30,10 @@ export type ISODate = string;
  * `migriere()` (store/storage.ts) nachgetragen – dann diese Zahl erhöhen.
  * Fassung 2: Rolle Controlling an Mitarbeitern, Aufschläge.
  * Fassung 3: ohne Rolle – das Controlling ist ein eigener Bereich mit PIN.
+ * Fassung 4: Nachweise laufen bis zum Abschluss – alle Projekte erhalten die
+ * Zeitraumregel „fortlaufend“.
  */
-export const DATEN_VERSION = 3;
+export const DATEN_VERSION = 4;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Mitarbeiter MIC';
@@ -102,15 +107,17 @@ export const RASTER_KURZ: Record<Raster, string> = {
 
 /**
  * Wie neue Leistungen außerhalb der vorhandenen Nachweise einen Nachweis
- * erhalten: je Kalendermonat ein eigener, oder fortlaufend – der offene
- * Nachweis wächst mit, bis er abgeschlossen wird (Nachweise über mehrere
- * Monate).
+ * erhalten. Vorgabe ist „fortlaufend“: Ein Leistungsnachweis ist nicht an
+ * einen Monat gebunden – der offene Nachweis wächst mit, bis das Controlling
+ * ihn abschließt; danach beginnt ein neuer. Wer es so will, stellt ein Projekt
+ * auf „je Kalendermonat“ (ein eigener Nachweis je Monat).
  */
-export type Zeitraumregel = 'monat' | 'fortlaufend';
+export type Zeitraumregel = 'fortlaufend' | 'monat';
 
+/** In der Reihenfolge der Auswahl – die Vorgabe zuerst. */
 export const ZEITRAUMREGEL_LABEL: Record<Zeitraumregel, string> = {
-  monat: 'Je Kalendermonat',
   fortlaufend: 'Fortlaufend bis zum Abschluss',
+  monat: 'Je Kalendermonat',
 };
 
 /** Logo im Kopf des Leistungsnachweises. */

@@ -93,14 +93,18 @@ interface StoreValue {
   /** Nur ohne Leistungen; liefert die Meldung oder null. */
   deleteMitarbeiter: (id: ID) => string | null;
   /* Projekte */
-  /** Jeder Angemeldete; null ohne Anmeldung. */
+  /** Nur Controlling; null ohne Recht. */
   addProjekt: (p: Omit<Projekt, 'id'>) => ID | null;
-  /** Ändern (jeder Angemeldete); entfallene Abschnitte verlieren ihre Leistungen (diese stehen dann ohne Abschnitt). */
+  /** Ändern (nur Controlling); entfallene Abschnitte verlieren ihre Leistungen (diese stehen dann ohne Abschnitt). */
   updateProjekt: (id: ID, patch: Partial<Omit<Projekt, 'id'>>) => void;
   /** Mit allen Leistungen und Nachweisen – nur Controlling. */
   deleteProjekt: (id: ID) => void;
+  /** Markieren für Übersicht und Seitenleiste – jeder. */
   toggleMarkiert: (id: ID) => void;
-  /** Abschnitte aus den Projektelementen der Leistungen anlegen und Leistungen ohne Abschnitt zuordnen; liefert die Zahl neuer Abschnitte. */
+  /**
+   * Abschnitte aus den Projektelementen der Leistungen anlegen und Leistungen ohne Abschnitt
+   * zuordnen (nur Controlling); liefert die Zahl neuer Abschnitte.
+   */
   abschnitteAusProjektelementen: (projektId: ID) => number;
   /* Leistungen – nur eigene */
   /**
@@ -114,22 +118,19 @@ interface StoreValue {
   deleteLeistung: (id: ID) => void;
   /** Nur eigene; fremde Kennungen bleiben unberührt. */
   deleteLeistungen: (ids: ID[]) => void;
-  /** Fehlende Nachweise für alle Leistungen ohne Nachweis des Projekts anlegen (jeder Angemeldete); liefert { neu, erweitert } (Anzahl). */
+  /** Fehlende Nachweise für alle Leistungen ohne Nachweis des Projekts anlegen (nur Controlling); liefert { neu, erweitert } (Anzahl). */
   nachweiseFuerOffeneLeistungen: (projektId: ID) => { neu: number; erweitert: number };
   /* Nachweise */
   /** Fügt den Nachweis an (nur Controlling, ohne Überschneidung); die ID vorab mit newId('ln') erzeugen. */
   addNachweis: (n: Leistungsnachweis) => void;
-  /**
-   * Zeitraum, Raster, Titel – nur Controlling (ohne Überschneidung). Nur die Bemerkung darf jeder
-   * Angemeldete ändern, solange der Nachweis offen ist (gemeinsame Bearbeitung).
-   */
+  /** Zeitraum, Raster, Titel und Bemerkung – nur Controlling (Zeitraum ohne Überschneidung). */
   updateNachweis: (id: ID, patch: Partial<Pick<Leistungsnachweis, 'titel' | 'von' | 'bis' | 'raster' | 'bemerkung'>>) => void;
   /**
    * Löscht den Nachweis (nur Controlling); mitLeistungen = auch die eigenen Leistungen in seinem
    * Zeitraum löschen. Leistungen anderer bleiben – sie löscht auch das Controlling nicht.
    */
   deleteNachweis: (id: ID, mitLeistungen: boolean) => void;
-  /** Text einer Zeile setzen (mit den Leistungs-IDs der Zeile); null = wieder automatisch. Jeder Angemeldete, nur offene Nachweise. */
+  /** Text einer Zeile setzen (mit den Leistungs-IDs der Zeile); null = wieder automatisch. Nur Controlling, nur offene Nachweise. */
   zeilenTextSetzen: (nachweisId: ID, zeile: NachweisZeile, text: string | null) => void;
   /**
    * Abschließen (nur Controlling, nur offene): fortlaufende Nachweise enden am letzten Tag mit
@@ -246,8 +247,6 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
         nachweise: d.nachweise.map((n) => (n.id === id ? { ...fn(n, d, jetzt), id, projektId: n.projektId, geaendert: jetzt } : n)),
       };
     });
-  /** Nur mit Anmeldung. */
-  const angemeldetNur = (fn: Aenderung): Aenderung => (d, jetzt) => (angemeldet(d) ? fn(d, jetzt) : d);
   /** Nur im Controlling. */
   const controllingNur = (fn: Aenderung): Aenderung => (d, jetzt) => (zugang === 'controlling' ? fn(d, jetzt) : d);
 
@@ -302,14 +301,14 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
     },
 
     addProjekt: (p) => {
-      if (!angemeldet(data)) return null;
+      if (!darf(zugang, 'projektVerwalten')) return null;
       const id = newId('pr');
-      mutate(angemeldetNur((d) => (d.projekte.some((x) => x.id === id) ? d : { ...d, projekte: [...d.projekte, { ...p, id }] })));
+      mutate(controllingNur((d) => (d.projekte.some((x) => x.id === id) ? d : { ...d, projekte: [...d.projekte, { ...p, id }] })));
       return id;
     },
     updateProjekt: (id, patch) =>
       mutate(
-        angemeldetNur((d) => {
+        controllingNur((d) => {
           const projekte = aendern(d.projekte, id, (p) => ({ ...p, ...patch }));
           if (!patch.abschnitte) return { ...d, projekte };
           const gueltig = new Set(patch.abschnitte.map((a) => a.id));
@@ -334,11 +333,11 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
     toggleMarkiert: (id) =>
       mutate((d) => ({ ...d, projekte: aendern(d.projekte, id, (p) => ({ ...p, markiert: !p.markiert })) })),
     abschnitteAusProjektelementen: (projektId) => {
-      if (!angemeldet(data)) return 0;
+      if (!darf(zugang, 'projektVerwalten')) return 0;
       const folge = idVorrat();
       // Die Zahl auf dem angezeigten Stand; die Kennungen gelten auch in der Änderung
       const { anzahl } = abschnitteAusElementen(data, projektId, folge());
-      mutate(angemeldetNur((d) => abschnitteAusElementen(d, projektId, folge()).daten));
+      mutate(controllingNur((d) => abschnitteAusElementen(d, projektId, folge()).daten));
       return anzahl;
     },
 
@@ -400,14 +399,14 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       });
     },
     nachweiseFuerOffeneLeistungen: (projektId) => {
-      if (!angemeldet(data)) return { neu: 0, erweitert: 0 };
+      if (!darf(zugang, 'nachweisVerwalten')) return { neu: 0, erweitert: 0 };
       const folge = idVorrat();
       const offen = (d: LeistungsnachweisDaten, jetzt: string) => {
         const ids = folge();
         return nachweiseSichern(d, projektId, leistungenOhneNachweis(d, projektId).map((l) => l.datum), jetzt, () => ids('ln'));
       };
       const { ergaenzung } = offen(data, new Date().toISOString());
-      mutate(angemeldetNur((d, jetzt) => offen(d, jetzt).daten));
+      mutate(controllingNur((d, jetzt) => offen(d, jetzt).daten));
       return { neu: ergaenzung.neu.length, erweitert: ergaenzung.erweitert.length };
     },
 
@@ -427,11 +426,9 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
     updateNachweis: (id, patch) => {
       const sauber = ohneLeere(patch);
       if (Object.keys(sauber).length === 0) return;
-      const nurBemerkung = Object.keys(sauber).every((k) => k === 'bemerkung');
       nachweisAendern(
         id,
         (n, d) => {
-          if (nurBemerkung) return zugang === 'controlling' || (!!angemeldet(d) && n.status === 'entwurf');
           if (!darf(zugang, 'nachweisVerwalten')) return false;
           const von = sauber.von ?? n.von;
           const bis = sauber.bis ?? n.bis;
@@ -459,7 +456,7 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
     zeilenTextSetzen: (nachweisId, zeile, text) =>
       nachweisAendern(
         nachweisId,
-        (n, d) => !!angemeldet(d) && n.status === 'entwurf',
+        (n) => darf(zugang, 'nachweisVerwalten') && n.status === 'entwurf',
         (n) => mitZeilenText(n, zeile, text),
       ),
     nachweisAbschliessen: (id) => {
