@@ -249,6 +249,7 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
           texte: texteAufbereiten(n.texte),
           aufschlaege: ohneNull(zahlen(n.aufschlaege)),
           bemerkung: text(n.bemerkung),
+          nachgereicht: [...new Set(ids(n.nachgereicht))],
           erstellt: text(n.erstellt) || geaendert,
           geaendert,
           abgeschlossen: status === 'abgeschlossen' ? text(n.abgeschlossen) || null : null,
@@ -312,7 +313,8 @@ function vonFassung3(roh: Roh): Roh {
 /**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt; neue Schritte kommen hier vor `aufbereiten` hinzu. Auch
- * Sicherungen älterer Fassungen laufen hierdurch.
+ * Sicherungen älterer Fassungen laufen hierdurch. Fassung 4 → 5: `nachgereicht`
+ * ergänzt `aufbereiten` leer.
  */
 function migriere(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   let stand = roh as unknown as Roh;

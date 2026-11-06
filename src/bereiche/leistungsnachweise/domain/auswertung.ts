@@ -11,7 +11,7 @@
  * Person lassen sie sich nicht zurechnen – mit Mitarbeiterfilter bleiben sie
  * außen vor (`mitAufschlag` false). Abgerechnet = erfasst + Aufschlag.
  */
-import { leistungenOhneNachweis, nachweisFuer, zeilenFuerAnzeige } from './nachweis';
+import { leistungenOhneNachweis, nachweisDerLeistung, zeilenFuerAnzeige } from './nachweis';
 import { mitarbeiterName, type ID, type ISODate, type Leistung, type LeistungsnachweisDaten } from './types';
 import { imZeitraum, monatsanfang, monatsende, monatText, monatVersetzt, runden } from './zeitraum';
 
@@ -183,7 +183,7 @@ export function stundenJeProjekt(daten: LeistungsnachweisDaten, filter: Auswertu
   const ohne: Record<ID, number> = {};
   for (const l of leistungen) {
     addieren(erfasst, l.projektId, l.stunden);
-    if (!nachweisFuer(daten, l.projektId, l.datum)) addieren(ohne, l.projektId, l.stunden);
+    if (!nachweisDerLeistung(daten, l)) addieren(ohne, l.projektId, l.stunden);
   }
   return projektReihenfolge(daten)
     .filter((id) => (erfasst[id] ?? 0) !== 0 || (aufschlaege[id] ?? 0) !== 0)

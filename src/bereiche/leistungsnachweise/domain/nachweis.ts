@@ -1,7 +1,9 @@
 /**
  * Leistungsnachweise aus den Leistungen eines Projekts. Ein Nachweis ist nur
- * ein Zeitraum; welche Leistungen er zeigt, ergibt sich allein aus deren
- * Datum. Seine Zeilen – je Tag, Woche oder Monat mit Leistungen – werden
+ * ein Zeitraum; welche Leistungen er zeigt, ergibt sich aus deren Datum – nur
+ * nachgereichte Leistungen (`nachgereicht`, aus früheren, schon abgerechneten
+ * Zeiträumen) stehen ausdrücklich in einem späteren Nachweis
+ * (`leistungenDesNachweises`, `nachweisDerLeistung`). Seine Zeilen – je Tag, Woche oder Monat mit Leistungen – werden
  * jedes Mal neu gerechnet (`nachweisZeilen`); nur von Hand bearbeitete Texte
  * (`texte`) und beim Abschluss der festgeschriebene Stand (`stand`) werden
  * gespeichert.
@@ -63,10 +65,39 @@ export function nachweisFuer(daten: LeistungsnachweisDaten, projektId: ID, datum
   return daten.nachweise.find((n) => n.projektId === projektId && imZeitraum(datum, n.von, n.bis));
 }
 
+/** Nachweis, in den die Leistung nachgereicht wurde, sonst der ihres Datums. */
+export function nachweisDerLeistung(
+  daten: LeistungsnachweisDaten,
+  l: Pick<Leistung, 'id' | 'projektId' | 'datum'>,
+): Leistungsnachweis | undefined {
+  return (
+    daten.nachweise.find((n) => n.projektId === l.projektId && n.nachgereicht.includes(l.id)) ??
+    nachweisFuer(daten, l.projektId, l.datum)
+  );
+}
+
+/**
+ * Leistungen eines Nachweises, nach Datum: die seines Zeitraums – ohne die in
+ * einen anderen Nachweis nachgereichten – und seine nachgereichten.
+ */
+export function leistungenDesNachweises(daten: LeistungsnachweisDaten, n: Leistungsnachweis): Leistung[] {
+  const eigene = new Set(n.nachgereicht);
+  const anderswo = new Set(
+    daten.nachweise.filter((x) => x.projektId === n.projektId && x.id !== n.id).flatMap((x) => x.nachgereicht),
+  );
+  return daten.leistungen
+    .filter(
+      (l) =>
+        l.projektId === n.projektId &&
+        (eigene.has(l.id) || (imZeitraum(l.datum, n.von, n.bis) && !anderswo.has(l.id))),
+    )
+    .sort(nachDatum);
+}
+
 /** Leistungen des Projekts (ohne `projektId`: aller Projekte), die in keinem Nachweis liegen. */
 export function leistungenOhneNachweis(daten: LeistungsnachweisDaten, projektId?: ID): Leistung[] {
   return daten.leistungen.filter(
-    (l) => (projektId === undefined || l.projektId === projektId) && !nachweisFuer(daten, l.projektId, l.datum),
+    (l) => (projektId === undefined || l.projektId === projektId) && !nachweisDerLeistung(daten, l),
   );
 }
 
@@ -354,11 +385,16 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
   const spalten = mitAbschnittsspalten(projekt?.abschnitte ?? []);
   const mitarbeiter = new Map(daten.mitarbeiter.map((m) => [m.id, m]));
   const gruppen = new Map<string, { von: ISODate; bis: ISODate; leistungen: Leistung[] }>();
-  for (const l of leistungenIm(daten, n.projektId, n.von, n.bis)) {
-    const p = periodeKuerzen(periodeVon(l.datum, n.raster), n.von, n.bis);
+  for (const l of leistungenDesNachweises(daten, n)) {
+    // Nachgereichte Leistungen liegen vor dem Zeitraum – ihre Periode bleibt ungekürzt
+    const roh = periodeVon(l.datum, n.raster);
+    const p = imZeitraum(l.datum, n.von, n.bis) ? periodeKuerzen(roh, n.von, n.bis) : roh;
     const gruppe = gruppen.get(p.schluessel);
-    if (gruppe) gruppe.leistungen.push(l);
-    else gruppen.set(p.schluessel, { von: p.von, bis: p.bis, leistungen: [l] });
+    if (gruppe) {
+      gruppe.leistungen.push(l);
+      if (p.von < gruppe.von) gruppe.von = p.von;
+      if (p.bis > gruppe.bis) gruppe.bis = p.bis;
+    } else gruppen.set(p.schluessel, { von: p.von, bis: p.bis, leistungen: [l] });
   }
   return [...gruppen.entries()]
     .sort(([, a], [, b]) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0))
@@ -582,6 +618,7 @@ export function neuerNachweis(id: ID, projekt: Projekt, von: ISODate, bis: ISODa
     texte: {},
     aufschlaege: {},
     bemerkung: '',
+    nachgereicht: [],
     erstellt: jetzt,
     geaendert: jetzt,
     abgeschlossen: null,
@@ -692,17 +729,41 @@ export function nachweiseSichern(
 
 /** Was „Neuer Leistungsnachweis“ (Controlling) für ein Projekt umfasst – `nichtAbgerechnet`. */
 export interface NichtAbgerechnet {
-  /** Leistungen nach dem letzten abgeschlossenen Nachweis, die in keinem abgeschlossenen liegen – sie kommen hinein. */
+  /**
+   * Nicht abgerechnete Leistungen nach dem letzten abgeschlossenen Nachweis und
+   * die in dessen offenen Nachfolgern – sie kommen hinein.
+   */
   leistungen: Leistung[];
   /** Offene Nachweise nach dem letzten abgeschlossenen – sie gehen im neuen auf. */
   offene: Leistungsnachweis[];
-  /** Nicht abgerechnete Leistungen vor dem letzten abgeschlossenen Nachweis – sie bleiben, wo sie sind. */
-  davor: Leistung[];
+  /**
+   * Nicht erfasst: Leistungen vor dem letzten abgeschlossenen Nachweis, die in
+   * keinem abgerechneten Stand stehen und in keinem offenen Nachweis liegen –
+   * etwa nach dem Abschluss nachgetragen. Sie kommen nur nach Rückfrage hinein
+   * (als nachgereichte, `nachreichen`).
+   */
+  nichtErfasst: Leistung[];
   /** Zeitraum bis zum Abschluss: ab dem Tag nach dem letzten abgeschlossenen Nachweis (sonst ab der ersten Leistung). */
   von: ISODate;
   bis: ISODate;
   /** Liegen schon alle in genau einem offenen Nachweis, gibt es nichts anzulegen – das ist er. */
   vorhanden: Leistungsnachweis | null;
+}
+
+/**
+ * Kennungen der abgerechneten Leistungen eines Projekts: die im
+ * festgeschriebenen Stand der abgeschlossenen Nachweise. Fehlen dort die
+ * Kennungen (ältere Stände), gelten die Leistungen des Nachweises.
+ */
+export function abgerechneteLeistungen(daten: LeistungsnachweisDaten, projektId: ID): Set<ID> {
+  const ids = new Set<ID>();
+  for (const n of daten.nachweise) {
+    if (n.projektId !== projektId || n.status !== 'abgeschlossen') continue;
+    const ausStand = n.stand ? n.stand.zeilen.flatMap((z) => z.leistungIds) : [];
+    const ohneKennungen = !n.stand || (ausStand.length === 0 && n.stand.zeilen.some((z) => z.stunden !== 0));
+    for (const id of ohneKennungen ? leistungenDesNachweises(daten, n).map((l) => l.id) : ausStand) ids.add(id);
+  }
+  return ids;
 }
 
 /**
@@ -712,46 +773,61 @@ export interface NichtAbgerechnet {
  * dem ersten offenen Nachweis, spätestens am Monatsanfang) und reicht bis zum
  * Ende des laufenden Monats, mindestens bis zur letzten Leistung; sein Ende
  * legt erst der Abschluss fest (`abschlussZeitraum`). Offene Nachweise in
- * diesem Bereich gehen darin auf. Rein.
+ * diesem Bereich gehen darin auf. Was davor liegt und nirgends erfasst ist,
+ * nennt `nichtErfasst`. Rein.
  */
 export function nichtAbgerechnet(daten: LeistungsnachweisDaten, projektId: ID, heute: ISODate): NichtAbgerechnet {
   const alle = nachweiseVon(daten, projektId);
   const abgeschlossen = alle.filter((n) => n.status === 'abgeschlossen');
   const letztesEnde = abgeschlossen.reduce<ISODate | null>((m, n) => (!m || n.bis > m ? n.bis : m), null);
   const grenze = letztesEnde ? addDays(letztesEnde, 1) : null;
-  const nichtAbgerechnete = daten.leistungen
-    .filter((l) => l.projektId === projektId && !abgeschlossen.some((n) => imZeitraum(l.datum, n.von, n.bis)))
-    .sort(nachDatum);
-  const leistungen = grenze ? nichtAbgerechnete.filter((l) => l.datum >= grenze) : nichtAbgerechnete;
-  const davor = grenze ? nichtAbgerechnete.filter((l) => l.datum < grenze) : [];
   const offene = alle.filter((n) => n.status === 'entwurf' && (!grenze || n.von >= grenze));
+  const inOffenen = new Set(offene.flatMap((n) => leistungenDesNachweises(daten, n).map((l) => l.id)));
+  const abgerechnet = abgerechneteLeistungen(daten, projektId);
+  const offen = daten.leistungen.filter((l) => l.projektId === projektId && !abgerechnet.has(l.id)).sort(nachDatum);
+  const leistungen = offen.filter((l) => !grenze || l.datum >= grenze || inOffenen.has(l.id));
+  const nichtErfasst = grenze
+    ? offen.filter((l) => {
+        if (l.datum >= grenze || inOffenen.has(l.id)) return false;
+        const n = nachweisDerLeistung(daten, l);
+        return !n || n.status === 'abgeschlossen';
+      })
+    : [];
   const von = grenze ?? [...leistungen.map((l) => l.datum), ...offene.map((n) => n.von), monatsanfang(heute)].sort()[0];
-  const bis = [monatsende(heute), von, ...leistungen.map((l) => l.datum), ...offene.map((n) => n.bis)].sort().at(-1) ?? von;
+  const bis = [monatsende(heute), von, ...leistungen.filter((l) => l.datum >= von).map((l) => l.datum), ...offene.map((n) => n.bis)]
+    .sort()
+    .at(-1) ?? von;
   const einziger = offene.length === 1 ? offene[0] : null;
-  const vorhanden = einziger && leistungen.every((l) => imZeitraum(l.datum, einziger.von, einziger.bis)) ? einziger : null;
-  return { leistungen, offene, davor, von, bis, vorhanden };
+  const darin = einziger ? new Set(leistungenDesNachweises(daten, einziger).map((l) => l.id)) : null;
+  const vorhanden = einziger && darin && leistungen.every((l) => darin.has(l.id)) ? einziger : null;
+  return { leistungen, offene, nichtErfasst, von, bis, vorhanden };
 }
+
+/** Nimmt Kennungen in `nachgereicht` auf – ohne doppelte. */
+const mitNachgereichten = (n: Leistungsnachweis, ids: ID[]): ID[] => [...new Set([...n.nachgereicht, ...ids])];
 
 /**
  * Legt für alle nicht abgerechneten Leistungen des Projekts einen
  * Leistungsnachweis an (`nichtAbgerechnet`) – rein; so arbeitet
  * `nachweisFuerNichtAbgerechnete` im Store. Gibt es offene Nachweise, wird der
- * erste erweitert und nimmt Leistungstexte, Aufschläge (summiert) und
- * Bemerkungen der übrigen auf, die entfallen; sonst entsteht ein neuer mit der
- * Kennung `id`. Raster und – wenn angegeben – Überschrift kommen aus dem
- * Dialog. Liegt schon alles in genau einem offenen Nachweis, bleibt der Bestand.
+ * erste erweitert und nimmt Leistungstexte, Aufschläge (summiert),
+ * Bemerkungen und nachgereichte Leistungen der übrigen auf, die entfallen;
+ * sonst entsteht ein neuer mit der Kennung `id`. Raster und – wenn angegeben –
+ * Überschrift kommen aus dem Dialog. Mit `nachreichen` (nach der Rückfrage)
+ * kommen die nicht erfassten Leistungen als nachgereichte hinzu. Liegt schon
+ * alles in genau einem offenen Nachweis, ändert sich nur das (`nachreichenAnwenden`).
  */
 export function nachweisFuerNichtAbgerechneteAnwenden(
   daten: LeistungsnachweisDaten,
   projektId: ID,
-  vorgaben: { raster: Raster; titel: string },
+  vorgaben: { raster: Raster; titel: string; nachreichen?: boolean },
   id: ID,
   jetzt: string,
 ): LeistungsnachweisDaten {
   const projekt = daten.projekte.find((p) => p.id === projektId);
   if (!projekt) return daten;
   const plan = nichtAbgerechnet(daten, projektId, tagVon(jetzt));
-  if (plan.vorhanden) return daten;
+  if (plan.vorhanden) return vorgaben.nachreichen ? nachreichenAnwenden(daten, plan.vorhanden.id, jetzt) : daten;
   const [erster, ...weitere] = plan.offene;
   const basis = erster ?? neuerNachweis(id, projekt, plan.von, plan.bis, jetzt);
   const texte = { ...basis.texte };
@@ -761,6 +837,10 @@ export function nachweisFuerNichtAbgerechneteAnwenden(
     for (const [k, v] of Object.entries(w.aufschlaege)) aufschlaege[k] = runden((aufschlaege[k] ?? 0) + v);
   }
   const bemerkung = [...new Set([basis, ...weitere].map((n) => n.bemerkung.trim()).filter(Boolean))].join('\n');
+  const nachgereicht = mitNachgereichten(basis, [
+    ...weitere.flatMap((w) => w.nachgereicht),
+    ...(vorgaben.nachreichen ? plan.nichtErfasst.map((l) => l.id) : []),
+  ]);
   const neu: Leistungsnachweis = {
     ...basis,
     von: plan.von,
@@ -770,11 +850,26 @@ export function nachweisFuerNichtAbgerechneteAnwenden(
     texte,
     aufschlaege,
     bemerkung,
+    nachgereicht,
     geaendert: jetzt,
   };
   const weg = new Set(weitere.map((w) => w.id));
   const nachweise = daten.nachweise.filter((n) => !weg.has(n.id)).map((n) => (n.id === neu.id ? neu : n));
   return { ...daten, nachweise: erster ? nachweise : [...nachweise, neu] };
+}
+
+/**
+ * Übernimmt die nicht erfassten Leistungen des Projekts (`nichtAbgerechnet`)
+ * als nachgereichte in den offenen Nachweis – nur in einen offenen nach dem
+ * letzten abgeschlossenen. Rein; so arbeitet `leistungenNachreichen` im Store.
+ */
+export function nachreichenAnwenden(daten: LeistungsnachweisDaten, nachweisId: ID, jetzt: string): LeistungsnachweisDaten {
+  const n = daten.nachweise.find((x) => x.id === nachweisId);
+  if (!n || n.status !== 'entwurf') return daten;
+  const plan = nichtAbgerechnet(daten, n.projektId, tagVon(jetzt));
+  if (!plan.offene.some((o) => o.id === n.id) || plan.nichtErfasst.length === 0) return daten;
+  const neu = { ...n, nachgereicht: mitNachgereichten(n, plan.nichtErfasst.map((l) => l.id)), geaendert: jetzt };
+  return { ...daten, nachweise: daten.nachweise.map((x) => (x.id === n.id ? neu : x)) };
 }
 
 /**
@@ -811,7 +906,8 @@ export function abschlussZeitraum(
   heute: ISODate,
 ): { bis: ISODate; gekuerzt: boolean; spaetere: Leistung[] } {
   if (!laeuftBisAbschluss(daten, n, heute)) return { bis: n.bis, gekuerzt: false, spaetere: [] };
-  const leistungen = leistungenIm(daten, n.projektId, n.von, n.bis);
+  // Nachgereichte liegen vor dem Zeitraum und bestimmen das Ende nicht
+  const leistungen = leistungenDesNachweises(daten, n).filter((l) => imZeitraum(l.datum, n.von, n.bis));
   const letzte = leistungen.length ? leistungen[leistungen.length - 1].datum : null;
   const ende = letzte && letzte < heute ? letzte : heute;
   if (ende < n.von || ende >= n.bis) return { bis: n.bis, gekuerzt: false, spaetere: [] };

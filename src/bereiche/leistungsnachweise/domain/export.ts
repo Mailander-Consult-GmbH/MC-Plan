@@ -33,7 +33,7 @@ import {
 } from '../../../shared/xlsx';
 import { auswertung, zeitraumBezeichnung, type AuswertungFilter, type MitarbeiterTabelle } from './auswertung';
 import { GESAMT, dateiname, logoQuelle, nachweisDateiname, nachweisFassung, spaltenStunden, type StundenSpalte } from './druck';
-import { nachweisFuer, nachweisTitel, stundenVon } from './nachweis';
+import { nachweisDerLeistung, nachweisTitel, stundenVon } from './nachweis';
 import { logosVon } from './seed';
 import {
   QUELLE_LABEL,
@@ -402,7 +402,7 @@ function leistungsliste(
   const zeilen: Zelle[][] = sortiert.map((l) => {
     const a = abschnittVon(l);
     const p = projekte.get(l.projektId);
-    const n = kopf.mitProjekt ? nachweisFuer(daten, l.projektId, l.datum) : undefined;
+    const n = kopf.mitProjekt ? nachweisDerLeistung(daten, l) : undefined;
     return [
       { wert: l.datum, datum: true, stil: { oben: true } },
       ...(kopf.mitProjekt ? [oben(p?.nummer ?? ''), oben(p ? projektKurzname(p) : '?')] : []),

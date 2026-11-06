@@ -7,7 +7,9 @@
  *   (`nichtAbgerechnet`); offene Nachweise gehen darin auf. Der Zeitraum steht
  *   erst beim Abschluss fest. Liegt schon alles in einem offenen Nachweis,
  *   bietet der Dialog „Öffnen“ an. Das Projekt lässt sich im Dialog wählen
- *   (`projektWahl`).
+ *   (`projektWahl`). Nicht erfasste Leistungen aus schon abgerechneten
+ *   Zeiträumen nennt der Dialog (`NichtErfasstHinweis`); übernommen werden sie
+ *   erst nach Bestätigung – als nachgereichte.
  * * **Zeitraum ändern** (`ZeitraumDialog`) korrigiert Zeitraum, Raster und
  *   Überschrift eines vorhandenen: ein Kalendermonat (Schnellwahl) oder frei
  *   mit Beginn und Ende – auch über mehrere Monate. Nachweise eines Projekts
@@ -18,12 +20,13 @@
  * Texte oder Aufschläge nicht mehr angezeigt werden (`rasterwechselHinweis`) –
  * sie bleiben gespeichert und kehren mit dem alten Raster zurück.
  */
-import { useState } from 'react';
-import { today } from '../../../shared/dates';
+import { useState, type ReactNode } from 'react';
+import { today, wochentag } from '../../../shared/dates';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Segmented, Select, TextInput } from '../../../shared/ui';
 import {
   leistungenIm,
+  nachweisDerLeistung,
   nachweisTitel,
   nichtAbgerechnet,
   rasterwechselHinweis,
@@ -31,8 +34,17 @@ import {
   stundenVon,
   ueberschneidung,
 } from '../domain/nachweis';
-import { RASTER_LABEL, projektTitel, type Leistungsnachweis, type Projekt, type Raster } from '../domain/types';
-import { imZeitraum, istDatum, langDatum, monatsanfang, monatsende, stundenText, zeitraumText } from '../domain/zeitraum';
+import {
+  RASTER_LABEL,
+  mitarbeiterName,
+  projektTitel,
+  type Leistung,
+  type Leistungsnachweis,
+  type LeistungsnachweisDaten,
+  type Projekt,
+  type Raster,
+} from '../domain/types';
+import { imZeitraum, istDatum, kurzDatum, langDatum, monatsanfang, monatsende, stundenText, zeitraumText } from '../domain/zeitraum';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { RASTER_OPTIONEN, anzahl } from './common';
@@ -87,9 +99,11 @@ function NeuerNachweisDialog({
   navigate?: (r: Route) => void;
   projektWahl: boolean;
 }) {
-  const { data, nachweisFuerNichtAbgerechnete } = useStore();
+  const { data, nachweisFuerNichtAbgerechnete, leistungenNachreichen } = useStore();
   const toast = useToast();
   const [projektId, setProjektId] = useState(vorgabe.id);
+  // Nicht erfasste Leistungen kommen nur nach Bestätigung hinein
+  const [nachreichen, setNachreichen] = useState(false);
   const projekt = (projektWahl ? data.projekte.find((p) => p.id === projektId) : undefined) ?? vorgabe;
   const plan = nichtAbgerechnet(data, projekt.id, today());
   const [raster, setRaster] = useState<Raster>(plan.offene[0]?.raster ?? projekt.raster);
@@ -101,6 +115,7 @@ function NeuerNachweisDialog({
     if (!p) return;
     setProjektId(id);
     setRaster(nichtAbgerechnet(data, id, today()).offene[0]?.raster ?? p.raster);
+    setNachreichen(false);
   };
   const projektOptionen = [...data.projekte]
     .sort((a, b) => a.nummer.localeCompare(b.nummer, 'de', { numeric: true }) || a.name.localeCompare(b.name, 'de'))
@@ -115,26 +130,35 @@ function NeuerNachweisDialog({
       }`
     : 'Noch keine nicht abgerechnete Leistung';
   const vorhanden = plan.vorhanden;
+  const nachgereicht = nachreichen ? plan.nichtErfasst.length : 0;
 
   const oeffnen = (id: string) => navigate?.({ view: 'abrechnung', projektId: projekt.id, nachweisId: id });
 
+  const nachgereichtText = nachgereicht
+    ? ` ${anzahl(nachgereicht, 'Leistung', 'Leistungen')} nachgereicht übernommen.`
+    : '';
+
   const anlegen = () => {
     if (vorhanden) {
+      if (nachgereicht) {
+        leistungenNachreichen(vorhanden.id);
+        toast(nachgereichtText.trim());
+      }
       onClose();
       oeffnen(vorhanden.id);
       return;
     }
-    const id = nachweisFuerNichtAbgerechnete(projekt.id, { raster, titel });
+    const id = nachweisFuerNichtAbgerechnete(projekt.id, { raster, titel, nachreichen });
     if (!id) {
       toast('Das ist dem Controlling vorbehalten.');
       return;
     }
     toast(
-      plan.offene.length > 1
+      (plan.offene.length > 1
         ? `${anzahl(plan.offene.length, 'offener Leistungsnachweis', 'offene Leistungsnachweise')} zu einem zusammengefasst.`
         : plan.offene.length === 1
           ? 'Der offene Leistungsnachweis umfasst jetzt alle nicht abgerechneten Leistungen.'
-          : 'Leistungsnachweis angelegt.',
+          : 'Leistungsnachweis angelegt.') + nachgereichtText,
     );
     onClose();
     oeffnen(id);
@@ -151,7 +175,7 @@ function NeuerNachweisDialog({
             Abbrechen
           </button>
           <button type="button" className="btn btn-primary" onClick={anlegen}>
-            {vorhanden ? 'Öffnen' : 'Anlegen'}
+            {vorhanden ? (nachgereicht ? 'Übernehmen und öffnen' : 'Öffnen') : 'Anlegen'}
           </button>
         </>
       }
@@ -194,14 +218,72 @@ function NeuerNachweisDialog({
           </>
         )}
 
-        {plan.davor.length ? (
-          <p className="small muted">
-            {anzahl(plan.davor.length, 'nicht abgerechnete Leistung liegt', 'nicht abgerechnete Leistungen liegen')} vor dem
-            letzten abgeschlossenen Leistungsnachweis und {plan.davor.length === 1 ? 'kommt' : 'kommen'} nicht hinein.
-          </p>
+        {plan.nichtErfasst.length ? (
+          <NichtErfasstHinweis daten={data} leistungen={plan.nichtErfasst}>
+            <label className="checkbox">
+              <input type="checkbox" checked={nachreichen} onChange={(e) => setNachreichen(e.target.checked)} />
+              {plan.nichtErfasst.length === 1 ? 'In diesen Leistungsnachweis übernehmen' : 'Alle in diesen Leistungsnachweis übernehmen'}{' '}
+              (nachgereicht)
+            </label>
+          </NichtErfasstHinweis>
         ) : null}
       </div>
     </Modal>
+  );
+}
+
+/** So viele nicht erfasste Leistungen nennt der Hinweis einzeln. */
+const NICHT_ERFASST_EINZELN = 8;
+
+/**
+ * Mitteilung über nicht erfasste Leistungen (`nichtAbgerechnet().nichtErfasst`):
+ * Leistungen aus schon abgerechneten Zeiträumen, die in keinem abgerechneten
+ * Leistungsnachweis stehen – je mit Datum, Person, Stunden, Text und dem Grund.
+ * Darunter (`children`) die Bestätigung zum Übernehmen.
+ */
+export function NichtErfasstHinweis({
+  daten,
+  leistungen,
+  children,
+}: {
+  daten: LeistungsnachweisDaten;
+  leistungen: Leistung[];
+  children?: ReactNode;
+}) {
+  const mitarbeiter = new Map(daten.mitarbeiter.map((m) => [m.id, m]));
+  const grund = (l: Leistung) => {
+    const n = nachweisDerLeistung(daten, l);
+    return n ? `nach dem Abschluss von „${nachweisTitel(n)}“ erfasst` : 'in keinem Leistungsnachweis';
+  };
+  const gezeigt = leistungen.slice(0, NICHT_ERFASST_EINZELN);
+  return (
+    <Callout ton="warn" icon="!">
+      <div className="stack" style={{ gap: 8 }}>
+        <span>
+          <strong>
+            {anzahl(leistungen.length, 'Leistung', 'Leistungen')} mit {stundenText(stundenVon(leistungen))} Std.{' '}
+            {leistungen.length === 1 ? 'ist' : 'sind'} noch nicht erfasst
+          </strong>{' '}
+          – {leistungen.length === 1 ? 'sie liegt' : 'sie liegen'} in bereits abgerechneten Zeiträumen, aber in keinem
+          abgerechneten Leistungsnachweis.
+        </span>
+        <ul className="ln-nicht-erfasst">
+          {gezeigt.map((l) => {
+            const m = mitarbeiter.get(l.mitarbeiterId);
+            return (
+              <li key={l.id}>
+                {wochentag(l.datum)} {kurzDatum(l.datum)} · {m ? mitarbeiterName(m) || m.kuerzel : '?'} ·{' '}
+                {stundenText(l.stunden)} Std. – {l.text || 'ohne Text'} <span className="tertiary">({grund(l)})</span>
+              </li>
+            );
+          })}
+          {leistungen.length > gezeigt.length ? (
+            <li className="tertiary">und {anzahl(leistungen.length - gezeigt.length, 'weitere', 'weitere')}</li>
+          ) : null}
+        </ul>
+        {children}
+      </div>
+    </Callout>
   );
 }
 

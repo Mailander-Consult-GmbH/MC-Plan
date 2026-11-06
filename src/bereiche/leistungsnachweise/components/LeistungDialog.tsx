@@ -19,7 +19,7 @@ import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Callout, ConfirmDialog, Field, Modal, Select, TextArea } from '../../../shared/ui';
 import { zahlLesen } from '../domain/import';
-import { mitAbschnittsspalten, nachweiseErgaenzen, nachweisFuer, type Ergaenzung } from '../domain/nachweis';
+import { mitAbschnittsspalten, nachweisDerLeistung, nachweiseErgaenzen, nachweisFuer, type Ergaenzung } from '../domain/nachweis';
 import { NICHT_ANGEMELDET, angemeldet, darfLeistungAendern } from '../domain/rechte';
 import { mitarbeiterName, type ID, type ISODate, type Leistung, type Leistungsnachweis, type LeistungsnachweisDaten, type Projekt } from '../domain/types';
 import { istDatum, langDatum, stundenText, zeitraumText } from '../domain/zeitraum';
@@ -131,7 +131,7 @@ export function LeistungDialog({
   const nurLesen = !!leistung && !darfLeistungAendern(data, leistung);
   const person = leistung ? data.mitarbeiter.find((m) => m.id === leistung.mitarbeiterId) : ich;
   const personName = person ? mitarbeiterName(person) || person.kuerzel : leistung ? 'unbekannten Mitarbeiter' : '';
-  const bisherNachweis = leistung ? nachweisFuer(data, projekt.id, leistung.datum) : undefined;
+  const bisherNachweis = leistung ? nachweisDerLeistung(data, leistung) : undefined;
   const spalten = mitAbschnittsspalten(abschnitte);
 
   const speichern = (weitere: boolean) => {
@@ -164,7 +164,7 @@ export function LeistungDialog({
     const ergaenzung: Ergaenzung = datumNeu
       ? nachweiseErgaenzen(data, projekt, [datum], new Date().toISOString(), () => 'vorschau')
       : { neu: [], erweitert: [] };
-    const geschlossen = [nachweisFuer(data, projekt.id, datum), leistung ? nachweisFuer(data, projekt.id, leistung.datum) : undefined].find(
+    const geschlossen = [nachweisFuer(data, projekt.id, datum), leistung ? nachweisDerLeistung(data, leistung) : undefined].find(
       (n) => n?.status === 'abgeschlossen',
     );
 

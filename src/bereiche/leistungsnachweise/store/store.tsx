@@ -35,6 +35,7 @@ import {
   mitZeilenText,
   nachweisAbschliessenAnwenden,
   nachweisFuerNichtAbgerechneteAnwenden,
+  nachreichenAnwenden,
   nachweiseBereinigen,
   nichtAbgerechnet,
   tagVon,
@@ -127,10 +128,13 @@ interface StoreValue {
   /* Nachweise */
   /**
    * „Neuer Leistungsnachweis“ (nur Controlling): ohne Zeitraum, für alle nicht abgerechneten
-   * Leistungen des Projekts (`nichtAbgerechnet`); offene Nachweise gehen darin auf. Liefert die
-   * Kennung des Nachweises – bzw. des vorhandenen, der schon alles enthält – oder null ohne Recht.
+   * Leistungen des Projekts (`nichtAbgerechnet`); offene Nachweise gehen darin auf, mit
+   * `nachreichen` (nach der Rückfrage) auch die nicht erfassten Leistungen. Liefert die Kennung
+   * des Nachweises – bzw. des vorhandenen, der schon alles enthält – oder null ohne Recht.
    */
-  nachweisFuerNichtAbgerechnete: (projektId: ID, vorgaben: { raster: Raster; titel: string }) => ID | null;
+  nachweisFuerNichtAbgerechnete: (projektId: ID, vorgaben: { raster: Raster; titel: string; nachreichen?: boolean }) => ID | null;
+  /** Übernimmt die nicht erfassten Leistungen als nachgereichte in den offenen Nachweis (nur Controlling, nach Rückfrage). */
+  leistungenNachreichen: (nachweisId: ID) => void;
   /** Zeitraum, Raster, Titel und Bemerkung – nur Controlling (Zeitraum ohne Überschneidung). */
   updateNachweis: (id: ID, patch: Partial<Pick<Leistungsnachweis, 'titel' | 'von' | 'bis' | 'raster' | 'bemerkung'>>) => void;
   /**
@@ -425,6 +429,10 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       const plan = nichtAbgerechnet(data, projektId, tagVon(new Date().toISOString()));
       mutate(controllingNur((d, jetzt) => nachweisFuerNichtAbgerechneteAnwenden(d, projektId, vorgaben, id, jetzt)));
       return plan.vorhanden?.id ?? plan.offene[0]?.id ?? id;
+    },
+    leistungenNachreichen: (nachweisId) => {
+      if (!darf(zugang, 'nachweisVerwalten')) return;
+      mutate(controllingNur((d, jetzt) => nachreichenAnwenden(d, nachweisId, jetzt)));
     },
     updateNachweis: (id, patch) => {
       const sauber = ohneLeere(patch);

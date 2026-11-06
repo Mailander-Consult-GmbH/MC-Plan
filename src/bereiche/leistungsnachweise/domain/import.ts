@@ -25,7 +25,7 @@
  * und in ihrem Datumsbereich der Datei.
  */
 import { datumLesen, spaltenZuordnen } from '../../../shared/xlsxLesen';
-import { nachweiseErgaenzen, nachweisFuer, nachweisTitel, textSchluessel } from './nachweis';
+import { nachweisDerLeistung, nachweiseErgaenzen, nachweisTitel, textSchluessel } from './nachweis';
 import {
   kuerzelAus,
   mitarbeiterName,
@@ -849,7 +849,7 @@ export function importPlanen(
       }));
       const vorhandene = new Set<ID>();
       for (const l of [...leistungen, ...weg]) {
-        const n = nachweisFuer(daten, projekt.id, l.datum);
+        const n = nachweisDerLeistung(daten, l);
         if (!n) continue;
         if (n.status === 'abgeschlossen') inAbgeschlossenem++;
         vorhandene.add(n.id);

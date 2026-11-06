@@ -142,6 +142,7 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
             <ZeileKarte
               key={z.schluessel}
               zeile={z}
+              nachgereicht={z.bis < n.von}
               spalten={spalten}
               bearbeitbar={bearbeitbar}
               leistungen={[...eigene, ...andere].sort((a, b) => a.datum.localeCompare(b.datum))}
@@ -187,6 +188,7 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
 
 function ZeileKarte({
   zeile: z,
+  nachgereicht,
   spalten,
   bearbeitbar,
   leistungen,
@@ -202,6 +204,8 @@ function ZeileKarte({
   onAutomatisch,
 }: {
   zeile: NachweisZeile;
+  /** Zeile vor dem Zeitraum – aus nachgereichten Leistungen. */
+  nachgereicht: boolean;
   spalten: Spalte[];
   /** Offen und im Controlling: der Text lässt sich bearbeiten. */
   bearbeitbar: boolean;
@@ -225,7 +229,10 @@ function ZeileKarte({
   return (
     <div className={`card ln-zeile ${z.textBearbeitet ? 'ln-zeile-bearbeitet' : ''}`}>
       <div className="ln-zeile-raster">
-        <div className="ln-zeile-datum">{z.datumText}</div>
+        <div className="ln-zeile-datum">
+          {z.datumText}
+          {nachgereicht ? <div className="small tertiary">nachgereicht</div> : null}
+        </div>
         <div className="ln-zeile-bearbeiter">
           {z.bearbeiter.map((b) => (
             <span key={b}>{b}</span>

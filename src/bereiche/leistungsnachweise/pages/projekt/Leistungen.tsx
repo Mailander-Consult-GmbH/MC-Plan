@@ -25,7 +25,7 @@ import { ImportDialog } from '../../components/ImportDialog';
 import { LeistungDialog, abgeschlossenHinweis, nachweisName } from '../../components/LeistungDialog';
 import { LeistungsKalender } from '../../components/LeistungsKalender';
 import { QuelleBadge, anzahl, mitarbeiterAuswahlText } from '../../components/common';
-import { nachweiseVon, nachweisTitel, stundenVon } from '../../domain/nachweis';
+import { nachweisDerLeistung, nachweisTitel, stundenVon } from '../../domain/nachweis';
 import { angemeldet, darfLeistungAendern, darfLeistungSehen, eigeneLeistungen } from '../../domain/rechte';
 import { QUELLE_LABEL, mitarbeiterName, type ISODate, type Leistung, type Leistungsnachweis, type Projekt } from '../../domain/types';
 import { langDatum, monatText, stundenText } from '../../domain/zeitraum';
@@ -71,8 +71,8 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
   const namen = new Map(data.mitarbeiter.map((m) => [m.id, mitarbeiterName(m)]));
   const abschnitte = new Map(projekt.abschnitte.map((a) => [a.id, a]));
   const mitAbschnitten = projekt.abschnitte.length > 0;
-  const nachweise = nachweiseVon(data, projekt.id);
-  const nachweisZu = (l: Leistung): Leistungsnachweis | undefined => nachweise.find((n) => l.datum >= n.von && l.datum <= n.bis);
+  // Nachgereichte Leistungen stehen in dem Nachweis, der sie übernommen hat
+  const nachweisZu = (l: Leistung): Leistungsnachweis | undefined => nachweisDerLeistung(data, l);
 
   const ich = angemeldet(data);
   // Im Controlling die aller Mitarbeiter – sonst stets die eigenen

@@ -7,7 +7,10 @@
  * sind; Druck und Excel zeigen die abgerechneten.
  *
  * Die Ansicht „Leistungstexte“ (Leistungstexte.tsx) bearbeitet die Texte je
- * Zeile – mit „Ergänzen“, wenn Leistungen hinzukamen.
+ * Zeile – mit „Ergänzen“, wenn Leistungen hinzukamen. Gibt es nicht erfasste
+ * Leistungen aus schon abgerechneten Zeiträumen und ist dies der laufende
+ * Nachweis, teilt ein Hinweis das mit; übernommen werden sie erst nach
+ * Bestätigung (`leistungenNachreichen`) – nachgereichte Zeilen sind gekennzeichnet.
  *
  * Dazu Vorschau, Drucken/PDF, Excel, Abschließen bzw. Wieder öffnen (mit
  * Rückfrage – sie nennt gekürzte Zeiträume, spätere Leistungen und
@@ -22,7 +25,7 @@ import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Modal, Segmented, Stat } from '../../../../shared/ui';
 import { Druckblatt } from '../../components/Druckblatt';
-import { NachweisDialog } from '../../components/NachweisDialog';
+import { NachweisDialog, NichtErfasstHinweis } from '../../components/NachweisDialog';
 import { Textfeld } from '../../components/Textfeld';
 import { NachweisStatusBadge, anzahl, nachweisZeitraumText, zeitpunkt } from '../../components/common';
 import { GESAMT, nachweisDrucken, nachweisFassung, nachweisHtml, type NachweisFassung } from '../../domain/druck';
@@ -32,7 +35,9 @@ import {
   anzahlAufschlaege,
   aufschlagEingabe,
   aufschlagFuerAbgerechnet,
-  leistungenIm,
+  leistungenDesNachweises,
+  nichtAbgerechnet,
+  stundenVon,
   mitAbschnittsspalten,
   nachweisSummen,
   neueLeistungenSeitText,
@@ -147,7 +152,17 @@ function positionenVon(
 }
 
 function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projekt; nachweis: Leistungsnachweis; navigate: (r: Route) => void }) {
-  const { data, zugang, updateNachweis, nachweisAbschliessen, nachweisOeffnen, deleteNachweis, aufschlagSetzen, aufschlaegeZuruecksetzen } = useStore();
+  const {
+    data,
+    zugang,
+    updateNachweis,
+    nachweisAbschliessen,
+    nachweisOeffnen,
+    deleteNachweis,
+    aufschlagSetzen,
+    aufschlaegeZuruecksetzen,
+    leistungenNachreichen,
+  } = useStore();
   const toast = useToast();
   const [ansicht, setAnsicht] = useState<Ansicht>('abrechnung');
   const [offeneTexte, setOffeneTexte] = useState<Set<string>>(new Set());
@@ -158,6 +173,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
   const [oeffnen, setOeffnen] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
   const [zuruecksetzen, setZuruecksetzen] = useState(false);
+  const [nachreichen, setNachreichen] = useState(false);
   const [excelLaeuft, setExcelLaeuft] = useState(false);
 
   const abgeschlossen = n.status === 'abgeschlossen';
@@ -167,7 +183,10 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
   const spalten = mitAbschnittsspalten(abschnitte);
   const summen = nachweisSummen(zeilen);
   const veraltet = standVeraltet(data, n);
-  const imZeitraum = leistungenIm(data, projekt.id, n.von, n.bis);
+  const imZeitraum = leistungenDesNachweises(data, n);
+  // Nicht erfasste Leistungen – nur am laufenden Nachweis (nach dem letzten abgeschlossenen)
+  const plan = abgeschlossen ? null : nichtAbgerechnet(data, projekt.id, today());
+  const nichtErfasst = plan && plan.offene.some((o) => o.id === n.id) ? plan.nichtErfasst : [];
   // Löschen darf auch das Controlling nur eigene Leistungen (domain/rechte.ts)
   const eigeneImZeitraum = eigeneLeistungen(data, imZeitraum).length;
   const aufschlaege = anzahlAufschlaege(n);
@@ -346,6 +365,15 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           Seit dem Abschluss haben sich Leistungen im Zeitraum geändert – „Wieder öffnen“ übernimmt sie.
         </Callout>
       ) : null}
+      {nichtErfasst.length > 0 ? (
+        <NichtErfasstHinweis daten={data} leistungen={nichtErfasst}>
+          <div>
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => setNachreichen(true)}>
+              In diesen Leistungsnachweis übernehmen …
+            </button>
+          </div>
+        </NichtErfasstHinweis>
+      ) : null}
       {zeilenMitNeuen > 0 && ansicht !== 'texte' ? (
         <Callout ton="warn" icon="!">
           <div className="row-between wrap">
@@ -435,6 +463,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
                       <ZeileAbrechnung
                         key={z.schluessel}
                         zeile={z}
+                        nachgereicht={z.bis < n.von}
                         positionen={positionenVon(z, n, abschnitte, spalten, abgeschlossen, alleAbschnitte)}
                         spalten={spalten}
                         lesen={abgeschlossen}
@@ -518,6 +547,22 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
         />
       ) : null}
 
+      {nachreichen && nichtErfasst.length > 0 ? (
+        <ConfirmDialog
+          titel="Nicht erfasste Leistungen übernehmen?"
+          text={`${anzahl(nichtErfasst.length, 'Leistung', 'Leistungen')} mit ${stundenText(stundenVon(nichtErfasst))} Std. aus bereits abgerechneten Zeiträumen ${
+            nichtErfasst.length === 1 ? 'kommt' : 'kommen'
+          } als nachgereicht in diesen Leistungsnachweis – mit ${nichtErfasst.length === 1 ? 'ihrem' : 'ihrem jeweiligen'} Datum als eigene Zeile. Die abgeschlossenen Leistungsnachweise bleiben unverändert.`}
+          bestaetigenLabel="Übernehmen"
+          ton="blau"
+          onConfirm={() => {
+            leistungenNachreichen(n.id);
+            toast(`${anzahl(nichtErfasst.length, 'Leistung', 'Leistungen')} nachgereicht übernommen.`);
+          }}
+          onClose={() => setNachreichen(false)}
+        />
+      ) : null}
+
       {zuruecksetzen ? (
         <ConfirmDialog
           titel="Aufschläge zurücksetzen?"
@@ -560,6 +605,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
 
 function ZeileAbrechnung({
   zeile: z,
+  nachgereicht,
   positionen,
   spalten,
   lesen,
@@ -574,6 +620,8 @@ function ZeileAbrechnung({
   onAbgerechnet,
 }: {
   zeile: NachweisZeile;
+  /** Zeile vor dem Zeitraum – aus nachgereichten Leistungen. */
+  nachgereicht: boolean;
   positionen: Position[];
   spalten: boolean;
   /** Abgeschlossen: nur lesen. */
@@ -650,6 +698,7 @@ function ZeileAbrechnung({
             <>
               <td className="ln-co-datum" rowSpan={zeilen}>
                 {z.datumText}
+                {nachgereicht ? <div className="small tertiary">nachgereicht</div> : null}
               </td>
               <td className="ln-co-bearbeiter" rowSpan={zeilen}>
                 {z.bearbeiter.map((b) => (
