@@ -1,6 +1,7 @@
-/** Startbildschirm: Auswahl des Bereichs. */
+/** Startbildschirm: Auswahl des Bereichs, am Fuß die laufende Fassung (src/shared/pwa.ts). */
 import { Icon } from '../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../shared/logos';
+import { FASSUNG, fassungText } from '../shared/pwa';
 import { BEREICHE } from './bereiche';
 import { zumBereich } from './router';
 
@@ -42,6 +43,7 @@ export function Start() {
           Die Bereiche arbeiten unabhängig voneinander – jeder mit eigenem Datenbestand und eigenen
           Einstellungen. Projekte und Projektbeteiligte teilen sie sich über das Projektregister, das das
           Controlling verwaltet. Daten werden lokal im Browser gespeichert.
+          <span className="start-fassung">Fassung vom {fassungText(FASSUNG)}</span>
         </p>
       </div>
     </div>

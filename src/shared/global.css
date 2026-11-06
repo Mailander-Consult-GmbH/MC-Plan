@@ -775,6 +775,26 @@ a:hover { text-decoration: underline; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop { from { opacity: 0; transform: scale(0.97) translateY(6px); } to { opacity: 1; transform: none; } }
 
+/* Hinweis „Neue Fassung verfügbar“ (src/shell/NeueFassung.tsx) – über Dialogen, unter Meldungen */
+.neue-fassung {
+  position: fixed; right: 18px; bottom: 18px; z-index: 150;
+  width: min(420px, calc(100vw - 24px));
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 16px;
+  background: var(--bg-elev);
+  border: 1px solid var(--separator-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: 12.5px; line-height: 1.45;
+  animation: pop 0.2s ease;
+}
+.neue-fassung-text { display: flex; flex-direction: column; gap: 3px; color: var(--text-secondary); }
+.neue-fassung-text strong { font-size: 13.5px; color: var(--text); }
+.neue-fassung-knoepfe { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 520px) {
+  .neue-fassung { left: 12px; right: 12px; bottom: 12px; width: auto; }
+}
+
 .toast-wrap { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; }
 .toast {
   background: rgba(30, 30, 32, 0.92);
@@ -985,6 +1005,7 @@ a:hover { text-decoration: underline; }
   color: var(--text-tertiary);
   text-align: center;
 }
+.start-fassung { display: block; margin-top: 6px; }
 
 /* Bereichswechsel am Fuss der Menueleiste */
 .bereich-wechsel {
