@@ -6,11 +6,14 @@
  * Planlaufmanagements, ist davon aber getrennt – gemeinsam ist nur das
  * Projektregister (`src/gemeinsam/`): Projekte und Projektbeteiligte gleicht
  * der Store nach jeder Änderung mit ihm ab (`useRegisterAbgleich`,
- * domain/register.ts).
+ * domain/register.ts). Name und Farbmodus unter „Angemeldet als“ spiegeln die
+ * gemeinsame Anmeldung aller Bereiche (`useBenutzerAbgleich`,
+ * src/gemeinsam/benutzer.ts).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
+import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
 import { folgeprotokoll, naechsteNr, teilnehmerNachziehen } from '../domain/protokoll';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { seedDaten } from '../domain/seed';
@@ -98,6 +101,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return neu === alt ? alt : teilnehmerNachziehen(neu);
     });
   }, []);
+
+  // Name und Farbmodus aus der gemeinsamen Anmeldung aller Bereiche (src/gemeinsam/benutzer.ts)
+  useBenutzerAbgleich(
+    data,
+    (d, b) => d.einstellungen.bearbeiter !== b.name || d.einstellungen.farbmodus !== b.farbmodus,
+    (b) =>
+      mutate((d) =>
+        d.einstellungen.bearbeiter === b.name && d.einstellungen.farbmodus === b.farbmodus
+          ? d
+          : { ...d, einstellungen: { ...d.einstellungen, bearbeiter: b.name, farbmodus: b.farbmodus } },
+      ),
+  );
 
   // Projekte und Beteiligte mit dem Projektregister abgleichen
   const { ersetzt } = useRegisterAbgleich({

@@ -25,6 +25,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
+import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
+import type { Benutzer } from '../../../gemeinsam/benutzer';
 import { abschnitteAusElementen, importAnwenden, kuerzelFrei, type ImportPlan } from '../domain/import';
 import {
   aufschlagPruefen,
@@ -42,6 +44,7 @@ import {
   darf,
   darfLeistungAendern,
   mitarbeiterLoeschenPruefen,
+  mitarbeiterZumNamen,
   type Zugang,
 } from '../domain/rechte';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
@@ -50,7 +53,6 @@ import {
   kuerzelAus,
   mitarbeiterName,
   newId,
-  type Einstellungen,
   type ID,
   type Leistung,
   type Leistungsnachweis,
@@ -73,11 +75,11 @@ interface StoreValue {
   controlling: boolean;
   /** 'ok' – es wird gespeichert; sonst zeigt der Bereich Demodaten und lässt den gespeicherten Stand unberührt. */
   ladeZustand: LadeZustand;
-  /** Anzeigename und Farbmodus; die Anmeldung läuft über `anmelden`. */
-  setEinstellungen: (e: Partial<Omit<Einstellungen, 'mitarbeiterId'>>) => void;
-  /* Anmeldung */
-  /** Meldet einen aktiven Mitarbeiter an (setzt `mitarbeiterId` und `bearbeiter`); null meldet ab. */
-  anmelden: (mitarbeiterId: ID | null) => void;
+  /*
+   * Anmeldung: Name und Farbmodus kommen aus der gemeinsamen Anmeldung aller
+   * Bereiche (src/gemeinsam/benutzer.ts); der Store zieht sie samt dem
+   * passenden Mitarbeiter (`mitarbeiterZumNamen`) nach jeder Änderung nach.
+   */
   /**
    * Legt die angemeldete Person selbst an (aktiv) und meldet sie an. Ein vergebenes Kürzel wird
    * eindeutig gemacht (`kuerzelFrei`), ein leeres aus dem Namen gebildet. null ohne Nachnamen.
@@ -250,24 +252,6 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
   const controllingNur = (fn: Aenderung): Aenderung => (d, jetzt) => (zugang === 'controlling' ? fn(d, jetzt) : d);
 
   return {
-    setEinstellungen: (e) => {
-      // Die Anmeldung (mitarbeiterId) wechselt nur über anmelden
-      const patch: Partial<Einstellungen> = {};
-      if (e.bearbeiter !== undefined) patch.bearbeiter = e.bearbeiter;
-      if (e.farbmodus !== undefined) patch.farbmodus = e.farbmodus;
-      mutate((d) => ({ ...d, einstellungen: { ...d.einstellungen, ...patch } }));
-    },
-
-    anmelden: (mitarbeiterId) =>
-      mutate((d) => {
-        if (mitarbeiterId === null) return { ...d, einstellungen: { ...d.einstellungen, mitarbeiterId: null } };
-        const m = d.mitarbeiter.find((x) => x.id === mitarbeiterId && x.aktiv);
-        if (!m) return d;
-        return {
-          ...d,
-          einstellungen: { ...d.einstellungen, mitarbeiterId: m.id, bearbeiter: mitarbeiterName(m) || m.kuerzel },
-        };
-      }),
     selbstAnlegen: (m) => {
       const vorname = m.vorname.trim();
       const nachname = m.nachname.trim();
@@ -544,6 +528,15 @@ export function aenderungAnwenden(
 
 const StoreContext = createContext<StoreValue | null>(null);
 
+/** Weicht der Bestand von der gemeinsamen Anmeldung ab (Name, Farbmodus, zugeordneter Mitarbeiter)? */
+function anmeldungWeicht(d: LeistungsnachweisDaten, b: Benutzer): boolean {
+  return (
+    d.einstellungen.bearbeiter !== b.name ||
+    d.einstellungen.farbmodus !== b.farbmodus ||
+    d.einstellungen.mitarbeiterId !== (mitarbeiterZumNamen(d.mitarbeiter, b.name)?.id ?? null)
+  );
+}
+
 /**
  * Hält den Bestand des Bereichs und stellt ihn mit allen Schreibzugriffen
  * bereit – im Bereich mit dem Zugang 'bereich', im Controlling-Bereich (nach
@@ -565,6 +558,28 @@ export function StoreProvider({ zugang = 'bereich', children }: { zugang?: Zugan
     const jetzt = new Date().toISOString();
     setData((alt) => aenderungAnwenden(alt, fn, jetzt, optionen));
   }, []);
+
+  // „Angemeldet als“ aus der gemeinsamen Anmeldung: Name, Farbmodus und der Mitarbeiter dieses Namens
+  useBenutzerAbgleich(
+    data,
+    (d, b) => anmeldungWeicht(d, b),
+    (b) =>
+      mutate(
+        (d) =>
+          anmeldungWeicht(d, b)
+            ? {
+                ...d,
+                einstellungen: {
+                  ...d.einstellungen,
+                  bearbeiter: b.name,
+                  farbmodus: b.farbmodus,
+                  mitarbeiterId: mitarbeiterZumNamen(d.mitarbeiter, b.name)?.id ?? null,
+                },
+              }
+            : d,
+        { zeitstempel: false },
+      ),
+  );
 
   // Projekte mit dem Projektregister abgleichen – solange der gespeicherte Stand gelesen werden konnte
   const { ersetzt } = useRegisterAbgleich({

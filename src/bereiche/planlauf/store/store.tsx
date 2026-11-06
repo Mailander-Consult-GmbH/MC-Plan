@@ -10,7 +10,9 @@
  *
  * Projekte und Kontakte gleicht der Store nach jeder Änderung mit dem
  * Projektregister ab (`useRegisterAbgleich`, domain/register.ts) – solange der
- * gespeicherte Stand gelesen werden konnte.
+ * gespeicherte Stand gelesen werden konnte. Name und Farbmodus unter
+ * „Angemeldet als“ kommen aus der gemeinsamen Anmeldung aller Bereiche
+ * (`useBenutzerAbgleich`, src/gemeinsam/benutzer.ts); `bearbeiter` spiegelt sie.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -48,6 +50,7 @@ import { basisplanFestlegen } from '../domain/simulation';
 import { seedData } from '../domain/seed';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
+import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
 import { ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 import { formatDate, today } from '../../../shared/dates';
 import { funktionsName } from '../domain/types';
@@ -271,6 +274,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const heute = today();
     setData((alt) => bestandAendern(alt, fn, { zeitpunkt, heute, protokoll: optionen.protokoll }, newId));
   }, []);
+
+  // Name und Farbmodus aus der gemeinsamen Anmeldung – ohne Änderungsprotokoll
+  useBenutzerAbgleich(
+    data,
+    (d, b) => d.bearbeiter.name !== b.name || (d.bearbeiter.farbmodus ?? 'standard') !== b.farbmodus,
+    (b) =>
+      mutate(
+        (d) =>
+          d.bearbeiter.name === b.name && (d.bearbeiter.farbmodus ?? 'standard') === b.farbmodus
+            ? d
+            : { ...d, bearbeiter: { ...d.bearbeiter, name: b.name, farbmodus: b.farbmodus } },
+        { protokoll: false },
+      ),
+  );
 
   // Projekte und Kontakte mit dem Projektregister abgleichen
   const { ersetzt } = useRegisterAbgleich({

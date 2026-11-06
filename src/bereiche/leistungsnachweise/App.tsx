@@ -3,9 +3,11 @@
  * Ladefehler, ohne Anmeldung) und Auswahl der Ansicht. Der Excel-Import ist
  * projektübergreifend und öffnet sich aus der Seitenleiste und der Übersicht.
  *
- * Die Anmeldung (components/AnmeldeDialog.tsx) wird hier bereitgestellt:
- * Jede Ansicht kann sie öffnen – „Leistung erfassen“ und „Excel-Import“ führen
- * ohne Anmeldung zuerst dorthin. Das Controlling (Auswertung, Abrechnung,
+ * Unten in der Seitenleiste „Angemeldet als“ – Name und Farbmodus gelten in
+ * allen Bereichen (src/gemeinsam/AngemeldetAls.tsx). Die Anmeldung als
+ * Mitarbeiter (components/AnmeldeDialog.tsx) wird hier bereitgestellt: Jede
+ * Ansicht kann sie öffnen – „Leistung erfassen“ und „Excel-Import“ führen ohne
+ * Anmeldung zuerst dorthin. Das Controlling (Auswertung, Abrechnung,
  * Abschluss, Export, Mitarbeiter) liegt im Controlling-Bereich von KaPlan
  * (controlling.tsx); Adressen dorthin lenkt der Bereich um.
  */
@@ -15,13 +17,14 @@ import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { useToast } from '../../shared/toast';
 import { Callout, Card, ConfirmDialog, EmptyState } from '../../shared/ui';
 import { BereichWechsel } from '../../shell/BereichWechsel';
+import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AnmeldeDialog, AnmeldeHinweis, AnmeldungBereitstellen, type AnmeldungOeffnen } from './components/AnmeldeDialog';
 import { ImportDialog } from './components/ImportDialog';
 import { SicherungEinspielenDialog, SicherungKnopf, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { leistungenOhneNachweis, nachweisTitel } from './domain/nachweis';
 import { angemeldet } from './domain/rechte';
-import { mitarbeiterName, projektTitel, type Leistungsnachweis, type Projekt } from './domain/types';
+import { projektTitel, type Leistungsnachweis, type Projekt } from './domain/types';
 import { routeToHash, useRoute, type Route } from './lib/router';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
@@ -134,27 +137,12 @@ export function App() {
           })}
 
           <div className="sidebar-footer">
-            <button
-              type="button"
-              className={`bearbeiter ln-anmeldung ${ich ? '' : 'ln-abgemeldet'}`}
-              onClick={() => anmeldungOeffnen()}
-              title={ich ? 'Anmeldung wechseln, abmelden, Farbmodus' : 'Anmelden – erst dann lassen sich Leistungen erfassen'}
-            >
-              <span className="avatar" style={{ width: 26, height: 26 }}>
-                {ich ? ich.kuerzel.slice(0, 3) || initialen(mitarbeiterName(ich)) : '?'}
-              </span>
-              {ich ? (
-                <span className="ln-anmeldung-text">
-                  <span className="ln-anmeldung-label">Angemeldet als</span>
-                  <strong className="truncate">{mitarbeiterName(ich) || ich.kuerzel}</strong>
-                </span>
-              ) : (
-                <span className="ln-anmeldung-text">
-                  <strong>Nicht angemeldet</strong>
-                  <span className="ln-anmeldung-label">Zum Anmelden klicken</span>
-                </span>
-              )}
-            </button>
+            <AngemeldetAls hinweis="Unter diesem Namen erfassen Sie Ihre Leistungen – er muss dem Namen eines Mitarbeiters entsprechen (Vor- und Nachname). Fehlt die Person, lässt sie sich im Bereich als Mitarbeiter anlegen." />
+            {ich ? null : (
+              <button type="button" className="link-btn ln-anmeldung-link" onClick={() => anmeldungOeffnen()}>
+                Nicht als Mitarbeiter angemeldet – anmelden
+              </button>
+            )}
             <div className="sicherung-knoepfe">
               <SicherungKnopf />
               <SicherungWaehlen onGelesen={setSicherung} />
@@ -258,14 +246,6 @@ export function App() {
       </div>
     </AnmeldungBereitstellen>
   );
-}
-
-/** Kürzel der angemeldeten Person für das Namensfeld. */
-function initialen(name: string): string {
-  const teile = name.trim().split(/\s+/).filter(Boolean);
-  if (teile.length === 0) return '?';
-  if (teile.length === 1) return teile[0].slice(0, 2).toUpperCase();
-  return (teile[0][0] + teile[teile.length - 1][0]).toUpperCase();
 }
 
 /**

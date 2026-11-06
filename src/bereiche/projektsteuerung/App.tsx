@@ -3,12 +3,11 @@ import { useEffect, useState } from 'react';
 import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { useToast } from '../../shared/toast';
-import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../shared/ui';
+import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { bezeichnung } from './domain/protokoll';
 import { eigeneTodos, offenePunkte } from './domain/punkte';
-import { STANDARD_BEARBEITER } from './domain/types';
 import { useRoute, type Route } from './lib/router';
 import { Funktionen } from './pages/Funktionen';
 import { ProjektDetail } from './pages/ProjektDetail';
@@ -18,6 +17,7 @@ import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
 import { exportiereDaten } from './store/storage';
 import { useStore } from './store/store';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
+import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 
 export function App() {
   const { data, zuruecksetzen } = useStore();
@@ -30,7 +30,6 @@ export function App() {
   useEffect(() => {
     if (inEinstellungen) setEinstellungenOffen(true);
   }, [inEinstellungen]);
-  const [bearbeiterDialog, setBearbeiterDialog] = useState(false);
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
 
@@ -114,14 +113,7 @@ export function App() {
         })}
 
         <div className="sidebar-footer">
-          <button type="button" className="bearbeiter" onClick={() => setBearbeiterDialog(true)}>
-            <span className="avatar" style={{ width: 26, height: 26 }}>
-              {initialen(data.einstellungen.bearbeiter)}
-            </span>
-            <span style={{ minWidth: 0 }}>
-              <strong className="truncate">{data.einstellungen.bearbeiter}</strong>
-            </span>
-          </button>
+          <AngemeldetAls hinweis="Steht dieser Name in der Projektbeteiligtenliste, übernehmen Sie die Protokollführung neuer Protokollreihen, und die Übersicht zeigt die Aufgaben mit Ihrem Kürzel oder Namen als eigene To-Dos." />
           <div className="sicherung-knoepfe">
             <button
               type="button"
@@ -182,7 +174,6 @@ export function App() {
         <div className="overlay" style={{ background: 'rgba(0,0,0,0.18)', zIndex: 80 }} onClick={() => setMenuOffen(false)} />
       ) : null}
 
-      {bearbeiterDialog ? <BearbeiterDialog onClose={() => setBearbeiterDialog(false)} /> : null}
 
       {sicherung ? (
         <SicherungEinspielenDialog
@@ -206,71 +197,6 @@ export function App() {
         />
       ) : null}
     </div>
-  );
-}
-
-/** Kürzel der angemeldeten Person für das Namensfeld. */
-function initialen(name: string): string {
-  const teile = name.trim().split(/\s+/).filter(Boolean);
-  if (teile.length === 0) return '?';
-  if (teile.length === 1) return teile[0].slice(0, 2).toUpperCase();
-  return (teile[0][0] + teile[teile.length - 1][0]).toUpperCase();
-}
-
-function BearbeiterDialog({ onClose }: { onClose: () => void }) {
-  const { data, setEinstellungen } = useStore();
-  const [name, setName] = useState(data.einstellungen.bearbeiter);
-  const [kontrast, setKontrast] = useState(data.einstellungen.farbmodus === 'kontrast');
-
-  return (
-    <Modal
-      titel="Angemeldet als"
-      sub="Eigene Angaben und persönliche Einstellungen"
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onClose}>
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => {
-              setEinstellungen({
-                bearbeiter: name.trim() || STANDARD_BEARBEITER,
-                farbmodus: kontrast ? 'kontrast' : 'standard',
-              });
-              onClose();
-            }}
-          >
-            Übernehmen
-          </button>
-        </>
-      }
-    >
-      <div className="form-grid">
-        <Field
-          label="Name"
-          full
-          hint="Steht dieser Name in der Projektbeteiligtenliste, übernehmen Sie die Protokollführung neuer Protokollreihen, und die Übersicht zeigt die Aufgaben mit Ihrem Kürzel oder Namen als eigene To-Dos."
-        >
-          <TextInput value={name} onChange={setName} placeholder="Vor- und Nachname" />
-        </Field>
-        <Field
-          label="Darstellung"
-          full
-          hint="Farben für eine Rot-Grün-Sehschwäche: Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot – zusätzlich mit stärkeren Kontrasten."
-        >
-          <label className="checkbox">
-            <input type="checkbox" checked={kontrast} onChange={(e) => setKontrast(e.target.checked)} />
-            Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)
-          </label>
-        </Field>
-      </div>
-      <p className="small tertiary" style={{ marginTop: 12 }}>
-        Die Einstellungen gelten nur für die Projektsteuerung; die anderen Bereiche führen eigene.
-      </p>
-    </Modal>
   );
 }
 

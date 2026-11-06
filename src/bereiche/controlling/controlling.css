@@ -63,7 +63,7 @@
   text-align: left;
   padding-left: 2px;
 }
-.btn.ct-sperren { width: 100%; justify-content: center; margin: 4px 0 8px; }
+.btn.ct-sperren { width: 100%; justify-content: center; margin: 8px 0; }
 
 /* Projektkarte */
 .ct-beschreibung { margin-top: 3px; }

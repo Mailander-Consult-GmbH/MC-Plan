@@ -21,22 +21,15 @@
 .table th.ln-stunden, .table td.ln-stunden { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .table td.ln-stunden { font-weight: 600; }
 
-/* Anmeldung im Fuß der Seitenleiste: „Angemeldet als“, Name, Badge „Controlling“ bzw. „Nicht angemeldet“ */
-.bearbeiter.ln-anmeldung { align-items: flex-start; }
-.bearbeiter.ln-anmeldung .avatar { margin-top: 2px; font-size: 10.5px; }
-.ln-anmeldung-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
-.ln-anmeldung-text strong { max-width: 100%; }
-.ln-anmeldung-label { font-size: 11px; color: var(--text-tertiary); }
-.ln-anmeldung-text .badge { margin-top: 3px; padding: 1px 7px; font-size: 10.5px; }
-.bearbeiter.ln-abgemeldet { border-style: dashed; border-color: var(--separator-strong); }
-.bearbeiter.ln-abgemeldet .avatar { background: var(--gray-soft); color: var(--text-secondary); }
-
 /* Hinweise mit Knopf (row-between im Callout): Der Inhalt nimmt die ganze Breite, damit der Knopf rechts steht */
 .ln-app .callout > div:last-child { flex: 1 1 auto; min-width: 0; }
 
 /* Hinweis ohne Anmeldung oben im Inhalt */
 .ln-anmeldehinweis { margin-bottom: 18px; }
 .ln-anmeldehinweis .callout { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* Hinweis unter „Angemeldet als“, solange der Name keinem Mitarbeiter gehört */
+.ln-anmeldung-link { display: block; margin: 4px 0 0 2px; font-size: 11.5px; text-align: left; }
 
 /* Anmeldedialog */
 .ln-anmeldung-dialog { gap: 14px; }

@@ -7,7 +7,8 @@
  * * **Bereich** – wer angemeldet ist (`einstellungen.mitarbeiterId`, ein
  *   aktiver Mitarbeiter), erfasst, ändert und importiert nur eigene Leistungen
  *   und bearbeitet den gemeinsamen Nachweis (Leistungstext, Bemerkung,
- *   „Ergänzen“), solange er offen ist.
+ *   „Ergänzen“), solange er offen ist. Wer angemeldet ist, ergibt sich aus dem
+ *   Namen der gemeinsamen Anmeldung aller Bereiche (`mitarbeiterZumNamen`).
  * * **Controlling** – der Controlling-Bereich von KaPlan (nach der PIN) bindet
  *   den Bestand mit diesem Zugang ein (controlling.tsx). Dort gibt es alles
  *   Übrige: Auswertung, Nachweise anlegen, ändern, abschließen und löschen,
@@ -44,6 +45,40 @@ export type Recht =
   | 'export'
   | 'auswertung'
   | 'mitarbeiterVerwalten';
+
+/** Vergleichsform eines Namens: klein, Umlaute ausgeschrieben, ohne Kommas, einfache Leerzeichen. */
+function namensForm(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/,/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Mitarbeiter zum Namen unter „Angemeldet als“ (gilt in allen Bereichen):
+ * „Vorname Nachname“ oder „Nachname, Vorname“, ohne Rücksicht auf Groß- und
+ * Kleinschreibung. Ohne `auchAusgeschiedene` nur aktive.
+ */
+export function mitarbeiterZumNamen(
+  mitarbeiter: Mitarbeiter[],
+  name: string,
+  auchAusgeschiedene = false,
+): Mitarbeiter | null {
+  const gesucht = namensForm(name);
+  if (!gesucht) return null;
+  return (
+    mitarbeiter.find(
+      (m) =>
+        (auchAusgeschiedene || m.aktiv) &&
+        (namensForm(`${m.vorname} ${m.nachname}`) === gesucht || namensForm(`${m.nachname} ${m.vorname}`) === gesucht),
+    ) ?? null
+  );
+}
 
 /** Die angemeldete Person – ein existierender, aktiver Mitarbeiter – oder null. */
 export function angemeldet(d: Pick<LeistungsnachweisDaten, 'einstellungen' | 'mitarbeiter'>): Mitarbeiter | null {

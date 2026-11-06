@@ -183,10 +183,13 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   Projektnummer und der Anzahl überfälliger Schritte. Ganz unten
   **Bereich wechseln** zurück zur Bereichsauswahl
   (`src/shell/BereichWechsel.tsx`).
-* **Angemeldet als** (unten links): Name (Vorgabe `STANDARD_BEARBEITER =
-  'Max Mustermann'`), Schalter „Nachfragen zulassen, wenn ein Workflow-Schritt
-  eine E-Mail vorsieht“ und Schalter „Farbmodus für Rot-Grün-Sehschwäche
-  (hoher Kontrast)“.
+* **Angemeldet als** (unten links, `AngemeldetAls` aus
+  `src/gemeinsam/AngemeldetAls.tsx`, Abschnitt 11): Name und Schalter
+  „Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)“ – beides für alle
+  Bereiche –, dazu als Einstellung dieses Bereichs „Nachfragen zulassen, wenn
+  ein Workflow-Schritt eine E-Mail vorsieht“ (`bearbeiter.mailNachfrage`).
+  `bearbeiter.name` und `bearbeiter.farbmodus` spiegeln die gemeinsame
+  Anmeldung (`useBenutzerAbgleich` in `src/bereiche/planlauf/store/store.tsx`).
 * **Sicherung**: lädt den gesamten Bestand als JSON herunter
   (`exportiereDaten`); nach einem Lade- oder Fassungsfehler stattdessen den
   gespeicherten Stand unverändert („Gespeicherten Stand unverändert
@@ -198,8 +201,9 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   Planverzeichnisse und Planläufe, der Warnung, dass der jetzige Bestand
   ersetzt wird, „Aktuellen Stand sichern“ und, wenn die Namen abweichen, dem
   Haken „„Angemeldet als“ aus der Sicherung übernehmen“ (vorgewählt, solange
-  der Name `STANDARD_BEARBEITER` ist); ohne gesetzten Haken bleiben Name,
-  Farbmodus und E-Mail-Nachfrage der Person am Rechner. „Alles ersetzen“ ersetzt den Bestand über
+  der Name `STANDARD_BEARBEITER` ist; mit Haken gelten Name und Farbmodus der
+  Sicherung danach in allen Bereichen, `benutzerAendern`); ohne gesetzten Haken
+  bleiben Name, Farbmodus und E-Mail-Nachfrage der Person am Rechner. „Alles ersetzen“ ersetzt den Bestand über
   `ersetzeDaten` und wechselt zur Übersicht. „Abgleichen und auswählen …“
   öffnet „Sicherung abgleichen“ (`src/bereiche/planlauf/components/Abgleich.tsx`,
   Logik `abgleichErmitteln`/`abgleichAnwenden` in
@@ -256,8 +260,9 @@ Berechtigung; jede Person, die die Anwendung im Browser öffnet, kann alles
 lesen und ändern. Einzig das Controlling fragt eine PIN ab
 (`CONTROLLING_PIN = '0000'` in `src/bereiche/controlling/domain/pin.ts`) – sie
 steht im Quelltext und schützt nur vor versehentlichem Zugriff (Abschnitt 9).
-In den Leistungsnachweisen meldet sich eine Person als Mitarbeiter an (eine
-Auswahl ohne Kennwort); die Rechte stehen in
+„Angemeldet als“ ist ein Name ohne Kennwort, gemeinsam für alle Bereiche
+(Abschnitt 11). In den Leistungsnachweisen erfasst, wer unter diesem Namen als
+Mitarbeiter geführt ist; die Rechte stehen in
 `src/bereiche/leistungsnachweise/domain/rechte.ts` (Abschnitt 10.3). Der Bestand liegt ausschließlich im `localStorage` des
 jeweiligen Browsers, wird also ohnehin nicht geteilt.
 
@@ -618,16 +623,16 @@ die Übersicht.
 
 * Seitenleiste: Übersicht, „Termine & Nachhaken“ (mit der Zahl überfälliger
   Fristen), Projekte, Workflows, Einstellungen, darunter die markierten
-  Projekte; unten „Angemeldet als“ (Name, Vorgabe `STANDARD_BEARBEITER =
-  'Bearbeitung MIC'`, und „Farbmodus für Rot-Grün-Sehschwäche (hoher
-  Kontrast)“), „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich
-  wechseln“.
+  Projekte; unten „Angemeldet als“ (gemeinsam für alle Bereiche, Abschnitt 11;
+  `einstellungen.bearbeiter` und `einstellungen.farbmodus` spiegeln sie),
+  „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich wechseln“.
 * Sicherung (`exportiereDaten`) lädt `baubetrieb-sicherung-<Datum>.json` mit
   `"bereich": "baubetrieb"`. Einspielen
   (`src/bereiche/baubetrieb/components/Sicherung.tsx`) fragt „Sicherung
   einspielen?“, bietet „Aktuellen Stand sichern“ und übernimmt „Angemeldet
-  als“ und Farbmodus nur mit dem Haken „Auch „Angemeldet als“ und Farbmodus
-  aus der Sicherung übernehmen“.
+  als“ und Farbmodus – dann für alle Bereiche – nur mit dem Haken „Auch
+  „Angemeldet als“ und Farbmodus aus der Sicherung übernehmen – gilt dann in
+  allen Bereichen“.
 * Excel (`monitorExportieren` in `src/bereiche/baubetrieb/domain/export.ts`):
   Blätter „Anmeldungen“ (mit den Spalten „Workflow“ und „Status“) und
   „Projekte“, Terminfristen bei überfälligen Anmeldungen rot, bei fälligen
@@ -841,9 +846,9 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
 * Seitenleiste: Übersicht (mit der Zahl eigener To-Dos), Projekte, die
   einklappbare Gruppe „Einstellungen“ mit „Funktionen“ (aufgeklappt, solange
   die Seite Funktionen offen ist), darunter die markierten Projekte mit ihren
-  überfälligen Aufgaben; unten „Angemeldet als“ (Name, Vorgabe `STANDARD_BEARBEITER =
-  'Projektsteuerung MIC'`, und „Farbmodus für Rot-Grün-Sehschwäche (hoher
-  Kontrast)“), „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich
+  überfälligen Aufgaben; unten „Angemeldet als“ (gemeinsam für alle Bereiche,
+  Abschnitt 11; `einstellungen.bearbeiter` und `einstellungen.farbmodus`
+  spiegeln sie), „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich
   wechseln“.
 * Ampel (`ampelFuer` in `src/bereiche/projektsteuerung/domain/punkte.ts`, Bezeichnungen in
   `AMPEL_LABEL`): erledigt, überfällig, demnächst fällig (`VORLAUF_TAGE = 7`
@@ -851,9 +856,9 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
 * Sicherung (`exportiereDaten`) lädt `projektsteuerung-sicherung-<Datum>.json`
   mit `"bereich": "projektsteuerung"`. Einspielen
   (`src/bereiche/projektsteuerung/components/Sicherung.tsx`) fragt „Sicherung einspielen?“, bietet
-  „Aktuellen Stand sichern“ und übernimmt „Angemeldet als“ und Farbmodus nur
-  mit dem Haken „Auch „Angemeldet als“ und Farbmodus aus der Sicherung
-  übernehmen“.
+  „Aktuellen Stand sichern“ und übernimmt „Angemeldet als“ und Farbmodus –
+  dann für alle Bereiche – nur mit dem Haken „Auch „Angemeldet als“ und
+  Farbmodus aus der Sicherung übernehmen – gilt dann in allen Bereichen“.
 
 ### 8.6 Meldungen
 
@@ -1054,6 +1059,16 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   `src/bereiche/leistungsnachweise/store/store.tsx`; danach räumt
   `nachweiseBereinigen` (`src/bereiche/leistungsnachweise/domain/nachweis.ts`)
   auf, und `useRegisterAbgleich` gleicht die Projekte mit dem Register ab.
+* Angemeldet ist der aktive Mitarbeiter, dessen Name dem unter „Angemeldet
+  als“ entspricht – „Vorname Nachname“ oder „Nachname, Vorname“, ohne Rücksicht
+  auf Groß- und Kleinschreibung (`mitarbeiterZumNamen` in
+  `src/bereiche/leistungsnachweise/domain/rechte.ts`); der Store setzt
+  `einstellungen.mitarbeiterId` danach (`useBenutzerAbgleich`). Fehlt er,
+  nennt `AnmeldeHinweis` den Namen, und der Dialog „Als Mitarbeiter anmelden“
+  (`src/bereiche/leistungsnachweise/components/AnmeldeDialog.tsx`, Vorschläge
+  aus den aktiven Mitarbeitern) meldet mit „Anmelden“ an bzw. legt die Person
+  mit „Als Mitarbeiter anlegen“ an (`selbstAnlegen`); er setzt dabei den
+  gemeinsamen Namen.
 
 ### 10.2 Routen im Bereich
 
@@ -1064,9 +1079,9 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
 | `#/leistungsnachweise/projekt/<id>/<reiter>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`) | Ggf. Archivhinweis (9.3); Reiter `nachweise` („Leistungsnachweise“, mit „Nachweise anlegen“ für Leistungen ohne Nachweis), `leistungen` („Leistungen“: eigene Leistungen, „Leistung erfassen“) und `einstellungen` („Einstellungen“: Vorgaben, Abschnitte, Logos). Ein Löschen gibt es hier nicht (`darf(zugang, 'projektLoeschen')` nur im Controlling). |
 | `#/leistungsnachweise/projekt/<id>/nachweis/<id>` | Nachweis (`src/bereiche/leistungsnachweise/pages/projekt/NachweisEditor.tsx`) | Zeilen je Tag, Woche oder Monat; Leistungstext und Bemerkung bearbeiten, solange offen; „Ergänzen“ bei neuen Leistungen; „Leistung erfassen“. |
 
-Unten in der Seitenleiste „Angemeldet als“ bzw. „Nicht angemeldet“
-(`src/bereiche/leistungsnachweise/components/AnmeldeDialog.tsx`, Auswahl
-„Ich bin …“ mit „Ich bin noch nicht in der Liste“), „Sicherung“,
+Unten in der Seitenleiste „Angemeldet als“ (gemeinsam für alle Bereiche,
+Abschnitt 11) und – solange der Name keinem aktiven Mitarbeiter gehört –
+„Nicht als Mitarbeiter angemeldet – anmelden“; darunter „Sicherung“,
 „Einspielen“, „Zurücksetzen“ und „Bereich wechseln“; darüber „Excel-Import“
 (`src/bereiche/leistungsnachweise/components/ImportDialog.tsx`). Adressen des
 Controllings – auch frühere unter `#/leistungsnachweise/controlling/…` und
@@ -1109,6 +1124,8 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 | Meldung | Fundstelle | Ursache |
 | --- | --- | --- |
 | „Bitte zuerst anmelden.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`NICHT_ANGEMELDET`) | Aktion im Bereich ohne Anmeldung. |
+| „Unter „…“ ist kein Mitarbeiter geführt – Leistungen erfasst, wer als Mitarbeiter angemeldet ist.“ | `src/bereiche/leistungsnachweise/components/AnmeldeDialog.tsx` (`AnmeldeHinweis`) | Der Name unter „Angemeldet als“ gehört keinem Mitarbeiter. |
+| „Bitte Vor- und Nachnamen angeben.“ | `src/bereiche/leistungsnachweise/components/AnmeldeDialog.tsx` | „Als Mitarbeiter anmelden“ ohne Nachnamen. |
 | „Das ist dem Controlling vorbehalten.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`NUR_CONTROLLING`) | Controlling-Aktion außerhalb des Controllings. |
 | „Bitte einen Projektnamen angeben.“ | `src/bereiche/leistungsnachweise/pages/Projekte.tsx` | Projekt ohne Namen. |
 | „Die Projektnummer „…“ ist bereits vergeben.“ | `src/bereiche/leistungsnachweise/pages/Projekte.tsx` | Projektnummer doppelt. |
@@ -1118,3 +1135,27 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 | „Die Datei ist keine Sicherung der Leistungsnachweise.“ | `src/bereiche/leistungsnachweise/store/storage.ts` | Einspielen einer fremden Datei. |
 | „Leistungsnachweis wieder geöffnet – er zeigt die aktuellen Leistungen.“ / „Aufschläge zurückgesetzt.“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` | Kein Fehler. |
 | „Der gespeicherte Stand der Leistungsnachweise ließ sich nicht laden bzw. stammt aus einer neueren Fassung. …“ | `src/bereiche/leistungsnachweise/controlling.tsx` | Controlling bei `ladeZustand` ≠ 'ok'. |
+
+## 11. Angemeldet als – für alle Bereiche
+
+* `src/gemeinsam/benutzer.ts`: `Benutzer` mit `name` und `farbmodus`, Schlüssel
+  `kaplan-benutzer.v1` im `localStorage`, Vorgabe `STANDARD_NAME = 'Max
+  Mustermann'`. Ohne gespeicherten Stand übernimmt `laden` einmalig den ersten
+  selbst eingetragenen Namen samt Farbmodus aus den Beständen des
+  Planlaufmanagements, der Projektsteuerung, der Baubetriebsplanung und der
+  Leistungsnachweise (`FRUEHER`; deren Vorgabenamen zählen nicht).
+  `benutzerAendern` ändert Name bzw. Farbmodus für alle Bereiche, `useBenutzer`
+  liefert sie der Oberfläche; ein anderes Fenster lädt sie bei einer Änderung neu
+  (`storage`-Ereignis).
+* `src/gemeinsam/AngemeldetAls.tsx`: Knopf „Angemeldet als“ unten in der
+  Seitenleiste aller Bereiche und des Controllings und Dialog „Angemeldet als“
+  (Name, „Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)“, ggf. eine
+  Einstellung des Bereichs als Haken, „Übernehmen“) mit dem Hinweis „Gilt in
+  allen Bereichen von KaPlan. Bis zur Anmeldung über SSO ist dies eine Angabe
+  ohne Kennwort; die Daten liegen lokal in diesem Browser.“ Der Dialog öffnet
+  sich über ein Portal auf Seitenebene.
+* `src/gemeinsam/useBenutzerAbgleich.ts`: Jeder Store zieht Name und Farbmodus
+  nach jeder Änderung in seinen Bestand nach (Planlaufmanagement:
+  `bearbeiter`; Baubetriebsplanung, Projektsteuerung, Leistungsnachweise:
+  `einstellungen`; die Leistungsnachweise zudem `mitarbeiterId`, Abschnitt 10.1).
+  Das Controlling folgt dem Farbmodus (`src/bereiche/controlling/App.tsx`).
