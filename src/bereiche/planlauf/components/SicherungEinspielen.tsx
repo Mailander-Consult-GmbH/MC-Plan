@@ -8,6 +8,7 @@
  * gewählt wird); „Abgleichen und auswählen“ zeigt die Unterschiede und
  * übernimmt nur das Gewählte (components/Abgleich.tsx).
  */
+import { benutzerAendern } from '../../../gemeinsam/benutzer';
 import { useRef, useState } from 'react';
 import { STANDARD_BEARBEITER, type AppData, type ISODate } from '../domain/types';
 import { exportiereDaten, sicherungLesen } from '../store/storage';
@@ -101,8 +102,11 @@ export function SicherungEinspielenDialog({
 
   const einspielen = () => {
     const { daten } = sicherung;
-    // „Angemeldet als“ samt Farbmodus kommt nur auf ausdrücklichen Wunsch aus der Sicherung
-    ersetzeDaten(fremderName && nameUebernehmen ? daten : { ...daten, bearbeiter: data.bearbeiter });
+    // „Angemeldet als“ samt Farbmodus kommt nur auf ausdrücklichen Wunsch aus der Sicherung –
+    // dann für alle Bereiche (gemeinsame Anmeldung)
+    const mitName = fremderName && nameUebernehmen;
+    if (mitName) benutzerAendern({ name: daten.bearbeiter.name, farbmodus: daten.bearbeiter.farbmodus ?? 'standard' });
+    ersetzeDaten(mitName ? daten : { ...daten, bearbeiter: data.bearbeiter });
     toast(
       `Sicherung eingespielt – ${anzahl(daten.projects.length, 'Projekt', 'Projekte')}, ${anzahl(
         daten.runs.length,
@@ -193,8 +197,8 @@ export function SicherungEinspielenDialog({
               checked={nameUebernehmen}
               onChange={(e) => setNameUebernehmen(e.target.checked)}
             />
-            Beim Ersetzen „Angemeldet als“ aus der Sicherung übernehmen ({sicherung.daten.bearbeiter.name}) – sonst bleibt es bei{' '}
-            {data.bearbeiter.name}
+            Beim Ersetzen „Angemeldet als“ aus der Sicherung übernehmen ({sicherung.daten.bearbeiter.name}, gilt dann in allen
+            Bereichen) – sonst bleibt es bei {data.bearbeiter.name}
           </label>
         ) : null}
       </div>

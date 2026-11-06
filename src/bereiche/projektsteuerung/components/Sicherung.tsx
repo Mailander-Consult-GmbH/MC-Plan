@@ -3,6 +3,7 @@
  * einspielen. Die Sicherung trägt das Kennzeichen des Bereichs; Sicherungen
  * der anderen Bereiche werden abgewiesen (sicherungLesen in store/storage.ts).
  */
+import { benutzerAendern } from '../../../gemeinsam/benutzer';
 import { useRef, useState } from 'react';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
@@ -77,6 +78,8 @@ export function SicherungEinspielenDialog({
   )}, ${anzahl(daten.protokolle.length, 'Protokoll', 'Protokolle')}`;
 
   const einspielen = () => {
+    // „Angemeldet als“ gilt in allen Bereichen – aus der Sicherung nur auf ausdrücklichen Wunsch
+    if (mitEinstellungen) benutzerAendern({ name: daten.einstellungen.bearbeiter, farbmodus: daten.einstellungen.farbmodus });
     ersetzeDaten({ ...daten, einstellungen: mitEinstellungen ? daten.einstellungen : data.einstellungen });
     toast(`Sicherung eingespielt – ${umfang}.`);
     onClose();
@@ -111,7 +114,7 @@ export function SicherungEinspielenDialog({
         </Callout>
         <label className="checkbox">
           <input type="checkbox" checked={mitEinstellungen} onChange={(e) => setMitEinstellungen(e.target.checked)} />
-          Auch „Angemeldet als“ und Farbmodus aus der Sicherung übernehmen
+          Auch „Angemeldet als“ und Farbmodus aus der Sicherung übernehmen – gilt dann in allen Bereichen
         </label>
       </div>
     </Modal>

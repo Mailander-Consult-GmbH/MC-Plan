@@ -8,6 +8,7 @@
  * gespeicherten Stand unverändert, und über einen Stand aus einer neueren
  * Fassung lässt sich nichts einspielen.
  */
+import { benutzerAendern } from '../../../gemeinsam/benutzer';
 import { useRef, useState } from 'react';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
@@ -100,7 +101,11 @@ function umfangVon(daten: LeistungsnachweisDaten): string {
   )}`;
 }
 
-/** Rückfrage vor dem Einspielen – „Angemeldet als“, „Ich erfasse als“ und Farbmodus bleiben erhalten. */
+/**
+ * Rückfrage vor dem Einspielen – „Angemeldet als“ und Farbmodus bleiben
+ * erhalten; mit dem Haken kommen sie aus der Sicherung und gelten dann in
+ * allen Bereichen (gemeinsame Anmeldung).
+ */
 export function SicherungEinspielenDialog({
   sicherung,
   onClose,
@@ -120,6 +125,7 @@ export function SicherungEinspielenDialog({
 
   const einspielen = () => {
     if (neuereFassung) return;
+    if (mitEinstellungen) benutzerAendern({ name: daten.einstellungen.bearbeiter, farbmodus: daten.einstellungen.farbmodus });
     // Die Anmeldung bleibt nur, wenn die angemeldete Person auch in der Sicherung vorkommt
     const eigene = data.einstellungen;
     const einstellungen = mitEinstellungen
@@ -182,7 +188,8 @@ export function SicherungEinspielenDialog({
         )}
         <label className="checkbox">
           <input type="checkbox" checked={mitEinstellungen} onChange={(e) => setMitEinstellungen(e.target.checked)} />
-          Auch die Anmeldung („Angemeldet als“) und den Farbmodus aus der Sicherung übernehmen
+          Auch die Anmeldung („Angemeldet als“) und den Farbmodus aus der Sicherung übernehmen – gilt dann in allen
+          Bereichen
         </label>
       </div>
     </Modal>

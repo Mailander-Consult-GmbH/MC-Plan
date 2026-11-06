@@ -36,11 +36,15 @@ export const STANDARD_BEARBEITER = 'Mitarbeiter MIC';
 export type Farbmodus = 'standard' | 'kontrast';
 
 export interface Einstellungen {
-  /** Anzeigename der angemeldeten Person; `anmelden` setzt ihn auf `mitarbeiterName`. */
+  /**
+   * Name unter „Angemeldet als“ – Spiegel der gemeinsamen Anmeldung aller
+   * Bereiche (src/gemeinsam/benutzer.ts); der Store zieht ihn nach.
+   */
   bearbeiter: string;
   /**
-   * Angemeldete Person: Sie erfasst und importiert nur eigene Leistungen
-   * (domain/rechte.ts). null = nicht
+   * Angemeldete Person: der aktive Mitarbeiter, dessen Name dem unter
+   * „Angemeldet als“ entspricht (`mitarbeiterZumNamen`, vom Store nachgezogen).
+   * Sie erfasst und importiert nur eigene Leistungen (domain/rechte.ts). null = nicht
    * angemeldet – dann lässt sich nichts erfassen. Solange die Daten nur im
    * Browser liegen, ist die Anmeldung eine Auswahl ohne Kennwort.
    */

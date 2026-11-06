@@ -1,26 +1,28 @@
 /**
- * Anmeldung im Bereich „Leistungsnachweise“: „Ich bin …“ – Auswahl aus den
- * aktiven Mitarbeitern, oder wer noch nicht in der Liste steht, legt sich
- * selbst an (`selbstAnlegen`). Die angemeldete Person erfasst und importiert
- * nur eigene Leistungen; das Controlling liegt im eigenen Controlling-Bereich
- * von KaPlan (domain/rechte.ts). Dazu der Farbmodus.
+ * Anmeldung im Bereich „Leistungsnachweise“. Wer angemeldet ist, steht unter
+ * „Angemeldet als“ – derselbe Name in allen Bereichen (src/gemeinsam/benutzer.ts).
+ * Leistungen erfasst hier, wer unter diesem Namen als Mitarbeiter geführt ist
+ * (`mitarbeiterZumNamen`); der Store zieht die Zuordnung nach jeder Änderung
+ * nach. Fehlt die Person in der Mitarbeiterliste, legt sie sich hier selbst an
+ * (`selbstAnlegen`) – der Dialog setzt dabei auch den gemeinsamen Namen.
  *
- * Solange die Daten nur im Browser liegen, ist die Anmeldung eine Auswahl
- * ohne Kennwort (`RECHTE_HINWEIS`).
+ * Solange die Daten nur im Browser liegen, ist die Anmeldung eine Angabe ohne
+ * Kennwort (`RECHTE_HINWEIS`).
  *
  * `useAnmeldung` öffnet den Dialog von überall im Bereich (App.tsx stellt ihn
  * bereit) – mit einer Fortsetzung, die nach der Anmeldung läuft: „Leistung
  * erfassen“ und „Excel-Import“ führen ohne Anmeldung zuerst hierher und danach
  * weiter (`useMitAnmeldung`).
  */
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useId, useState } from 'react';
+import { benutzerAendern, namensTeile, useBenutzer } from '../../../gemeinsam/benutzer';
 import { useToast } from '../../../shared/toast';
-import { Callout, Field, Modal, Select, TextInput } from '../../../shared/ui';
-import { kuerzelFrei, namePasst } from '../domain/import';
-import { RECHTE_HINWEIS, angemeldet } from '../domain/rechte';
+import { Callout, Field, Modal, TextInput } from '../../../shared/ui';
+import { kuerzelFrei } from '../domain/import';
+import { RECHTE_HINWEIS, angemeldet, mitarbeiterZumNamen } from '../domain/rechte';
 import { kuerzelAus, mitarbeiterName, type LeistungsnachweisDaten } from '../domain/types';
 import { useStore } from '../store/store';
-import { mitarbeiterAuswahlText, nachNamen } from './common';
+import { nachNamen } from './common';
 
 /* ------------------------------------------------------------------ */
 /* Öffnen von überall                                                  */
@@ -53,27 +55,28 @@ export function useMitAnmeldung(): (fn: () => void) => void {
 }
 
 /**
- * Hinweis oben im Inhalt, solange niemand angemeldet ist – mit Knopf
- * „Anmelden“. Ist die gewählte Person inzwischen ausgeschieden, sagt er das.
+ * Hinweis oben im Inhalt, solange der Name unter „Angemeldet als“ keinem
+ * aktiven Mitarbeiter gehört – mit Knopf zum Anmelden bzw. Anlegen.
  */
 export function AnmeldeHinweis({ daten }: { daten: LeistungsnachweisDaten }) {
   const oeffnen = useAnmeldung();
+  const { name } = useBenutzer();
   if (angemeldet(daten)) return null;
-  const bisher = daten.einstellungen.mitarbeiterId
-    ? daten.mitarbeiter.find((m) => m.id === daten.einstellungen.mitarbeiterId)
-    : undefined;
+  const ausgeschieden = mitarbeiterZumNamen(daten.mitarbeiter, name, true);
   return (
     <div className="ln-anmeldehinweis">
       <Callout icon="i">
         <div className="row-between wrap">
           <span>
-            {bisher
-              ? `${mitarbeiterName(bisher) || bisher.kuerzel} ist als ausgeschieden markiert – bitte melden Sie sich neu an, um Leistungen zu erfassen und zu importieren.`
-              : 'Bitte melden Sie sich an, um eigene Leistungen zu erfassen und zu importieren und am gemeinsamen Leistungsnachweis mitzuschreiben.'}
+            {ausgeschieden
+              ? `${mitarbeiterName(ausgeschieden) || ausgeschieden.kuerzel} ist als ausgeschieden markiert – Leistungen erfasst nur, wer aktiv ist. Das Controlling kann die Person unter „Mitarbeiter“ wieder aktiv setzen.`
+              : `Unter „${name}“ ist kein Mitarbeiter geführt – Leistungen erfasst, wer als Mitarbeiter angemeldet ist.`}
           </span>
-          <button type="button" className="btn btn-sm btn-primary" onClick={() => oeffnen()}>
-            Anmelden
-          </button>
+          {ausgeschieden ? null : (
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => oeffnen()}>
+              Als Mitarbeiter anmelden
+            </button>
+          )}
         </div>
       </Callout>
     </div>
@@ -84,181 +87,109 @@ export function AnmeldeHinweis({ daten }: { daten: LeistungsnachweisDaten }) {
 /* Dialog                                                              */
 /* ------------------------------------------------------------------ */
 
-/** Auswahlwert „Ich bin noch nicht in der Liste“. */
-const NEU = '__neu__';
-
+/**
+ * Als Mitarbeiter anmelden: Name (setzt „Angemeldet als“ für alle Bereiche)
+ * und – für eine neue Person – das Kürzel. Gehört der Name einem aktiven
+ * Mitarbeiter, ist man damit angemeldet; sonst wird die Person angelegt.
+ */
 export function AnmeldeDialog({
   onClose,
   onAngemeldet,
 }: {
   onClose: () => void;
-  /** Läuft nach erfolgreicher Anmeldung (nicht beim Abmelden). */
+  /** Läuft nach erfolgreicher Anmeldung. */
   onAngemeldet?: () => void;
 }) {
-  const { data, anmelden, selbstAnlegen, setEinstellungen } = useStore();
+  const { data, selbstAnlegen } = useStore();
+  const benutzer = useBenutzer();
   const toast = useToast();
-  const ich = angemeldet(data);
+  const liste = useId();
   const aktive = data.mitarbeiter.filter((m) => m.aktiv).sort(nachNamen);
 
-  const [wahl, setWahl] = useState<string>(() => ich?.id ?? (aktive.length === 0 ? NEU : ''));
-  const [neu, setNeu] = useState({ vorname: '', nachname: '', kuerzel: '' });
-  const [kontrast, setKontrast] = useState(data.einstellungen.farbmodus === 'kontrast');
+  const [name, setName] = useState(benutzer.name);
+  const [kuerzel, setKuerzel] = useState('');
 
-  const setFeld = <K extends keyof typeof neu>(k: K, v: string) => setNeu((f) => ({ ...f, [k]: v }));
+  const vorhanden = mitarbeiterZumNamen(data.mitarbeiter, name);
+  const ausgeschieden = vorhanden ? null : mitarbeiterZumNamen(data.mitarbeiter, name, true);
+  const { vorname, nachname } = namensTeile(name);
+  const kuerzelWunsch = kuerzel.trim() || kuerzelAus(`${vorname} ${nachname}`);
+  const kuerzelNeu = kuerzelWunsch ? kuerzelFrei(kuerzelWunsch, data.mitarbeiter) : '';
 
-  // Vorschau für „Ich bin noch nicht in der Liste“: Kürzel und eine schon vorhandene Person gleichen Namens
-  const vorname = neu.vorname.trim();
-  const nachname = neu.nachname.trim();
-  const kuerzelWunsch = neu.kuerzel.trim() || kuerzelAus(`${vorname} ${nachname}`);
-  const kuerzel = kuerzelWunsch ? kuerzelFrei(kuerzelWunsch, data.mitarbeiter) : '';
-  const gleicherName = nachname ? aktive.find((m) => namePasst({ vorname, nachname }, m)) : undefined;
-
-  const farbmodusUebernehmen = () => {
-    const farbmodus = kontrast ? 'kontrast' : 'standard';
-    if (farbmodus !== data.einstellungen.farbmodus) setEinstellungen({ farbmodus });
-  };
-
-  const fertig = (name: string) => {
-    farbmodusUebernehmen();
-    toast(`Angemeldet als ${name}.`);
+  const anmelden = () => {
+    if (!nachname) {
+      toast('Bitte Vor- und Nachnamen angeben.');
+      return;
+    }
+    if (ausgeschieden) return;
+    benutzerAendern({ name });
+    if (vorhanden) {
+      toast(`Angemeldet als ${mitarbeiterName(vorhanden) || vorhanden.kuerzel}.`);
+    } else {
+      selbstAnlegen({ vorname, nachname, kuerzel });
+      toast(`„${name.trim()}“ als Mitarbeiter angelegt und angemeldet.`);
+    }
     onClose();
     onAngemeldet?.();
   };
 
-  const anmeldenKlick = () => {
-    if (wahl === NEU) {
-      if (!nachname) {
-        toast('Bitte einen Nachnamen angeben.');
-        return;
-      }
-      const id = selbstAnlegen({ vorname, nachname, kuerzel: neu.kuerzel });
-      if (!id) {
-        toast('Bitte einen Nachnamen angeben.');
-        return;
-      }
-      fertig(mitarbeiterName({ vorname, nachname }));
-      return;
-    }
-    const m = aktive.find((x) => x.id === wahl);
-    if (!m) {
-      toast('Bitte auswählen, wer angemeldet wird.');
-      return;
-    }
-    if (ich?.id === m.id) {
-      // Nur der Farbmodus kann sich geändert haben
-      farbmodusUebernehmen();
-      onClose();
-      onAngemeldet?.();
-      return;
-    }
-    anmelden(m.id);
-    fertig(mitarbeiterName(m) || m.kuerzel);
-  };
-
-  const abmelden = () => {
-    anmelden(null);
-    farbmodusUebernehmen();
-    toast('Abgemeldet.');
-    onClose();
-  };
-
-  const optionen = [
-    ...aktive.map((m) => ({ value: m.id, label: mitarbeiterAuswahlText(m) })),
-    { value: NEU, label: 'Ich bin noch nicht in der Liste' },
-  ];
-
   return (
     <Modal
-      titel={ich ? 'Angemeldet als' : 'Anmelden'}
-      sub={
-        ich
-          ? mitarbeiterName(ich) || ich.kuerzel
-          : 'Erfasst und importiert werden nur eigene Leistungen.'
-      }
+      titel="Als Mitarbeiter anmelden"
+      sub="Leistungen erfasst, wer als Mitarbeiter geführt ist."
       onClose={onClose}
       footer={
         <>
-          {ich ? (
-            <button type="button" className="btn btn-outline" onClick={abmelden}>
-              Abmelden
-            </button>
-          ) : null}
-          <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
-          <button type="button" className="btn btn-primary" onClick={anmeldenKlick}>
-            {ich && wahl === ich.id ? 'Übernehmen' : 'Anmelden'}
+          <button type="button" className="btn btn-primary" onClick={anmelden} disabled={!!ausgeschieden}>
+            {vorhanden ? 'Anmelden' : 'Als Mitarbeiter anlegen'}
           </button>
         </>
       }
     >
       <div className="stack ln-anmeldung-dialog">
-        <div className="form-grid">
+        <div className="form-grid ln-zweispaltig">
           <Field
-            label="Ich bin …"
+            label="Name"
             full
-            hint={
-              wahl === NEU
-                ? 'Legen Sie sich mit Vor- und Nachnamen an – so erscheinen Sie im Leistungsnachweis.'
-                : 'Unter diesem Namen erscheinen Ihre Leistungen im Leistungsnachweis.'
-            }
+            hint="Vor- und Nachname, wie in der Mitarbeiterliste – er gilt als „Angemeldet als“ in allen Bereichen."
           >
-            <Select
-              value={wahl}
-              onChange={setWahl}
-              options={optionen}
-              placeholder={aktive.length > 0 ? '– bitte wählen –' : undefined}
-            />
+            <TextInput value={name} onChange={setName} list={liste} placeholder="Max Mustermann" autoFocus />
+            <datalist id={liste}>
+              {aktive.map((m) => (
+                <option key={m.id} value={mitarbeiterName(m)} />
+              ))}
+            </datalist>
           </Field>
-        </div>
-
-        {wahl === NEU ? (
-          <div className="form-grid ln-zweispaltig">
-            <Field label="Vorname">
-              <TextInput value={neu.vorname} onChange={(v) => setFeld('vorname', v)} placeholder="Max" autoFocus />
-            </Field>
-            <Field label="Nachname">
-              <TextInput value={neu.nachname} onChange={(v) => setFeld('nachname', v)} placeholder="Mustermann" />
-            </Field>
+          {vorhanden || ausgeschieden ? null : (
             <Field
               label="Kürzel"
+              full
               hint={
-                kuerzelWunsch && kuerzel !== kuerzelWunsch
-                  ? `„${kuerzelWunsch}“ ist bereits vergeben – angelegt wird „${kuerzel}“.`
+                kuerzelWunsch && kuerzelNeu !== kuerzelWunsch
+                  ? `„${kuerzelWunsch}“ ist bereits vergeben – angelegt wird „${kuerzelNeu}“.`
                   : 'So steht die Person im Export der Zeiterfassung, etwa „MM: Mustermann, Max“. Leer = aus dem Namen.'
               }
             >
-              <TextInput
-                value={neu.kuerzel}
-                onChange={(v) => setFeld('kuerzel', v)}
-                placeholder={kuerzelAus(`${vorname} ${nachname}`) || 'MM'}
-                maxLength={6}
-              />
+              <TextInput value={kuerzel} onChange={setKuerzel} placeholder={kuerzelAus(`${vorname} ${nachname}`) || 'MM'} maxLength={6} />
             </Field>
-            {gleicherName ? (
-              <div className="field full">
-                <Callout ton="warn" icon="!">
-                  „{mitarbeiterName(gleicherName)}“ ({gleicherName.kuerzel}) steht bereits in der Liste – dann bitte oben
-                  unter „Ich bin …“ auswählen statt neu anlegen.
-                </Callout>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div className="form-grid">
-          <Field
-            label="Darstellung"
-            full
-            hint="Farben für eine Rot-Grün-Sehschwäche: Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot – zusätzlich mit stärkeren Kontrasten."
-          >
-            <label className="checkbox">
-              <input type="checkbox" checked={kontrast} onChange={(e) => setKontrast(e.target.checked)} />
-              Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)
-            </label>
-          </Field>
+          )}
         </div>
+
+        {vorhanden ? (
+          <Callout icon="i">
+            „{mitarbeiterName(vorhanden)}“ ({vorhanden.kuerzel}) steht in der Mitarbeiterliste – mit „Anmelden“ erfassen Sie
+            Leistungen unter diesem Namen.
+          </Callout>
+        ) : ausgeschieden ? (
+          <Callout ton="warn" icon="!">
+            „{mitarbeiterName(ausgeschieden)}“ ist als ausgeschieden markiert. Das Controlling kann die Person unter
+            „Mitarbeiter“ wieder aktiv setzen.
+          </Callout>
+        ) : nachname ? (
+          <Callout icon="i">„{name.trim()}“ steht noch nicht in der Mitarbeiterliste und wird angelegt.</Callout>
+        ) : null}
 
         <p className="small tertiary ln-anmeldung-hinweis">{RECHTE_HINWEIS}</p>
       </div>

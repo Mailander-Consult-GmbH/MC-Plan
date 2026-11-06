@@ -14,18 +14,19 @@ import { Funktionen } from './pages/Funktionen';
 import { Vorlagen } from './pages/Vorlagen';
 import { Terminrechner } from './pages/Terminrechner';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
-import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from '../../shared/ui';
-import { EIGENE_ROLLE, STANDARD_BEARBEITER } from './domain/types';
+import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
+import { EIGENE_ROLLE } from './domain/types';
 import { Icon } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/SicherungEinspielen';
 import { Hinweisleisten } from './components/Hinweisleisten';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
+import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import type { IconName } from '../../shared/icons';
 
 export function App() {
-  const { data, zuruecksetzen, ladeZustand } = useStore();
+  const { data, zuruecksetzen, ladeZustand, setBearbeiter } = useStore();
   const toast = useToast();
   const [route, navigate] = useRoute();
   const [menuOffen, setMenuOffen] = useState(false);
@@ -36,7 +37,6 @@ export function App() {
     if (inEinstellungen) setEinstellungenOffen(true);
   }, [inEinstellungen]);
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
-  const [bearbeiterDialog, setBearbeiterDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
 
   const archiviert = useArchivierte('planlauf');
@@ -120,14 +120,15 @@ export function App() {
         })}
 
         <div className="sidebar-footer">
-          <button type="button" className="bearbeiter" onClick={() => setBearbeiterDialog(true)}>
-            <span className="avatar" style={{ width: 26, height: 26 }}>
-              {initialen(data.bearbeiter.name)}
-            </span>
-            <span style={{ minWidth: 0 }}>
-              <strong className="truncate">{data.bearbeiter.name}</strong>
-            </span>
-          </button>
+          <AngemeldetAls
+            hinweis={`In markierten Projekten füllen Sie automatisch die Funktion ${EIGENE_ROLLE} aus – sie wird deshalb unter „Funktion“ nicht eigens geführt.`}
+            zusatz={{
+              label: 'E-Mail nach Erledigung',
+              text: 'Nachfragen zulassen, wenn ein Workflow-Schritt eine E-Mail vorsieht',
+              wert: data.bearbeiter.mailNachfrage ?? true,
+              uebernehmen: (mailNachfrage) => setBearbeiter({ mailNachfrage }),
+            }}
+          />
           <div className="sicherung-knoepfe">
             <button
               type="button"
@@ -223,7 +224,6 @@ export function App() {
         />
       ) : null}
 
-      {bearbeiterDialog ? <BearbeiterDialog onClose={() => setBearbeiterDialog(false)} /> : null}
 
       {sicherung ? (
         <SicherungEinspielenDialog
@@ -247,85 +247,6 @@ export function App() {
         />
       ) : null}
     </div>
-  );
-}
-
-/** Kürzel der angemeldeten Person für das Namensfeld. */
-function initialen(name: string): string {
-  const teile = name.trim().split(/\s+/).filter(Boolean);
-  if (teile.length === 0) return '?';
-  if (teile.length === 1) return teile[0].slice(0, 2).toUpperCase();
-  return (teile[0][0] + teile[teile.length - 1][0]).toUpperCase();
-}
-
-function BearbeiterDialog({ onClose }: { onClose: () => void }) {
-  const { data, setBearbeiter } = useStore();
-  const [name, setName] = useState(data.bearbeiter.name);
-  const [mailNachfrage, setMailNachfrage] = useState(data.bearbeiter.mailNachfrage ?? true);
-  const [kontrast, setKontrast] = useState((data.bearbeiter.farbmodus ?? 'standard') === 'kontrast');
-
-  return (
-    <Modal
-      titel="Angemeldet als"
-      sub="Eigene Angaben und persönliche Einstellungen"
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onClose}>
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => {
-              setBearbeiter({
-                name: name.trim() || STANDARD_BEARBEITER,
-                mailNachfrage,
-                farbmodus: kontrast ? 'kontrast' : 'standard',
-              });
-              onClose();
-            }}
-          >
-            Übernehmen
-          </button>
-        </>
-      }
-    >
-      <div className="form-grid">
-        <Field
-          label="Name"
-          full
-          hint={`In markierten Projekten füllen Sie automatisch die Funktion ${EIGENE_ROLLE} aus – sie wird deshalb unter „Funktion“ nicht eigens geführt.`}
-        >
-          <TextInput value={name} onChange={setName} placeholder="Vor- und Nachname" />
-        </Field>
-        <Field label="E-Mail nach Erledigung" full>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={mailNachfrage}
-              onChange={(e) => setMailNachfrage(e.target.checked)}
-            />
-            Nachfragen zulassen, wenn ein Workflow-Schritt eine E-Mail vorsieht
-          </label>
-        </Field>
-        <Field
-          label="Darstellung"
-          full
-          hint="Farben für eine Rot-Grün-Sehschwäche: Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot – zusätzlich mit stärkeren Kontrasten."
-        >
-          <label className="checkbox">
-            <input type="checkbox" checked={kontrast} onChange={(e) => setKontrast(e.target.checked)} />
-            Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)
-          </label>
-        </Field>
-      </div>
-      <p className="small tertiary" style={{ marginTop: 12 }}>
-        Eine Anmeldung je Person ist vorgesehen; bis dahin gilt dieser Name für alle Ansichten. Der Datenbestand
-        liegt in dieser Fassung lokal im Browser – ein gemeinsamer Zugriff mehrerer Personen auf denselben Stand
-        setzt die Anbindung einer Datenbank voraus.
-      </p>
-    </Modal>
   );
 }
 

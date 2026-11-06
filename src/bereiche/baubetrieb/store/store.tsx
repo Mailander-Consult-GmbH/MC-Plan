@@ -4,7 +4,9 @@
  * entspricht dem des Planlaufmanagements, ist davon aber getrennt – gemeinsam
  * ist nur das Projektregister (`src/gemeinsam/`), mit dem der Store die
  * Projekte nach jeder Änderung abgleicht (`useRegisterAbgleich`,
- * domain/register.ts).
+ * domain/register.ts). Name und Farbmodus unter „Angemeldet als“ spiegeln die
+ * gemeinsame Anmeldung aller Bereiche (`useBenutzerAbgleich`,
+ * src/gemeinsam/benutzer.ts).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -29,6 +31,7 @@ import type {
   Workflow,
 } from '../domain/types';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
+import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { zielText } from '../domain/workflow';
 import { workflowLoeschen, workflowSpeichern } from '../domain/workflowPflege';
@@ -98,6 +101,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const mutate = useCallback((fn: (d: BaubetriebDaten) => BaubetriebDaten) => {
     setData((alt) => fn(alt));
   }, []);
+
+  // Name und Farbmodus aus der gemeinsamen Anmeldung aller Bereiche (src/gemeinsam/benutzer.ts)
+  useBenutzerAbgleich(
+    data,
+    (d, b) => d.einstellungen.bearbeiter !== b.name || d.einstellungen.farbmodus !== b.farbmodus,
+    (b) =>
+      mutate((d) =>
+        d.einstellungen.bearbeiter === b.name && d.einstellungen.farbmodus === b.farbmodus
+          ? d
+          : { ...d, einstellungen: { ...d.einstellungen, bearbeiter: b.name, farbmodus: b.farbmodus } },
+      ),
+  );
 
   // Projekte mit dem Projektregister abgleichen
   const { ersetzt } = useRegisterAbgleich({

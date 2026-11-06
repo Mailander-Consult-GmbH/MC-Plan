@@ -10,6 +10,8 @@ import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { Callout } from '../../shared/ui';
 import { BereichWechsel } from '../../shell/BereichWechsel';
+import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
+import { useBenutzer } from '../../gemeinsam/benutzer';
 import { LeistungsnachweiseControlling, leistungsnachweiseUntertitel } from '../leistungsnachweise/controlling';
 import { useRoute, type Route } from './lib/router';
 import { Projekte } from './pages/Projekte';
@@ -20,10 +22,11 @@ export function App({ onSperren }: { onSperren: () => void }) {
   const [route, navigate] = useRoute();
   const [menuOffen, setMenuOffen] = useState(false);
 
+  // Das Controlling hat keine eigenen Einstellungen – es folgt dem Farbmodus der gemeinsamen Anmeldung.
+  const { farbmodus } = useBenutzer();
   useEffect(() => {
-    // Das Controlling hat keine eigenen Einstellungen – es zeigt die Standardfarben.
-    document.documentElement.dataset.farbmodus = 'standard';
-  }, []);
+    document.documentElement.dataset.farbmodus = farbmodus;
+  }, [farbmodus]);
 
   const gehe = (r: Route) => {
     navigate(r);
@@ -71,6 +74,7 @@ export function App({ onSperren }: { onSperren: () => void }) {
         />
 
         <div className="sidebar-footer">
+          <AngemeldetAls />
           <button type="button" className="btn btn-sm btn-outline ct-sperren" onClick={onSperren}>
             <Icon name="schloss" size={12} /> Sperren
           </button>
