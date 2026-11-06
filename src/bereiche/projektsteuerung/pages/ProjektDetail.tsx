@@ -3,6 +3,7 @@
  * Darüber Projektnummer, Status sowie „Bearbeiten“ und „Löschen“.
  */
 import { useState } from 'react';
+import { ArchivHinweis, useLoeschHinweis } from '../../../gemeinsam/ProjektBereiche';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, ConfirmDialog } from '../../../shared/ui';
@@ -32,6 +33,7 @@ export function ProjektDetail({
   const [bearbeiten, setBearbeiten] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
 
+  const loeschHinweis = useLoeschHinweis('projektsteuerung', projekt.id);
   const gotoTab = (t: ProjektTab) => navigate({ view: 'projekt', projektId: projekt.id, tab: t });
   const umfang = {
     beteiligte: data.beteiligte.filter((b) => b.projektId === projekt.id).length,
@@ -56,6 +58,8 @@ export function ProjektDetail({
         </div>
       </div>
 
+      <ArchivHinweis bereich="projektsteuerung" lokaleId={projekt.id} />
+
       <div className="tabs">
         {TABS.map((t) => (
           <button
@@ -78,7 +82,7 @@ export function ProjektDetail({
       {loeschen ? (
         <ConfirmDialog
           titel="Projekt löschen?"
-          text={`„${projekt.name}“ wird mit ${umfang.beteiligte} Projektbeteiligten und ${umfang.protokolle} Protokollen endgültig gelöscht.`}
+          text={`„${projekt.name}“ wird mit ${umfang.beteiligte} Projektbeteiligten und ${umfang.protokolle} Protokollen endgültig gelöscht.${loeschHinweis}`}
           onConfirm={() => {
             deleteProjekt(projekt.id);
             toast('Projekt gelöscht.');

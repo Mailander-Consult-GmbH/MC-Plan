@@ -9,9 +9,10 @@ jeweilige Fundstelle.
 
 **KaPlan** besteht aus den Bereichen **Planlaufmanagement**,
 **Baubetriebsplanung** und **Projektsteuerung**; die beiden letzten liegen als
-erster Entwurf vor. Die Abschnitte 1 bis 6 beschreiben das
-Planlaufmanagement, Abschnitt 7 die Baubetriebsplanung, Abschnitt 8 die
-Projektsteuerung.
+erster Entwurf vor. Dazu kommt das **Controlling** (mit PIN), das die Projekte
+aller Bereiche im gemeinsamen Projektregister verwaltet. Die Abschnitte 1 bis 6
+beschreiben das Planlaufmanagement, Abschnitt 7 die Baubetriebsplanung,
+Abschnitt 8 die Projektsteuerung, Abschnitt 9 Projektregister und Controlling.
 
 Der Bereich verwaltet die Planläufe von Bauprojekten: Zu
 jedem Plan bzw. Planverzeichnis wird ein Workflow (Prozesskette) gestartet,
@@ -39,15 +40,16 @@ angesprochen (`src/bereiche/planlauf/store/storage.ts`).
 
 ## 2. Routen und Seiten
 
-Die Anwendung besteht aus drei getrennten Bereichen. Die erste Wegmarke der
-Adresse benennt den Bereich; die Shell (`src/shell/router.ts`) wählt danach
-aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
-(`src/shell/Start.tsx`: drei hochkante Kacheln nebeneinander – Planlaufmanagement,
-Baubetriebsplanung und Projektsteuerung, die beiden letzten mit dem Kennzeichen
-„Erster Entwurf“ aus `marke` in
-`src/shell/bereiche.ts`), `#/planlauf/…` das Planlaufmanagement,
-`#/baubetrieb/…` die Baubetriebsplanung (Abschnitt 7), `#/projektsteuerung/…` die
-Projektsteuerung (Abschnitt 8). Innerhalb des Bereichs adressiert ein Hash-Router ohne
+Die Anwendung besteht aus drei getrennten Bereichen und dem Controlling. Die
+erste Wegmarke der Adresse benennt den Bereich; die Shell (`src/shell/router.ts`)
+wählt danach aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
+(`src/shell/Start.tsx`: vier hochkante Kacheln – Planlaufmanagement,
+Baubetriebsplanung, Projektsteuerung und Controlling, die mittleren beiden mit
+dem Kennzeichen „Erster Entwurf“, das Controlling mit „Mit PIN“ aus `marke` in
+`src/shell/bereiche.ts`; unter 1080 px zwei, unter 720 px eine je Zeile),
+`#/planlauf/…` das Planlaufmanagement, `#/baubetrieb/…` die Baubetriebsplanung
+(Abschnitt 7), `#/projektsteuerung/…` die Projektsteuerung (Abschnitt 8),
+`#/controlling/…` das Controlling (Abschnitt 9). Innerhalb des Bereichs adressiert ein Hash-Router ohne
 Bibliothek (`src/bereiche/planlauf/lib/router.ts`); unbekannte Adressen führen
 auf die Übersicht. Adressen aus der Fassung ohne Bereiche (`#/dashboard`,
 `#/projekt/<id>/<reiter>` …) werden beim Aufruf auf `#/planlauf/…` umgelenkt
@@ -57,14 +59,14 @@ und bleiben damit als Lesezeichen gültig.
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/planlauf` bzw. `#/planlauf/dashboard` | Übersicht (`src/bereiche/planlauf/pages/Dashboard.tsx`) | Vier Kacheln: Laufende Planläufe, To-Dos (Planlaufmanagement), Überfällige Schritte, Demnächst fällig – die beiden letzten führen per Klick auf `#/planlauf/fristen`. Tabelle „Meine To-Dos“ mit Schritt, Gewerk, Projekt, Soll-Termin, Status, Erinnerungs-Mail und Erledigt-Haken. Tabelle „Projekte“ mit Anzahl Pläne/Verzeichnisse, laufenden Planläufen, demnächst fällig, überfällig, Fortschrittsbalken und „Projekt öffnen“. Angezeigt werden markierte Projekte; ohne Markierung alle (`sichtbareProjekte`). |
+| `#/planlauf` bzw. `#/planlauf/dashboard` | Übersicht (`src/bereiche/planlauf/pages/Dashboard.tsx`) | Vier Kacheln: Laufende Planläufe, To-Dos (Planlaufmanagement), Überfällige Schritte, Demnächst fällig – die beiden letzten führen per Klick auf `#/planlauf/fristen`. Tabelle „Meine To-Dos“ mit Schritt, Gewerk, Projekt, Soll-Termin, Status, Erinnerungs-Mail und Erledigt-Haken. Tabelle „Projekte“ mit Anzahl Pläne/Verzeichnisse, laufenden Planläufen, demnächst fällig, überfällig, Fortschrittsbalken und „Projekt öffnen“. Angezeigt werden markierte Projekte; ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
 | `#/planlauf/fristen` | Fristen & Erinnerungen (`src/bereiche/planlauf/pages/Fristen.tsx`) | Alle anstehenden Schritte über alle Projekte – bei parallelen Zweigen mehrere je Planlauf (`offeneFristen` in `engine.ts`) –, gegliedert nach Projekt; je Schritt „E-Mail vorbereitet am …“, wenn schon erinnert wurde. Filter Alle / Überfällig / Fällig / Im Plan mit Zählern, Suche über Schritt, Planlauf, Projekt, Funktion, Nachname und Firma. Je Zeile: Planlauf öffnen, Erinnerungs-Mail vorbereiten, Schritt als erledigt setzen. Kein Eintrag in der Seitenleiste – erreichbar über die Kacheln der Übersicht. |
-| `#/planlauf/projekte` | Projekte (`src/bereiche/planlauf/pages/Projekte.tsx`) | Projektliste mit Suche über Name, Nummer und Beschreibung; Projekt anlegen (übernimmt alle projektübergreifenden Funktionen als Projektfunktionen), bearbeiten, mit ★ markieren bzw. Markierung aufheben, Projekt öffnen. |
+| `#/planlauf/projekte` | Projekte (`src/bereiche/planlauf/pages/Projekte.tsx`) | Projektliste mit Suche über Name, Nummer und Beschreibung; Projekt anlegen (übernimmt alle projektübergreifenden Funktionen als Projektfunktionen), bearbeiten, mit ★ markieren bzw. Markierung aufheben, Projekt öffnen. Unten in der Kachel „Auch in“ mit den anderen Bereichen des Projekts; darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Planlaufmanagement“ (siehe 9.3). |
 | `#/planlauf/ketten` | Workflows (`src/bereiche/planlauf/pages/Workflows.tsx`) | Karten unter „Projektübergreifende Workflows“ (Projektvarianten erscheinen nur im Reiter „Workflows“ ihres Projekts), je Karte Kennzeichen „Standard“, „Eigener Workflow“ oder „Projektvariante“, Zahlen und die Punktkette des Standardverlaufs (`AblaufVorschau` in `src/bereiche/planlauf/components/AblaufVorschau.tsx`); „Neuer Workflow“, „Öffnen“, „Duplizieren“, Löschen. „Öffnen“ startet den Workflow-Editor (`src/bereiche/planlauf/components/WorkflowEditor.tsx`, Logik in `src/bereiche/planlauf/domain/workflowGraph.ts`): Spalten „Standardverlauf“ und „Abweichungen“ mit Karten von „Planlauf starten“ bis „Planlauf beenden“, „Rücksprung“-Kennzeichen, „+“ („Schritt hier einfügen“), „Schritt hinzufügen“, Rückgängig/Wiederholen (Strg+Z/Strg+Y), „Übersicht“. „Schrittdetails“ je Schritt: Bezeichnung, Art (Aufgabe / Entscheidung), „Verantwortliche Funktion“, Frist, „Nachweis bei Abschluss“, „Weiter mit“ bzw. Antworten mit „→ Weiter mit“ und „Als Standardverlauf“, „E-Mail nach Abschluss“ samt Vorlage und „Anliegen in der Versandmail“ (keins / Freigabe / Vorprüfung / Prüfung / Genehmigung, `ANLIEGEN_OPTIONEN` und Feld `versandAnliegen` in `src/bereiche/planlauf/domain/types.ts`; dieselbe Auswahl in „Schritt anpassen“ des Planlaufs, `PlanlaufDetail.tsx`), „Im Standardverlauf“ früher/später (`imVerlaufVerschieben`), „Duplizieren“, „Entfernen“ (Verweise gehen an das Standardziel, `entfernen`). Hinweise in der Fußzeile aus `pruefen`; wer mit Änderungen schließt, erhält „Änderungen verwerfen?“. Parallele Blöcke: Containerkarte „Parallel · … Zweige“ mit „Weiter, wenn alle Zweige erledigt sind“, „Abweichungen im Zweig“ und „Ausstieg aus dem Block“; angelegt über „Schritt hinzufügen“ → „Parallele Zweige“ oder in den Schrittdetails „Parallel dazu ausführen“, gelöst über „Aus dem Block lösen“; Blöcke lassen sich nicht schachteln. Benennen im Abschnitt „Parallel“ der Schrittdetails mit „Name des Blocks“ und „Name des Zweigs“ (`blockBenennen`, `zweigBenennen` in `workflowGraph.ts`; Tippen zählt für Rückgängig als ein Schritt); ein Klick auf den Kopf der Containerkarte wählt den ersten Schritt des Blocks und fokussiert „Name des Blocks“. Ein benannter Block heißt „… · parallel, … Zweige“ (`blockTitel` in `ablauf.ts`), Zweigköpfe zeigen den Namen, sonst „Zweig …“ (`zweigTitel`). Die Namen stehen am Marker jedes Schritts (`name`, `zweigName` in `Parallel`, `src/bereiche/planlauf/domain/types.ts`); `namenVereinheitlichen` in `ablauf.ts` gleicht sie beim Ordnen der Blöcke an, `bereinigen` kürzt sie beim Speichern. Die Standard-Workflows benennen ihre Blöcke „Prüfung“, „Versand“ und „Postversand“ samt Zweigen (`BLOCK_NAMEN` in `seed.ts`). Je Antwort der Haken „führt zu Nacharbeit“. Ändert eine Umstellung den Anschluss hinter einem Block, meldet der Editor das (`bloeckeOrdnenMitHinweis` in `ablauf.ts`). |
 | `#/planlauf/rollen` | Funktionen (`src/bereiche/planlauf/pages/Funktionen.tsx`) | Projektübergreifende Funktionen, gegliedert in „Übergreifend“ und je Gewerk. Neue Funktion anlegen (Bezeichnung, Kürzel, Farbe, Gewerk, Beschreibung), vorhandene Funktion eines anderen Gewerks übernehmen, bearbeiten, löschen. Über das **+** an den Reitern entsteht ein Gewerk, über „Gewerk … löschen“ am Seitenende entfällt es. Feld „Seite für den Verzug“ (Planer, Prüfer, Auftraggeber, PLM oder „nicht festgelegt“; `SEITE_LABEL` in `types.ts`, Auswahl in `src/bereiche/planlauf/components/SeiteAuswahl.tsx`), bei neuen Funktionen vorbelegt aus der Bezeichnung (`seiteAusFunktion`); Abzeichen in der Liste, „Seite offen“ ohne Seite. |
 | `#/planlauf/terminrechner` | Terminrechner (`src/bereiche/planlauf/pages/Terminrechner.tsx`, Logik in `src/bereiche/planlauf/domain/terminrechner.ts`) | Menüpunkt „Terminrechner“ unter „Projekte“. „Richtung“: „Rückwärts“ („Termin auf der Baustelle → späteste Übergabe des Planers“ bzw. „Termin auf der Baustelle → spätester Start des Planlaufs“) oder „Vorwärts“ („Eingang der Planung → Ende des Planlaufs“ bzw. „Start des Planlaufs → Ende des Planlaufs“) – Anker ist die Übergabe des Planers, wenn der Workflow mit „Eingang PLM“ beginnt, sonst der Start. Eingaben: Projekt (Arbeitstage, Feiertage; „Ohne Projekt: Mo–Fr, ohne Feiertage“), Workflow (übergreifend und Projektvarianten), Datum, Fristen, „Szenario“ („Antwort je Entscheidung im ersten Durchlauf; Vorgabe ist der Standardverlauf.“) und „Zielschritt“ (Vorgabe „Ende des Planlaufs“). Gerechnet wird über `simulieren` bzw. `rueckwaerts` in `simulation.ts`, also mit denselben Regeln wie im Planlauf. „Zwischenergebnisse“ mit Schritt, Funktion, Frist, Eingang, Fristende und Puffer, auf dem kritischen Weg „spätestens“; Schritte in Zweigen mit „Zweig … von …“, bei benannten Zweigen mit dem Namen davor (`zweigKennung`); Druck über `src/shared/print.ts`. Zustände: „Noch kein Datum“, „Kein Workflow vorhanden“, „Der Workflow enthält keine Schritte“, „Das Datum ist ungültig.“, Schleife („Der Ablauf endet in diesem Szenario in einer Schleife – Terminrechnung nicht möglich.“), Grenze („Der Ablauf kommt auch nach 500 Abschlüssen nicht zum Ende – Terminrechnung abgebrochen.“, `SIMULATION_GRENZE`), Zielschritt nicht erreicht, Übergabe bzw. Start vor heute (frühestes Ende bei Übergabe bzw. Start heute) und „Das eingegebene Datum liegt vor heute – gerechnet wird trotzdem ab diesem Tag.“ |
 | `#/planlauf/vorlagen` | Vorlagen (`src/bereiche/planlauf/pages/Vorlagen.tsx`) | Reiter **E-Mail-Texte**: Vorlagen anlegen, bearbeiten, löschen; Editor mit Bausteinen aus `PLATZHALTER` (`src/bereiche/planlauf/domain/email.ts`) und Vorschau mit Beispielwerten; Anlass je Vorlage (Erinnerung, Mahnung, Freigabe, Übergabe, Allgemein). Reiter **Excel-Vorlagen**: Vorlagen „Planliste“ und „Funktion“ als `.xlsx` herunterladen, mit Spaltenerläuterung. |
-| `#/planlauf/projekt/<id>/<reiter>` | Projektarbeitsbereich (`src/bereiche/planlauf/pages/ProjektDetail.tsx`) | Reiter siehe 2.2. Frühere Adressen werden umgeleitet: `planlaeufe` → `plaene`, `pakete` → `plaene`, `adressbuch` → `rollen`. |
+| `#/planlauf/projekt/<id>/<reiter>` | Projektarbeitsbereich (`src/bereiche/planlauf/pages/ProjektDetail.tsx`) | Ggf. Archivhinweis (9.3), Reiter siehe 2.2. Frühere Adressen werden umgeleitet: `planlaeufe` → `plaene`, `pakete` → `plaene`, `adressbuch` → `rollen`. |
 | `#/planlauf/projekt/<id>/planlauf/<runId>` | Planlauf (`src/bereiche/planlauf/pages/projekt/PlanlaufDetail.tsx`) | Siehe 2.3. |
 
 ### 2.2 Reiter im Projekt
@@ -247,7 +249,9 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
 **Es gibt keine Anmeldung, keine Benutzerverwaltung und keine Rechteprüfung.**
 Weder `src/bereiche/planlauf/App.tsx` noch der Store (`src/bereiche/planlauf/store/store.tsx`) prüfen irgendeine
 Berechtigung; jede Person, die die Anwendung im Browser öffnet, kann alles
-lesen und ändern. Der Bestand liegt ausschließlich im `localStorage` des
+lesen und ändern. Einzig das Controlling fragt eine PIN ab
+(`CONTROLLING_PIN = '0000'` in `src/bereiche/controlling/domain/pin.ts`) – sie
+steht im Quelltext und schützt nur vor versehentlichem Zugriff (Abschnitt 9). Der Bestand liegt ausschließlich im `localStorage` des
 jeweiligen Browsers, wird also ohnehin nicht geteilt.
 
 Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
@@ -443,7 +447,8 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 Monitor für baubetriebliche Anmeldungen von Sperrpausen, erster Entwurf nach
 dem Lastenheft der Anwender. Offene Fragen und Annahmen:
 `docs/BAUBETRIEB_RUECKFRAGEN.md`. Der Bereich greift nicht auf das
-Planlaufmanagement zu; Einstiegspunkt ist `src/bereiche/baubetrieb/index.tsx`,
+Planlaufmanagement zu – gemeinsam ist nur das Projektregister (Abschnitt 9);
+Einstiegspunkt ist `src/bereiche/baubetrieb/index.tsx`,
 Rahmen und Seitenleiste stehen in `src/bereiche/baubetrieb/App.tsx`. Die
 „Projekthülle“ des Lastenhefts heißt in der Anwendung „Projekt“; die Phasen
 heißen SKM, MKM, KM (n-2 & n-1) und KKM (unterjährig) (`PHASE_LABEL` in
@@ -515,10 +520,10 @@ N-x und unterjährige Anmeldung.
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`, samt ausstehender Erstanmeldungen, diese mit Prozessphase und Projekt) mit „Status ändern …“ je Zeile; Karte „Anmeldebedarf aus den Projekten“ (nur wenn Bedarf besteht); Karte „Projekte“ mit der Zahl der Anmeldungen je Workflow, überfälligen Fristen (samt überfälliger Erstanmeldung) und nächster Frist (ohne Anmeldung die der Erstanmeldung). Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`). |
+| `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`, samt ausstehender Erstanmeldungen, diese mit Prozessphase und Projekt) mit „Status ändern …“ je Zeile; Karte „Anmeldebedarf aus den Projekten“ (nur wenn Bedarf besteht); Karte „Projekte“ mit der Zahl der Anmeldungen je Workflow, überfälligen Fristen (samt überfälliger Erstanmeldung) und nächster Frist (ohne Anmeldung die der Erstanmeldung). Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
 | `#/baubetrieb/termine` | Termine & Nachhaken (`src/bereiche/baubetrieb/pages/Termine.tsx`) | Alle Anmeldungen mit Terminfrist über alle Projekte, gegliedert nach Projekt; Filter Alle / Überfällig / Fällig / Im Plan / Zum Nachhaken, Suche; je Zeile „Nachgehakt“ (bei Status zum Nachhaken) und „Status ändern …“; je Projekt zuerst eine Zeile „Erstanmeldung ausstehend“ (`ausstehendeErstanmeldungen`) mit „Ausstehend“, Terminfrist und „Zum Projekt“ – sie zählt in den Filtern mit. Darunter „Anmeldebedarf aus den Projekten“. |
-| `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit DB-G-Nummer, MIC-Projektnummer, betroffenen Fahrplanjahren, Status der Betreuung, ★-Markierung, Zahl der Anmeldungen, überfälligen Fristen (samt überfälliger Erstanmeldung) und „Nächste Anmeldung“ aus dem Anmeldebedarf; „Neues Projekt“ (`ProjektDialog`). |
-| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen); Stammdaten; ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; die Maßnahmenart in der zweiten Zeile nur, wo der Workflow mehrere führt), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip) und „Status ändern …“. Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
+| `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit DB-G-Nummer, MIC-Projektnummer, betroffenen Fahrplanjahren, Status der Betreuung, ★-Markierung, Zahl der Anmeldungen, überfälligen Fristen (samt überfälliger Erstanmeldung), „Nächste Anmeldung“ aus dem Anmeldebedarf und „Auch in“; „Neues Projekt“ (`ProjektDialog`). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Baubetriebsplanung“ (siehe 9.3). |
+| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen; nur in diesem Bereich); Archivhinweis (9.3); Stammdaten; am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; die Maßnahmenart in der zweiten Zeile nur, wo der Workflow mehrere führt), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip) und „Status ändern …“. Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
 | `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“, „Letzten Wechsel zurücknehmen“, dazu „Zuständig:“ mit Rolle und Namen; Karte „Merkmale“ („Vorhabenname“ im SKM und wo er gesetzt ist, die Nummer als „tVE-Nr“ – bei älteren SKM-Einträgen ohne Vorhabenname weiter „Begriff / tVE-Nr“ –, „Zuständiger BBK“, Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; oben rechts „Bearbeiten“, „Duplizieren“ (Kopie mit aktuellem Stand und Statusverlauf, Vermerk „Dupliziert aus …“, „(Kopie)“ an der führenden Bezeichnung; öffnet die Kopie) und „Löschen“. |
 | `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Liste „Workflows“ mit Kennzeichen „Standard“ bzw. „Eigener Workflow“, Zahl der Status und Anmeldungen, den Status in ihrer Reihenfolge, „Öffnen“, „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
 | `#/baubetrieb/einstellungen` | Einstellungen (`src/bereiche/baubetrieb/pages/Einstellungen.tsx`) | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase eine Gruppenzeile mit Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. |
@@ -649,7 +654,8 @@ Erster Entwurf für die externe Projektsteuerung: je Projekt die
 Projektbeteiligtenliste und die Besprechungsprotokolle. Einstiegspunkt ist `src/bereiche/projektsteuerung/index.tsx`, Rahmen und Seitenleiste stehen in
 `src/bereiche/projektsteuerung/App.tsx`, die Gestaltung in `src/bereiche/projektsteuerung/projektsteuerung.css` (Klassen mit dem
 Präfix `ps-`, Farben aus den Design-Tokens). Der Bereich greift nicht auf die
-anderen Bereiche zu. Die Protokolle bilden das eigenständige Protokoll-Tool
+anderen Bereiche zu; Projekte und Projektbeteiligte teilt er über das
+Projektregister (Abschnitt 9). Die Protokolle bilden das eigenständige Protokoll-Tool
 (HTML-Datei) nach; dessen Dateien lassen sich übernehmen (`ausProtokollTool`
 in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
 
@@ -697,10 +703,10 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/projektsteuerung` bzw. `#/projektsteuerung/uebersicht` | Übersicht (`src/bereiche/projektsteuerung/pages/Uebersicht.tsx`) | Kacheln „Aktive Projekte“, „Offene Punkte“, „Überfällig“, „Demnächst fällig“. Karte „Offene Punkte“ mit den Aufgaben der Protokolle – Einträge vom Typ A und Ergänzungen mit eigener Art „Aufgabe“ (`offenePunkte` in `src/bereiche/projektsteuerung/domain/punkte.ts`, `protokollAufgaben`) –, Filter Alle / Überfällig / Fällig, zunächst zehn Zeilen (`ANZAHL_PUNKTE`), je Zeile „Erledigt“ (Store `punktErledigen`, auch für Ergänzungen); ein Klick führt zum Protokoll (`punktZiel`). Karte „Projekte“ mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin, offenen und überfälligen Punkten und „Protokolle“. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`). |
-| `#/projektsteuerung/projekte` | Projekte (`src/bereiche/projektsteuerung/pages/Projekte.tsx`) | Projektkarten mit Nummer, Status, ★-Markierung und der Zahl der Beteiligten, Protokolle und offenen Punkte; „Neues Projekt“ (`ProjektDialog`: Projektnummer, Status, Projektname, Beschreibung). |
+| `#/projektsteuerung` bzw. `#/projektsteuerung/uebersicht` | Übersicht (`src/bereiche/projektsteuerung/pages/Uebersicht.tsx`) | Kacheln „Aktive Projekte“, „Offene Punkte“, „Überfällig“, „Demnächst fällig“. Karte „Offene Punkte“ mit den Aufgaben der Protokolle – Einträge vom Typ A und Ergänzungen mit eigener Art „Aufgabe“ (`offenePunkte` in `src/bereiche/projektsteuerung/domain/punkte.ts`, `protokollAufgaben`) –, Filter Alle / Überfällig / Fällig, zunächst zehn Zeilen (`ANZAHL_PUNKTE`), je Zeile „Erledigt“ (Store `punktErledigen`, auch für Ergänzungen); ein Klick führt zum Protokoll (`punktZiel`). Karte „Projekte“ mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin, offenen und überfälligen Punkten und „Protokolle“. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
+| `#/projektsteuerung/projekte` | Projekte (`src/bereiche/projektsteuerung/pages/Projekte.tsx`) | Projektkarten mit Nummer, Status, ★-Markierung, der Zahl der Beteiligten, Protokolle und offenen Punkte und „Auch in“; „Neues Projekt“ (`ProjektDialog`: Projektnummer, Status, Projektname, Beschreibung). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Projektsteuerung“ (siehe 9.3). |
 | `#/projektsteuerung/funktionen` | Funktionen (`src/bereiche/projektsteuerung/pages/Funktionen.tsx`) | Reiter „Übergreifend“ und je Gewerk, **+** legt ein Gewerk an (`GewerkDialog` in `src/bereiche/projektsteuerung/components/GewerkDialog.tsx`). Je Seite die Funktionen mit Suche und Spalten Kürzel, Gewerk, Beschreibung, „Verwendet“; „Neue Funktion“ und Bearbeiten per Klick (`FunktionDialog` in `src/bereiche/projektsteuerung/components/FunktionDialog.tsx`: Bezeichnung, Gewerk mit „Gewerk“ zum Anlegen, Kürzel – leer aus der Bezeichnung gebildet, `kuerzelAus` –, Farbe, Beschreibung); auf Gewerkseiten „Vorhandene Funktion“ (Funktion eines anderen Gewerks übernehmen, Kürzel nach `kuerzelFuer`) und „Gewerk „…“ löschen“ (`GewerkLoeschenDialog`, entfernt das Gewerk samt Funktionen). Funktionen und Gewerke, die Projektbeteiligte tragen, lassen sich nicht löschen. |
-| `#/projektsteuerung/projekt/<id>/<seite>` | Projekt (`src/bereiche/projektsteuerung/pages/ProjektDetail.tsx`) | Kopfzeile mit Nummer, Status, Beschreibung, „Bearbeiten“ und „Löschen“ (samt Beteiligten und Protokollen). Seiten `beteiligte` („Projektbeteiligte“) und `protokolle` („Protokolle“); die frühere Seite `lop` führt zu `protokolle`, ohne gültige Angabe `beteiligte`. Siehe 8.3 und 8.4. |
+| `#/projektsteuerung/projekt/<id>/<seite>` | Projekt (`src/bereiche/projektsteuerung/pages/ProjektDetail.tsx`) | Kopfzeile mit Nummer, Status, Beschreibung, „Bearbeiten“ und „Löschen“ (samt Beteiligten und Protokollen; nur in diesem Bereich), darunter ggf. der Archivhinweis (9.3). Seiten `beteiligte` („Projektbeteiligte“) und `protokolle` („Protokolle“); die frühere Seite `lop` führt zu `protokolle`, ohne gültige Angabe `beteiligte`. Siehe 8.3 und 8.4. |
 | `#/projektsteuerung/projekt/<id>/protokoll/<id>` | Protokoll (`src/bereiche/projektsteuerung/pages/projekt/ProtokollEditor.tsx`) | Siehe 8.4. |
 
 Router: `src/bereiche/projektsteuerung/lib/router.ts`; unbekannte Adressen führen auf die Übersicht.
@@ -856,3 +862,136 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
 | „Die Datei ist keine Sicherung der Projektsteuerung.“ | `src/bereiche/projektsteuerung/store/storage.ts` | Kennzeichen `bereich` fehlt oder Listen fehlen. |
 | „Die Sicherung stammt aus einer neueren Fassung von KaPlan. Bitte die Seite neu laden (Strg+Umschalt+R) und erneut einspielen.“ | `src/bereiche/projektsteuerung/store/storage.ts` | `version` größer als `DATEN_VERSION`. |
 | Seite „Nicht gefunden“ | `src/bereiche/projektsteuerung/App.tsx` | Adresse nennt ein Projekt oder Protokoll, das es nicht (mehr) gibt. |
+
+## 9. Projektregister und Controlling
+
+### 9.1 Projektregister
+
+Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
+
+* `src/gemeinsam/register.ts`: `Register` mit `projekte` (`RegisterProjekt`:
+  `nummer`, `name`, `beschreibung`, `archiviert` – im Controlling für alle
+  Bereiche –, `herkunft` – Bereich oder `'controlling'` –, `bereiche` mit je
+  einer `Mitgliedschaft`: `id` des Projekts im Bereich, `archiviert`, `offen` für
+  eine noch nicht vollzogene Übernahme), `personen` (`RegisterPerson` mit den
+  `PERSON_FELDER` Anrede, Vorname, Nachname, Firma, Kürzel, E-Mail, Telefon,
+  Mobil, Anschrift, Notiz, `funktionen` als `FunktionsBezug` – Bezeichnung,
+  Gewerk, Kürzel – und `ids` je Bereich) und `geloescht` (`Grabstein` mit den
+  Bereichen, die eine Löschung noch nachziehen müssen). Schlüssel
+  `kaplan-projektregister.v1` im `localStorage`, `REGISTER_VERSION = 1`;
+  `aufbereiten()` ergänzt fehlende Felder. Lässt sich der gespeicherte Stand
+  nicht lesen oder stammt er aus einer neueren Fassung, bleibt er unberührt
+  (`registerZustand`), und die Bereiche gleichen nicht ab. Ein Fenster lädt das
+  Register neu, wenn ein anderes es ändert (`storage`-Ereignis).
+* `registerAendern` ändert das Register über eine Funktion und benachrichtigt
+  nur bei einer tatsächlichen Änderung; `useRegister` liefert es für die
+  Oberfläche (`useSyncExternalStore`).
+* Funktionen gelten bereichsübergreifend als dieselben, wenn Bezeichnung und
+  Gewerk übereinstimmen (`funktionsSchluessel`).
+
+### 9.2 Abgleich mit den Bereichen
+
+* `src/gemeinsam/useRegisterAbgleich.ts`: Jeder Store
+  (`src/bereiche/planlauf/store/store.tsx`, `src/bereiche/baubetrieb/store/store.tsx`,
+  `src/bereiche/projektsteuerung/store/store.tsx`) gleicht nach jeder Änderung seines Bestands
+  und jeder Änderung des Registers ab – das Planlaufmanagement nur bei
+  `ladeZustand === 'ok'`. Zuerst überträgt `uebertragen`
+  (`src/gemeinsam/abgleich.ts`) die Änderungen des Bereichs (alter gegen neuen
+  Stand) ins Register, dann trägt `abgleichen` Unbekanntes ein und liefert einen
+  `Plan`, den der Store über sein eigenes `mutate()` übernimmt. Nach
+  `ersetzeDaten` und `zuruecksetzen` meldet der Store `ersetzt()`: Dann entfällt
+  das Übertragen, und für verknüpfte Projekte und Personen gilt das Register.
+* Je Bereich beschreibt `sichtFuerRegister` den Bestand und wendet
+  `registerPlanAnwenden` einen Plan an (`src/bereiche/planlauf/domain/register.ts`,
+  `src/bereiche/baubetrieb/domain/register.ts`, `src/bereiche/projektsteuerung/domain/register.ts`):
+  * Planlaufmanagement: Projekte mit Nummer, Name und Beschreibung; Kontakte
+    ohne den eigenen (`eigen`) mit ihren Funktionen außer der eigenen
+    (`istEigeneFunktion`). Übernommene Projekte erhalten die
+    projektübergreifenden Funktionen als Projektfunktionen; fehlt eine Funktion
+    eines Registereintrags im Projekt, entsteht sie als Projektfunktion (Kürzel,
+    Farbe und Seite von der projektübergreifenden Funktion gleicher Bezeichnung
+    und gleichen Gewerks, sonst Seite aus `seiteAusFunktion`). Eine Funktion, die eine andere Person
+    ausfüllt, bleibt bei dieser. Gelöscht wird über `projektLoeschen` bzw.
+    `kontaktLoeschen` mit Löschvermerk.
+  * Baubetriebsplanung: Projekte mit `projektnummer` als Nummer und `name`;
+    keine Personen.
+  * Projektsteuerung: Projekte mit Nummer, Name und Beschreibung; Beteiligte mit
+    ihrer Funktion. Je Person bleibt die bisherige Funktion, solange das
+    Register sie nennt, sonst gilt die erste vorhandene Funktion des Registers;
+    fehlt sie, wird sie als projektübergreifende Funktion angelegt.
+* Beim ersten Abgleich verknüpft `abgleichen` ein Projekt mit einem nicht
+  archivierten Registerprojekt gleicher Projektnummer, das der Bereich noch
+  nicht führt (ohne Nummer: gleicher Bezeichnung), und darin Personen gleicher
+  E-Mail-Adresse, ersatzweise gleichen Vor- und Nachnamens. Leere Angaben des
+  Registers füllt der Bereich, sonst gilt das Register.
+* Führt ein Bereich ein Projekt nicht mehr, entfällt seine Mitgliedschaft; ohne
+  weitere Mitgliedschaft entfällt das Projekt samt Personen auch im Register,
+  außer es stammt aus dem Controlling (`mitgliedschaftLoesen`). Löscht ein
+  Bereich eine Person, entfernt das Register sie und vermerkt die Löschung für
+  die anderen Bereiche.
+
+### 9.3 Bedienelemente in den Bereichen
+
+Bausteine in `src/gemeinsam/ProjektBereiche.tsx` (Gestaltung in
+`src/gemeinsam/gemeinsam.css`, Präfix `gem-`):
+
+* `BereichsMarken` unten in jeder Projektkachel: „Auch in“ mit den anderen
+  Bereichen des Projekts, als „… · archiviert“ bzw. „… · vorgesehen“.
+* `FremdeProjekte`: grau hinterlegter Abschnitt „Projekte aus anderen
+  Bereichen“ mit den nicht archivierten Registerprojekten, die der Bereich nicht
+  führt (mit der Suche der Projektliste gefiltert), je Karte Nummer,
+  Bezeichnung, Zahl der Projektbeteiligten, „Übernehmen in …“ (`inBereichUebernehmen`)
+  und „Geführt in“ bzw. „Im Controlling angelegt, noch in keinem Bereich“.
+* `ArchivAbschnitt`: aufklappbares „Archiv“ mit den im Bereich archivierten
+  Projekten und dem Hinweis „Archiviert wird im Controlling – je Bereich oder
+  für alle.“ Archivierte Projekte fehlen in Übersicht und Seitenleiste
+  (`useArchivierte`, `sichtbareProjekte`).
+* `ArchivHinweis` oben im Projekt eines archivierten Projekts: „Dieses Projekt
+  ist … archiviert. Es erscheint nicht in Übersicht und Seitenleiste;
+  zurückholen lässt es sich im Controlling.“
+* `VerknuepfungsHinweis` im Dialog „Neues Projekt“, wenn die Projektnummer zu
+  einem Registerprojekt gehört, das der Bereich nicht führt: „Die
+  Projektnummer gehört zu „…“. Beim Anlegen wird es damit verknüpft:
+  Bezeichnung und Projektbeteiligte kommen von dort und gelten in allen
+  Bereichen.“
+* Löschdialoge der Projekte ergänzen bei geteilten Projekten „In … bleibt das
+  Projekt mit seinen Projektbeteiligten erhalten.“ (`useLoeschHinweis`).
+* `RegisterBeteiligte`: Karte „Projektbeteiligte“ in der Baubetriebsplanung mit
+  Name, Funktion, Firma und Kontakt.
+
+### 9.4 Controlling
+
+Einstiegspunkt `src/bereiche/controlling/index.tsx`; ohne Entsperrung zeigt er
+die PIN-Abfrage (`src/bereiche/controlling/PinEingabe.tsx`: „Controlling“, Feld für
+die PIN, „Entsperren“, „Zur Bereichsauswahl“; mit der vierten Ziffer wird
+geprüft). Die Entsperrung gilt für die Sitzung (`sessionStorage`, Schlüssel
+`kaplan-controlling.entsperrt`) bis „Sperren“ in der Seitenleiste
+(`src/bereiche/controlling/App.tsx`). Einen eigenen Bestand hat das Controlling
+nicht; Gestaltung in `src/bereiche/controlling/controlling.css` (Präfix `ct-`).
+
+| Route | Seite | Aktionen |
+| --- | --- | --- |
+| `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich; Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“; die Projektbeteiligten zum Aufklappen. |
+| `#/controlling/archiv` | Archiv (dieselbe Seite) | Die im Controlling archivierten Projekte mit „Bearbeiten“, „Aus dem Archiv holen“ und „Löschen“; der Stand je Bereich ohne Schaltflächen. |
+
+Router: `src/bereiche/controlling/lib/router.ts`; unbekannte Adressen führen auf
+die Projekte. Die Aktionen auf dem Register stehen als reine Funktionen in
+`src/gemeinsam/abgleich.ts` (`projektAnlegen`, `projektBearbeiten`,
+`projektArchivieren`, `bereichArchivieren`, `inBereichUebernehmen`,
+`uebernahmeZuruecknehmen`, `projektEntfernen`); die Bereiche vollziehen sie
+beim nächsten Abgleich.
+
+### 9.5 Meldungen
+
+| Meldung | Fundstelle | Ursache |
+| --- | --- | --- |
+| „Die PIN stimmt nicht.“ | `src/bereiche/controlling/PinEingabe.tsx` | Falsche PIN. |
+| „Bitte eine Bezeichnung angeben.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Projekt ohne Bezeichnung. |
+| „Die Projektnummer gehört bereits zu „…“.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Projektnummer schon vergeben (ohne Rücksicht auf Groß- und Kleinschreibung). |
+| „Projekt angelegt.“ / „Projekt angelegt – die gewählten Bereiche übernehmen es beim nächsten Öffnen.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: neues Projekt ohne bzw. mit Bereichen. |
+| „Projekt gespeichert – die Bereiche übernehmen die Angaben.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: „Bearbeiten“. |
+| „„…“ archiviert – in allen Bereichen.“ / „„…“ aus dem Archiv geholt.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler. |
+| „„…“ wird beim nächsten Öffnen in … übernommen.“, „Übernahme zurückgenommen.“, „In … archiviert.“, „In … wieder aktiv.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: Aktionen je Bereich. |
+| „Projekt gelöscht.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: Löschen nach der Rückfrage „Projekt löschen?“ („Endgültig löschen“). |
+| „„…“ übernommen – mit … Projektbeteiligten.“ bzw. „„…“ übernommen.“ | `src/gemeinsam/ProjektBereiche.tsx` | Kein Fehler: „Übernehmen in …“ in einem Bereich. |
+| „Das Projektregister ließ sich nicht lesen. …“ bzw. „Das Projektregister stammt aus einer neueren Fassung von KaPlan. …“ | `src/bereiche/controlling/App.tsx` | Gespeichertes Register unlesbar bzw. `version` größer als `REGISTER_VERSION`. |

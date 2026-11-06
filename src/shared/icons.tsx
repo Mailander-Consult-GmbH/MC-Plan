@@ -41,6 +41,9 @@ const paths: Record<string, string> = {
   ziel: 'M5 21V4M5 4.5h11.5l-2.5 4 2.5 4H5',
   schleife: 'M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 20v-4.5h4.5',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5.5M12 7.5h.01',
+  // Controlling: Schloss (PIN) und Archivkarton
+  schloss: 'M6 11h12v9.5H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11M12 14.5v2.5',
+  archiv: 'M3.5 4.5h17v4h-17zM5 8.5V20h14V8.5M10 12.5h4',
 };
 
 export type IconName = keyof typeof paths;

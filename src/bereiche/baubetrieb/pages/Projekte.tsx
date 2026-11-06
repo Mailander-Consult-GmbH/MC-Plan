@@ -1,5 +1,16 @@
-/** Projekte: Liste mit Anlage- und Bearbeitungsdialog. */
+/**
+ * Projekte: Liste mit Anlage- und Bearbeitungsdialog. Darunter die im Bereich
+ * archivierten Projekte und – grau hinterlegt – Projekte aus anderen Bereichen
+ * zum Übernehmen (Projektregister, src/gemeinsam/).
+ */
 import { useState } from 'react';
+import {
+  ArchivAbschnitt,
+  BereichsMarken,
+  FremdeProjekte,
+  VerknuepfungsHinweis,
+  useArchivierte,
+} from '../../../gemeinsam/ProjektBereiche';
 import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
@@ -42,6 +53,81 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
       .toLowerCase()
       .includes(suche.toLowerCase()),
   );
+  const archiviert = useArchivierte('baubetrieb');
+  const aktive = projekte.filter((p) => !archiviert.has(p.id));
+  const archivierte = projekte.filter((p) => archiviert.has(p.id));
+
+  const karte = (p: Projekt) => {
+    const anzahl = data.anmeldungen.filter((a) => a.projektId === p.id).length;
+    const termine = offeneTermine(data, [p.id]);
+    const ueberfaellig =
+      termine.filter((t) => t.ampel === 'ueberfaellig').length +
+      (erstanmeldungAusstehend(p, data)?.ampel === 'ueberfaellig' ? 1 : 0);
+    const bedarf = naechsterBedarf(anmeldebedarf(p, data));
+    return (
+      <button
+        key={p.id}
+        type="button"
+        className="card card-click"
+        onClick={() => navigate({ view: 'projekt', projektId: p.id })}
+      >
+        <div className="card-pad">
+          <div className="row-between" style={{ alignItems: 'flex-start' }}>
+            <div style={{ minWidth: 0 }}>
+              <div className="mono tertiary">
+                {[p.dbGNummer, p.projektnummer].filter(Boolean).join(' · ') || 'ohne Nummer'}
+              </div>
+              <h2 style={{ marginTop: 2 }}>{p.name}</h2>
+              <div className="small muted truncate" style={{ marginTop: 3 }}>
+                {p.fahrplanjahre.length > 0 ? `Fahrplanjahre ${p.fahrplanjahre.join(', ')}` : 'ohne Fahrplanjahr'}
+                {p.hauptbearbeiter ? ` · ${p.hauptbearbeiter}` : ''}
+              </div>
+            </div>
+            <span className="row" style={{ gap: 6 }}>
+              <Badge ton={PROJEKT_STATUS_TON[p.status]}>{PROJEKT_STATUS_LABEL[p.status]}</Badge>
+              <span
+                role="button"
+                tabIndex={0}
+                className={`stern ${p.markiert ? 'aktiv' : ''}`}
+                title={p.markiert ? 'Markierung aufheben' : 'Markieren – erscheint in Übersicht und Seitenleiste'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMarkiert(p.id);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleMarkiert(p.id);
+                  }
+                }}
+              >
+                {p.markiert ? '★' : '☆'}
+              </span>
+            </span>
+          </div>
+
+          <div className="row wrap" style={{ gap: 16, marginTop: 14 }}>
+            <span className="small muted">
+              <b>{anzahl}</b> {anzahl === 1 ? 'Anmeldung' : 'Anmeldungen'}
+            </span>
+            {ueberfaellig > 0 ? (
+              <Badge ton="red">{ueberfaellig} überfällig</Badge>
+            ) : (
+              <Badge ton="green">im Plan</Badge>
+            )}
+            {bedarf ? (
+              <span className="small muted">
+                Nächste Anmeldung: <b>{RIL_LABEL[bedarf.phase]}</b> FPJ {bedarf.fahrplanjahr} bis{' '}
+                <b>{formatDate(bedarf.frist)}</b>
+              </span>
+            ) : null}
+          </div>
+          <BereichsMarken bereich="baubetrieb" lokaleId={p.id} />
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div className="stack">
@@ -58,12 +144,12 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
         </button>
       </div>
 
-      {projekte.length === 0 ? (
+      {aktive.length === 0 ? (
         <Card>
           <EmptyState
             icon="projekt"
             titel="Kein Projekt gefunden"
-            text="Legen Sie ein Projekt an, um die baubetrieblichen Anmeldungen der Maßnahme zu verfolgen."
+            text="Legen Sie ein Projekt an oder übernehmen Sie eines aus einem anderen Bereich, um die baubetrieblichen Anmeldungen der Maßnahme zu verfolgen."
             action={
               <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
                 <Icon name="plus" size={14} /> Neues Projekt
@@ -72,79 +158,11 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
           />
         </Card>
       ) : (
-        <div className="grid grid-2">
-          {projekte.map((p) => {
-            const anzahl = data.anmeldungen.filter((a) => a.projektId === p.id).length;
-            const termine = offeneTermine(data, [p.id]);
-            const ueberfaellig =
-              termine.filter((t) => t.ampel === 'ueberfaellig').length +
-              (erstanmeldungAusstehend(p, data)?.ampel === 'ueberfaellig' ? 1 : 0);
-            const bedarf = naechsterBedarf(anmeldebedarf(p, data));
-            return (
-              <button
-                key={p.id}
-                type="button"
-                className="card card-click"
-                onClick={() => navigate({ view: 'projekt', projektId: p.id })}
-              >
-                <div className="card-pad">
-                  <div className="row-between" style={{ alignItems: 'flex-start' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="mono tertiary">
-                        {[p.dbGNummer, p.projektnummer].filter(Boolean).join(' · ') || 'ohne Nummer'}
-                      </div>
-                      <h2 style={{ marginTop: 2 }}>{p.name}</h2>
-                      <div className="small muted truncate" style={{ marginTop: 3 }}>
-                        {p.fahrplanjahre.length > 0 ? `Fahrplanjahre ${p.fahrplanjahre.join(', ')}` : 'ohne Fahrplanjahr'}
-                        {p.hauptbearbeiter ? ` · ${p.hauptbearbeiter}` : ''}
-                      </div>
-                    </div>
-                    <span className="row" style={{ gap: 6 }}>
-                      <Badge ton={PROJEKT_STATUS_TON[p.status]}>{PROJEKT_STATUS_LABEL[p.status]}</Badge>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        className={`stern ${p.markiert ? 'aktiv' : ''}`}
-                        title={p.markiert ? 'Markierung aufheben' : 'Markieren – erscheint in Übersicht und Seitenleiste'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleMarkiert(p.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            toggleMarkiert(p.id);
-                          }
-                        }}
-                      >
-                        {p.markiert ? '★' : '☆'}
-                      </span>
-                    </span>
-                  </div>
-
-                  <div className="row wrap" style={{ gap: 16, marginTop: 14 }}>
-                    <span className="small muted">
-                      <b>{anzahl}</b> {anzahl === 1 ? 'Anmeldung' : 'Anmeldungen'}
-                    </span>
-                    {ueberfaellig > 0 ? (
-                      <Badge ton="red">{ueberfaellig} überfällig</Badge>
-                    ) : (
-                      <Badge ton="green">im Plan</Badge>
-                    )}
-                    {bedarf ? (
-                      <span className="small muted">
-                        Nächste Anmeldung: <b>{RIL_LABEL[bedarf.phase]}</b> FPJ {bedarf.fahrplanjahr} bis{' '}
-                        <b>{formatDate(bedarf.frist)}</b>
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <div className="grid grid-2">{aktive.map(karte)}</div>
       )}
+
+      <ArchivAbschnitt anzahl={archivierte.length}>{archivierte.map(karte)}</ArchivAbschnitt>
+      <FremdeProjekte bereich="baubetrieb" suche={suche} />
 
       {dialog ? <ProjektDialog onClose={() => setDialog(false)} navigate={navigate} /> : null}
     </div>
@@ -319,6 +337,7 @@ export function ProjektDialog({
           <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={3} />
         </Field>
       </div>
+      {projekt ? null : <VerknuepfungsHinweis bereich="baubetrieb" nummer={form.projektnummer} />}
     </Modal>
   );
 }

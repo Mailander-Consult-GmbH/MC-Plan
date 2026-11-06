@@ -5,6 +5,7 @@
  */
 import { useEffect } from 'react';
 import { BereichBaubetrieb } from '../bereiche/baubetrieb';
+import { BereichControlling } from '../bereiche/controlling';
 import { BereichPlanlauf } from '../bereiche/planlauf';
 import { BereichProjektsteuerung } from '../bereiche/projektsteuerung';
 import { Start } from './Start';
@@ -22,5 +23,6 @@ export function Shell() {
   if (bereich === 'planlauf') return <BereichPlanlauf />;
   if (bereich === 'baubetrieb') return <BereichBaubetrieb />;
   if (bereich === 'projektsteuerung') return <BereichProjektsteuerung />;
+  if (bereich === 'controlling') return <BereichControlling />;
   return <Start />;
 }

@@ -17,6 +17,7 @@ import { ProtokollEditor } from './pages/projekt/ProtokollEditor';
 import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
 import { exportiereDaten } from './store/storage';
 import { useStore } from './store/store';
+import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 
 export function App() {
   const { data, zuruecksetzen } = useStore();
@@ -27,7 +28,9 @@ export function App() {
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
 
-  const markierte = sichtbareProjekte(data.projekte);
+  const archiviert = useArchivierte('projektsteuerung');
+  const markierte = sichtbareProjekte(data.projekte, archiviert);
+  const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
   const ueberfaellig = offenePunkte(data, markierte.map((p) => p.id)).filter((p) => p.ampel === 'ueberfaellig');
   const projekt =
     route.view === 'projekt' || route.view === 'protokoll'
@@ -71,7 +74,7 @@ export function App() {
 
         <div className="nav-group-label">
           Projekte
-          {markierte.length < data.projekte.length ? <span className="tertiary"> (markierte)</span> : null}
+          {markierte.length < aktiveAnzahl ? <span className="tertiary"> (markierte)</span> : null}
         </div>
         {markierte.map((p) => {
           const spaet = ueberfaellig.filter((x) => x.projekt.id === p.id).length;

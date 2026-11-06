@@ -19,6 +19,7 @@ import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
 import { Workflows } from './pages/Workflows';
 import { exportiereDaten } from './store/storage';
 import { useStore } from './store/store';
+import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 
 export function App() {
   const { data, zuruecksetzen } = useStore();
@@ -29,7 +30,9 @@ export function App() {
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
 
-  const markierte = sichtbareProjekte(data.projekte);
+  const archiviert = useArchivierte('baubetrieb');
+  const markierte = sichtbareProjekte(data.projekte, archiviert);
+  const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
   const termine = offeneTermine(data);
   // Überfällig: Terminfristen der Anmeldungen und ausstehende Erstanmeldungen
   const ueberfaellig = [...termine, ...ausstehendeErstanmeldungen(data)].filter((t) => t.ampel === 'ueberfaellig');
@@ -85,7 +88,7 @@ export function App() {
 
         <div className="nav-group-label">
           Projekte
-          {markierte.length < data.projekte.length ? <span className="tertiary"> (markierte)</span> : null}
+          {markierte.length < aktiveAnzahl ? <span className="tertiary"> (markierte)</span> : null}
         </div>
         {markierte.map((p) => {
           const spaet = ueberfaellig.filter((t) => t.projekt.id === p.id).length;

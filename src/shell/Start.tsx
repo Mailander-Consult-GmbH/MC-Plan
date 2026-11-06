@@ -40,7 +40,8 @@ export function Start() {
 
         <p className="start-fuss">
           Die Bereiche arbeiten unabhängig voneinander – jeder mit eigenem Datenbestand und eigenen
-          Einstellungen. Daten werden lokal im Browser gespeichert.
+          Einstellungen. Projekte und Projektbeteiligte teilen sie sich über das Projektregister, das das
+          Controlling verwaltet. Daten werden lokal im Browser gespeichert.
         </p>
       </div>
     </div>
