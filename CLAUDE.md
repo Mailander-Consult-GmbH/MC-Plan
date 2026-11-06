@@ -89,7 +89,10 @@ ignoriert.
   (`mitarbeiterZumNamen`; der Store setzt `einstellungen.mitarbeiterId` danach), fehlt er, legt
   „Als Mitarbeiter anmelden“ ihn an. `domain/nachweis.ts`
   Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss (Nachweise eines Projekts überschneiden sich
-  nie; welche Leistungen ein Nachweis zeigt, ergibt sich allein aus dem Datum; Vorgabe ist die
+  nie; welche Leistungen ein Nachweis zeigt, ergibt sich aus dem Datum – außer nachgereichten
+  Leistungen, die ein späterer Nachweis nach Rückfrage übernommen hat (`nachgereicht`); deshalb
+  immer `leistungenDesNachweises` bzw. `nachweisDerLeistung` statt Datumsvergleichen; abgerechnet
+  ist, was im Stand abgeschlossener Nachweise steht, `abgerechneteLeistungen`; Vorgabe ist die
   Zeitraumregel `fortlaufend` – ein Nachweis läuft, bis er abgeschlossen wird, und erst der
   Abschluss legt seinen Zeitraum fest, `laeuftBisAbschluss`/`abschlussZeitraum`; „Neuer
   Leistungsnachweis“ fragt keinen Zeitraum ab, sondern fasst alle nicht abgerechneten Leistungen

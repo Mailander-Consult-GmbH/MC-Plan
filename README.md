@@ -1047,6 +1047,13 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   bleiben erhalten. Später erfasste Leistungen kommen hinzu, den Zeitraum legt der Abschluss fest.
   Liegt schon alles in einem offenen Nachweis, bietet der Dialog **Öffnen** an. Für Korrekturen
   gibt es in der Abrechnung weiter **Zeitraum ändern**.
+  **Nicht erfasste Leistungen:** Abgerechnet ist, was im festgeschriebenen Stand eines
+  abgeschlossenen Nachweises steht. Leistungen aus schon abgerechneten Zeiträumen, die dort fehlen
+  (etwa nach dem Abschluss nachgetragen), meldet der Dialog – und die Abrechnung des laufenden
+  Nachweises – mit Datum, Person, Stunden, Text und Grund. Übernommen werden sie **erst nach
+  Bestätigung** (Haken im Dialog bzw. Rückfrage in der Abrechnung) – als **nachgereichte** Leistungen
+  mit ihrem Datum als eigene Zeile, gekennzeichnet „nachgereicht“. Der abgeschlossene Nachweis
+  bleibt unverändert.
   Ein Klick öffnet die **Abrechnung**: Aufschlag in ± Stunden je Zeile bzw. die abgerechneten
   Stunden, die Ansicht **Leistungstexte** (Text je Zeile bearbeiten, solange der Nachweis offen ist –
   ein bearbeiteter Text wird nie still überschrieben, neue Leistungen bietet die Zeile zum
@@ -1077,7 +1084,8 @@ Mitarbeiter – darunter Anna Becker –, drei Projekte, Leistungen der letzten 
 **Sicherung**/**Einspielen** (JSON mit dem Kennzeichen `"bereich": "leistungsnachweise"`) und
 **Zurücksetzen**. Sicherungen und Stände aus dem Testprojekt lassen sich einspielen; die frühere
 Rolle Controlling entfällt dabei (Fassung 3). Fassung 4 stellt alle Projekte auf *Fortlaufend bis zum
-Abschluss*; vorhandene Nachweise bleiben, wie sie sind. Projekte teilt der Bereich über das Projektregister;
+Abschluss*; vorhandene Nachweise bleiben, wie sie sind. Fassung 5 ergänzt an den Nachweisen die
+nachgereichten Leistungen (leer). Projekte teilt der Bereich über das Projektregister;
 seine Mitarbeiter sind keine Projektbeteiligten und werden nicht geteilt. Name unter „Angemeldet als“
 und Farbmodus gelten in allen Bereichen.
 

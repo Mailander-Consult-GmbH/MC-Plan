@@ -1067,13 +1067,18 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   Mitarbeiter, Datum, Text, Stunden, Abschnitt, `projektelement`, `quelle`
   `manuell` oder `import`) und `Leistungsnachweis` (Zeitraum `von`/`bis`,
   Raster, Status `entwurf` oder `abgeschlossen`, bearbeitete `texte`,
-  `aufschlaege` je Zeile und Abschnitt, `bemerkung`, festgeschriebener
-  `stand`). `einstellungen.mitarbeiterId` ist die angemeldete Person.
+  `aufschlaege` je Zeile und Abschnitt, `bemerkung`, `nachgereicht` –
+  Kennungen übernommener Leistungen aus früheren Zeiträumen –, festgeschriebener
+  `stand`). Welche Leistungen ein Nachweis zeigt, ergibt sich aus ihrem Datum,
+  nachgereichte stehen statt dessen in dem Nachweis, der sie übernommen hat
+  (`leistungenDesNachweises`, `nachweisDerLeistung` in
+  `src/bereiche/leistungsnachweise/domain/nachweis.ts`). `einstellungen.mitarbeiterId` ist die angemeldete Person.
 * Schlüssel `leistungsnachweise.data.v1` im `localStorage`
-  (`src/bereiche/leistungsnachweise/store/storage.ts`), `DATEN_VERSION = 4`.
+  (`src/bereiche/leistungsnachweise/store/storage.ts`), `DATEN_VERSION = 5`.
   Fassung 3 kennt die Rolle Controlling an Mitarbeitern nicht mehr;
   `aufbereiten()` übernimmt sie nicht. Fassung 4 (`vonFassung3`) stellt alle
-  Projekte auf `zeitraumregel` `fortlaufend`; vorhandene Nachweise bleiben. Gespeichert wird nur bei
+  Projekte auf `zeitraumregel` `fortlaufend`; vorhandene Nachweise bleiben.
+  Fassung 5: `nachgereicht` ergänzt `aufbereiten()` leer. Gespeichert wird nur bei
   `ladeZustand` 'ok'; vor einer Umstellung legt `ladeDaten` eine Rohkopie
   `leistungsnachweise.data.v1.vor-fassung-<n>` an. Sicherungen tragen
   `"bereich": "leistungsnachweise"`.
@@ -1173,9 +1178,24 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   der erste wird erweitert, Leistungstexte, Aufschläge (summiert) und
   Bemerkungen der übrigen gehen auf ihn über (`nachweisFuerNichtAbgerechneteAnwenden`,
   im Store `nachweisFuerNichtAbgerechnete`). Liegt schon alles in genau einem
-  offenen Nachweis, heißt der Knopf „Öffnen“. Leistungen vor dem letzten
-  abgeschlossenen Nachweis nennt der Dialog und lässt sie, wo sie sind.
+  offenen Nachweis, heißt der Knopf „Öffnen“.
   Vorhandene Nachweise korrigiert „Zeitraum ändern“ (`ZeitraumDialog`).
+* Nicht erfasste Leistungen: Abgerechnet ist, was im festgeschriebenen Stand
+  der abgeschlossenen Nachweise steht (`abgerechneteLeistungen`). Leistungen vor
+  dem letzten abgeschlossenen Nachweis, die dort fehlen und in keinem offenen
+  Nachweis liegen, nennt `nichtAbgerechnet` als `nichtErfasst`. Der Dialog
+  „Neuer Leistungsnachweis“ und die Abrechnung des laufenden Nachweises zeigen
+  sie (`NichtErfasstHinweis` in
+  `src/bereiche/leistungsnachweise/components/NachweisDialog.tsx`: „… noch nicht
+  erfasst“, je Leistung Datum, Person, Stunden, Text und Grund – „nach dem
+  Abschluss von „…“ erfasst“ bzw. „in keinem Leistungsnachweis“). Übernommen
+  werden sie nur nach Bestätigung: im Dialog mit dem Haken „In diesen
+  Leistungsnachweis übernehmen“ bzw. „Alle in diesen Leistungsnachweis
+  übernehmen“ (Knopf dann „Übernehmen und öffnen“ bzw. „Anlegen“), in der
+  Abrechnung mit „In diesen Leistungsnachweis übernehmen …“ und der Rückfrage
+  „Nicht erfasste Leistungen übernehmen?“ (`leistungenNachreichen`,
+  `nachreichenAnwenden`). Sie stehen danach in `nachgereicht`; ihre Zeilen sind
+  in Abrechnung und Leistungstexten mit „nachgereicht“ gekennzeichnet.
 * Der Zeitraum steht erst beim Abschluss fest: Läuft ein Nachweis bis zum
   Abschluss (`laeuftBisAbschluss` – offen und Regel `fortlaufend` oder Ende nach
   heute), zeigen Listen und Abrechnung „ab … · läuft bis zum Abschluss“
