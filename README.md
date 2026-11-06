@@ -143,7 +143,9 @@ zeigt bis zum Neuladen weiter die alte Fassung. Deshalb trägt jeder Build eine 
 `index.html` und im Programm selbst. Die Anwendung vergleicht beide beim Start, wenn das Fenster
 wieder in den Vordergrund kommt, und alle fünf Minuten (`useNeueFassung` in `src/shared/pwa.ts`).
 Weichen sie ab, erscheint unten rechts **„Neue Fassung von KaPlan verfügbar“** mit **Neu laden**
-und **Später** (`src/shell/NeueFassung.tsx`). Welche Fassung läuft, steht am Fuß des
+und **Später** (`src/shell/NeueFassung.tsx`). Dialoge und die aufgeklappte Seitenleiste liegen
+darüber; Meldungen erscheinen oberhalb des Hinweises statt ihn zu verdecken (der Hinweis setzt seine
+Höhe als `--neue-fassung-hoehe`). Welche Fassung läuft, steht am Fuß des
 Startbildschirms („Fassung vom …“, im Build des Workflows mit dem Commit).
 
 Technische Voraussetzung für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade).
@@ -170,7 +172,21 @@ stört er also nicht.
 
 Die Oberfläche ist durchgehend responsiv: Ab etwa 860 px klappt die Seitenleiste in ein Menü, auf
 Telefonbreite stehen die Kennzahlen zweispaltig, Tabellen scrollen quer bzw. werden – wie die
-Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar bleiben.
+Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar bleiben. Ab Tabletbreite
+bleibt die Kopfzeile einer Tabelle beim Blättern stehen, solange die Tabelle in ihre Karte passt;
+ist sie breiter, scrollt sie quer (`tabellenBreiteBeobachten` in `src/shared/tabellen.ts`, Klasse
+`table-scroll-quer`), sodass keine Spalte und keine Schaltfläche abgeschnitten wird. Dialoge sind
+auf die sichtbare Höhe begrenzt (`dvh`), ihr Fuß liegt also nicht unter den Leisten mobiler
+Browser. Eine neue Seite beginnt oben (`useNachObenBeiSeitenwechsel` in `src/shared/scrollen.ts`);
+ein Reiterwechsel innerhalb einer Seite scrollt nicht.
+
+Aufklappmenüs an Knöpfen – die Haken „Status ändern“ der Baubetriebsplanung und „Erledigt“ des
+Planlaufmanagements, die Schrittwahl und die Spaltenfilter der Planliste – sind ein gemeinsamer
+Baustein (`AufklappMenue` in `src/shared/menue.tsx`): Das Menü öffnet bei Platzmangel nach oben,
+bleibt im Fenster und scrollt bei Bedarf selbst; lange Einträge brechen um. Der erste Eintrag
+erhält den Fokus, Pfeiltasten sowie Pos1/Ende wechseln den Eintrag; Escape schließt das Menü und
+gibt den Fokus an den Knopf zurück. Tab, ein Klick oder Tippen daneben, Scrollen, eine
+Größenänderung des Fensters und ein zweiter Klick auf den Knopf schließen es ebenfalls.
 
 ## Funktionsumfang
 
@@ -231,7 +247,8 @@ Projekt. Das Planlaufmanagement erscheint auf dieser Seite nicht – es ist imme
 
 **Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · Telefon ·
 Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*; leere
-SharePoint-Zellen lassen vorhandene Links stehen. Gewerke und Funktionen, die es noch nicht gibt, werden
+SharePoint-Zellen lassen vorhandene Links stehen; eine Postleitzahl im Excel-Format „Postleitzahl“
+(Zahlenformat aus Nullen) behält ihre führende Null. Gewerke und Funktionen, die es noch nicht gibt, werden
 beim Import angelegt; „Übergreifend“ steht für Funktionen ohne Gewerkbezug. Eine optionale Spalte
 *Seite* setzt die Seite für den Verzug – bei neuen Funktionen (sonst gilt die Vorbelegung) und bei
 vorhandenen, wenn sie abweicht. Die Vorschau nennt je Zeile, was angelegt wird, wen eine Besetzung
@@ -343,7 +360,8 @@ steht in der Spalte **Aktueller Stand** der zuletzt erledigte Prozessschritt vor
 nie dahinter; nach einem Rücksprung ist es der zuletzt bis zum Wiedereingang erledigte –, darunter
 in Grau sein Erledigungsdatum, und in der Spalte **Nächster Schritt** der offene Schritt mit seiner
 Frist. Stehen in parallelen Zweigen mehrere Schritte an, nennt die Zeile den dringlichsten mit
-„+n parallel“; Erinnern und Erledigt-Haken fragen dann nach dem Schritt. Status, Filter und Suche
+„+n parallel“; Erinnern und Erledigt-Haken fragen dann in einem Menü nach dem Schritt („Welcher
+Schritt ist erledigt?“ bzw. „Erinnerung zu welchem Schritt?“). Status, Filter und Suche
 berücksichtigen alle anstehenden Schritte. Der **Fortschritt** ist nach Fristen gewichtet: die
 Fristen der erledigten Schritte im Verhältnis zu ihnen plus den Fristen aller laut Prognose noch
 ausstehenden Ausführungen – ein Rücksprung senkt ihn also; 100 % hat nur ein abgeschlossener Lauf.
@@ -369,10 +387,11 @@ Datum des aktuellen Stands, Soll-Termin des nächsten Schritts, Zuständigkeit, 
 innerhalb der Planpakete, die Paketzeilen folgen derselben Spalte.
 
 Die **Kopfzeile der Tabellen bleibt beim Scrollen stehen**, sodass die Spaltenbezeichnungen auch in
-langen Listen sichtbar sind.
+langen Listen sichtbar sind – solange die Tabelle in ihre Karte passt; eine breitere scrollt quer.
 
 **Filtern** geschieht in derselben Überschrift: Der Trichter neben *Gewerk*, *Zuständig* und *Status*
-öffnet die Auswahl der vorhandenen Werte; der gewählte Wert steht anschließend in der Überschrift.
+öffnet die Auswahl der vorhandenen Werte (der gewählte ist im Menü hervorgehoben, „Alle“ hebt den
+Filter auf); der gewählte Wert steht anschließend in der Überschrift.
 Die **Suche** über Nummer, Titel und Schritt steht oben in der Kartenzeile neben der Gliederung,
 daneben erscheint bei gesetzten Filtern *Filter zurücksetzen*.
 
@@ -683,7 +702,9 @@ Schrittangaben.
 Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
 Seitenleiste (mit vorangestellter Projektnummer); ohne Markierung werden alle angezeigt –
 archivierte Projekte in keinem Fall (siehe
-[Gemeinsame Projekte und Controlling](#gemeinsame-projekte-und-controlling)). Die
+[Gemeinsame Projekte und Controlling](#gemeinsame-projekte-und-controlling)). Der Hinweis
+„Kein Projekt markiert“ erscheint nach derselben Regel – wenn es nicht archivierte Projekte gibt und
+keines davon markiert ist; das gilt ebenso in den Übersichten der anderen Bereiche. Die
 Übersicht zeigt Kennzahlen, die eigenen **To-Dos** (laufende Schritte des Planlaufmanagements) und
 die laufenden Planläufe nach Projekt gegliedert. In einem markierten Projekt ist die angemeldete
 Person automatisch das **Planlaufmanagement** und ist damit für dessen Schritte zuständig; unter
@@ -719,6 +740,8 @@ wurde. Bei einem Lade- oder Fassungsfehler zeigt die Anwendung Demodaten und spe
 der gespeicherte Stand erhalten bleibt. Vor jeder Umstellung auf eine neue Fassung legt sie den
 gespeicherten Text als **Sicherungskopie** im Browser ab (Schlüssel
 `planlauf-management.data.v1.vor-fassung-<n>`); wird der Speicher knapp, entfällt diese Kopie zuerst.
+Speichert ein anderes Fenster (Tab oder installierte App) den Bestand, lädt die Anwendung dessen
+Stand nach, statt ihn mit dem eigenen älteren zu überschreiben (`useFremdeAenderung`).
 
 ### Projekteinstellungen
 Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie – wie im Reiter
@@ -774,7 +797,8 @@ jüngste Eintrag im Statusverlauf (Anlage, Statuswechsel, „Nachgehakt“ und a
 ihrem Datum) oder die letzte Änderung der Merkmale („Bearbeiten“, Termin von Hand), was später liegt;
 darunter Abstand zu heute und Anlass –, dazu **Status ändern** als Haken wie im Planlaufmanagement: Hat der Status nur einen
 möglichen Nachfolger, wählt der Haken ihn direkt; bei mehreren öffnet er ein Menü „Welcher Status
-folgt?“ (wie bei parallelen Schritten im Planlauf). Bestätigt wird der Wechsel im Dialog des
+folgt?“ (wie bei parallelen Schritten im Planlauf; zu Menüs siehe „Als App installieren“). In
+den Anmeldungstabellen bleibt der Haken rechts stehen, wenn eine Tabelle quer scrollt. Bestätigt wird der Wechsel im Dialog des
 Statuswechsels. „Zuständig“ nennt die Rolle des aktuellen Status samt Namen:
 BBK mit dem zuständigen BBK der Anmeldung, MIC mit dem Hauptbearbeiter, Projektleitung DB mit dem
 Projektleiter des Projekts. Die Maßnahmenart steht in der zweiten Zeile, wo der Workflow mehrere
@@ -874,8 +898,23 @@ Beschreibung der Standard-Workflows nicht geändert wurden; die Maßnahmenart Pz
 A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A. Aus der bisherigen geplanten Sperrzeit eines
 Projekts werden seine betroffenen Fahrplanjahre. Die Status der Standard-Workflows erhalten ihre
 vorgegebene Zuständigkeit (Fassung 8). Fassung 9 ergänzt an den Anmeldungen den Anmelder und den
-Tag der letzten Änderung der Merkmale (beide leer). Name unter „Angemeldet als“ und Farbmodus gelten
-in allen Bereichen; der Name steht im Statusverlauf und ist Hauptbearbeiter neuer Projekte.
+Tag der letzten Änderung der Merkmale (beide leer; gesetzt wird er nur bei einer tatsächlichen
+Änderung – „Speichern“ ohne Änderung lässt den Sachstand stehen). Name unter „Angemeldet als“ und
+Farbmodus gelten in allen Bereichen; der Name steht im Statusverlauf und ist Hauptbearbeiter neuer
+Projekte.
+
+Gespeichert wird – wie im Planlaufmanagement und in den Leistungsnachweisen – nur, wenn der Bestand
+einwandfrei geladen wurde (`ladeZustand === 'ok'`); vor jeder Umstellung auf eine neue Fassung
+entsteht die Rohkopie `<Schlüssel>.vor-fassung-<n>`. Nach einem Ladefehler zeigt eine Hinweisleiste
+**„Der gespeicherte Stand ließ sich nicht laden.“** mit **Gespeicherten Stand herunterladen** und
+**Mit Demodaten neu beginnen** (Rückfrage „Mit Demodaten neu beginnen?“); stammt der Stand aus einer
+neueren Fassung, **„Die gespeicherten Daten stammen aus einer neueren Fassung von KaPlan.“** mit
+**Seite neu laden** – dann sind *Einspielen* und *Zurücksetzen* gesperrt, und **Sicherung** lädt den
+gespeicherten Stand unverändert herunter (`baubetrieb-gespeicherter-stand-<Datum>.json`). Der Abgleich mit
+dem Projektregister ruht, solange der Stand nicht geladen ist. Ist der Speicher des Browsers voll,
+räumt das Speichern zuerst die Rohkopien und meldet sonst **„Nicht gespeichert – bitte Sicherung
+herunterladen.“** mit **Sicherung herunterladen** (`components/Hinweisleisten.tsx`). Speichert ein
+anderes Fenster denselben Bereich, lädt der Store dessen Stand nach (`useFremdeAenderung`).
 
 ## Projektsteuerung
 
@@ -909,7 +948,8 @@ vorkommen. Die Liste lässt sich drucken (PDF) und als Excel-Datei herunterladen
 
 **Excel-Import** liest eine Liste (.xlsx oder .csv) mit den Spalten Funktion, Gewerk, Kürzel,
 Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift, Notiz; zwingend ist nur
-der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen). Die Vorschau nennt je Zeile, ob die
+der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen). Gelesen wird das erste Blatt mit
+Kopfzeile und Personen – ein vorangestelltes Hinweis- oder Deckblatt wird übersprungen. Die Vorschau nennt je Zeile, ob die
 Person neu ist oder aktualisiert wird (gleicher Name im Projekt) und ob Funktion oder Gewerk neu
 angelegt werden. **Vorlage** lädt eine leere Datei mit diesen Spalten; die Excel-Ausgabe der
 Beteiligtenliste hat dieselben Spalten und lässt sich so in ein anderes Projekt übernehmen.
@@ -978,8 +1018,8 @@ Aufgaben je Projekt.
 
 ### Daten
 Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
-mit Projektbeteiligten und zwei Protokollen, darunter Aufgaben der Projektsteuerung; angemeldet ist
-deren Projektsteuerin Lena Roth), **Sicherung**/**Einspielen** (JSON mit dem
+mit Projektbeteiligten und zwei Protokollen, darunter Aufgaben der Projektsteuerin Lena Roth – wer
+unter „Angemeldet als“ „Lena Roth“ einträgt, sieht sie als eigene To-Dos), **Sicherung**/**Einspielen** (JSON mit dem
 Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
 Protokoll-Tools werden mit Hinweis abgewiesen) und **Zurücksetzen**. Stände der ersten Fassung
 erhalten beim Laden die mitgelieferten Gewerke; ihre Funktionen gelten als übergreifend. Ältere
@@ -991,6 +1031,19 @@ den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die
 `#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Bis Fassung 5 galten für alle
 Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Name unter „Angemeldet als“
 und Farbmodus gelten in allen Bereichen.
+
+Gespeichert wird – wie im Planlaufmanagement und in den Leistungsnachweisen – nur, wenn der Bestand
+einwandfrei geladen wurde (`ladeZustand === 'ok'`); vor jeder Umstellung auf eine neue Fassung
+entsteht die Rohkopie `<Schlüssel>.vor-fassung-<n>`. Nach einem Ladefehler zeigt eine Hinweisleiste
+**„Der gespeicherte Stand ließ sich nicht laden.“** mit **Gespeicherten Stand herunterladen** und
+**Mit Demodaten neu beginnen** (Rückfrage „Mit Demodaten neu beginnen?“); stammt der Stand aus einer
+neueren Fassung, **„Die gespeicherten Daten stammen aus einer neueren Fassung von KaPlan.“** mit
+**Seite neu laden** – dann sind *Einspielen* und *Zurücksetzen* gesperrt, und **Sicherung** lädt den
+gespeicherten Stand unverändert herunter (`projektsteuerung-gespeicherter-stand-<Datum>.json`). Der Abgleich mit
+dem Projektregister ruht, solange der Stand nicht geladen ist. Ist der Speicher des Browsers voll,
+räumt das Speichern zuerst die Rohkopien und meldet sonst **„Nicht gespeichert – bitte Sicherung
+herunterladen.“** mit **Sicherung herunterladen** (`components/Hinweisleisten.tsx`). Speichert ein
+anderes Fenster denselben Bereich, lädt der Store dessen Stand nach (`useFremdeAenderung`).
 
 ## Leistungsnachweise
 
@@ -1011,8 +1064,13 @@ PIN-geschützte Controlling-Bereich.
 
 ### Übersicht und Projekte
 Die **Übersicht** zeigt die eigenen Stunden und Leistungen des Monats, die eigenen Stunden im Jahr,
-den Kalender **Mein Kalender** über alle Projekte (siehe [Kalender](#kalender)), die zuletzt
-erfassten eigenen Leistungen und je Projekt die eigenen Stunden des Monats. Die
+den Kalender **Mein Kalender** mit allen eigenen Leistungen über alle Projekte (siehe
+[Kalender](#kalender)), die zuletzt erfassten eigenen Leistungen und je Projekt die eigenen Stunden
+des Monats. Gibt es kein nicht archiviertes Projekt, steht der Kalender trotzdem da (eigene
+Leistungen lassen sich öffnen), darüber ein Hinweis, dass Projekte das Controlling anlegt bzw. dass
+alle archiviert sind. Der Hinweis „Kein Projekt markiert – es werden alle angezeigt.“ erscheint, wenn
+es nicht archivierte Projekte gibt und keines davon markiert ist (auch in einem anderen Bereich
+markierte zählen als markiert). Die
 **Projektliste** legt nichts an: Jedes Projekt der anderen Bereiche und des Controllings steht von
 selbst hier (Projektregister); unbekannte Projekte legt auch der Excel-Import an. Ein Projekt öffnet direkt die eigenen
 Leistungen – zuerst im Kalender, mit dem Umschalter **Liste** als Tabelle mit Filtern und Auswahl –,
@@ -1024,28 +1082,46 @@ Abrechnung im Controlling.
 Ein großer Monatskalender (Montag bis Sonntag) zeigt je Tag die eigenen Leistungen mit Stunden und
 Text sowie die Tagessumme, rechts je Woche die Kalenderwoche und ihre Summe; Wochenenden und Tage
 außerhalb des Monats sind zurückgenommen, heute ist hervorgehoben. **Ein Klick auf einen Tag
-erfasst dort eine Leistung**, ein Klick auf eine Leistung öffnet sie zum Bearbeiten. Mit den Pfeilen
+erfasst dort eine Leistung**, ein Klick auf eine Leistung öffnet sie zum Bearbeiten; auf Geräten
+ohne Maus steht das Plus in jedem Tag dauerhaft da. Mit den Pfeilen
 geht es einen Monat vor oder zurück, **Heute** springt in den laufenden Monat. In der Übersicht
 umfasst der Kalender alle Projekte – jede Leistung nennt ihre Projektnummer, und der Dialog fragt
-das Projekt ab (vorgewählt ist das der zuletzt erfassten Leistung). Auf schmalen Bildschirmen zeigt
-jeder Tag nur seine Stunden; erfasst wird ebenfalls per Klick, bearbeitet über die Liste.
+das Projekt ab (vorgewählt ist das der zuletzt erfassten Leistung; zur Wahl stehen nur nicht
+archivierte Projekte). Ist der Kalender schmal – bis 730 px Kalenderbreite, also auch neben der
+Seitenleiste bis etwa 1036 px Fensterbreite (Container-Abfrage) –, zeigt jeder Tag nur seine Stunden:
+Ein leerer Tag erfasst direkt, ein Tag mit Stunden öffnet erst die Liste seiner Leistungen
+(Wochentag und Datum, Stunden und Zahl der Leistungen) mit **Neue Leistung** und **Schließen**; ein
+Eintrag darin öffnet die Leistung.
 
 ### Leistungen
 Eigene Leistungen von Hand erfassen (Datum, Text, Stunden, Abschnitt) oder per **Excel-Import** aus
 dem Export der Zeiterfassung übernehmen – auch mehrere Projekte je Datei. Unbekannte Projekte und
 fehlende Abschnitte (Spalte J „Projektelement“) legt der Import an, doppelte Zeilen überspringt er,
-frühere eigene Importe im Zeitraum der Datei lassen sich ersetzen. Im Bereich übernimmt jede Person
-nur ihre eigenen Zeilen; Leistungen anderer ändert niemand.
+frühere eigene Importe im Zeitraum der Datei lassen sich ersetzen – ist eine ersetzte Leistung schon
+abgerechnet oder nachgereicht, übernimmt die neue Zeile derselben Person für dasselbe Projekt und
+denselben Tag ihre Kennung, sodass sie nicht doppelt abgerechnet wird. Im Bereich übernimmt jede
+Person nur ihre eigenen Zeilen; Leistungen anderer ändert niemand. Projekte (nur mit dem Haken
+„Projekt anlegen“) und Abschnitte legt der Import auch im Bereich an, soweit die eigenen Leistungen
+sie brauchen; einstellen lassen sie sich nur im Controlling.
+
+Wird eine schon abgerechnete Leistung auf ein anderes Datum gelegt, bleibt sie im abgeschlossenen
+Nachweis – der Dialog sagt das an („Bleibt im abgeschlossenen Leistungsnachweis … abgerechnet“); mit
+dem neuen Datum erscheint sie erst, wenn das Controlling ihn wieder öffnet.
 
 ### Leistungsnachweise
-Ein Nachweis ist ein Zeitraum eines Projekts; welche Leistungen er zeigt, ergibt sich allein aus
-ihrem Datum. Fehlt für eine Leistung ein Nachweis, entsteht er beim Erfassen oder Importieren von
+Ein Nachweis ist ein Zeitraum eines Projekts; welche Leistungen er zeigt, ergibt sich aus ihrem
+Datum – außer nachgereichten Leistungen, die ein späterer Nachweis nach Rückfrage übernommen hat
+(siehe „Nicht erfasste Leistungen“), und Leistungen, die schon im Stand eines anderen
+abgeschlossenen Nachweises stehen: Abgerechnet bleibt abgerechnet (`leistungenDesNachweises`,
+`nachweisDerLeistung`). Fehlt für eine Leistung ein Nachweis, entsteht er beim Erfassen oder Importieren von
 selbst. Ein Leistungsnachweis ist **nicht an einen Monat gebunden**: Er läuft weiter – auch über
 mehrere Monate –, bis das Controlling ihn abschließt; danach beginnt mit der nächsten Leistung ein
 neuer (Regel *Fortlaufend bis zum Abschluss*, Vorgabe für alle Projekte). **Der Zeitraum wird erst
 beim Abschluss festgelegt:** Bis dahin zeigen Listen und Abrechnung „ab … · läuft bis zum
-Abschluss“; beim Abschluss endet er am letzten Tag mit Leistungen (spätestens heute). Wer es so
-will, stellt ein Projekt im Controlling auf *Je Kalendermonat*. Je Tag, Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern,
+Abschluss“; beim Abschluss endet er am letzten Tag mit Leistungen (spätestens heute). Ausnahme: Hat
+das Controlling das Ende mit **Zeitraum ändern** festgelegt, läuft der Nachweis nicht mehr bis zum
+Abschluss, wird nicht verlängert und beim Abschluss nicht gekürzt; spätere Leistungen kommen in
+einen neuen. Wer es so will, stellt ein Projekt im Controlling auf *Je Kalendermonat*. Je Tag, Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern,
 Leistungstext und Stunden.
 
 ### Controlling der Leistungsnachweise
@@ -1058,36 +1134,50 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   Der fragt **keinen Zeitraum** ab, nur Projekt, Raster und optional die Überschrift: Er umfasst
   automatisch alle nicht abgerechneten Leistungen des Projekts (nach dem letzten abgeschlossenen
   Nachweis); offene Nachweise gehen darin auf, ihre Leistungstexte, Aufschläge und Bemerkungen
-  bleiben erhalten. Später erfasste Leistungen kommen hinzu, den Zeitraum legt der Abschluss fest.
+  bleiben erhalten – Texte derselben Zeile aus mehreren Nachweisen werden verbunden, ein von Hand
+  festgelegtes Ende entfällt. Wechselt dabei das Raster, warnt der Dialog, wenn von Hand bearbeitete
+  Texte oder Aufschläge nicht mehr angezeigt werden (sie bleiben gespeichert und kehren mit dem
+  alten Raster zurück). Später erfasste Leistungen kommen hinzu, den Zeitraum legt der Abschluss fest.
   Liegt schon alles in einem offenen Nachweis, bietet der Dialog **Öffnen** an. Für Korrekturen
-  gibt es in der Abrechnung weiter **Zeitraum ändern**.
+  gibt es in der Abrechnung weiter **Zeitraum ändern**: Ein geändertes Ende steht danach fest;
+  läuft der Nachweis bis zum Abschluss, legt der Haken **Ende festlegen** das Ende auch ohne
+  Änderung fest (er ist bei geändertem Ende vorgewählt, lässt sich aber abwählen), bei festgelegtem
+  Ende hebt **Wieder bis zum Abschluss laufen lassen** es auf.
   **Nicht erfasste Leistungen:** Abgerechnet ist, was im festgeschriebenen Stand eines
   abgeschlossenen Nachweises steht. Leistungen aus schon abgerechneten Zeiträumen, die dort fehlen
   (etwa nach dem Abschluss nachgetragen), meldet der Dialog – und die Abrechnung des laufenden
-  Nachweises – mit Datum, Person, Stunden, Text und Grund. Übernommen werden sie **erst nach
+  Nachweises – mit Datum, Person, Stunden, Text und Grund; die ersten acht einzeln, die übrigen
+  lassen sich aufklappen. Übernommen werden sie **erst nach
   Bestätigung** (Haken im Dialog bzw. Rückfrage in der Abrechnung) – als **nachgereichte** Leistungen
-  mit ihrem Datum als eigene Zeile, gekennzeichnet „nachgereicht“. Der abgeschlossene Nachweis
-  bleibt unverändert.
+  mit ihrem Datum als eigene Zeile (eigener Schlüssel mit vorangestelltem „N“, gekürzt auf die Tage
+  vor dem Zeitraum), gekennzeichnet „nachgereicht“. Der abgeschlossene Nachweis bleibt unverändert.
   Ein Klick öffnet die **Abrechnung**: Aufschlag in ± Stunden je Zeile bzw. die abgerechneten
   Stunden, die Ansicht **Leistungstexte** (Text je Zeile bearbeiten, solange der Nachweis offen ist –
   ein bearbeiteter Text wird nie still überschrieben, neue Leistungen bietet die Zeile zum
   **Ergänzen** an; die Leistungen aller Mitarbeiter lassen sich je Zeile aufklappen), die
   **Vorschau**, **Drucken / PDF**, **Excel**, **Abschließen** (der Stand wird festgeschrieben)
-  bzw. **Wieder öffnen**, **Zeitraum ändern**, **Löschen** und die Bemerkung; **Zum Projekt**
+  bzw. **Wieder öffnen**, **Zeitraum ändern**, **Löschen** (auf Wunsch samt den eigenen Leistungen
+  des Nachweises einschließlich der nachgereichten) und die Bemerkung; **Zum Projekt**
   wechselt zum Projekt. Druck und Excel zeigen die abgerechneten Stunden; der Aufschlag selbst
   erscheint nicht.
 * **Projekte** – alle Projekte der Leistungsnachweise mit Raster, Regel, offenen Nachweisen,
   Leistungen ohne Nachweis und Stunden; **Neues Projekt** legt eines nur hier an (für alle Bereiche
   gibt es die Projekte des Controllings). Im Projekt **Bearbeiten** (Projektnummer – eindeutig,
   daran erkennt der Excel-Import das Projekt –, Name, Bezeichnung im Nachweis, Leistungsbereich,
-  Raster und Regel neuer Nachweise), **Löschen** und die Reiter **Leistungsnachweise** (mit
+  Raster und Regel neuer Nachweise), **Löschen** (gesperrt, solange ein anderer Bereich das Projekt
+  führt oder es dort zur Übernahme vorgesehen ist) und die Reiter **Leistungsnachweise** (mit
   „Nachweise anlegen“ für Leistungen ohne Nachweis), **Leistungen** (aller Mitarbeiter, nur lesen)
   und **Einstellungen** (Vorgaben, Abschnitte, Logos im Druckkopf). Hat ein Projekt mindestens zwei
   Abschnitte (etwa Streckenabschnitte), weist der Nachweis die Stunden je Abschnitt in eigenen
   Spalten aus.
 * **Mitarbeiter** – anlegen, bearbeiten, als ausgeschieden markieren; löschen nur ohne Leistungen.
 * **Excel-Import (alle Mitarbeiter)** – Sammel-Export der Zeiterfassung, legt unbekannte Mitarbeiter
-  an; eine Anmeldung als Mitarbeiter braucht das Controlling nicht.
+  an; eine Anmeldung als Mitarbeiter braucht das Controlling nicht. Ist die Person unter „Angemeldet
+  als“ Mitarbeiter, gilt sie auch hier als angemeldet (Zeilen ohne Mitarbeiter lassen sich ihr
+  zuordnen, beim Löschen eines Nachweises ihre eigenen Leistungen mitlöschen).
+
+Die Filterleiste der Nachweisliste bricht um und steht unter 640 px untereinander. Eine neue Seite
+beginnt oben, ein Reiterwechsel im Projekt nicht.
 
 Frühere Adressen des Controllings im Bereich (`#/leistungsnachweise/controlling/…`) führen in den
 Controlling-Bereich.
@@ -1099,7 +1189,17 @@ Mitarbeiter – darunter Anna Becker –, drei Projekte, Leistungen der letzten 
 **Zurücksetzen**. Sicherungen und Stände aus dem Testprojekt lassen sich einspielen; die frühere
 Rolle Controlling entfällt dabei (Fassung 3). Fassung 4 stellt alle Projekte auf *Fortlaufend bis zum
 Abschluss*; vorhandene Nachweise bleiben, wie sie sind. Fassung 5 ergänzt an den Nachweisen die
-nachgereichten Leistungen (leer). Projekte teilt der Bereich über das Projektregister;
+nachgereichten Leistungen (leer). Fassung 6 ergänzt das von Hand festgelegte Ende (`bisFest`, nicht
+gesetzt) und stellt die Zeilen nachgereichter Leistungen in Texten, Aufschlägen und im
+festgeschriebenen Stand auf eigene Schlüssel um (`nachgereichteZeilenUmstellen`); die abgerechneten
+Stunden bleiben gleich. Demodaten gibt es nur, solange weder ein Bestand noch Projekte im
+Projektregister vorhanden sind; wer zuvor einen anderen Bereich geöffnet hat, beginnt mit leeren
+Leistungsnachweisen und den Projekten des Registers. Gespeichert wird nur bei einwandfrei geladenem
+Stand; ist der Speicher voll, räumt das Speichern zuerst die Rohkopien `…vor-fassung-<n>` und zeigt
+sonst „Nicht gespeichert – bitte Sicherung herunterladen.“ mit **Sicherung herunterladen**
+(`components/SpeicherHinweis.tsx`, auch im Controlling). Speichert ein anderes Fenster den Bereich,
+lädt der Store dessen Stand nach (`useFremdeAenderung`) – stammt er aus einer neueren Fassung,
+speichert die Seite nicht mehr. Projekte teilt der Bereich über das Projektregister;
 seine Mitarbeiter sind keine Projektbeteiligten und werden nicht geteilt. Name unter „Angemeldet als“
 und Farbmodus gelten in allen Bereichen.
 
@@ -1111,7 +1211,9 @@ Rot-Grün-Sehschwäche** ab – beides gilt in allen Bereichen: Wer seinen Namen
 überall dieselbe Person. Bis zur Anmeldung über SSO ist das eine Angabe ohne Kennwort; sie liegt
 lokal im Browser (Schlüssel `kaplan-benutzer.v1`). Ohne Eintrag gilt „Max Mustermann“; beim ersten
 Start nach dem Umstieg übernimmt KaPlan den ersten selbst eingetragenen Namen der Bereiche
-(Planlaufmanagement, Projektsteuerung, Baubetriebsplanung, Leistungsnachweise) samt Farbmodus.
+(Planlaufmanagement, Projektsteuerung, Baubetriebsplanung, Leistungsnachweise) samt Farbmodus;
+die Vorgaben und Demonamen („Lena Roth“ der Projektsteuerung, „Anna Becker“ der
+Leistungsnachweise) zählen dabei nicht als selbst eingetragen.
 
 Was die Bereiche mit dem Namen tun: Im Planlaufmanagement füllt die Person in markierten Projekten
 das Planlaufmanagement aus (dazu die E-Mail-Nachfrage als eigene Einstellung im Dialog), in der
@@ -1130,7 +1232,17 @@ Neben den Beständen der Bereiche führt KaPlan ein **Projektregister** (Schlüs
 Bezeichnung und Beschreibung**, die Bereiche, in denen es geführt wird – je Bereich aktiv oder
 archiviert –, und die **Projektbeteiligten** des Projekts. Jeder Bereich gleicht seinen Bestand nach
 jeder Änderung mit dem Register ab; was ein anderer Bereich oder das Controlling geändert hat,
-übernimmt er spätestens beim nächsten Öffnen.
+übernimmt er spätestens beim nächsten Öffnen. Speichert ein anderes Fenster denselben Bereich, lädt
+der Store dessen Stand sofort nach (`src/gemeinsam/useFremdeAenderung.ts`), statt ihn mit dem
+älteren eigenen zu überschreiben.
+
+Mit mehreren Fenstern kommt der Abgleich zur Ruhe: Mitgliedschaften nicht mehr geführter Projekte
+löst er und die ★ aus dem Bestand übernimmt er nur beim ersten Abgleich nach dem Laden und nach
+**Einspielen** bzw. **Zurücksetzen** (`vollstaendig` in `abgleichen`, `src/gemeinsam/abgleich.ts`);
+außerdem einmal die ★ eines eben übernommenen Projekts. Sonst meldet beides allein `uebertragen`
+aus dem Vergleich von altem und neuem Stand. Ein Projekt des Controllings, das nur die
+Leistungsnachweise führen, bleibt nach deren Zurücksetzen oder Einspielen im Register, und sie legen
+es wieder an – ganz entfällt es nur, wenn es dort ausdrücklich gelöscht wird.
 
 **Jedes Projekt steht auch in den Leistungsnachweisen** – auf jedes Projekt lassen sich Leistungen
 erfassen. Ihr Abgleich nimmt alle Projekte des Registers auf, die sie noch nicht führen (zuvor
@@ -1174,42 +1286,55 @@ ihre Projekte – ihre Mitarbeiter sind keine Projektbeteiligten.
   offene Punkte stehen in Übersicht und Projekt, nicht mehr in der Kachel.
 * Unten in jeder Projektkachel nennt die Zeile **Auch in** die anderen Bereiche, die das Projekt
   führen – grau mit *archiviert*, gestrichelt mit *vorgesehen*, solange eine Übernahme aus dem
-  Controlling noch aussteht. Die Leistungsnachweise erscheinen dort nur in ihrem eigenen Bereich
-  nicht – außerhalb werden sie nicht genannt.
+  Controlling noch aussteht. Die Leistungsnachweise erscheinen dort nie – sie führen jedes Projekt
+  (`genannteBereiche`); in ihrem eigenen Bereich nennt die Zeile die anderen Bereiche.
 * Unter der Projektliste stehen **grau hinterlegt** die **Projekte aus anderen Bereichen** (und aus
   dem Controlling), die der Bereich noch nicht führt – mit Nummer, Name, Zusatztext und den
-  Bereichen, die es führen. **Übernehmen in …** legt das Projekt im Bereich an – samt den
-  Projektbeteiligten.
+  Bereichen, die es führen. Führt es keiner der genannten Bereiche, nennt die Karte die Herkunft:
+  „Im Controlling angelegt“, „Hier gelöscht – weiter in den Leistungsnachweisen geführt“ oder „Nur
+  in den Leistungsnachweisen geführt“. **Übernehmen in …** legt das Projekt im Bereich an – samt
+  den Projektbeteiligten.
 * Ist ein Projekt im Bereich archiviert, steht es im aufklappbaren Abschnitt **Archiv** und fehlt in
   Übersicht und Seitenleiste; das Projekt selbst nennt den Archivstand oben. Archiviert wird im
   Controlling – je Bereich: Ein Projekt kann in einem Bereich archiviert und in einem anderen aktiv
   sein.
 * **Löschen** im Projekt entfernt es nur aus diesem Bereich; in den anderen Bereichen bleibt es mit
   seinen Beteiligten erhalten (der Dialog nennt sie). In den Leistungsnachweisen bleibt es stets
-  erhalten. Im Bereich Leistungsnachweise gibt es kein Löschen im Projekt; im Controlling der
-  Leistungsnachweise lässt sich nur ein Projekt löschen, das kein anderer Bereich führt – es entfällt
-  dann auch im Register. Projekte mehrerer Bereiche löscht das Controlling unter **Projekte**.
+  erhalten; führt sonst kein Bereich das Projekt, sagt der Dialog das eigens (es steht danach unter
+  „Projekte aus anderen Bereichen“). Die Löschdialoge nennen nur, was in diesem Bereich entfällt –
+  in der Projektsteuerung „Die Protokolle lassen sich nicht wiederherstellen.“, in der
+  Baubetriebsplanung „Die Anmeldungen lassen sich nicht wiederherstellen.“. Im Bereich
+  Leistungsnachweise gibt es kein Löschen im Projekt; im Controlling der Leistungsnachweise lässt
+  sich nur ein Projekt löschen, das kein anderer Bereich führt oder zur Übernahme vorgesehen hat –
+  es entfällt dann auch im Register. Projekte mehrerer Bereiche löscht das Controlling unter
+  **Projekte**.
 * Wer ein Projekt mit einer **Projektnummer** anlegt, die es in einem anderen Bereich schon gibt,
   erhält einen Hinweis: Beim Anlegen wird es mit dem vorhandenen verknüpft; Bezeichnung und
   Beteiligte kommen von dort. Ebenso verknüpft der erste Abgleich nach dem Umstieg Projekte gleicher
   Projektnummer (ohne Nummer: gleicher Bezeichnung) und darin Personen gleicher E-Mail-Adresse bzw.
   gleichen Namens; bei abweichenden Angaben gilt der Stand des Bereichs, der zuerst geöffnet wurde.
+  Eine abweichende Bezeichnung oder Beschreibung des anderen Bereichs geht dabei nicht verloren: Sie
+  steht danach als Vermerk in der Beschreibung des Projekts („Bezeichnung in … vor der
+  Zusammenführung: …“, `stammdatenZusammenfuehren`). Ebenso verknüpft ein Bereich ein vom
+  Controlling vorgesehenes Projekt mit einem eigenen Projekt gleicher Nummer, statt es doppelt
+  anzulegen.
 * Nach **Einspielen** einer Sicherung (*Alles ersetzen*) und nach **Zurücksetzen** gilt für geteilte
   Projekte und Personen der Stand des Registers; der Abgleich mit Auswahl im Planlaufmanagement
   zählt dagegen als gewöhnliche Änderung.
 
 ### Controlling
-Der vierte Bereich auf dem Startbildschirm ist mit einer **PIN** geschützt (derzeit `0000`; ein
-einfacher Schutz vor versehentlichem Zugriff, keine Sicherheit). Entsperrt bleibt er bis zum
+Das Controlling (die letzte Kachel des Startbildschirms) ist mit einer **PIN** geschützt (derzeit
+`0000`; ein einfacher Schutz vor versehentlichem Zugriff, keine Sicherheit). Entsperrt bleibt es bis zum
 Schließen des Fensters oder bis **Sperren** in der Seitenleiste. Das Controlling hat keinen eigenen
 Datenbestand – es arbeitet auf dem Projektregister:
 
-* **Projekte**: Kennzahlen (Projekte, aktiv je Bereich) und je Projekt eine Karte mit Nummer,
+* **Projekte**: Kennzahlen (Projekte, aktiv je Bereich – ohne vorgesehene Übernahmen) und je Projekt eine Karte mit Nummer,
   Bezeichnung, Beschreibung, dem Stand in jedem Bereich (*Aktiv*, *Archiviert*, *Vorgesehen* oder
   *nicht geführt*). Je Bereich: **Übernehmen**,
   **Zurücknehmen** (einer noch nicht vollzogenen Übernahme), **Archivieren** bzw. **Zurückholen**.
-  In den Leistungsnachweisen steht jedes Projekt – bis zu ihrem nächsten Abgleich als *Vorgesehen*;
-  dort gibt es nur Archivieren bzw. Zurückholen.
+  In den Leistungsnachweisen steht jedes Projekt – bis zu ihrem nächsten Abgleich als *Vorgesehen*,
+  archivierte, sobald sie zurückgeholt sind; dort gibt es nur Archivieren bzw. Zurückholen. Die
+  Beschreibung behält ihre Zeilen (etwa Vermerke aus einer Zusammenführung).
   Für das ganze Projekt: **Bearbeiten** (Nummer, Bezeichnung, Beschreibung – gelten danach in allen
   Bereichen), **Archivieren** (in allen Bereichen) und **Löschen** – im Register und in allen
   Bereichen samt allem, was diese dazu gespeichert haben.
@@ -1229,7 +1354,8 @@ veröffentlicht wird und welche Randbedingungen gelten – stehen in [`CLAUDE.md
 
 KaPlan besteht aus vier getrennten Bereichen und dem Controlling. Jeder Bereich bringt seinen
 eigenen Datenbestand, seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen
-eigenen Router mit; die Bereiche greifen nicht aufeinander zu. Gemeinsam ist ihnen nur das
+eigenen Router mit (Name und Farbmodus kommen aus der gemeinsamen Anmeldung); die Bereiche greifen
+nicht aufeinander zu. Gemeinsam ist ihnen nur das
 Projektregister in `src/gemeinsam/`: Jeder Store gleicht über `useRegisterAbgleich` ab und
 übernimmt Änderungen über sein eigenes `mutate()` (`domain/register.ts` je Bereich). Einzige
 Ausnahme: Das Controlling bindet das Controlling der Leistungsnachweise über deren Einstiegsmodul
@@ -1239,7 +1365,8 @@ beim Betreten ein.
 
 ```
 src/
-  main.tsx       Start der Anwendung, Umlenkung alter Lesezeichen
+  main.tsx       Start der Anwendung, Umlenkung alter Lesezeichen; lädt global.css vor der Shell,
+                 damit Regeln der Bereiche gleicher Spezifität gewinnen
   shell/         Startbildschirm und Bereichswechsel
     Shell.tsx    Wählt Bereichsauswahl oder Bereich
     Start.tsx    Startbildschirm mit den Bereichskacheln und der laufenden Fassung
@@ -1253,9 +1380,13 @@ src/
     icons.tsx    Strichsymbole
     logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen
+    menue.tsx    Aufklappmenü an einem Knopf (AufklappMenue): Portal, bleibt im Fenster, Tastatur
+    tabellen.ts  Breite Tabellen scrollen quer (tabellenBreiteBeobachten, Klasse table-scroll-quer)
+    scrollen.ts  Eine neue Seite beginnt oben (useNachObenBeiSeitenwechsel)
     dates.ts     Fristen- und Datumsrechnung
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit (mit Zellformaten)
-    xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe
+    xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe (Zahlenformate aus Nullen wie „00000“
+                 behalten führende Nullen)
     zwischenablage.ts  Formatiert (text/html) und als Klartext kopieren
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers; Fassung des Builds und Prüfung auf eine neuere
@@ -1265,6 +1396,7 @@ src/
     abgleich.ts  Abgleich Bereich ↔ Register als reine Funktionen (uebertragen, abgleichen)
                  und die Aktionen des Controllings
     useRegisterAbgleich.ts  Bindet den Store eines Bereichs an das Register
+    useFremdeAenderung.ts   Lädt den Bestand nach, wenn ein anderes Fenster ihn speichert
     benutzer.ts  „Angemeldet als“ für alle Bereiche: Name und Farbmodus (useBenutzer)
     useBenutzerAbgleich.ts  Zieht Name und Farbmodus in den Bestand eines Bereichs nach
     AngemeldetAls.tsx       Knopf in der Seitenleiste und Dialog „Angemeldet als“
@@ -1317,11 +1449,13 @@ src/
         export.ts    Excel-Ausgabe des Monitors
         seed.ts      Platzhalter der Richtlinienfristen und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
-      store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe)
+      store/         storage.ts (Laden, Migration, Rohkopie, Sicherung) und store.tsx (alle
+                     Schreibzugriffe, Lade- und Speicherzustand)
       lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
       pages/         Übersicht, Termine, Projekte, Projekt, Anmeldung, Workflows (mit Editor), Fristen
-      components/    Status- und Fristanzeigen, „Status ändern“ als Haken mit Auswahl, Dialoge
-                     (Anmeldung, Statuswechsel, Nachhaken), Sicherung; baubetrieb.css (Präfix bb-)
+      components/    Status- und Fristanzeigen, „Status ändern“ als Haken mit Auswahl (AufklappMenue),
+                     Dialoge (Anmeldung, Statuswechsel, Nachhaken), Sicherung, Hinweisleisten
+                     (Ladefehler, neuere Fassung, Speicher voll); baubetrieb.css (Präfix bb-)
     projektsteuerung/  Bereich „Projektsteuerung“ (erster Entwurf)
       index.tsx  Einstiegspunkt samt Datenbestand und Stylesheet des Bereichs
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
@@ -1337,11 +1471,13 @@ src/
         export.ts    Excel-Ausgabe und -Vorlage der Projektbeteiligten
         seed.ts      Standard-Funktionen, Standardlogos und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
-      store/         storage.ts (Laden, Aufbereiten, Sicherung) und store.tsx (alle Schreibzugriffe)
+      store/         storage.ts (Laden, Aufbereiten, Rohkopie, Sicherung) und store.tsx (alle
+                     Schreibzugriffe, Lade- und Speicherzustand)
       lib/router.ts  Hash-Adressen unterhalb von #/projektsteuerung
       pages/         Übersicht, Projekte, Funktionen, Projekt mit Projektbeteiligten und Protokollen
                      (Liste und Editor)
-      components/    Dialoge (Person, Funktion, Gewerk), Excel-Import, Logos, Sicherung, Ampel, Live-Druckansicht
+      components/    Dialoge (Person, Funktion, Gewerk), Excel-Import, Logos, Sicherung, Ampel, Live-Druckansicht,
+                     Hinweisleisten (Ladefehler, neuere Fassung, Speicher voll)
     leistungsnachweise/  Bereich „Leistungsnachweise“ (erster Entwurf, aus KaPlan-Test)
       index.tsx  Einstiegspunkt samt Datenbestand des Bereichs (Zugang „bereich“)
       controlling.tsx  Einstieg für den Controlling-Bereich (Zugang „controlling“)
@@ -1359,12 +1495,13 @@ src/
         register.ts  Sicht für das Projektregister und Übernahme von dort
         seed.ts      Standardlogos und Demodaten
       store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe, Rechte)
-      lib/router.ts  #/leistungsnachweise/… und #/controlling/leistungsnachweise/…
+      lib/router.ts  #/leistungsnachweise/… und #/controlling/leistungsnachweise/… (nur diese
+                     Adressen; frühere unter #/leistungsnachweise/controlling/… lenkt er um)
       pages/         Übersicht, Projekte, Projekt (eigene Leistungen) und controlling/ (Auswertung,
                      Nachweisliste, Abrechnung mit Leistungstexten, Projektliste, Projekt mit
                      Leistungsnachweisen, Leistungen und Einstellungen, Mitarbeiter)
-      components/    Dialoge (Anmeldung, Leistung, Nachweis, Projekt, Mitarbeiter), Kalender zum Erfassen,
-                     Excel-Import, Logos, Sicherung, Druckblatt
+      components/    Dialoge (Anmeldung, Leistung, Nachweis, Projekt, Mitarbeiter), Kalender zum Erfassen
+                     (mit Tagesliste), Excel-Import, Logos, Sicherung, Druckblatt, SpeicherHinweis
     controlling/ Bereich „Controlling“ (mit PIN, ohne eigenen Bestand)
       index.tsx  Einstiegspunkt: PIN-Abfrage, danach der Bereich
       PinEingabe.tsx  PIN-Abfrage
