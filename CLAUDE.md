@@ -62,7 +62,10 @@ ignoriert.
   des Bereichs → Register), `abgleichen` (Unbekanntes eintragen, `Plan` für den Bereich) und die
   Aktionen des Controllings; `useRegisterAbgleich.ts` bindet einen Store an;
   `ProjektBereiche.tsx` Bausteine der Projektlisten („Auch in“, „Projekte aus anderen
-  Bereichen“, Archiv, Archivhinweis, Beteiligte).
+  Bereichen“, Archiv, Archivhinweis, Beteiligte). Dazu **„Angemeldet als“ für alle Bereiche**:
+  `benutzer.ts` (Name und Farbmodus, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
+  `benutzerAendern`), `AngemeldetAls.tsx` (Knopf und Dialog in jeder Seitenleiste; eine eigene
+  Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`.
 * `src/bereiche/controlling/` – ohne eigenen Bestand: Projekte und Archiv arbeiten auf dem
   Register; der Menüpunkt „Leistungsnachweise“ (`#/controlling/leistungsnachweise/…`) bindet
   `LeistungsnachweiseControlling` aus `src/bereiche/leistungsnachweise/controlling.tsx` ein. PIN in
@@ -74,7 +77,10 @@ ignoriert.
   den Zugang als Eigenschaft (`index.tsx` ohne, `controlling.tsx` mit `'controlling'`); im Bereich
   erfasst die angemeldete Person nur eigene Leistungen, alles Übrige (Abschluss, Aufschläge,
   Export, Auswertung, Nachweise verwalten, Sammel-Import, Mitarbeiter) gibt es nur im Controlling.
-  Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). `domain/nachweis.ts`
+  Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). Angemeldet ist der
+  aktive Mitarbeiter, dessen Name dem gemeinsamen „Angemeldet als“ entspricht
+  (`mitarbeiterZumNamen`; der Store setzt `einstellungen.mitarbeiterId` danach), fehlt er, legt
+  „Als Mitarbeiter anmelden“ ihn an. `domain/nachweis.ts`
   Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss (Nachweise eines Projekts überschneiden sich
   nie; welche Leistungen ein Nachweis zeigt, ergibt sich allein aus dem Datum), `domain/import.ts`
   Excel-Import, `domain/druck.ts`/`domain/export.ts` PDF und Excel, `lib/router.ts` baut auch die
@@ -150,6 +156,10 @@ ignoriert.
   `src/gemeinsam/` (importiert nichts aus `src/bereiche/`). Einzige Ausnahme: Das Controlling
   bindet das Controlling eines Bereichs über dessen Einstiegsmodul `controlling.tsx` ein (heute nur
   die Leistungsnachweise) – nichts sonst aus dem Bereich.
+* **Angemeldet als** gilt für alle Bereiche: Name und Farbmodus ändert nur `benutzerAendern`
+  (`src/gemeinsam/benutzer.ts`); die Bereiche führen sie in ihrem Bestand nur als Spiegel
+  (`bearbeiter` bzw. `einstellungen`) und ziehen sie mit `useBenutzerAbgleich` nach. Keine eigenen
+  Dialoge „Angemeldet als“ in den Bereichen – `AngemeldetAls` verwenden.
 * **Projektregister:** Ein Bereich schreibt seinen eigenen Bestand nur über sein `mutate()` –
   auch, was aus dem Register kommt (`registerPlanAnwenden` in `domain/register.ts`, reine
   Funktion, liefert ohne Änderung denselben Bestand zurück, damit der Abgleich zur Ruhe kommt).
@@ -213,5 +223,8 @@ ignoriert.
 * Das Projektregister füllt sich erst, wenn ein Bereich geöffnet wird; was das Controlling ändert,
   vollzieht ein Bereich beim nächsten Öffnen. PIN des Controllings: `0000`. Wer den
   `localStorage` leert, leert auch `kaplan-projektregister.v1`.
-* Leistungsnachweise: In den Demodaten ist Anna Becker angemeldet. Abrechnung, Abschluss und
-  Aufschläge prüft man im Controlling (`#/controlling/leistungsnachweise/nachweise`).
+* Leistungsnachweise: Wer unter „Angemeldet als“ „Anna Becker“ einträgt, ist in den Demodaten
+  Mitarbeiterin; mit einem anderen Namen erscheint der Hinweis zum Anmelden als Mitarbeiter.
+  Abrechnung, Abschluss und Aufschläge prüft man im Controlling
+  (`#/controlling/leistungsnachweise/nachweise`). „Angemeldet als“ liegt unter
+  `kaplan-benutzer.v1` – wer es zurücksetzen will, löscht diesen Schlüssel.

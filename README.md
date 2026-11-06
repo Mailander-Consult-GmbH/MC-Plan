@@ -84,7 +84,7 @@ und über **Einspielen** eine solche Sicherung wieder laden. Vor dem Einspielen 
 Projekte, Pläne und Planläufe der Sicherung und bietet an, den jetzigen Stand vorher zu sichern –
 denn er wird vollständig ersetzt. Sicherungen älterer Fassungen werden dabei auf den aktuellen Stand
 gehoben. *Angemeldet als* bleibt erhalten, es sei denn, der Name aus der Sicherung wird ausdrücklich
-übernommen.
+übernommen – er gilt dann in allen Bereichen.
 
 ## Veröffentlichen (GitHub Pages)
 
@@ -674,6 +674,9 @@ Person automatisch das **Planlaufmanagement** und ist damit für dessen Schritte
 Unten links in der Seitenleiste stehen der eigene Name (bis zur Anmeldung je Person „Max
 Mustermann“), die Nachfrage nach E-Mails und der **Farbmodus für eine Rot-Grün-Sehschwäche**: er
 stellt Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot dar und erhöht die Kontraste.
+Name und Farbmodus gelten in **allen Bereichen** (siehe
+[Angemeldet als – für alle Bereiche](#angemeldet-als--für-alle-bereiche)); die E-Mail-Nachfrage gilt
+nur im Planlaufmanagement.
 
 ### Sicherung, Abgleich und Hinweise
 **Sicherung** (Seitenleiste) lädt den gesamten Bestand als JSON herunter. **Einspielen** liest eine
@@ -842,7 +845,7 @@ Beschreibung der Standard-Workflows nicht geändert wurden; die Maßnahmenart Pz
 A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A. Aus der bisherigen geplanten Sperrzeit eines
 Projekts werden seine betroffenen Fahrplanjahre. Die Status der Standard-Workflows erhalten ihre
 vorgegebene Zuständigkeit (Fassung 8). Name unter „Angemeldet als“ und Farbmodus gelten
-nur in diesem Bereich.
+in allen Bereichen; der Name steht im Statusverlauf und ist Hauptbearbeiter neuer Projekte.
 
 ## Projektsteuerung
 
@@ -957,7 +960,7 @@ Bis Fassung 4 führte jedes Projekt eine Liste offener Punkte (LOP); sie entfäl
 den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die frühere Adresse
 `#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Bis Fassung 5 galten für alle
 Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Name unter „Angemeldet als“
-und Farbmodus gelten nur in diesem Bereich.
+und Farbmodus gelten in allen Bereichen.
 
 ## Leistungsnachweise
 
@@ -966,11 +969,13 @@ Leistungen je Projekt; daraus entstehen gemeinsame Leistungsnachweise für den A
 Abgerechnet, abgeschlossen und exportiert wird im [Controlling](#controlling-der-leistungsnachweise).
 
 ### Anmeldung
-**Angemeldet als** unten in der Seitenleiste: Auswahl aus den aktiven Mitarbeitern oder *Ich bin
-noch nicht in der Liste* (legt die Person an). Ohne Anmeldung lässt sich nichts erfassen; *Leistung
-erfassen* und *Excel-Import* führen dann zuerst in die Anmeldung. Solange die Daten nur im Browser
-liegen, ist die Anmeldung eine Auswahl ohne Kennwort. Eine Rolle „Controlling“ an Mitarbeitern gibt
-es – anders als im Testprojekt – nicht: Das Controlling ist der PIN-geschützte Controlling-Bereich.
+**Angemeldet als** unten in der Seitenleiste ist derselbe Name wie in allen Bereichen. Leistungen
+erfasst, wer unter diesem Namen (Vor- und Nachname, auch „Nachname, Vorname“) als aktiver Mitarbeiter
+geführt ist. Fehlt die Person, nennt ein Hinweis den Namen, und **Als Mitarbeiter anmelden** legt sie
+an (mit Kürzel); der Dialog schlägt die vorhandenen Mitarbeiter vor. Ohne Zuordnung lässt sich nichts
+erfassen; *Leistung erfassen* und *Excel-Import* führen dann zuerst in diesen Dialog. Eine Rolle
+„Controlling“ an Mitarbeitern gibt es – anders als im Testprojekt – nicht: Das Controlling ist der
+PIN-geschützte Controlling-Bereich.
 
 ### Projekte
 Projektnummer (eindeutig – daran erkennt der Excel-Import das Projekt), Projektname, Bezeichnung im
@@ -1015,12 +1020,31 @@ Controlling-Bereich.
 
 ### Daten
 Eigener Schlüssel `leistungsnachweise.data.v1` im `localStorage`, eigene Demodaten (vier
-Mitarbeiter, drei Projekte, Leistungen der letzten Monate; angemeldet ist Anna Becker),
+Mitarbeiter – darunter Anna Becker –, drei Projekte, Leistungen der letzten Monate),
 **Sicherung**/**Einspielen** (JSON mit dem Kennzeichen `"bereich": "leistungsnachweise"`) und
 **Zurücksetzen**. Sicherungen und Stände aus dem Testprojekt lassen sich einspielen; die frühere
 Rolle Controlling entfällt dabei (Fassung 3). Projekte teilt der Bereich über das Projektregister;
 seine Mitarbeiter sind keine Projektbeteiligten und werden nicht geteilt. Name unter „Angemeldet als“
-und Farbmodus gelten nur in diesem Bereich.
+und Farbmodus gelten in allen Bereichen.
+
+## Angemeldet als – für alle Bereiche
+
+Unten in der Seitenleiste jedes Bereichs (auch im Controlling) steht **Angemeldet als** mit Name und
+Kürzel. Der Dialog dazu fragt den Namen (Vor- und Nachname) und den **Farbmodus für eine
+Rot-Grün-Sehschwäche** ab – beides gilt in allen Bereichen: Wer seinen Namen einmal einträgt, ist
+überall dieselbe Person. Bis zur Anmeldung über SSO ist das eine Angabe ohne Kennwort; sie liegt
+lokal im Browser (Schlüssel `kaplan-benutzer.v1`). Ohne Eintrag gilt „Max Mustermann“; beim ersten
+Start nach dem Umstieg übernimmt KaPlan den ersten selbst eingetragenen Namen der Bereiche
+(Planlaufmanagement, Projektsteuerung, Baubetriebsplanung, Leistungsnachweise) samt Farbmodus.
+
+Was die Bereiche mit dem Namen tun: Im Planlaufmanagement füllt die Person in markierten Projekten
+das Planlaufmanagement aus (dazu die E-Mail-Nachfrage als eigene Einstellung im Dialog), in der
+Baubetriebsplanung steht sie im Statusverlauf und als Hauptbearbeiter neuer Projekte, in der
+Projektsteuerung führt sie – steht sie in der Projektbeteiligtenliste – neue Protokollreihen und sieht
+ihre Aufgaben als eigene To-Dos, in den
+Leistungsnachweisen erfasst sie als Mitarbeiter gleichen Namens. Beim Einspielen einer Sicherung
+bleibt der Name, es sei denn, er wird ausdrücklich aus der Sicherung übernommen – dann für alle
+Bereiche.
 
 ## Gemeinsame Projekte und Controlling
 
@@ -1050,8 +1074,8 @@ Geteilt werden:
   vermeidet Doppelungen. Die Projektsteuerung führt je Person **eine** Funktion (die erste bekannte
   aus dem Register), das Planlaufmanagement mehrere; eine Funktion, die im Planlaufmanagement
   bereits eine andere Person ausfüllt, bleibt bei dieser.
-* Nicht geteilt wird die angemeldete Person des Planlaufmanagements (*Angemeldet als*) mit der
-  Funktion **Planlaufmanagement** – sie gehört zum jeweiligen Arbeitsplatz.
+* Nicht ins Projektregister geht der eigene Kontakt des Planlaufmanagements (*Angemeldet als*) mit
+  der Funktion **Planlaufmanagement** – er gehört zum jeweiligen Arbeitsplatz.
 
 Die Baubetriebsplanung führt keine eigenen Personen; im Projekt zeigt die Karte
 **Projektbeteiligte** die geteilten Beteiligten zum Nachschlagen. Die Leistungsnachweise teilen nur
@@ -1150,6 +1174,9 @@ src/
     abgleich.ts  Abgleich Bereich ↔ Register als reine Funktionen (uebertragen, abgleichen)
                  und die Aktionen des Controllings
     useRegisterAbgleich.ts  Bindet den Store eines Bereichs an das Register
+    benutzer.ts  „Angemeldet als“ für alle Bereiche: Name und Farbmodus (useBenutzer)
+    useBenutzerAbgleich.ts  Zieht Name und Farbmodus in den Bestand eines Bereichs nach
+    AngemeldetAls.tsx       Knopf in der Seitenleiste und Dialog „Angemeldet als“
     ProjektBereiche.tsx     Marken „Auch in“, Projekte aus anderen Bereichen, Archiv, Beteiligte
     gemeinsam.css           Gestaltung dieser Bausteine (Präfix gem-)
   bereiche/
