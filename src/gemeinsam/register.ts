@@ -40,6 +40,26 @@ export const BEREICH_TITEL: Record<ProjektBereich, string> = {
   leistungsnachweise: 'Leistungsnachweise',
 };
 
+/**
+ * Bereich, in dem grundsätzlich jedes Projekt geführt wird – auf jedes Projekt
+ * lassen sich Leistungen erfassen. Sein Abgleich nimmt Projekte, die er noch
+ * nicht führt, von selbst auf (`abgleichen` in abgleich.ts); zurücknehmen
+ * lässt sich das nicht. Die anderen Bereiche nennen ihn in ihren
+ * Projektansichten nicht (`genannteBereiche`).
+ */
+export const JEDES_PROJEKT_IN: ProjektBereich = 'leistungsnachweise';
+
+/**
+ * Bereiche, die eine Projektansicht nennt: im Bereich `bereich` die anderen
+ * Bereiche – ohne `JEDES_PROJEKT_IN`, außer dort selbst; im Controlling
+ * (`null`) alle.
+ */
+export function genannteBereiche(bereich: ProjektBereich | null): ProjektBereich[] {
+  return PROJEKT_BEREICHE.map((b) => b.id).filter(
+    (b) => bereich === null || (b !== bereich && (b !== JEDES_PROJEKT_IN || bereich === JEDES_PROJEKT_IN)),
+  );
+}
+
 /** Fassung des gespeicherten Registers. Neue Felder in `aufbereiten()` nachtragen und die Zahl erhöhen. */
 export const REGISTER_VERSION = 1;
 

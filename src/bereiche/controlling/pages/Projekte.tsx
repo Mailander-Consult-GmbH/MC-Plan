@@ -3,6 +3,8 @@
  * Bereich. Hier entstehen Projekte für die Bereiche, werden in einen Bereich
  * übernommen, je Bereich oder ganz archiviert und gelöscht. Die Bereiche
  * vollziehen das beim nächsten Öffnen (Abgleich mit dem Projektregister).
+ * In den Leistungsnachweisen steht jedes Projekt (`JEDES_PROJEKT_IN`) – dort
+ * gibt es kein Übernehmen und kein Zurücknehmen, nur Archivieren.
  */
 import { useState } from 'react';
 import {
@@ -15,6 +17,7 @@ import {
   uebernahmeZuruecknehmen,
 } from '../../../gemeinsam/abgleich';
 import {
+  JEDES_PROJEKT_IN,
   PROJEKT_BEREICHE,
   bereicheVon,
   istArchiviert,
@@ -177,7 +180,17 @@ function ProjektKarte({
         <div className="ct-bereiche">
           {PROJEKT_BEREICHE.map((b) => {
             const m = projekt.bereiche[b.id];
-            const zustand = !m ? 'fehlt' : m.offen ? 'vorgesehen' : istArchiviert(projekt, b.id) ? 'archiviert' : 'aktiv';
+            const immer = b.id === JEDES_PROJEKT_IN;
+            // In die Leistungsnachweise kommt jedes Projekt – bis zu ihrem nächsten Abgleich gilt es als vorgesehen
+            const zustand = !m
+              ? immer
+                ? 'vorgesehen'
+                : 'fehlt'
+              : m.offen
+                ? 'vorgesehen'
+                : istArchiviert(projekt, b.id)
+                  ? 'archiviert'
+                  : 'aktiv';
             const aendern = (fn: Parameters<typeof registerAendern>[0], meldung: string) => {
               registerAendern(fn);
               toast(meldung);
@@ -189,7 +202,14 @@ function ProjektKarte({
                   {zustand === 'aktiv' ? <Badge ton="green">Aktiv</Badge> : null}
                   {zustand === 'archiviert' ? <span className="badge gem-archiv">Archiviert</span> : null}
                   {zustand === 'vorgesehen' ? (
-                    <span className="badge gem-vorgesehen" title="Der Bereich legt das Projekt beim nächsten Öffnen an">
+                    <span
+                      className="badge gem-vorgesehen"
+                      title={
+                        immer
+                          ? 'Jedes Projekt gehört in die Leistungsnachweise – sie legen es beim nächsten Öffnen an'
+                          : 'Der Bereich legt das Projekt beim nächsten Öffnen an'
+                      }
+                    >
                       Vorgesehen
                     </span>
                   ) : null}
@@ -214,7 +234,7 @@ function ProjektKarte({
                         <Icon name="importieren" size={12} /> Übernehmen
                       </button>
                     ) : null}
-                    {zustand === 'vorgesehen' ? (
+                    {zustand === 'vorgesehen' && !immer ? (
                       <button
                         type="button"
                         className="btn btn-sm btn-ghost"
@@ -287,7 +307,7 @@ function ProjektDialog({ projekt, onClose }: { projekt?: RegisterProjekt; onClos
     } else {
       const id = newId('prj');
       registerAendern((r) => projektAnlegen(r, werte, bereiche, id, jetzt()));
-      toast(bereiche.length > 0 ? 'Projekt angelegt – die gewählten Bereiche übernehmen es beim nächsten Öffnen.' : 'Projekt angelegt.');
+      toast('Projekt angelegt – die gewählten Bereiche übernehmen es beim nächsten Öffnen.');
     }
     onClose();
   };
@@ -319,20 +339,29 @@ function ProjektDialog({ projekt, onClose }: { projekt?: RegisterProjekt; onClos
           <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={3} />
         </Field>
         {projekt ? null : (
-          <Field label="Übernehmen in" full hint="Die gewählten Bereiche legen das Projekt beim nächsten Öffnen an.">
+          <Field
+            label="Übernehmen in"
+            full
+            hint="Die gewählten Bereiche legen das Projekt beim nächsten Öffnen an. In die Leistungsnachweise kommt jedes Projekt."
+          >
             <div className="row wrap" style={{ gap: '6px 18px' }}>
-              {PROJEKT_BEREICHE.map((b) => (
-                <label key={b.id} className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={bereiche.includes(b.id)}
-                    onChange={(e) =>
-                      setBereiche((alt) => (e.target.checked ? [...alt, b.id] : alt.filter((x) => x !== b.id)))
-                    }
-                  />
-                  {b.titel}
-                </label>
-              ))}
+              {PROJEKT_BEREICHE.map((b) => {
+                const immer = b.id === JEDES_PROJEKT_IN;
+                return (
+                  <label key={b.id} className="checkbox" title={immer ? 'Jedes Projekt gehört in die Leistungsnachweise' : undefined}>
+                    <input
+                      type="checkbox"
+                      checked={immer || bereiche.includes(b.id)}
+                      disabled={immer}
+                      onChange={(e) =>
+                        setBereiche((alt) => (e.target.checked ? [...alt, b.id] : alt.filter((x) => x !== b.id)))
+                      }
+                    />
+                    {b.titel}
+                    {immer ? <span className="tertiary"> (immer)</span> : null}
+                  </label>
+                );
+              })}
             </div>
           </Field>
         )}

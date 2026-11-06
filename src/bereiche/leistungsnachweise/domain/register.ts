@@ -4,9 +4,12 @@
  * Beschreibung) mit den anderen Bereichen. Personen teilt der Bereich nicht –
  * seine Mitarbeiter sind keine Projektbeteiligten.
  *
- * Ein aus dem Register übernommenes Projekt erhält die Vorgaben eines
- * importierten Projekts (`IMPORT_PROJEKT_VORGABEN`: Leistungsbereich, Raster,
- * Zeitraumregel).
+ * Jedes Projekt des Registers gehört auch hierher (`JEDES_PROJEKT_IN`): Der
+ * Abgleich nimmt alle auf, die der Bereich noch nicht führt. Ein so
+ * übernommenes Projekt erhält die Vorgaben eines importierten Projekts
+ * (`IMPORT_PROJEKT_VORGABEN`: Leistungsbereich, Raster, Zeitraumregel) und ist
+ * nicht markiert – sonst füllten alle Projekte Übersicht und Seitenleiste; mit
+ * ★ markiert jeder, woran er arbeitet.
  */
 import type { Plan, Sicht } from '../../../gemeinsam/abgleich';
 import { IMPORT_PROJEKT_VORGABEN } from './import';
@@ -44,7 +47,7 @@ export function registerPlanAnwenden(daten: LeistungsnachweisDaten, plan: Plan):
       name: projekt.name || 'Ohne Bezeichnung',
       kurzname: '',
       status: 'aktiv',
-      markiert: true,
+      markiert: false,
       beschreibung: projekt.beschreibung,
       ...IMPORT_PROJEKT_VORGABEN,
       abschnitte: [],

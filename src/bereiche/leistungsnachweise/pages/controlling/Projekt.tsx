@@ -5,9 +5,14 @@
  * „Einstellungen“ (Nachweis-Vorgaben, Abschnitte, Logos). Darüber
  * Projektnummer, Status, Raster und Leistungsbereich sowie „Bearbeiten“ und
  * „Löschen“ – im Bereich gibt es davon nichts, dort erfassen die Mitarbeiter
- * nur ihre Leistungen (domain/rechte.ts).
+ * nur ihre Leistungen (domain/rechte.ts). Jedes Projekt gehört in die
+ * Leistungsnachweise (`JEDES_PROJEKT_IN`): Führt ein anderer Bereich das
+ * Projekt, lässt es sich hier nicht löschen – nur im Controlling unter
+ * „Projekte“ für alle Bereiche.
  */
 import { useState } from 'react';
+import { andereBereiche } from '../../../../gemeinsam/ProjektBereiche';
+import { useRegister } from '../../../../gemeinsam/register';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Card, ConfirmDialog, EmptyState } from '../../../../shared/ui';
@@ -36,6 +41,7 @@ export function ControllingProjekt({
   navigate: (r: Route) => void;
 }) {
   const { data, deleteProjekt } = useStore();
+  const register = useRegister();
   const toast = useToast();
   const [bearbeiten, setBearbeiten] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
@@ -63,6 +69,8 @@ export function ControllingProjekt({
     leistungen: data.leistungen.filter((l) => l.projektId === projekt.id).length,
   };
   const kurzname = projektKurzname(projekt);
+  // Führt ein anderer Bereich das Projekt, nähme der Abgleich es gleich wieder auf
+  const geteilt = andereBereiche(register, 'leistungsnachweise', projekt.id);
 
   return (
     <div className="stack">
@@ -77,7 +85,17 @@ export function ControllingProjekt({
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setBearbeiten(true)}>
             <Icon name="bearbeiten" size={12} /> Bearbeiten
           </button>
-          <button type="button" className="btn btn-sm btn-danger" onClick={() => setLoeschen(true)}>
+          <button
+            type="button"
+            className="btn btn-sm btn-danger"
+            disabled={!!geteilt}
+            title={
+              geteilt
+                ? `Wird auch in ${geteilt} geführt – jedes Projekt gehört in die Leistungsnachweise. Für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`
+                : undefined
+            }
+            onClick={() => setLoeschen(true)}
+          >
             <Icon name="loeschen" size={12} /> Löschen
           </button>
         </div>
@@ -99,6 +117,13 @@ export function ControllingProjekt({
         </div>
       </div>
 
+      {geteilt ? (
+        <p className="small tertiary" style={{ margin: 0 }}>
+          Auch in {geteilt} geführt – löschen lässt sich das Projekt nur im Controlling unter „Projekte“, für alle
+          Bereiche.
+        </p>
+      ) : null}
+
       <div className="tabs">
         {TABS.map((t) => (
           <button
@@ -119,14 +144,14 @@ export function ControllingProjekt({
 
       {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
 
-      {loeschen ? (
+      {loeschen && !geteilt ? (
         <ConfirmDialog
           titel="Projekt löschen?"
           text={`„${projekt.name}“ wird mit ${anzahl(umfang.nachweise, 'Leistungsnachweis', 'Leistungsnachweisen')} und ${anzahl(
             umfang.leistungen,
             'Leistung',
             'Leistungen',
-          )} aus den Leistungsnachweisen gelöscht. In anderen Bereichen bleibt es erhalten.`}
+          )} gelöscht.`}
           onConfirm={() => {
             deleteProjekt(projekt.id);
             toast('Projekt gelöscht.');
