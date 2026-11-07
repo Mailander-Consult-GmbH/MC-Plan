@@ -91,7 +91,7 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`.
 * `src/bereiche/controlling/` – ohne eigenen Bestand: Projekte und Archiv arbeiten auf dem
   Register; die Menüpunkte „Leistungsnachweise“ (`#/controlling/leistungsnachweise/projekte`,
-  dazu Projekt und Abrechnung) und „Auswertung“ (`#/controlling/leistungsnachweise/auswertung`,
+  dazu die Seite je Projekt) und „Auswertung“ (`#/controlling/leistungsnachweise/auswertung`,
   `Route` `{ view: 'auswertung' }` in `lib/router.ts`, Symbol `diagramm`) binden beide
   `LeistungsnachweiseControlling` aus `src/bereiche/leistungsnachweise/controlling.tsx` ein. PIN in
   `domain/pin.ts` (`CONTROLLING_PIN`, Entsperrung je Sitzung im `sessionStorage`); Gestaltung in
@@ -119,17 +119,26 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `LeistungDialog` über `projektAuswahl`), alles Übrige (Projekte anlegen und einstellen –
   `projektVerwalten`; Ausnahme: der Excel-Import legt auch im Bereich unbekannte Projekte und
   Abschnitte an, soweit die eigenen Leistungen sie brauchen, `planErlaubt` –,
-  Leistungsnachweise samt Leistungstexten und Bemerkung, Abschluss, Aufschläge, Export,
-  Auswertung, Sammel-Import) gibt es nur im Controlling – ohne Reiter, je Menüpunkt eine Seite
-  (`ControllingTab` = `'projekte'` | `'auswertung'` in `lib/router.ts`): die Projekte
-  (`pages/controlling/ProjektListe.tsx`: Raster als Auswahl in der Tabelle, „Leistungsnachweis
-  erstellen“, Sammel-Import, Neues Projekt; ein Projekt in `Projekt.tsx` mit den Reitern
-  `ProjektNachweise`, `Leistungen` und `ProjektEinstellungen`), die Abrechnung mit der Ansicht
-  „Leistungstexte“ (`pages/controlling/Leistungstexte.tsx`) und dem Stand der Bestätigungen
-  (`pages/controlling/BestaetigungsStand.tsx`: `BestaetigungsStand`, `FehlendeBestaetigungen` beim
-  Abschließen – abschließen bleibt möglich) und die Auswertung (`pages/controlling/Auswertung.tsx`).
-  Seiten für alle Nachweise, für Mitarbeiter und für die Bestätigungen eines Projekts gibt es
-  nicht; frühere Adressen lenkt `lib/router.ts` um.
+  Leistungsnachweise samt Leistungstexten und Bemerkung, Abschluss, Aufschläge, Export, Rhythmus,
+  Auswertung, Sammel-Import) gibt es nur im Controlling – ohne Reiter (`ControllingTab` =
+  `'projekte'` | `'auswertung'` in `lib/router.ts`): die Übersicht der Projekte
+  (`pages/controlling/ProjektListe.tsx`: je Projekt Rhythmus und Raster als Auswahl in der Tabelle –
+  Rückfrage „Rhythmus ändern?“ mit den offenen Nachweisen vorher und danach, vorab gerechnet mit
+  `regelAnwenden` und `grenzFolgen`, bzw. „Raster ändern?“ mit `RasterwechselHinweis` –, der
+  aktuelle Nachweis mit Stand, `aktuellerNachweis`/`nachweisFaellig`, Stunden und „x von y
+  bestätigt“, `bestaetigungsZahl`; Sammel-Import, Neues Projekt), je Projekt eine Seite
+  (`Projekt.tsx`, Route `controllingProjekt`; `abrechnung` ist dieselbe Seite mit gewähltem
+  Nachweis: Kopf mit Menü „Mehr“ – `MehrMenue` in `pages/controlling/hilfen.tsx` – für „Projekt
+  einstellen“ (`ProjektEinstellungen` im `Modal`), Bearbeiten und Löschen; darunter
+  `NachweisBearbeitung` aus `Abrechnung.tsx`: Auswahl unter allen Nachweisen des Projekts, Vorschau,
+  PDF, Excel, Menü „Mehr“, „Leistungsnachweis erstellen“ = abschließen; der Block „Mitarbeiter und
+  Bestätigungen“, `MitarbeiterBestaetigungen` in `pages/controlling/BestaetigungsStand.tsx`,
+  `FehlendeBestaetigungen` in der Rückfrage – erstellen bleibt möglich; eine Tabelle mit
+  bearbeitbarem Leistungstext, `ZeilenText` in `pages/controlling/Leistungstexte.tsx`, Erfasst,
+  Aufschlag und Abgerechnet, darunter die Bemerkung) und die Auswertung
+  (`pages/controlling/Auswertung.tsx`). Seiten für alle Nachweise, für Mitarbeiter, für die
+  Leistungen aller Mitarbeiter und für die Bestätigungen eines Projekts gibt es nicht; frühere
+  Adressen lenkt `lib/router.ts` um (`…/projekt/<id>/<reiter>` auf die Seite des Projekts).
   Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). **Eine eigene
   Anmeldung gibt es nicht:** Angemeldet ist der aktive Mitarbeiter, dessen Name dem gemeinsamen
   „Angemeldet als“ entspricht (`mitarbeiterZumNamen`); der Store zieht `einstellungen.mitarbeiterId`
@@ -173,20 +182,28 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   immer `leistungenDesNachweises` bzw. `nachweisDerLeistung` statt Datumsvergleichen – beide
   lesen aus einem `WeakMap`-Verzeichnis je Nachweisliste, Nachweislisten also nie an Ort und
   Stelle ändern; abgerechnet
-  ist, was im Stand abgeschlossener Nachweise steht, `abgerechneteLeistungen`; Vorgabe ist die
-  Zeitraumregel `fortlaufend` – ein Nachweis läuft, bis er abgeschlossen wird, und erst der
-  Abschluss legt seinen Zeitraum fest, `laeuftBisAbschluss`/`abschlussZeitraum`, außer das
-  Controlling hat das Ende festgelegt (`bisFest`, „Zeitraum ändern“, angeboten nur, wo es wirkt:
-  `endeFestlegenWirkt`); „Neuer
+  ist, was im Stand abgeschlossener Nachweise steht, `abgerechneteLeistungen`; der Rhythmus ist die
+  `Zeitraumregel` `monat` | `zweiMonate` | `quartal` | `fortlaufend` („Monatlich“, „Alle 2 Monate“,
+  „Alle 3 Monate“, „Bis zum Abschluss“ – Vorgabe; `rhythmusMonate`): Blöcke von 1–3 Monaten fest ab
+  `Projekt.rhythmusAb` (JJJJ-MM, sonst ab dem frühesten Nachweis; `rhythmusAnker`, `rhythmusBlock`
+  in `nachweiseErgaenzen`); `updateProjekt` stellt ihn mit `regelAnwenden` um (setzt den Anker,
+  plant offene Nachweise auf ihren Block, legt offene desselben Blocks zusammen, `offeneVereinen`);
+  solange ein offener Nachweis bis zum Abschluss läuft (`fortlaufend`, bei Regeln mit Monaten mit
+  einem Ende nach heute), legt erst der Abschluss seinen Zeitraum fest,
+  `laeuftBisAbschluss`/`abschlussZeitraum`, außer das Controlling hat das Ende festgelegt
+  (`bisFest`, „Zeitraum ändern“, angeboten nur, wo es wirkt: `endeFestlegenWirkt`); fällig ist ein
+  offener, der nicht bis zum Abschluss läuft und dessen Ende vorbei ist (`nachweisFaellig`); „Neuer
   Leistungsnachweis“ fragt keinen Zeitraum ab, sondern fasst alle nicht abgerechneten Leistungen
-  und offenen Nachweise zusammen, `nichtAbgerechnet`/`nachweisFuerNichtAbgerechneteAnwenden`),
+  und offenen Nachweise zusammen – bei Regeln mit Monaten bis zum Ende des Blocks –,
+  `nichtAbgerechnet`/`nachweisFuerNichtAbgerechneteAnwenden`),
   `domain/import.ts`
   Excel-Import, `domain/druck.ts`/`domain/export.ts` PDF und Excel, `lib/router.ts` baut auch die
   Adressen des Controllings (`CONTROLLING_PREFIX`) und nimmt nur Adressen dieser beiden Präfixe an;
   frühere Adressen `#/leistungsnachweise/controlling/…` lenkt `App.tsx` um. Ohne eigenen Bestand
   gibt es Demodaten nur bei leerem Projektregister (`ladeDaten`), sonst beginnt der Bereich leer. Kennungen, die erst in einer Änderung
-  anfallen, liefert `idVorrat` (StrictMode). Neue Felder über `DATEN_VERSION` (derzeit 7:
-  `periodentexte`, `bestaetigungen`) und `migriere()`.
+  anfallen, liefert `idVorrat` (StrictMode). Neue Felder über `DATEN_VERSION` (derzeit 8: Regeln
+  `zweiMonate`/`quartal` und `Projekt.rhythmusAb`; 7: `periodentexte`, `bestaetigungen`) und
+  `migriere()`.
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
   `localStorage`-Schlüssel, eigenen Einstellungen und eigenem Router.
 * `src/shared/` – fachfreie Bausteine (UI, Icons, Datumsrechnung, Excel lesen/schreiben, Druck,
@@ -361,8 +378,10 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   prüft (gemeinsamer Text, erlöschende Bestätigung), wechselt den Namen unter „Angemeldet als“.
   Demodaten gibt es nur, solange das Projektregister leer ist – nach dem Leeren des
   `localStorage` also zuerst `#/leistungsnachweise` öffnen, sonst beginnt der Bereich leer.
-  Abrechnung, Abschluss und Aufschläge prüft man im Controlling
-  (`#/controlling/leistungsnachweise/projekte`).
+  Leistungsnachweise erstellen (Abschluss), Aufschläge, Rhythmus und Raster prüft man im
+  Controlling (`#/controlling/leistungsnachweise/projekte`). Die Demoprojekte stehen auf „Bis zum
+  Abschluss“ – fällig ist dort zunächst kein Nachweis; wer „Fällig“ oder das Neuplanen offener
+  Nachweise sehen will, stellt in der Übersicht einen Rhythmus mit Monaten ein.
 * Projektsteuerung: Wer „Lena Roth“ einträgt, sieht die Demo-Aufgaben als eigene To-Dos; mit
   einem anderen Namen zeigt die Übersicht keine.
 * „Angemeldet als“ liegt unter `kaplan-benutzer.v1` – wer es zurücksetzen will, löscht diesen

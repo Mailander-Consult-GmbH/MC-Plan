@@ -1,62 +1,61 @@
 /**
- * Projekt im Controlling der Leistungsnachweise mit drei Reitern:
- * „Leistungsnachweise“ (ProjektNachweise.tsx – ein Klick öffnet die
- * Abrechnung; dort steht auch, wer seine Monate bestätigt hat),
- * „Leistungen“ (die aller Mitarbeiter, nur lesen) und „Einstellungen“
- * (Nachweis-Vorgaben samt Raster der Leistungstexte, Abschnitte, Logos). Darüber
- * Projektnummer, Status, Raster und Leistungsbereich sowie „Bearbeiten“ und
- * „Löschen“ – im Bereich gibt es davon nichts, dort erfassen die Mitarbeiter
- * nur ihre Leistungen (domain/rechte.ts). Jedes Projekt gehört in die
- * Leistungsnachweise (`JEDES_PROJEKT_IN`): Führt ein anderer Bereich das
- * Projekt oder ist es dort zur Übernahme vorgesehen, lässt es sich hier nicht
- * löschen – nur im Controlling unter „Projekte“ für alle Bereiche (dort lässt
- * sich auch eine vorgesehene Übernahme zurücknehmen).
+ * Seite eines Projekts im Controlling der Leistungsnachweise – ohne Reiter.
+ * Oben „Alle Projekte“, Projektnummer und -name, Status, Rhythmus und Raster
+ * und das Menü „Mehr“ zum Projekt (Projekt einstellen – Leistungsbereich,
+ * Bezeichnung im Nachweis, Raster, Rhythmus, Abschnitte, Logos
+ * (ProjektEinstellungen.tsx) –, Projekt bearbeiten, Projekt löschen).
+ * Liegen Leistungen in keinem Leistungsnachweis (etwa nach dem Löschen eines
+ * Nachweises), nennt ein Hinweis sie und ordnet sie mit „Nach dem Rhythmus
+ * zuordnen“ zu (`nachweiseFuerOffeneLeistungen`).
+ * Darunter der Leistungsnachweis (Abrechnung.tsx, `NachweisBearbeitung`): ohne
+ * Angabe in der Adresse der aktuelle (`aktuellerNachweis` – der früheste
+ * offene, sonst der jüngste abgeschlossene), sonst der gewählte; die Auswahl
+ * dort wechselt zwischen allen Nachweisen des Projekts. Hat das Projekt noch
+ * keinen, sagt die Seite, wann einer entsteht, und bietet „Neuer
+ * Leistungsnachweis“ an.
  *
- * Die Reiterleiste scrollt auf schmalen Bildschirmen quer (`.tabs` in
- * src/shared/global.css); der aktive Reiter (`aria-selected`) wird dabei in den
- * sichtbaren Teil gerollt – auch, wenn die Adresse ihn direkt aufruft.
+ * Jedes Projekt gehört in die Leistungsnachweise (`JEDES_PROJEKT_IN`): Führt
+ * ein anderer Bereich das Projekt oder ist es dort zur Übernahme vorgesehen,
+ * lässt es sich hier nicht löschen – nur im Controlling unter „Projekte“ für
+ * alle Bereiche (dort lässt sich auch eine vorgesehene Übernahme zurücknehmen).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { andereBereiche, vorgeseheneBereiche } from '../../../../gemeinsam/ProjektBereiche';
 import { useRegister } from '../../../../gemeinsam/register';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Badge, Card, ConfirmDialog, EmptyState } from '../../../../shared/ui';
+import { Badge, Callout, Card, ConfirmDialog, EmptyState, Modal } from '../../../../shared/ui';
+import { NachweisDialog } from '../../components/NachweisDialog';
 import { ProjektDialog } from '../../components/ProjektDialog';
-import { RasterBadge, STATUS_TON, anzahl } from '../../components/common';
-import { PROJEKT_STATUS_LABEL, ZEITRAUMREGEL_LABEL, projektKurzname, projektTitel } from '../../domain/types';
-import type { ProjektTab, Route } from '../../lib/router';
+import { STATUS_TON, anzahl, nachweiseAngelegtText } from '../../components/common';
+import { aktuellerNachweis, leistungenOhneNachweis, stundenVon } from '../../domain/nachweis';
+import { PROJEKT_STATUS_LABEL, RASTER_LABEL, ZEITRAUMREGEL_LABEL, projektTitel, type ID } from '../../domain/types';
+import { stundenText } from '../../domain/zeitraum';
+import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
-import { Leistungen } from '../projekt/Leistungen';
+import { NachweisBearbeitung } from './Abrechnung';
+import { MehrMenue } from './hilfen';
 import { ProjektEinstellungen } from './ProjektEinstellungen';
-import { ProjektNachweise } from './ProjektNachweise';
-
-const TABS: { id: ProjektTab; label: string; titel: string }[] = [
-  { id: 'nachweise', label: 'Leistungsnachweise', titel: 'Leistungsnachweise des Projekts – Klick öffnet die Abrechnung' },
-  { id: 'leistungen', label: 'Leistungen', titel: 'Leistungen aller Mitarbeiter – nur lesen' },
-  { id: 'einstellungen', label: 'Einstellungen', titel: 'Vorgaben für Leistungsnachweise, Abschnitte und Logos' },
-];
 
 export function ControllingProjekt({
   projektId,
-  tab,
+  nachweisId,
   navigate,
 }: {
-  projektId: string;
-  tab: ProjektTab;
+  projektId: ID;
+  /** Gewählter Leistungsnachweis; ohne Angabe der aktuelle. */
+  nachweisId?: ID;
   navigate: (r: Route) => void;
 }) {
-  const { data, deleteProjekt } = useStore();
+  const { data, deleteProjekt, nachweiseFuerOffeneLeistungen } = useStore();
   const register = useRegister();
   const toast = useToast();
+  const [einstellen, setEinstellen] = useState(false);
   const [bearbeiten, setBearbeiten] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
+  const [neuerNachweis, setNeuerNachweis] = useState(false);
   const projekt = data.projekte.find((p) => p.id === projektId);
-  // Auf schmalen Bildschirmen liegt der aktive Reiter sonst womöglich außerhalb der quer scrollenden Leiste
-  const aktiverReiter = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    aktiverReiter.current?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-  }, [tab, projektId]);
+  const zuDenProjekten = () => navigate({ view: 'controlling', tab: 'projekte' });
 
   if (!projekt) {
     return (
@@ -66,7 +65,7 @@ export function ControllingProjekt({
           titel="Nicht gefunden"
           text="Das Projekt existiert nicht (mehr) – etwa weil es gelöscht wurde."
           action={
-            <button type="button" className="btn btn-primary" onClick={() => navigate({ view: 'controlling', tab: 'projekte' })}>
+            <button type="button" className="btn btn-primary" onClick={zuDenProjekten}>
               Zu den Projekten
             </button>
           }
@@ -75,97 +74,110 @@ export function ControllingProjekt({
     );
   }
 
+  const nachweis = nachweisId
+    ? data.nachweise.find((n) => n.id === nachweisId && n.projektId === projekt.id)
+    : (aktuellerNachweis(data, projekt.id) ?? undefined);
   const umfang = {
     nachweise: data.nachweise.filter((n) => n.projektId === projekt.id).length,
     leistungen: data.leistungen.filter((l) => l.projektId === projekt.id).length,
   };
-  const kurzname = projektKurzname(projekt);
   // Führt ein anderer Bereich das Projekt oder ist es dort vorgesehen, nähme der Abgleich es gleich wieder auf
   const geteilt = andereBereiche(register, 'leistungsnachweise', projekt.id);
   const vorgesehen = vorgeseheneBereiche(register, 'leistungsnachweise', projekt.id);
   const gesperrt = !!geteilt || !!vorgesehen;
+  // Leistungen ohne Leistungsnachweis (etwa nach dem Löschen eines Nachweises) – sie bekommen einen nach dem Rhythmus
+  const ohneNachweis = leistungenOhneNachweis(data, projekt.id);
 
   return (
     <div className="stack">
       <div className="ln-co-leiste">
-        <div className="row wrap">
-          <button type="button" className="btn btn-ghost" onClick={() => navigate({ view: 'controlling', tab: 'projekte' })}>
+        <div className="row wrap ln-co-projektkopf">
+          <button type="button" className="btn btn-ghost" onClick={zuDenProjekten}>
             <Icon name="zurueck" size={14} /> Alle Projekte
           </button>
           <h2 className="ln-co-projekttitel truncate">{projektTitel(projekt)}</h2>
-        </div>
-        <div className="row">
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => setBearbeiten(true)}>
-            <Icon name="bearbeiten" size={12} /> Bearbeiten
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-danger"
-            disabled={gesperrt}
-            title={
-              geteilt
-                ? `Wird auch in ${geteilt} geführt – jedes Projekt gehört in die Leistungsnachweise. Für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`
-                : vorgesehen
-                  ? `Ist für ${vorgesehen} zur Übernahme vorgesehen – jedes Projekt gehört in die Leistungsnachweise. Die Übernahme zurücknehmen bzw. für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`
-                  : undefined
-            }
-            onClick={() => setLoeschen(true)}
-          >
-            <Icon name="loeschen" size={12} /> Löschen
-          </button>
-        </div>
-      </div>
-
-      <div className="ln-projektkopf">
-        <div className="ln-projektinfo">
           <Badge ton={STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
-          <span title={`Neue Nachweise: ${ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}`}>
-            <RasterBadge raster={projekt.raster} />
+          <span className="small muted">
+            {ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]} · {RASTER_LABEL[projekt.raster]}
           </span>
-          <span className="small muted">{ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}</span>
-          {projekt.leistungsbereich ? <span className="small muted">{projekt.leistungsbereich}</span> : null}
-          {kurzname !== projekt.name ? (
-            <span className="small tertiary truncate" title="Bezeichnung im Nachweis">
-              im Nachweis: {kurzname}
-            </span>
-          ) : null}
         </div>
+        <MehrMenue
+          label="Weitere Aktionen zum Projekt"
+          eintraege={[
+            { key: 'einstellen', label: 'Projekt einstellen …', onWaehle: () => setEinstellen(true) },
+            { key: 'bearbeiten', label: 'Projekt bearbeiten …', onWaehle: () => setBearbeiten(true) },
+            {
+              key: 'loeschen',
+              label: gesperrt ? 'Projekt löschen (nur im Controlling unter „Projekte“)' : 'Projekt löschen …',
+              gefahr: !gesperrt,
+              onWaehle: () =>
+                gesperrt
+                  ? toast(
+                      geteilt
+                        ? `Wird auch in ${geteilt} geführt – jedes Projekt gehört in die Leistungsnachweise. Für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`
+                        : `Ist für ${vorgesehen} zur Übernahme vorgesehen – die Übernahme zurücknehmen bzw. für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`,
+                    )
+                  : setLoeschen(true),
+            },
+          ]}
+        />
       </div>
 
-      {geteilt ? (
-        <p className="small tertiary" style={{ margin: 0 }}>
-          Auch in {geteilt} geführt – löschen lässt sich das Projekt nur im Controlling unter „Projekte“, für alle
-          Bereiche.
-        </p>
-      ) : vorgesehen ? (
-        <p className="small tertiary" style={{ margin: 0 }}>
-          Für {vorgesehen} zur Übernahme vorgesehen – löschen lässt sich das Projekt erst, wenn die Übernahme im
-          Controlling unter „Projekte“ zurückgenommen ist, oder dort für alle Bereiche.
-        </p>
+      {ohneNachweis.length > 0 ? (
+        <Callout ton="warn" icon="!">
+          <div className="row-between wrap">
+            <span>
+              {anzahl(ohneNachweis.length, 'Leistung liegt', 'Leistungen liegen')} ({stundenText(stundenVon(ohneNachweis))} Std.) in keinem
+              Leistungsnachweis.
+            </span>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => {
+                const ergebnis = nachweiseFuerOffeneLeistungen(projekt.id);
+                toast(ergebnis.neu || ergebnis.erweitert ? nachweiseAngelegtText(ergebnis) : 'Keine Änderung.');
+              }}
+            >
+              Nach dem Rhythmus zuordnen
+            </button>
+          </div>
+        </Callout>
       ) : null}
 
-      <div className="tabs" role="tablist" aria-label="Projekt">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            ref={t.id === tab ? aktiverReiter : undefined}
-            type="button"
-            role="tab"
-            aria-selected={t.id === tab}
-            className={t.id === tab ? 'active' : ''}
-            title={t.titel}
-            onClick={() => navigate({ view: 'controllingProjekt', projektId: projekt.id, tab: t.id })}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {nachweis ? (
+        <NachweisBearbeitung key={nachweis.id} projekt={projekt} nachweis={nachweis} navigate={navigate} />
+      ) : (
+        <Card>
+          <EmptyState
+            icon="stunden"
+            titel={nachweisId ? 'Leistungsnachweis nicht gefunden' : 'Noch kein Leistungsnachweis'}
+            text={
+              nachweisId
+                ? 'Der Leistungsnachweis existiert nicht (mehr) – etwa weil er gelöscht wurde.'
+                : `Sobald Mitarbeiter Leistungen erfassen, entsteht der Leistungsnachweis nach dem Rhythmus des Projekts („${ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}“).`
+            }
+            action={
+              nachweisId ? (
+                <button type="button" className="btn btn-primary" onClick={() => navigate({ view: 'controllingProjekt', projektId: projekt.id })}>
+                  Zum aktuellen Leistungsnachweis
+                </button>
+              ) : umfang.leistungen > 0 ? (
+                <button type="button" className="btn btn-primary" onClick={() => setNeuerNachweis(true)}>
+                  <Icon name="plus" size={14} /> Neuer Leistungsnachweis
+                </button>
+              ) : undefined
+            }
+          />
+        </Card>
+      )}
 
-      {tab === 'nachweise' ? <ProjektNachweise projekt={projekt} navigate={navigate} /> : null}
-      {tab === 'leistungen' ? <Leistungen projekt={projekt} navigate={navigate} /> : null}
-      {tab === 'einstellungen' ? <ProjektEinstellungen projekt={projekt} /> : null}
-
+      {einstellen ? (
+        <Modal titel="Projekt einstellen" sub={projektTitel(projekt)} wide onClose={() => setEinstellen(false)}>
+          <ProjektEinstellungen projekt={projekt} />
+        </Modal>
+      ) : null}
       {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
+      {neuerNachweis ? <NachweisDialog projekt={projekt} onClose={() => setNeuerNachweis(false)} navigate={navigate} /> : null}
 
       {loeschen && !gesperrt ? (
         <ConfirmDialog
@@ -178,7 +190,7 @@ export function ControllingProjekt({
           onConfirm={() => {
             deleteProjekt(projekt.id);
             toast('Projekt gelöscht.');
-            navigate({ view: 'controlling', tab: 'projekte' });
+            zuDenProjekten();
           }}
           onClose={() => setLoeschen(false)}
         />

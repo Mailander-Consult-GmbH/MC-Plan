@@ -91,7 +91,7 @@ export function ProjektDialog({
     }
     toast('Projekt angelegt.');
     onClose();
-    navigate?.({ view: 'controllingProjekt', projektId: id, tab: 'einstellungen' });
+    navigate?.({ view: 'controllingProjekt', projektId: id });
   };
 
   return (
@@ -147,8 +147,8 @@ export function ProjektDialog({
           <Segmented<Raster> value={form.raster} onChange={(v) => set('raster', v)} options={RASTER_OPTIONEN} />
         </Field>
         <Field
-          label="Neue Nachweise"
-          hint="Vorgabe: Der offene Nachweis läuft weiter, bis er abgeschlossen wird – danach beginnt ein neuer. Alternativ je Kalendermonat ein eigener."
+          label="Rhythmus"
+          hint="Über welche Monate ein Leistungsnachweis geht: monatlich, alle 2 oder alle 3 Monate – gezählt ab Projektbeginn – oder bis er abgeschlossen wird (danach beginnt ein neuer)."
         >
           <Select
             value={form.zeitraumregel}

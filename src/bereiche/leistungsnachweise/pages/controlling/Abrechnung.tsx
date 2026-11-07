@@ -1,46 +1,45 @@
 /**
- * Abrechnung eines Leistungsnachweises im Controlling: je Zeile (Tag, Woche
- * oder Monat) die erfassten Stunden, der Aufschlag in ± Stunden und die
- * abgerechneten Stunden – ab zwei Abschnitten je Abschnitt
+ * Ein Leistungsnachweis im Controlling – der Arbeitsbereich auf der Seite
+ * eines Projekts (Projekt.tsx). Aufgabe des Controllings: aus den gebuchten
+ * Leistungen und den Leistungstexten der Mitarbeiter den Leistungsnachweis
+ * erstellen, wo nötig mit Aufschlag.
+ *
+ * Oben die Leiste: Auswahl des Nachweises (alle des Projekts, der jüngste
+ * zuerst), sein Stand („Fällig“, wenn sein Zeitraum vorbei ist,
+ * `nachweisFaellig`), „Vorschau“, „Drucken / PDF“, „Excel“, das Menü „Mehr“
+ * (Zeitraum ändern, Neuer Leistungsnachweis, Aufschläge zurücksetzen, Wieder
+ * öffnen, Löschen) und „Leistungsnachweis erstellen“ – das schließt ihn ab
+ * und schreibt seinen Stand fest (Rückfrage mit gekürzten Zeiträumen,
+ * späteren Leistungen, fehlenden Bestätigungen – erstellen bleibt möglich –,
+ * überholten Texten und Bestätigungen, die damit erlöschen, `grenzFolgen`).
+ *
+ * Darunter „Mitarbeiter und Bestätigungen“ (BestaetigungsStand.tsx) und eine
+ * Tabelle: je Zeile (Tag, Woche oder Monat) Datum, Bearbeiter, der
+ * Leistungstext – bearbeitbar, solange der Nachweis offen ist
+ * (Leistungstexte.tsx, `ZeilenText`: aus den gemeinsamen Texten der
+ * Mitarbeiter, Badge „Text der Mitarbeiter“; von Hand bearbeitet bleibt er
+ * stehen, neue Leistungen bzw. ein geänderter Text der Mitarbeiter werden zum
+ * Ergänzen angeboten) –, die erfassten Stunden, der Aufschlag in ± Stunden
+ * und die abgerechneten Stunden; ab zwei Abschnitten je Abschnitt
  * (`mitAbschnittsspalten`). Wer „Abgerechnet“ eingibt, setzt den Aufschlag als
  * Differenz (`aufschlagFuerAbgerechnet`). Erfasste Stunden bleiben, wie sie
- * sind; Druck und Excel zeigen die abgerechneten.
- *
- * Die Ansicht „Leistungstexte“ (Leistungstexte.tsx) bearbeitet die Texte je
- * Zeile – mit „Ergänzen“, wenn Leistungen hinzukamen. Kamen in von Hand
- * bearbeiteten Zeilen seitdem Leistungen hinzu oder hat sich dort der Text der
- * Mitarbeiter bzw. der automatische Text geändert (`ueberholteZeilen`), nennt
- * das eine Warnung mit „Leistungstexte prüfen“ (`ueberholtHinweis`) und die
- * Rückfrage beim Abschließen (`ueberholtRueckfrage`). Gibt es nicht erfasste
- * Leistungen aus schon abgerechneten Zeiträumen und ist dies der laufende
- * Nachweis, teilt ein Hinweis das mit; übernommen werden sie erst nach
- * Bestätigung (`leistungenNachreichen`) – nachgereichte Zeilen sind gekennzeichnet.
- *
- * Den Text einer Zeile liefern, solange das Controlling ihn nicht bearbeitet
- * hat, die gemeinsamen Leistungstexte der Mitarbeiter (`textGemeinsam`). Unter
- * den Kennzahlen eines offenen Nachweises steht der Stand der
- * Monatsbestätigungen (`BestaetigungsStand`, BestaetigungsStand.tsx).
- *
- * Dazu Vorschau, Drucken/PDF, Excel, Abschließen bzw. Wieder öffnen (mit
- * Rückfrage – sie nennt gekürzte Zeiträume, spätere Leistungen, fehlende
- * Bestätigungen der Mitarbeiter (abschließen bleibt möglich), Abweichungen vom
- * festgeschriebenen Stand und Bestätigungen, die damit erlöschen,
- * `grenzFolgen`), Zeitraum ändern und Löschen (die Rückfrage nennt die Folgen
- * für gemeinsame Texte und Bestätigungen, `grenzFolgenHinweis`), die
- * Kontrolle „Stunden je Mitarbeiter“ und die Bemerkung. Abgeschlossene
- * Nachweise zeigen ihren Stand und lassen sich nur lesen. Alle Änderungen
- * laufen über den Store, der den Controlling-Zugang prüft.
+ * sind; Druck und Excel zeigen die abgerechneten. Unter der Tabelle die
+ * Bemerkung. Gibt es nicht erfasste Leistungen aus schon abgerechneten
+ * Zeiträumen und ist dies der laufende Nachweis, teilt ein Hinweis das mit;
+ * übernommen werden sie erst nach Bestätigung (`leistungenNachreichen`).
+ * Abgeschlossene Nachweise zeigen ihren Stand und lassen sich nur lesen. Alle
+ * Änderungen laufen über den Store, der den Controlling-Zugang prüft.
  */
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { addDays, today, wochentag } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Modal, Segmented, Stat } from '../../../../shared/ui';
+import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Modal } from '../../../../shared/ui';
 import { Druckblatt } from '../../components/Druckblatt';
 import { NachweisDialog, NichtErfasstHinweis } from '../../components/NachweisDialog';
 import { Textfeld } from '../../components/Textfeld';
-import { NachweisStatusBadge, anzahl, nachweisZeitraumText, zeitpunkt } from '../../components/common';
-import { GESAMT, nachweisDrucken, nachweisFassung, nachweisHtml, type NachweisFassung } from '../../domain/druck';
+import { anzahl, nachweisZeitraumText, zeitpunkt } from '../../components/common';
+import { nachweisDrucken, nachweisFassung, nachweisHtml } from '../../domain/druck';
 import {
   erfassungsPeriodeVon,
   fehlendeBestaetigungen,
@@ -55,66 +54,53 @@ import {
   aufschlagEingabe,
   aufschlagFuerAbgerechnet,
   leistungenDesNachweises,
-  nachweisAbschliessenAnwenden,
-  nichtAbgerechnet,
-  stundenVon,
   mitAbschnittsspalten,
+  nachweisAbschliessenAnwenden,
+  nachweisFaellig,
   nachweisSummen,
+  nachweisTitel,
+  nachweiseVon,
+  nachweisZeilen,
+  nichtAbgerechnet,
+  periodentexteVon,
   standVeraltet,
   standVergleich,
+  stundenVon,
+  textErgaenzen,
   ueberholtHinweis,
   ueberholtRueckfrage,
   ueberholteZeilen,
+  type UeberholteZeile,
 } from '../../domain/nachweis';
-import { eigeneLeistungen, leistungenDerZeile } from '../../domain/rechte';
+import { darf, eigeneLeistungen, leistungenDerZeile } from '../../domain/rechte';
 import {
+  NACHWEIS_STATUS_LABEL,
   OHNE_ABSCHNITT,
   RASTER_KURZ,
   RASTER_LABEL,
+  ZEITRAUMREGEL_LABEL,
   mitarbeiterName,
-  projektTitel,
   type Abschnitt,
   type ID,
   type Leistung,
   type Leistungsnachweis,
   type NachweisZeile,
   type Projekt,
+  type Raster,
 } from '../../domain/types';
 import { kurzDatum, langDatum, runden, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
-import { BestaetigungsStand, FehlendeBestaetigungen } from './BestaetigungsStand';
-import { StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
-import { Leistungstexte } from './Leistungstexte';
+import { FehlendeBestaetigungen, MitarbeiterBestaetigungen } from './BestaetigungsStand';
+import { MehrMenue, StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
+import { ZeilenText } from './Leistungstexte';
 import './controlling.css';
 
-type Ansicht = 'abrechnung' | 'texte' | 'vorschau';
+/** Feinheit der Raster – feiner gegliederte Zeilen übernehmen keine gemeinsamen Texte (`nachweisZeilen`). */
+const FEINHEIT: Record<Raster, number> = { tag: 0, woche: 1, monat: 2 };
 
-/** Leistungstexte ab dieser Länge erscheinen gekürzt mit „mehr“. */
-const KURZ_AB = 180;
-
-export function Abrechnung({ projektId, nachweisId, navigate }: { projektId: ID; nachweisId: ID; navigate: (r: Route) => void }) {
-  const { data } = useStore();
-  const projekt = data.projekte.find((p) => p.id === projektId);
-  const nachweis = data.nachweise.find((n) => n.id === nachweisId && n.projektId === projektId);
-  if (!projekt || !nachweis) {
-    return (
-      <Card>
-        <EmptyState
-          icon="stunden"
-          titel="Nicht gefunden"
-          text="Der Leistungsnachweis existiert nicht (mehr) – etwa weil er oder sein Projekt gelöscht wurde."
-          action={
-            <button type="button" className="btn btn-primary" onClick={() => navigate({ view: 'controlling', tab: 'projekte' })}>
-              Zu den Projekten
-            </button>
-          }
-        />
-      </Card>
-    );
-  }
-  return <AbrechnungAnsicht key={nachweis.id} projekt={projekt} nachweis={nachweis} navigate={navigate} />;
-}
+/** Bezeichnung der Zeilen je Raster. */
+const ZEILEN_LABEL: Record<Raster, string> = { tag: 'Tag', woche: 'Woche', monat: 'Monat' };
 
 /** Eine Abrechnungsposition einer Zeile: ein Abschnitt, „ohne“ bzw. die ganze Zeile. */
 interface Position {
@@ -175,7 +161,7 @@ function positionenVon(
   return gezeigt.length ? gezeigt : alleZeilen.slice(-1);
 }
 
-function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projekt; nachweis: Leistungsnachweis; navigate: (r: Route) => void }) {
+export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projekt: Projekt; nachweis: Leistungsnachweis; navigate: (r: Route) => void }) {
   const {
     data,
     zugang,
@@ -186,13 +172,15 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
     aufschlagSetzen,
     aufschlaegeZuruecksetzen,
     leistungenNachreichen,
+    zeilenTextSetzen,
   } = useStore();
   const toast = useToast();
-  const [ansicht, setAnsicht] = useState<Ansicht>('abrechnung');
   const [offeneTexte, setOffeneTexte] = useState<Set<string>>(new Set());
   const [offeneLeistungen, setOffeneLeistungen] = useState<Set<string>>(new Set());
   const [alleAbschnitte, setAlleAbschnitte] = useState(false);
+  const [vorschau, setVorschau] = useState(false);
   const [zeitraumDialog, setZeitraumDialog] = useState(false);
+  const [neuerNachweis, setNeuerNachweis] = useState(false);
   const [abschliessen, setAbschliessen] = useState(false);
   const [oeffnen, setOeffnen] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
@@ -200,16 +188,19 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
   const [nachreichen, setNachreichen] = useState(false);
   const [excelLaeuft, setExcelLaeuft] = useState(false);
 
+  const heute = today();
   const abgeschlossen = n.status === 'abgeschlossen';
+  const bearbeitbar = !abgeschlossen && darf(zugang, 'nachweisVerwalten');
   const fassung = nachweisFassung(data, n, projekt, 'abgerechnet');
   const { zeilen } = fassung;
   const abschnitte = abgeschlossen && n.stand ? n.stand.abschnitte : projekt.abschnitte;
   const spalten = mitAbschnittsspalten(abschnitte);
   const summen = nachweisSummen(zeilen);
   const veraltet = standVeraltet(data, n);
+  const faellig = nachweisFaellig(data, n, heute);
   const imZeitraum = leistungenDesNachweises(data, n);
   // Nicht erfasste Leistungen – nur am laufenden Nachweis (nach dem letzten abgeschlossenen)
-  const plan = abgeschlossen ? null : nichtAbgerechnet(data, projekt.id, today());
+  const plan = abgeschlossen ? null : nichtAbgerechnet(data, projekt.id, heute);
   const nichtErfasst = plan && plan.offene.some((o) => o.id === n.id) ? plan.nichtErfasst : [];
   // Löschen darf auch das Controlling nur eigene Leistungen (domain/rechte.ts) – dieselben, die `deleteNachweis` löscht
   const eigeneImZeitraum = eigeneLeistungen(data, imZeitraum).length;
@@ -220,6 +211,8 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
     const m = mitarbeiterVon.get(id);
     return m ? mitarbeiterName(m) || m.kuerzel : '?';
   };
+  // Alle Nachweise des Projekts für die Auswahl, der jüngste zuerst
+  const alle = [...nachweiseVon(data, projekt.id)].reverse();
 
   // Aufschläge, die gerade nicht wirken: ihre Zeile fehlt (etwa nach einem Rasterwechsel) oder ihr Abschnitt
   const zeilenSchluessel = new Set(zeilen.map((z) => z.schluessel));
@@ -232,9 +225,17 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
         const abschnitt = k.slice(trenner + 1);
         return !zeilenSchluessel.has(zeile) || (abschnitt !== OHNE_ABSCHNITT && (!spalten || !abschnittVon.has(abschnitt)));
       }).length;
-  // Von Hand bearbeitete Zeilen mit neuen Leistungen bzw. geändertem Text der Mitarbeiter (`ueberholteZeilen`)
-  const ueberholt = abgeschlossen ? [] : [...ueberholteZeilen(data, n).values()];
+  // Von Hand bearbeitete Zeilen mit neuen Leistungen bzw. geändertem Text der Mitarbeiter (`ueberholteZeilen`) – die
+  // Zeilen nennen es selbst, darüber steht die Zahl
+  const ueberholtJe = bearbeitbar ? ueberholteZeilen(data, n) : new Map<string, UeberholteZeile>();
+  const ueberholt = [...ueberholtJe.values()];
   const ueberholtText = ueberholtHinweis(ueberholt);
+  // Zeilen ohne die Bearbeitung von Hand – ob es dort einen Text der Mitarbeiter gäbe (`textGemeinsam`)
+  const ohneBearbeitung =
+    bearbeitbar && zeilen.some((z) => z.textBearbeitet)
+      ? new Map(nachweisZeilen(data, { ...n, texte: {} }).map((z) => [z.schluessel, z]))
+      : null;
+  const feiner = bearbeitbar && FEINHEIT[n.raster] < FEINHEIT[projekt.raster] && periodentexteVon(data, projekt.id).size > 0;
 
   const umschalten = (setze: typeof setOffeneTexte, schluessel: string) =>
     setze((alt) => {
@@ -243,6 +244,21 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
       else neu.add(schluessel);
       return neu;
     });
+
+  /* Leistungstexte – alle Änderungen über den Store */
+  const textAendern = (z: NachweisZeile, text: string) => {
+    // Beim Weiterschreiben bleiben die Leistungen der ersten Bearbeitung maßgeblich,
+    // damit der Hinweis auf neue Leistungen nicht verschwindet.
+    const bekannt = n.texte[z.schluessel];
+    zeilenTextSetzen(n.id, bekannt ? { ...z, leistungIds: bekannt.leistungIds } : z, text);
+  };
+  // „Ergänzen“ und „Text so lassen“: Die Zeile ist gesehen – neue Leistungen und Text der Mitarbeiter gelten als bekannt
+  const ergaenzen = (z: NachweisZeile, neue: Leistung[]) => zeilenTextSetzen(n.id, z, textErgaenzen(z.text, neue), { gesehen: true });
+  const beibehalten = (z: NachweisZeile) => zeilenTextSetzen(n.id, z, z.text, { gesehen: true });
+  const automatisch = (z: NachweisZeile, gemeinsam: boolean) => {
+    zeilenTextSetzen(n.id, z, null);
+    toast(gemeinsam ? 'Leistungstext der Mitarbeiter wiederhergestellt.' : 'Automatischer Leistungstext wiederhergestellt.');
+  };
 
   const excel = async () => {
     setExcelLaeuft(true);
@@ -256,13 +272,13 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
   };
 
   /* Rückfragen */
-  const abschluss = abschlussZeitraum(data, n, today());
+  const abschluss = abschlussZeitraum(data, n, heute);
   // Endet der Nachweis mitten in einem Zeitraum der gemeinsamen Leistungstexte, bildet der Rest einen eigenen
   const restAb = erfassungsPeriodeVon(data, n.projektId, abschluss.bis).bis > abschluss.bis ? addDays(abschluss.bis, 1) : null;
   const abschliessenText = [
-    `Der Stand wird festgeschrieben – mit ${stundenText(summen.abgerechnet)} abgerechneten Stunden${
+    `Der Leistungsnachweis wird abgeschlossen und sein Stand festgeschrieben – mit ${stundenText(summen.abgerechnet)} abgerechneten Stunden${
       summen.aufschlag ? ` (erfasst ${stundenText(summen.erfasst)}, Aufschlag ${aufschlagText(summen.aufschlag)})` : ''
-    }. Spätere Leistungen im Zeitraum ändern ihn nicht mehr; „Wieder öffnen“ hebt den Abschluss auf.`,
+    }. Danach stehen Drucken / PDF und Excel bereit; spätere Leistungen im Zeitraum ändern ihn nicht mehr, „Wieder öffnen“ hebt den Abschluss auf.`,
     abschluss.gekuerzt
       ? `Der Zeitraum wird jetzt festgelegt: Er endet am ${langDatum(abschluss.bis)}, dem letzten Tag mit Leistungen.`
       : '',
@@ -319,108 +335,77 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
     ? grenzFolgenHinweis(grenzFolgen(data, { ...data, nachweise: data.nachweise.filter((x) => x.id !== n.id) }), data.mitarbeiter)
     : null;
 
-  const bemerkung = (
-    <Card>
-      <CardHeader titel="Bemerkung" sub="Steht im Druck unter der Tabelle" />
-      <div className="card-pad">
-        <Textfeld
-          value={n.bemerkung}
-          onChange={(v) => updateNachweis(n.id, { bemerkung: v })}
-          readOnly={abgeschlossen}
-          placeholder={abgeschlossen ? 'Keine Bemerkung' : 'z. B. Abrechnung nach Aufwand gemäß Vertrag'}
-          aria-label="Bemerkung"
-        />
-      </div>
-    </Card>
-  );
-
-  const kopfSub = `${nachweisZeitraumText(data, n)} · ${projektTitel(projekt)} · ${RASTER_LABEL[n.raster]}`;
+  const kopfSub = `${nachweisZeitraumText(data, n)} · ${RASTER_LABEL[n.raster]} · Rhythmus: ${ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}`;
   const spaltenzahl = spalten ? 7 : 6;
+  const wahlId = `ln-co-nachweiswahl-${projekt.id}`;
 
   return (
     <div className="stack">
-      {/* Werkzeugleiste */}
+      {/* Leiste: welcher Nachweis, sein Stand und was sich damit tun lässt */}
       <div className="ln-co-leiste">
-        <div className="row wrap">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            title="Zurück zu den Leistungsnachweisen des Projekts"
-            onClick={() => navigate({ view: 'controllingProjekt', projektId: projekt.id, tab: 'nachweise' })}
+        <div className="row wrap ln-co-nachweiswahl">
+          <label htmlFor={wahlId} className="ln-co-wahl-label">
+            Leistungsnachweis
+          </label>
+          <select
+            id={wahlId}
+            className="select"
+            value={n.id}
+            onChange={(e) => navigate({ view: 'abrechnung', projektId: projekt.id, nachweisId: e.target.value })}
           >
-            <Icon name="zurueck" size={14} /> Zum Projekt
-          </button>
-          <Segmented<Ansicht>
-            value={ansicht}
-            onChange={setAnsicht}
-            options={[
-              { value: 'abrechnung', label: 'Abrechnung' },
-              { value: 'texte', label: 'Leistungstexte' },
-              { value: 'vorschau', label: 'Vorschau' },
-            ]}
-          />
+            {alle.map((x) => (
+              <option key={x.id} value={x.id}>
+                {nachweisTitel(x)} · {NACHWEIS_STATUS_LABEL[x.status]}
+              </option>
+            ))}
+          </select>
+          {faellig ? (
+            <span title="Der Zeitraum ist vorbei – der Leistungsnachweis kann erstellt werden">
+              <Badge ton="orange">Fällig</Badge>
+            </span>
+          ) : null}
+          {veraltet ? <Badge ton="orange">geändert</Badge> : null}
         </div>
-        <div className="row wrap">
+        <div className="row wrap ln-co-aktionen">
+          <button type="button" className="btn btn-outline" onClick={() => setVorschau(true)}>
+            <Icon name="suche" size={14} /> Vorschau
+          </button>
           <button type="button" className="btn btn-outline" onClick={() => nachweisDrucken(data, n, projekt)}>
             <Icon name="plan" size={14} /> Drucken / PDF
           </button>
           <button type="button" className="btn btn-outline" disabled={excelLaeuft} onClick={() => void excel()}>
             <Icon name="export" size={14} /> {excelLaeuft ? 'Excel …' : 'Excel'}
           </button>
+          <MehrMenue
+            label="Weitere Aktionen zum Leistungsnachweis"
+            eintraege={[
+              { key: 'zeitraum', label: 'Zeitraum ändern …', zeigen: !abgeschlossen, onWaehle: () => setZeitraumDialog(true) },
+              { key: 'neu', label: 'Neuer Leistungsnachweis …', onWaehle: () => setNeuerNachweis(true) },
+              {
+                key: 'aufschlaege',
+                label: 'Aufschläge zurücksetzen …',
+                zeigen: !abgeschlossen && aufschlaege > 0,
+                onWaehle: () => setZuruecksetzen(true),
+              },
+              { key: 'oeffnen', label: 'Wieder öffnen …', zeigen: abgeschlossen, onWaehle: () => setOeffnen(true) },
+              { key: 'loeschen', label: 'Leistungsnachweis löschen …', gefahr: true, onWaehle: () => setLoeschen(true) },
+            ]}
+          />
           {abgeschlossen ? (
-            <button type="button" className="btn btn-primary" onClick={() => setOeffnen(true)}>
-              <Icon name="schleife" size={14} /> Wieder öffnen
-            </button>
+            <span className="ln-co-erstellt">
+              <Icon name="check" size={14} /> Abgeschlossen {zeitpunkt(n.abgeschlossen)}
+            </span>
           ) : (
             <button type="button" className="btn btn-primary" onClick={() => setAbschliessen(true)}>
-              <Icon name="check" size={14} /> Abschließen
+              <Icon name="check" size={14} /> Leistungsnachweis erstellen
             </button>
           )}
-          <button
-            type="button"
-            className="btn btn-outline"
-            disabled={abgeschlossen}
-            title={abgeschlossen ? 'Erst „Wieder öffnen“ – der Stand ist festgeschrieben.' : 'Zeitraum, Raster und Überschrift ändern'}
-            onClick={() => setZeitraumDialog(true)}
-          >
-            <Icon name="kalender" size={14} /> Zeitraum ändern
-          </button>
-          <button type="button" className="btn btn-danger" onClick={() => setLoeschen(true)}>
-            <Icon name="loeschen" size={14} /> Löschen
-          </button>
         </div>
       </div>
 
-      {/* Kopf: Überschrift, Zeitraum, Raster, Status, Kennzahlen */}
-      <Card>
-        <CardHeader
-          titel={fassung.titel}
-          sub={kopfSub}
-          actions={
-            <span className="row wrap" style={{ gap: 6 }}>
-              <NachweisStatusBadge status={n.status} />
-              {veraltet ? <Badge ton="orange">geändert</Badge> : null}
-            </span>
-          }
-        />
-        <div className="kennzahlen">
-          <Stat wert={stundenText(summen.erfasst)} label="Erfasst" />
-          <Stat wert={aufschlagText(summen.aufschlag)} label="Aufschlag" ton={summen.aufschlag ? 'blue' : ''} />
-          <Stat wert={stundenText(summen.abgerechnet)} label="Abgerechnet" />
-          <Stat wert={fassung.bearbeiter.length} label="Bearbeiter" />
-        </div>
-        {abgeschlossen ? null : <BestaetigungsStand nachweis={n} />}
-      </Card>
-
-      {abgeschlossen ? (
-        <Callout icon="✓">
-          Abgeschlossen {zeitpunkt(n.abgeschlossen)} – der Stand ist festgeschrieben, mit seinen Aufschlägen. Spätere
-          Leistungen im Zeitraum ändern ihn nicht; Aufschläge lassen sich erst nach „Wieder öffnen“ ändern.
-        </Callout>
-      ) : null}
       {veraltet ? (
         <Callout ton="warn" icon="!">
-          Seit dem Abschluss haben sich Leistungen im Zeitraum geändert – „Wieder öffnen“ übernimmt sie.
+          Seit dem Abschluss haben sich Leistungen im Zeitraum geändert – „Wieder öffnen“ (Menü „Mehr“) übernimmt sie.
         </Callout>
       ) : null}
       {nichtErfasst.length > 0 ? (
@@ -432,14 +417,16 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           </div>
         </NichtErfasstHinweis>
       ) : null}
-      {ueberholtText && ansicht !== 'texte' ? (
+      {ueberholtText ? (
         <Callout ton="warn" icon="!">
-          <div className="row-between wrap">
-            <span>{ueberholtText}</span>
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => setAnsicht('texte')}>
-              Leistungstexte prüfen
-            </button>
-          </div>
+          {ueberholtText} Die Zeilen sind in der Tabelle markiert.
+        </Callout>
+      ) : null}
+      {feiner ? (
+        <Callout icon="i">
+          Die Zeilen sind feiner gegliedert ({ZEILEN_LABEL[n.raster]}) als die gemeinsamen Leistungstexte der Mitarbeiter
+          (Raster des Projekts: {ZEILEN_LABEL[projekt.raster]}). Ein Text, der nur zum Teil in einer Zeile liegt, gilt dort
+          nicht – solche Zeilen zeigen die Texte ihrer Leistungen.
         </Callout>
       ) : null}
       {unwirksam > 0 ? (
@@ -447,132 +434,144 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           {unwirksam === 1
             ? '1 Aufschlag gehört zu einer Zeile, die es im aktuellen Raster nicht gibt, und wirkt deshalb nicht – er kehrt zurück, wenn die Zeile wieder entsteht.'
             : `${unwirksam} Aufschläge gehören zu Zeilen, die es im aktuellen Raster nicht gibt, und wirken deshalb nicht – sie kehren zurück, wenn die Zeilen wieder entstehen.`}{' '}
-          „Aufschläge zurücksetzen“ entfernt sie.
+          „Aufschläge zurücksetzen“ (Menü „Mehr“) entfernt sie.
         </Callout>
       ) : null}
 
-      {ansicht === 'vorschau' ? (
-        <Druckblatt inhalt={nachweisHtml(data, n, projekt)} />
-      ) : ansicht === 'texte' ? (
-        <>
-          <Leistungstexte projekt={projekt} nachweis={n} />
-          {bemerkung}
-        </>
-      ) : (
-        <>
-          <Card>
-            <CardHeader
-              titel="Abrechnung"
-              sub={
-                abgeschlossen
-                  ? 'Festgeschriebener Stand – nur lesen'
-                  : `Aufschlag in ± Std. je Zeile${spalten ? ' und Abschnitt' : ''}, z. B. 1,5 oder -0,5 – gespeichert beim Verlassen des Felds oder mit Enter. „Abgerechnet“ setzt den Aufschlag als Differenz.`
-              }
-              actions={
-                abgeschlossen ? undefined : (
-                  <span className="row wrap" style={{ gap: 10 }}>
-                    {spalten ? (
-                      <label className="checkbox small" title="Je Zeile auch Abschnitte ohne Stunden und „ohne Abschnitt“ zeigen – für Aufschläge dort">
-                        <input type="checkbox" checked={alleAbschnitte} onChange={(e) => setAlleAbschnitte(e.target.checked)} />
-                        Alle Abschnitte
-                      </label>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline"
-                      disabled={aufschlaege === 0}
-                      onClick={() => setZuruecksetzen(true)}
-                    >
-                      <Icon name="rueckgaengig" size={12} /> Aufschläge zurücksetzen
-                    </button>
-                  </span>
-                )
-              }
-            />
-            {zeilen.length === 0 ? (
-              <EmptyState
-                icon="stunden"
-                titel="Keine Leistungen im Zeitraum"
-                text={
-                  abgeschlossen
-                    ? 'Der Leistungsnachweis wurde ohne Leistungen abgeschlossen.'
-                    : 'Sobald Mitarbeiter Leistungen im Zeitraum erfassen oder importieren, erscheinen sie hier je Zeile.'
-                }
-              />
-            ) : (
-              <div className="table-scroll ln-co-abrechnung-huelle">
-                <table className={`table ln-co-abrechnung ${spalten ? 'ln-co-mit-abschnitten' : ''} ${abgeschlossen ? '' : 'ln-co-eingaben'}`}>
-                  <thead>
-                    <tr>
-                      <th className="ln-co-spalte-datum">Datum</th>
-                      <th className="ln-co-spalte-bearbeiter">Bearbeiter</th>
-                      <th>Leistungstext</th>
-                      {spalten ? <th className="ln-co-spalte-abschnitt">Abschnitt</th> : null}
-                      <th className="ln-stunden ln-co-spalte-zahl">Erfasst</th>
-                      <th className="ln-stunden ln-co-spalte-eingabe">Aufschlag</th>
-                      <th className="ln-stunden ln-co-spalte-eingabe">Abgerechnet</th>
-                    </tr>
-                  </thead>
-                  {zeilen.map((z) => {
-                    const { eigene, andere } = leistungenDerZeile(data, z, zugang);
-                    return (
-                      <ZeileAbrechnung
-                        key={z.schluessel}
+      <MitarbeiterBestaetigungen nachweis={n} mitarbeiter={fassung.mitarbeiter} />
+
+      <Card>
+        <CardHeader
+          titel={fassung.titel}
+          sub={kopfSub}
+          actions={
+            !abgeschlossen && spalten ? (
+              <label className="checkbox small" title="Je Zeile auch Abschnitte ohne Stunden und „ohne Abschnitt“ zeigen – für Aufschläge dort">
+                <input type="checkbox" checked={alleAbschnitte} onChange={(e) => setAlleAbschnitte(e.target.checked)} />
+                Alle Abschnitte
+              </label>
+            ) : undefined
+          }
+        />
+        {zeilen.length === 0 ? (
+          <EmptyState
+            icon="stunden"
+            titel="Keine Leistungen im Zeitraum"
+            text={
+              abgeschlossen
+                ? 'Der Leistungsnachweis wurde ohne Leistungen abgeschlossen.'
+                : 'Sobald Mitarbeiter Leistungen im Zeitraum erfassen oder importieren, erscheinen sie hier je Zeile.'
+            }
+          />
+        ) : (
+          <div className="table-scroll ln-co-abrechnung-huelle">
+            <table className={`table ln-co-abrechnung ${spalten ? 'ln-co-mit-abschnitten' : ''} ${abgeschlossen ? '' : 'ln-co-eingaben'}`}>
+              <thead>
+                <tr>
+                  <th className="ln-co-spalte-datum">Datum</th>
+                  <th className="ln-co-spalte-bearbeiter">Bearbeiter</th>
+                  <th>Leistungstext</th>
+                  {spalten ? <th className="ln-co-spalte-abschnitt">Abschnitt</th> : null}
+                  <th className="ln-stunden ln-co-spalte-zahl">Erfasst</th>
+                  <th className="ln-stunden ln-co-spalte-eingabe">Aufschlag</th>
+                  <th className="ln-stunden ln-co-spalte-eingabe">Abgerechnet</th>
+                </tr>
+              </thead>
+              {zeilen.map((z) => {
+                const { eigene, andere } = leistungenDerZeile(data, z, zugang);
+                // Gäbe es ohne die Bearbeitung von Hand einen Text der Mitarbeiter? (Nur für die Beschriftung von „wiederherstellen“)
+                const gemeinsamMoeglich = !!(z.textBearbeitet && ohneBearbeitung?.get(z.schluessel)?.textGemeinsam);
+                const u = ueberholtJe.get(z.schluessel);
+                return (
+                  <ZeileAbrechnung
+                    key={z.schluessel}
+                    zeile={z}
+                    nachgereicht={!!z.nachgereicht || z.bis < n.von}
+                    positionen={positionenVon(z, n, abschnitte, spalten, abgeschlossen, alleAbschnitte)}
+                    spalten={spalten}
+                    lesen={abgeschlossen}
+                    leistungen={[...eigene, ...andere].sort((a, b) => a.datum.localeCompare(b.datum))}
+                    leistungenOffen={offeneLeistungen.has(z.schluessel)}
+                    personName={personName}
+                    abschnittKurz={(id) => {
+                      const a = id ? abschnittVon.get(id) : undefined;
+                      return a ? a.kurz || a.kennung || a.name : '';
+                    }}
+                    text={
+                      <ZeilenText
                         zeile={z}
-                        nachgereicht={!!z.nachgereicht || z.bis < n.von}
-                        positionen={positionenVon(z, n, abschnitte, spalten, abgeschlossen, alleAbschnitte)}
-                        spalten={spalten}
-                        lesen={abgeschlossen}
-                        leistungen={[...eigene, ...andere].sort((a, b) => a.datum.localeCompare(b.datum))}
+                        bearbeitbar={bearbeitbar}
+                        gemeinsamMoeglich={gemeinsamMoeglich}
+                        mitarbeiterTextNeu={u?.textNeu ?? null}
+                        neue={u?.neue ?? []}
                         textOffen={offeneTexte.has(z.schluessel)}
-                        leistungenOffen={offeneLeistungen.has(z.schluessel)}
                         personName={personName}
-                        abschnittKurz={(id) => {
-                          const a = id ? abschnittVon.get(id) : undefined;
-                          return a ? a.kurz || a.kennung || a.name : '';
-                        }}
-                        onText={() => umschalten(setOffeneTexte, z.schluessel)}
-                        onLeistungen={() => umschalten(setOffeneLeistungen, z.schluessel)}
-                        onAufschlag={(abschnittId, stunden) => aufschlagSetzen(n.id, z.schluessel, abschnittId, stunden)}
-                        onAbgerechnet={(abschnittId, stunden) =>
-                          aufschlagSetzen(n.id, z.schluessel, abschnittId, stunden === null ? null : aufschlagFuerAbgerechnet(z, abschnittId, stunden, spalten))
-                        }
+                        onText={(text) => textAendern(z, text)}
+                        onErgaenzen={(neue) => ergaenzen(z, neue)}
+                        onBeibehalten={() => beibehalten(z)}
+                        onAutomatisch={() => automatisch(z, gemeinsamMoeglich)}
+                        onMehr={() => umschalten(setOffeneTexte, z.schluessel)}
                       />
-                    );
-                  })}
-                  <tbody className="ln-co-summenblock">
-                    <tr className="ln-co-summe">
-                      <td colSpan={spaltenzahl - 3}>Summe</td>
-                      <td className="ln-stunden" data-label="Erfasst">
-                        {stundenText(summen.erfasst)}
-                      </td>
-                      <td className="ln-stunden" data-label="Aufschlag">
-                        {aufschlagText(summen.aufschlag)}
-                      </td>
-                      <td className="ln-stunden ln-co-abgerechnet" data-label="Abgerechnet">
-                        {stundenText(summen.abgerechnet)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
+                    }
+                    onLeistungen={() => umschalten(setOffeneLeistungen, z.schluessel)}
+                    onAufschlag={(abschnittId, stunden) => aufschlagSetzen(n.id, z.schluessel, abschnittId, stunden)}
+                    onAbgerechnet={(abschnittId, stunden) =>
+                      aufschlagSetzen(n.id, z.schluessel, abschnittId, stunden === null ? null : aufschlagFuerAbgerechnet(z, abschnittId, stunden, spalten))
+                    }
+                  />
+                );
+              })}
+              <tbody className="ln-co-summenblock">
+                <tr className="ln-co-summe">
+                  <td colSpan={spaltenzahl - 3}>Summe</td>
+                  <td className="ln-stunden" data-label="Erfasst">
+                    {stundenText(summen.erfasst)}
+                  </td>
+                  <td className="ln-stunden" data-label="Aufschlag">
+                    {aufschlagText(summen.aufschlag)}
+                  </td>
+                  <td className="ln-stunden ln-co-abgerechnet" data-label="Abgerechnet">
+                    {stundenText(summen.abgerechnet)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        {!abgeschlossen ? (
+          <p className="small tertiary ln-co-tabellenhinweis">
+            Aufschlag in ± Std. je Zeile{spalten ? ' und Abschnitt' : ''}, z. B. 1,5 oder -0,5 – gespeichert beim Verlassen
+            des Felds oder mit Enter; „Abgerechnet“ setzt den Aufschlag als Differenz.
+          </p>
+        ) : null}
+        <div className="ln-co-bemerkung">
+          <label className="ln-co-wahl-label" htmlFor={`${wahlId}-bemerkung`}>
+            Bemerkung <span className="tertiary">(steht im Druck unter der Tabelle)</span>
+          </label>
+          <Textfeld
+            id={`${wahlId}-bemerkung`}
+            value={n.bemerkung}
+            onChange={(v) => updateNachweis(n.id, { bemerkung: v })}
+            readOnly={abgeschlossen}
+            placeholder={abgeschlossen ? 'Keine Bemerkung' : 'z. B. Abrechnung nach Aufwand gemäß Vertrag'}
+          />
+        </div>
+      </Card>
 
-          {fassung.mitarbeiter.length > 0 ? (
-            <StundenJeMitarbeiter fassung={fassung} leistungen={abgeschlossen ? null : imZeitraum} abschnitte={spalten ? abschnitte : []} />
-          ) : null}
-
-          {bemerkung}
-        </>
-      )}
+      {vorschau ? (
+        <Modal titel="Vorschau" sub={fassung.titel} wide onClose={() => setVorschau(false)}>
+          <Druckblatt inhalt={nachweisHtml(data, n, projekt)} />
+        </Modal>
+      ) : null}
 
       {zeitraumDialog ? <NachweisDialog projekt={projekt} nachweis={n} onClose={() => setZeitraumDialog(false)} /> : null}
+      {neuerNachweis ? <NachweisDialog projekt={projekt} onClose={() => setNeuerNachweis(false)} navigate={navigate} /> : null}
 
       {abschliessen ? (
-        // Wie ConfirmDialog, dazu die fehlenden Bestätigungen als Liste – abschließen bleibt möglich
+        // Wie ConfirmDialog, dazu die fehlenden Bestätigungen als Liste – erstellen bleibt möglich
         <Modal
-          titel="Leistungsnachweis abschließen?"
+          titel="Leistungsnachweis erstellen?"
+          sub={fassung.titel}
           onClose={() => setAbschliessen(false)}
           footer={
             <>
@@ -585,7 +584,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
                 onClick={() => {
                   nachweisAbschliessen(n.id);
                   toast(
-                    `Leistungsnachweis abgeschlossen${abschluss.gekuerzt ? ` – Zeitraum bis ${langDatum(abschluss.bis)}` : ''}${
+                    `Leistungsnachweis erstellt und abgeschlossen${abschluss.gekuerzt ? ` – Zeitraum bis ${langDatum(abschluss.bis)}` : ''}${
                       abschluss.spaetere.length
                         ? `; ${anzahl(abschluss.spaetere.length, 'spätere Leistung liegt', 'spätere Leistungen liegen')} in einem neuen Leistungsnachweis`
                         : ''
@@ -594,7 +593,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
                   setAbschliessen(false);
                 }}
               >
-                Abschließen
+                Erstellen
               </button>
             </>
           }
@@ -665,7 +664,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
                 ? `Leistungsnachweis und ${anzahl(eigeneImZeitraum, 'eigene Leistung', 'eigene Leistungen')} gelöscht.`
                 : 'Leistungsnachweis gelöscht.',
             );
-            navigate({ view: 'controllingProjekt', projektId: n.projektId, tab: 'nachweise' });
+            navigate({ view: 'controllingProjekt', projektId: n.projektId });
           }}
         />
       ) : null}
@@ -688,11 +687,10 @@ function ZeileAbrechnung({
   spalten,
   lesen,
   leistungen,
-  textOffen,
   leistungenOffen,
   personName,
   abschnittKurz,
-  onText,
+  text,
   onLeistungen,
   onAufschlag,
   onAbgerechnet,
@@ -705,17 +703,16 @@ function ZeileAbrechnung({
   /** Abgeschlossen: nur lesen. */
   lesen: boolean;
   leistungen: Leistung[];
-  textOffen: boolean;
   leistungenOffen: boolean;
   personName: (id: ID) => string;
   abschnittKurz: (id: ID | null) => string;
-  onText: () => void;
+  /** Der Leistungstext der Zeile – bearbeitbar bzw. zum Lesen (Leistungstexte.tsx, `ZeilenText`). */
+  text: ReactNode;
   onLeistungen: () => void;
   onAufschlag: (abschnittId: ID | null, stunden: number | null) => string | null;
   onAbgerechnet: (abschnittId: ID | null, stunden: number | null) => string | null;
 }) {
   const datum = z.datumText.replace('\n', ' ');
-  const lang = z.text.length > KURZ_AB || z.text.split('\n').length > 3;
   const zeilen = positionen.length + (spalten ? 1 : 0);
   const listeId = `ln-co-leistungen-${z.schluessel}`;
 
@@ -784,15 +781,8 @@ function ZeileAbrechnung({
                 ))}
               </td>
               <td className="ln-co-text" rowSpan={zeilen}>
-                <div className={`ln-co-lesetext ${lang && !textOffen ? 'ln-co-gekuerzt' : ''}`}>
-                  {z.text || <span className="tertiary">ohne Leistungstext</span>}
-                </div>
+                {text}
                 <div className="ln-co-text-knoepfe">
-                  {lang ? (
-                    <button type="button" className="ln-co-link" aria-expanded={textOffen} onClick={onText}>
-                      {textOffen ? 'weniger' : 'mehr'}
-                    </button>
-                  ) : null}
                   <button
                     type="button"
                     className="ln-co-link"
@@ -802,9 +792,10 @@ function ZeileAbrechnung({
                   >
                     <Icon name={leistungenOffen ? 'runter' : 'chevron'} size={11} /> Leistungen ({z.leistungIds.length})
                   </button>
-                  {z.textBearbeitet ? (
+                  {/* Beim Lesen (abgeschlossen): woher der Text stammt – beim Bearbeiten nennt es `ZeilenText` */}
+                  {lesen && z.textBearbeitet ? (
                     <span className="small tertiary">Text von Hand bearbeitet</span>
-                  ) : z.textGemeinsam ? (
+                  ) : lesen && z.textGemeinsam ? (
                     <span title="Aus den Leistungstexten, die die Mitarbeiter je Zeitraum gemeinsam verfassen">
                       <Badge ton="blue">Text der Mitarbeiter</Badge>
                     </span>
@@ -850,116 +841,6 @@ function ZeileAbrechnung({
         </tr>
       ) : null}
     </tbody>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Stunden je Mitarbeiter                                              */
-/* ------------------------------------------------------------------ */
-
-/**
- * Kontrolle wie die Wiko-Spalten der Excel-Vorlage: erfasste Stunden je
- * Person, ab zwei Abschnitten je Abschnitt; darunter Aufschlag und
- * abgerechnete Stunden. Abgeschlossene Nachweise zeigen die Summen des
- * festgeschriebenen Stands (ohne Aufteilung nach Abschnitten).
- */
-function StundenJeMitarbeiter({
-  fassung,
-  leistungen,
-  abschnitte,
-}: {
-  fassung: NachweisFassung;
-  /** Leistungen im Zeitraum; null bei abgeschlossenen Nachweisen. */
-  leistungen: Leistung[] | null;
-  /** Abschnitte der Spalten (leer ohne Abschnittsspalten). */
-  abschnitte: Abschnitt[];
-}) {
-  const ids = new Set(abschnitte.map((a) => a.id));
-  const spalten = leistungen
-    ? fassung.spalten.filter((s) => s.schluessel !== GESAMT)
-    : [];
-  const jeAbschnitt = new Map<ID, Record<string, number>>();
-  for (const l of leistungen ?? []) {
-    const werte = jeAbschnitt.get(l.mitarbeiterId) ?? {};
-    const k = l.abschnittId && ids.has(l.abschnittId) ? l.abschnittId : OHNE_ABSCHNITT;
-    werte[k] = runden((werte[k] ?? 0) + l.stunden);
-    jeAbschnitt.set(l.mitarbeiterId, werte);
-  }
-  const erfasstJe = (k: string) => runden(fassung.zeilen.reduce((s, z) => s + (z.stundenJeAbschnitt[k] ?? 0), 0));
-
-  return (
-    <Card>
-      <CardHeader
-        titel="Stunden je Mitarbeiter"
-        sub="Kontrolle der erfassten Stunden – erscheint nicht im Druck; in der Excel-Datei rechts neben dem Druckbereich, mit dem Aufschlag"
-      />
-      <div className="table-scroll ln-co-scroll">
-        <table className="table ln-co-tabelle ln-co-kontrolle">
-          <thead>
-            <tr>
-              <th>Kürzel</th>
-              <th>Name</th>
-              {spalten.map((s) => (
-                <th key={s.schluessel} className="ln-stunden" title={s.name}>
-                  {s.kurz}
-                </th>
-              ))}
-              <th className="ln-stunden">Erfasst</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fassung.mitarbeiter.map((m) => (
-              <tr key={m.id}>
-                <td className="num">{m.kuerzel}</td>
-                <td>{m.name}</td>
-                {spalten.map((s) => {
-                  const wert = jeAbschnitt.get(m.id)?.[s.schluessel] ?? 0;
-                  return (
-                    <td key={s.schluessel} className={`ln-stunden ln-co-wert ${wert ? '' : 'ln-co-leer'}`}>
-                      {wert ? stundenText(wert) : '–'}
-                    </td>
-                  );
-                })}
-                <td className="ln-stunden">{stundenText(m.stunden)}</td>
-              </tr>
-            ))}
-            <tr className="ln-co-summe">
-              <td />
-              <td>Erfasst</td>
-              {spalten.map((s) => (
-                <td key={s.schluessel} className="ln-stunden">
-                  {stundenText(erfasstJe(s.schluessel))}
-                </td>
-              ))}
-              <td className="ln-stunden">{stundenText(fassung.erfasst)}</td>
-            </tr>
-            <tr className="ln-co-nebensumme">
-              <td />
-              <td>Aufschlag</td>
-              {spalten.map((s) => {
-                const a = runden((fassung.summen[s.schluessel] ?? 0) - erfasstJe(s.schluessel));
-                return (
-                  <td key={s.schluessel} className={`ln-stunden ln-co-wert ${a ? '' : 'ln-co-leer'}`}>
-                    {aufschlagText(a)}
-                  </td>
-                );
-              })}
-              <td className="ln-stunden">{aufschlagText(fassung.aufschlag)}</td>
-            </tr>
-            <tr className="ln-co-summe">
-              <td />
-              <td>Abgerechnet</td>
-              {spalten.map((s) => (
-                <td key={s.schluessel} className="ln-stunden">
-                  {stundenText(fassung.summen[s.schluessel] ?? 0)}
-                </td>
-              ))}
-              <td className="ln-stunden">{stundenText(fassung.abgerechnet)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </Card>
   );
 }
 

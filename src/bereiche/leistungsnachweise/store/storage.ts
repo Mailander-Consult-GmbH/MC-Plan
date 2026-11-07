@@ -23,7 +23,9 @@
  * „fortlaufend“; 5 – nachgereichte Leistungen; 6 – festgelegtes Ende
  * (`bisFest`) und gekennzeichnete nachgereichte Zeilen im Stand; 7 –
  * gemeinsame Leistungstexte je Zeitraum (`periodentexte`) und
- * Monatsbestätigungen (`bestaetigungen`).
+ * Monatsbestätigungen (`bestaetigungen`); 8 – Zeitraumregeln „Alle 2 Monate“
+ * und „Alle 3 Monate“ (`zweiMonate`, `quartal`) und der Monat, ab dem ihre
+ * Blöcke zählen (`Projekt.rhythmusAb`, optional).
  *
  * Speichern meldet, ob es gelungen ist (`SpeicherZustand`) – ist der Speicher
  * des Browsers voll, zeigt der Bereich einen dauerhaften Hinweis
@@ -38,6 +40,7 @@ import {
   DATEN_VERSION,
   OHNE_ABSCHNITT,
   STANDARD_BEARBEITER,
+  ZEITRAUMREGEL_LABEL,
   type Abschnitt,
   type Bestaetigung,
   type Leistung,
@@ -51,6 +54,7 @@ import {
   type Projekt,
   type Raster,
   type ZeilenText,
+  type Zeitraumregel,
 } from '../domain/types';
 import { nachgereichteZeilenUmstellen } from '../domain/nachweis';
 import { erfassungsPeriodeAusSchluessel, istDatum, istMonat, runden } from '../domain/zeitraum';
@@ -122,6 +126,9 @@ function eindeutig<T extends { id: string }>(eintraege: T[]): T[] {
 }
 
 const RASTER = ['tag', 'woche', 'monat'] as const;
+
+/** Alle Zeitraumregeln – in der Reihenfolge von `ZEITRAUMREGEL_LABEL`. */
+const ZEITRAUMREGELN = Object.keys(ZEITRAUMREGEL_LABEL) as Zeitraumregel[];
 
 function abschnittAufbereiten(a: Roh): Abschnitt {
   return { id: text(a.id) || zufallsId('ab'), kennung: text(a.kennung), kurz: text(a.kurz), name: text(a.name) };
@@ -235,7 +242,9 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
         beschreibung: text(p.beschreibung),
         leistungsbereich: typeof p.leistungsbereich === 'string' ? p.leistungsbereich : 'Projektsteuerung',
         raster: auswahl(p.raster, RASTER, 'monat'),
-        zeitraumregel: auswahl(p.zeitraumregel, ['fortlaufend', 'monat'] as const, 'fortlaufend'),
+        zeitraumregel: auswahl(p.zeitraumregel, ZEITRAUMREGELN, 'fortlaufend'),
+        // Beginn der Blöcke des Rhythmus – nur ein gültiger Monat, sonst zählen sie ab dem frühesten Nachweis
+        ...(istMonat(p.rhythmusAb) ? { rhythmusAb: p.rhythmusAb } : {}),
         abschnitte: eindeutig(liste(p.abschnitte).map(abschnittAufbereiten)),
         logos: Array.isArray(p.logos)
           ? liste(p.logos)
@@ -409,7 +418,9 @@ function vonFassung6(roh: Roh): Roh {
  * mit laufenden und nachgereichten Leistungen werden auf beide aufgeteilt,
  * ohne die abgerechneten Stunden zu ändern – mit Abschnittsspalten auch nicht
  * die einer Spalte (`nachgereichteZeilenUmstellen`); 6 → 7: leere Listen
- * `periodentexte` und `bestaetigungen` (`vonFassung6`).
+ * `periodentexte` und `bestaetigungen` (`vonFassung6`); 7 → 8: nichts
+ * umzurechnen – die neuen Zeitraumregeln und `rhythmusAb` (nur ein gültiger
+ * Monat) nimmt `aufbereiten` an, vorhandene Regeln und Nachweise bleiben.
  */
 function migriere(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   let stand = roh as unknown as Roh;

@@ -74,7 +74,7 @@ export function AuswertungAnsicht({ navigate }: { navigate: (r: Route) => void }
   };
   const aktuell = auswahl.art !== 'frei' && zeitraumVon(auswahl.art, auswahl.datum).von === zeitraumVon(auswahl.art, today()).von;
 
-  const zuNachweisen = (p: Projekt) => navigate({ view: 'controllingProjekt', projektId: p.id, tab: 'nachweise' });
+  const zuNachweisen = (p: Projekt) => navigate({ view: 'controllingProjekt', projektId: p.id });
 
   const fehlerText =
     auswahl.art === 'frei' && !filter

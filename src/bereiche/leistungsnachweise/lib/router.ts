@@ -12,22 +12,19 @@
  * Leistungsnachweise und Einstellungen der Projekte liegen im Controlling.
  *
  * Das Controlling kennt die Projekte (#/controlling/leistungsnachweise/projekte),
- * die Auswertung (…/auswertung), je Projekt die Reiter (…/projekt/<id>/<reiter>)
- * und die Abrechnung eines Nachweises (…/projekt/<id>/nachweis/<id>).
+ * die Auswertung (…/auswertung), je Projekt eine Seite (…/projekt/<id>)
+ * und dieselbe Seite mit einem gewählten Nachweis (…/projekt/<id>/nachweis/<id>).
  *
  * Frühere Adressen bleiben gültig: #/leistungsnachweise/controlling/… führt in
  * den Controlling-Bereich, ebenso die entfallene Seite „Mitarbeiter“
  * (#/leistungsnachweise/mitarbeiter, jetzt die Projekte) und ein Nachweis
- * (#/leistungsnachweise/projekt/<id>/nachweis/<id>, jetzt die Abrechnung im
+ * (#/leistungsnachweise/projekt/<id>/nachweis/<id>, jetzt die Seite des Projekts mit diesem Nachweis im
  * Controlling); …/projekt/<id>/<sonstiger Reiter> zeigt die Leistungstexte des
  * Projekts.
  */
 import { useEffect, useState } from 'react';
 import type { ID } from '../domain/types';
 import { istMonat } from '../domain/zeitraum';
-
-/** Reiter eines Projekts im Controlling. */
-export type ProjektTab = 'nachweise' | 'leistungen' | 'einstellungen';
 
 /** Ansicht eines Projekts im Bereich: gemeinsame Leistungstexte mit Monatsbestätigung (Vorgabe) oder die eigenen Leistungen. */
 export type ProjektAnsicht = 'texte' | 'leistungen';
@@ -45,13 +42,10 @@ export type Route =
    */
   | { view: 'projekt'; projektId: ID; ansicht?: ProjektAnsicht; monat?: string }
   | { view: 'controlling'; tab: ControllingTab }
-  /** Projekt im Controlling: Leistungsnachweise, Leistungen aller, Einstellungen. */
-  | { view: 'controllingProjekt'; projektId: ID; tab: ProjektTab }
-  /** Leistungsnachweis im Controlling (Leistungstexte, Aufschläge, Abschluss, Export). */
+  /** Projekt im Controlling: Seite mit seinem aktuellen Leistungsnachweis (`aktuellerNachweis`). */
+  | { view: 'controllingProjekt'; projektId: ID }
+  /** Projekt im Controlling mit einem bestimmten Leistungsnachweis (Texte, Aufschläge, Erstellen, Export). */
   | { view: 'abrechnung'; projektId: ID; nachweisId: ID };
-
-/** Reiter eines Projekts im Controlling in ihrer Reihenfolge. */
-export const TABS: ProjektTab[] = ['nachweise', 'leistungen', 'einstellungen'];
 
 /** Seiten des Controllings. */
 export const CONTROLLING_TABS: ControllingTab[] = ['projekte', 'auswertung'];
@@ -70,7 +64,7 @@ export function istControllingRoute(r: Route): boolean {
 /**
  * #/leistungsnachweise/projekt/<id> (dazu /<JJJJ-MM> bzw. /leistungen), sonst
  * #/leistungsnachweise/<seite>; das Controlling unter
- * #/controlling/leistungsnachweise/<reiter>, …/projekt/<id>/<reiter> bzw.
+ * #/controlling/leistungsnachweise/<seite>, …/projekt/<id> bzw.
  * …/projekt/<id>/nachweis/<id>.
  */
 export function routeToHash(r: Route): string {
@@ -81,7 +75,7 @@ export function routeToHash(r: Route): string {
     case 'controlling':
       return `#/${CONTROLLING_PREFIX}/${r.tab}`;
     case 'controllingProjekt':
-      return `#/${CONTROLLING_PREFIX}/projekt/${r.projektId}/${r.tab}`;
+      return `#/${CONTROLLING_PREFIX}/projekt/${r.projektId}`;
     case 'abrechnung':
       return `#/${CONTROLLING_PREFIX}/projekt/${r.projektId}/nachweis/${r.nachweisId}`;
     default:
@@ -92,8 +86,8 @@ export function routeToHash(r: Route): string {
 /**
  * Liest eine Adresse; unbekannte und die anderer Bereiche führen zur Übersicht
  * (ohne Umlenkung – die Wahl des Bereichs trifft die Shell), das Controlling ohne
- * gültigen Reiter zu den Projekten, ein Projekt im Controlling ohne gültigen
- * Reiter zu seinen Leistungsnachweisen. Frühere Adressen siehe oben.
+ * gültige Seite zu den Projekten, frühere Reiter eines Projekts im Controlling
+ * auf die Seite des Projekts. Frühere Adressen siehe oben.
  */
 export function hashToRoute(hash: string): Route {
   const alle = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -107,7 +101,7 @@ export function hashToRoute(hash: string): Route {
   // Frühere Adressen des Controllings im Bereich (#/leistungsnachweise/controlling/…)
   if (teile[0] === 'controlling') return controllingRoute(teile.slice(1));
   if (teile[0] === 'projekt' && teile[1]) {
-    // Früher der gemeinsame Nachweis im Bereich – jetzt die Abrechnung im Controlling
+    // Früher der gemeinsame Nachweis im Bereich – jetzt die Seite des Projekts mit diesem Nachweis im Controlling
     if (teile[2] === 'nachweis' && teile[3]) return { view: 'abrechnung', projektId: teile[1], nachweisId: teile[3] };
     if (teile[2] === 'leistungen') return { view: 'projekt', projektId: teile[1], ansicht: 'leistungen' };
     if (istMonat(teile[2])) return { view: 'projekt', projektId: teile[1], monat: teile[2] };
@@ -124,15 +118,14 @@ export function hashToRoute(hash: string): Route {
  * Seite des Controllings aus den Wegmarken nach dem Präfix: die Projekte bzw.
  * die Auswertung (im Controlling-Bereich ein eigener Menüpunkt). Frühere
  * Reiter („nachweise“, „mitarbeiter“) und Adressen ohne Reiter führen zu den
- * Projekten, der frühere Projektreiter „bestaetigungen“ zu den
- * Leistungsnachweisen des Projekts.
+ * Projekten, frühere Reiter eines Projekts (auch „bestaetigungen“) auf die
+ * Seite des Projekts.
  */
 function controllingRoute(teile: string[]): Route {
   if (teile[0] === 'projekt' && teile[1]) {
     if (teile[2] === 'nachweis' && teile[3]) return { view: 'abrechnung', projektId: teile[1], nachweisId: teile[3] };
-    const seite = teile[2] ?? '';
-    const tab = (TABS as string[]).includes(seite) ? (seite as ProjektTab) : 'nachweise';
-    return { view: 'controllingProjekt', projektId: teile[1], tab };
+    // Frühere Reiter des Projekts (…/nachweise, …/leistungen, …/einstellungen, …/bestaetigungen) führen auf die Seite des Projekts
+    return { view: 'controllingProjekt', projektId: teile[1] };
   }
   const reiter = teile[0] ?? '';
   return { view: 'controlling', tab: (CONTROLLING_TABS as string[]).includes(reiter) ? (reiter as ControllingTab) : 'projekte' };

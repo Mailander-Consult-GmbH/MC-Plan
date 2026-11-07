@@ -4,16 +4,13 @@ import { Badge } from '../../../shared/ui';
 import { laeuftBisAbschluss } from '../domain/nachweis';
 import { langDatum } from '../domain/zeitraum';
 import {
-  NACHWEIS_STATUS_LABEL,
   QUELLE_LABEL,
   RASTER_KURZ,
-  RASTER_LABEL,
   ZEITRAUMREGEL_LABEL,
   mitarbeiterName,
   type Leistungsnachweis,
   type LeistungsnachweisDaten,
   type Mitarbeiter,
-  type NachweisStatus,
   type ProjektStatus,
   type Quelle,
   type Raster,
@@ -26,16 +23,6 @@ export const STATUS_TON: Record<ProjektStatus, '' | 'green' | 'orange'> = {
   pausiert: 'orange',
   abgeschlossen: '',
 };
-
-/** In Bearbeitung blau, abgeschlossen grün. */
-export function NachweisStatusBadge({ status }: { status: NachweisStatus }) {
-  return <Badge ton={status === 'abgeschlossen' ? 'green' : 'blue'}>{NACHWEIS_STATUS_LABEL[status]}</Badge>;
-}
-
-/** Tages-, wochen- oder monatsscharf – neutral. */
-export function RasterBadge({ raster }: { raster: Raster }) {
-  return <Badge>{RASTER_LABEL[raster]}</Badge>;
-}
 
 /** Herkunft einer Leistung: Import lila, händisch neutral. */
 export function QuelleBadge({ quelle }: { quelle: Quelle }) {
@@ -50,7 +37,7 @@ export function anzahl(n: number, eins: string, mehr: string): string {
 /** Auswahl des Rasters (Tag/Woche/Monat) – im Projektdialog, in den Einstellungen und im Nachweisdialog. */
 export const RASTER_OPTIONEN = (['tag', 'woche', 'monat'] as Raster[]).map((r) => ({ value: r, label: RASTER_KURZ[r] }));
 
-/** Auswahl der Regel für neue Nachweise. */
+/** Auswahl des Rhythmus (Regel für neue Nachweise) – in der Übersicht und in den Projektdialogen. */
 export const REGEL_OPTIONEN = (Object.keys(ZEITRAUMREGEL_LABEL) as Zeitraumregel[]).map((r) => ({
   value: r,
   label: ZEITRAUMREGEL_LABEL[r],
@@ -66,7 +53,7 @@ export function mitarbeiterAuswahlText(m: Mitarbeiter): string {
   return `${m.kuerzel ? `${m.kuerzel}: ` : ''}${mitarbeiterName(m) || m.kuerzel}${m.aktiv ? '' : ' (ausgeschieden)'}`;
 }
 
-/** Meldung nach „Nachweise anlegen“ – auf der Übersicht und im Reiter „Leistungsnachweise“. */
+/** Meldung nach „Nach dem Rhythmus zuordnen“ auf der Seite eines Projekts im Controlling. */
 export function nachweiseAngelegtText({ neu, erweitert }: { neu: number; erweitert: number }): string {
   if (neu === 0) return `${anzahl(erweitert, 'Leistungsnachweis', 'Leistungsnachweise')} erweitert.`;
   return `${anzahl(neu, 'Leistungsnachweis', 'Leistungsnachweise')} angelegt${erweitert ? `, ${erweitert} erweitert` : ''}.`;
@@ -82,11 +69,14 @@ export function zeitpunkt(iso: string | null): string {
 
 /**
  * Zeitraum eines Nachweises in Listen und Köpfen: „01.09.2026 – 30.11.2026“ –
- * läuft er bis zum Abschluss (`laeuftBisAbschluss`), „ab 01.09.2026 · läuft
- * bis zum Abschluss“, denn sein Ende legt erst der Abschluss fest.
+ * läuft er nach dem Rhythmus „Bis zum Abschluss“ noch (`laeuftBisAbschluss`),
+ * „ab 01.09.2026 · läuft bis zum Abschluss“, denn sein Ende legt erst der
+ * Abschluss fest. Bei einem Rhythmus mit Monaten steht der Zeitraum seines
+ * Blocks.
  */
 export function nachweisZeitraumText(daten: Pick<LeistungsnachweisDaten, 'projekte'>, n: Leistungsnachweis): string {
-  return laeuftBisAbschluss(daten, n, today())
+  const fortlaufend = daten.projekte.find((p) => p.id === n.projektId)?.zeitraumregel === 'fortlaufend';
+  return fortlaufend && laeuftBisAbschluss(daten, n, today())
     ? `ab ${langDatum(n.von)} · läuft bis zum Abschluss`
     : `${langDatum(n.von)} – ${langDatum(n.bis)}`;
 }

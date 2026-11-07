@@ -1,6 +1,7 @@
 /**
- * Reiter „Einstellungen“ eines Projekts im Controlling: Vorgaben für den Kopf
- * und die Zeilen neuer Leistungsnachweise – das Raster gliedert auch die
+ * „Projekt einstellen“ im Controlling (Modal auf der Seite eines Projekts,
+ * Menü „Mehr“, Projekt.tsx): Vorgaben für den Kopf, den Rhythmus und die
+ * Zeilen neuer Leistungsnachweise – das Raster gliedert auch die
  * gemeinsamen Leistungstexte der Mitarbeiter; ein Wechsel nennt Texte, die im
  * neuen Raster nicht mehr gelten (components/RasterwechselHinweis.tsx) –, die
  * Abschnitte (ab zwei Abschnitten eigene Stundenspalten unter „Aufwand (Std)“,
@@ -107,8 +108,8 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
             <Segmented<Raster> value={form.raster} onChange={(v) => set('raster', v)} options={RASTER_OPTIONEN} />
           </Field>
           <Field
-            label="Neue Nachweise"
-            hint="Vorgabe: Der offene Nachweis läuft weiter – auch über mehrere Monate –, bis er abgeschlossen wird; danach beginnt ein neuer. Alternativ je Kalendermonat ein eigener."
+            label="Rhythmus"
+            hint="Über welche Monate ein Leistungsnachweis geht: monatlich, alle 2 oder alle 3 Monate – gezählt ab Projektbeginn – oder bis er abgeschlossen wird (danach beginnt ein neuer)."
           >
             <Select value={form.zeitraumregel} onChange={(v) => set('zeitraumregel', v as Zeitraumregel)} options={REGEL_OPTIONEN} />
           </Field>
