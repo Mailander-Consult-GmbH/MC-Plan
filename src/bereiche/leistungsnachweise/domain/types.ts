@@ -4,10 +4,13 @@
  *
  * Ein Projekt sammelt die erfassten Leistungen seiner Mitarbeiter (je Tag,
  * Person und Tätigkeit eine `Leistung` mit Stunden). Ein Leistungsnachweis
- * ist ein Zeitraum eines Projekts – nach dem Abrechnungsrhythmus des Projekts
- * (`Zeitraumregel`) ein, zwei oder drei Monate ab Projektbeginn oder bis das
- * Controlling ihn abschließt – und fasst die Leistungen darin je Tag, Woche
- * oder Monat zu Zeilen zusammen (`Raster`). Mehrere Mitarbeiter schreiben so an einem gemeinsamen
+ * ist ein Zeitraum eines Projekts: Der laufende wächst mit neuen Leistungen
+ * mit, bis das Controlling ihn erstellt (abschließt) – mit dem Enddatum, das
+ * es dabei wählt („Leistungen bis einschließlich …“); was danach liegt, kommt
+ * in den nächsten. Einen Abrechnungsrhythmus gibt es nicht (mehr, Fassung 9):
+ * Wird am Monatsende kein Nachweis erstellt, bleiben die Leistungen offen. Der
+ * Nachweis fasst die Leistungen je Tag, Woche oder Monat zu Zeilen zusammen
+ * (`Raster`). Mehrere Mitarbeiter schreiben so an einem gemeinsamen
  * Nachweis, ohne einander zu überschreiben: Jede Person bringt nur ihre
  * eigenen Leistungen ein, der Nachweis rechnet die Zeilen daraus.
  *
@@ -19,8 +22,9 @@
  * unter „Angemeldet als“, legt der Bereich ihn selbst an (domain/rechte.ts).
  * Das Controlling (der Controlling-Bereich von KaPlan nach der PIN) stellt die
  * Projekte ein, bearbeitet die Nachweise, schließt sie ab, schlägt Stunden je
- * Zeile auf (`Leistungsnachweis.aufschlaege`) und exportiert – die Rechte
- * stehen zentral in domain/rechte.ts.
+ * Zeile (`Leistungsnachweis.aufschlaege`) oder auf den ganzen Nachweis auf
+ * (`Leistungsnachweis.gesamtAufschlag`) und exportiert – die Rechte stehen
+ * zentral in domain/rechte.ts.
  *
  * Projekte teilt der Bereich über das Projektregister (`src/gemeinsam/`) mit
  * den anderen Bereichen (domain/register.ts).
@@ -44,8 +48,13 @@ export type ISODate = string;
  * Fassung 8: Zeitraumregeln „Alle 2 Monate“ und „Alle 3 Monate“
  * (`zweiMonate`, `quartal`) und der Monat, ab dem ihre Blöcke zählen
  * (`Projekt.rhythmusAb`, optional).
+ * Fassung 9: ohne Abrechnungsrhythmus – `Projekt.zeitraumregel` und
+ * `rhythmusAb` entfallen, jeder Nachweis läuft, bis das Controlling ihn
+ * erstellt; mehrere aufeinanderfolgende offene Nachweise ohne festgelegtes
+ * Ende sind zu einem zusammengeführt (`laufendeZusammenfuehren` in
+ * domain/nachweis.ts). Gesamtaufschlag am Nachweis (`gesamtAufschlag`, null).
  */
-export const DATEN_VERSION = 8;
+export const DATEN_VERSION = 9;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Mitarbeiter MIC';
@@ -120,46 +129,6 @@ export const RASTER_KURZ: Record<Raster, string> = {
   monat: 'Monat',
 };
 
-/**
- * Abrechnungsrhythmus des Projekts: über welche Monate ein Leistungsnachweis
- * geht – und damit, wie neue Leistungen außerhalb der vorhandenen Nachweise
- * einen Nachweis erhalten (`nachweiseErgaenzen` in domain/nachweis.ts).
- * * „monat“, „zweiMonate“, „quartal“: feste Blöcke von 1, 2 bzw. 3 Monaten
- *   (`rhythmusMonate`), gezählt ab Projektbeginn (`Projekt.rhythmusAb`,
- *   `rhythmusAnker` in domain/nachweis.ts), nicht am Kalenderquartal
- *   ausgerichtet – etwa Okt–Dez, Jan–Mär …; je Block ein eigener Nachweis.
- *   Wird einer vorzeitig abgeschlossen, bildet der Rest seines Blocks einen
- *   eigenen Nachweis, danach geht es im Raster weiter.
- * * „fortlaufend“ (Vorgabe für neue Projekte, `IMPORT_PROJEKT_VORGABEN`): Ein
- *   Leistungsnachweis ist nicht an Monate gebunden – der offene Nachweis wächst
- *   mit, bis das Controlling ihn abschließt; danach beginnt ein neuer.
- * Stellt das Controlling den Rhythmus um, plant `regelAnwenden` die offenen
- * Nachweise neu.
- */
-export type Zeitraumregel = 'monat' | 'zweiMonate' | 'quartal' | 'fortlaufend';
-
-/** In der Reihenfolge der Auswahl (`REGEL_OPTIONEN`): nach der Länge, „Bis zum Abschluss“ zuletzt. */
-export const ZEITRAUMREGEL_LABEL: Record<Zeitraumregel, string> = {
-  monat: 'Monatlich',
-  zweiMonate: 'Alle 2 Monate',
-  quartal: 'Alle 3 Monate',
-  fortlaufend: 'Bis zum Abschluss',
-};
-
-/** Monate je Nachweis nach der Regel: 1, 2 bzw. 3 – null bei „fortlaufend“ (bis zum Abschluss). */
-export function rhythmusMonate(regel: Zeitraumregel): number | null {
-  switch (regel) {
-    case 'monat':
-      return 1;
-    case 'zweiMonate':
-      return 2;
-    case 'quartal':
-      return 3;
-    case 'fortlaufend':
-      return null;
-  }
-}
-
 /** Logo im Kopf des Leistungsnachweises. */
 export interface Logo {
   id: ID;
@@ -199,18 +168,13 @@ export interface Projekt {
   beschreibung: string;
   /** Leistungsbereich im Kopf des Nachweises, etwa „Projektsteuerung“. */
   leistungsbereich: string;
-  /** Vorgabe für neue Nachweise. */
-  raster: Raster;
-  zeitraumregel: Zeitraumregel;
   /**
-   * Monat (JJJJ-MM), ab dem die Blöcke des Abrechnungsrhythmus zählen (Regeln
-   * mit Monaten, `rhythmusMonate`) – gesetzt beim Umstellen auf eine solche
-   * Regel (`regelAnwenden` in domain/nachweis.ts), entfernt beim Wechsel auf
-   * „fortlaufend“. Fehlt er, zählen die Blöcke ab dem Monat des frühesten
-   * Nachweises des Projekts, ohne einen ab der ersten Leistung
-   * (`rhythmusAnker`). Seit Fassung 8.
+   * Vorgabe für neue Nachweise – und das Raster der gemeinsamen
+   * Leistungstexte (domain/erfassung.ts). Einen Abrechnungsrhythmus hat ein
+   * Projekt nicht (mehr, Fassung 9): Den Umfang eines Nachweises gibt sein
+   * Erstellen vor (`nachweisAbschliessenAnwenden` in domain/nachweis.ts).
    */
-  rhythmusAb?: string;
+  raster: Raster;
   abschnitte: Abschnitt[];
   /** Logos im Druckkopf; null = Standardlogos (`STANDARD_LOGOS`). */
   logos: Logo[] | null;
@@ -314,9 +278,11 @@ export interface ZeilenText {
 
 /**
  * Zeile eines Nachweises: ein Tag, eine Woche oder ein Monat mit Leistungen.
- * `stunden` sind die erfassten Stunden, `abgerechnet` die nach dem Aufschlag
+ * `stunden` sind die erfassten Stunden, `abgerechnet` die nach den Aufschlägen
  * des Controllings (`abgerechnet = stunden + aufschlag`, nie unter 0) – so
- * stehen sie in Druck und Excel.
+ * stehen sie in Druck und Excel. Der Aufschlag umfasst den der Zeile
+ * (`Leistungsnachweis.aufschlaege`) und ihren Anteil am Gesamtaufschlag
+ * (`anteilGesamt`, `Leistungsnachweis.gesamtAufschlag`).
  */
 export interface NachweisZeile {
   /**
@@ -349,14 +315,25 @@ export interface NachweisZeile {
    * eigene Zeile, nie zusammen mit laufenden. Fehlt in Ständen vor Fassung 6.
    */
   nachgereicht?: boolean;
-  /** Wirksamer Aufschlag der Zeile (± Stunden) = `abgerechnet - stunden`. */
+  /**
+   * Wirksamer Aufschlag der Zeile (± Stunden) = `abgerechnet - stunden` – der der Zeile samt ihrem
+   * Anteil am Gesamtaufschlag (`anteilGesamt`).
+   */
   aufschlag: number;
-  /** Wirksamer Aufschlag je Abschnitt (Schlüssel wie `stundenJeAbschnitt`); nur Einträge ≠ 0. */
+  /** Wirksamer Aufschlag je Abschnitt (Schlüssel wie `stundenJeAbschnitt`, mit dem Anteil am Gesamtaufschlag); nur Einträge ≠ 0. */
   aufschlagJeAbschnitt: Record<string, number>;
-  /** Abgerechnete Stunden der Zeile – erfasst plus Aufschlag, nie unter 0. */
+  /** Abgerechnete Stunden der Zeile – erfasst plus Aufschlag (samt Anteil am Gesamtaufschlag), nie unter 0. */
   abgerechnet: number;
   /** Abgerechnete Stunden je Abschnitt (Schlüssel wie `stundenJeAbschnitt`, dazu Abschnitte, die nur ein Aufschlag füllt). */
   abgerechnetJeAbschnitt: Record<string, number>;
+  /**
+   * Anteil der Zeile am Gesamtaufschlag des Nachweises (± Stunden, `Leistungsnachweis.gesamtAufschlag`) –
+   * schon in `aufschlag` und `abgerechnet` enthalten; verteilt nach den abgerechneten Stunden vor dem
+   * Gesamtaufschlag (`gesamtAufschlagVerteilen` in domain/nachweis.ts). Fehlt ohne Anteil (und in Ständen vor Fassung 9).
+   */
+  anteilGesamt?: number;
+  /** Derselbe Anteil je Abschnitt (Schlüssel wie `stundenJeAbschnitt`, nur Einträge ≠ 0); fehlt ohne Anteil. */
+  anteilGesamtJeAbschnitt?: Record<string, number>;
 }
 
 /** Schlüssel in `stundenJeAbschnitt` für Leistungen ohne Abschnitt. */
@@ -405,8 +382,21 @@ export interface NachweisStand {
   titel: string;
   /** Erfasste Stunden. */
   stunden: number;
-  /** Abgerechnete Stunden (mit den Aufschlägen beim Abschluss). */
+  /** Abgerechnete Stunden (mit den Aufschlägen beim Abschluss, auch dem Gesamtaufschlag). */
   abgerechnet: number;
+}
+
+/**
+ * Gesamtaufschlag auf einen Leistungsnachweis: ± Stunden oder ± Prozent der
+ * abgerechneten Stunden (nach den Aufschlägen der Zeilen). Er erscheint nicht
+ * als eigene Zeile, sondern wird anteilig auf die Zeilen verteilt
+ * (`NachweisZeile.anteilGesamt`, `gesamtAufschlagVerteilen` in
+ * domain/nachweis.ts); abgerechnet wird dabei nie weniger als 0.
+ */
+export interface GesamtAufschlag {
+  art: 'stunden' | 'prozent';
+  /** Stunden bzw. Prozent, auf zwei Nachkommastellen gerundet, nie 0 (ohne Aufschlag steht null). */
+  wert: number;
 }
 
 export interface Leistungsnachweis {
@@ -419,10 +409,10 @@ export interface Leistungsnachweis {
   /**
    * Das Ende hat das Controlling von Hand festgelegt („Zeitraum ändern“): Der
    * Nachweis läuft dann nicht bis zum Abschluss (`laeuftBisAbschluss`), wird
-   * nicht verlängert (`nachweiseErgaenzen`), beim Umstellen des
-   * Abrechnungsrhythmus nicht neu geplant (`regelAnwenden`) und beim Abschluss
+   * nicht verlängert (`nachweiseErgaenzen`) und beim Erstellen ohne Enddatum
    * nicht gekürzt (`abschlussZeitraum`). „Neuer Leistungsnachweis“ hebt es
-   * wieder auf.
+   * wieder auf. Ohne es wächst der offene Nachweis mit neuen Leistungen mit,
+   * bis er erstellt wird.
    */
   bisFest: boolean;
   raster: Raster;
@@ -436,6 +426,12 @@ export interface Leistungsnachweis {
    * Zeile gerade nicht gibt (etwa nach einem Rasterwechsel), und wirkt dann nicht.
    */
   aufschlaege: Record<string, number>;
+  /**
+   * Gesamtaufschlag des Controllings auf den ganzen Nachweis (± Stunden oder
+   * ± Prozent), anteilig auf die Zeilen verteilt (`nachweisZeilen`); null =
+   * keiner. Seit Fassung 9.
+   */
+  gesamtAufschlag: GesamtAufschlag | null;
   /** Hinweis unter der Tabelle (Freitext). */
   bemerkung: string;
   /**

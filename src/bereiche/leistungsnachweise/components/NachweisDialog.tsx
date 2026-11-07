@@ -4,8 +4,8 @@
  *
  * * **Neuer Leistungsnachweis** (`NeuerNachweisDialog`) fragt keinen Zeitraum
  *   ab: Er umfasst alle nicht abgerechneten Leistungen des Projekts
- *   (`nichtAbgerechnet`); offene Nachweise gehen darin auf. Der Zeitraum steht
- *   erst beim Abschluss fest. Liegt schon alles in einem offenen Nachweis,
+ *   (`nichtAbgerechnet`); offene Nachweise gehen darin auf. Bis zu welchem Tag
+ *   er reicht, legt erst das Erstellen fest („Leistungen bis einschließlich“). Liegt schon alles in einem offenen Nachweis,
  *   bietet der Dialog „Öffnen“ an. Nicht erfasste Leistungen aus schon abgerechneten
  *   Zeiträumen nennt der Dialog (`NichtErfasstHinweis`); übernommen werden sie
  *   erst nach Bestätigung – als nachgereichte.
@@ -16,14 +16,14 @@
  *   aus seinem Zeitraum – dazu die nachgereichten, ohne die schon in einem
  *   anderen abgeschlossenen Nachweis abgerechneten (`leistungenDesNachweises`). Ein
  *   geändertes Ende steht danach fest (`bisFest`): Der Nachweis läuft nicht
- *   mehr bis zum Abschluss, wird nicht verlängert und beim Abschluss nicht
- *   gekürzt. Liefe er mit dem neuen Ende bis zum Abschluss, legt „Ende
+ *   mehr bis zum Abschluss und wird nicht verlängert; beim Erstellen ist dieses
+ *   Ende vorgeschlagen (ein früheres lässt sich dort wählen). Liefe er mit dem neuen Ende bis zum Abschluss, legt „Ende
  *   festlegen“ das Ende auch ohne Änderung fest (etwa den vorausgewählten
  *   Monat); „Wieder bis zum Abschluss laufen lassen“ hebt ein festgelegtes Ende
- *   auf. Beide Kästchen gibt es nur, wo ein festgelegtes Ende etwas bewirkt
- *   (`endeFestlegenWirkt`: Regel „fortlaufend“ oder ein Ende nach heute); sonst
- *   setzt nur ein geändertes Ende `bisFest`, ein gesetztes bleibt – es wirkt,
- *   sobald das Projekt auf „fortlaufend“ wechselt. Kästchen und Hinweis sagen
+ *   auf. Beide Kästchen gibt es an jedem offenen Nachweis – einen Rhythmus,
+ *   unter dem ein festgelegtes Ende nichts bewirkte, gibt es nicht mehr; an
+ *   einem abgeschlossenen setzt nur ein geändertes Ende `bisFest`, ein
+ *   gesetztes bleibt. Kästchen und Hinweis sagen
  *   „läuft nicht mehr bis zum Abschluss“ nur, wenn er es bisher tat. Der Dialog
  *   übergibt `bisFest` stets ausdrücklich an `updateNachweis`.
  *
@@ -45,7 +45,6 @@ import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Segmented, TextInput } from '../../../shared/ui';
 import { grenzFolgen, grenzFolgenHinweis, type GrenzFolgen } from '../domain/erfassung';
 import {
-  endeFestlegenWirkt,
   leistungenIm,
   nachweisDerLeistung,
   nachweisFuerNichtAbgerechneteAnwenden,
@@ -199,13 +198,13 @@ function NeuerNachweisDialog({
         {vorhanden ? (
           <Callout icon="i">
             {umfang} – {plan.leistungen.length === 1 ? 'sie liegt' : 'sie liegen'} bereits im offenen Leistungsnachweis „
-            {nachweisTitel(vorhanden)}“. Er läuft bis zum Abschluss; sein Zeitraum wird beim Abschluss festgelegt.
+            {nachweisTitel(vorhanden)}“. Er bleibt offen, bis er erstellt wird; dabei wird festgelegt, bis zu welchem Tag er reicht.
           </Callout>
         ) : (
           <>
             <Callout icon="i">
               Der Leistungsnachweis umfasst ohne Zeitraumwahl alle nicht abgerechneten Leistungen: {umfang}. Später
-              erfasste kommen hinzu; der Zeitraum wird erst beim Abschluss festgelegt.
+              erfasste kommen hinzu; bis zu welchem Tag er reicht, wird beim Erstellen festgelegt.
               {plan.offene.length
                 ? ` ${
                     plan.offene.length === 1 ? 'Der offene Leistungsnachweis' : 'Die offenen Leistungsnachweise'
@@ -350,8 +349,7 @@ function ZeitraumDialog({
   const [titel, setTitel] = useState(nachweis.titel);
   // Ein festgelegtes Ende lässt sich wieder aufheben: Der Nachweis läuft dann wieder bis zum Abschluss
   const [wiederLaufen, setWiederLaufen] = useState(false);
-  const heute = today();
-  const laeuft = laeuftBisAbschluss(data, nachweis, heute);
+  const laeuft = laeuftBisAbschluss(nachweis);
   // Liefe er bis zum Abschluss, lässt sich das Ende ausdrücklich festlegen – auch unverändert (etwa den
   // vorausgewählten Monat abrechnen). Ohne eigene Wahl legt ein geändertes Ende es fest.
   const [festlegenWahl, setFestlegenWahl] = useState<boolean | null>(null);
@@ -383,13 +381,12 @@ function ZeitraumDialog({
         ).length
       : 0;
 
-  // Ein festgelegtes Ende (`bisFest`) wirkt nur, wo der Nachweis mit dem neuen Ende sonst bis zum Abschluss
-  // liefe (Regel „fortlaufend“ oder ein Ende nach heute) – nur dann bietet der Dialog die Kästchen an.
-  // Festgelegt ist es danach, wenn ausdrücklich gewählt oder, ohne Wahl, weil das Ende geändert wurde. Wo es
-  // gerade nichts bewirkt, hält ein geändertes Ende es trotzdem fest (es wirkt, sobald das Projekt auf
-  // „fortlaufend“ wechselt), ein gesetztes bleibt.
+  // Ein festgelegtes Ende (`bisFest`) wirkt an jedem offenen Nachweis – sonst liefe er bis zum Abschluss
+  // (`laeuftBisAbschluss`); dort bietet der Dialog die Kästchen an. Festgelegt ist es danach, wenn ausdrücklich
+  // gewählt oder, ohne Wahl, weil das Ende geändert wurde. An einem abgeschlossenen hält ein geändertes Ende es
+  // fest, ein gesetztes bleibt.
   const endeGeaendert = gueltig && zeitraum.bis !== nachweis.bis;
-  const festWirkt = gueltig && endeFestlegenWirkt(data, nachweis, zeitraum.bis, heute);
+  const festWirkt = gueltig && !abgeschlossen;
   const festlegen = !festWirkt
     ? nachweis.bisFest || endeGeaendert
     : nachweis.bisFest
@@ -401,8 +398,8 @@ function ZeitraumDialog({
   const festHinweis =
     gueltig && !laeuftDanach && (laeuft || (festWirkt && endeGeaendert))
       ? laeuft
-        ? `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht mehr bis zum Abschluss und wird beim Abschluss nicht gekürzt. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
-        : `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht bis zum Abschluss und wird beim Abschluss nicht gekürzt. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
+        ? `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht mehr bis zum Abschluss; beim Erstellen ist dieses Ende vorgeschlagen. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
+        : `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht bis zum Abschluss; beim Erstellen ist dieses Ende vorgeschlagen. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
       : null;
 
   // Neue Grenzen: Gemeinsame Texte von Teilen eines Zeitraums ziehen um bzw. gehen zusammen, ein neuer Beginn bzw. ein
@@ -526,9 +523,8 @@ function ZeitraumDialog({
           {festWirkt && !nachweis.bisFest ? (
             <label className="checkbox">
               <input type="checkbox" checked={festlegen} onChange={(e) => setFestlegenWahl(e.target.checked)} />
-              {laeuft
-                ? 'Ende festlegen – der Leistungsnachweis läuft nicht mehr bis zum Abschluss'
-                : 'Ende festlegen – der Leistungsnachweis läuft nicht bis zum Abschluss'}
+              {/* Ohne festgelegtes Ende läuft ein offener Nachweis stets bis zum Abschluss */}
+              Ende festlegen – der Leistungsnachweis läuft nicht mehr bis zum Abschluss
             </label>
           ) : null}
           {festWirkt && nachweis.bisFest ? (

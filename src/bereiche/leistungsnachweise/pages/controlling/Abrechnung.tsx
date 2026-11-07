@@ -5,13 +5,18 @@
  * erstellen, wo nötig mit Aufschlag.
  *
  * Oben die Leiste: Auswahl des Nachweises (alle des Projekts, der jüngste
- * zuerst), sein Stand („Fällig“, wenn sein Zeitraum vorbei ist,
- * `nachweisFaellig`), „Vorschau“, „Drucken / PDF“, „Excel“, das Menü „Mehr“
- * (Zeitraum ändern, Neuer Leistungsnachweis, Aufschläge zurücksetzen, Wieder
- * öffnen, Löschen) und „Leistungsnachweis erstellen“ – das schließt ihn ab
- * und schreibt seinen Stand fest (Rückfrage mit gekürzten Zeiträumen,
- * späteren Leistungen, fehlenden Bestätigungen – erstellen bleibt möglich –,
- * überholten Texten und Bestätigungen, die damit erlöschen, `grenzFolgen`).
+ * zuerst), sein Stand („Fällig“, wenn er Leistungen aus einem schon
+ * vergangenen Monat enthält, `nachweisFaellig`), „Vorschau“, „Drucken / PDF“,
+ * „Excel“, das Menü „Mehr“ (Zeitraum ändern, Neuer Leistungsnachweis,
+ * Aufschläge zurücksetzen, Wieder öffnen, Löschen) und „Leistungsnachweis
+ * erstellen“ – das schließt ihn ab und schreibt seinen Stand fest. Einen
+ * Rhythmus gibt es nicht: Die Rückfrage legt den Umfang fest, „Leistungen bis
+ * einschließlich“ (Vorschlag `vorgabeEnde`: Ende des Vormonats, sonst der
+ * letzte Tag mit Leistungen; dazu „Ende Vormonat“ und „Heute“); spätere
+ * Leistungen bleiben offen und kommen in den nächsten Leistungsnachweis. Sie
+ * nennt Umfang und Stunden, fehlende Bestätigungen – erstellen bleibt
+ * möglich –, überholte Texte und Bestätigungen, die damit erlöschen
+ * (`grenzFolgen`).
  *
  * Darunter „Mitarbeiter und Bestätigungen“ (BestaetigungsStand.tsx) und eine
  * Tabelle: je Zeile (Tag, Woche oder Monat) Datum, Bearbeiter, der
@@ -22,9 +27,12 @@
  * Ergänzen angeboten) –, die erfassten Stunden, der Aufschlag in ± Stunden
  * und die abgerechneten Stunden; ab zwei Abschnitten je Abschnitt
  * (`mitAbschnittsspalten`). Wer „Abgerechnet“ eingibt, setzt den Aufschlag als
- * Differenz (`aufschlagFuerAbgerechnet`). Erfasste Stunden bleiben, wie sie
- * sind; Druck und Excel zeigen die abgerechneten. Unter der Tabelle die
- * Bemerkung. Gibt es nicht erfasste Leistungen aus schon abgerechneten
+ * Differenz (`aufschlagFuerAbgerechnet`). Unter der Tabelle der Aufschlag auf
+ * den ganzen Nachweis (`GesamtAufschlagFeld`, ± Std. oder ± %): Er wird
+ * anteilig nach den abgerechneten Stunden auf die Zeilen verteilt, jede Zeile
+ * nennt ihren Anteil („anteilig“); eine eigene Zeile im Druck gibt es nicht.
+ * Erfasste Stunden bleiben, wie sie sind; Druck und Excel zeigen die
+ * abgerechneten. Darunter die Bemerkung. Gibt es nicht erfasste Leistungen aus schon abgerechneten
  * Zeiträumen und ist dies der laufende Nachweis, teilt ein Hinweis das mit;
  * übernommen werden sie erst nach Bestätigung (`leistungenNachreichen`).
  * Abgeschlossene Nachweise zeigen ihren Stand und lassen sich nur lesen. Alle
@@ -34,7 +42,7 @@ import { useState, type ReactNode } from 'react';
 import { addDays, today, wochentag } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Modal } from '../../../../shared/ui';
+import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Field, Modal, Segmented, TextInput } from '../../../../shared/ui';
 import { Druckblatt } from '../../components/Druckblatt';
 import { NachweisDialog, NichtErfasstHinweis } from '../../components/NachweisDialog';
 import { Textfeld } from '../../components/Textfeld';
@@ -49,10 +57,14 @@ import {
 } from '../../domain/erfassung';
 import { nachweisExportieren } from '../../domain/export';
 import {
+  abgerechnetEingebbar,
   abschlussZeitraum,
   anzahlAufschlaege,
   aufschlagEingabe,
   aufschlagFuerAbgerechnet,
+  gesamtAufschlagHinweis,
+  gesamtAufschlagText,
+  gesamtAufschlagUebersicht,
   leistungenDesNachweises,
   mitAbschnittsspalten,
   nachweisAbschliessenAnwenden,
@@ -70,6 +82,8 @@ import {
   ueberholtHinweis,
   ueberholtRueckfrage,
   ueberholteZeilen,
+  vorgabeEnde,
+  type GesamtAufschlagUebersicht,
   type UeberholteZeile,
 } from '../../domain/nachweis';
 import { darf, eigeneLeistungen, leistungenDerZeile } from '../../domain/rechte';
@@ -78,9 +92,9 @@ import {
   OHNE_ABSCHNITT,
   RASTER_KURZ,
   RASTER_LABEL,
-  ZEITRAUMREGEL_LABEL,
   mitarbeiterName,
   type Abschnitt,
+  type GesamtAufschlag,
   type ID,
   type Leistung,
   type Leistungsnachweis,
@@ -88,11 +102,11 @@ import {
   type Projekt,
   type Raster,
 } from '../../domain/types';
-import { kurzDatum, langDatum, runden, stundenText } from '../../domain/zeitraum';
+import { kurzDatum, langDatum, monatsanfang, runden, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { FehlendeBestaetigungen, MitarbeiterBestaetigungen } from './BestaetigungsStand';
-import { MehrMenue, StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
+import { MehrMenue, StundenFeld, aufschlagFeld, aufschlagText, prozentFeld } from './hilfen';
 import { ZeilenText } from './Leistungstexte';
 import './controlling.css';
 
@@ -111,7 +125,10 @@ interface Position {
   erfasst: number;
   /** Eingegebener Aufschlag (offen) bzw. wirksamer (abgeschlossen). */
   eingabe: number;
+  /** Wirksamer Aufschlag samt Anteil am Aufschlag auf den ganzen Nachweis. */
   wirksam: number;
+  /** Davon der Anteil am Aufschlag auf den ganzen Nachweis (`anteilGesamt`). */
+  anteil: number;
   abgerechnet: number;
 }
 
@@ -136,6 +153,7 @@ function positionenVon(
         erfasst: z.stunden,
         eingabe: lesen ? z.aufschlag : aufschlagEingabe(n, z.schluessel, null),
         wirksam: z.aufschlag,
+        anteil: z.anteilGesamt ?? 0,
         abgerechnet: z.abgerechnet,
       },
     ];
@@ -153,6 +171,7 @@ function positionenVon(
         erfasst: z.stundenJeAbschnitt[k] ?? 0,
         eingabe: lesen ? wirksam : aufschlagEingabe(n, z.schluessel, p.abschnittId),
         wirksam,
+        anteil: z.anteilGesamtJeAbschnitt?.[k] ?? 0,
         abgerechnet: (z.abgerechnetJeAbschnitt ?? z.stundenJeAbschnitt)[k] ?? 0,
       };
     });
@@ -171,6 +190,7 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
     deleteNachweis,
     aufschlagSetzen,
     aufschlaegeZuruecksetzen,
+    gesamtAufschlagSetzen,
     leistungenNachreichen,
     zeilenTextSetzen,
   } = useStore();
@@ -182,6 +202,8 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
   const [zeitraumDialog, setZeitraumDialog] = useState(false);
   const [neuerNachweis, setNeuerNachweis] = useState(false);
   const [abschliessen, setAbschliessen] = useState(false);
+  // „Leistungen bis einschließlich“ in der Rückfrage zum Erstellen
+  const [bisWahl, setBisWahl] = useState('');
   const [oeffnen, setOeffnen] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
   const [zuruecksetzen, setZuruecksetzen] = useState(false);
@@ -272,35 +294,38 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
   };
 
   /* Rückfragen */
-  const abschluss = abschlussZeitraum(data, n, heute);
+  // Erstellen: Umfang bis zum gewählten Tag – gerechnet wie im Store, mit Stunden und Leistungen des Ergebnisses
+  const endeVormonat = addDays(monatsanfang(heute), -1);
+  const bisGueltig = /^\d{4}-\d{2}-\d{2}$/.test(bisWahl) && bisWahl >= n.von;
+  const abschluss = abschlussZeitraum(data, n, heute, abschliessen && bisGueltig ? bisWahl : undefined);
+  const nachErstellen = abschliessen && bisGueltig ? erstellenVorschau(data, n.id, bisWahl) : null;
+  const erstellt = nachErstellen?.nachweise.find((x) => x.id === n.id) ?? null;
+  const summenErstellt = nachErstellen && erstellt ? nachweisSummen(nachweisZeilen(nachErstellen, erstellt)) : summen;
+  const leistungenErstellt = nachErstellen && erstellt ? leistungenDesNachweises(nachErstellen, erstellt).length : imZeitraum.length;
   // Endet der Nachweis mitten in einem Zeitraum der gemeinsamen Leistungstexte, bildet der Rest einen eigenen
   const restAb = erfassungsPeriodeVon(data, n.projektId, abschluss.bis).bis > abschluss.bis ? addDays(abschluss.bis, 1) : null;
   const abschliessenText = [
-    `Der Leistungsnachweis wird abgeschlossen und sein Stand festgeschrieben – mit ${stundenText(summen.abgerechnet)} abgerechneten Stunden${
-      summen.aufschlag ? ` (erfasst ${stundenText(summen.erfasst)}, Aufschlag ${aufschlagText(summen.aufschlag)})` : ''
-    }. Danach stehen Drucken / PDF und Excel bereit; spätere Leistungen im Zeitraum ändern ihn nicht mehr, „Wieder öffnen“ hebt den Abschluss auf.`,
-    abschluss.gekuerzt
-      ? `Der Zeitraum wird jetzt festgelegt: Er endet am ${langDatum(abschluss.bis)}, dem letzten Tag mit Leistungen.`
-      : '',
+    `Der Leistungsnachweis umfasst ${anzahl(leistungenErstellt, 'Leistung', 'Leistungen')} vom ${langDatum(n.von)} bis ${langDatum(
+      abschluss.bis,
+    )} mit ${stundenText(summenErstellt.abgerechnet)} abgerechneten Stunden${
+      summenErstellt.aufschlag ? ` (erfasst ${stundenText(summenErstellt.erfasst)}, Aufschlag ${aufschlagText(summenErstellt.aufschlag)})` : ''
+    }. Er wird abgeschlossen und sein Stand festgeschrieben; danach stehen Drucken / PDF und Excel bereit, „Wieder öffnen“ hebt den Abschluss auf.`,
     abschluss.spaetere.length
-      ? `${anzahl(abschluss.spaetere.length, 'spätere Leistung kommt', 'spätere Leistungen kommen')} in einen neuen Leistungsnachweis.`
+      ? `${anzahl(abschluss.spaetere.length, 'spätere Leistung', 'spätere Leistungen')} (${stundenText(stundenVon(abschluss.spaetere))} Std.) ${
+          abschluss.spaetere.length === 1 ? 'bleibt' : 'bleiben'
+        } offen und ${abschluss.spaetere.length === 1 ? 'kommt' : 'kommen'} in den nächsten Leistungsnachweis.`
       : '',
     restAb
       ? `Er endet mitten in einem Zeitraum der gemeinsamen Leistungstexte – für die Tage ab ${langDatum(restAb)} verfassen die Mitarbeiter einen eigenen Text.`
       : '',
     ueberholtRueckfrage(ueberholt) ?? '',
     // Bestätigungen, die mit geänderten Grenzen erlöschen – etwa mit dem neuen Teil (der Satz zum eigenen Text steht oben)
-    abschliessen
-      ? (erloschenHinweis(
-          grenzFolgen(data, nachweisAbschliessenAnwenden(data, n.id, new Date().toISOString(), () => 'vorschau')),
-          data.mitarbeiter,
-        ) ?? '')
-      : '',
+    nachErstellen ? (erloschenHinweis(grenzFolgen(data, nachErstellen), data.mitarbeiter) ?? '') : '',
   ]
     .filter(Boolean)
     .join(' ');
-  // Wer für die Monate des (beim Abschluss festgelegten) Zeitraums noch nicht bzw. nicht erneut bestätigt hat
-  const fehlend = abschliessen ? fehlendeBestaetigungen(data, abschluss.gekuerzt ? { ...n, bis: abschluss.bis } : n) : [];
+  // Wer für die Monate des gewählten Umfangs noch nicht bzw. nicht erneut bestätigt hat
+  const fehlend = abschliessen ? fehlendeBestaetigungen(data, { ...n, bis: abschluss.bis }) : [];
   const vergleich = standVergleich(data, n);
   const oeffnenText = vergleich.veraltet
     ? `Seit dem Abschluss haben sich Leistungen geändert: festgeschrieben sind ${stundenText(vergleich.stand.erfasst)} Std. erfasst und ${stundenText(
@@ -335,7 +360,10 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
     ? grenzFolgenHinweis(grenzFolgen(data, { ...data, nachweise: data.nachweise.filter((x) => x.id !== n.id) }), data.mitarbeiter)
     : null;
 
-  const kopfSub = `${nachweisZeitraumText(data, n)} · ${RASTER_LABEL[n.raster]} · Rhythmus: ${ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}`;
+  const kopfSub = `${nachweisZeitraumText(n)} · ${RASTER_LABEL[n.raster]}`;
+  // Aufschlag auf den ganzen Nachweis: was er insgesamt wirkt; „Abgerechnet“ je Zeile ist dann nicht eingebbar
+  const gesamtWirkung = gesamtAufschlagUebersicht(zeilen, n.gesamtAufschlag);
+  const abgerechnetFrei = abgerechnetEingebbar(n);
   const spaltenzahl = spalten ? 7 : 6;
   const wahlId = `ln-co-nachweiswahl-${projekt.id}`;
 
@@ -360,7 +388,7 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
             ))}
           </select>
           {faellig ? (
-            <span title="Der Zeitraum ist vorbei – der Leistungsnachweis kann erstellt werden">
+            <span title="Enthält Leistungen aus einem schon vergangenen Monat – der Leistungsnachweis kann erstellt werden">
               <Badge ton="orange">Fällig</Badge>
             </span>
           ) : null}
@@ -396,7 +424,15 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
               <Icon name="check" size={14} /> Abgeschlossen {zeitpunkt(n.abgeschlossen)}
             </span>
           ) : (
-            <button type="button" className="btn btn-primary" onClick={() => setAbschliessen(true)}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                // Ein von Hand festgelegtes Ende ist vorgeschlagen, sonst das Ende des Vormonats bzw. der letzte Tag mit Leistungen
+                setBisWahl(n.bisFest ? n.bis : vorgabeEnde(data, n, heute));
+                setAbschliessen(true);
+              }}
+            >
               <Icon name="check" size={14} /> Leistungsnachweis erstellen
             </button>
           )}
@@ -490,6 +526,7 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
                     positionen={positionenVon(z, n, abschnitte, spalten, abgeschlossen, alleAbschnitte)}
                     spalten={spalten}
                     lesen={abgeschlossen}
+                    abgerechnetFrei={abgerechnetFrei}
                     leistungen={[...eigene, ...andere].sort((a, b) => a.datum.localeCompare(b.datum))}
                     leistungenOffen={offeneLeistungen.has(z.schluessel)}
                     personName={personName}
@@ -541,8 +578,19 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
         {!abgeschlossen ? (
           <p className="small tertiary ln-co-tabellenhinweis">
             Aufschlag in ± Std. je Zeile{spalten ? ' und Abschnitt' : ''}, z. B. 1,5 oder -0,5 – gespeichert beim Verlassen
-            des Felds oder mit Enter; „Abgerechnet“ setzt den Aufschlag als Differenz.
+            des Felds oder mit Enter;{' '}
+            {abgerechnetFrei
+              ? '„Abgerechnet“ setzt den Aufschlag als Differenz.'
+              : '„Abgerechnet“ ist mit einem Aufschlag auf den ganzen Nachweis nicht eingebbar.'}
           </p>
+        ) : null}
+        {zeilen.length > 0 || n.gesamtAufschlag ? (
+          <GesamtAufschlagFeld
+            gesamt={n.gesamtAufschlag}
+            uebersicht={gesamtWirkung}
+            lesen={!bearbeitbar}
+            onSetzen={(ga) => gesamtAufschlagSetzen(n.id, ga)}
+          />
         ) : null}
         <div className="ln-co-bemerkung">
           <label className="ln-co-wahl-label" htmlFor={`${wahlId}-bemerkung`}>
@@ -581,12 +629,13 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
               <button
                 type="button"
                 className="btn btn-primary"
+                disabled={!bisGueltig}
                 onClick={() => {
-                  nachweisAbschliessen(n.id);
+                  nachweisAbschliessen(n.id, bisWahl);
                   toast(
-                    `Leistungsnachweis erstellt und abgeschlossen${abschluss.gekuerzt ? ` – Zeitraum bis ${langDatum(abschluss.bis)}` : ''}${
+                    `Leistungsnachweis erstellt und abgeschlossen – Leistungen bis ${langDatum(abschluss.bis)}${
                       abschluss.spaetere.length
-                        ? `; ${anzahl(abschluss.spaetere.length, 'spätere Leistung liegt', 'spätere Leistungen liegen')} in einem neuen Leistungsnachweis`
+                        ? `; ${anzahl(abschluss.spaetere.length, 'spätere Leistung bleibt', 'spätere Leistungen bleiben')} für den nächsten offen`
                         : ''
                     }.`,
                   );
@@ -599,8 +648,37 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
           }
         >
           <div className="stack" style={{ gap: 12 }}>
-            <p className="muted">{abschliessenText}</p>
-            <FehlendeBestaetigungen fehlende={fehlend} />
+            <Field
+              label="Leistungen bis einschließlich"
+              hint={`Der Leistungsnachweis beginnt am ${langDatum(n.von)}${
+                n.bisFest ? `; sein Ende ist auf den ${langDatum(n.bis)} festgelegt, ein früherer Tag kürzt ihn` : ''
+              }. Spätere Leistungen bleiben offen und kommen in den nächsten.`}
+            >
+              <div className="row wrap ln-co-bis">
+                <TextInput
+                  type="date"
+                  value={bisWahl}
+                  onChange={setBisWahl}
+                  min={n.von}
+                  max={n.bis > heute ? n.bis : heute}
+                  aria-label="Leistungen bis einschließlich"
+                />
+                <button type="button" className="btn btn-sm btn-outline" disabled={endeVormonat < n.von} onClick={() => setBisWahl(endeVormonat)}>
+                  Ende Vormonat
+                </button>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => setBisWahl(heute)}>
+                  Heute
+                </button>
+              </div>
+            </Field>
+            {bisGueltig ? (
+              <p className="muted">{abschliessenText}</p>
+            ) : (
+              <Callout ton="warn" icon="!">
+                Bitte einen Tag ab dem {langDatum(n.von)} wählen – dem Beginn des Leistungsnachweises.
+              </Callout>
+            )}
+            {bisGueltig ? <FehlendeBestaetigungen fehlende={fehlend} /> : null}
           </div>
         </Modal>
       ) : null}
@@ -672,6 +750,15 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
   );
 }
 
+/**
+ * Stand nach dem Erstellen bis `bis` – wie der Store rechnet
+ * (`nachweisAbschliessenAnwenden`), mit eigenen Kennungen für die Vorschau.
+ */
+function erstellenVorschau(daten: Parameters<typeof nachweisAbschliessenAnwenden>[0], id: ID, bis: string) {
+  let nr = 0;
+  return nachweisAbschliessenAnwenden(daten, id, new Date().toISOString(), () => `vorschau-${nr++}`, bis);
+}
+
 /** Nur der Satz zu erlöschenden Bestätigungen aus `grenzFolgenHinweis` – die Texte nennen die Rückfragen selbst. */
 const erloschenHinweis = (f: ReturnType<typeof grenzFolgen>, mitarbeiter: Parameters<typeof grenzFolgenHinweis>[1]) =>
   grenzFolgenHinweis({ ...f, texte: 0, neueTeile: [] }, mitarbeiter);
@@ -686,6 +773,7 @@ function ZeileAbrechnung({
   positionen,
   spalten,
   lesen,
+  abgerechnetFrei,
   leistungen,
   leistungenOffen,
   personName,
@@ -702,6 +790,8 @@ function ZeileAbrechnung({
   spalten: boolean;
   /** Abgeschlossen: nur lesen. */
   lesen: boolean;
+  /** „Abgerechnet“ eingebbar – nicht mit einem Aufschlag auf den ganzen Nachweis (`abgerechnetEingebbar`). */
+  abgerechnetFrei: boolean;
   leistungen: Leistung[];
   leistungenOffen: boolean;
   personName: (id: ID) => string;
@@ -740,16 +830,22 @@ function ZeileAbrechnung({
                 label={`Aufschlag ${ort}`}
                 onSetzen={(stunden) => onAufschlag(p.abschnittId, stunden)}
               />
-              {runden(p.eingabe) !== runden(p.wirksam) ? (
+              {runden(p.eingabe) !== runden(p.wirksam - p.anteil) ? (
                 <span className="ln-co-wirkt" title="Der Aufschlag wirkt nur, soweit Stunden da sind – abgerechnet wird nie weniger als 0.">
-                  wirkt {aufschlagText(p.wirksam)}
+                  wirkt {aufschlagText(p.wirksam - p.anteil)}
                 </span>
               ) : null}
             </>
           )}
+          {p.anteil ? (
+            <span className="ln-co-wirkt ln-co-anteil" title="Anteil am Aufschlag auf den ganzen Nachweis">
+              {lesen ? 'davon ' : ''}
+              {aufschlagText(p.anteil)} anteilig
+            </span>
+          ) : null}
         </td>
         <td className="ln-stunden ln-co-eingabe" data-label="Abgerechnet">
-          {lesen ? (
+          {lesen || !abgerechnetFrei ? (
             <strong>{stundenText(p.abgerechnet)}</strong>
           ) : (
             <StundenFeld
@@ -841,6 +937,78 @@ function ZeileAbrechnung({
         </tr>
       ) : null}
     </tbody>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Aufschlag auf den ganzen Nachweis                                   */
+/* ------------------------------------------------------------------ */
+
+const GESAMT_ARTEN: { value: GesamtAufschlag['art']; label: string }[] = [
+  { value: 'stunden', label: '± Std.' },
+  { value: 'prozent', label: '± %' },
+];
+
+/**
+ * Aufschlag auf den ganzen Nachweis – in ± Stunden oder ± Prozent der
+ * abgerechneten Stunden, anteilig auf die Zeilen verteilt. Ein Wechsel der
+ * Art behält die Zahl und rechnet sie in der neuen Art; leer oder 0 entfernt
+ * ihn. Abgeschlossen bzw. ohne Recht nur zum Lesen.
+ */
+function GesamtAufschlagFeld({
+  gesamt,
+  uebersicht: u,
+  lesen,
+  onSetzen,
+}: {
+  gesamt: GesamtAufschlag | null;
+  /** Basis, Soll und Wirkung (`gesamtAufschlagUebersicht`); null ohne Gesamtaufschlag. */
+  uebersicht: GesamtAufschlagUebersicht | null;
+  lesen: boolean;
+  onSetzen: (ga: GesamtAufschlag | null) => string | null;
+}) {
+  const [art, setArt] = useState<GesamtAufschlag['art']>(gesamt?.art ?? 'stunden');
+  const prozent = art === 'prozent';
+  // Wirkt er nicht ganz (abgerechnet nie unter 0), sagt es der Hinweis; bei Prozent die Stunden
+  const kappung = gesamtAufschlagHinweis(u);
+  const wirkt = kappung
+    ? kappung
+    : u && gesamt?.art === 'prozent'
+      ? `= ${aufschlagText(u.wirksam)} Std., anteilig auf die Zeilen verteilt`
+      : 'anteilig nach den Stunden auf die Zeilen verteilt';
+  if (lesen) {
+    if (!gesamt) return null;
+    return (
+      <p className="ln-co-gesamtaufschlag small">
+        Aufschlag auf den ganzen Nachweis: <strong>{gesamtAufschlagText(gesamt)}</strong>
+        {u && gesamt.art === 'prozent' ? ` = ${aufschlagText(u.wirksam)} Std.` : ''} – anteilig auf die Zeilen verteilt.
+      </p>
+    );
+  }
+  return (
+    <div className="ln-co-gesamtaufschlag">
+      <span className="ln-co-wahl-label">Aufschlag auf den ganzen Nachweis</span>
+      <div className="row wrap ln-co-gesamt-eingabe">
+        <Segmented<GesamtAufschlag['art']>
+          value={art}
+          onChange={(neu) => {
+            setArt(neu);
+            if (gesamt && gesamt.art !== neu) onSetzen({ art: neu, wert: gesamt.wert });
+          }}
+          options={GESAMT_ARTEN}
+        />
+        <StundenFeld
+          key={art}
+          wert={gesamt && gesamt.art === art ? gesamt.wert : 0}
+          anzeige={prozent ? prozentFeld : aufschlagFeld}
+          platzhalter={prozent ? '±0 %' : '±0'}
+          prozent={prozent}
+          label={`Aufschlag auf den ganzen Nachweis in ${prozent ? 'Prozent' : 'Stunden'}`}
+          onSetzen={(wert) => onSetzen(wert === null || runden(wert) === 0 ? null : { art, wert })}
+        />
+        <span className={`small ${kappung ? 'ln-co-gesamt-gekappt' : 'muted'}`}>{wirkt}</span>
+      </div>
+    </div>
   );
 }
 

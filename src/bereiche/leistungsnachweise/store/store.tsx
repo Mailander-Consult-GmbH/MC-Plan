@@ -70,9 +70,11 @@ import {
 import {
   abgerechnetIn,
   aufschlagPruefen,
+  gesamtAufschlagPruefen,
   leistungenDesNachweises,
   leistungenOhneNachweis,
   mitAufschlag,
+  mitGesamtAufschlag,
   mitZeilenText,
   nachweisAbschliessenAnwenden,
   nachweisFuerNichtAbgerechneteAnwenden,
@@ -81,7 +83,6 @@ import {
   nichtAbgerechnet,
   tagVon,
   nachweiseSichern,
-  regelAnwenden,
   standAbschnitteNachziehen,
   ueberschneidung,
   zeilenTextOhneBearbeitung,
@@ -103,7 +104,9 @@ import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { seedDaten } from '../domain/seed';
 import {
   newId,
+  type GesamtAufschlag,
   type ID,
+  type ISODate,
   type Leistung,
   type Leistungsnachweis,
   type LeistungsnachweisDaten,
@@ -140,10 +143,8 @@ interface StoreValue {
   addProjekt: (p: Omit<Projekt, 'id'>) => ID | null;
   /**
    * Ändern (nur Controlling); entfallene Abschnitte verlieren ihre Leistungen (diese stehen dann ohne Abschnitt –
-   * abgerechnete auch im Stand ihres Nachweises, `standAbschnitteNachziehen`). Ein anderer Abrechnungsrhythmus
-   * (`zeitraumregel`) setzt den Beginn seiner Blöcke (`rhythmusAb`) und plant die offenen Nachweise des Projekts
-   * neu (`regelAnwenden`; die Folgen für gemeinsame Texte und Bestätigungen rechnet die Oberfläche vorab mit
-   * `grenzFolgen`).
+   * abgerechnete auch im Stand ihres Nachweises, `standAbschnitteNachziehen`). Einen Abrechnungsrhythmus gibt es
+   * nicht (mehr, Fassung 9).
    */
   updateProjekt: (id: ID, patch: Partial<Omit<Projekt, 'id'>>) => void;
   /** Mit allen Leistungen und Nachweisen – nur Controlling. */
@@ -223,10 +224,13 @@ interface StoreValue {
    */
   zeilenTextSetzen: (nachweisId: ID, zeile: NachweisZeile, text: string | null, optionen?: { gesehen?: boolean }) => void;
   /**
-   * Abschließen (nur Controlling, nur offene): fortlaufende Nachweise enden am letzten Tag mit
-   * Leistungen (`abschlussZeitraum`), der Stand wird mit Aufschlägen festgeschrieben.
+   * „Leistungsnachweis erstellen“ = abschließen (nur Controlling, nur offene): mit `bis` („Leistungen bis
+   * einschließlich …“, erlaubt ab dem Beginn bis heute, höchstens bis zum bisherigen Ende – `abschlussEndeBereich`;
+   * Vorschlag `vorgabeEnde`) endet der Nachweis dort, sonst (auch bei ungültigem `bis`) am letzten Tag mit
+   * Leistungen (`abschlussZeitraum`). Der Stand wird mit Aufschlägen und Gesamtaufschlag festgeschrieben;
+   * spätere Leistungen kommen in einen neuen offenen Nachweis (`nachweisAbschliessenAnwenden`).
    */
-  nachweisAbschliessen: (id: ID) => void;
+  nachweisAbschliessen: (id: ID, bis?: ISODate) => void;
   /** Status in Bearbeitung, Stand verwerfen (nur Controlling; die Rückfrage macht die Oberfläche). */
   nachweisOeffnen: (id: ID) => void;
   /**
@@ -235,7 +239,13 @@ interface StoreValue {
    * (`AUFSCHLAG_KEINE_ZAHL`, `AUFSCHLAG_UNTER_NULL` …) oder null.
    */
   aufschlagSetzen: (nachweisId: ID, zeilenSchluessel: string, abschnittId: ID | null, stunden: number | null) => string | null;
-  /** Alle Aufschläge des Nachweises entfernen – nur Controlling, nur offen. */
+  /**
+   * Gesamtaufschlag auf den ganzen Nachweis (± Stunden oder ± Prozent; null bzw. 0 entfernt) – nur Controlling,
+   * nur offene Nachweise. Er wird anteilig auf die Zeilen verteilt (`gesamtAufschlagVerteilen`). Liefert die
+   * Meldung (`AUFSCHLAG_KEINE_ZAHL`, `GESAMTAUFSCHLAG_OHNE_STUNDEN`, `AUFSCHLAG_UNTER_NULL` …) oder null.
+   */
+  gesamtAufschlagSetzen: (nachweisId: ID, ga: GesamtAufschlag | null) => string | null;
+  /** Alle Aufschläge des Nachweises entfernen – die der Zeilen und den Gesamtaufschlag; nur Controlling, nur offen. */
   aufschlaegeZuruecksetzen: (nachweisId: ID) => void;
   /* Import */
   /**
@@ -374,17 +384,13 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       mutate(controllingNur((d) => (d.projekte.some((x) => x.id === id) ? d : { ...d, projekte: [...d.projekte, { ...p, id }] })));
       return id;
     },
-    updateProjekt: (id, patch) => {
-      // Kennungen neuer Nachweise beim Umstellen des Rhythmus – im StrictMode in beiden Durchläufen dieselben
-      const folge = idVorrat();
+    updateProjekt: (id, patch) =>
       mutate(
-        controllingNur((d, jetzt) => {
-          // Die Regel stellt `regelAnwenden` um – sie vergleicht mit der bisherigen
-          const { zeitraumregel, ...uebrige } = patch;
-          const projekte = aendern(d.projekte, id, (p) => ({ ...p, ...uebrige }));
+        controllingNur((d) => {
+          const projekte = aendern(d.projekte, id, (p) => ({ ...p, ...patch }));
           const gueltig = patch.abschnitte ? new Set(patch.abschnitte.map((a) => a.id)) : null;
           // Leistungen eines entfernten Abschnitts sind ohne Abschnitt – auch im Stand abgeschlossener Nachweise
-          const geaendert = gueltig
+          return gueltig
             ? standAbschnitteNachziehen(
                 d,
                 {
@@ -397,12 +403,8 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
                 id,
               )
             : { ...d, projekte };
-          if (zeitraumregel === undefined) return geaendert;
-          const ids = folge();
-          return regelAnwenden(geaendert, id, zeitraumregel, jetzt, () => ids('ln'));
         }),
-      );
-    },
+      ),
     deleteProjekt: (id) =>
       mutate(
         controllingNur((d) => ({
@@ -588,12 +590,13 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
           return mitZeilenText(n, zeile, text, ausgang);
         },
       ),
-    nachweisAbschliessen: (id) => {
+    nachweisAbschliessen: (id, bis) => {
+      // Kennung des neuen Nachweises für spätere Leistungen – im StrictMode in beiden Durchläufen dieselbe
       const folge = idVorrat();
       mutate(
         controllingNur((d, jetzt) => {
           const ids = folge();
-          return nachweisAbschliessenAnwenden(d, id, jetzt, () => ids('ln'));
+          return nachweisAbschliessenAnwenden(d, id, jetzt, () => ids('ln'), bis);
         }),
       );
     },
@@ -627,11 +630,28 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       );
       return null;
     },
+    gesamtAufschlagSetzen: (nachweisId, ga) => {
+      const pruefen = (d: LeistungsnachweisDaten): string | null => {
+        if (!darf(zugang, 'aufschlag')) return NUR_CONTROLLING;
+        const n = d.nachweise.find((x) => x.id === nachweisId);
+        if (!n) return 'Diesen Leistungsnachweis gibt es nicht (mehr).';
+        if (n.status !== 'entwurf') return 'Der Leistungsnachweis ist abgeschlossen – Aufschläge erst nach „Wieder öffnen“.';
+        return gesamtAufschlagPruefen(d, n, ga);
+      };
+      const meldung = pruefen(data);
+      if (meldung) return meldung;
+      nachweisAendern(
+        nachweisId,
+        (_n, d) => pruefen(d) === null,
+        (n) => mitGesamtAufschlag(n, ga),
+      );
+      return null;
+    },
     aufschlaegeZuruecksetzen: (nachweisId) =>
       nachweisAendern(
         nachweisId,
-        (n) => darf(zugang, 'aufschlag') && n.status === 'entwurf' && Object.keys(n.aufschlaege).length > 0,
-        (n) => ({ ...n, aufschlaege: {} }),
+        (n) => darf(zugang, 'aufschlag') && n.status === 'entwurf' && (Object.keys(n.aufschlaege).length > 0 || !!n.gesamtAufschlag),
+        (n) => ({ ...n, aufschlaege: {}, gesamtAufschlag: null }),
       ),
 
     importUebernehmen: (plan) =>

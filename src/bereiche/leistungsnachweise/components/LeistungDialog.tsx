@@ -10,9 +10,8 @@
  * ergibt sich aus ihrem Datum – außer sie ist nachgereicht oder schon in einem
  * abgeschlossenen Nachweis abgerechnet (`nachweisDerLeistung`; dort bleibt sie
  * auch mit einem neuen Datum, bis das Controlling ihn wieder öffnet). Liegt
- * das Datum in keinem Nachweis, legt der Store nach der Zeitraumregel des
- * Projekts einen an oder verlängert den offenen – der Dialog sagt das vorher
- * an. Ein abgeschlossener Nachweis ändert sich erst nach „Wieder öffnen“ im
+ * das Datum in keinem Nachweis, verlängert der Store den offenen bzw. legt
+ * einen offenen an – der Dialog sagt das vorher an. Ein abgeschlossener Nachweis ändert sich erst nach „Wieder öffnen“ im
  * Controlling. Hat das Projekt genau einen Abschnitt, ist er vorausgewählt.
  */
 import { useRef, useState } from 'react';

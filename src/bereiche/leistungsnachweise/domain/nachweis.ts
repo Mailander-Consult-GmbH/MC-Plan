@@ -14,21 +14,27 @@
  * `gemeinsamerZeilentext`), wo es keine gibt die Texte der Leistungen
  * (`automatikText`).
  *
- * Nachweise eines Projekts überschneiden sich nie (`ueberschneidung`). Fehlt
- * für Leistungen ein Nachweis, legt `nachweiseErgaenzen` ihn nach der
- * Zeitraumregel (dem Abrechnungsrhythmus) des Projekts an oder verlängert den
- * offenen; stellt das Controlling den Rhythmus um, plant `regelAnwenden` die
- * offenen Nachweise neu. „Neuer
- * Leistungsnachweis“ im Controlling fragt keinen Zeitraum ab: Er umfasst alle
- * nicht abgerechneten Leistungen (`nichtAbgerechnet`,
- * `nachweisFuerNichtAbgerechnete`). Der Zeitraum steht erst beim Abschluss
- * fest – ein laufender Nachweis endet dann am letzten Tag mit Leistungen
- * (`abschlussZeitraum`, `nachweisAbschliessenAnwenden`); abgeschlossene
+ * Nachweise eines Projekts überschneiden sich nie (`ueberschneidung`). Einen
+ * Abrechnungsrhythmus gibt es nicht (mehr, Fassung 9): Fehlt für Leistungen
+ * ein Nachweis, verlängert `nachweiseErgaenzen` den laufenden (offenen) bis
+ * zum Monatsende oder legt einen neuen an – der offene Nachweis wächst mit,
+ * bis das Controlling ihn erstellt. Den Umfang gibt erst das Erstellen
+ * (Abschließen) vor: mit dem Enddatum, das das Controlling wählt
+ * („Leistungen bis einschließlich …“, `vorgabeEnde`), sonst bis zum letzten
+ * Tag mit Leistungen (`abschlussZeitraum`, `nachweisAbschliessenAnwenden`);
+ * spätere Leistungen kommen in einen neuen offenen Nachweis. Wird am
+ * Monatsende keiner erstellt, bleiben die Leistungen offen – fällig ist ein
+ * Nachweis mit Leistungen aus einem vergangenen Monat (`nachweisFaellig`,
+ * `offenSeit`). „Neuer Leistungsnachweis“ im Controlling fragt keinen
+ * Zeitraum ab: Er umfasst alle nicht abgerechneten Leistungen
+ * (`nichtAbgerechnet`, `nachweisFuerNichtAbgerechnete`). Abgeschlossene
  * Nachweise wachsen nie.
  *
- * Aufschläge des Controllings (`aufschlaege`, ± Stunden je Zeile und
- * Abschnitt) ändern die erfassten Stunden nicht; jede Zeile weist erfasst,
- * Aufschlag und abgerechnet aus (`abrechnen`).
+ * Aufschläge des Controllings ändern die erfassten Stunden nicht: je Zeile
+ * und Abschnitt (`aufschlaege`, ± Stunden, `abrechnen`) und auf den ganzen
+ * Nachweis (`gesamtAufschlag`, ± Stunden oder ± Prozent), den
+ * `gesamtAufschlagVerteilen` anteilig auf die Zeilen verteilt. Jede Zeile
+ * weist erfasst, Aufschlag und abgerechnet aus.
  *
  * Alle Funktionen sind rein; Kennungen liefert der Aufrufer.
  */
@@ -39,6 +45,7 @@ import {
   mitarbeiterName,
   pruefsumme,
   type Abschnitt,
+  type GesamtAufschlag,
   type ID,
   type ISODate,
   type Leistung,
@@ -49,8 +56,6 @@ import {
   type Projekt,
   type Raster,
   type ZeilenText,
-  type Zeitraumregel,
-  rhythmusMonate,
 } from './types';
 import {
   datumText,
@@ -58,14 +63,13 @@ import {
   erfassungsPeriodeAusSchluessel,
   imZeitraum,
   istDatum,
-  istMonat,
   istWochenende,
   monatsanfang,
   monatsende,
-  monatVersetzt,
   periodeKuerzen,
   periodeVon,
   runden,
+  stundenText,
   zeitraumText,
   type Periode,
 } from './zeitraum';
@@ -699,6 +703,9 @@ export function aufschlagEingabe(n: Pick<Leistungsnachweis, 'aufschlaege'>, zeil
  * Aufschlag, der zu einer Eingabe „abgerechnet“ führt: mit Abschnittsspalten
  * die Differenz zu den erfassten Stunden der Spalte (Abschnitt bzw. „ohne“ für
  * null), sonst zu denen der ganzen Zeile. `spalten` = `mitAbschnittsspalten`.
+ * Stimmt nur ohne Gesamtaufschlag – mit ihm hinge der Anteil der Zeile wieder
+ * vom Aufschlag ab; dann lässt sich „abgerechnet“ nicht eingeben
+ * (`abgerechnetEingebbar`).
  */
 export function aufschlagFuerAbgerechnet(
   zeile: Pick<NachweisZeile, 'stunden' | 'stundenJeAbschnitt'>,
@@ -763,9 +770,229 @@ export function aufschlagPruefen(
   return null;
 }
 
-/** Anzahl wirksamer Aufschläge (Einträge ≠ 0) eines Nachweises. */
-export function anzahlAufschlaege(n: Pick<Leistungsnachweis, 'aufschlaege'>): number {
-  return Object.values(n.aufschlaege).filter((v) => v !== 0).length;
+/** Anzahl der Aufschläge eines Nachweises: die der Zeilen (Einträge ≠ 0) und der Gesamtaufschlag. */
+export function anzahlAufschlaege(n: Pick<Leistungsnachweis, 'aufschlaege' | 'gesamtAufschlag'>): number {
+  return Object.values(n.aufschlaege).filter((v) => v !== 0).length + (n.gesamtAufschlag ? 1 : 0);
+}
+
+/* ------------------------------------------------------------------ */
+/* Gesamtaufschlag                                                     */
+/* ------------------------------------------------------------------ */
+
+/** Meldung, wenn sich ein Gesamtaufschlag auf keine abgerechneten Stunden verteilen ließe (wörtlich). */
+export const GESAMTAUFSCHLAG_OHNE_STUNDEN = 'Ohne abgerechnete Stunden lässt sich kein Gesamtaufschlag verteilen.';
+
+/** Stunden in Hundertstel als ganze Zahl – zum Verteilen ohne Rundungsfehler. */
+const hundertstel = (stunden: number) => Math.round(runden(stunden) * 100);
+
+/**
+ * Verteilt `betrag` Hundertstel anteilig nach `basen` (Hundertstel, ≥ 0): je
+ * Basis der abgerundete Anteil, die übrigen Hundertstel nach dem größten Rest
+ * (bei gleichem Rest zuerst die größere Basis, dann die frühere) – die Summe
+ * stimmt genau. Übersteigt der Betrag die Summe der Basen nicht, ist kein
+ * Anteil dem Betrag nach größer als seine Basis. Ohne Basis (Summe 0) alles 0.
+ */
+function anteiligVerteilen(betrag: number, basen: number[]): number[] {
+  const werte = basen.map((b) => (b > 0 ? b : 0));
+  const summe = werte.reduce((s, b) => s + b, 0);
+  if (summe <= 0 || betrag === 0) return werte.map(() => 0);
+  const ziel = Math.abs(betrag);
+  // Ganzzahlig: Produkt, Rest und Quotient sind exakt
+  const teile = werte.map((b, i) => {
+    const produkt = b * ziel;
+    const rest = produkt % summe;
+    return { i, b, anteil: (produkt - rest) / summe, rest };
+  });
+  let offen = ziel - teile.reduce((s, t) => s + t.anteil, 0);
+  for (const t of [...teile].sort((x, y) => y.rest - x.rest || y.b - x.b || x.i - y.i)) {
+    if (offen <= 0) break;
+    t.anteil += 1;
+    offen -= 1;
+  }
+  return teile.map((t) => (t.anteil === 0 ? 0 : betrag < 0 ? -t.anteil : t.anteil));
+}
+
+/** Gültiger Gesamtaufschlag: Art „stunden“ oder „prozent“, Wert auf zwei Nachkommastellen; 0 bzw. ungültig → null. */
+export function gesamtAufschlagNormal(ga: GesamtAufschlag | null | undefined): GesamtAufschlag | null {
+  if (!ga || (ga.art !== 'stunden' && ga.art !== 'prozent') || typeof ga.wert !== 'number' || !Number.isFinite(ga.wert)) return null;
+  const wert = runden(ga.wert);
+  return wert === 0 ? null : { art: ga.art, wert };
+}
+
+/**
+ * Stunden, die ein Gesamtaufschlag ausmachen soll: bei Prozent der Anteil an
+ * `basis` – den abgerechneten Stunden vor ihm (nach den Aufschlägen der
+ * Zeilen) –, sonst sein Wert; auf zwei Nachkommastellen.
+ */
+export function gesamtAufschlagSoll(basis: number, ga: GesamtAufschlag): number {
+  return runden(ga.art === 'prozent' ? (basis * ga.wert) / 100 : ga.wert);
+}
+
+/**
+ * Verteilt den Gesamtaufschlag `ga` auf Zeilen, deren Aufschläge schon
+ * gerechnet sind (`abrechnen`) – so arbeitet `nachweisZeilen`. Basis je Zeile
+ * sind ihre abgerechneten Stunden vor dem Gesamtaufschlag; der Betrag
+ * (`gesamtAufschlagSoll`: ± Stunden bzw. ± Prozent der Summe der Basen) geht
+ * im Verhältnis der Basen an die Zeilen, auf 0,01 Std. gerundet, die Reste
+ * nach dem größten Rest – die Summe stimmt genau (`anteiligVerteilen`).
+ * Innerhalb der Zeile ebenso je Abschnitt im Verhältnis von
+ * `abgerechnetJeAbschnitt`. Abgerechnet wird nie weniger als 0: Ein Abzug
+ * über die Summe der Basen hinaus wirkt nur bis dahin
+ * (`gesamtAufschlagUebersicht` nennt, wie viel wirkt); ohne Basis wirkt er
+ * nicht. Die Zeile trägt ihren Anteil in `anteilGesamt` bzw.
+ * `anteilGesamtJeAbschnitt` und schon in `aufschlag`, `aufschlagJeAbschnitt`,
+ * `abgerechnet` und `abgerechnetJeAbschnitt` – so zeigen Druck, Excel,
+ * Auswertung und `nachweisSummen` ihn ohne Weiteres. Ohne Gesamtaufschlag
+ * dieselben Zeilen.
+ */
+export function gesamtAufschlagVerteilen(zeilen: NachweisZeile[], ga: GesamtAufschlag | null): NachweisZeile[] {
+  const g = gesamtAufschlagNormal(ga);
+  if (!g || zeilen.length === 0) return zeilen;
+  const basen = zeilen.map((z) => hundertstel(z.abgerechnet));
+  const summe = basen.reduce((s, b) => s + (b > 0 ? b : 0), 0);
+  if (summe <= 0) return zeilen;
+  // Nie unter 0: höchstens die Summe der Basen abziehen
+  const betrag = Math.max(hundertstel(gesamtAufschlagSoll(summe / 100, g)), -summe);
+  const anteile = anteiligVerteilen(betrag, basen);
+  return zeilen.map((z, i) => {
+    const anteil = anteile[i];
+    if (anteil === 0) return z;
+    const spalten = Object.keys(z.abgerechnetJeAbschnitt);
+    const jeSpalte = anteiligVerteilen(
+      anteil,
+      spalten.map((k) => hundertstel(z.abgerechnetJeAbschnitt[k])),
+    );
+    const anteilGesamtJeAbschnitt: Record<string, number> = {};
+    const abgerechnetJeAbschnitt = { ...z.abgerechnetJeAbschnitt };
+    const aufschlagJeAbschnitt = { ...z.aufschlagJeAbschnitt };
+    spalten.forEach((k, j) => {
+      if (jeSpalte[j] === 0) return;
+      const a = jeSpalte[j] / 100;
+      anteilGesamtJeAbschnitt[k] = runden(a);
+      abgerechnetJeAbschnitt[k] = runden(abgerechnetJeAbschnitt[k] + a);
+      const auf = runden((aufschlagJeAbschnitt[k] ?? 0) + a);
+      if (auf === 0) delete aufschlagJeAbschnitt[k];
+      else aufschlagJeAbschnitt[k] = auf;
+    });
+    const stunden = anteil / 100;
+    return {
+      ...z,
+      aufschlag: runden(z.aufschlag + stunden),
+      aufschlagJeAbschnitt,
+      abgerechnet: runden(z.abgerechnet + stunden),
+      abgerechnetJeAbschnitt,
+      anteilGesamt: runden(stunden),
+      anteilGesamtJeAbschnitt,
+    };
+  });
+}
+
+/** Wirksame Stunden des Gesamtaufschlags über Zeilen (`nachweisZeilen`): Summe ihrer Anteile (`anteilGesamt`). */
+export function gesamtAufschlagWirkung(zeilen: Pick<NachweisZeile, 'anteilGesamt'>[]): number {
+  return runden(zeilen.reduce((s, z) => s + (z.anteilGesamt ?? 0), 0));
+}
+
+/** Was ein Gesamtaufschlag bewirkt (`gesamtAufschlagUebersicht`). */
+export interface GesamtAufschlagUebersicht {
+  /** Abgerechnete Stunden vor dem Gesamtaufschlag (nach den Aufschlägen der Zeilen). */
+  basis: number;
+  /** Stunden laut Eingabe (`gesamtAufschlagSoll`). */
+  soll: number;
+  /** Stunden, die wirken – auf die Zeilen verteilt (`gesamtAufschlagWirkung`). */
+  wirksam: number;
+  /** Er wirkt nicht ganz: ein Abzug über die Basis hinaus bzw. keine Basis. */
+  gekappt: boolean;
+}
+
+/**
+ * Basis, Soll und Wirkung des Gesamtaufschlags `ga` über die Zeilen eines
+ * Nachweises (`nachweisZeilen` bzw. der festgeschriebene Stand); null ohne
+ * Gesamtaufschlag.
+ */
+export function gesamtAufschlagUebersicht(
+  zeilen: Pick<NachweisZeile, 'abgerechnet' | 'anteilGesamt'>[],
+  ga: GesamtAufschlag | null,
+): GesamtAufschlagUebersicht | null {
+  const g = gesamtAufschlagNormal(ga);
+  if (!g) return null;
+  const wirksam = gesamtAufschlagWirkung(zeilen);
+  const basis = runden(zeilen.reduce((s, z) => s + z.abgerechnet, 0) - wirksam);
+  const soll = gesamtAufschlagSoll(basis, g);
+  return { basis, soll, wirksam, gekappt: wirksam !== soll };
+}
+
+/** ± mit Vorzeichen (−, wie `stundenText`, als „-“). */
+const mitVorzeichen = (wert: number, text: string) => `${wert > 0 ? '+' : ''}${text}`;
+
+/** Gesamtaufschlag als Text, etwa „+10 %“, „-2,5 %“ oder „+2,50 Std.“. */
+export function gesamtAufschlagText(ga: GesamtAufschlag): string {
+  const wert = runden(ga.wert);
+  return ga.art === 'prozent'
+    ? `${mitVorzeichen(wert, String(wert).replace('.', ','))} %`
+    : `${mitVorzeichen(wert, stundenText(wert))} Std.`;
+}
+
+/**
+ * Hinweis, wenn der Gesamtaufschlag nicht ganz wirkt (`gesamtAufschlagUebersicht`), etwa „Der
+ * Gesamtaufschlag wirkt nur mit -12,00 Std. – abgerechnet wird nie weniger als 0 Std.“; null, wenn er
+ * ganz wirkt.
+ */
+export function gesamtAufschlagHinweis(u: GesamtAufschlagUebersicht | null): string | null {
+  if (!u || !u.gekappt) return null;
+  if (u.basis <= 0) return 'Ohne abgerechnete Stunden wirkt der Gesamtaufschlag nicht.';
+  return `Der Gesamtaufschlag wirkt nur mit ${mitVorzeichen(u.wirksam, stundenText(u.wirksam))} Std. – abgerechnet wird nie weniger als 0 Std.`;
+}
+
+/**
+ * Liest die Eingabe eines Gesamtaufschlags: eine Zahl mit Komma oder Punkt,
+ * Vorzeichen erlaubt, dahinter wahlweise „%“ (Prozent) bzw. „Std.“ oder „h“
+ * (Stunden) – sonst gilt `art`. Leer oder 0 → null (kein Gesamtaufschlag);
+ * keine Zahl → undefined.
+ */
+export function gesamtAufschlagLesen(text: string, art: GesamtAufschlag['art']): GesamtAufschlag | null | undefined {
+  let t = text.replace(/\s+/g, '').replace(/[−–]/g, '-');
+  if (!t) return null;
+  let gewaehlt = art;
+  const einheit = /(%|std\.?|h)$/i.exec(t);
+  if (einheit) {
+    gewaehlt = einheit[0] === '%' ? 'prozent' : 'stunden';
+    t = t.slice(0, -einheit[0].length);
+  }
+  if (!/^[+-]?(\d+([.,]\d*)?|[.,]\d+)$/.test(t)) return undefined;
+  const wert = runden(Number(t.replace(',', '.')));
+  return wert === 0 ? null : { art: gewaehlt, wert };
+}
+
+/**
+ * Prüft einen Gesamtaufschlag vor dem Setzen (`gesamtAufschlagSetzen` im
+ * Store): Art und Zahl gültig, der Nachweis hat abgerechnete Stunden, auf die
+ * er sich verteilen lässt, und abgerechnet fiele nicht unter 0. Entfernen
+ * (null/0) geht immer. Liefert die Meldung (`AUFSCHLAG_KEINE_ZAHL`,
+ * `GESAMTAUFSCHLAG_OHNE_STUNDEN`, `AUFSCHLAG_UNTER_NULL`) oder null.
+ */
+export function gesamtAufschlagPruefen(daten: LeistungsnachweisDaten, n: Leistungsnachweis, ga: GesamtAufschlag | null): string | null {
+  if (ga === null) return null;
+  if ((ga.art !== 'stunden' && ga.art !== 'prozent') || typeof ga.wert !== 'number' || !Number.isFinite(ga.wert)) return AUFSCHLAG_KEINE_ZAHL;
+  const g = gesamtAufschlagNormal(ga);
+  if (!g) return null;
+  const basis = summeAbgerechnet(nachweisZeilen(daten, { ...n, gesamtAufschlag: null }));
+  if (basis <= 0) return GESAMTAUFSCHLAG_OHNE_STUNDEN;
+  return runden(basis + gesamtAufschlagSoll(basis, g)) < 0 ? AUFSCHLAG_UNTER_NULL : null;
+}
+
+/** Nachweis mit dem Gesamtaufschlag `ga` (`gesamtAufschlagNormal`; null/0 entfernt ihn) – rein; so arbeitet `gesamtAufschlagSetzen` im Store. */
+export function mitGesamtAufschlag(n: Leistungsnachweis, ga: GesamtAufschlag | null): Leistungsnachweis {
+  return { ...n, gesamtAufschlag: gesamtAufschlagNormal(ga) };
+}
+
+/**
+ * Lässt sich „abgerechnet“ je Zeile eingeben (`aufschlagFuerAbgerechnet`)? Nur
+ * ohne Gesamtaufschlag: Mit ihm hängt der Anteil der Zeile vom Aufschlag der
+ * Zeile ab, die Eingabe ergäbe nicht genau den eingegebenen Wert – dann bleibt
+ * der Aufschlag der Zeile einzugeben.
+ */
+export function abgerechnetEingebbar(n: Pick<Leistungsnachweis, 'gesamtAufschlag'>): boolean {
+  return !n.gesamtAufschlag;
 }
 
 /** Präfix des Schlüssels einer Zeile aus nachgereichten Leistungen („NW2026-44“). */
@@ -784,7 +1011,8 @@ export const NACHGEREICHT_PRAEFIX = 'N';
  * ohne solche `automatikText`. Ein abgeschlossener Nachweis gliedert die gemeinsamen Texte im
  * Raster des Projekts bei seinem Abschluss (`NachweisStand.erfassungsRaster`,
  * `erfassungsGliederung`) – ein späterer Rasterwechsel des Projekts ändert ihn nicht. Dazu
- * Aufschlag und abgerechnete Stunden aus `aufschlaege` (`abrechnen`).
+ * Aufschlag und abgerechnete Stunden aus `aufschlaege` (`abrechnen`) und danach der anteilig
+ * verteilte Gesamtaufschlag (`gesamtAufschlag`, `gesamtAufschlagVerteilen`).
  */
 export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachweis): NachweisZeile[] {
   const projekt = daten.projekte.find((p) => p.id === n.projektId);
@@ -809,7 +1037,7 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
       if (p.bis > gruppe.bis) gruppe.bis = p.bis;
     } else gruppen.set(p.schluessel, { von: p.von, bis: p.bis, nachgereicht, leistungen: [l] });
   }
-  return [...gruppen.entries()]
+  const zeilen = [...gruppen.entries()]
     .sort(([, a], [, b]) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0))
     .map(([schluessel, { von, bis, nachgereicht, leistungen }]): NachweisZeile => {
       const bearbeiter: string[] = [];
@@ -850,6 +1078,8 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
         abgerechnetJeAbschnitt: abrechnung.abgerechnetJeAbschnitt,
       };
     });
+  // Der Gesamtaufschlag kommt nach den Aufschlägen der Zeilen – anteilig nach deren abgerechneten Stunden
+  return gesamtAufschlagVerteilen(zeilen, n.gesamtAufschlag ?? null);
 }
 
 /** Abgeschlossen mit Stand → `stand.zeilen`, sonst `nachweisZeilen`. */
@@ -1243,6 +1473,7 @@ export function neuerNachweis(id: ID, projekt: Projekt, von: ISODate, bis: ISODa
     status: 'entwurf',
     texte: {},
     aufschlaege: {},
+    gesamtAufschlag: null,
     bemerkung: '',
     nachgereicht: [],
     erstellt: jetzt,
@@ -1258,55 +1489,16 @@ export interface Ergaenzung {
   erweitert: { id: ID; von: ISODate; bis: ISODate }[];
 }
 
-/** Ganze Monate vom Monat von `a` bis zum Monat von `b`, etwa 2026-10-… → 2027-02-…: 4. */
-const monatsAbstand = (a: ISODate, b: ISODate): number =>
-  (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7));
-
-/**
- * Block aus `monate` Monaten, in dem `tag` liegt – die Blöcke gezählt ab dem
- * Monat von `anker` (`rhythmusAnker`), auch rückwärts für Tage davor:
- * [erster Tag seines ersten Monats, letzter Tag seines letzten]. Mit einem
- * Monat ist das der Kalendermonat des Tages.
- */
-export function rhythmusBlock(tag: ISODate, anker: ISODate, monate: number): { von: ISODate; bis: ISODate } {
-  const schritte = Math.floor(monatsAbstand(anker, tag) / monate);
-  const von = monatVersetzt(anker, schritte * monate);
-  return { von, bis: monatsende(monatVersetzt(von, monate - 1)) };
-}
-
-/**
- * Erster Tag des Monats, ab dem die Blöcke des Abrechnungsrhythmus eines
- * Projekts zählen: `projekt.rhythmusAb`, sonst der Monat des frühesten
- * Nachweises des Projekts, sonst der von `ersatz` (etwa dem frühesten Tag, der
- * einen Nachweis braucht).
- */
-export function rhythmusAnker(
-  daten: Pick<LeistungsnachweisDaten, 'nachweise'>,
-  projekt: Pick<Projekt, 'id' | 'rhythmusAb'>,
-  ersatz: ISODate,
-): ISODate {
-  if (istMonat(projekt.rhythmusAb)) return `${projekt.rhythmusAb}-01`;
-  const erster = daten.nachweise.reduce<ISODate | null>((m, n) => (n.projektId === projekt.id && (!m || n.von < m) ? n.von : m), null);
-  return monatsanfang(erster ?? ersatz);
-}
-
 /**
  * Nachweise anlegen bzw. erweitern, damit die genannten Tage des Projekts in einem Nachweis liegen –
- * nach `projekt.zeitraumregel`; die Tage der Reihe nach, der früheste zuerst:
- * * „monat“, „zweiMonate“, „quartal“ (N = 1, 2 bzw. 3 Monate, `rhythmusMonate`): ein neuer Nachweis
- *   für den Block aus N Monaten, in dem der Tag liegt. Die Blöcke liegen fest ab Projektbeginn, nicht
- *   am Kalenderquartal: ab `projekt.rhythmusAb`, sonst ab dem Monat des frühesten Nachweises, sonst
- *   ab dem des frühesten Tages (`rhythmusAnker`, `rhythmusBlock`) – auch für Tage davor. Der
- *   Nachweis beginnt frühestens am Tag nach dem vorigen und endet vor dem nächsten, damit er sich
- *   nicht mit vorhandenen überschneidet: Nach einem vorzeitig abgeschlossenen Nachweis bildet der
- *   Rest seines Blocks einen eigenen. Mit N = 1 ist das je Kalendermonat ein Nachweis
- *   [Monatsanfang, Monatsende]. Ein offener Nachweis wird nicht verlängert.
- * * „fortlaufend“: Liegt vor dem Tag der zeitlich letzte Nachweis des Projekts und ist er in
- *   Bearbeitung (und liegt kein anderer dazwischen), wird sein `bis` bis zum Monatsende des Tages
- *   verlängert (gekürzt vor dem nächsten Nachweis); sonst neuer Nachweis ab Monatsanfang. Ein
- *   Nachweis mit von Hand festgelegtem Ende (`bisFest`) wird nicht verlängert.
- * Tage in abgeschlossenen Nachweisen sind bereits abgedeckt. Rein; `neueId` liefert IDs (vorab erzeugt
- * an der Oberfläche oder im Plan).
+ * die Tage der Reihe nach, der früheste zuerst. Einen Abrechnungsrhythmus gibt es nicht (mehr,
+ * Fassung 9): Liegt vor dem Tag der zeitlich letzte Nachweis des Projekts und läuft er noch
+ * (offen ohne festgelegtes Ende, `laeuftBisAbschluss`; kein anderer dazwischen), wird sein `bis`
+ * bis zum Monatsende des Tages verlängert (gekürzt vor dem nächsten Nachweis) – der offene
+ * Nachweis wächst so mit, bis das Controlling ihn erstellt. Sonst entsteht ein neuer ab dem
+ * Monatsanfang (frühestens am Tag nach dem vorigen) bis zum Monatsende (vor dem nächsten). Tage in
+ * abgeschlossenen Nachweisen sind bereits abgedeckt. Rein; `neueId` liefert IDs (vorab erzeugt an
+ * der Oberfläche oder im Plan).
  */
 export function nachweiseErgaenzen(
   daten: Pick<LeistungsnachweisDaten, 'nachweise'>,
@@ -1315,14 +1507,12 @@ export function nachweiseErgaenzen(
   jetzt: string,
   neueId: () => ID,
 ): Ergaenzung {
-  const monate = rhythmusMonate(projekt.zeitraumregel);
   // Arbeitsstand: die Nachweise des Projekts samt der in diesem Aufruf angelegten bzw. verlängerten
   const stand = daten.nachweise
     .filter((n) => n.projektId === projekt.id)
-    .map((n) => ({ id: n.id, von: n.von, bis: n.bis, offen: n.status === 'entwurf' && !n.bisFest, neu: null as Leistungsnachweis | null }));
+    .map((n) => ({ id: n.id, von: n.von, bis: n.bis, offen: laeuftBisAbschluss(n), neu: null as Leistungsnachweis | null }));
   const ausgangBis = new Map(stand.map((s) => [s.id, s.bis]));
   const sortiert = [...new Set(tage.filter(istDatum))].sort();
-  const anker = monate === null || sortiert.length === 0 ? null : rhythmusAnker(daten, projekt, sortiert[0]);
 
   for (const tag of sortiert) {
     if (stand.some((s) => imZeitraum(tag, s.von, s.bis))) continue;
@@ -1333,16 +1523,15 @@ export function nachweiseErgaenzen(
       if (s.bis < tag && (!vorher || s.bis > vorher.bis)) vorher = s;
       if (s.von > tag && (!danach || s.von < danach.von)) danach = s;
     }
-    // Fortlaufend: der Monat des Tages; sonst sein Block im Rhythmus des Projekts
-    const block =
-      monate === null || anker === null ? { von: monatsanfang(tag), bis: monatsende(tag) } : rhythmusBlock(tag, anker, monate);
-    const ende = danach && danach.von <= block.bis ? addDays(danach.von, -1) : block.bis;
-    if (monate === null && vorher?.offen) {
+    const monatsEnde = monatsende(tag);
+    const ende = danach && danach.von <= monatsEnde ? addDays(danach.von, -1) : monatsEnde;
+    if (vorher?.offen) {
       vorher.bis = ende;
       if (vorher.neu) vorher.neu = { ...vorher.neu, bis: ende };
       continue;
     }
-    const anfang = vorher && vorher.bis >= block.von ? addDays(vorher.bis, 1) : block.von;
+    const monatsAnfang = monatsanfang(tag);
+    const anfang = vorher && vorher.bis >= monatsAnfang ? addDays(vorher.bis, 1) : monatsAnfang;
     const n = neuerNachweis(neueId(), projekt, anfang, ende, jetzt);
     stand.push({ id: n.id, von: n.von, bis: n.bis, offen: true, neu: n });
   }
@@ -1415,8 +1604,8 @@ export interface NichtAbgerechnet {
    */
   nichtErfasst: Leistung[];
   /**
-   * Zeitraum bis zum Abschluss: ab dem Tag nach dem letzten abgeschlossenen Nachweis (sonst ab der ersten Leistung);
-   * bei einer Regel mit Monaten endet er mit einem Block des Rhythmus (`rhythmusBlock`).
+   * Zeitraum bis zum Abschluss: ab dem Tag nach dem letzten abgeschlossenen Nachweis (sonst ab der ersten Leistung)
+   * bis zum Ende des laufenden Monats, mindestens bis zur letzten Leistung bzw. zum Ende der offenen Nachweise.
    */
   von: ISODate;
   bis: ISODate;
@@ -1445,10 +1634,8 @@ export function abgerechneteLeistungen(daten: LeistungsnachweisDaten, projektId:
  * Leistungsnachweis – ohne Zeitraum aus der Oberfläche: Er beginnt am Tag nach
  * dem letzten abgeschlossenen Nachweis (ohne einen mit der ersten Leistung bzw.
  * dem ersten offenen Nachweis, spätestens am Monatsanfang) und reicht bis zum
- * Ende des laufenden Monats, mindestens bis zur letzten Leistung – bei einer
- * Regel mit Monaten bis zum Ende des Blocks im Rhythmus des Projekts, in dem
- * das liegt (`rhythmusBlock`, `rhythmusAnker`), damit es danach im Rhythmus
- * weitergeht; sein Ende legt erst der Abschluss fest (`abschlussZeitraum`). Offene Nachweise in
+ * Ende des laufenden Monats, mindestens bis zur letzten Leistung; sein Ende
+ * legt erst das Erstellen fest (`abschlussZeitraum`). Offene Nachweise in
  * diesem Bereich gehen darin auf. Was davor liegt und nirgends erfasst ist,
  * nennt `nichtErfasst`. Rein.
  */
@@ -1470,14 +1657,11 @@ export function nichtAbgerechnet(daten: LeistungsnachweisDaten, projektId: ID, h
       })
     : [];
   const von = grenze ?? [...leistungen.map((l) => l.datum), ...offene.map((n) => n.von), monatsanfang(heute)].sort()[0];
-  const spaetestens =
+  // Nach dem letzten abgeschlossenen liegen nur die offenen, die darin aufgehen – das Ende überschneidet nichts
+  const bis =
     [monatsende(heute), von, ...leistungen.filter((l) => l.datum >= von).map((l) => l.datum), ...offene.map((n) => n.bis)]
       .sort()
       .at(-1) ?? von;
-  // Nach dem letzten abgeschlossenen liegen nur die offenen, die darin aufgehen – das Blockende überschneidet nichts
-  const projekt = daten.projekte.find((p) => p.id === projektId);
-  const monate = projekt ? rhythmusMonate(projekt.zeitraumregel) : null;
-  const bis = projekt && monate !== null ? rhythmusBlock(spaetestens, rhythmusAnker(daten, projekt, von), monate).bis : spaetestens;
   const einziger = offene.length === 1 ? offene[0] : null;
   const darin = einziger ? new Set(leistungenDesNachweises(daten, einziger).map((l) => l.id)) : null;
   const vorhanden = einziger && darin && leistungen.every((l) => darin.has(l.id)) ? einziger : null;
@@ -1503,25 +1687,51 @@ export function texteVerbinden(frueher: ZeilenText, spaeter: ZeilenText): Zeilen
 const mitNachgereichten = (n: Leistungsnachweis, ids: ID[]): ID[] => [...new Set([...n.nachgereicht, ...ids])];
 
 /**
+ * Gesamtaufschläge offener Nachweise, die in einem aufgehen: keiner bzw. nur
+ * einer – der; alle mit denselben Prozent – diese; alle in Stunden – die
+ * Summe; sonst (verschiedene Prozent bzw. gemischt) die Stunden, die sie
+ * bisher wirkten (`gesamtAufschlagWirkung`), als Stunden zusammen.
+ */
+function gesamtAufschlaegeVereinen(daten: LeistungsnachweisDaten, nachweise: Leistungsnachweis[]): GesamtAufschlag | null {
+  const mit = nachweise.flatMap((n) => {
+    const g = gesamtAufschlagNormal(n.gesamtAufschlag);
+    return g ? [{ n, g }] : [];
+  });
+  if (mit.length <= 1) return mit[0]?.g ?? null;
+  const erster = mit[0].g;
+  if (mit.every(({ g }) => g.art === 'prozent' && g.wert === erster.wert && erster.art === 'prozent')) return erster;
+  const stunden = mit.every(({ g }) => g.art === 'stunden')
+    ? mit.reduce((s, { g }) => s + g.wert, 0)
+    : mit.reduce((s, { n }) => s + gesamtAufschlagWirkung(nachweisZeilen(daten, n)), 0);
+  return gesamtAufschlagNormal({ art: 'stunden', wert: stunden });
+}
+
+/**
  * Inhalte offener Nachweise, die in `basis` aufgehen (`weitere` in zeitlicher
  * Reihenfolge): bearbeitete Texte derselben Zeile verbunden (`texteVerbinden`),
- * Aufschläge summiert, Bemerkungen ohne doppelte, nachgereichte Leistungen
- * aller samt `dazu`.
+ * Aufschläge summiert, Gesamtaufschläge vereint (`gesamtAufschlaegeVereinen`),
+ * Bemerkungen ohne doppelte, nachgereichte Leistungen aller samt `dazu`.
  */
 function offeneVereinen(
+  daten: LeistungsnachweisDaten,
   basis: Leistungsnachweis,
   weitere: Leistungsnachweis[],
   dazu: ID[] = [],
-): Pick<Leistungsnachweis, 'texte' | 'aufschlaege' | 'bemerkung' | 'nachgereicht'> {
+): Pick<Leistungsnachweis, 'texte' | 'aufschlaege' | 'gesamtAufschlag' | 'bemerkung' | 'nachgereicht'> {
   const texte = { ...basis.texte };
   const aufschlaege = { ...basis.aufschlaege };
   for (const w of weitere) {
     for (const [k, v] of Object.entries(w.texte)) texte[k] = texte[k] ? texteVerbinden(texte[k], v) : v;
-    for (const [k, v] of Object.entries(w.aufschlaege)) aufschlaege[k] = runden((aufschlaege[k] ?? 0) + v);
+    for (const [k, v] of Object.entries(w.aufschlaege)) {
+      const summe = runden((aufschlaege[k] ?? 0) + v);
+      if (summe === 0) delete aufschlaege[k];
+      else aufschlaege[k] = summe;
+    }
   }
+  const gesamtAufschlag = gesamtAufschlaegeVereinen(daten, [basis, ...weitere]);
   const bemerkung = [...new Set([basis, ...weitere].map((n) => n.bemerkung.trim()).filter(Boolean))].join('\n');
   const nachgereicht = mitNachgereichten(basis, [...weitere.flatMap((w) => w.nachgereicht), ...dazu]);
-  return { texte, aufschlaege, bemerkung, nachgereicht };
+  return { texte, aufschlaege, gesamtAufschlag, bemerkung, nachgereicht };
 }
 
 /**
@@ -1529,7 +1739,8 @@ function offeneVereinen(
  * Leistungsnachweis an (`nichtAbgerechnet`) – rein; so arbeitet
  * `nachweisFuerNichtAbgerechnete` im Store. Gibt es offene Nachweise, wird der
  * erste erweitert und nimmt Leistungstexte, Aufschläge (summiert),
- * Bemerkungen und nachgereichte Leistungen der übrigen auf, die entfallen –
+ * Gesamtaufschläge (`gesamtAufschlaegeVereinen`), Bemerkungen und
+ * nachgereichte Leistungen der übrigen auf, die entfallen –
  * bearbeitete Texte derselben Zeile werden in zeitlicher Reihenfolge verbunden
  * (`texteVerbinden`); sonst entsteht ein neuer mit der Kennung `id`. Er läuft
  * bis zum Abschluss (ein festgelegtes Ende, `bisFest`, entfällt). Raster und – wenn angegeben –
@@ -1557,7 +1768,7 @@ export function nachweisFuerNichtAbgerechneteAnwenden(
     bisFest: false,
     raster: vorgaben.raster,
     titel: vorgaben.titel.trim() || basis.titel,
-    ...offeneVereinen(basis, weitere, vorgaben.nachreichen ? plan.nichtErfasst.map((l) => l.id) : []),
+    ...offeneVereinen(daten, basis, weitere, vorgaben.nachreichen ? plan.nichtErfasst.map((l) => l.id) : []),
     geaendert: jetzt,
   };
   const weg = new Set(weitere.map((w) => w.id));
@@ -1580,136 +1791,61 @@ export function nachreichenAnwenden(daten: LeistungsnachweisDaten, nachweisId: I
 }
 
 /* ------------------------------------------------------------------ */
-/* Abrechnungsrhythmus umstellen                                       */
+/* Laufende Nachweise                                                  */
 /* ------------------------------------------------------------------ */
 
 /**
- * Monat (JJJJ-MM), ab dem die Blöcke nach einem Wechsel auf eine Regel mit
- * Monaten zählen (`Projekt.rhythmusAb`): der des frühesten offenen Nachweises
- * ohne festgelegtes Ende, sonst der Monat nach dem Ende des letzten Nachweises,
- * sonst der der frühesten Leistung des Projekts, sonst der von `jetzt`.
+ * Läuft der Nachweis bis zum Abschluss? Offen und ohne von Hand festgelegtes
+ * Ende (`bisFest`) – dann wächst er mit neuen Leistungen mit
+ * (`nachweiseErgaenzen`), und sein Zeitraum steht erst beim Erstellen fest
+ * (`abschlussZeitraum`). Seit Fassung 9 gilt das in jedem Projekt – einen
+ * Abrechnungsrhythmus gibt es nicht mehr. Ein festgelegtes Ende bewirkt also
+ * bei jedem offenen Nachweis etwas.
  */
-function rhythmusAbBeimUmstellen(daten: LeistungsnachweisDaten, projektId: ID, eigene: Leistungsnachweis[], jetzt: string): string {
-  const offen = eigene.find((n) => n.status === 'entwurf' && !n.bisFest);
-  if (offen) return offen.von.slice(0, 7);
-  const letztesEnde = eigene.reduce<ISODate | null>((m, n) => (!m || n.bis > m ? n.bis : m), null);
-  if (letztesEnde) return addDays(letztesEnde, 1).slice(0, 7);
-  const ersteLeistung = daten.leistungen.reduce<ISODate | null>(
-    (m, l) => (l.projektId === projektId && (!m || l.datum < m) ? l.datum : m),
-    null,
-  );
-  return (ersteLeistung ?? tagVon(jetzt)).slice(0, 7);
+export function laeuftBisAbschluss(n: Pick<Leistungsnachweis, 'status' | 'bisFest'>): boolean {
+  return n.status === 'entwurf' && !n.bisFest;
 }
 
 /**
- * Stellt den Abrechnungsrhythmus des Projekts um (`zeitraumregel`) und plant
- * seine offenen Nachweise neu – rein; so arbeitet `updateProjekt` im Store,
- * und die Oberfläche rechnet damit die Folgen vorab (`grenzFolgen` in
- * domain/erfassung.ts, dort mit beliebiger `neueId`).
- * * Regel mit Monaten (`rhythmusMonate`, N = 1, 2, 3): Die Blöcke zählen neu
- *   ab `rhythmusAb` (`rhythmusAbBeimUmstellen` – in der Regel der Monat des
- *   frühesten offenen Nachweises). Jeder offene Nachweis, dessen Ende nicht
- *   von Hand festgelegt ist (`bisFest`), endet am Ende des Blocks, in dem sein
- *   Beginn liegt, gekürzt vor dem nächsten Nachweis; er kann dabei wachsen oder
- *   schrumpfen, sein Beginn bleibt. Beginnen im selben Block weitere solche
- *   offene Nachweise direkt danach (etwa drei Monatsnachweise beim Wechsel auf
- *   „quartal“), gehen sie im ersten auf – mit ihren bearbeiteten Texten,
- *   Aufschlägen, Bemerkungen und nachgereichten Leistungen wie bei „Neuer
- *   Leistungsnachweis“ (`offeneVereinen`). Leistungen, die dadurch aus jedem
- *   Nachweis fallen, erhalten nach der neuen Regel einen (`nachweiseSichern`,
- *   Kennungen über `neueId`); Leistungen, die schon vorher ohne Nachweis
- *   waren, bleiben es („Nach dem Rhythmus zuordnen“ auf der Seite des Projekts im Controlling).
- * * „fortlaufend“: Die Nachweise bleiben, wie sie sind – der letzte offene
- *   wächst ab dann mit neuen Leistungen mit; `rhythmusAb` entfällt.
- * Abgeschlossene Nachweise bleiben stets unverändert. Beispiele: offen
- * 01.10.–30.11. (fortlaufend) → „quartal“ → 01.10.–31.12.; offen
- * 01.10.–31.12. (quartal) → „monat“ → 01.10.–31.10., Leistungen im November
- * und Dezember erhalten je Monat einen neuen Nachweis. Unbekanntes Projekt
- * oder dieselbe Regel: derselbe Bestand.
+ * Fassung 8 → 9 (`migriere` in store/storage.ts): Ohne Abrechnungsrhythmus
+ * läuft je Projekt ein offener Nachweis, bis das Controlling ihn erstellt.
+ * Folgen offene Nachweise ohne festgelegtes Ende (`laeuftBisAbschluss`)
+ * unmittelbar aufeinander – kein anderer Nachweis dazwischen, etwa nach dem
+ * Rhythmus „Monatlich“ einer je Monat –, gehen sie im ersten auf: Er reicht
+ * bis zum Ende des letzten und nimmt Leistungstexte, Aufschläge,
+ * Gesamtaufschläge, Bemerkungen und nachgereichte Leistungen der übrigen auf
+ * (`offeneVereinen`, wie „Neuer Leistungsnachweis“); Raster und Überschrift
+ * bleiben die des ersten, `geaendert` wird der jüngste der beteiligten.
+ * Abgeschlossene Nachweise und solche mit festgelegtem Ende (`bisFest`)
+ * bleiben, wie sie sind, und trennen. Die gemeinsamen Texte und Bestätigungen
+ * zieht der Aufrufer nach (`periodentexteNachziehen`,
+ * `bestaetigungenNachziehen` in domain/erfassung.ts). Rein; ohne Änderung
+ * derselbe Bestand.
  */
-export function regelAnwenden(
-  daten: LeistungsnachweisDaten,
-  projektId: ID,
-  regel: Zeitraumregel,
-  jetzt: string,
-  neueId: () => ID,
-): LeistungsnachweisDaten {
-  const projekt = daten.projekte.find((p) => p.id === projektId);
-  if (!projekt || projekt.zeitraumregel === regel) return daten;
-  const monate = rhythmusMonate(regel);
-  const eigene = nachweiseVon(daten, projektId);
-  const { rhythmusAb: _bisher, ...ohneAnker } = projekt;
-  void _bisher;
-  const rhythmusAb = monate === null ? null : rhythmusAbBeimUmstellen(daten, projektId, eigene, jetzt);
-  const umgestellt: LeistungsnachweisDaten = {
-    ...daten,
-    projekte: daten.projekte.map((p) =>
-      p.id === projektId ? { ...ohneAnker, zeitraumregel: regel, ...(rhythmusAb ? { rhythmusAb } : {}) } : p,
-    ),
-  };
-  if (monate === null || rhythmusAb === null) return umgestellt;
-
-  // Je offenem Nachweis das Ende seines Blocks; weitere offene direkt danach im selben Block gehen in ihm auf
-  const anker = `${rhythmusAb}-01`;
-  const planbar = (n: Leistungsnachweis) => n.status === 'entwurf' && !n.bisFest;
+export function laufendeZusammenfuehren(daten: LeistungsnachweisDaten): LeistungsnachweisDaten {
   const ersetzt = new Map<ID, Leistungsnachweis>();
-  const aufgegangen = new Set<ID>();
-  for (let i = 0; i < eigene.length; ) {
-    const n = eigene[i];
-    if (!planbar(n)) {
-      i++;
-      continue;
+  const weg = new Set<ID>();
+  for (const projektId of new Set(daten.nachweise.map((n) => n.projektId))) {
+    const eigene = nachweiseVon(daten, projektId);
+    for (let i = 0; i < eigene.length; ) {
+      if (!laeuftBisAbschluss(eigene[i])) {
+        i++;
+        continue;
+      }
+      let j = i + 1;
+      while (j < eigene.length && laeuftBisAbschluss(eigene[j])) j++;
+      if (j - i > 1) {
+        const [basis, ...weitere] = eigene.slice(i, j);
+        const bis = weitere.reduce((m, w) => (w.bis > m ? w.bis : m), basis.bis);
+        const geaendert = weitere.reduce((m, w) => (w.geaendert > m ? w.geaendert : m), basis.geaendert);
+        ersetzt.set(basis.id, { ...basis, bis, ...offeneVereinen(daten, basis, weitere), geaendert });
+        for (const w of weitere) weg.add(w.id);
+      }
+      i = j;
     }
-    const block = rhythmusBlock(n.von, anker, monate);
-    let j = i + 1;
-    while (j < eigene.length && planbar(eigene[j]) && eigene[j].von <= block.bis) j++;
-    const weitere = eigene.slice(i + 1, j);
-    const naechster = eigene[j];
-    const bis = naechster && naechster.von <= block.bis ? addDays(naechster.von, -1) : block.bis;
-    if (weitere.length > 0 || bis !== n.bis) {
-      ersetzt.set(n.id, { ...n, bis, ...(weitere.length > 0 ? offeneVereinen(n, weitere) : {}), geaendert: jetzt });
-      for (const w of weitere) aufgegangen.add(w.id);
-    }
-    i = j;
   }
-  if (ersetzt.size === 0) return umgestellt;
-  const geplant: LeistungsnachweisDaten = {
-    ...umgestellt,
-    nachweise: daten.nachweise.filter((n) => !aufgegangen.has(n.id)).map((n) => ersetzt.get(n.id) ?? n),
-  };
-  // Leistungen, die aus ihrem Nachweis gefallen sind, erhalten einen nach der neuen Regel
-  const schonOhne = new Set(leistungenOhneNachweis(daten, projektId).map((l) => l.id));
-  const herausgefallen = leistungenOhneNachweis(geplant, projektId).filter((l) => !schonOhne.has(l.id));
-  return nachweiseSichern(geplant, projektId, herausgefallen.map((l) => l.datum), jetzt, neueId).daten;
-}
-
-/**
- * Läuft der Nachweis bis zum Abschluss? Offen und nach der Regel „Bis zum
- * Abschluss“ (`fortlaufend`) oder – bei einer Regel mit Monaten („Monatlich“,
- * „Alle 2 Monate“, „Alle 3 Monate“) – mit einem Ende nach heute: Sein
- * Zeitraum steht dann erst beim Abschluss fest (`abschlussZeitraum`). Nicht,
- * wenn das Controlling das Ende von Hand festgelegt hat (`bisFest`).
- */
-export function laeuftBisAbschluss(daten: Pick<LeistungsnachweisDaten, 'projekte'>, n: Leistungsnachweis, heute: ISODate): boolean {
-  if (n.status !== 'entwurf' || n.bisFest) return false;
-  return daten.projekte.find((p) => p.id === n.projektId)?.zeitraumregel === 'fortlaufend' || n.bis > heute;
-}
-
-/**
- * Bewirkt ein von Hand festgelegtes Ende (`bisFest`) etwas, wenn der Nachweis
- * am Tag `bis` endet? Nur wenn er ohne es bis zum Abschluss liefe
- * (`laeuftBisAbschluss`: offen und Regel „fortlaufend“ oder ein Ende nach
- * heute) – sonst endet er ohnehin an diesem Tag, wird nicht verlängert und
- * beim Abschluss nicht gekürzt. Danach richtet „Zeitraum ändern“, ob es
- * „Ende festlegen“ bzw. „Wieder bis zum Abschluss laufen lassen“ anbietet.
- */
-export function endeFestlegenWirkt(
-  daten: Pick<LeistungsnachweisDaten, 'projekte'>,
-  n: Leistungsnachweis,
-  bis: ISODate,
-  heute: ISODate,
-): boolean {
-  return laeuftBisAbschluss(daten, { ...n, bisFest: false, bis }, heute);
+  if (ersetzt.size === 0) return daten;
+  return { ...daten, nachweise: daten.nachweise.filter((n) => !weg.has(n.id)).map((n) => ersetzt.get(n.id) ?? n) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -1730,15 +1866,32 @@ export function aktuellerNachweis(daten: LeistungsnachweisDaten, projektId: ID):
   return alle.find((n) => n.status === 'entwurf') ?? alle.filter((n) => n.status === 'abgeschlossen').at(-1) ?? null;
 }
 
+/** Leistungen im Zeitraum des Nachweises, nach Datum – ohne nachgereichte (sie liegen davor). */
+const laufendeLeistungen = (daten: LeistungsnachweisDaten, n: Leistungsnachweis): Leistung[] =>
+  leistungenDesNachweises(daten, n).filter((l) => imZeitraum(l.datum, n.von, n.bis));
+
 /**
- * Ist der Nachweis fällig – offen und sein Zeitraum vorbei? Nicht, solange er
- * bis zum Abschluss läuft (`laeuftBisAbschluss`), und nur mit einem Ende vor
- * heute. Bei der Regel „Bis zum Abschluss“ (`fortlaufend`) wird ein Nachweis
- * also nie von selbst fällig – außer das Controlling hat sein Ende festgelegt
- * (`bisFest`).
+ * Seit wann ein offener Nachweis Leistungen hat: das früheste Datum seiner
+ * Leistungen – ohne nachgereichte (sie stammen aus schon abgerechneten
+ * Zeiträumen), etwa für einen Hinweis „offen seit Oktober 2026“. null ohne
+ * Leistungen und bei abgeschlossenen Nachweisen.
  */
-export function nachweisFaellig(daten: Pick<LeistungsnachweisDaten, 'projekte'>, n: Leistungsnachweis, heute: ISODate): boolean {
-  return n.status === 'entwurf' && !laeuftBisAbschluss(daten, n, heute) && n.bis < heute;
+export function offenSeit(daten: LeistungsnachweisDaten, n: Leistungsnachweis): ISODate | null {
+  if (n.status !== 'entwurf') return null;
+  return laufendeLeistungen(daten, n)[0]?.datum ?? null;
+}
+
+/**
+ * Ist der Nachweis fällig – offen und mit Leistungen aus einem vergangenen
+ * Monat (vor dem ersten Tag des laufenden Monats, ohne nachgereichte;
+ * `offenSeit`)? Dann ist ein Monat vorbei, ohne dass ein Nachweis erstellt
+ * wurde: Seine Leistungen bleiben offen und kommen in den nächsten Nachweis,
+ * den das Controlling erstellt (`vorgabeEnde` schlägt das Ende des Vormonats
+ * vor). Ein Nachweis ohne Leistungen ist nie fällig.
+ */
+export function nachweisFaellig(daten: LeistungsnachweisDaten, n: Leistungsnachweis, heute: ISODate): boolean {
+  const seit = offenSeit(daten, n);
+  return seit !== null && seit < monatsanfang(heute);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1752,21 +1905,68 @@ export function tagVon(zeitpunkt: string): ISODate {
 }
 
 /**
- * Ende eines Nachweises beim Abschluss – erst hier steht sein Zeitraum fest:
- * Läuft er bis zum Abschluss (`laeuftBisAbschluss` – Regel „Bis zum
- * Abschluss“ oder ein Ende nach heute, aber kein von Hand festgelegtes), endet er am letzten Tag mit
- * Leistungen in ihm, spätestens heute (ohne Leistungen heute) – nie später als
- * bisher und nie vor seinem Beginn. Sonst bleibt `bis`. Dazu die Leistungen,
- * die danach liegen und deshalb in einen neuen Nachweis kommen.
+ * Bereich, in dem das Enddatum beim Erstellen liegen darf („Leistungen bis
+ * einschließlich …“): ab dem Beginn des Nachweises bis heute, höchstens bis
+ * zu seinem bisherigen Ende – so wächst er nie und überschneidet keinen
+ * anderen. null, wenn der Bereich leer ist (der Nachweis beginnt nach heute).
+ */
+export function abschlussEndeBereich(n: Pick<Leistungsnachweis, 'von' | 'bis'>, heute: ISODate): { von: ISODate; bis: ISODate } | null {
+  const bis = n.bis < heute ? n.bis : heute;
+  return n.von <= bis ? { von: n.von, bis } : null;
+}
+
+/** Liegt `bis` im erlaubten Bereich des Enddatums (`abschlussEndeBereich`)? */
+export function abschlussEndeGueltig(n: Pick<Leistungsnachweis, 'von' | 'bis'>, heute: ISODate, bis: ISODate): boolean {
+  const bereich = abschlussEndeBereich(n, heute);
+  return !!bereich && istDatum(bis) && bis >= bereich.von && bis <= bereich.bis;
+}
+
+/**
+ * Vorschlag für das Enddatum beim Erstellen: das Ende des Vormonats, wenn der
+ * Nachweis Leistungen vor dem laufenden Monat hat (ohne nachgereichte) – so
+ * kommen die Leistungen des laufenden Monats in den nächsten –, sonst der
+ * letzte Tag mit Leistungen bis heute, ohne solche heute. Stets im erlaubten
+ * Bereich (`abschlussEndeBereich`, also höchstens das bisherige Ende); ist er
+ * leer, das bisherige Ende.
+ */
+export function vorgabeEnde(daten: LeistungsnachweisDaten, n: Leistungsnachweis, heute: ISODate): ISODate {
+  const bereich = abschlussEndeBereich(n, heute);
+  if (!bereich) return n.bis;
+  const leistungen = laufendeLeistungen(daten, n);
+  const monatsbeginn = monatsanfang(heute);
+  const vormonatsende = addDays(monatsbeginn, -1);
+  if (leistungen.some((l) => l.datum < monatsbeginn) && vormonatsende >= bereich.von) {
+    return vormonatsende < bereich.bis ? vormonatsende : bereich.bis;
+  }
+  return leistungen.filter((l) => l.datum <= bereich.bis).at(-1)?.datum ?? bereich.bis;
+}
+
+/**
+ * Ende eines Nachweises beim Erstellen (Abschließen) – erst hier steht sein
+ * Zeitraum fest:
+ * * Mit `bis` („Leistungen bis einschließlich …“) im erlaubten Bereich
+ *   (`abschlussEndeGueltig`: ab dem Beginn bis heute, höchstens bis zum
+ *   bisherigen Ende) endet er dort – auch mit von Hand festgelegtem Ende.
+ * * Ohne `bis` (oder mit einem ungültigen): Läuft er bis zum Abschluss
+ *   (`laeuftBisAbschluss` – offen, kein von Hand festgelegtes Ende), endet er
+ *   am letzten Tag mit Leistungen in ihm, spätestens heute (ohne Leistungen
+ *   heute) – nie später als bisher und nie vor seinem Beginn. Sonst bleibt
+ *   `bis`.
+ * Dazu die Leistungen, die danach liegen (`spaetere`) und deshalb in einen
+ * neuen offenen Nachweis kommen; nachgereichte liegen davor und bleiben.
  */
 export function abschlussZeitraum(
   daten: LeistungsnachweisDaten,
   n: Leistungsnachweis,
   heute: ISODate,
+  bis?: ISODate,
 ): { bis: ISODate; gekuerzt: boolean; spaetere: Leistung[] } {
-  if (!laeuftBisAbschluss(daten, n, heute)) return { bis: n.bis, gekuerzt: false, spaetere: [] };
-  // Nachgereichte liegen vor dem Zeitraum und bestimmen das Ende nicht
-  const leistungen = leistungenDesNachweises(daten, n).filter((l) => imZeitraum(l.datum, n.von, n.bis));
+  const leistungen = laufendeLeistungen(daten, n);
+  if (bis !== undefined && abschlussEndeGueltig(n, heute, bis)) {
+    if (bis === n.bis) return { bis: n.bis, gekuerzt: false, spaetere: [] };
+    return { bis, gekuerzt: true, spaetere: leistungen.filter((l) => l.datum > bis) };
+  }
+  if (!laeuftBisAbschluss(n)) return { bis: n.bis, gekuerzt: false, spaetere: [] };
   const letzte = leistungen.length ? leistungen[leistungen.length - 1].datum : null;
   const ende = letzte && letzte < heute ? letzte : heute;
   if (ende < n.von || ende >= n.bis) return { bis: n.bis, gekuerzt: false, spaetere: [] };
@@ -1774,23 +1974,27 @@ export function abschlussZeitraum(
 }
 
 /**
- * Schließt einen Nachweis ab – rein; so arbeitet `nachweisAbschliessen` im
- * Store: Zeitraum nach `abschlussZeitraum`, Stand festschreiben (mit
- * Aufschlägen), Status abgeschlossen. Leistungen nach einem gekürzten Ende
- * erhalten gleich einen neuen Nachweis (`nachweiseSichern`, Kennungen über
- * `neueId`). Ein abgeschlossener Nachweis bleibt unverändert.
+ * Erstellt (schließt) einen Nachweis ab – rein; so arbeitet
+ * `nachweisAbschliessen` im Store: Zeitraum nach `abschlussZeitraum` (mit dem
+ * gewählten Ende `bis`, sonst bis zum letzten Tag mit Leistungen), Stand
+ * festschreiben (mit Aufschlägen und Gesamtaufschlag), Status abgeschlossen.
+ * Leistungen nach einem gekürzten Ende erhalten gleich einen neuen offenen
+ * Nachweis (`nachweiseSichern`, Kennungen über `neueId`) – dort landen auch
+ * später erfasste Leistungen dieser Tage. Ein abgeschlossener Nachweis bleibt
+ * unverändert.
  */
 export function nachweisAbschliessenAnwenden(
   daten: LeistungsnachweisDaten,
   id: ID,
   jetzt: string,
   neueId: () => ID,
+  bis?: ISODate,
 ): LeistungsnachweisDaten {
   const n = daten.nachweise.find((x) => x.id === id);
   if (!n || n.status !== 'entwurf') return daten;
-  const { bis, gekuerzt, spaetere } = abschlussZeitraum(daten, n, tagVon(jetzt));
-  const gekuerzterNachweis: Leistungsnachweis = gekuerzt ? { ...n, bis } : n;
-  const zwischen = gekuerzt ? { ...daten, nachweise: daten.nachweise.map((x) => (x.id === id ? gekuerzterNachweis : x)) } : daten;
+  const zeitraum = abschlussZeitraum(daten, n, tagVon(jetzt), bis);
+  const gekuerzterNachweis: Leistungsnachweis = zeitraum.gekuerzt ? { ...n, bis: zeitraum.bis } : n;
+  const zwischen = zeitraum.gekuerzt ? { ...daten, nachweise: daten.nachweise.map((x) => (x.id === id ? gekuerzterNachweis : x)) } : daten;
   const zu: Leistungsnachweis = {
     ...gekuerzterNachweis,
     status: 'abgeschlossen',
@@ -1799,8 +2003,8 @@ export function nachweisAbschliessenAnwenden(
     stand: standErzeugen(zwischen, gekuerzterNachweis),
   };
   const ergebnis = { ...zwischen, nachweise: zwischen.nachweise.map((x) => (x.id === id ? zu : x)) };
-  if (spaetere.length === 0) return ergebnis;
-  return nachweiseSichern(ergebnis, n.projektId, spaetere.map((l) => l.datum), jetzt, neueId).daten;
+  if (zeitraum.spaetere.length === 0) return ergebnis;
+  return nachweiseSichern(ergebnis, n.projektId, zeitraum.spaetere.map((l) => l.datum), jetzt, neueId).daten;
 }
 
 /* ------------------------------------------------------------------ */

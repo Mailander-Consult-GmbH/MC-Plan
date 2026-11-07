@@ -23,7 +23,8 @@
  *   den Bestand mit diesem Zugang ein (controlling.tsx). Dort gibt es alles
  *   Übrige: Projekte anlegen und einstellen (Vorgaben, Abschnitte, Logos),
  *   Leistungsnachweise anlegen, bearbeiten (Leistungstext, Bemerkung),
- *   abschließen und löschen, Aufschläge, Auswertung, Export, Sammel-Import und
+ *   abschließen und löschen, Aufschläge (je Zeile und auf den ganzen
+ *   Nachweis), Auswertung, Export, Sammel-Import und
  *   Mitarbeiterverwaltung – eine Anmeldung als Mitarbeiter ist nicht nötig
  *   (angelegt wird hier niemand). Gemeinsame Leistungstexte und
  *   Bestätigungen liest das Controlling nur. Ist die Person unter „Angemeldet

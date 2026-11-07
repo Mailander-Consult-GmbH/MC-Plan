@@ -3,8 +3,10 @@
  * sind frei erfunden (Personen, Projekte, Nummern im Format „K9xxx“); ihre
  * Leistungen liegen in den letzten zwei bis drei Monaten vor dem heutigen
  * Tag, die Nachweise entstehen wie im Betrieb über `nachweiseErgaenzen` und
- * laufen bis zum Abschluss: Bei der Brücke hat das Controlling den ersten
- * nach dem ersten Monat abgeschlossen, seitdem läuft ein neuer.
+ * laufen, bis das Controlling sie erstellt: Bei der Brücke hat es den ersten
+ * nach dem ersten Monat erstellt (abgeschlossen), seitdem läuft ein neuer.
+ * Alle offenen Nachweise haben Leistungen aus vergangenen Monaten – sie sind
+ * fällig (`nachweisFaellig`).
  * Die Demodaten melden Anna Becker an; maßgeblich ist aber der Name unter
  * „Angemeldet als“ (gemeinsam für alle Bereiche) – wer dort „Anna Becker“
  * einträgt, erfasst als sie. Abschluss und Aufschläge zeigt das Controlling.
@@ -130,7 +132,6 @@ export function seedDaten(): LeistungsnachweisDaten {
     beschreibung: 'Ersatzneubau einer Eisenbahnüberführung (Beispielprojekt)',
     leistungsbereich: 'Projektsteuerung',
     raster: 'monat',
-    zeitraumregel: 'fortlaufend',
     abschnitte: [],
   });
   const nord = { id: newId('ab'), kennung: '01', kurz: 'Abschn.1', name: 'Nordheim, Strecke 9401' };
@@ -142,7 +143,6 @@ export function seedDaten(): LeistungsnachweisDaten {
     beschreibung: 'Sanierung zweier Dammabschnitte (Beispielprojekt)',
     leistungsbereich: 'Projektmanagement',
     raster: 'woche',
-    zeitraumregel: 'fortlaufend',
     abschnitte: [nord, sued],
   });
   const halt = projekt({
@@ -152,7 +152,6 @@ export function seedDaten(): LeistungsnachweisDaten {
     beschreibung: 'Neubau eines Haltepunkts (Beispielprojekt)',
     leistungsbereich: 'Planlaufmanagement',
     raster: 'tag',
-    zeitraumregel: 'fortlaufend',
     abschnitte: [],
   });
   const dammAbschnitte = [
@@ -263,7 +262,7 @@ export function seedDaten(): LeistungsnachweisDaten {
     n = { ...n, status: 'abgeschlossen', abgeschlossen, geaendert: abgeschlossen, stand: standErzeugen(daten, n) };
     daten = { ...daten, nachweise: daten.nachweise.map((x) => (x.id === n.id ? n : x)) };
   }
-  // Die übrigen Leistungen der Brücke: ein neuer Nachweis, der bis zum Abschluss läuft
+  // Die übrigen Leistungen der Brücke: ein neuer Nachweis, der läuft, bis das Controlling ihn erstellt
   ergaenzen(bruecke, brueckeTage.filter((t) => !t.startsWith(ersterMonat)));
 
   // Im offenen Nachweis der Dammsanierung −0,5 Std. auf den Abschnitt Nordheim einer Woche

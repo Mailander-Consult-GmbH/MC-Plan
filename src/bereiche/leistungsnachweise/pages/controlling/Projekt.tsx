@@ -1,12 +1,14 @@
 /**
  * Seite eines Projekts im Controlling der Leistungsnachweise – ohne Reiter.
- * Oben „Alle Projekte“, Projektnummer und -name, Status, Rhythmus und Raster
- * und das Menü „Mehr“ zum Projekt (Projekt einstellen – Leistungsbereich,
- * Bezeichnung im Nachweis, Raster, Rhythmus, Abschnitte, Logos
- * (ProjektEinstellungen.tsx) –, Projekt bearbeiten, Projekt löschen).
+ * Oben „Alle Projekte“, Projektnummer und -name, Status, Raster und das Menü
+ * „Mehr“ zum Projekt (Projekt einstellen – Leistungsbereich, Bezeichnung im
+ * Nachweis, Raster, Abschnitte, Logos (ProjektEinstellungen.tsx) –, Projekt
+ * bearbeiten, Projekt löschen). Einen Rhythmus gibt es nicht: Erfasste
+ * Leistungen sammeln sich im offenen Leistungsnachweis, bis das Controlling
+ * ihn erstellt und dabei festlegt, bis zu welchem Tag er reicht.
  * Liegen Leistungen in keinem Leistungsnachweis (etwa nach dem Löschen eines
- * Nachweises), nennt ein Hinweis sie und ordnet sie mit „Nach dem Rhythmus
- * zuordnen“ zu (`nachweiseFuerOffeneLeistungen`).
+ * Nachweises), nennt ein Hinweis sie und ordnet sie mit „Einem
+ * Leistungsnachweis zuordnen“ zu (`nachweiseFuerOffeneLeistungen`).
  * Darunter der Leistungsnachweis (Abrechnung.tsx, `NachweisBearbeitung`): ohne
  * Angabe in der Adresse der aktuelle (`aktuellerNachweis` – der früheste
  * offene, sonst der jüngste abgeschlossene), sonst der gewählte; die Auswahl
@@ -29,7 +31,7 @@ import { NachweisDialog } from '../../components/NachweisDialog';
 import { ProjektDialog } from '../../components/ProjektDialog';
 import { STATUS_TON, anzahl, nachweiseAngelegtText } from '../../components/common';
 import { aktuellerNachweis, leistungenOhneNachweis, stundenVon } from '../../domain/nachweis';
-import { PROJEKT_STATUS_LABEL, RASTER_LABEL, ZEITRAUMREGEL_LABEL, projektTitel, type ID } from '../../domain/types';
+import { PROJEKT_STATUS_LABEL, RASTER_LABEL, projektTitel, type ID } from '../../domain/types';
 import { stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
@@ -85,7 +87,7 @@ export function ControllingProjekt({
   const geteilt = andereBereiche(register, 'leistungsnachweise', projekt.id);
   const vorgesehen = vorgeseheneBereiche(register, 'leistungsnachweise', projekt.id);
   const gesperrt = !!geteilt || !!vorgesehen;
-  // Leistungen ohne Leistungsnachweis (etwa nach dem Löschen eines Nachweises) – sie bekommen einen nach dem Rhythmus
+  // Leistungen ohne Leistungsnachweis (etwa nach dem Löschen eines Nachweises) – sie kommen in den offenen
   const ohneNachweis = leistungenOhneNachweis(data, projekt.id);
 
   return (
@@ -97,9 +99,7 @@ export function ControllingProjekt({
           </button>
           <h2 className="ln-co-projekttitel truncate">{projektTitel(projekt)}</h2>
           <Badge ton={STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
-          <span className="small muted">
-            {ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]} · {RASTER_LABEL[projekt.raster]}
-          </span>
+          <span className="small muted">{RASTER_LABEL[projekt.raster]}</span>
         </div>
         <MehrMenue
           label="Weitere Aktionen zum Projekt"
@@ -138,7 +138,7 @@ export function ControllingProjekt({
                 toast(ergebnis.neu || ergebnis.erweitert ? nachweiseAngelegtText(ergebnis) : 'Keine Änderung.');
               }}
             >
-              Nach dem Rhythmus zuordnen
+              Einem Leistungsnachweis zuordnen
             </button>
           </div>
         </Callout>
@@ -154,7 +154,7 @@ export function ControllingProjekt({
             text={
               nachweisId
                 ? 'Der Leistungsnachweis existiert nicht (mehr) – etwa weil er gelöscht wurde.'
-                : `Sobald Mitarbeiter Leistungen erfassen, entsteht der Leistungsnachweis nach dem Rhythmus des Projekts („${ZEITRAUMREGEL_LABEL[projekt.zeitraumregel]}“).`
+                : 'Sobald Mitarbeiter Leistungen erfassen, entsteht ein offener Leistungsnachweis; er sammelt alle Leistungen, bis das Controlling ihn erstellt.'
             }
             action={
               nachweisId ? (
