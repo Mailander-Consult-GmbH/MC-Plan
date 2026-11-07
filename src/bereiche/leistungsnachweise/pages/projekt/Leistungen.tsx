@@ -13,10 +13,10 @@
  * Tag anklicken erfasst dort eine Leistung, eine Leistung anklicken bearbeitet
  * sie; „Liste“ schaltet auf die Tabelle mit Filtern und Auswahl um.
  *
- * Im Controlling (Reiter „Leistungen“ des Projekts, pages/controlling/Projekt.tsx)
- * die Leistungen aller Mitarbeiter mit Filter nach Mitarbeiter – nur zum
- * Lesen, ohne Stift und Haken (domain/rechte.ts); der Nachweis öffnet die
- * Abrechnung. Die Excel-Liste gibt es in der Auswertung.
+ * Mit dem Zugang 'controlling' zeigte die Seite die Leistungen aller
+ * Mitarbeiter (Filter nach Mitarbeiter, nur lesen) – das Controlling bindet sie
+ * derzeit nicht ein; dort stehen die Leistungen je Zeile des Nachweises, die
+ * Excel-Liste gibt es in der Auswertung.
  */
 import { useState } from 'react';
 import { wochentag } from '../../../../shared/dates';

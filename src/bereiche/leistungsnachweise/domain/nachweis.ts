@@ -915,8 +915,8 @@ export interface UeberholteZeile {
  * Von Hand bearbeitete Zeilen eines offenen Nachweises, in denen seit der
  * Bearbeitung Leistungen hinzukamen oder sich der Text der Mitarbeiter bzw.
  * der automatische Text geändert hat – je Zeilenschlüssel, in der Folge der
- * Zeilen. Die Ansicht „Leistungstexte“ nennt sie je Zeile, die Abrechnung
- * zählt sie (`ueberholtHinweis`, `ueberholtRueckfrage`). Leer bei
+ * Zeilen. Die Tabelle des Leistungsnachweises im Controlling nennt sie je
+ * Zeile und zählt sie darüber (`ueberholtHinweis`, `ueberholtRueckfrage`). Leer bei
  * abgeschlossenen Nachweisen.
  */
 export function ueberholteZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachweis): Map<string, UeberholteZeile> {
@@ -967,7 +967,7 @@ export function ueberholtHinweis(liste: UeberholteZeile[]): string | null {
   return saetze.length ? saetze.join(' ') : null;
 }
 
-/** Satz in der Rückfrage „Leistungsnachweis abschließen?“ zu `ueberholteZeilen`; null ohne solche Zeilen. */
+/** Satz in der Rückfrage „Leistungsnachweis erstellen?“ zu `ueberholteZeilen`; null ohne solche Zeilen. */
 export function ueberholtRueckfrage(liste: UeberholteZeile[]): string | null {
   const z = ueberholtZahlen(liste);
   const saetze: string[] = [];
@@ -1618,7 +1618,7 @@ function rhythmusAbBeimUmstellen(daten: LeistungsnachweisDaten, projektId: ID, e
  *   Leistungsnachweis“ (`offeneVereinen`). Leistungen, die dadurch aus jedem
  *   Nachweis fallen, erhalten nach der neuen Regel einen (`nachweiseSichern`,
  *   Kennungen über `neueId`); Leistungen, die schon vorher ohne Nachweis
- *   waren, bleiben es („Nachweise anlegen“ im Controlling).
+ *   waren, bleiben es („Nach dem Rhythmus zuordnen“ auf der Seite des Projekts im Controlling).
  * * „fortlaufend“: Die Nachweise bleiben, wie sie sind – der letzte offene
  *   wächst ab dann mit neuen Leistungen mit; `rhythmusAb` entfällt.
  * Abgeschlossene Nachweise bleiben stets unverändert. Beispiele: offen

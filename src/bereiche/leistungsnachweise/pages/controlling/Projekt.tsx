@@ -27,7 +27,7 @@ import { useToast } from '../../../../shared/toast';
 import { Badge, Callout, Card, ConfirmDialog, EmptyState, Modal } from '../../../../shared/ui';
 import { NachweisDialog } from '../../components/NachweisDialog';
 import { ProjektDialog } from '../../components/ProjektDialog';
-import { STATUS_TON, anzahl } from '../../components/common';
+import { STATUS_TON, anzahl, nachweiseAngelegtText } from '../../components/common';
 import { aktuellerNachweis, leistungenOhneNachweis, stundenVon } from '../../domain/nachweis';
 import { PROJEKT_STATUS_LABEL, RASTER_LABEL, ZEITRAUMREGEL_LABEL, projektTitel, type ID } from '../../domain/types';
 import { stundenText } from '../../domain/zeitraum';
@@ -134,14 +134,8 @@ export function ControllingProjekt({
               type="button"
               className="btn btn-sm btn-outline"
               onClick={() => {
-                const { neu, erweitert } = nachweiseFuerOffeneLeistungen(projekt.id);
-                toast(
-                  neu || erweitert
-                    ? `${neu ? anzahl(neu, 'Leistungsnachweis angelegt', 'Leistungsnachweise angelegt') : ''}${neu && erweitert ? ', ' : ''}${
-                        erweitert ? anzahl(erweitert, 'Leistungsnachweis erweitert', 'Leistungsnachweise erweitert') : ''
-                      }.`
-                    : 'Keine Änderung.',
-                );
+                const ergebnis = nachweiseFuerOffeneLeistungen(projekt.id);
+                toast(ergebnis.neu || ergebnis.erweitert ? nachweiseAngelegtText(ergebnis) : 'Keine Änderung.');
               }}
             >
               Nach dem Rhythmus zuordnen

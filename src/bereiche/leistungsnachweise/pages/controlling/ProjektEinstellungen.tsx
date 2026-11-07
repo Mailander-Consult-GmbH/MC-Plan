@@ -1,6 +1,7 @@
 /**
- * Reiter „Einstellungen“ eines Projekts im Controlling: Vorgaben für den Kopf
- * und die Zeilen neuer Leistungsnachweise – das Raster gliedert auch die
+ * „Projekt einstellen“ im Controlling (Modal auf der Seite eines Projekts,
+ * Menü „Mehr“, Projekt.tsx): Vorgaben für den Kopf, den Rhythmus und die
+ * Zeilen neuer Leistungsnachweise – das Raster gliedert auch die
  * gemeinsamen Leistungstexte der Mitarbeiter; ein Wechsel nennt Texte, die im
  * neuen Raster nicht mehr gelten (components/RasterwechselHinweis.tsx) –, die
  * Abschnitte (ab zwei Abschnitten eigene Stundenspalten unter „Aufwand (Std)“,

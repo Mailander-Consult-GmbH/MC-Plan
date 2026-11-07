@@ -13,12 +13,12 @@
  *
  * Das Controlling kennt die Projekte (#/controlling/leistungsnachweise/projekte),
  * die Auswertung (…/auswertung), je Projekt eine Seite (…/projekt/<id>)
- * und die Abrechnung eines Nachweises (…/projekt/<id>/nachweis/<id>).
+ * und dieselbe Seite mit einem gewählten Nachweis (…/projekt/<id>/nachweis/<id>).
  *
  * Frühere Adressen bleiben gültig: #/leistungsnachweise/controlling/… führt in
  * den Controlling-Bereich, ebenso die entfallene Seite „Mitarbeiter“
  * (#/leistungsnachweise/mitarbeiter, jetzt die Projekte) und ein Nachweis
- * (#/leistungsnachweise/projekt/<id>/nachweis/<id>, jetzt die Abrechnung im
+ * (#/leistungsnachweise/projekt/<id>/nachweis/<id>, jetzt die Seite des Projekts mit diesem Nachweis im
  * Controlling); …/projekt/<id>/<sonstiger Reiter> zeigt die Leistungstexte des
  * Projekts.
  */
@@ -101,7 +101,7 @@ export function hashToRoute(hash: string): Route {
   // Frühere Adressen des Controllings im Bereich (#/leistungsnachweise/controlling/…)
   if (teile[0] === 'controlling') return controllingRoute(teile.slice(1));
   if (teile[0] === 'projekt' && teile[1]) {
-    // Früher der gemeinsame Nachweis im Bereich – jetzt die Abrechnung im Controlling
+    // Früher der gemeinsame Nachweis im Bereich – jetzt die Seite des Projekts mit diesem Nachweis im Controlling
     if (teile[2] === 'nachweis' && teile[3]) return { view: 'abrechnung', projektId: teile[1], nachweisId: teile[3] };
     if (teile[2] === 'leistungen') return { view: 'projekt', projektId: teile[1], ansicht: 'leistungen' };
     if (istMonat(teile[2])) return { view: 'projekt', projektId: teile[1], monat: teile[2] };
