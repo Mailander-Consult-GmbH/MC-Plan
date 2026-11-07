@@ -1,6 +1,7 @@
 /*
  * Gestaltung des Controllings: Filterleisten, Auswertungstabellen, Liste der
- * Leistungsnachweise, Mitarbeiter, Abrechnung mit Eingabefeldern und das
+ * Leistungsnachweise, Mitarbeiter, Abrechnung mit Eingabefeldern, die
+ * Bestätigungen der Mitarbeiter (Reiter und Stand in der Abrechnung) und das
  * Blatt der Vorschau. Klassen mit dem Präfix „ln-co-“; Farben, Abstände und
  * Radien nur aus den Design-Tokens in src/shared/global.css – so folgt auch
  * der Farbmodus „kontrast“. Das Blatt der Vorschau selbst gestaltet
@@ -265,3 +266,62 @@
 .ln-co-projekttitel { font-size: 15px; margin: 0; min-width: 0; }
 .table tr.ln-co-archiviert td { color: var(--text-tertiary); }
 .zahl.ln-co-warnzahl { color: var(--orange-text); font-weight: 600; }
+
+/* ------------------------------------------------------------------ */
+/* Bestätigungen der Mitarbeiter (Bestaetigungen.tsx)                  */
+/* ------------------------------------------------------------------ */
+.ln-co-bst-summe { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
+.ln-co-bst-ok { display: inline-flex; align-items: center; gap: 6px; color: var(--gruen-text); font-weight: 600; }
+.ln-co-bst-geaendert { color: var(--rot-text); font-weight: 600; }
+/* Feste Spalten – so stehen die Monate untereinander gleich */
+.table.ln-co-bestaetigungen { table-layout: fixed; }
+.table.ln-co-bestaetigungen td { vertical-align: top; }
+.table.ln-co-bestaetigungen th.ln-co-bst-zahl { width: 110px; }
+.table.ln-co-bestaetigungen th.ln-co-bst-spalte-status { width: 42%; }
+.ln-co-bst-person { min-width: 0; overflow-wrap: anywhere; }
+.ln-co-bst-status { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.ln-co-bst-zusatz { display: block; line-height: 1.3; }
+.table.ln-co-bestaetigungen td.ln-co-bst-ohne { font-weight: 500; }
+.table.ln-co-bestaetigungen td.ln-co-bst-ohne.ln-co-warnung { font-weight: 600; }
+.ln-co-bst-fuss {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
+  border-top: 1px solid var(--separator); padding: 10px 20px;
+}
+.ln-co-bst-nachweis { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.ln-co-bst-nachweis .ln-co-link { font-size: 13px; text-align: left; }
+
+/* Kurzer Stand in der Abrechnung eines offenen Nachweises (`BestaetigungsStand`) */
+.ln-co-bst-stand { border-top: 1px solid var(--separator); padding: 12px 20px 14px; display: flex; flex-direction: column; gap: 8px; }
+.ln-co-bst-stand-kopf { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.ln-co-bst-stand-titel {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary);
+}
+.ln-co-bst-monate { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ln-co-bst-monate > li {
+  display: grid; grid-template-columns: 130px 150px minmax(0, 1fr); align-items: center; gap: 4px 12px; font-size: 13px;
+}
+.ln-co-bst-monat { font-weight: 600; font-variant-numeric: tabular-nums; }
+.ln-co-bst-monate > li > .badge { justify-self: start; }
+.ln-co-bst-fehlend { display: flex; flex-wrap: wrap; gap: 2px 14px; min-width: 0; color: var(--text-secondary); }
+
+/* Rückfrage beim Abschließen: fehlende Bestätigungen je Monat */
+.ln-co-bst-fehlende { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
+
+@media (max-width: 640px) {
+  .ln-co-bst-fuss { padding: 10px 16px; }
+  .ln-co-bst-stand { padding: 12px 16px 14px; }
+  /* Je Monat: Monat und „x von y bestätigt“ in einer Zeile, darunter wer fehlt */
+  .ln-co-bst-monate > li { grid-template-columns: minmax(0, 1fr) auto; }
+  .ln-co-bst-fehlend { grid-column: 1 / -1; }
+
+  /* Person, darunter Stunden | Status | Ohne Text nebeneinander */
+  .table-stack.ln-co-bestaetigungen tr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 14px; }
+  .table-stack.ln-co-bestaetigungen td { width: auto; padding: 1px 0; }
+  .table-stack.ln-co-bestaetigungen td:first-child { grid-column: 1 / -1; }
+  .table-stack.ln-co-bestaetigungen td.ln-stunden { text-align: left; }
+  .table-stack.ln-co-bestaetigungen td.ln-co-bst-ohne::after { content: none; }
+  .table-stack.ln-co-bestaetigungen td[data-label]::before {
+    content: attr(data-label); display: block; font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.03em; color: var(--text-tertiary); margin-bottom: 2px;
+  }
+}

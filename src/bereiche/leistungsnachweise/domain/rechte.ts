@@ -12,7 +12,8 @@
  *   aus dem Namen der gemeinsamen Anmeldung aller Bereiche
  *   (`mitarbeiterZumNamen`); fehlt die Person, legt der Store sie an
  *   (`anmeldeLage`, `anmeldungAnwenden`) – eine eigene Anmeldung gibt es
- *   nicht. Die Leistungsnachweise entstehen dabei von selbst
+ *   nicht. Hat das Controlling die so angelegte Person umbenannt, entsteht
+ *   kein Doppel (`umbenannt`). Die Leistungsnachweise entstehen dabei von selbst
  *   (`nachweiseErgaenzen`). Einzige Ausnahme: Der Excel-Import legt auch hier
  *   unbekannte Projekte (wenn „Projekt anlegen“ angehakt ist) und fehlende
  *   Abschnitte an, soweit die eigenen Leistungen sie brauchen (`planErlaubt`
@@ -30,9 +31,11 @@
  *   Leistungen lassen sich beim Löschen eines Nachweises mitlöschen.
  *
  * Leistungen anderer ändert niemand, auch das Controlling nicht. Im Bereich
- * sieht man sie nur als Zahl – außer in Zeiträumen, in denen man selbst
- * Leistungen hat: Dort stehen ihre Stichpunkte (Name, Datum, Stunden, Text)
- * zur Orientierung beim gemeinsamen Text (`stichpunkteDerPeriode`).
+ * sieht man von anderen weder Leistungen noch Stichpunkte oder Stunden – auch
+ * nicht in Zeiträumen, in denen man selbst Leistungen hat, und auch nicht als
+ * Zahl. Gemeinsam ist dort allein der Leistungstext des Zeitraums
+ * (`darfPeriodentextLesen`, `stichpunkteDerPeriode`); im Controlling ist
+ * alles zu sehen (nur lesen).
  *
  * Der Store (store/store.tsx) prüft jede Änderung hiermit; die Oberfläche
  * blendet Unerlaubtes zusätzlich aus. Alles rein, ohne React.
@@ -127,15 +130,21 @@ export function angemeldet(d: Pick<LeistungsnachweisDaten, 'einstellungen' | 'mi
  *   legt ihn gleich an (`anmeldungAnwenden`);
  * * `ohneNachname` – der Name hat nur ein Wort;
  * * `ausgeschieden` – der Name gehört einem ausgeschiedenen Mitarbeiter;
+ * * `umbenannt` – kein Mitarbeiter dieses Namens, aber der, den der Bereich
+ *   unter diesem Namen angelegt hat (Kennung `mitarbeiterKennung`), heißt
+ *   inzwischen anders – das Controlling hat ihn umbenannt. Angelegt wird dann
+ *   niemand: Ein Doppel trüge keine der bisherigen Leistungen;
  * * `nichtGefuehrt` – kein Mitarbeiter dieses Namens, und angelegt wird hier
- *   niemand (im Controlling bzw. solange der gespeicherte Stand nicht geladen ist).
+ *   niemand: im Controlling bzw. im Bereich, solange der gespeicherte Stand
+ *   nicht geladen ist (`nichtGeladen`).
  */
 export type AnmeldeLage =
   | { art: 'angemeldet'; mitarbeiter: Mitarbeiter }
   | { art: 'anlegen'; vorname: string; nachname: string }
   | { art: 'ohneNachname' }
   | { art: 'ausgeschieden'; mitarbeiter: Mitarbeiter }
-  | { art: 'nichtGefuehrt' };
+  | { art: 'umbenannt'; mitarbeiter: Mitarbeiter }
+  | { art: 'nichtGefuehrt'; nichtGeladen: boolean };
 
 /**
  * Vor- und Nachname aus dem Namen unter „Angemeldet als“: „Nachname, Vorname“
@@ -149,15 +158,29 @@ function vorUndNachname(name: string): { vorname: string; nachname: string } {
   return { vorname: zusammen(name.slice(komma + 1).replace(/,/g, ' ')), nachname: zusammen(name.slice(0, komma)) };
 }
 
-/** Lage des Namens unter „Angemeldet als“ (siehe `AnmeldeLage`). */
-export function anmeldeLage(d: Pick<LeistungsnachweisDaten, 'mitarbeiter'>, name: string, automatisch: boolean): AnmeldeLage {
+/**
+ * Lage des Namens unter „Angemeldet als“ (siehe `AnmeldeLage`). `automatisch`:
+ * Der Bestand darf eine fehlende Person anlegen (im Bereich bei einwandfrei
+ * geladenem Stand); `nichtGeladen`: im Bereich, aber der gespeicherte Stand
+ * ist nicht geladen – nur für den Hinweis.
+ */
+export function anmeldeLage(
+  d: Pick<LeistungsnachweisDaten, 'mitarbeiter'>,
+  name: string,
+  automatisch: boolean,
+  nichtGeladen = false,
+): AnmeldeLage {
   const aktiv = mitarbeiterZumNamen(d.mitarbeiter, name);
   if (aktiv) return { art: 'angemeldet', mitarbeiter: aktiv };
   const ausgeschieden = mitarbeiterZumNamen(d.mitarbeiter, name, true);
   if (ausgeschieden) return { art: 'ausgeschieden', mitarbeiter: ausgeschieden };
   const { vorname, nachname } = vorUndNachname(name);
   if (!vorname || !nachname) return { art: 'ohneNachname' };
-  return automatisch ? { art: 'anlegen', vorname, nachname } : { art: 'nichtGefuehrt' };
+  // Unter diesem Namen angelegt und inzwischen umbenannt?
+  const kennung = mitarbeiterKennung(name);
+  const umbenannt = d.mitarbeiter.find((m) => m.id === kennung);
+  if (umbenannt) return { art: 'umbenannt', mitarbeiter: umbenannt };
+  return automatisch ? { art: 'anlegen', vorname, nachname } : { art: 'nichtGefuehrt', nichtGeladen };
 }
 
 /**
@@ -177,8 +200,12 @@ export function anmeldeHinweis(lage: AnmeldeLage, name: string, mitLeiste = fals
       return `„${n}“ ist kein vollständiger Name – bitte unten links unter „Angemeldet als“ Vor- und Nachnamen eintragen. Unter diesem Namen werden Ihre Leistungen geführt.`;
     case 'ausgeschieden':
       return `${mitarbeiterName(lage.mitarbeiter) || lage.mitarbeiter.kuerzel} ist als ausgeschieden markiert – Leistungen erfasst nur, wer aktiv ist. Das Controlling kann die Person unter „Mitarbeiter“ wieder aktiv setzen.`;
+    case 'umbenannt':
+      return `Unter „${n}“ ist kein Mitarbeiter mehr geführt – das Controlling hat die Person in „${mitarbeiterName(lage.mitarbeiter) || lage.mitarbeiter.kuerzel}“ umbenannt. Bitte unten links unter „Angemeldet als“ diesen Namen eintragen; dort stehen Ihre bisherigen Leistungen.`;
     case 'nichtGefuehrt':
-      return `Unter „${n}“ ist kein Mitarbeiter geführt – angelegt wird er im Bereich Leistungsnachweise, sobald der gespeicherte Stand geladen ist.`;
+      return lage.nichtGeladen
+        ? `Unter „${n}“ ist noch kein Mitarbeiter geführt – angelegt wird er, sobald der Bereich wieder speichern kann (siehe Hinweis oben).`
+        : `Unter „${n}“ ist kein Mitarbeiter geführt – angelegt wird er im Bereich Leistungsnachweise, sobald der gespeicherte Stand geladen ist.`;
   }
 }
 
@@ -257,13 +284,17 @@ export function darfLeistungSehen(
 }
 
 /**
- * Prüft das Löschen eines Mitarbeiters (Controlling): nur ohne Leistungen.
- * Liefert die Meldung oder null.
+ * Prüft das Löschen eines Mitarbeiters (Controlling): nur ohne Leistungen und
+ * nicht die angemeldete Person – solange ihr Name unter „Angemeldet als“
+ * steht, legte der Bereich sie gleich wieder an. Liefert die Meldung oder null.
  */
 export function mitarbeiterLoeschenPruefen(d: LeistungsnachweisDaten, mitarbeiterId: string, zugang: Zugang): string | null {
   if (!darf(zugang, 'mitarbeiterVerwalten')) return NUR_CONTROLLING;
   const m = d.mitarbeiter.find((x) => x.id === mitarbeiterId);
   if (!m) return 'Diesen Mitarbeiter gibt es nicht (mehr).';
+  if (d.einstellungen.mitarbeiterId === mitarbeiterId) {
+    return `„${mitarbeiterName(m) || m.kuerzel}“ ist unter „Angemeldet als“ angemeldet – solange der Name dort steht, legt der Bereich Leistungsnachweise die Person gleich wieder an. Zum Löschen zuerst unten links unter „Angemeldet als“ einen anderen Namen eintragen.`;
+  }
   const anzahl = d.leistungen.filter((l) => l.mitarbeiterId === mitarbeiterId).length;
   if (anzahl > 0) {
     const name = `${m.vorname} ${m.nachname}`.trim() || m.kuerzel;
@@ -285,7 +316,10 @@ export function eigeneLeistungen<T extends Pick<Leistung, 'mitarbeiterId'>>(
  * Leistungen einer Nachweiszeile, wie sie aufgeklappt werden dürfen: die
  * eigenen einzeln, die der anderen nur als Zahl („+ 3 Leistungen von
  * Kolleginnen und Kollegen“). Im Controlling stehen auch die der anderen
- * einzeln darin (`andere`, nur lesen).
+ * einzeln darin (`andere`, nur lesen). Genutzt wird es heute nur im
+ * Controlling (Abrechnung, Leistungstexte); im Bereich zeigt keine Seite
+ * Nachweiszeilen – die Seite „Leistungstexte“ nennt allein eigene Stichpunkte
+ * (`stichpunkteDerPeriode`).
  */
 export function leistungenDerZeile(
   d: Pick<LeistungsnachweisDaten, 'einstellungen' | 'mitarbeiter' | 'leistungen'>,
@@ -337,9 +371,12 @@ export function darfPeriodentextBearbeiten(
 }
 
 /**
- * Stichpunkte einer Periode, wie sie zu sehen sind: die eigenen; die der
- * anderen (Name, Datum, Stunden, Text – nur lesen) nur, wer selbst Leistungen
- * in der Periode hat, und im Controlling – sonst nur ihre Zahl.
+ * Stichpunkte einer Periode, wie sie zu sehen sind: im Bereich nur die
+ * eigenen – Stichpunkte, Stunden und Leistungen der anderen bleiben dort
+ * verborgen, auch ihre Zahl (`andere` leer, `andereAnzahl` 0), selbst wenn man
+ * in der Periode eigene Leistungen hat; gemeinsam ist allein der Text der
+ * Periode. Im Controlling stehen auch die der anderen darin (Name, Datum,
+ * Stunden, Text – nur lesen).
  */
 export function stichpunkteDerPeriode(
   d: Pick<LeistungsnachweisDaten, 'einstellungen' | 'mitarbeiter'>,
@@ -348,9 +385,9 @@ export function stichpunkteDerPeriode(
 ): { eigene: Leistung[]; andere: Leistung[]; andereAnzahl: number } {
   const ich = angemeldet(d);
   const eigene = ich ? periode.leistungen.filter((l) => l.mitarbeiterId === ich.id) : [];
-  const fremd = periode.leistungen.filter((l) => !ich || l.mitarbeiterId !== ich.id);
-  const sichtbar = zugang === 'controlling' || eigene.length > 0;
-  return { eigene, andere: sichtbar ? fremd : [], andereAnzahl: fremd.length };
+  if (zugang !== 'controlling') return { eigene, andere: [], andereAnzahl: 0 };
+  const andere = periode.leistungen.filter((l) => !ich || l.mitarbeiterId !== ich.id);
+  return { eigene, andere, andereAnzahl: andere.length };
 }
 
 /** Darf den Monat bestätigen bzw. die Bestätigung zurücknehmen? Nur im Bereich und nur eigene Monate. */

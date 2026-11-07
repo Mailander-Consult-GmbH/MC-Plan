@@ -1,7 +1,9 @@
 /**
  * Reiter „Einstellungen“ eines Projekts im Controlling: Vorgaben für den Kopf
- * und die Zeilen neuer Leistungsnachweise, die Abschnitte (ab zwei
- * Abschnitten eigene Stundenspalten unter „Aufwand (Std)“,
+ * und die Zeilen neuer Leistungsnachweise – das Raster gliedert auch die
+ * gemeinsamen Leistungstexte der Mitarbeiter; ein Wechsel nennt Texte, die im
+ * neuen Raster nicht mehr gelten (components/RasterwechselHinweis.tsx) –, die
+ * Abschnitte (ab zwei Abschnitten eigene Stundenspalten unter „Aufwand (Std)“,
  * `mitAbschnittsspalten`) und die Logos im Druckkopf. Der Excel-Import ordnet
  * Leistungen über die Kennung des Projektelements (Spalte J) einem Abschnitt
  * zu und legt fehlende selbst an. Abgeschlossene Nachweise behalten ihren
@@ -13,6 +15,7 @@ import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Callout, Card, CardHeader, ConfirmDialog, Field, Modal, Segmented, Select, TextInput } from '../../../../shared/ui';
 import { LogoVerwaltung } from '../../components/Logos';
+import { RasterwechselHinweis } from '../../components/RasterwechselHinweis';
 import { RASTER_OPTIONEN, REGEL_OPTIONEN, anzahl } from '../../components/common';
 import { abschnitteAusElementen, kennungNormal, projektelementTeilen } from '../../domain/import';
 import { mitAbschnittsspalten } from '../../domain/nachweis';
@@ -99,7 +102,7 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
           </Field>
           <Field
             label="Nachweis"
-            hint="Zeilen je Tag, Woche oder Monat – Vorgabe für neue Leistungsnachweise. Vorhandene behalten ihr Raster; das Controlling stellt es dort unter „Zeitraum ändern“ um."
+            hint="Zeilen je Tag, Woche oder Monat – Vorgabe für neue Leistungsnachweise. Vorhandene behalten ihr Raster; das Controlling stellt es dort unter „Zeitraum ändern“ um. Das Raster gliedert auch die Leistungstexte, die die Mitarbeiter je Zeitraum gemeinsam verfassen (Wochen am Monatsende geteilt)."
           >
             <Segmented<Raster> value={form.raster} onChange={(v) => set('raster', v)} options={RASTER_OPTIONEN} />
           </Field>
@@ -110,6 +113,7 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
             <Select value={form.zeitraumregel} onChange={(v) => set('zeitraumregel', v as Zeitraumregel)} options={REGEL_OPTIONEN} />
           </Field>
         </div>
+        <RasterwechselHinweis projekt={projekt} raster={form.raster} />
         <div className="ln-einst-knoepfe">
           <button
             type="button"

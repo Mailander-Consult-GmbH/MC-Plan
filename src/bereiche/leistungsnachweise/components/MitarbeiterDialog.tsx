@@ -4,8 +4,14 @@
  * eindeutig: Daran und am Namen erkennt der Excel-Import die Person
  * („MM: Mustermann, Max“). Bleibt es leer, entsteht es aus dem Namen (bei
  * Bedarf mit angehängter Zahl, etwa „MM2“).
+ *
+ * Wer die angemeldete Person umbenennt (Name unter „Angemeldet als“), ändert
+ * „Angemeldet als“ mit (`benutzerAendern`) – sonst gehörte der Name dort
+ * niemandem mehr. Das geschieht erst nach dem Speichern des Bestands, damit
+ * ein anderes Fenster zuerst die umbenannte Person sieht.
  */
 import { useState } from 'react';
+import { benutzerAendern } from '../../../gemeinsam/benutzer';
 import { useToast } from '../../../shared/toast';
 import { Field, Modal, TextInput } from '../../../shared/ui';
 import { kuerzelFrei, kuerzelNormal } from '../domain/import';
@@ -56,7 +62,12 @@ export function MitarbeiterDialog({
         toast(meldung);
         return;
       }
-      toast('Mitarbeiter gespeichert.');
+      const neuerName = mitarbeiterName(werte);
+      if (mitarbeiter.id === data.einstellungen.mitarbeiterId && neuerName !== mitarbeiterName(mitarbeiter)) {
+        // Nach dem Speichern des Bestands (Effekt des Stores): erst die Person, dann der neue Name
+        window.setTimeout(() => benutzerAendern({ name: neuerName }), 0);
+        toast(`Mitarbeiter gespeichert – „Angemeldet als“ lautet jetzt „${neuerName}“.`);
+      } else toast('Mitarbeiter gespeichert.');
     } else {
       const id = addMitarbeiter(werte);
       if (!id) {

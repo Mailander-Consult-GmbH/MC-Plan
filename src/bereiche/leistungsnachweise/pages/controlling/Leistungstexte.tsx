@@ -6,9 +6,15 @@
  * Mitarbeiter – nur zum Lesen; ändern kann eine Leistung nur, wer sie im
  * Bereich erfasst hat (domain/rechte.ts). Darunter die Summe.
  *
- * Der Leistungstext entsteht automatisch aus den Texten der Leistungen. Wer
- * ihn bearbeitet, behält seinen Text: Kommen danach Leistungen hinzu, nennt
- * die Zeile sie und bietet „Ergänzen“ an – überschrieben wird nie still.
+ * Der Leistungstext entsteht aus den gemeinsamen Leistungstexten, die die
+ * Mitarbeiter je Zeitraum im Bereich verfassen (`Periodentext`,
+ * `nachweisZeilen`; die Zeile ist dann als „Text der Mitarbeiter“
+ * gekennzeichnet, `textGemeinsam`), wo keiner steht bzw. keiner gilt (etwa in
+ * Zeilen, die feiner gegliedert sind als das Projekt – ein Hinweis nennt das)
+ * automatisch aus den Texten der Leistungen. Wer ihn hier bearbeitet, behält seinen Text: Kommen danach
+ * Leistungen hinzu, nennt die Zeile sie und bietet „Ergänzen“ an –
+ * überschrieben wird nie still. „Text der Mitarbeiter wiederherstellen“ bzw.
+ * „Automatischen Text wiederherstellen“ verwirft die Bearbeitung.
  * Bearbeiten darf nur das Controlling, solange der Nachweis offen ist;
  * abgeschlossene Nachweise zeigen den festgeschriebenen Stand, nur zum Lesen.
  * Die Bemerkung steht in der Abrechnung.
@@ -17,10 +23,18 @@ import { useState } from 'react';
 import { wochentag } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Callout, Card, EmptyState } from '../../../../shared/ui';
+import { Badge, Callout, Card, EmptyState } from '../../../../shared/ui';
 import { Textfeld } from '../../components/Textfeld';
 import { QuelleBadge, anzahl } from '../../components/common';
-import { mitAbschnittsspalten, neueLeistungenSeitText, summeStunden, textErgaenzen, zeilenFuerAnzeige } from '../../domain/nachweis';
+import {
+  mitAbschnittsspalten,
+  nachweisZeilen,
+  neueLeistungenSeitText,
+  periodentexteVon,
+  summeStunden,
+  textErgaenzen,
+  zeilenFuerAnzeige,
+} from '../../domain/nachweis';
 import { darf, leistungenDerZeile } from '../../domain/rechte';
 import {
   OHNE_ABSCHNITT,
@@ -36,6 +50,9 @@ import {
 import { kurzDatum, runden, stundenText } from '../../domain/zeitraum';
 import { useStore } from '../../store/store';
 import '../../components/nachweis.css';
+
+/** Feinheit der Raster – feiner gegliederte Zeilen übernehmen keine gemeinsamen Texte (`nachweisZeilen`). */
+const FEINHEIT: Record<Raster, number> = { tag: 0, woche: 1, monat: 2 };
 
 /** Bezeichnung der Zeilen je Raster. */
 const ZEILEN_LABEL: Record<Raster, string> = {
@@ -82,6 +99,11 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
   const mitarbeiterVon = new Map(data.mitarbeiter.map((m) => [m.id, m]));
   const abschnittVon = new Map(projekt.abschnitte.map((a) => [a.id, a]));
   const neueJeZeile = new Map(zeilen.map((z) => [z.schluessel, bearbeitbar ? neueLeistungenSeitText(data, n, z) : []]));
+  // Zeilen ohne die Bearbeitung von Hand – ob es dort einen Text der Mitarbeiter gäbe (`textGemeinsam`)
+  const ohneBearbeitung =
+    bearbeitbar && zeilen.some((z) => z.textBearbeitet)
+      ? new Map(nachweisZeilen(data, { ...n, texte: {} }).map((z) => [z.schluessel, z]))
+      : null;
 
   const personName = (id: ID) => {
     const m = mitarbeiterVon.get(id);
@@ -97,9 +119,9 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
   };
   const ergaenzen = (z: NachweisZeile, neue: Leistung[]) => zeilenTextSetzen(n.id, z, textErgaenzen(z.text, neue));
   const beibehalten = (z: NachweisZeile) => zeilenTextSetzen(n.id, z, z.text);
-  const automatisch = (z: NachweisZeile) => {
+  const automatisch = (z: NachweisZeile, gemeinsam: boolean) => {
     zeilenTextSetzen(n.id, z, null);
-    toast('Automatischer Leistungstext wiederhergestellt.');
+    toast(gemeinsam ? 'Leistungstext der Mitarbeiter wiederhergestellt.' : 'Automatischer Leistungstext wiederhergestellt.');
   };
 
   const umschalten = (schluessel: string) =>
@@ -130,14 +152,25 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
     <div className="stack">
       {bearbeitbar ? (
         <p className="small tertiary ln-gemeinsam">
-          Der Leistungstext je Zeile entsteht aus den Texten der Leistungen. Von Hand bearbeitete Texte bleiben stehen;
-          kommen danach Leistungen hinzu, bietet die Zeile „Ergänzen“ an.
+          Der Leistungstext je Zeile entsteht aus den Leistungstexten, die die Mitarbeiter je Zeitraum gemeinsam
+          verfassen – wo keiner steht, aus den Texten der Leistungen. Von Hand bearbeitete Texte bleiben stehen; kommen
+          danach Leistungen hinzu, bietet die Zeile „Ergänzen“ an.
         </p>
+      ) : null}
+      {bearbeitbar && FEINHEIT[n.raster] < FEINHEIT[projekt.raster] && periodentexteVon(data, projekt.id).size > 0 ? (
+        <Callout icon="i">
+          Die Zeilen sind feiner gegliedert ({ZEILEN_LABEL[n.raster]}) als die gemeinsamen Leistungstexte der Mitarbeiter
+          (Raster des Projekts: {ZEILEN_LABEL[projekt.raster]}). Ein Text, der nur zum Teil in einer Zeile liegt, gilt dort
+          nicht – solche Zeilen zeigen die Texte ihrer Leistungen.
+        </Callout>
       ) : null}
 
       <div className="stack ln-zeilen">
         {zeilen.map((z) => {
           const { eigene, andere } = leistungenDerZeile(data, z, zugang);
+          const leistungen = [...eigene, ...andere].sort((a, b) => a.datum.localeCompare(b.datum));
+          // Gäbe es ohne die Bearbeitung von Hand einen Text der Mitarbeiter? (Nur für die Beschriftung von „wiederherstellen“)
+          const gemeinsamMoeglich = z.textBearbeitet && !!ohneBearbeitung?.get(z.schluessel)?.textGemeinsam;
           return (
             <ZeileKarte
               key={z.schluessel}
@@ -145,7 +178,8 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
               nachgereicht={!!z.nachgereicht || z.bis < n.von}
               spalten={spalten}
               bearbeitbar={bearbeitbar}
-              leistungen={[...eigene, ...andere].sort((a, b) => a.datum.localeCompare(b.datum))}
+              leistungen={leistungen}
+              gemeinsamMoeglich={gemeinsamMoeglich}
               neue={neueJeZeile.get(z.schluessel) ?? []}
               offen={offen.has(z.schluessel)}
               mitAbschnitt={projekt.abschnitte.length > 0}
@@ -158,7 +192,7 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
               onText={(text) => textAendern(z, text)}
               onErgaenzen={(neue) => ergaenzen(z, neue)}
               onBeibehalten={() => beibehalten(z)}
-              onAutomatisch={() => automatisch(z)}
+              onAutomatisch={() => automatisch(z, gemeinsamMoeglich)}
             />
           );
         })}
@@ -192,6 +226,7 @@ function ZeileKarte({
   spalten,
   bearbeitbar,
   leistungen,
+  gemeinsamMoeglich,
   neue,
   offen,
   mitAbschnitt,
@@ -211,6 +246,8 @@ function ZeileKarte({
   bearbeitbar: boolean;
   /** Leistungen der Zeile – aller Mitarbeiter, nur lesen. */
   leistungen: Leistung[];
+  /** Von Hand bearbeitet, und ohne die Bearbeitung käme der Text aus den gemeinsamen Texten der Mitarbeiter. */
+  gemeinsamMoeglich: boolean;
   /** Leistungen, die nach der Textbearbeitung hinzukamen. */
   neue: Leistung[];
   offen: boolean;
@@ -247,8 +284,13 @@ function ZeileKarte({
                   <>
                     Von Hand bearbeitet ·{' '}
                     <button type="button" className="ln-zeile-link" onClick={onAutomatisch}>
-                      Automatischen Text wiederherstellen
+                      {gemeinsamMoeglich ? 'Text der Mitarbeiter wiederherstellen' : 'Automatischen Text wiederherstellen'}
                     </button>
+                  </>
+                ) : z.textGemeinsam ? (
+                  <>
+                    <Badge ton="blue">Text der Mitarbeiter</Badge> aus ihren gemeinsamen Leistungstexten – Änderungen hier
+                    bleiben stehen
                   </>
                 ) : (
                   'Automatisch aus den Leistungstexten – Änderungen bleiben stehen'
@@ -256,7 +298,16 @@ function ZeileKarte({
               </div>
             </>
           ) : (
-            <div className="ln-zeile-lesetext">{z.text || <span className="tertiary">ohne Leistungstext</span>}</div>
+            <>
+              <div className="ln-zeile-lesetext">{z.text || <span className="tertiary">ohne Leistungstext</span>}</div>
+              {z.textGemeinsam ? (
+                <div className="ln-zeile-hinweis">
+                  <Badge ton="blue">Text der Mitarbeiter</Badge> aus ihren gemeinsamen Leistungstexten
+                </div>
+              ) : z.textBearbeitet ? (
+                <div className="ln-zeile-hinweis">Von Hand bearbeitet</div>
+              ) : null}
+            </>
           )}
           {neue.length > 0 ? (
             <div className="ln-zeile-neu">

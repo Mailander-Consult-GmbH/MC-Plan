@@ -3,8 +3,12 @@
  * Kennzahlen der angemeldeten Person (Stunden und Leistungen im laufenden
  * Monat, Stunden im Jahr), der Kalender „Mein Kalender“ über alle Projekte
  * (Tag anklicken erfasst dort eine Leistung, das Projekt wählt der Dialog;
- * eine Leistung anklicken bearbeitet sie), die zuletzt erfassten eigenen
- * Leistungen und die Projekte mit den eigenen Stunden im Monat. Angezeigt werden die markierten
+ * eine Leistung anklicken bearbeitet sie), die offenen Bestätigungen (je
+ * Projekt und Monat mit eigenen Leistungen, die noch nicht bzw. nach einer
+ * Änderung nicht erneut bestätigt sind, `offeneBestaetigungen`; ein Klick
+ * öffnet die Leistungstexte des Projekts in diesem Monat), die zuletzt
+ * erfassten eigenen Leistungen und die Projekte mit den eigenen Stunden im
+ * Monat. Angezeigt werden die markierten
  * Projekte – auch die in anderen Bereichen markierten (`istMarkiert`); ist kein
  * nicht archiviertes markiert, alle. Steht kein Projekt zur Wahl, sagt ein
  * Hinweis über dem Kalender, woher Projekte kommen – bzw., wenn alle archiviert
@@ -18,10 +22,11 @@ import { useState } from 'react';
 import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Callout, Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
-import { useAnmeldeHinweis, useMitAnmeldung } from '../components/Anmeldung';
+import { Badge, Callout, Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
+import { useMitAnmeldung } from '../components/Anmeldung';
 import { LeistungDialog } from '../components/LeistungDialog';
 import { LeistungsKalender } from '../components/LeistungsKalender';
+import { monatName, monatsStatusBadge, offeneBestaetigungen } from '../domain/erfassung';
 import { stundenVon } from '../domain/nachweis';
 import { angemeldet, eigeneLeistungen } from '../domain/rechte';
 import { projektKurzname, type ISODate, type Leistung, type Projekt } from '../domain/types';
@@ -29,6 +34,8 @@ import { MONATSNAMEN, monatsanfang, monatsende, stundenText } from '../domain/ze
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { useArchivierte, useMarkiertAnderswo } from '../../../gemeinsam/ProjektBereiche';
+import { anzahl } from '../components/common';
+import '../components/erfassung.css';
 
 /** So viele eigene Leistungen nennt „Zuletzt erfasst“. */
 const LETZTE = 8;
@@ -48,7 +55,6 @@ export function sichtbareProjekte(projekte: Projekt[], archiviert: Set<string>, 
 
 export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => void; onImport: () => void }) {
   const { data } = useStore();
-  const anmeldeHinweis = useAnmeldeHinweis();
   const mitAnmeldung = useMitAnmeldung();
   const ich = angemeldet(data);
   const toast = useToast();
@@ -92,8 +98,9 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
       <div className="row-between wrap">
         <p className="small muted" style={{ maxWidth: 620 }}>
           Hier erfassen Sie Ihre Leistungen – im Projekt von Hand oder aus der Zeiterfassung per Excel-Import; ein Import
-          kann mehrere Projekte enthalten, übernommen werden nur die eigenen Zeilen der Datei. Leistungsnachweise erstellt
-          und rechnet das Controlling ab.
+          kann mehrere Projekte enthalten, übernommen werden nur die eigenen Zeilen der Datei. Im Projekt verfassen Sie
+          danach unter „Leistungstexte“ je Zeitraum den gemeinsamen Text und bestätigen den Monat. Leistungsnachweise
+          erstellt und rechnet das Controlling ab.
         </p>
         <button type="button" className="btn btn-primary" onClick={onImport}>
           <Icon name="importieren" size={14} /> Excel-Import
@@ -151,13 +158,15 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
         onOeffnen={(leistung) => setDialog({ leistung })}
       />
 
+      {ich ? <OffeneBestaetigungen navigate={navigate} /> : null}
+
       <Card>
-        <CardHeader titel="Zuletzt erfasst" sub="Meine neuesten Leistungen – Klick öffnet das Projekt" />
+        <CardHeader titel="Zuletzt erfasst" sub="Meine neuesten Leistungen – Klick öffnet die Leistungstexte des Monats" />
         {!ich ? (
           <EmptyState
             icon="person"
             titel="Nicht als Mitarbeiter angemeldet"
-            text={anmeldeHinweis ?? 'Leistungen erfasst, wer unter „Angemeldet als“ als Mitarbeiter geführt ist.'}
+            text="Leistungen erfasst, wer unter „Angemeldet als“ als Mitarbeiter geführt ist."
           />
         ) : letzte.length === 0 ? (
           <EmptyState
@@ -180,7 +189,11 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
                 {letzte.map((l) => {
                   const projekt = projektVon.get(l.projektId);
                   return (
-                    <tr key={l.id} className="clickable" onClick={() => navigate({ view: 'projekt', projektId: l.projektId })}>
+                    <tr
+                      key={l.id}
+                      className="clickable"
+                      onClick={() => navigate({ view: 'projekt', projektId: l.projektId, monat: l.datum.slice(0, 7) })}
+                    >
                       <td>{formatDate(l.datum)}</td>
                       <td className="small">
                         <span className="num tertiary">{projekt?.nummer}</span>
@@ -242,7 +255,7 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
                             navigate({ view: 'projekt', projektId: projekt.id });
                           }}
                         >
-                          Leistungen <Icon name="chevron" size={13} />
+                          Leistungstexte <Icon name="chevron" size={13} />
                         </button>
                       </td>
                     </tr>
@@ -265,5 +278,86 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Offene Bestätigungen der angemeldeten Person über alle Projekte: je Projekt
+ * und Monat mit eigenen Leistungen im Stand „offen“ bzw. „geändert seit
+ * Bestätigung“ eine Zeile (`offeneBestaetigungen`, auch der laufende Monat);
+ * ein Klick öffnet die Leistungstexte des Projekts in diesem Monat.
+ */
+function OffeneBestaetigungen({ navigate }: { navigate: (r: Route) => void }) {
+  const { data } = useStore();
+  const ich = angemeldet(data);
+  if (!ich) return null;
+  const offen = offeneBestaetigungen(data, ich.id);
+  const projektVon = new Map(data.projekte.map((p) => [p.id, p]));
+  const laufend = today().slice(0, 7);
+  const oeffnen = (projektId: string, monat: string) => navigate({ view: 'projekt', projektId, monat });
+
+  return (
+    <Card>
+      <CardHeader
+        titel="Offene Bestätigungen"
+        sub="Monate mit eigenen Leistungen, die Sie noch bestätigen – Klick öffnet die Leistungstexte"
+      />
+      {offen.length === 0 ? (
+        <p className="small muted ln-ob-leer">Alle Monate mit eigenen Leistungen sind bestätigt bzw. abgerechnet.</p>
+      ) : (
+        <div className="table-scroll">
+          <table className="table table-stack ln-ob-tabelle">
+            <thead>
+              <tr>
+                <th>Projekt</th>
+                <th>Monat</th>
+                <th className="ln-stunden">Meine Stunden</th>
+                <th>Status</th>
+                <th className="actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {offen.map((s) => {
+                const projekt = projektVon.get(s.projektId);
+                const badge = monatsStatusBadge(s);
+                return (
+                  <tr key={`${s.projektId}|${s.monat}`} className="clickable" onClick={() => oeffnen(s.projektId, s.monat)}>
+                    <td>
+                      <span className="num tertiary">{projekt?.nummer}</span>
+                      <div>
+                        <strong>{projekt ? projektKurzname(projekt) : '–'}</strong>
+                      </div>
+                    </td>
+                    <td className="ln-ob-monat">
+                      {monatName(s.monat)}
+                      {s.monat === laufend ? <span className="ln-ob-zusatz">laufender Monat</span> : null}
+                    </td>
+                    <td className="ln-stunden">{stundenText(s.stunden)}</td>
+                    <td>
+                      <Badge ton={badge.ton}>{badge.text}</Badge>
+                      {s.ohneText.length > 0 ? (
+                        <span className="ln-ob-fehlt">{anzahl(s.ohneText.length, 'Zeitraum', 'Zeiträume')} ohne Leistungstext</span>
+                      ) : null}
+                    </td>
+                    <td className="actions">
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          oeffnen(s.projektId, s.monat);
+                        }}
+                      >
+                        Leistungstexte <Icon name="chevron" size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }

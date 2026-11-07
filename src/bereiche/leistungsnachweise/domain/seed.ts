@@ -12,7 +12,7 @@
  * den Anna Becker bestätigt hat; der laufende Monat ist noch offen.
  */
 import { addDays, istArbeitstag, today } from '../../../shared/dates';
-import { bestaetigenAnwenden, periodentextAnwenden } from './erfassung';
+import { bestaetigenAnwenden, erfassungsPeriodeVon, periodentextAnwenden } from './erfassung';
 import {
   ergaenzungAnwenden,
   mitAufschlag,
@@ -34,7 +34,7 @@ import {
   type Projekt,
   type Quelle,
 } from './types';
-import { erfassungsPeriode, monatVersetzt } from './zeitraum';
+import { monatVersetzt } from './zeitraum';
 
 /**
  * Logos im Kopf des Leistungsnachweises, solange ein Projekt keine eigenen
@@ -274,7 +274,9 @@ export function seedDaten(): LeistungsnachweisDaten {
     daten = { ...daten, nachweise: daten.nachweise.map((x) => (x.id === n.id ? n : x)) };
   }
 
-  // Brücke, Vormonat: gemeinsamer Leistungstext von Anna Becker und Jonas Keller, bestätigt von Anna Becker
+  // Brücke, Vormonat: gemeinsamer Leistungstext von Anna Becker und Jonas Keller, bestätigt von Anna Becker.
+  // Geschrieben hat ihn Anna Becker – gemerkt sind nur ihre Stichpunkte (wie im Store); Jonas Keller bekommt
+  // seine, die noch nicht im Text stehen, als neue angeboten.
   const vormonat = monatVersetzt(heute, -1);
   if (leistungen.some((l) => l.projektId === bruecke.id && l.mitarbeiterId === ab.id && l.datum.startsWith(vormonat.slice(0, 7)))) {
     // Geschrieben und bestätigt am Ersten des laufenden Monats
@@ -282,11 +284,12 @@ export function seedDaten(): LeistungsnachweisDaten {
     daten = periodentextAnwenden(
       daten,
       bruecke.id,
-      erfassungsPeriode(vormonat, bruecke.raster).schluessel,
+      erfassungsPeriodeVon(daten, bruecke.id, vormonat).schluessel,
       'Abstimmungen mit der Projektleitung und der Bauüberwachung, Teilnahme an den Jours fixes einschl. Nachbereitung, ' +
         'Fortschreibung des Terminplans, Prüfung der Planunterlagen, Vorbereitung der Baubesprechung, Kostenverfolgung',
       mitarbeiterName(ab),
       `${monatsErster}T07:15:00.000Z`,
+      { mitarbeiterId: ab.id },
     );
     daten = bestaetigenAnwenden(daten, bruecke.id, ab.id, vormonat.slice(0, 7), `${monatsErster}T07:20:00.000Z`);
   }

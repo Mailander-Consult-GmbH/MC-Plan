@@ -49,6 +49,7 @@ import {
   type NachweisZeile,
   type Periodentext,
   type Projekt,
+  type Raster,
   type ZeilenText,
 } from '../domain/types';
 import { nachgereichteZeilenUmstellen } from '../domain/nachweis';
@@ -107,6 +108,13 @@ function zahlen(w: unknown): Record<string, number> {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, stunden(v)]));
 }
 
+/** Texte je Schlüssel – nur nicht leere (Kennungen der bestätigten Zeiträume). */
+function texteJeSchluessel(w: unknown): Record<string, string> {
+  const o = objekt(w);
+  if (!o) return {};
+  return Object.fromEntries(Object.entries(o).filter((e): e is [string, string] => !!e[0] && typeof e[1] === 'string' && !!e[1]));
+}
+
 /** Je Kennung nur der erste Eintrag – ein von Hand bearbeiteter Bestand kann Kennungen doppelt führen. */
 function eindeutig<T extends { id: string }>(eintraege: T[]): T[] {
   const gesehen = new Set<string>();
@@ -161,6 +169,7 @@ function standAufbereiten(w: unknown): NachweisStand | null {
   const erfasst = stunden(s.stunden);
   return {
     zeilen: liste(s.zeilen).map(zeileAufbereiten),
+    ...((RASTER as readonly unknown[]).includes(s.erfassungsRaster) ? { erfassungsRaster: s.erfassungsRaster as Raster } : {}),
     abschnitte: liste(s.abschnitte).map(abschnittAufbereiten),
     projekt: {
       nummer: text(p.nummer),
@@ -296,6 +305,7 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
         schluessel: text(t.schluessel),
         text: text(t.text).trim(),
         leistungIds: [...new Set(ids(t.leistungIds))],
+        ...(Array.isArray(t.inhalte) ? { inhalte: [...new Set(t.inhalte.map(text).filter(Boolean))] } : {}),
         bearbeiter: text(t.bearbeiter),
         geaendert: text(t.geaendert),
       }),
@@ -314,6 +324,7 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
         monat: text(b.monat),
         am: text(b.am),
         kennung: text(b.kennung),
+        perioden: texteJeSchluessel(b.perioden),
       }),
     )
     .filter((b) => {

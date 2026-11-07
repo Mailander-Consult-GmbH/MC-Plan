@@ -12,15 +12,21 @@
  * Nachweis, teilt ein Hinweis das mit; übernommen werden sie erst nach
  * Bestätigung (`leistungenNachreichen`) – nachgereichte Zeilen sind gekennzeichnet.
  *
+ * Den Text einer Zeile liefern, solange das Controlling ihn nicht bearbeitet
+ * hat, die gemeinsamen Leistungstexte der Mitarbeiter (`textGemeinsam`). Unter
+ * den Kennzahlen eines offenen Nachweises steht der Stand der
+ * Monatsbestätigungen (`BestaetigungsStand`, Bestaetigungen.tsx).
+ *
  * Dazu Vorschau, Drucken/PDF, Excel, Abschließen bzw. Wieder öffnen (mit
- * Rückfrage – sie nennt gekürzte Zeiträume, spätere Leistungen und
+ * Rückfrage – sie nennt gekürzte Zeiträume, spätere Leistungen, fehlende
+ * Bestätigungen der Mitarbeiter (abschließen bleibt möglich) und
  * Abweichungen vom festgeschriebenen Stand), Zeitraum ändern und Löschen, die
  * Kontrolle „Stunden je Mitarbeiter“ und die Bemerkung. Abgeschlossene
  * Nachweise zeigen ihren Stand und lassen sich nur lesen. Alle Änderungen
  * laufen über den Store, der den Controlling-Zugang prüft.
  */
 import { useState } from 'react';
-import { today, wochentag } from '../../../../shared/dates';
+import { addDays, today, wochentag } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Modal, Segmented, Stat } from '../../../../shared/ui';
@@ -29,6 +35,13 @@ import { NachweisDialog, NichtErfasstHinweis } from '../../components/NachweisDi
 import { Textfeld } from '../../components/Textfeld';
 import { NachweisStatusBadge, anzahl, nachweisZeitraumText, zeitpunkt } from '../../components/common';
 import { GESAMT, nachweisDrucken, nachweisFassung, nachweisHtml, type NachweisFassung } from '../../domain/druck';
+import {
+  erfassungsPeriodeVon,
+  fehlendeBestaetigungen,
+  nachgezogenePeriodentexte,
+  nachziehenHinweis,
+  periodentexteNachOeffnen,
+} from '../../domain/erfassung';
 import { nachweisExportieren } from '../../domain/export';
 import {
   abschlussZeitraum,
@@ -47,6 +60,7 @@ import {
 import { eigeneLeistungen, leistungenDerZeile } from '../../domain/rechte';
 import {
   OHNE_ABSCHNITT,
+  RASTER_KURZ,
   RASTER_LABEL,
   mitarbeiterName,
   projektTitel,
@@ -60,6 +74,7 @@ import {
 import { kurzDatum, langDatum, runden, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
+import { BestaetigungsStand, FehlendeBestaetigungen } from './Bestaetigungen';
 import { StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
 import { Leistungstexte } from './Leistungstexte';
 import './controlling.css';
@@ -231,6 +246,8 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
 
   /* Rückfragen */
   const abschluss = abschlussZeitraum(data, n, today());
+  // Endet der Nachweis mitten in einem Zeitraum der gemeinsamen Leistungstexte, bildet der Rest einen eigenen
+  const restAb = erfassungsPeriodeVon(data, n.projektId, abschluss.bis).bis > abschluss.bis ? addDays(abschluss.bis, 1) : null;
   const abschliessenText = [
     `Der Stand wird festgeschrieben – mit ${stundenText(summen.abgerechnet)} abgerechneten Stunden${
       summen.aufschlag ? ` (erfasst ${stundenText(summen.erfasst)}, Aufschlag ${aufschlagText(summen.aufschlag)})` : ''
@@ -241,10 +258,15 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
     abschluss.spaetere.length
       ? `${anzahl(abschluss.spaetere.length, 'spätere Leistung kommt', 'spätere Leistungen kommen')} in einen neuen Leistungsnachweis.`
       : '',
+    restAb
+      ? `Er endet mitten in einem Zeitraum der gemeinsamen Leistungstexte – für die Tage ab ${langDatum(restAb)} verfassen die Mitarbeiter einen eigenen Text.`
+      : '',
     zeilenMitNeuen ? `Achtung: In ${anzahl(zeilenMitNeuen, 'Zeile', 'Zeilen')} fehlen neue Leistungen noch im bearbeiteten Text.` : '',
   ]
     .filter(Boolean)
     .join(' ');
+  // Wer für die Monate des (beim Abschluss festgelegten) Zeitraums noch nicht bzw. nicht erneut bestätigt hat
+  const fehlend = abschliessen ? fehlendeBestaetigungen(data, abschluss.gekuerzt ? { ...n, bis: abschluss.bis } : n) : [];
   const vergleich = standVergleich(data, n);
   const oeffnenText = vergleich.veraltet
     ? `Seit dem Abschluss haben sich Leistungen geändert: festgeschrieben sind ${stundenText(vergleich.stand.erfasst)} Std. erfasst und ${stundenText(
@@ -253,6 +275,20 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
         vergleich.aktuell.abgerechnet,
       )} Std. „Wieder öffnen“ verwirft den festgeschriebenen Stand und zeigt die aktuellen Leistungen; die Aufschläge bleiben.`
     : `Der festgeschriebene Stand (${stundenText(vergleich.stand.abgerechnet)} Std. abgerechnet) wird verworfen; der Leistungsnachweis zeigt wieder die aktuellen Leistungen, die Aufschläge bleiben. Er stimmt derzeit mit dem Stand überein.`;
+  // Im Raster eines früheren Abschlusses: Nach „Wieder öffnen“ gliedert das Raster des Projekts seine Tage
+  const texteNachOeffnen = oeffnen ? periodentexteNachOeffnen(data, n) : 0;
+  const oeffnenRasterText =
+    texteNachOeffnen && n.stand?.erfassungsRaster
+      ? ` Die Mitarbeiter haben ihre Leistungstexte hier im Raster „${RASTER_KURZ[n.stand.erfassungsRaster]}“ verfasst, das Projekt gliedert sie inzwischen im Raster „${RASTER_KURZ[projekt.raster]}“: ${
+          texteNachOeffnen === 1
+            ? '1 gemeinsamer Text gilt danach nicht mehr, die Mitarbeiter verfassen ihn neu. Er bleibt gespeichert und gilt wieder'
+            : `${texteNachOeffnen} gemeinsame Texte gelten danach nicht mehr, die Mitarbeiter verfassen sie neu. Sie bleiben gespeichert und gelten wieder`
+        }, wenn das Raster zurückgestellt wird.`
+      : '';
+  // Fallen mit dem Nachweis Grenzen der Zeiträume weg, gehen Texte von Teilen im Text des ganzen Zeitraums auf
+  const loeschenTexte = loeschen
+    ? nachziehenHinweis(nachgezogenePeriodentexte(data, { ...data, nachweise: data.nachweise.filter((x) => x.id !== n.id) }))
+    : null;
 
   const bemerkung = (
     <Card>
@@ -288,7 +324,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           <button
             type="button"
             className="btn btn-ghost"
-            title="Leistungsnachweise, Leistungen und Einstellungen des Projekts"
+            title="Leistungsnachweise, Bestätigungen, Leistungen und Einstellungen des Projekts"
             onClick={() => navigate({ view: 'controllingProjekt', projektId: projekt.id, tab: 'nachweise' })}
           >
             Zum Projekt
@@ -352,6 +388,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           <Stat wert={stundenText(summen.abgerechnet)} label="Abgerechnet" />
           <Stat wert={fassung.bearbeiter.length} label="Bearbeiter" />
         </div>
+        {abgeschlossen ? null : <BestaetigungsStand nachweis={n} navigate={navigate} />}
       </Card>
 
       {abgeschlossen ? (
@@ -514,29 +551,46 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
       {zeitraumDialog ? <NachweisDialog projekt={projekt} nachweis={n} onClose={() => setZeitraumDialog(false)} /> : null}
 
       {abschliessen ? (
-        <ConfirmDialog
+        // Wie ConfirmDialog, dazu die fehlenden Bestätigungen als Liste – abschließen bleibt möglich
+        <Modal
           titel="Leistungsnachweis abschließen?"
-          text={abschliessenText}
-          bestaetigenLabel="Abschließen"
-          ton="blau"
-          onConfirm={() => {
-            nachweisAbschliessen(n.id);
-            toast(
-              `Leistungsnachweis abgeschlossen${abschluss.gekuerzt ? ` – Zeitraum bis ${langDatum(abschluss.bis)}` : ''}${
-                abschluss.spaetere.length
-                  ? `; ${anzahl(abschluss.spaetere.length, 'spätere Leistung liegt', 'spätere Leistungen liegen')} in einem neuen Leistungsnachweis`
-                  : ''
-              }.`,
-            );
-          }}
           onClose={() => setAbschliessen(false)}
-        />
+          footer={
+            <>
+              <button type="button" className="btn" onClick={() => setAbschliessen(false)}>
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  nachweisAbschliessen(n.id);
+                  toast(
+                    `Leistungsnachweis abgeschlossen${abschluss.gekuerzt ? ` – Zeitraum bis ${langDatum(abschluss.bis)}` : ''}${
+                      abschluss.spaetere.length
+                        ? `; ${anzahl(abschluss.spaetere.length, 'spätere Leistung liegt', 'spätere Leistungen liegen')} in einem neuen Leistungsnachweis`
+                        : ''
+                    }.`,
+                  );
+                  setAbschliessen(false);
+                }}
+              >
+                Abschließen
+              </button>
+            </>
+          }
+        >
+          <div className="stack" style={{ gap: 12 }}>
+            <p className="muted">{abschliessenText}</p>
+            <FehlendeBestaetigungen fehlende={fehlend} />
+          </div>
+        </Modal>
       ) : null}
 
       {oeffnen ? (
         <ConfirmDialog
           titel="Leistungsnachweis wieder öffnen?"
-          text={oeffnenText}
+          text={oeffnenText + oeffnenRasterText}
           bestaetigenLabel="Wieder öffnen"
           ton="blau"
           onConfirm={() => {
@@ -583,6 +637,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           titel={fassung.titel}
           eigene={eigeneImZeitraum}
           andere={imZeitraum.length - eigeneImZeitraum}
+          texteHinweis={loeschenTexte}
           onClose={() => setLoeschen(false)}
           onLoeschen={(mitLeistungen) => {
             deleteNachweis(n.id, mitLeistungen);
@@ -724,7 +779,13 @@ function ZeileAbrechnung({
                   >
                     <Icon name={leistungenOffen ? 'runter' : 'chevron'} size={11} /> Leistungen ({z.leistungIds.length})
                   </button>
-                  {z.textBearbeitet ? <span className="small tertiary">Text von Hand bearbeitet</span> : null}
+                  {z.textBearbeitet ? (
+                    <span className="small tertiary">Text von Hand bearbeitet</span>
+                  ) : z.textGemeinsam ? (
+                    <span title="Aus den Leistungstexten, die die Mitarbeiter je Zeitraum gemeinsam verfassen">
+                      <Badge ton="blue">Text der Mitarbeiter</Badge>
+                    </span>
+                  ) : null}
                 </div>
                 {leistungenOffen ? (
                   <ul className="ln-co-leistungen" id={listeId}>
@@ -887,10 +948,13 @@ function NachweisLoeschen({
   titel,
   eigene,
   andere,
+  texteHinweis,
   onClose,
   onLoeschen,
 }: {
   titel: string;
+  /** Gemeinsame Texte von Teilen eines Zeitraums, die im Text des ganzen aufgehen (`nachziehenHinweis`). */
+  texteHinweis: string | null;
   /** Zahl der eigenen Leistungen des Nachweises (`leistungenDesNachweises`, samt nachgereichten) – nur sie lassen sich mitlöschen. */
   eigene: number;
   /** Zahl der Leistungen anderer im Nachweis – sie bleiben immer erhalten. */
@@ -939,6 +1003,7 @@ function NachweisLoeschen({
             {`${bleiben === 1 ? 'Die verbleibende Leistung liegt' : 'Die verbleibenden Leistungen liegen'} danach in keinem Leistungsnachweis.`}
           </p>
         ) : null}
+        {texteHinweis ? <p className="small tertiary">{texteHinweis}</p> : null}
       </div>
     </Modal>
   );

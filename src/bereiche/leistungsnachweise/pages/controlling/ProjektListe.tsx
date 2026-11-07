@@ -2,7 +2,7 @@
  * Reiter „Projekte“ des Controllings: alle Projekte der Leistungsnachweise
  * mit Raster, Zeitraumregel, offenen Nachweisen, Leistungen ohne Nachweis und
  * den erfassten Stunden. Ein Klick öffnet das Projekt im Controlling
- * (Projekt.tsx: Leistungsnachweise, Leistungen, Einstellungen). „Neues
+ * (Projekt.tsx: Leistungsnachweise, Bestätigungen, Leistungen, Einstellungen). „Neues
  * Projekt“ legt ein Projekt nur in den Leistungsnachweisen an; für alle
  * Bereiche gibt es die Projekte des Controllings (Projektregister).
  * Archivierte Projekte stehen am Ende.

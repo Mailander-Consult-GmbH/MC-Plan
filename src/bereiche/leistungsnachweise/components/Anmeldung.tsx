@@ -6,8 +6,10 @@
  * fehlt die Person, legt der Store sie im Bereich selbst an
  * (`anmeldungAnwenden`, domain/rechte.ts).
  *
- * Übrig bleiben zwei Hinweise (`anmeldeHinweis`): Der Name hat keinen
- * Nachnamen, oder er gehört einem ausgeschiedenen Mitarbeiter. Handlungen, die
+ * Übrig bleiben Hinweise (`anmeldeHinweis`): Der Name hat keinen Nachnamen,
+ * er gehört einem ausgeschiedenen Mitarbeiter, das Controlling hat die unter
+ * ihm angelegte Person umbenannt, oder der gespeicherte Stand ist nicht
+ * geladen (dann wird niemand angelegt). Handlungen, die
  * eine Anmeldung brauchen (Leistung erfassen, Excel-Import, Leistungstext,
  * Bestätigen), zeigen dann den Hinweis als Kurzmeldung (`useMitAnmeldung`).
  */
@@ -25,7 +27,10 @@ import { useStore } from '../store/store';
 export function useAnmeldeLage(): { lage: AnmeldeLage; name: string } {
   const { data, zugang, ladeZustand } = useStore();
   const { name } = useBenutzer();
-  return { lage: anmeldeLage(data, name, zugang === 'bereich' && ladeZustand === 'ok'), name };
+  return {
+    lage: anmeldeLage(data, name, zugang === 'bereich' && ladeZustand === 'ok', zugang === 'bereich' && ladeZustand !== 'ok'),
+    name,
+  };
 }
 
 /**
@@ -56,8 +61,9 @@ export function useMitAnmeldung(): (fn: () => void) => void {
 
 /**
  * Hinweis oben im Inhalt, solange der Name unter „Angemeldet als“ keinem
- * aktiven Mitarbeiter gehört: ohne Nachnamen bzw. ausgeschieden (und
- * solange der gespeicherte Stand nicht geladen ist).
+ * aktiven Mitarbeiter gehört: ohne Nachnamen, ausgeschieden bzw. umbenannt
+ * (und solange der gespeicherte Stand nicht geladen ist). Leere Zustände der
+ * Seiten wiederholen ihn nicht.
  */
 export function AnmeldeHinweis() {
   const hinweis = useAnmeldeHinweis();

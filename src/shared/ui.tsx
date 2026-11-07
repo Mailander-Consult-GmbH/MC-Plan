@@ -165,6 +165,8 @@ export function Segmented<T extends string>({
           key={o.value}
           type="button"
           className={o.value === value ? 'active' : ''}
+          // Für Bildschirmleser: welche Wahl gerade gilt
+          aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
         >
           {o.label}

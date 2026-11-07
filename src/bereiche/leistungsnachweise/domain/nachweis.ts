@@ -60,6 +60,7 @@ import {
   periodeVon,
   runden,
   zeitraumText,
+  type Periode,
 } from './zeitraum';
 
 const nachDatum = (a: { datum: ISODate }, b: { datum: ISODate }) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0);
@@ -260,16 +261,44 @@ export function textErgaenzen(text: string, neue: Leistung[]): string {
 }
 
 /**
+ * Sätze eines Texts: getrennt nach „.“, „!“ bzw. „?“ mit folgendem Leerraum
+ * und an Zeilenumbrüchen; das Satzzeichen bleibt am Satz. Punkte in Zahlen
+ * („26.10.“, „1.5“) trennen nicht, Abkürzungen („z. B.“) schon – mit einem
+ * Leerzeichen verbunden ergeben die Stücke wieder den Text.
+ */
+function saetze(text: string): string[] {
+  const liste: string[] = [];
+  const ende = /[.!?]+(?=\s|$)|\n/g;
+  let start = 0;
+  for (let m = ende.exec(text); m; m = ende.exec(text)) {
+    const satz = text.slice(start, m.index + m[0].length).trim();
+    if (satz) liste.push(satz);
+    start = m.index + m[0].length;
+  }
+  const rest = text.slice(start).trim();
+  if (rest) liste.push(rest);
+  return liste;
+}
+
+/** Ohne Satzzeichen am Ende – zum Vergleich mit `kommtVor`. */
+const ohneSchlusszeichen = (t: string) => t.replace(/[\s.!?:;,]+$/, '');
+
+/**
  * Texte mehrerer Zeiträume zu einem verbinden – in der angegebenen Folge, ohne
- * Wiederholungen: Der erste steht unverändert vorn; von jedem weiteren kommen
- * nur die Teile (an „,“ und „;“ zerlegt, `textTeile`) dazu, die noch nicht
- * vorkommen – wie `textErgaenzen`. Kommt keiner seiner Teile schon vor, wird
- * er unverändert angehängt (ein Fließtext behält so seine Zeichensetzung).
- * Angehängt wird mit „, “, nach einem Satzzeichen am Ende mit einem
- * Leerzeichen. Leere Texte zählen nicht.
+ * Wiederholungen: Der erste steht unverändert vorn. Kommt von einem weiteren
+ * nichts schon vor, wird er unverändert angehängt (ein Fließtext behält so
+ * seine Zeichensetzung); sonst Satz für Satz (`saetze`) nur, was noch fehlt –
+ * ein Satz, der schon vorkommt, gar nicht, von einem Satz, der teilweise
+ * vorkommt, nur die fehlenden Teile (an „,“ und „;“ zerlegt, `textTeile`, wie
+ * `textErgaenzen`). Angehängt wird mit „, “, nach einem Satzzeichen am Ende
+ * mit einem Leerzeichen. Leere Texte zählen nicht.
  */
 export function texteZusammenfuehren(texte: string[]): string {
   let ergebnis = '';
+  const anhaengen = (stueck: string) => {
+    ergebnis = `${ergebnis}${/[.!?;:]$/.test(ergebnis) ? ' ' : ', '}${stueck}`;
+  };
+  const vorhanden = (teil: string) => kommtVor(ergebnis, ohneSchlusszeichen(teil));
   for (const roh of texte) {
     const text = roh.trim();
     if (!text) continue;
@@ -277,11 +306,17 @@ export function texteZusammenfuehren(texte: string[]): string {
       ergebnis = text;
       continue;
     }
-    const teile = textTeile(text);
-    const fehlend = teile.filter((teil) => !kommtVor(ergebnis, teil));
-    if (fehlend.length === 0) continue;
-    const anhang = fehlend.length === teile.length ? text : fehlend.join(', ');
-    ergebnis = `${ergebnis}${/[.!?;:]$/.test(ergebnis) ? ' ' : ', '}${anhang}`;
+    const liste = saetze(text);
+    if (!liste.some((satz) => vorhanden(satz) || textTeile(satz).some(vorhanden))) {
+      anhaengen(text);
+      continue;
+    }
+    for (const satz of liste) {
+      if (vorhanden(satz)) continue;
+      const teile = textTeile(satz);
+      const fehlend = teile.filter((teil) => !vorhanden(teil));
+      if (fehlend.length > 0) anhaengen(fehlend.length === teile.length ? satz : fehlend.join(', '));
+    }
   }
   return ergebnis;
 }
@@ -299,25 +334,158 @@ export function periodentexteVon(daten: Pick<LeistungsnachweisDaten, 'periodente
 }
 
 /**
- * Leistungstext einer Zeile aus den gemeinsamen Texten der Mitarbeiter: Die
- * Leistungen der Zeile werden nach ihrer Erfassungsperiode (Raster des
- * Projekts, je Monat, `erfassungsPeriode`) gruppiert; je Periode in zeitlicher
- * Folge zählt der gemeinsame Text, wo keiner steht `automatikText` ihrer
- * Leistungen – verbunden mit `texteZusammenfuehren`. null, wenn zu keiner
- * Periode der Zeile ein gemeinsamer Text steht (dann gilt `automatikText`).
+ * Wie die gemeinsamen Leistungstexte eines Projekts gegliedert sind
+ * (`erfassungsGliederung`, `erfassungsPeriodeIn`): Erfassungsperioden im
+ * Raster des Projekts, je Monat, an den Grenzen der Nachweise geteilt – und in
+ * abgeschlossenen Nachweisen im Raster ihres Abschlusses.
  */
-export function gemeinsamerZeilentext(leistungen: Leistung[], texte: Map<string, string>, raster: Raster): string | null {
-  if (texte.size === 0 || leistungen.length === 0) return null;
-  const gruppen = new Map<string, { von: ISODate; leistungen: Leistung[] }>();
-  for (const l of leistungen) {
-    const p = erfassungsPeriode(l.datum, raster);
+export interface ErfassungsGliederung {
+  /** Raster des Projekts (`Projekt.raster`). */
+  raster: Raster;
+  /**
+   * Tage, an denen eine Erfassungsperiode zusätzlich neu beginnt
+   * (`erfassungsPeriode`): Beginn und Tag nach dem Ende jedes Nachweises des
+   * Projekts, aufsteigend.
+   */
+  schnitte: ISODate[];
+  /**
+   * Abgeschlossene Nachweise mit dem Raster des Projekts bei ihrem Abschluss
+   * (`NachweisStand.erfassungsRaster`) – an ihren Tagen gilt dieses Raster.
+   */
+  abgeschlossen: { von: ISODate; bis: ISODate; raster: Raster }[];
+}
+
+/*
+ * Gliederung je Liste der Nachweise und Projekt – wie das Verzeichnis oben
+ * einmal je Liste aufgebaut (neu, wenn sich das Raster des Projekts ändert).
+ */
+const gliederungen = new WeakMap<Leistungsnachweis[], Map<ID, ErfassungsGliederung>>();
+
+/**
+ * Gliederung der gemeinsamen Leistungstexte eines Projekts. Geteilt wird an
+ * den Grenzen **aller** Nachweise (Beginn und Tag nach dem Ende), so liegt
+ * jede Erfassungsperiode in höchstens einem Nachweis: Ihr Text gehört genau
+ * einer Zeile, kein anderer Nachweis übernimmt ihn. Endet ein Nachweis mitten
+ * in einem Zeitraum (etwa beim Abschluss oder nach „Zeitraum ändern“), bekommt
+ * der Rest einen eigenen Text; abgeschlossen ist so nur der abgerechnete Teil
+ * gesperrt. „Wieder öffnen“ ändert die Grenzen nicht – die Texte bleiben bei
+ * ihren Teilen. Fallen Grenzen weg oder kommen hinzu, ziehen
+ * `periodentexteNachziehen` (domain/erfassung.ts) die Texte nach. Abgeschlossene
+ * Nachweise gliedern ihre Tage im Raster ihres Abschlusses – ein späterer
+ * Rasterwechsel des Projekts ändert weder ihren Stand noch, wie ihre Zeiträume
+ * im Bereich erscheinen.
+ */
+export function erfassungsGliederung(daten: Pick<LeistungsnachweisDaten, 'nachweise' | 'projekte'>, projektId: ID): ErfassungsGliederung {
+  const raster = daten.projekte.find((p) => p.id === projektId)?.raster ?? 'monat';
+  let jeProjekt = gliederungen.get(daten.nachweise);
+  if (!jeProjekt) {
+    jeProjekt = new Map();
+    gliederungen.set(daten.nachweise, jeProjekt);
+  }
+  const vorhanden = jeProjekt.get(projektId);
+  if (vorhanden && vorhanden.raster === raster) return vorhanden;
+  const schnitte = new Set<ISODate>();
+  const abgeschlossen: ErfassungsGliederung['abgeschlossen'] = [];
+  for (const n of daten.nachweise) {
+    if (n.projektId !== projektId) continue;
+    schnitte.add(n.von);
+    schnitte.add(addDays(n.bis, 1));
+    const r = n.status === 'abgeschlossen' ? n.stand?.erfassungsRaster : undefined;
+    if (r) abgeschlossen.push({ von: n.von, bis: n.bis, raster: r });
+  }
+  abgeschlossen.sort((a, b) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0));
+  const g: ErfassungsGliederung = { raster, schnitte: [...schnitte].filter(istDatum).sort(), abgeschlossen };
+  jeProjekt.set(projektId, g);
+  return g;
+}
+
+/** Raster, in dem die gemeinsamen Texte am Tag gegliedert sind: das eines abgeschlossenen Nachweises, der ihn umfasst, sonst das des Projekts. */
+export function erfassungsRasterAm(g: ErfassungsGliederung, datum: ISODate): Raster {
+  return g.abgeschlossen.find((b) => imZeitraum(datum, b.von, b.bis))?.raster ?? g.raster;
+}
+
+/** Erfassungsperiode eines Tags in der Gliederung des Projekts (`erfassungsPeriode`) – mit ihrem Raster. */
+export function erfassungsPeriodeIn(g: ErfassungsGliederung, datum: ISODate): Periode & { raster: Raster } {
+  const raster = erfassungsRasterAm(g, datum);
+  return { ...erfassungsPeriode(datum, raster, g.schnitte), raster };
+}
+
+/** Gliedern zwei Gliederungen gleich? (gleiches Raster, gleiche Schnitte, gleiche abgeschlossene Raster) */
+export function gleicheGliederung(a: ErfassungsGliederung, b: ErfassungsGliederung): boolean {
+  return (
+    a === b ||
+    (a.raster === b.raster &&
+      a.schnitte.length === b.schnitte.length &&
+      a.schnitte.every((s, i) => s === b.schnitte[i]) &&
+      a.abgeschlossen.length === b.abgeschlossen.length &&
+      a.abgeschlossen.every((x, i) => x.von === b.abgeschlossen[i].von && x.bis === b.abgeschlossen[i].bis && x.raster === b.abgeschlossen[i].raster))
+  );
+}
+
+/**
+ * Abgeschlossener Nachweis des Projekts, dessen Zeitraum [von, bis] berührt
+ * (ohne `ohneId`) – er sperrt eine Erfassungsperiode in diesem Zeitraum: Ihr
+ * gemeinsamer Text ist abgerechnet.
+ */
+export function abgeschlossenIm(
+  daten: Pick<LeistungsnachweisDaten, 'nachweise'>,
+  projektId: ID,
+  von: ISODate,
+  bis: ISODate,
+  ohneId?: ID,
+): Leistungsnachweis | undefined {
+  return daten.nachweise.find(
+    (n) => n.projektId === projektId && n.status === 'abgeschlossen' && n.id !== ohneId && n.von <= bis && von <= n.bis,
+  );
+}
+
+/**
+ * Leistungstext einer Zeile aus den gemeinsamen Texten der Mitarbeiter: Die
+ * Leistungen der Zeile werden nach ihrer Erfassungsperiode gruppiert
+ * (`erfassungsPeriodeIn` – im Raster des Projekts bzw. eines abgeschlossenen
+ * Nachweises das seines Abschlusses, je Monat, an den Grenzen der Nachweise
+ * geteilt); je Periode in zeitlicher Folge zählt der gemeinsame Text, wo
+ * keiner steht bzw. keiner gelten kann `automatikText` ihrer Leistungen –
+ * verbunden mit `texteZusammenfuehren`. Ein gemeinsamer Text gilt nicht
+ * * für nachgereichte Zeilen (ihre Leistungen liegen in schon abgerechneten
+ *   Zeiträumen; der Text dort beschreibt die abgerechneten Leistungen),
+ * * für eine Periode, die ein anderer abgeschlossener Nachweis sperrt
+ *   (`abgeschlossenIm`) – sein Text ist dort abgerechnet,
+ * * wenn die Zeile nur einen Teil der Periode abdeckt (Nachweis feiner
+ *   gegliedert als das Projekt, etwa Wochenzeilen bei Monatstexten) – sonst
+ *   stünde der ganze Text in jeder Zeile.
+ * null, wenn kein gemeinsamer Text gilt (dann `automatikText` der Zeile).
+ */
+function gemeinsamerZeilentext(
+  daten: LeistungsnachweisDaten,
+  n: Leistungsnachweis,
+  zeile: { von: ISODate; bis: ISODate; nachgereicht: boolean; leistungen: Leistung[] },
+  texte: Map<string, string>,
+  gliederung: ErfassungsGliederung,
+): string | null {
+  if (texte.size === 0 || zeile.leistungen.length === 0 || zeile.nachgereicht) return null;
+  const gruppen = new Map<string, { von: ISODate; bis: ISODate; leistungen: Leistung[] }>();
+  for (const l of zeile.leistungen) {
+    const p = erfassungsPeriodeIn(gliederung, l.datum);
     const g = gruppen.get(p.schluessel);
     if (g) g.leistungen.push(l);
-    else gruppen.set(p.schluessel, { von: p.von, leistungen: [l] });
+    else gruppen.set(p.schluessel, { von: p.von, bis: p.bis, leistungen: [l] });
   }
-  const folge = [...gruppen.entries()].sort(([, a], [, b]) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0));
-  if (!folge.some(([k]) => texte.has(k))) return null;
-  return texteZusammenfuehren(folge.map(([k, g]) => texte.get(k) ?? automatikText(g.leistungen)));
+  let gemeinsam = false;
+  const folge = [...gruppen.entries()]
+    .sort(([, a], [, b]) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0))
+    .map(([k, g]) => {
+      const text = texte.get(k);
+      // Teil der Periode im Zeitraum des Nachweises – er muss ganz in der Zeile liegen
+      const von = g.von > n.von ? g.von : n.von;
+      const bis = g.bis < n.bis ? g.bis : n.bis;
+      const gilt =
+        text !== undefined && von >= zeile.von && bis <= zeile.bis && !abgeschlossenIm(daten, n.projektId, g.von, g.bis, n.id);
+      if (!gilt) return automatikText(g.leistungen);
+      gemeinsam = true;
+      return text;
+    });
+  return gemeinsam ? texteZusammenfuehren(folge) : null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -529,14 +697,16 @@ export const NACHGEREICHT_PRAEFIX = 'N';
  * Text: der vom Controlling bearbeitete (`texte[schluessel].text`); sonst aus den gemeinsamen
  * Leistungstexten der Mitarbeiter (`gemeinsamerZeilentext` – je Erfassungsperiode im Raster
  * des Projekts der gemeinsame Text bzw. `automatikText`, ohne Wiederholungen; `textGemeinsam`),
- * ohne solche `automatikText`. Dazu Aufschlag und abgerechnete Stunden aus `aufschlaege`
- * (`abrechnen`).
+ * ohne solche `automatikText`. Ein abgeschlossener Nachweis gliedert die gemeinsamen Texte im
+ * Raster des Projekts bei seinem Abschluss (`NachweisStand.erfassungsRaster`,
+ * `erfassungsGliederung`) – ein späterer Rasterwechsel des Projekts ändert ihn nicht. Dazu
+ * Aufschlag und abgerechnete Stunden aus `aufschlaege` (`abrechnen`).
  */
 export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachweis): NachweisZeile[] {
   const projekt = daten.projekte.find((p) => p.id === n.projektId);
-  // Gemeinsame Texte gliedert das Raster des Projekts – nicht das des Nachweises
+  // Gemeinsame Texte gliedert das Raster des Projekts (bzw. des Abschlusses) – nicht das des Nachweises
   const gemeinsameTexte = periodentexteVon(daten, n.projektId);
-  const erfassungsRaster = projekt?.raster ?? n.raster;
+  const gliederung = erfassungsGliederung(daten, n.projektId);
   const abschnittIds = new Set((projekt?.abschnitte ?? []).map((a) => a.id));
   const spalten = mitAbschnittsspalten(projekt?.abschnitte ?? []);
   const mitarbeiter = new Map(daten.mitarbeiter.map((m) => [m.id, m]));
@@ -571,7 +741,9 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
         addieren(stundenJeMitarbeiter, l.mitarbeiterId, l.stunden);
       }
       const bearbeitet = n.texte[schluessel];
-      const gemeinsam = bearbeitet ? null : gemeinsamerZeilentext(leistungen, gemeinsameTexte, erfassungsRaster);
+      const gemeinsam = bearbeitet
+        ? null
+        : gemeinsamerZeilentext(daten, n, { von, bis, nachgereicht, leistungen }, gemeinsameTexte, gliederung);
       const jeAbschnitt = gerundet(stundenJeAbschnitt);
       const abrechnung = abrechnen(jeAbschnitt, aufschlaegeDerZeile(n.aufschlaege ?? {}, schluessel, abschnittIds, spalten));
       return {
@@ -668,6 +840,7 @@ export function standErzeugen(daten: LeistungsnachweisDaten, n: Leistungsnachwei
   const zeilen = nachweisZeilen(daten, n);
   return {
     zeilen,
+    ...(projekt ? { erfassungsRaster: projekt.raster } : {}),
     abschnitte: (projekt?.abschnitte ?? []).map((a) => ({ ...a })),
     projekt: {
       nummer: projekt?.nummer ?? '',

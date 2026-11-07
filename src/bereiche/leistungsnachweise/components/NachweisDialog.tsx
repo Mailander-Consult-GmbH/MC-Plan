@@ -31,16 +31,21 @@
  * Wechselt das Raster – auch für offene Nachweise, die in einem neuen
  * aufgehen –, warnen beide Dialoge, wenn dadurch von Hand bearbeitete Texte
  * oder Aufschläge nicht mehr angezeigt werden (`rasterwechselHinweis`) – sie
- * bleiben gespeichert und kehren mit dem alten Raster zurück.
+ * bleiben gespeichert und kehren mit dem alten Raster zurück. Ändern sich die
+ * Grenzen der Nachweise so, dass gemeinsame Leistungstexte von Teilen eines
+ * Zeitraums in einem anderen aufgehen (`periodentexteNachziehen`), sagen beide
+ * Dialoge auch das (`nachziehenHinweis`).
  */
 import { useState, type ReactNode } from 'react';
 import { today, wochentag } from '../../../shared/dates';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Segmented, Select, TextInput } from '../../../shared/ui';
+import { nachgezogenePeriodentexte, nachziehenHinweis } from '../domain/erfassung';
 import {
   endeFestlegenWirkt,
   leistungenIm,
   nachweisDerLeistung,
+  nachweisFuerNichtAbgerechneteAnwenden,
   nachweisTitel,
   nichtAbgerechnet,
   laeuftBisAbschluss,
@@ -149,6 +154,15 @@ function NeuerNachweisDialog({
   const nachgereicht = nachreichen ? plan.nichtErfasst.length : 0;
   // Was in den offenen Nachweisen zu einem anderen Raster gehört, wird nach dem Zusammenfassen nicht mehr angezeigt
   const rasterHinweis = vorhanden ? null : rasterwechselHinweis(rasterwechselVerdecktAlle(plan.offene, raster));
+  // Neue Grenzen (offene Nachweise gehen darin auf): Gemeinsame Texte von Teilen eines Zeitraums gehen zusammen
+  const texteHinweis = vorhanden
+    ? null
+    : nachziehenHinweis(
+        nachgezogenePeriodentexte(
+          data,
+          nachweisFuerNichtAbgerechneteAnwenden(data, projekt.id, { raster, titel }, 'vorschau', new Date().toISOString()),
+        ),
+      );
 
   const oeffnen = (id: string) => navigate?.({ view: 'abrechnung', projektId: projekt.id, nachweisId: id });
 
@@ -238,6 +252,7 @@ function NeuerNachweisDialog({
                 {rasterHinweis}
               </Callout>
             ) : null}
+            {texteHinweis ? <p className="small muted">{texteHinweis}</p> : null}
           </>
         )}
 
@@ -398,9 +413,21 @@ function ZeitraumDialog({
         : `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht bis zum Abschluss und wird beim Abschluss nicht gekürzt. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
       : null;
 
+  // Neue Grenzen: Gemeinsame Texte von Teilen eines Zeitraums ziehen um bzw. gehen zusammen (`periodentexteNachziehen`)
+  const texteHinweis =
+    gueltig && !andere && !abgeschlossen && (zeitraum.von !== nachweis.von || zeitraum.bis !== nachweis.bis)
+      ? nachziehenHinweis(
+          nachgezogenePeriodentexte(data, {
+            ...data,
+            nachweise: data.nachweise.map((x) => (x.id === nachweis.id ? { ...x, von: zeitraum.von, bis: zeitraum.bis } : x)),
+          }),
+        )
+      : null;
+
   const inhaltText = [
     `Im Zeitraum liegen ${anzahl(darin.length, 'Leistung', 'Leistungen')}${darin.length ? ` mit ${stundenText(stunden)} Stunden` : ''}.`,
     herausfallend ? `${anzahl(herausfallend, 'Leistung liegt', 'Leistungen liegen')} danach außerhalb dieses Leistungsnachweises.` : '',
+    texteHinweis ?? '',
   ]
     .filter(Boolean)
     .join(' ');

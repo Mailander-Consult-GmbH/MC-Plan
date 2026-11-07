@@ -23,8 +23,9 @@
  *
  * Gemeinsame Leistungstexte je Zeitraum und Monatsbestätigungen
  * (domain/erfassung.ts) ändern nur `periodentextSetzen`, `monatBestaetigen`
- * und `bestaetigungZuruecknehmen`; nach jeder Änderung räumt
- * `erfassungBereinigen` Texte und Bestätigungen gelöschter Projekte bzw.
+ * und `bestaetigungZuruecknehmen`; nach jeder Änderung ziehen die Texte mit,
+ * wenn sich die Grenzen der Nachweise ändern (`periodentexteNachziehen`), und
+ * `erfassungBereinigen` räumt Texte und Bestätigungen gelöschter Projekte bzw.
  * Mitarbeiter ab.
  *
  * Die Rechte (domain/rechte.ts) werden hier durchgesetzt: Jede Änderung prüft
@@ -60,6 +61,7 @@ import {
   gesperrtHinweis,
   monatsStatus,
   periodentextAnwenden,
+  periodentexteNachziehen,
 } from '../domain/erfassung';
 import {
   abgerechnetIn,
@@ -168,7 +170,7 @@ interface StoreValue {
   /**
    * Setzt den gemeinsamen Text einer Erfassungsperiode (`schluessel` etwa „2026-10|W2026-44“) – nur,
    * wer darin eigene Leistungen hat, und nur, solange sie nicht gesperrt ist
-   * (`darfPeriodentextBearbeiten`). Merkt sich die Leistungen der Periode, den Namen unter
+   * (`darfPeriodentextBearbeiten`). Merkt sich die eigenen Leistungen der Periode, den Namen unter
    * „Angemeldet als“ und den Zeitpunkt; ein leerer Text entfernt den Eintrag. Mit
    * `neueStichpunkteOffenLassen` bleiben die bisher gemerkten Leistungen (beim bloßen
    * Weiterschreiben, damit „Neue Stichpunkte“ nicht verschwindet). Liefert die Meldung oder null.
@@ -487,9 +489,13 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
     periodentextSetzen: (projektId, schluessel, text, optionen = {}) => {
       const meldung = periodentextPruefen(data, projektId, schluessel);
       if (meldung) return meldung;
+      // Gemerkt werden nur die eigenen Leistungen – die Stichpunkte der anderen hat die Person nicht gesehen
       mutate((d, jetzt) =>
         periodentextPruefen(d, projektId, schluessel) === null
-          ? periodentextAnwenden(d, projektId, schluessel, text, d.einstellungen.bearbeiter, jetzt, optionen)
+          ? periodentextAnwenden(d, projektId, schluessel, text, d.einstellungen.bearbeiter, jetzt, {
+              neueStichpunkteOffenLassen: optionen.neueStichpunkteOffenLassen,
+              mitarbeiterId: angemeldet(d)?.id,
+            })
           : d,
       );
       return null;
@@ -623,8 +629,10 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
 }
 
 /**
- * Wendet eine Änderung an und räumt danach auf (`nachweiseBereinigen`,
- * `erfassungBereinigen`) – rein.
+ * Wendet eine Änderung an und räumt danach auf – rein: Ändern sich die Grenzen
+ * der Nachweise, ziehen die gemeinsamen Texte mit (`periodentexteNachziehen`;
+ * nicht ohne Zeitstempel – ein eingespielter Stand wird nicht mit dem
+ * bisherigen verglichen), dann `nachweiseBereinigen` und `erfassungBereinigen`.
  */
 export function aenderungAnwenden(
   alt: LeistungsnachweisDaten,
@@ -632,7 +640,9 @@ export function aenderungAnwenden(
   jetzt: string,
   optionen: { zeitstempel?: boolean } = {},
 ): LeistungsnachweisDaten {
-  return erfassungBereinigen(nachweiseBereinigen(alt, fn(alt, jetzt), jetzt, optionen.zeitstempel !== false));
+  const zeitstempel = optionen.zeitstempel !== false;
+  const neu = fn(alt, jetzt);
+  return erfassungBereinigen(nachweiseBereinigen(alt, zeitstempel ? periodentexteNachziehen(alt, neu) : neu, jetzt, zeitstempel));
 }
 
 const StoreContext = createContext<StoreValue | null>(null);

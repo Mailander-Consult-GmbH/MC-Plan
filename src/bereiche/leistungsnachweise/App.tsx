@@ -6,11 +6,13 @@
  * Unten in der Seitenleiste „Angemeldet als“ – Name und Farbmodus gelten in
  * allen Bereichen (src/gemeinsam/AngemeldetAls.tsx). Eine eigene Anmeldung
  * gibt es nicht: Wer unter diesem Namen noch nicht als Mitarbeiter geführt
- * ist, legt der Store selbst an. Nur ohne Nachnamen bzw. für ausgeschiedene
- * Mitarbeiter steht ein Hinweis über dem Inhalt (components/Anmeldung.tsx),
+ * ist, legt der Store selbst an. Nur ohne Nachnamen, für ausgeschiedene bzw.
+ * umbenannte Mitarbeiter und nach einem Ladefehler steht ein Hinweis über dem
+ * Inhalt (components/Anmeldung.tsx),
  * und „Excel-Import“ bzw. „Leistung erfassen“ zeigen ihn als Kurzmeldung. Im
- * Bereich werden nur Leistungen erfasst; alles
- * Übrige – Leistungsnachweise, Projekteinstellungen, Auswertung, Abschluss,
+ * Bereich werden nur Leistungen erfasst, je Zeitraum die gemeinsamen
+ * Leistungstexte verfasst und die Monate bestätigt (Projektseite, ProjektDetail.tsx);
+ * alles Übrige – Leistungsnachweise, Projekteinstellungen, Auswertung, Abschluss,
  * Export, Mitarbeiter – liegt im Controlling-Bereich von KaPlan
  * (controlling.tsx); Adressen dorthin lenkt der Bereich um.
  */
@@ -60,8 +62,11 @@ export function App() {
     if (controllingAnsicht) window.location.replace(routeToHash(route));
   }, [controllingAnsicht, route]);
 
-  // Eine neue Seite beginnt oben (src/shared/scrollen.ts)
-  const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projektId}` : route.view);
+  // Eine neue Seite beginnt oben (src/shared/scrollen.ts) – auch eine andere Ansicht bzw. ein anderer Monat
+  // des Projekts; Umschalter und Monatswahl stehen ohnehin oben
+  const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(
+    route.view === 'projekt' ? `projekt/${route.projektId}/${route.ansicht ?? 'texte'}/${route.monat ?? ''}` : route.view,
+  );
 
   const gehe = (r: Route) => {
     navigate(r);
@@ -99,7 +104,7 @@ export function App() {
           titel={
             ich
               ? 'Eigene Leistungen aus der Zeiterfassung (Excel) übernehmen'
-              : 'Leistungen aus der Zeiterfassung (Excel) übernehmen – dafür unter „Angemeldet als“ Vor- und Nachnamen eintragen'
+              : 'Leistungen aus der Zeiterfassung (Excel) übernehmen – dafür muss der Name unter „Angemeldet als“ einem aktiven Mitarbeiter gehören'
           }
           onClick={importOeffnen}
         />
@@ -118,7 +123,7 @@ export function App() {
         ))}
 
         <div className="sidebar-footer">
-          <AngemeldetAls hinweis="Unter diesem Namen (Vor- und Nachname) erfassen Sie Ihre Leistungen. Wer hier noch nicht als Mitarbeiter geführt ist, wird automatisch als Mitarbeiter angelegt – eine eigene Anmeldung gibt es nicht." />
+          <AngemeldetAls hinweis="Unter diesem Namen (Vor- und Nachname) erfassen Sie Ihre Leistungen. Wer hier noch nicht als Mitarbeiter geführt ist, wird automatisch als Mitarbeiter angelegt – eine eigene Anmeldung gibt es nicht. Ein anderer Name meldet eine andere Person an; bisher erfasste Leistungen bleiben beim bisherigen Namen." />
           <div className="sicherung-knoepfe">
             <SicherungKnopf />
             <SicherungWaehlen onGelesen={setSicherung} />
@@ -164,7 +169,7 @@ export function App() {
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
             {route.view === 'projekt' ? (
               projekt ? (
-                <ProjektDetail key={projekt.id} projekt={projekt} navigate={gehe} />
+                <ProjektDetail key={projekt.id} projekt={projekt} ansicht={route.ansicht} monat={route.monat} navigate={gehe} />
               ) : (
                 <NichtGefunden label="Zu den Projekten" onZurueck={() => gehe({ view: 'projekte' })} />
               )
@@ -310,7 +315,10 @@ function kopfzeile(route: Route, projekt?: Projekt): { titel: string; sub?: stri
     case 'projekte':
       return { titel: 'Projekte', sub: 'Projekte, in denen Leistungen erfasst werden' };
     case 'projekt':
-      return { titel: projekt?.name ?? 'Projekt', sub: 'Eigene Leistungen im Projekt' };
+      return {
+        titel: projekt?.name ?? 'Projekt',
+        sub: route.ansicht === 'leistungen' ? 'Meine Leistungen im Projekt' : 'Leistungstexte und Monatsbestätigung',
+      };
     default:
       // Controlling-Ansichten werden sofort in den Controlling-Bereich umgelenkt
       return { titel: 'Controlling' };

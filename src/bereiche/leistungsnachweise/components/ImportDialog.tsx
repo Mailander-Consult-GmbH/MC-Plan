@@ -212,8 +212,9 @@ export function importMeldung(plan: ImportPlan): string {
 }
 
 /**
- * Ziel nach dem Übernehmen: Betrifft der Import genau ein Projekt, dessen Leistungen, sonst die
- * Übersicht; im Controlling die Leistungsnachweise.
+ * Ziel nach dem Übernehmen: Betrifft der Import genau ein Projekt, dessen Leistungstexte im
+ * jüngsten Monat der übernommenen Leistungen (dort geht es mit dem gemeinsamen Text weiter),
+ * sonst die Übersicht; im Controlling die Leistungsnachweise.
  */
 export function importZiel(daten: LeistungsnachweisDaten, plan: ImportPlan, zugang: Zugang = 'bereich'): Route {
   // Im Controlling bleibt man im Controlling – bei den Leistungsnachweisen
@@ -223,8 +224,9 @@ export function importZiel(daten: LeistungsnachweisDaten, plan: ImportPlan, zuga
     ...plan.neueLeistungen.map((l) => l.projektId),
     ...daten.leistungen.filter((l) => entfernt.has(l.id)).map((l) => l.projektId),
   ]);
-  if (projekte.size === 1) return { view: 'projekt', projektId: [...projekte][0] };
-  return { view: 'uebersicht' };
+  if (projekte.size !== 1) return { view: 'uebersicht' };
+  const monat = plan.neueLeistungen.reduce((m, l) => (l.datum.slice(0, 7) > m ? l.datum.slice(0, 7) : m), '');
+  return monat ? { view: 'projekt', projektId: [...projekte][0], monat } : { view: 'projekt', projektId: [...projekte][0] };
 }
 
 /** „01.10.26 – 30.10.26“ bzw. ein einzelner Tag. */

@@ -13,8 +13,10 @@
  *
  * Wer angemeldet ist (`Einstellungen.mitarbeiterId`), erfasst nur eigene
  * Leistungen, schreibt mit den Kolleginnen und Kollegen derselben Zeiträume
- * am gemeinsamen Leistungstext (`Periodentext`) und bestätigt je Monat, dass
- * Stunden und Texte vollständig sind (`Bestaetigung`, domain/erfassung.ts).
+ * am gemeinsamen Leistungstext (`Periodentext` – deren Stichpunkte und Stunden
+ * sieht sie nicht) und bestätigt je Monat, dass Stunden und Texte vollständig
+ * sind (`Bestaetigung`, domain/erfassung.ts). Fehlt der Mitarbeiter zum Namen
+ * unter „Angemeldet als“, legt der Bereich ihn selbst an (domain/rechte.ts).
  * Das Controlling (der Controlling-Bereich von KaPlan nach der PIN) stellt die
  * Projekte ein, bearbeitet die Nachweise, schließt sie ab, schlägt Stunden je
  * Zeile auf (`Leistungsnachweis.aufschlaege`) und exportiert – die Rechte
@@ -319,6 +321,12 @@ export function aufschlagSchluessel(zeilenSchluessel: string, abschnittId: ID | 
  */
 export interface NachweisStand {
   zeilen: NachweisZeile[];
+  /**
+   * Raster des Projekts beim Abschluss – es gliedert die gemeinsamen
+   * Leistungstexte der Zeilen (`nachweisZeilen`), auch wenn das Controlling das
+   * Raster des Projekts später umstellt. Fehlt in Ständen vor Fassung 7.
+   */
+  erfassungsRaster?: Raster;
   abschnitte: Abschnitt[];
   projekt: { nummer: string; name: string; kurzname: string; leistungsbereich: string };
   titel: string;
@@ -385,11 +393,25 @@ export interface Leistungsnachweis {
  */
 export interface Periodentext {
   projektId: ID;
-  /** Monat und Periode im Raster des Projekts, etwa „2026-10|W2026-44“ (Wochen am Monatsende geteilt). */
+  /**
+   * Monat und Periode im Raster des Projekts, etwa „2026-10|W2026-44“ (Wochen am Monatsende
+   * geteilt); beginnt ein Nachweis mitten in der Periode (etwa nach einem Abschluss mitten
+   * darin), der Teil ab dann mit seinem Beginn, etwa „2026-11|M2026-11|2026-11-06“
+   * (`erfassungsPeriode`, `erfassungsGliederung`).
+   */
   schluessel: string;
   text: string;
-  /** Leistungen des Zeitraums beim letzten Bearbeiten – später hinzugekommene gelten als neue Stichpunkte. */
+  /**
+   * Leistungen, deren Stichpunkte beim Bearbeiten berücksichtigt waren (je Person die eigenen) –
+   * die übrigen gelten für ihre Person als neue Stichpunkte (`periodentextAnwenden`).
+   */
   leistungIds: ID[];
+  /**
+   * Dieselben Leistungen nach ihrem Inhalt (Person, Tag, Text – `stichpunktInhalt`): So gilt
+   * auch eine unverändert neu importierte Leistung (neue Kennung) als berücksichtigt.
+   * Fehlt in Einträgen, die vor Fassung 7 in der Entwicklung entstanden.
+   */
+  inhalte?: string[];
   /** Name unter „Angemeldet als“ beim letzten Bearbeiten. */
   bearbeiter: string;
   /** Zeitpunkt des letzten Bearbeitens (ISO). */
@@ -399,8 +421,9 @@ export interface Periodentext {
 /**
  * Bestätigung eines Mitarbeiters, dass seine Stunden und die Leistungstexte
  * eines Monats in einem Projekt vollständig erfasst sind. Sie gilt, solange
- * sich der bestätigte Stand nicht ändert (`kennung`, `bestaetigungsKennung` in
- * domain/erfassung.ts) – sonst ist sie erloschen.
+ * sich kein Zeitraum des Monats ändert, der noch nicht abgerechnet ist
+ * (`perioden`, `bestaetigungGilt` in domain/erfassung.ts) – sonst ist sie
+ * erloschen.
  */
 export interface Bestaetigung {
   projektId: ID;
@@ -409,8 +432,15 @@ export interface Bestaetigung {
   monat: string;
   /** Zeitpunkt (ISO). */
   am: string;
-  /** Kennung des bestätigten Stands (`bestaetigungsKennung`). */
+  /** Kennung des bestätigten Stands des ganzen Monats (`bestaetigungsKennung`). */
   kennung: string;
+  /**
+   * Kennungen der bestätigten Zeiträume (Schlüssel → `periodenKennung`), auch
+   * der damals schon abgerechneten – verglichen werden nur die, die jetzt
+   * nicht gesperrt sind. Leer in Einträgen, die vor dieser Fassung in der
+   * Entwicklung entstanden (sie gelten als geändert).
+   */
+  perioden: Record<string, string>;
 }
 
 /* ------------------------------------------------------------------ */
