@@ -295,7 +295,9 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   verbreitert. `Callout` nimmt eine `role` („alert“ für Hinweise, die erst auf eine Handlung hin
   erscheinen). Kurzmeldungen (`ToastProvider` in `src/shared/toast.tsx`) stehen in `.toast-wrap`
   mit `role="status"` und `aria-atomic="false"` – Bildschirmleser lesen jede neue Meldung für sich
-  vor, auch wenn eine ältere noch steht, ohne dass der Fokus wandert. Die Ablagefläche `.drop-zone` der Import-Dialoge `PlaeneImport.tsx`,
+  vor, auch wenn eine ältere noch steht, ohne dass der Fokus wandert. `.toast-wrap` ist so breit
+  wie die längste Meldung, höchstens `min(640px, calc(100vw - 32px))`; `.toast` hat den festen
+  Radius `--radius-xl`, damit umbrechende Meldungen nicht zur Ellipse werden (`src/shared/global.css`). Die Ablagefläche `.drop-zone` der Import-Dialoge `PlaeneImport.tsx`,
   `RollenImport.tsx` (`src/bereiche/planlauf/pages/projekt/`),
   `src/bereiche/projektsteuerung/components/BeteiligteImport.tsx` und
   `src/bereiche/leistungsnachweise/components/ImportDialog.tsx` ist über `alsKnopf`
@@ -1389,7 +1391,9 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   Mitarbeiter, Datum, Text, Stunden, Abschnitt, `projektelement`, `quelle`
   `manuell` oder `import`, `erfasst`, seit Fassung 7 `geaendert` – Zeitpunkt
   der letzten Änderung von Datum, Stunden, Text oder Abschnitt, gesetzt von
-  `updateLeistung`) und `Leistungsnachweis` (Zeitraum `von`/`bis`,
+  `updateLeistung` und von `importPlanen`, wenn eine neue Zeile die Kennung
+  einer ersetzten, abgerechneten bzw. nachgereichten Leistung mit anderem
+  Inhalt übernimmt) und `Leistungsnachweis` (Zeitraum `von`/`bis`,
   Raster, Status `entwurf` oder `abgeschlossen`, bearbeitete `texte` –
   `ZeilenText` mit `text`, `leistungIds` und seit Fassung 7 `ausgang`, dem Text
   der Zeile ohne die Bearbeitung beim Beginn der Bearbeitung –,
@@ -1398,7 +1402,12 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   Ende hat das Controlling von Hand festgelegt –, festgeschriebener `stand`;
   dessen Zeilen tragen `nachgereicht` für die Zeile nachgereichter Leistungen,
   er selbst seit Fassung 7 `erfassungsRaster` – das Raster des Projekts beim
-  Abschluss). Seit Fassung 7 dazu `Periodentext` (gemeinsamer Leistungstext
+  Abschluss – und optional `inhalte` – je abgerechneter Leistung der Inhalt beim
+  Abschluss, `standInhalt` in
+  `src/bereiche/leistungsnachweise/domain/nachweis.ts`: Prüfsumme über Datum,
+  Stunden und Text – sowie `abschnittIds` – je abgerechneter Leistung mit
+  Abschnitt der Abschnitt; beide fehlen in früher abgeschlossenen Ständen,
+  `aufbereiten()` übernimmt sie). Seit Fassung 7 dazu `Periodentext` (gemeinsamer Leistungstext
   eines Projekts für eine Erfassungsperiode: `projektId`, `schluessel` wie
   „2026-10|W2026-44“, `text`, die beim Bearbeiten berücksichtigten Leistungen
   `leistungIds` und – nach Person, Tag und Text, `stichpunktInhalt` –
@@ -1486,8 +1495,12 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   und zwei Fenster keine Doppel anlegen). Wechselt der Name, entfernt
   `anmeldungAnwenden` im Bereich die unter dem bisherigen Namen angelegte Person
   (Kennung `mitarbeiterKennung` des bisherigen Namens in
-  `einstellungen.bearbeiter`), wenn sie aktiv ist, keine Leistungen hat und in
-  keinem festgeschriebenen Stand steht (`stundenJeMitarbeiter`) – ein
+  `einstellungen.bearbeiter`), wenn sie aktiv ist, noch so ist, wie der Bereich
+  sie angelegt hat – noch der bisherige Name (`mitarbeiterZumNamen`) und das
+  Kürzel aus dem Namen, auch mit Zahl (`kuerzelWieAngelegt`); hat das
+  Controlling sie bearbeitet, bleibt sie –, keine Leistungen hat und in
+  keinem festgeschriebenen Stand steht (`stundenJeMitarbeiter`,
+  `automatischAngelegtOhneLeistungen`) – ein
   Tippfehler hinterlässt so keinen Mitarbeiter. Eine vergebene Kennung führt
   schon zur Lage `umbenannt`. Im Controlling wird niemand angelegt oder entfernt.
   Die übrigen Lagen (`AnmeldeLage`) nennt `anmeldeHinweis` als Leiste über dem
@@ -1579,9 +1592,15 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   stehen. Danach zieht `bestaetigungenNachziehen` die Bestätigungen mit: Stammen
   die eigenen Leistungen eines nicht gesperrten Zeitraums mit Text aus Teilen,
   die nicht gesperrt und so bestätigt waren, wie sie vor der Änderung waren,
-  sind sie unverändert, gehören die Teile zur selben Periode im selben Raster
-  und hat die Änderung selbst keinen Text gesetzt, trägt die Bestätigung den
-  neuen Zeitraum ein (die Kennungen der Teile entfallen). Eine Teilung zieht
+  sind sie unverändert, enthält der zusammengeführte Text nichts, was die
+  Person nicht bestätigt hat (nur Sätze bzw. Teile, die in den Texten ihrer
+  bestätigten Teile stehen, gleich in welcher Reihenfolge – `nurBekannteTeile`
+  in `src/bereiche/leistungsnachweise/domain/nachweis.ts`; bringt ein Teil ohne
+  eigene Leistungen neuen Text mit, erlischt sie), gehören die Teile zur selben
+  Periode im selben Raster und hat die Änderung selbst keinen Text gesetzt,
+  trägt die Bestätigung den neuen Zeitraum ein (die Kennungen der Teile
+  entfallen). Welche Texte in einem Zeitraum aufgehen, sagt dabei dieselbe
+  Zuordnung wie beim Nachziehen der Texte (`textZiele`). Eine Teilung zieht
   keine Bestätigung mit.
 * Eine Leistung, die im Stand eines abgeschlossenen Nachweises steht, der ihr
   Datum nicht umfasst (`abgerechnetIn`, etwa nach einer Datumsänderung nach
@@ -1607,9 +1626,20 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   (`abgeschlossenIm`): Der Text ist nur zu lesen, und der Zeitraum zählt nicht
   zur Bestätigung. Eigene Leistungen darin, die weder abgerechnet
   (`abgerechneteLeistungen`) noch nachgereicht sind, stehen in
-  `nachAbschluss`, abgerechnete, die nach dem Abschluss geändert wurden
-  (`Leistung.geaendert` nach `Leistungsnachweis.abgeschlossen`), in
+  `nachAbschluss`, abgerechnete, die nach dem Abschluss geändert wurden und
+  jetzt anders sind als abgerechnet (`nachAbschlussGeaendert` in
+  `src/bereiche/leistungsnachweise/domain/nachweis.ts`: `Leistung.geaendert`
+  nach `Leistungsnachweis.abgeschlossen`, und Datum, Stunden und Text weichen
+  von `NachweisStand.inhalte` bzw. der Abschnitt von `NachweisStand.abschnittIds`
+  ab – ohne `inhalte` zählt allein der Zeitpunkt), in
   `nachAbschlussGeaendert`; beide nennt der Hinweis `nachAbschlussHinweis`.
+  Wer auf den abgerechneten Wert zurückändert, hebt den Hinweis auf; eine
+  Änderung durch das Controlling setzt `geaendert` nicht und nennt er nicht.
+  Ordnet es Abschnitte neu zu (`updateProjekt` mit entfallenen Abschnitten,
+  `abschnitteAusProjektelementen`), zieht `standAbschnitteNachziehen` den
+  Abschnitt im Stand mit: Hatte die Leistung noch ihren abgerechneten
+  Abschnitt, gilt ihr neuer; ein Abschnitt, den es im Projekt nicht mehr gibt,
+  entfällt.
 * Bestätigung: `periodenKennung` (Prüfsumme über die eigenen Leistungen des
   Zeitraums nach Inhalt – Datum, Stunden, Abschnitt, Text, sortiert, ohne
   Kennungen – und den gemeinsamen Text); verglichen wird je Zeitraum
@@ -1682,15 +1712,22 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   beim Verlassen des Felds gespeichert.“ (ungespeichert), „Inzwischen von …
   geändert – Ihre Eingabe wird beim Verlassen des Felds mit dieser Fassung
   zusammengeführt.“ (ein anderes Fenster hat seit Beginn der Eingabe
-  gespeichert, `Entwurf.basis`), „Zuletzt bearbeitet von … am … um … Uhr“ bzw.
+  gespeichert, `Entwurf.basis`; hat die Eingabe netto nichts geändert,
+  „Inzwischen von … geändert – Ihre Eingabe ändert nichts daran; beim
+  Verlassen des Felds gilt diese Fassung.“), „Zuletzt bearbeitet von … am … um … Uhr“ bzw.
   „Pflicht – ohne Text lässt sich der Monat nicht bestätigen.“ Gespeichert wird
   beim Verlassen des Felds, offene Eingaben auch beim Monatswechsel, beim
   Verlassen der Seite und bei `pagehide`/`visibilitychange` (synchron über
-  `flushSync`); hat inzwischen jemand anderes gespeichert, die Zusammenführung
-  beider Fassungen (`zuSpeichern`, `texteZusammenfuehren`) mit „Den
+  `flushSync`); hat inzwischen jemand anderes gespeichert, die dreiseitige
+  Zusammenführung beider Fassungen (`zuSpeichern`, `texteDreiseitig` in
+  `src/bereiche/leistungsnachweise/domain/nachweis.ts`: Sätze der Basis, die die
+  Eingabe gestrichen hat, fallen auch aus der gespeicherten Fassung; angehängt
+  werden nur die eigenen Ergänzungen – was der andere gelöscht hat, kehrt nicht
+  zurück) mit „Den
   Leistungstext für … hat inzwischen … geändert – Ihre Eingabe ist mit dieser
-  Fassung zusammengeführt. Bitte prüfen.“ Entfällt der Zeitraum einer Eingabe,
-  zieht sie in den Zeitraum um, der ihren Beginn jetzt enthält (mit dem Fokus,
+  Fassung zusammengeführt. Bitte prüfen.“; eine netto unveränderte Eingabe
+  entfällt ohne Meldung. Entfällt der Zeitraum einer Eingabe,
+  zieht sie mit ihren eigenen Änderungen (`texteDreiseitig`) in den Zeitraum um, der ihren Beginn jetzt enthält (mit dem Fokus,
   wenn ihr Feld ihn hatte); sonst – und wenn das Speichern scheitert – steht
   über den Zeiträumen „Nicht gespeichert (…):“ mit dem Grund, „Ihre Eingabe:“,
   dem Text und „Verwerfen“ (beim Verlassen der Seite als Kurzmeldung). Darüber
@@ -1844,7 +1881,9 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   zuordnen zu“ steht zu Beginn auf „– nicht übernehmen –“. Bei „Frühere
   Importe ersetzen“ übernimmt eine neue Zeile derselben Person für dasselbe
   Projekt und denselben Tag die Kennung einer ersetzten Leistung, die
-  abgerechnet oder nachgereicht ist (`src/bereiche/leistungsnachweise/domain/import.ts`).
+  abgerechnet oder nachgereicht ist (`src/bereiche/leistungsnachweise/domain/import.ts`);
+  mit anderem Inhalt (`leistungsInhalt`) gilt sie als geändert (`geaendert`), so
+  nennt der Bereich eine abgerechnete als „nach dem Abschluss geändert“.
 * „Neuer Leistungsnachweis“ (`NeuerNachweisDialog` in
   `src/bereiche/leistungsnachweise/components/NachweisDialog.tsx`) fragt keinen
   Zeitraum ab – nur das Projekt (in der Liste aller Nachweise), „Raster“ und
@@ -1976,8 +2015,15 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   `leistungenDesNachweises`, samt nachgereichten; Meldung „Leistungsnachweis
   und … gelöscht.“ bzw. „Leistungsnachweis gelöscht.“); Aufschläge je Zeile,
   „Aufschläge zurücksetzen“, „Bemerkung“.
-  Kamen nach einer Textbearbeitung Leistungen hinzu, weist ein Hinweis mit
-  „Leistungstexte prüfen“ darauf hin.
+  Kamen in von Hand bearbeiteten Zeilen seitdem Leistungen hinzu oder hat sich
+  dort der Text der Mitarbeiter bzw. der automatische Text geändert
+  (`ueberholteZeilen` in `src/bereiche/leistungsnachweise/domain/nachweis.ts` –
+  dieselben Zeilen nennt die Ansicht „Leistungstexte“), weist eine Warnung mit
+  „Leistungstexte prüfen“ darauf hin (`ueberholtHinweis`: „In … kamen nach der
+  Bearbeitung des Leistungstexts Leistungen hinzu.“, „In … hat sich der Text der
+  Mitarbeiter seit der Bearbeitung des Leistungstexts geändert.“ bzw. „In … hat
+  sich der automatische Text seit der Bearbeitung des Leistungstexts
+  geändert.“ – den automatischen nur in Zeilen ohne neue Leistungen).
 * Bestätigungen in der Abrechnung: Ein offener Nachweis zeigt unter den
   Kennzahlen „Bestätigungen der Mitarbeiter“ (`BestaetigungsStand` in
   `src/bereiche/leistungsnachweise/pages/controlling/Bestaetigungen.tsx`) – je
@@ -1992,7 +2038,12 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   Person hat ihre Leistungen noch nicht bestätigt:“ bzw. „… Personen haben ihre
   Leistungen noch nicht bestätigt:“, Namen mit „(geändert seit Bestätigung)“
   und „Abschließen ist trotzdem möglich – danach lassen sich die gemeinsamen
-  Leistungstexte der abgerechneten Zeiträume nicht mehr ändern.“
+  Leistungstexte der abgerechneten Zeiträume nicht mehr ändern.“ Darüber nennt
+  sie überholte bearbeitete Zeilen (`ueberholtRueckfrage`: „Achtung: In … fehlen
+  neue Leistungen noch im bearbeiteten Text.“, „Achtung: In … hat sich der Text
+  der Mitarbeiter seit der Bearbeitung geändert – abgeschlossen wird der von
+  Hand bearbeitete Text.“, für den automatischen Text entsprechend) und die
+  Bestätigungen, die mit geänderten Grenzen erlöschen (`grenzFolgen`).
   „Wieder öffnen“ eines im früheren Raster abgeschlossenen Nachweises
   (`NachweisStand.erfassungsRaster` ≠ Raster des Projekts) nennt in der
   Rückfrage die gemeinsamen Texte, die danach nicht mehr gelten
@@ -2034,10 +2085,10 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 | „In diesem Monat haben Sie keine eigenen Leistungen in diesem Projekt.“ / „Der Monat ist bereits abgerechnet – eine Bestätigung ist nicht mehr nötig.“ | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`bestaetigenMeldung`) | Bestätigen bei Status 'keine' bzw. 'abgerechnet'. |
 | „Diesen Monat bzw. dieses Projekt gibt es nicht.“ | `src/bereiche/leistungsnachweise/store/store.tsx` (`monatBestaetigen`) | Ungültiger Monat oder unbekanntes Projekt. |
 | „Ihre Leistung vom … liegt in einem bereits abgerechneten Zeitraum und wurde nach dem Abschluss erfasst – sie geht nicht in den abgeschlossenen Leistungsnachweis ein; über ein Nachreichen entscheidet das Controlling.“ (mehrere: „… Ihrer Leistungen (…) liegen in bereits abgerechneten Zeiträumen …“) | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`nachAbschlussHinweis`) | Eigene, nicht abgerechnete Leistungen in einem gesperrten Zeitraum (Seite „Leistungstexte“). |
-| „Ihre Leistung vom … ist bereits abgerechnet und wurde nach dem Abschluss geändert – abgerechnet bleibt der Stand des Abschlusses; die Änderung geht erst ein, wenn das Controlling den Leistungsnachweis wieder öffnet.“ (mehrere: „… Ihrer Leistungen (…) sind bereits abgerechnet …“) | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`nachAbschlussHinweis`) | Eigene, abgerechnete Leistungen in einem gesperrten Zeitraum, nach dem Abschluss geändert (`Leistung.geaendert`). |
+| „Ihre Leistung vom … ist bereits abgerechnet und wurde nach dem Abschluss geändert – abgerechnet bleibt der Stand des Abschlusses; die Änderung geht erst ein, wenn das Controlling den Leistungsnachweis wieder öffnet.“ (mehrere: „… Ihrer Leistungen (…) sind bereits abgerechnet …“) | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`nachAbschlussHinweis`) | Eigene, abgerechnete Leistungen in einem gesperrten Zeitraum, nach dem Abschluss geändert – von Hand oder durch einen Neuimport mit anderem Inhalt – und anders als im festgeschriebenen Stand (`nachAbschlussGeaendert`); Zurückändern hebt den Hinweis auf. |
 | „Ihre Leistung vom … ist bereits in … abgerechnet – sie zählt dort und nicht in den Zeiträumen dieses Monats. Änderungen an ihr gehen erst ein, wenn das Controlling … wieder öffnet.“ (mehrere: „… Ihrer Leistungen (…) sind bereits in … abgerechnet …“) | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`anderswoAbgerechnetHinweis`) | Eigene Leistungen des Monats, die ein abgeschlossener Nachweis abrechnet, der ihr Datum nicht umfasst. |
 | „Nicht gespeichert (…): … Ihre Eingabe:“ mit „Verwerfen“ | `src/bereiche/leistungsnachweise/pages/projekt/MonatsErfassung.tsx` | Eine Eingabe im gemeinsamen Text ließ sich nicht speichern – ihr Zeitraum hat keine eigenen Leistungen mehr („In diesem Zeitraum haben Sie keine eigenen Leistungen mehr.“), ist inzwischen abgerechnet (`gesperrtHinweis`) oder das Speichern scheiterte; beim Verlassen der Seite als Kurzmeldung. |
-| „Den Leistungstext für … hat inzwischen … geändert – Ihre Eingabe ist mit dieser Fassung zusammengeführt. Bitte prüfen.“ | `src/bereiche/leistungsnachweise/pages/projekt/MonatsErfassung.tsx` | Kein Fehler: Ein anderer (etwa ein zweites Fenster) hat den Text seit Beginn der Eingabe gespeichert; gespeichert ist die Zusammenführung. |
+| „Den Leistungstext für … hat inzwischen … geändert – Ihre Eingabe ist mit dieser Fassung zusammengeführt. Bitte prüfen.“ | `src/bereiche/leistungsnachweise/pages/projekt/MonatsErfassung.tsx` | Kein Fehler: Ein anderer (etwa ein zweites Fenster) hat den Text seit Beginn der Eingabe gespeichert; gespeichert ist die dreiseitige Zusammenführung (`texteDreiseitig`). |
 | „… bestätigt.“ / „Bestätigung für … zurückgenommen.“ / „Stichpunkte übernommen.“ / „Neue Stichpunkte ergänzt.“ / „Stichpunkte als berücksichtigt markiert.“ | `src/bereiche/leistungsnachweise/pages/projekt/MonatsErfassung.tsx` | Kein Fehler. |
 | „Leistungstext der Mitarbeiter wiederhergestellt.“ / „Automatischer Leistungstext wiederhergestellt.“ | `src/bereiche/leistungsnachweise/pages/controlling/Leistungstexte.tsx` | Kein Fehler: Bearbeitung von Hand verworfen. |
 

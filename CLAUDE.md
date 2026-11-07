@@ -128,7 +128,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   (`anmeldungAnwenden`, `anmeldeLage`: Vor- und Nachname nötig, kein ausgeschiedener gleichen
   Namens; Kennung aus dem Namen, `mitarbeiterKennung`, vor `mutate` gebildet – StrictMode und
   zwei Fenster erzeugen keine Doppel; hat das Controlling die so angelegte Person umbenannt,
-  legt er keine neue an). Im Controlling wird niemand angelegt. Übrige Lagen nennt
+  legt er keine neue an; ein Namenswechsel entfernt sie nur, solange sie keine Leistungen hat und
+  noch so ist, wie der Bereich sie angelegt hat – Name und Kürzel unverändert,
+  `automatischAngelegtOhneLeistungen`). Im Controlling wird niemand angelegt. Übrige Lagen nennt
   `components/Anmeldung.tsx` (`AnmeldeHinweis` als Leiste, `useMitAnmeldung` als Kurzmeldung
   vor Handlungen) – keinen Dialog. **Gemeinsame Leistungstexte und Monatsbestätigung**
   (`domain/erfassung.ts`, rein): Erfassungsperiode = Periode im Raster des Projekts, auf den
@@ -141,10 +143,16 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `periodentextSetzen`, `monatBestaetigen`, `bestaetigungZuruecknehmen`; nach jedem `mutate`
   `periodentexteNachziehen` (Texte ziehen mit, wenn sich Grenzen der Nachweise ändern),
   `bestaetigungenNachziehen` (gehen bestätigte Teile unverändert in einem Zeitraum auf, gilt die
-  Bestätigung weiter; eine Teilung lässt sie erlöschen – die Rückfragen im Controlling nennen das,
-  `grenzFolgen`) und `erfassungBereinigen`. Eine abgerechnete Leistung, deren Datum aus ihrem
+  Bestätigung weiter – nur, wenn der zusammengeführte Text nichts enthält, was die Person nicht
+  bestätigt hat, verglichen nach Sätzen ohne Reihenfolge, `nurBekannteTeile`; eine Teilung lässt
+  sie erlöschen – die Rückfragen im Controlling nennen das,
+  `grenzFolgen` rechnet wie der Store) und `erfassungBereinigen`. Eine abgerechnete Leistung, deren Datum aus ihrem
   abgeschlossenen Nachweis herausgelegt wurde, gehört zu keinem Zeitraum (`AnderswoAbgerechnet`);
-  nach dem Abschluss geänderte abgerechnete erkennt `Leistung.geaendert`. Im Bereich sieht niemand Stichpunkte, Stunden oder Leistungen der
+  nach dem Abschluss geänderte abgerechnete erkennt `nachAbschlussGeaendert` (`domain/nachweis.ts`:
+  `Leistung.geaendert` nach dem Abschluss – gesetzt von `updateLeistung` und vom Neuimport mit
+  anderem Inhalt – und Abweichung vom Stand, `NachweisStand.inhalte`/`abschnittIds`;
+  Zurückändern hebt es auf; ordnet das Controlling Abschnitte neu zu, zieht
+  `standAbschnitteNachziehen` den Abschnitt im Stand mit). Im Bereich sieht niemand Stichpunkte, Stunden oder Leistungen der
   anderen – auch nicht als Zahl (`stichpunkteDerPeriode`); gemeinsam ist allein der Text; das
   Controlling liest alles. `domain/nachweis.ts`
   Zeilen (Text ohne Bearbeitung von Hand aus den gemeinsamen Texten, `gemeinsamerZeilentext`,

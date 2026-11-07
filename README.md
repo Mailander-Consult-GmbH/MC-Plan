@@ -216,7 +216,7 @@ dorthin zurück, wo der erste herkam (etwa *Sicherung abgleichen* nach *Sicherun
 Plänen, Funktionen, Projektbeteiligten und Leistungen sind per Tab erreichbar; Enter oder Leertaste
 öffnen die Dateiauswahl. Kurzmeldungen am unteren Rand (`src/shared/toast.tsx`) lesen
 Bildschirmleser vor, jede neue für sich, auch wenn eine ältere noch steht (`role="status"`,
-`aria-atomic="false"`).
+`aria-atomic="false"`); lange brechen um und bleiben auch auf schmalen Bildschirmen ganz lesbar.
 
 ## Funktionsumfang
 
@@ -1110,7 +1110,8 @@ der Bereich sie selbst an** (aktiv, Kürzel aus dem Namen; `anmeldungAnwenden`) 
 Namen abgeleiteten Kennung, sodass zwei Fenster keine Doppel erzeugen, und nur, solange der
 gespeicherte Stand einwandfrei geladen ist; das Controlling legt niemanden an. Wechselt der Name
 danach, entfernt der Bereich die unter dem bisherigen Namen angelegte Person wieder, solange sie
-keine Leistungen hat und in keinem abgeschlossenen Nachweis steht – ein Tippfehler unter
+keine Leistungen hat, in keinem abgeschlossenen Nachweis steht und das Controlling sie nicht
+bearbeitet hat (noch der bisherige Name und das Kürzel aus dem Namen) – ein Tippfehler unter
 „Angemeldet als“ hinterlässt so keinen Mitarbeiter. Übrig bleiben
 Hinweise über dem Inhalt: Der Name hat keinen Nachnamen (bitte unten links Vor- und Nachnamen
 eintragen), er gehört einem ausgeschiedenen Mitarbeiter (das Controlling kann ihn wieder aktiv
@@ -1169,7 +1170,8 @@ dem Export der Zeiterfassung übernehmen – auch mehrere Projekte je Datei. Unb
 fehlende Abschnitte (Spalte J „Projektelement“) legt der Import an, doppelte Zeilen überspringt er,
 frühere eigene Importe im Zeitraum der Datei lassen sich ersetzen – ist eine ersetzte Leistung schon
 abgerechnet oder nachgereicht, übernimmt die neue Zeile derselben Person für dasselbe Projekt und
-denselben Tag ihre Kennung, sodass sie nicht doppelt abgerechnet wird. Im Bereich übernimmt jede
+denselben Tag ihre Kennung, sodass sie nicht doppelt abgerechnet wird; weicht ihr Inhalt ab, gilt
+sie als nach dem Abschluss geändert (siehe „Abgerechnete Zeiträume“). Im Bereich übernimmt jede
 Person nur ihre eigenen Zeilen; Leistungen anderer ändert niemand. Projekte (nur mit dem Haken
 „Projekt anlegen“) und Abschnitte legt der Import auch im Bereich an, soweit die eigenen Leistungen
 sie brauchen; einstellen lassen sie sich nur im Controlling. Betrifft ein Import genau ein Projekt,
@@ -1216,9 +1218,13 @@ Verlassen des Felds (offene Eingaben auch beim Neuladen, Schließen, Verdecken d
 Monatswechsel) mit „Zuletzt bearbeitet von … am …“. Hat inzwischen jemand anderes – etwa in einem
 zweiten Fenster – den Text gespeichert, sagt das Feld es an („Inzwischen von … geändert – Ihre
 Eingabe wird beim Verlassen des Felds mit dieser Fassung zusammengeführt.“), und gespeichert wird
-die Zusammenführung beider Fassungen mit einer Kurzmeldung – keine geht still verloren. Entfällt der
-Zeitraum einer offenen Eingabe (ein anderes Fenster ändert die Grenzen), zieht sie in den Zeitraum
-um, der ihren Beginn jetzt enthält; lässt sie sich gar nicht speichern (keine eigenen Leistungen mehr
+die Zusammenführung beider Fassungen mit einer Kurzmeldung – keine geht still verloren. Zusammengeführt
+wird dreiseitig (`texteDreiseitig`): Was der andere gelöscht hat, kehrt nicht zurück; aus der eigenen
+Eingabe kommen nur die eigenen Ergänzungen hinzu, und eigene Streichungen gelten auch für die andere
+Fassung. Hat die Eingabe netto nichts geändert, gilt die Fassung des anderen („… Ihre Eingabe ändert
+nichts daran; beim Verlassen des Felds gilt diese Fassung.“). Entfällt der
+Zeitraum einer offenen Eingabe (ein anderes Fenster ändert die Grenzen), zieht sie mit ihren eigenen
+Änderungen in den Zeitraum um, der ihren Beginn jetzt enthält; lässt sie sich gar nicht speichern (keine eigenen Leistungen mehr
 darin, inzwischen abgerechnet), steht sie als **„Nicht gespeichert (…)“** mit **Verwerfen** über den
 Zeiträumen. **Stichpunkte übernehmen** setzt in einen leeren
 Text die eigenen Stichpunkte ein; kommen danach eigene Leistungen hinzu, nennt der Block sie („Noch
@@ -1234,7 +1240,11 @@ wieder zurück). **Die Bestätigung erlischt**, sobald sich in einem noch nicht 
 die eigenen Leistungen (Datum, Stunden, Abschnitt, Text) oder der gemeinsame Text ändern – auch, wenn
 ein anderer den Text ändert –, und wenn eine neue Grenze eines Leistungsnachweises einen Zeitraum mit
 eigenen Leistungen teilt; dann heißt es „Seit der Bestätigung am … geändert – bitte erneut
-bestätigen.“. Gehen bestätigte Teile dagegen nur in einem Zeitraum auf, bleibt sie bestehen. Hat ein
+bestätigen.“. Gehen bestätigte Teile dagegen nur in einem Zeitraum auf, bleibt sie bestehen – außer
+der zusammengeführte Text bringt Text aus einem Teil mit, den die Person nicht bestätigt hat (ein Teil
+ohne eigene Leistungen): Dann hat sich der Text für sie geändert, und sie erlischt. Verglichen werden
+Sätze bzw. ihre Teile: Stehen nur Sätze darin, die sie in ihren Teilen bestätigt hat, bleibt sie
+bestehen, auch wenn sie in anderer Reihenfolge stehen. Hat ein
 Monat keine eigenen Leistungen, verweist die Seite auf *Meine Leistungen* und den Excel-Import.
 
 **Abgerechnete Zeiträume:** Umfasst ein abgeschlossener Leistungsnachweis einen Zeitraum, ist sein
@@ -1243,9 +1253,15 @@ er zählt nicht mehr zur Bestätigung – auch spätere Änderungen darin lassen
 alle eigenen Leistungen eines Monats abgerechnet, steht der Monat auf „Abgerechnet“. Eigene
 Leistungen, die nach dem Abschluss in einem abgerechneten Zeitraum **erfasst** wurden, nennt ein
 Hinweis: Sie gehen nicht in den abgeschlossenen Nachweis ein, über ein Nachreichen entscheidet das
-Controlling. Ebenso nennt er abgerechnete Leistungen, die nach dem Abschluss **geändert** wurden
-(Stichpunkt „nach dem Abschluss geändert“): Abgerechnet bleibt der Stand des Abschlusses, die
-Änderung geht erst ein, wenn das Controlling den Nachweis wieder öffnet. Wird eine abgerechnete
+Controlling. Ebenso nennt er abgerechnete Leistungen, die nach dem Abschluss **geändert** wurden –
+von Hand oder durch einen Neuimport mit „Frühere eigene Importe im Zeitraum ersetzen“ – und jetzt
+anders sind als im festgeschriebenen Stand (Stichpunkt „nach dem Abschluss geändert“): Abgerechnet
+bleibt der Stand des Abschlusses, die Änderung geht erst ein, wenn das Controlling den Nachweis wieder
+öffnet. Wer auf den abgerechneten Wert zurückändert, hebt den Hinweis wieder auf (der Stand merkt sich
+dazu Datum, Stunden, Abschnitt und Text jeder abgerechneten Leistung; in früher abgeschlossenen
+Nachweisen zählt allein, ob sie danach geändert wurde). Ordnet das Controlling Abschnitte neu zu –
+es entfernt einen Abschnitt oder legt *Abschnitte aus Projektelementen* an –, zieht der Abschnitt im
+Stand mit: Das zählt nicht als Änderung der Person. Wird eine abgerechnete
 Leistung nach dem Abschluss auf einen Tag außerhalb ihres Nachweises gelegt, bleibt sie dort
 abgerechnet und zählt in keinem Zeitraum – weder zu den eigenen Stunden noch zur Bestätigung, einen
 Text verlangt sie nicht; ein Hinweis nennt sie („Ihre Leistung vom … ist bereits in „…“
@@ -1321,7 +1337,10 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   nach einer Bearbeitung stellt **Text der Mitarbeiter wiederherstellen** ihn wieder her; ändern die
   Mitarbeiter ihren Text nach der Bearbeitung, nennt die Zeile den neuen („Der Text der Mitarbeiter
   hat sich seit der Bearbeitung geändert:“) mit **Text der Mitarbeiter übernehmen** und **Text so
-  lassen**; sind die
+  lassen** – dieselben Zeilen zählt über der Abrechnung eine Warnung („In … Zeilen kamen nach der
+  Bearbeitung des Leistungstexts Leistungen hinzu.“, „In … Zeilen hat sich der Text der Mitarbeiter
+  seit der Bearbeitung des Leistungstexts geändert.“) mit **Leistungstexte prüfen**, und die
+  Rückfrage beim Abschließen warnt ebenso; sind die
   Zeilen feiner gegliedert als das Raster des Projekts, erklärt ein Hinweis, warum dort die Texte der
   Leistungen stehen), die
   **Vorschau**, **Drucken / PDF**, **Excel**, **Abschließen** (der Stand wird festgeschrieben)
@@ -1334,6 +1353,9 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   *Bestätigungen*. Die Rückfrage beim **Abschließen** nennt je Monat, wer noch nicht bzw. nach einer
   Änderung nicht erneut bestätigt hat – abschließen bleibt möglich; endet der Nachweis dabei mitten
   in einem Zeitraum, sagt sie, dass die Mitarbeiter für die Tage danach einen eigenen Text verfassen.
+  Von Hand bearbeitete Zeilen, in denen seitdem Leistungen hinzukamen oder sich der Text der
+  Mitarbeiter bzw. der automatische Text geändert hat, nennt sie mit „Achtung: …“ – abgeschlossen
+  wird der von Hand bearbeitete Text.
   Wurde ein Nachweis in einem anderen Raster abgeschlossen, als das Projekt heute hat, nennt
   *Wieder öffnen* die gemeinsamen Texte, die danach nicht mehr gelten.
 * **Projekte** – alle Projekte der Leistungsnachweise mit Raster, Regel, offenen Nachweisen,
@@ -1724,8 +1746,10 @@ src/
                      automatischem Anlegen (anmeldungAnwenden)
         erfassung.ts Gemeinsame Leistungstexte je Zeitraum, Monatsstatus und Bestätigung,
                      Sperre abgerechneter Zeiträume, Nachziehen der Texte bei neuen Grenzen
-        nachweis.ts  Zeilen (Text aus den gemeinsamen Leistungstexten), Zeiträume, Ergänzen,
+        nachweis.ts  Zeilen (Text aus den gemeinsamen Leistungstexten, überholte bearbeitete
+                     Zeilen), Texte zusammenführen (auch dreiseitig), Zeiträume, Ergänzen,
                      Aufschläge, neuer Nachweis für alle nicht abgerechneten Leistungen, Abschluss
+                     (Stand samt Inhalt der abgerechneten Leistungen)
         zeitraum.ts  Tage, Kalenderwochen, Monate, Erfassungsperioden und Stundenformat
         import.ts    Excel-Import der Zeiterfassung (Lesen, Planen, Anwenden)
         auswertung.ts  Stunden je Mitarbeiter, Monat und Projekt
