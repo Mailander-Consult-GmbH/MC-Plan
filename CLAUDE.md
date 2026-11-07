@@ -119,23 +119,24 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `LeistungDialog` über `projektAuswahl`), alles Übrige (Projekte anlegen und einstellen –
   `projektVerwalten`; Ausnahme: der Excel-Import legt auch im Bereich unbekannte Projekte und
   Abschnitte an, soweit die eigenen Leistungen sie brauchen, `planErlaubt` –,
-  Leistungsnachweise samt Leistungstexten und Bemerkung, Abschluss, Aufschläge, Export, Rhythmus,
+  Leistungsnachweise samt Leistungstexten und Bemerkung, Erstellen (Abschluss), Aufschläge, Export,
   Auswertung, Sammel-Import) gibt es nur im Controlling – ohne Reiter (`ControllingTab` =
   `'projekte'` | `'auswertung'` in `lib/router.ts`): die Übersicht der Projekte
-  (`pages/controlling/ProjektListe.tsx`: je Projekt Rhythmus und Raster als Auswahl in der Tabelle –
-  Rückfrage „Rhythmus ändern?“ mit den offenen Nachweisen vorher und danach, vorab gerechnet mit
-  `regelAnwenden` und `grenzFolgen`, bzw. „Raster ändern?“ mit `RasterwechselHinweis` –, der
-  aktuelle Nachweis mit Stand, `aktuellerNachweis`/`nachweisFaellig`, Stunden und „x von y
-  bestätigt“, `bestaetigungsZahl`; Sammel-Import, Neues Projekt), je Projekt eine Seite
-  (`Projekt.tsx`, Route `controllingProjekt`; `abrechnung` ist dieselbe Seite mit gewähltem
+  (`pages/controlling/ProjektListe.tsx`: je Projekt das Raster als Auswahl in der Tabelle –
+  Rückfrage „Raster ändern?“ mit `RasterwechselHinweis` –, der aktuelle Nachweis mit Stand,
+  `aktuellerNachweis`/`nachweisFaellig` – „Fällig“ mit dem Monat aus `offenSeit`, sonst „Offen“ –,
+  Stunden und „x von y bestätigt“, `bestaetigungsZahl`; Sammel-Import, Neues Projekt), je Projekt
+  eine Seite (`Projekt.tsx`, Route `controllingProjekt`; `abrechnung` ist dieselbe Seite mit gewähltem
   Nachweis: Kopf mit Menü „Mehr“ – `MehrMenue` in `pages/controlling/hilfen.tsx` – für „Projekt
   einstellen“ (`ProjektEinstellungen` im `Modal`), Bearbeiten und Löschen; darunter
   `NachweisBearbeitung` aus `Abrechnung.tsx`: Auswahl unter allen Nachweisen des Projekts, Vorschau,
-  PDF, Excel, Menü „Mehr“, „Leistungsnachweis erstellen“ = abschließen; der Block „Mitarbeiter und
+  PDF, Excel, Menü „Mehr“, „Leistungsnachweis erstellen“ = abschließen, mit „Leistungen bis
+  einschließlich“ in der Rückfrage; der Block „Mitarbeiter und
   Bestätigungen“, `MitarbeiterBestaetigungen` in `pages/controlling/BestaetigungsStand.tsx`,
   `FehlendeBestaetigungen` in der Rückfrage – erstellen bleibt möglich; eine Tabelle mit
   bearbeitbarem Leistungstext, `ZeilenText` in `pages/controlling/Leistungstexte.tsx`, Erfasst,
-  Aufschlag und Abgerechnet, darunter die Bemerkung) und die Auswertung
+  Aufschlag und Abgerechnet, darunter der Aufschlag auf den ganzen Nachweis – `GesamtAufschlagFeld`,
+  ± Std. oder ± %, `StundenFeld` mit `prozent` in `hilfen.tsx` – und die Bemerkung) und die Auswertung
   (`pages/controlling/Auswertung.tsx`). Seiten für alle Nachweise, für Mitarbeiter, für die
   Leistungen aller Mitarbeiter und für die Bestätigungen eines Projekts gibt es nicht; frühere
   Adressen lenkt `lib/router.ts` um (`…/projekt/<id>/<reiter>` auf die Seite des Projekts).
@@ -182,27 +183,35 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   immer `leistungenDesNachweises` bzw. `nachweisDerLeistung` statt Datumsvergleichen – beide
   lesen aus einem `WeakMap`-Verzeichnis je Nachweisliste, Nachweislisten also nie an Ort und
   Stelle ändern; abgerechnet
-  ist, was im Stand abgeschlossener Nachweise steht, `abgerechneteLeistungen`; der Rhythmus ist die
-  `Zeitraumregel` `monat` | `zweiMonate` | `quartal` | `fortlaufend` („Monatlich“, „Alle 2 Monate“,
-  „Alle 3 Monate“, „Bis zum Abschluss“ – Vorgabe; `rhythmusMonate`): Blöcke von 1–3 Monaten fest ab
-  `Projekt.rhythmusAb` (JJJJ-MM, sonst ab dem frühesten Nachweis; `rhythmusAnker`, `rhythmusBlock`
-  in `nachweiseErgaenzen`); `updateProjekt` stellt ihn mit `regelAnwenden` um (setzt den Anker,
-  plant offene Nachweise auf ihren Block, legt offene desselben Blocks zusammen, `offeneVereinen`);
-  solange ein offener Nachweis bis zum Abschluss läuft (`fortlaufend`, bei Regeln mit Monaten mit
-  einem Ende nach heute), legt erst der Abschluss seinen Zeitraum fest,
-  `laeuftBisAbschluss`/`abschlussZeitraum`, außer das Controlling hat das Ende festgelegt
-  (`bisFest`, „Zeitraum ändern“, angeboten nur, wo es wirkt: `endeFestlegenWirkt`); fällig ist ein
-  offener, der nicht bis zum Abschluss läuft und dessen Ende vorbei ist (`nachweisFaellig`); „Neuer
-  Leistungsnachweis“ fragt keinen Zeitraum ab, sondern fasst alle nicht abgerechneten Leistungen
-  und offenen Nachweise zusammen – bei Regeln mit Monaten bis zum Ende des Blocks –,
+  ist, was im Stand abgeschlossener Nachweise steht, `abgerechneteLeistungen`; einen Rhythmus gibt
+  es nicht (mehr, Fassung 9): ein offener Nachweis ohne festgelegtes Ende (`laeuftBisAbschluss(n)`;
+  `bisFest` setzt „Zeitraum ändern“) wächst in `nachweiseErgaenzen` bis zum Monatsende neuer
+  Leistungen mit, sonst entsteht ein neuer ab dem Monatsanfang; den Umfang legt erst das
+  **Erstellen** fest – „Leistungen bis einschließlich“, Vorschlag `vorgabeEnde` (Ende des Vormonats,
+  sonst letzter Tag mit Leistungen; bei `bisFest` das festgelegte Ende), erlaubt ab dem Beginn bis
+  heute, höchstens bis zum bisherigen Ende (`abschlussEndeBereich`/`abschlussEndeGueltig`),
+  `abschlussZeitraum(…, bis?)`, `nachweisAbschliessenAnwenden(…, bis?)`, Store
+  `nachweisAbschliessen(id, bis?)`; spätere Leistungen kommen in einen neuen offenen Nachweis;
+  fällig ist ein offener mit (nicht nachgereichten) Leistungen vor dem laufenden Monat
+  (`offenSeit`, `nachweisFaellig`); **Gesamtaufschlag** `Leistungsnachweis.gesamtAufschlag`
+  (`GesamtAufschlag`, `art` `'stunden'` | `'prozent'`), in `nachweisZeilen` nach den Aufschlägen der
+  Zeilen von `gesamtAufschlagVerteilen` anteilig nach den abgerechneten Stunden auf Zeilen und
+  Abschnitte verteilt (Summe exakt, nie unter 0; `NachweisZeile.anteilGesamt`/
+  `anteilGesamtJeAbschnitt`, schon in `aufschlag` und `abgerechnet` – Druck und Excel ohne eigene
+  Zeile; `gesamtAufschlagUebersicht`/`gesamtAufschlagHinweis`/`gesamtAufschlagText`), geprüft von
+  `gesamtAufschlagPruefen`, gesetzt von `gesamtAufschlagSetzen`; „Abgerechnet“ je Zeile nur ohne ihn
+  eingebbar (`abgerechnetEingebbar`); `aufschlaegeZuruecksetzen` entfernt, `anzahlAufschlaege`
+  zählt, `offeneVereinen` vereint ihn; „Neuer Leistungsnachweis“ fragt keinen Zeitraum ab, sondern
+  fasst alle nicht abgerechneten Leistungen und offenen Nachweise zusammen,
   `nichtAbgerechnet`/`nachweisFuerNichtAbgerechneteAnwenden`),
   `domain/import.ts`
   Excel-Import, `domain/druck.ts`/`domain/export.ts` PDF und Excel, `lib/router.ts` baut auch die
   Adressen des Controllings (`CONTROLLING_PREFIX`) und nimmt nur Adressen dieser beiden Präfixe an;
   frühere Adressen `#/leistungsnachweise/controlling/…` lenkt `App.tsx` um. Ohne eigenen Bestand
   gibt es Demodaten nur bei leerem Projektregister (`ladeDaten`), sonst beginnt der Bereich leer. Kennungen, die erst in einer Änderung
-  anfallen, liefert `idVorrat` (StrictMode). Neue Felder über `DATEN_VERSION` (derzeit 8: Regeln
-  `zweiMonate`/`quartal` und `Projekt.rhythmusAb`; 7: `periodentexte`, `bestaetigungen`) und
+  anfallen, liefert `idVorrat` (StrictMode). Neue Felder über `DATEN_VERSION` (derzeit 9: ohne
+  Rhythmus – `vonFassung8` führt mit `laufendeZusammenfuehren` aufeinanderfolgende offene Nachweise
+  ohne `bisFest` zusammen –, `gesamtAufschlag`; 7: `periodentexte`, `bestaetigungen`) und
   `migriere()`.
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
   `localStorage`-Schlüssel, eigenen Einstellungen und eigenem Router.
@@ -378,10 +387,12 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   prüft (gemeinsamer Text, erlöschende Bestätigung), wechselt den Namen unter „Angemeldet als“.
   Demodaten gibt es nur, solange das Projektregister leer ist – nach dem Leeren des
   `localStorage` also zuerst `#/leistungsnachweise` öffnen, sonst beginnt der Bereich leer.
-  Leistungsnachweise erstellen (Abschluss), Aufschläge, Rhythmus und Raster prüft man im
-  Controlling (`#/controlling/leistungsnachweise/projekte`). Die Demoprojekte stehen auf „Bis zum
-  Abschluss“ – fällig ist dort zunächst kein Nachweis; wer „Fällig“ oder das Neuplanen offener
-  Nachweise sehen will, stellt in der Übersicht einen Rhythmus mit Monaten ein.
+  Leistungsnachweise erstellen (Abschluss), Aufschläge und Raster prüft man im Controlling
+  (`#/controlling/leistungsnachweise/projekte`). Die offenen Demo-Nachweise sind sofort „Fällig“,
+  weil sie Leistungen aus vergangenen Monaten enthalten. „Leistungsnachweis erstellen“ fragt
+  „Leistungen bis einschließlich“ ab (Vorschlag Ende des Vormonats; spätere Leistungen bleiben in
+  einem neuen offenen Nachweis); den Aufschlag auf den ganzen Nachweis (± Std. oder ± %) prüft man
+  auf der Seite eines Projekts im Controlling unter der Tabelle.
 * Projektsteuerung: Wer „Lena Roth“ einträgt, sieht die Demo-Aufgaben als eigene To-Dos; mit
   einem anderen Namen zeigt die Übersicht keine.
 * „Angemeldet als“ liegt unter `kaplan-benutzer.v1` – wer es zurücksetzen will, löscht diesen
