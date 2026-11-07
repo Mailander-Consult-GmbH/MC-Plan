@@ -14,13 +14,14 @@ Startbildschirm wählt:
 * **Projektsteuerung** (erster Entwurf) – je Projekt die Projektbeteiligtenliste mit
   projektübergreifenden Funktionen und Besprechungsprotokolle mit Folgeprotokollen.
 * **Leistungsnachweise** (erster Entwurf) – jede Person erfasst nur ihre Leistungen je Projekt (von
-  Hand oder per Excel-Import aus der Zeiterfassung); daraus entstehen gemeinsame tages-, wochen- oder
-  monatsscharfe Leistungsnachweise, die bis zum Abschluss weiterlaufen – bearbeitet und als PDF und
-  Excel ausgegeben im Controlling.
+  Hand oder per Excel-Import aus der Zeiterfassung), schreibt je Zeitraum mit den anderen Beteiligten
+  am gemeinsamen Leistungstext und bestätigt je Monat, dass Stunden und Texte vollständig sind;
+  daraus entstehen gemeinsame tages-, wochen- oder monatsscharfe Leistungsnachweise, die bis zum
+  Abschluss weiterlaufen – bearbeitet und als PDF und Excel ausgegeben im Controlling.
 * **Controlling** (mit PIN) – Projekte für alle Bereiche anlegen, in Bereiche übernehmen, je
   Bereich oder ganz archivieren und löschen; dazu das Controlling der Leistungsnachweise
   (Auswertung, Leistungsnachweise mit Leistungstexten, Aufschlägen, Abschluss und Export, Projekte
-  mit ihren Einstellungen, Mitarbeiter).
+  mit den Monatsbestätigungen der Mitarbeiter und ihren Einstellungen, Mitarbeiter).
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
 Browser, eigene Einstellungen, eigener Router. **Projekte und Projektbeteiligte teilen sie sich**
@@ -1095,36 +1096,54 @@ anderes Fenster denselben Bereich, lädt der Store dessen Stand nach (`useFremde
 ## Leistungsnachweise
 
 Erster Entwurf, übernommen aus dem Testprojekt *KaPlan-Test*. **Im Bereich werden nur Leistungen
-erfasst:** Jede Person erfasst ihre eigenen Leistungen je Projekt; daraus entstehen von selbst
-gemeinsame Leistungsnachweise für den Auftraggeber. Leistungsnachweise und Einstellungen der Projekte
-gibt es nur im [Controlling](#controlling-der-leistungsnachweise) – dort werden sie bearbeitet,
-abgerechnet, abgeschlossen und exportiert.
+erfasst und beschrieben:** Jede Person erfasst ihre eigenen Leistungen je Projekt, verfasst mit den
+anderen Beteiligten je Zeitraum den gemeinsamen Leistungstext und bestätigt ihre Monate; daraus
+entstehen von selbst gemeinsame Leistungsnachweise für den Auftraggeber. Leistungsnachweise und
+Einstellungen der Projekte gibt es nur im [Controlling](#controlling-der-leistungsnachweise) – dort
+werden sie bearbeitet, abgerechnet, abgeschlossen und exportiert.
 
 ### Anmeldung
-**Angemeldet als** unten in der Seitenleiste ist derselbe Name wie in allen Bereichen. Leistungen
-erfasst, wer unter diesem Namen (Vor- und Nachname, auch „Nachname, Vorname“) als aktiver Mitarbeiter
-geführt ist. Fehlt die Person, nennt ein Hinweis den Namen, und **Als Mitarbeiter anmelden** legt sie
-an (mit Kürzel); der Dialog schlägt die vorhandenen Mitarbeiter vor. Ohne Zuordnung lässt sich nichts
-erfassen; *Leistung erfassen* und *Excel-Import* führen dann zuerst in diesen Dialog. Eine Rolle
+**Angemeldet als** unten in der Seitenleiste ist derselbe Name wie in allen Bereichen – eine eigene
+Anmeldung gibt es in den Leistungsnachweisen nicht. Leistungen erfasst, wer unter diesem Namen (Vor-
+und Nachname, auch „Nachname, Vorname“) als aktiver Mitarbeiter geführt ist. **Fehlt die Person, legt
+der Bereich sie selbst an** (aktiv, Kürzel aus dem Namen; `anmeldungAnwenden`) – mit einer aus dem
+Namen abgeleiteten Kennung, sodass zwei Fenster keine Doppel erzeugen, und nur, solange der
+gespeicherte Stand einwandfrei geladen ist; das Controlling legt niemanden an. Übrig bleiben
+Hinweise über dem Inhalt: Der Name hat keinen Nachnamen (bitte unten links Vor- und Nachnamen
+eintragen), er gehört einem ausgeschiedenen Mitarbeiter (das Controlling kann ihn wieder aktiv
+setzen), das Controlling hat die unter dem Namen angelegte Person umbenannt (der Hinweis nennt den
+neuen Namen; angelegt wird niemand – benennt das Controlling die angemeldete Person selbst um, ändert
+es „Angemeldet als“ mit), oder der gespeicherte Stand ist nicht geladen. *Leistung erfassen* und *Excel-Import* zeigen den
+Hinweis dann als Kurzmeldung statt eines Dialogs; *Leistungstexte* und *Meine Leistungen* sagen
+„Nicht als Mitarbeiter angemeldet“. Eine Rolle
 „Controlling“ an Mitarbeitern gibt es – anders als im Testprojekt – nicht: Das Controlling ist der
 PIN-geschützte Controlling-Bereich.
 
 ### Übersicht und Projekte
 Die **Übersicht** zeigt die eigenen Stunden und Leistungen des Monats, die eigenen Stunden im Jahr,
 den Kalender **Mein Kalender** mit allen eigenen Leistungen über alle Projekte (siehe
-[Kalender](#kalender)), die zuletzt erfassten eigenen Leistungen und je Projekt die eigenen Stunden
-des Monats. Gibt es kein nicht archiviertes Projekt, steht der Kalender trotzdem da (eigene
+[Kalender](#kalender)), die Karte **Offene Bestätigungen** (je Projekt und Monat mit eigenen
+Leistungen, der noch nicht bzw. nach einer Änderung nicht erneut bestätigt ist, eine Zeile mit
+Projekt, Monat – der laufende ist gekennzeichnet –, eigenen Stunden, Status und der Zahl der
+Zeiträume ohne Leistungstext; ein Klick öffnet die Leistungstexte des Projekts in diesem Monat; ist
+nichts offen, sagt das ein Satz), die zuletzt erfassten eigenen Leistungen (ein Klick öffnet die
+Leistungstexte ihres Monats) und je Projekt die eigenen Stunden des Monats. Gibt es kein nicht archiviertes Projekt, steht der Kalender trotzdem da (eigene
 Leistungen lassen sich öffnen), darüber ein Hinweis, dass Projekte das Controlling anlegt bzw. dass
 alle archiviert sind – erfassen lässt sich dann weiterhin im archivierten Projekt unter *Projekte ›
 Archiv*. Der Hinweis „Kein Projekt markiert – es werden alle angezeigt.“ erscheint, wenn
 es nicht archivierte Projekte gibt und keines davon markiert ist (auch in einem anderen Bereich
 markierte zählen als markiert). Die
 **Projektliste** legt nichts an: Jedes Projekt der anderen Bereiche und des Controllings steht von
-selbst hier (Projektregister); unbekannte Projekte legt auch der Excel-Import an. Ein Projekt öffnet direkt die eigenen
-Leistungen – zuerst im Kalender, mit dem Umschalter **Liste** als Tabelle mit Filtern und Auswahl –,
-ohne weitere Reiter. Frühere Adressen der Reiter (`…/projekt/<id>/nachweise` usw.)
-zeigen ebenfalls die Leistungen, die eines Nachweises (`…/projekt/<id>/nachweis/<id>`) führt in die
-Abrechnung im Controlling.
+selbst hier (Projektregister); unbekannte Projekte legt auch der Excel-Import an. Ein Projekt
+(Projektliste, Seitenleiste, Übersicht) zeigt über einem Umschalter zwei Ansichten:
+**Leistungstexte** (Vorgabe, siehe [Leistungstexte und Monatsbestätigung](#leistungstexte-und-monatsbestätigung))
+und **Meine Leistungen** – die eigenen Leistungen, zuerst im Kalender, mit dem Umschalter **Liste**
+als Tabelle mit Filtern und Auswahl. Die Ansicht steht in der Adresse: `#/leistungsnachweise/projekt/<id>`
+(Leistungstexte im Vorgabemonat), `…/projekt/<id>/<JJJJ-MM>` (Leistungstexte dieses Monats) und
+`…/projekt/<id>/leistungen` (Meine Leistungen); zurück aus *Meine Leistungen* geht es in den zuletzt
+gezeigten Monat. Frühere Adressen der Reiter (`…/projekt/<id>/nachweise` usw.) zeigen die
+Leistungstexte, die eines Nachweises (`…/projekt/<id>/nachweis/<id>`) führt in die Abrechnung im
+Controlling. Ein Wechsel der Ansicht oder des Monats beginnt oben auf der Seite.
 
 ### Kalender
 Ein großer Monatskalender (Montag bis Sonntag) zeigt je Tag die eigenen Leistungen mit Stunden und
@@ -1150,11 +1169,64 @@ abgerechnet oder nachgereicht, übernimmt die neue Zeile derselben Person für d
 denselben Tag ihre Kennung, sodass sie nicht doppelt abgerechnet wird. Im Bereich übernimmt jede
 Person nur ihre eigenen Zeilen; Leistungen anderer ändert niemand. Projekte (nur mit dem Haken
 „Projekt anlegen“) und Abschnitte legt der Import auch im Bereich an, soweit die eigenen Leistungen
-sie brauchen; einstellen lassen sie sich nur im Controlling.
+sie brauchen; einstellen lassen sie sich nur im Controlling. Betrifft ein Import genau ein Projekt,
+geht es danach zu dessen Leistungstexten im jüngsten Monat der übernommenen Leistungen, sonst zur
+Übersicht.
 
 Wird eine schon abgerechnete Leistung auf ein anderes Datum gelegt, bleibt sie im abgeschlossenen
 Nachweis – der Dialog sagt das an („Bleibt im abgeschlossenen Leistungsnachweis … abgerechnet“); mit
 dem neuen Datum erscheint sie erst, wenn das Controlling ihn wieder öffnet.
+
+### Leistungstexte und Monatsbestätigung
+Jede Person erfasst bzw. importiert ihre Stunden mit ihren **Stichpunkten** (dem Text der Leistung).
+Daraus schreiben alle, die in einem Zeitraum eines Projekts Leistungen haben, **einen gemeinsamen
+Fließtext**; beide bzw. alle sehen und bearbeiten ihn. Gemeinsam ist allein dieser Text:
+**Stichpunkte, Stunden und Leistungen der anderen sieht im Bereich niemand** – auch nicht in
+Zeiträumen mit eigenen Leistungen und auch nicht als Zahl; im Controlling ist alles zu sehen.
+
+Die Zeiträume folgen dem **Raster des Projekts**, das das Controlling einstellt (tages-, wochen- oder
+monatsscharf), gekürzt auf den Kalendermonat: Eine Woche über ein Monatsende gehört mit ihren Tagen
+in jeden Monat für sich (26.–31.10. im Oktober, 1.11. im November); im Leistungsnachweis über beide
+Monate bleibt sie eine Zeile, deren Text sich aus beiden zusammensetzt. Geteilt wird zudem an den
+Grenzen der Leistungsnachweise – jeder Zeitraum liegt in höchstens einem Nachweis. Ändern sich diese
+Grenzen (etwa durch *Zeitraum ändern*, Löschen, Zusammenfassen oder einen Abschluss mitten in einem
+Zeitraum), ziehen die Texte mit: Der Text eines weggefallenen Teils geht im Text des ganzen Zeitraums
+auf, bei einer neuen Grenze behält der erste Teil den Text, der Rest bekommt einen eigenen.
+
+Die Seite **Leistungstexte** eines Projekts zeigt einen Monat (‹ › blättern; ohne Angabe in der
+Adresse der jüngste Monat mit eigenen Leistungen, der noch zu bestätigen ist, sonst der jüngste mit
+eigenen Leistungen, sonst der laufende). Oben die eigenen Stunden, die Zahl der Leistungen und
+Zeiträume, das Raster und die Statuszeile des Monats – „Noch nicht bestätigt“, „Bestätigt am …“,
+„Seit der Bestätigung am … geändert – bitte erneut bestätigen.“ oder „Abgerechnet“ (im laufenden
+Monat mit dem Zusatz, ihn erst zu bestätigen, wenn er vollständig erfasst ist) – sowie Verweise auf
+weitere zu bestätigende Monate des Projekts. Darunter je Zeitraum mit eigenen Leistungen ein Block:
+Zeitraum, **eigene Stunden**, die **eigenen Stichpunkte** zur Orientierung (Datum, Stunden, Abschnitt,
+Text; ein Klick öffnet die Leistung) und der **gemeinsame Leistungstext** – gespeichert beim
+Verlassen des Felds (offene Eingaben auch beim Neuladen, Schließen, Verdecken der Seite und beim
+Monatswechsel) mit „Zuletzt bearbeitet von … am …“. **Stichpunkte übernehmen** setzt in einen leeren
+Text die eigenen Stichpunkte ein; kommen danach eigene Leistungen hinzu, nennt der Block sie („Noch
+nicht im Text“) mit **Neue Stichpunkte ergänzen** und **Als berücksichtigt markieren** (wenn sie
+umformuliert schon im Text stehen). Fremde Stichpunkte gelangen nie in diese Vorschläge; ein
+unveränderter Neuimport gilt als schon berücksichtigt.
+
+Unten **Monat bestätigen** mit dem Satz „Ich bestätige, dass meine Stunden und die Leistungstexte für
+… vollständig erfasst sind.“ – erst, wenn **jeder Zeitraum mit eigenen Leistungen einen gemeinsamen
+Text hat**; bis dahin nennt die Karte die fehlenden (ein Klick führt ins Feld). Danach steht dort
+„Bestätigt am …“ mit **Bestätigung zurücknehmen** (ein Doppelklick bestätigt nicht und nimmt gleich
+wieder zurück). **Die Bestätigung erlischt**, sobald sich in einem noch nicht abgerechneten Zeitraum
+die eigenen Leistungen (Datum, Stunden, Abschnitt, Text) oder der gemeinsame Text ändern – auch, wenn
+ein anderer den Text ändert –; dann heißt es „Seit der Bestätigung am … geändert – bitte erneut
+bestätigen.“. Hat ein Monat keine eigenen Leistungen, verweist die Seite auf *Meine Leistungen* und
+den Excel-Import.
+
+**Abgerechnete Zeiträume:** Umfasst ein abgeschlossener Leistungsnachweis einen Zeitraum, ist sein
+Text nur noch zu lesen („Abgerechnet in „…“ – der Leistungstext lässt sich nicht mehr ändern.“), und
+er zählt nicht mehr zur Bestätigung – auch spätere Änderungen darin lassen sie nicht erlöschen. Sind
+alle eigenen Leistungen eines Monats abgerechnet, steht der Monat auf „Abgerechnet“. Eigene
+Leistungen, die nach dem Abschluss in einem abgerechneten Zeitraum erfasst bzw. geändert wurden,
+nennt ein Hinweis: Sie gehen nicht in den abgeschlossenen Nachweis ein, über ein Nachreichen
+entscheidet das Controlling. Abgeschlossene Nachweise gliedern ihre Tage weiter im Raster ihres
+Abschlusses, auch wenn das Projekt später umgestellt wird.
 
 ### Leistungsnachweise
 Ein Nachweis ist ein Zeitraum eines Projekts; welche Leistungen er zeigt, ergibt sich aus ihrem
@@ -1170,7 +1242,15 @@ Abschluss“; beim Abschluss endet er am letzten Tag mit Leistungen (spätestens
 das Controlling das Ende mit **Zeitraum ändern** festgelegt, läuft der Nachweis nicht mehr bis zum
 Abschluss, wird nicht verlängert und beim Abschluss nicht gekürzt; spätere Leistungen kommen in
 einen neuen. Wer es so will, stellt ein Projekt im Controlling auf *Je Kalendermonat*. Je Tag, Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern,
-Leistungstext und Stunden.
+Leistungstext und Stunden. **Den Leistungstext einer Zeile liefern die gemeinsamen Leistungstexte der
+Mitarbeiter:** je Zeitraum der Zeile in zeitlicher Folge der gemeinsame Text bzw. – wo keiner steht –
+die Stichpunkte der Leistungen, zusammengeführt ohne Wiederholungen. Ohne gemeinsame Texte entsteht er
+wie bisher aus den Texten der Leistungen; ein im Controlling von Hand bearbeiteter Text geht vor.
+Nicht übernommen wird ein gemeinsamer Text in nachgereichte Zeilen, in Zeiträume, die ein anderer
+abgeschlossener Nachweis sperrt, und in Zeilen, die nur einen Teil seines Zeitraums abdecken (Nachweis
+feiner gegliedert als das Projekt, etwa Wochenzeilen bei Monatstexten). So lassen sich auch Leistungen
+mehrerer Monate (etwa Oktober bis Dezember) in einem Nachweis sammeln – mit *Neuer Leistungsnachweis*
+bzw. *Zeitraum ändern* –, und jede Zeile übernimmt die Texte ihrer Zeiträume.
 
 ### Controlling der Leistungsnachweise
 Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
@@ -1186,7 +1266,11 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   festgelegtes Ende entfällt. Wechselt dabei das Raster, warnt der Dialog, wenn von Hand bearbeitete
   Texte oder Aufschläge nicht mehr angezeigt werden (sie bleiben gespeichert und kehren mit dem
   alten Raster zurück). Später erfasste Leistungen kommen hinzu, den Zeitraum legt der Abschluss fest.
-  Liegt schon alles in einem offenen Nachweis, bietet der Dialog **Öffnen** an. Für Korrekturen
+  So entsteht auch ein Nachweis über mehrere Monate, etwa Oktober bis Dezember.
+  Liegt schon alles in einem offenen Nachweis, bietet der Dialog **Öffnen** an. Ändern sich mit dem
+  neuen Nachweis – wie mit *Zeitraum ändern* und *Löschen* – Grenzen der Zeiträume, sagen Dialog und
+  Rückfragen, wie viele gemeinsame Leistungstexte von Teilen eines Zeitraums im Text des neuen
+  Zeitraums aufgehen. Für Korrekturen
   gibt es in der Abrechnung weiter **Zeitraum ändern**: Ein geändertes Ende steht danach fest – auch
   bei der Regel *Je Kalendermonat* mit einem Ende bis heute, wo das erst nach einem Wechsel auf
   *Fortlaufend bis zum Abschluss* etwas ändert. Liefe der Nachweis mit dem neuen Ende bis zum
@@ -1205,27 +1289,54 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   Ein Klick öffnet die **Abrechnung**: Aufschlag in ± Stunden je Zeile bzw. die abgerechneten
   Stunden, die Ansicht **Leistungstexte** (Text je Zeile bearbeiten, solange der Nachweis offen ist –
   ein bearbeiteter Text wird nie still überschrieben, neue Leistungen bietet die Zeile zum
-  **Ergänzen** an; die Leistungen aller Mitarbeiter lassen sich je Zeile aufklappen), die
+  **Ergänzen** an; die Leistungen aller Mitarbeiter lassen sich je Zeile aufklappen; stammt der
+  Text aus den gemeinsamen Leistungstexten, ist er als **Text der Mitarbeiter** gekennzeichnet, und
+  nach einer Bearbeitung stellt **Text der Mitarbeiter wiederherstellen** ihn wieder her; sind die
+  Zeilen feiner gegliedert als das Raster des Projekts, erklärt ein Hinweis, warum dort die Texte der
+  Leistungen stehen), die
   **Vorschau**, **Drucken / PDF**, **Excel**, **Abschließen** (der Stand wird festgeschrieben)
   bzw. **Wieder öffnen**, **Zeitraum ändern**, **Löschen** (auf Wunsch samt den eigenen Leistungen
   des Nachweises einschließlich der nachgereichten) und die Bemerkung; **Zum Projekt**
   wechselt zum Projekt. Druck und Excel zeigen die abgerechneten Stunden; der Aufschlag selbst
-  erscheint nicht.
+  erscheint nicht. Ein offener Nachweis zeigt unter den Kennzahlen den **Stand der Bestätigungen**
+  für die Monate seiner Leistungen („x von y bestätigt“, wer offen ist bzw. seit der Bestätigung
+  geändert hat – nur Personen mit Leistungen in diesem Nachweis) mit dem Weg zum Reiter
+  *Bestätigungen*. Die Rückfrage beim **Abschließen** nennt je Monat, wer noch nicht bzw. nach einer
+  Änderung nicht erneut bestätigt hat – abschließen bleibt möglich; endet der Nachweis dabei mitten
+  in einem Zeitraum, sagt sie, dass die Mitarbeiter für die Tage danach einen eigenen Text verfassen.
+  Wurde ein Nachweis in einem anderen Raster abgeschlossen, als das Projekt heute hat, nennt
+  *Wieder öffnen* die gemeinsamen Texte, die danach nicht mehr gelten.
 * **Projekte** – alle Projekte der Leistungsnachweise mit Raster, Regel, offenen Nachweisen,
   Leistungen ohne Nachweis und Stunden; **Neues Projekt** legt eines nur hier an (für alle Bereiche
   gibt es die Projekte des Controllings). Im Projekt **Bearbeiten** (Projektnummer – eindeutig,
   daran erkennt der Excel-Import das Projekt –, Name, Bezeichnung im Nachweis, Leistungsbereich,
   Raster und Regel neuer Nachweise), **Löschen** (gesperrt, solange ein anderer Bereich das Projekt
   führt oder es dort zur Übernahme vorgesehen ist) und die Reiter **Leistungsnachweise** (mit
-  „Nachweise anlegen“ für Leistungen ohne Nachweis), **Leistungen** (aller Mitarbeiter, nur lesen)
-  und **Einstellungen** (Vorgaben, Abschnitte, Logos im Druckkopf). Hat ein Projekt mindestens zwei
-  Abschnitte (etwa Streckenabschnitte), weist der Nachweis die Stunden je Abschnitt in eigenen
-  Spalten aus.
-* **Mitarbeiter** – anlegen, bearbeiten, als ausgeschieden markieren; löschen nur ohne Leistungen.
+  „Nachweise anlegen“ für Leistungen ohne Nachweis), **Bestätigungen**, **Leistungen** (aller
+  Mitarbeiter, nur lesen) und **Einstellungen** (Vorgaben, Abschnitte, Logos im Druckkopf). Hat ein
+  Projekt mindestens zwei Abschnitte (etwa Streckenabschnitte), weist der Nachweis die Stunden je
+  Abschnitt in eigenen Spalten aus. **Bestätigungen**
+  (`#/controlling/leistungsnachweise/projekt/<id>/bestaetigungen`) zeigt je Monat mit Leistungen –
+  neueste zuerst – die Personen mit Leistungen im Projekt: Stunden, Status („Bestätigt am …“,
+  „Offen“, „Geändert seit Bestätigung“, „Abgerechnet“), die Zeiträume ohne gemeinsamen Text („Ohne
+  Text“) und Leistungen, die nach dem Abschluss erfasst wurden; je Monat „x von y bestätigt“ und die
+  Leistungsnachweise, in denen er liegt (ein Klick öffnet die Abrechnung). Monate, deren Leistungen
+  alle abgerechnet sind und in denen nichts nach dem Abschluss erfasst wurde, stehen eingeklappt
+  darunter. Das **Raster** (in *Bearbeiten* und in den Einstellungen) gliedert auch die
+  Leistungstexte der Mitarbeiter; ein Wechsel nennt die gemeinsamen Texte noch nicht abgerechneter
+  Zeiträume, die im neuen Raster nicht mehr gelten, und die Bestätigungen, die damit erlöschen – die
+  Texte bleiben gespeichert und gelten wieder, wenn das Raster zurückgestellt wird.
+* **Mitarbeiter** – anlegen, bearbeiten, als ausgeschieden markieren; löschen nur ohne Leistungen
+  und nicht die angemeldete Person, solange ihr Name unter „Angemeldet als“ steht (der Bereich legte
+  sie gleich wieder an). Wer die angemeldete Person umbenennt, ändert „Angemeldet als“ mit. Wer im
+  Bereich unter „Angemeldet als“ noch nicht geführt ist, wird dort automatisch angelegt.
 * **Excel-Import (alle Mitarbeiter)** – Sammel-Export der Zeiterfassung, legt unbekannte Mitarbeiter
   an; eine Anmeldung als Mitarbeiter braucht das Controlling nicht. Ist die Person unter „Angemeldet
   als“ Mitarbeiter, gilt sie auch hier als angemeldet (Zeilen ohne Mitarbeiter lassen sich ihr
   zuordnen, beim Löschen eines Nachweises ihre eigenen Leistungen mitlöschen).
+
+Gemeinsame Leistungstexte und Bestätigungen liest das Controlling nur – bestätigen können die
+Mitarbeiter allein im Bereich; den Text einer Zeile bearbeitet das Controlling im Nachweis.
 
 Die Filterleiste der Nachweisliste bricht um und steht unter 640 px untereinander. Eine neue Seite
 beginnt oben, ein Reiterwechsel im Projekt nicht.
@@ -1235,7 +1346,8 @@ Controlling-Bereich.
 
 ### Daten
 Eigener Schlüssel `leistungsnachweise.data.v1` im `localStorage`, eigene Demodaten (vier
-Mitarbeiter – darunter Anna Becker –, drei Projekte, Leistungen der letzten Monate),
+Mitarbeiter – darunter Anna Becker –, drei Projekte, Leistungen der letzten Monate; bei der Brücke
+steht für den Vormonat ein gemeinsamer Leistungstext, den Anna Becker bestätigt hat),
 **Sicherung**/**Einspielen** (JSON mit dem Kennzeichen `"bereich": "leistungsnachweise"`) und
 **Zurücksetzen**. Sicherungen und Stände aus dem Testprojekt lassen sich einspielen; die frühere
 Rolle Controlling entfällt dabei (Fassung 3). Fassung 4 stellt alle Projekte auf *Fortlaufend bis zum
@@ -1246,7 +1358,11 @@ festgeschriebenen Stand auf eigene Schlüssel um (`nachgereichteZeilenUmstellen`
 Stunden bleiben gleich. Texte und Aufschläge einer Zeile, in der laufende und nachgereichte
 Leistungen zusammenstanden, werden auf die beiden neuen Zeilen aufgeteilt, ohne die abgerechneten
 Stunden zu ändern – bei Nachweisen mit Abschnittsspalten auch nicht die einer Spalte –, sodass
-abgeschlossene Nachweise nicht als geändert gelten. Demodaten gibt es nur, solange weder ein Bestand noch Projekte im
+abgeschlossene Nachweise nicht als geändert gelten. Fassung 7 ergänzt die gemeinsamen Leistungstexte je
+Zeitraum (`periodentexte`) und die Monatsbestätigungen (`bestaetigungen`), beide zunächst leer; der
+festgeschriebene Stand eines Nachweises merkt sich seither das Raster des Projekts beim Abschluss.
+Gemeinsame Texte und Bestätigungen gelöschter Projekte bzw. Mitarbeiter räumt der Store mit ab.
+Demodaten gibt es nur, solange weder ein Bestand noch Projekte im
 Projektregister vorhanden sind; wer zuvor einen anderen Bereich geöffnet hat, beginnt mit leeren
 Leistungsnachweisen und den Projekten des Registers. Gespeichert wird nur bei einwandfrei geladenem
 Stand; ist der Speicher voll, räumt das Speichern nach Bedarf Rohkopien (`…vor-fassung-<n>`,
@@ -1275,7 +1391,8 @@ das Planlaufmanagement aus (dazu die E-Mail-Nachfrage als eigene Einstellung im 
 Baubetriebsplanung steht sie im Statusverlauf und als Hauptbearbeiter neuer Projekte, in der
 Projektsteuerung führt sie – steht sie in der Projektbeteiligtenliste – neue Protokollreihen und sieht
 ihre Aufgaben als eigene To-Dos, in den
-Leistungsnachweisen erfasst sie als Mitarbeiter gleichen Namens. Beim Einspielen einer Sicherung
+Leistungsnachweisen erfasst sie als Mitarbeiter gleichen Namens – fehlt der, legt der Bereich ihn
+selbst an (eine zweite Anmeldung gibt es dort nicht). Beim Einspielen einer Sicherung
 bleibt der Name, es sei denn, er wird ausdrücklich aus der Sicherung übernommen – dann für alle
 Bereiche.
 
@@ -1458,7 +1575,7 @@ src/
     BereichWechsel.tsx  Rückweg aus einem Bereich zur Bereichsauswahl
   shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
     ui.tsx       Karten, Felder, Dialoge (Modal: Fokus, Tab, Escape, Fokus zurück), Segmented
-                 Controls, alsKnopf …
+                 Controls (die gewählte Option mit aria-pressed), alsKnopf …
     icons.tsx    Strichsymbole
     logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
@@ -1569,13 +1686,17 @@ src/
     leistungsnachweise/  Bereich „Leistungsnachweise“ (erster Entwurf, aus KaPlan-Test)
       index.tsx  Einstiegspunkt samt Datenbestand des Bereichs (Zugang „bereich“)
       controlling.tsx  Einstieg für den Controlling-Bereich (Zugang „controlling“)
-      App.tsx    Seitenleiste, Kopfzeile, Anmeldung, Lade- und Anmeldehinweise
+      App.tsx    Seitenleiste, Kopfzeile, Lade- und Anmeldehinweise
       domain/
-        types.ts     Datenmodell (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis)
-        rechte.ts    Rechte je Zugang – an einer Stelle
-        nachweis.ts  Zeilen, Zeiträume, Ergänzen, Aufschläge, neuer Nachweis für alle nicht
-                     abgerechneten Leistungen, Abschluss
-        zeitraum.ts  Tage, Kalenderwochen, Monate und Stundenformat
+        types.ts     Datenmodell (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis,
+                     gemeinsamer Leistungstext je Zeitraum, Monatsbestätigung)
+        rechte.ts    Rechte je Zugang – an einer Stelle; Anmeldung über „Angemeldet als“ samt
+                     automatischem Anlegen (anmeldungAnwenden)
+        erfassung.ts Gemeinsame Leistungstexte je Zeitraum, Monatsstatus und Bestätigung,
+                     Sperre abgerechneter Zeiträume, Nachziehen der Texte bei neuen Grenzen
+        nachweis.ts  Zeilen (Text aus den gemeinsamen Leistungstexten), Zeiträume, Ergänzen,
+                     Aufschläge, neuer Nachweis für alle nicht abgerechneten Leistungen, Abschluss
+        zeitraum.ts  Tage, Kalenderwochen, Monate, Erfassungsperioden und Stundenformat
         import.ts    Excel-Import der Zeiterfassung (Lesen, Planen, Anwenden)
         auswertung.ts  Stunden je Mitarbeiter, Monat und Projekt
         druck.ts     Druckfassung (PDF)
@@ -1585,11 +1706,14 @@ src/
       store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe, Rechte)
       lib/router.ts  #/leistungsnachweise/… und #/controlling/leistungsnachweise/… (nur diese
                      Adressen; frühere unter #/leistungsnachweise/controlling/… lenkt er um)
-      pages/         Übersicht, Projekte, Projekt (eigene Leistungen) und controlling/ (Auswertung,
-                     Nachweisliste, Abrechnung mit Leistungstexten, Projektliste, Projekt mit
-                     Leistungsnachweisen, Leistungen und Einstellungen, Mitarbeiter)
-      components/    Dialoge (Anmeldung, Leistung, Nachweis, Projekt, Mitarbeiter), Kalender zum Erfassen
-                     (mit Tagesliste), Excel-Import, Logos, Sicherung, Druckblatt, SpeicherHinweis
+      pages/         Übersicht (mit offenen Bestätigungen), Projekte, Projekt (projekt/MonatsErfassung.tsx:
+                     Leistungstexte und Monatsbestätigung; projekt/Leistungen.tsx: Meine Leistungen)
+                     und controlling/ (Auswertung, Nachweisliste, Abrechnung mit Leistungstexten,
+                     Projektliste, Projekt mit Leistungsnachweisen, Bestätigungen, Leistungen und
+                     Einstellungen, Mitarbeiter)
+      components/    Anmeldehinweise (Anmeldung.tsx), Dialoge (Leistung, Nachweis, Projekt,
+                     Mitarbeiter), Kalender zum Erfassen (mit Tagesliste), Excel-Import, Hinweis zum
+                     Rasterwechsel, Logos, Sicherung, Druckblatt, SpeicherHinweis
     controlling/ Bereich „Controlling“ (mit PIN, ohne eigenen Bestand)
       index.tsx  Einstiegspunkt: PIN-Abfrage, danach der Bereich
       PinEingabe.tsx  PIN-Abfrage
