@@ -116,11 +116,26 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
   };
   const regelWaehlen = (p: Projekt, regel: Zeitraumregel) => {
     if (regel === p.zeitraumregel) return;
-    // Was sich an Grenzen der Nachweise ändert, nennt die Rückfrage – wie der Store es rechnet
-    const hinweis = grenzFolgenHinweis(
-      grenzFolgen(data, regelAnwenden(data, p.id, regel, new Date().toISOString(), () => `vorschau-${Math.random()}`)),
-      data.mitarbeiter,
-    );
+    // Was sich an den offenen Nachweisen und an den Grenzen der Zeiträume ändert, nennt die Rückfrage – wie der Store es rechnet
+    const danach = regelAnwenden(data, p.id, regel, new Date().toISOString(), () => `vorschau-${Math.random()}`);
+    const zeitraeume = (d: typeof data) =>
+      offeneNachweise(d, p.id)
+        .map((n) => `${langDatum(n.von)} – ${langDatum(n.bis)}`)
+        .join(', ');
+    const vorher = zeitraeume(data);
+    const nachher = zeitraeume(danach);
+    const hinweis = [
+      vorher !== nachher
+        ? `Offene Leistungsnachweise bisher: ${vorher || 'keine'}; danach: ${nachher || 'keine'}${
+            offeneNachweise(danach, p.id).length < offeneNachweise(data, p.id).length
+              ? ' – offene Nachweise im selben Zeitraum werden zusammengelegt, mit ihren Texten, Aufschlägen und Bemerkungen'
+              : ''
+          }.`
+        : '',
+      grenzFolgenHinweis(grenzFolgen(data, danach), data.mitarbeiter) ?? '',
+    ]
+      .filter(Boolean)
+      .join(' ');
     if (hinweis) setRueckfrage({ art: 'regel', projekt: p, regel, hinweis });
     else {
       updateProjekt(p.id, { zeitraumregel: regel });
@@ -293,7 +308,7 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
             <RasterwechselHinweis projekt={rueckfrage.projekt} raster={rueckfrage.raster} />
           ) : (
             <p className="muted">
-              Die offenen Leistungsnachweise richten sich nach dem neuen Rhythmus. {rueckfrage.hinweis}
+              Die offenen Leistungsnachweise richten sich nach dem neuen Rhythmus (gezählt ab Projektbeginn). {rueckfrage.hinweis}
             </p>
           )}
         </Modal>

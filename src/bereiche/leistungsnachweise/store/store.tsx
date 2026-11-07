@@ -141,8 +141,9 @@ interface StoreValue {
   /**
    * Ändern (nur Controlling); entfallene Abschnitte verlieren ihre Leistungen (diese stehen dann ohne Abschnitt –
    * abgerechnete auch im Stand ihres Nachweises, `standAbschnitteNachziehen`). Ein anderer Abrechnungsrhythmus
-   * (`zeitraumregel`) plant die offenen Nachweise des Projekts neu (`regelAnwenden`; die Folgen für gemeinsame
-   * Texte und Bestätigungen rechnet die Oberfläche vorab mit `grenzFolgen`).
+   * (`zeitraumregel`) setzt den Beginn seiner Blöcke (`rhythmusAb`) und plant die offenen Nachweise des Projekts
+   * neu (`regelAnwenden`; die Folgen für gemeinsame Texte und Bestätigungen rechnet die Oberfläche vorab mit
+   * `grenzFolgen`).
    */
   updateProjekt: (id: ID, patch: Partial<Omit<Projekt, 'id'>>) => void;
   /** Mit allen Leistungen und Nachweisen – nur Controlling. */
