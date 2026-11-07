@@ -4,7 +4,7 @@
  * Reiter „Auswertung“ (Stunden je Mitarbeiter, Monat und Projekt; Excel),
  * „Leistungsnachweise“ (alle Nachweise aller Projekte, Klick öffnet die
  * Abrechnung mit Leistungstexten, Aufschlägen, Abschluss und Export),
- * „Projekte“ (je Projekt Leistungsnachweise, Leistungen und Einstellungen) und
+ * „Projekte“ (je Projekt Leistungsnachweise, Bestätigungen, Leistungen und Einstellungen) und
  * „Mitarbeiter“ (Verwaltung). Die Auswahl der Filter bleibt erhalten,
  * solange die Seite offen ist.
  */

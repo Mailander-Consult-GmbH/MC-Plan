@@ -37,13 +37,13 @@ import {
   type VorschauMitarbeiter,
   type VorschauProjekt,
 } from '../domain/import';
-import { angemeldet, darf, type Zugang } from '../domain/rechte';
+import { NICHT_ANGEMELDET, angemeldet, darf, type Zugang } from '../domain/rechte';
 import { mitarbeiterName, type Abschnitt, type LeistungsnachweisDaten } from '../domain/types';
 import { stundenVon } from '../domain/nachweis';
 import { kurzDatum, stundenText } from '../domain/zeitraum';
 import type { Route } from '../lib/router';
 import { newId, useStore } from '../store/store';
-import { useAnmeldung } from './AnmeldeDialog';
+import { useAnmeldeHinweis } from './Anmeldung';
 import { anzahl, mitarbeiterAuswahlText, nachNamen } from './common';
 import './leistungen.css';
 
@@ -212,8 +212,9 @@ export function importMeldung(plan: ImportPlan): string {
 }
 
 /**
- * Ziel nach dem Übernehmen: Betrifft der Import genau ein Projekt, dessen Leistungen, sonst die
- * Übersicht; im Controlling die Leistungsnachweise.
+ * Ziel nach dem Übernehmen: Betrifft der Import genau ein Projekt, dessen Leistungstexte im
+ * jüngsten Monat der übernommenen Leistungen (dort geht es mit dem gemeinsamen Text weiter),
+ * sonst die Übersicht; im Controlling die Leistungsnachweise.
  */
 export function importZiel(daten: LeistungsnachweisDaten, plan: ImportPlan, zugang: Zugang = 'bereich'): Route {
   // Im Controlling bleibt man im Controlling – bei den Leistungsnachweisen
@@ -223,8 +224,9 @@ export function importZiel(daten: LeistungsnachweisDaten, plan: ImportPlan, zuga
     ...plan.neueLeistungen.map((l) => l.projektId),
     ...daten.leistungen.filter((l) => entfernt.has(l.id)).map((l) => l.projektId),
   ]);
-  if (projekte.size === 1) return { view: 'projekt', projektId: [...projekte][0] };
-  return { view: 'uebersicht' };
+  if (projekte.size !== 1) return { view: 'uebersicht' };
+  const monat = plan.neueLeistungen.reduce((m, l) => (l.datum.slice(0, 7) > m ? l.datum.slice(0, 7) : m), '');
+  return monat ? { view: 'projekt', projektId: [...projekte][0], monat } : { view: 'projekt', projektId: [...projekte][0] };
 }
 
 /** „01.10.26 – 30.10.26“ bzw. ein einzelner Tag. */
@@ -260,7 +262,7 @@ function MitarbeiterArt({ m, wirdAngelegt }: { m: VorschauMitarbeiter; wirdAngel
 export function ImportDialog({ onClose, navigate }: { onClose: () => void; navigate: (r: Route) => void }) {
   const { data, importUebernehmen, zugang } = useStore();
   const toast = useToast();
-  const anmeldung = useAnmeldung();
+  const anmeldeHinweis = useAnmeldeHinweis();
   const ich = angemeldet(data);
   // Im Controlling braucht der Sammel-Import keine Anmeldung
   const bereit = zugang === 'controlling' || !!ich;
@@ -358,12 +360,7 @@ export function ImportDialog({ onClose, navigate }: { onClose: () => void; navig
       <div className="stack" style={{ gap: 14 }}>
         {!bereit ? (
           <Callout ton="warn" icon="!">
-            <div className="row-between wrap">
-              <span>Übernommen werden nur eigene Leistungen – bitte zuerst anmelden.</span>
-              <button type="button" className="btn btn-sm btn-primary" onClick={() => anmeldung()}>
-                Anmelden
-              </button>
-            </div>
+            Übernommen werden nur eigene Leistungen. {anmeldeHinweis ?? NICHT_ANGEMELDET}
           </Callout>
         ) : null}
 

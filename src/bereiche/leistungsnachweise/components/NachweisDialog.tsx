@@ -31,16 +31,25 @@
  * Wechselt das Raster – auch für offene Nachweise, die in einem neuen
  * aufgehen –, warnen beide Dialoge, wenn dadurch von Hand bearbeitete Texte
  * oder Aufschläge nicht mehr angezeigt werden (`rasterwechselHinweis`) – sie
- * bleiben gespeichert und kehren mit dem alten Raster zurück.
+ * bleiben gespeichert und kehren mit dem alten Raster zurück. Ändern sich die
+ * Grenzen der Nachweise, sagen beide Dialoge, was das für die gemeinsamen
+ * Leistungstexte und Bestätigungen der Mitarbeiter bedeutet (`grenzFolgen`,
+ * `grenzFolgenHinweis`): Texte von Teilen eines Zeitraums gehen im Text des
+ * ganzen auf (`periodentexteNachziehen`, die Bestätigungen ziehen mit); teilt
+ * ein neuer Beginn bzw. ein neues Ende einen Zeitraum, verfassen die
+ * Mitarbeiter für den neuen Teil einen eigenen Text, und ihre Bestätigungen
+ * des Monats erlöschen – dann als Warnung mit den Namen.
  */
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { today, wochentag } from '../../../shared/dates';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Segmented, Select, TextInput } from '../../../shared/ui';
+import { grenzFolgen, grenzFolgenHinweis, type GrenzFolgen } from '../domain/erfassung';
 import {
   endeFestlegenWirkt,
   leistungenIm,
   nachweisDerLeistung,
+  nachweisFuerNichtAbgerechneteAnwenden,
   nachweisTitel,
   nichtAbgerechnet,
   laeuftBisAbschluss,
@@ -149,6 +158,14 @@ function NeuerNachweisDialog({
   const nachgereicht = nachreichen ? plan.nichtErfasst.length : 0;
   // Was in den offenen Nachweisen zu einem anderen Raster gehört, wird nach dem Zusammenfassen nicht mehr angezeigt
   const rasterHinweis = vorhanden ? null : rasterwechselHinweis(rasterwechselVerdecktAlle(plan.offene, raster));
+  // Neue Grenzen (offene Nachweise gehen darin auf): Gemeinsame Texte von Teilen eines Zeitraums gehen zusammen
+  const folgen = useMemo(
+    () =>
+      vorhanden
+        ? null
+        : grenzFolgen(data, nachweisFuerNichtAbgerechneteAnwenden(data, projekt.id, { raster, titel: '' }, 'vorschau', new Date().toISOString())),
+    [data, projekt.id, raster, vorhanden],
+  );
 
   const oeffnen = (id: string) => navigate?.({ view: 'abrechnung', projektId: projekt.id, nachweisId: id });
 
@@ -238,6 +255,7 @@ function NeuerNachweisDialog({
                 {rasterHinweis}
               </Callout>
             ) : null}
+            <FolgenHinweis folgen={folgen} daten={data} />
           </>
         )}
 
@@ -254,6 +272,23 @@ function NeuerNachweisDialog({
         ) : null}
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Folgen geänderter Grenzen für die gemeinsamen Texte und Bestätigungen
+ * (`grenzFolgenHinweis`): als Warnung, wenn ein Teil einen eigenen Text braucht
+ * oder Bestätigungen erlöschen, sonst als kleiner Hinweis; nichts ohne Folgen.
+ */
+function FolgenHinweis({ folgen, daten }: { folgen: GrenzFolgen | null; daten: LeistungsnachweisDaten }) {
+  const text = folgen ? grenzFolgenHinweis(folgen, daten.mitarbeiter) : null;
+  if (!folgen || !text) return null;
+  return folgen.neueTeile.length > 0 || folgen.erloschen.length > 0 ? (
+    <Callout ton="warn" icon="!">
+      {text}
+    </Callout>
+  ) : (
+    <p className="small muted">{text}</p>
   );
 }
 
@@ -398,6 +433,20 @@ function ZeitraumDialog({
         : `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht bis zum Abschluss und wird beim Abschluss nicht gekürzt. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
       : null;
 
+  // Neue Grenzen: Gemeinsame Texte von Teilen eines Zeitraums ziehen um bzw. gehen zusammen, ein neuer Beginn bzw. ein
+  // neues Ende mitten in einem Zeitraum verlangt für den Rest einen eigenen Text – und wessen Bestätigungen erlöschen
+  const grenzeNeu = gueltig && !andere && !abgeschlossen && (zeitraum.von !== nachweis.von || zeitraum.bis !== nachweis.bis);
+  const folgen = useMemo(
+    () =>
+      grenzeNeu
+        ? grenzFolgen(data, {
+            ...data,
+            nachweise: data.nachweise.map((x) => (x.id === nachweis.id ? { ...x, von: zeitraum.von, bis: zeitraum.bis } : x)),
+          })
+        : null,
+    [grenzeNeu, data, nachweis.id, zeitraum.von, zeitraum.bis],
+  );
+
   const inhaltText = [
     `Im Zeitraum liegen ${anzahl(darin.length, 'Leistung', 'Leistungen')}${darin.length ? ` mit ${stundenText(stunden)} Stunden` : ''}.`,
     herausfallend ? `${anzahl(herausfallend, 'Leistung liegt', 'Leistungen liegen')} danach außerhalb dieses Leistungsnachweises.` : '',
@@ -533,6 +582,7 @@ function ZeitraumDialog({
           ) : gueltig ? (
             <p className="small muted">{inhaltText}</p>
           ) : null}
+          <FolgenHinweis folgen={folgen} daten={data} />
         </div>
       )}
     </Modal>

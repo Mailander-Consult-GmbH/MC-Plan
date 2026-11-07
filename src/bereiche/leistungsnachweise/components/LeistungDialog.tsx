@@ -33,7 +33,7 @@ import { NICHT_ANGEMELDET, angemeldet, darfLeistungAendern } from '../domain/rec
 import { mitarbeiterName, type ID, type ISODate, type Leistung, type Leistungsnachweis, type LeistungsnachweisDaten, type Projekt } from '../domain/types';
 import { imZeitraum, istDatum, langDatum, stundenText, zeitraumText } from '../domain/zeitraum';
 import { useStore } from '../store/store';
-import { useAnmeldung } from './AnmeldeDialog';
+import { useAnmeldeHinweis } from './Anmeldung';
 import './leistungen.css';
 
 /** Höchstens so viele Stunden an einem Tag. */
@@ -116,7 +116,7 @@ export function LeistungDialog({
 }) {
   const { data, addLeistung, updateLeistung, deleteLeistung } = useStore();
   const toast = useToast();
-  const anmeldung = useAnmeldung();
+  const anmeldeHinweis = useAnmeldeHinweis();
   const stundenFeld = useRef<HTMLInputElement>(null);
   const waehlbar = !leistung && !!projektAuswahl && projektAuswahl.length > 0;
   const [gewaehltesProjekt, setGewaehltesProjekt] = useState(projektId);
@@ -159,7 +159,7 @@ export function LeistungDialog({
   const speichern = (weitere: boolean) => {
     if (nurLesen) return;
     if (!ich) {
-      toast(NICHT_ANGEMELDET);
+      toast(anmeldeHinweis ?? NICHT_ANGEMELDET);
       return;
     }
     const datum = form.datum;
@@ -196,7 +196,7 @@ export function LeistungDialog({
       toast(meldung('Leistung gespeichert', ergaenzung, data));
     } else {
       if (!addLeistung({ ...werte, projektId: projekt.id, projektelement: '' })) {
-        toast(NICHT_ANGEMELDET);
+        toast(anmeldeHinweis ?? NICHT_ANGEMELDET);
         return;
       }
       toast(meldung('Leistung erfasst', ergaenzung, data));
@@ -262,19 +262,7 @@ export function LeistungDialog({
           ) : null}
           {!ich && !nurLesen ? (
             <Callout ton="warn" icon="!">
-              <div className="row-between wrap">
-                <span>Erfasst wird für die angemeldete Person – bitte zuerst anmelden.</span>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary"
-                  onClick={() => {
-                    onClose();
-                    anmeldung();
-                  }}
-                >
-                  Anmelden
-                </button>
-              </div>
+              Erfasst wird für die Person unter „Angemeldet als“. {anmeldeHinweis ?? NICHT_ANGEMELDET}
             </Callout>
           ) : null}
           {bisherNachweis?.status === 'abgeschlossen' && !nurLesen ? (

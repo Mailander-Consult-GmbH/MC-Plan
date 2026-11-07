@@ -2,7 +2,9 @@
  * Reiter „Mitarbeiter“ des Controllings: projektübergreifende Liste mit
  * Suche, Anlegen, Bearbeiten und Löschen und den Stunden im laufenden Monat.
  * Wer noch Leistungen hat, lässt sich nicht löschen, sondern wird als
- * ausgeschieden markiert (domain/rechte.ts).
+ * ausgeschieden markiert; die angemeldete Person („angemeldet“) lässt sich
+ * nicht löschen, solange ihr Name unter „Angemeldet als“ steht – der Bereich
+ * legte sie gleich wieder an (domain/rechte.ts, `mitarbeiterLoeschenPruefen`).
  */
 import { useState } from 'react';
 import { formatDate, today } from '../../../../shared/dates';
@@ -56,8 +58,9 @@ export function Mitarbeiter() {
           <Search value={suche} onChange={setSuche} placeholder="Name, Kürzel …" />
           <p className="muted small" style={{ maxWidth: 620 }}>
             Mitarbeiter gelten projektübergreifend. Der Excel-Import erkennt sie an Kürzel und Namen („MM: Mustermann,
-            Max“); der Sammel-Import des Controllings legt unbekannte an. Im Bereich Leistungsnachweise melden sie sich
-            unter „Angemeldet als“ an und erfassen ihre eigenen Leistungen.
+            Max“); der Sammel-Import des Controllings legt unbekannte an. Im Bereich Leistungsnachweise erfasst jede
+            Person ihre eigenen Leistungen unter ihrem Namen aus „Angemeldet als“ – wer dort noch nicht geführt ist, wird
+            automatisch angelegt.
           </p>
         </div>
         {anlegenKnopf}

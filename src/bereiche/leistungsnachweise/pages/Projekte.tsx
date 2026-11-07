@@ -5,7 +5,8 @@
  * Excel-Import an. Jedes Projekt der anderen Bereiche steht von selbst auch
  * hier (`JEDES_PROJEKT_IN`, Projektregister). Was ein anderer Bereich mit ★
  * markiert hat, ist hier fest markiert (`useMarkiertAnderswo`); weitere
- * Projekte markiert man hier dazu. Ein Klick öffnet die eigenen Leistungen im Projekt; mit ★
+ * Projekte markiert man hier dazu. Ein Klick öffnet die Leistungstexte des Projekts
+ * (Vorgabemonat; „Meine Leistungen“ daneben, ProjektDetail.tsx); mit ★
  * markierte Projekte erscheinen in der Übersicht und in der Seitenleiste.
  *
  * Die Kacheln nennen nur Projektnummer, Projektname, Beschreibung und die

@@ -98,11 +98,17 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   „Projektregister gespeichert.“, ein verlorener Fokus geht an die Überschrift; ist der Stand
   eines anderen Fensters unlesbar, meldet es das Verwerfen).
 * `src/bereiche/leistungsnachweise/` – Schlüssel `leistungsnachweise.data.v1`: `domain/types.ts`
-  (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis), `domain/rechte.ts` – die
+  (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis, `Periodentext`,
+  `Bestaetigung`), `domain/rechte.ts` – die
   Rechte an einer Stelle, je **Zugang** (`'bereich'` | `'controlling'`): Der `StoreProvider` erhält
   den Zugang als Eigenschaft (`index.tsx` ohne, `controlling.tsx` mit `'controlling'`); im Bereich
-  erfasst die angemeldete Person nur eigene Leistungen (Übersicht mit „Mein Kalender“ über alle
-  Projekte, Projektliste ohne Anlegen, Projekt = nur `Leistungen` mit Kalender und Liste;
+  erfasst die angemeldete Person nur eigene Leistungen, schreibt am gemeinsamen Leistungstext der
+  Zeiträume mit eigenen Leistungen mit und bestätigt ihre Monate (Übersicht mit „Mein Kalender“
+  über alle Projekte und „Offene Bestätigungen“, Projektliste ohne Anlegen, Projekt =
+  Umschalter „Leistungstexte“ – Vorgabe, `pages/projekt/MonatsErfassung.tsx` – und „Meine
+  Leistungen“ – `pages/projekt/Leistungen.tsx` mit Kalender und Liste; Adressen
+  `#/leistungsnachweise/projekt/<id>` (Vorgabemonat, `vorgabeMonat`), `…/<JJJJ-MM>`,
+  `…/leistungen`, frühere Reiter → Leistungstexte;
   Kalender: `components/LeistungsKalender.tsx` – kompakt per Container-Abfrage bis 730 px
   Kalenderbreite, dann öffnet ein belegter Tag erst die `TagesListe`; Projektwahl im
   `LeistungDialog` über `projektAuswahl`), alles Übrige (Projekte anlegen und einstellen –
@@ -110,14 +116,47 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Abschnitte an, soweit die eigenen Leistungen sie brauchen, `planErlaubt` –,
   Leistungsnachweise samt Leistungstexten und Bemerkung, Abschluss, Aufschläge, Export,
   Auswertung, Sammel-Import, Mitarbeiter) gibt es nur im Controlling: Reiter „Projekte“
-  (`pages/controlling/ProjektListe.tsx`, `Projekt.tsx` mit `ProjektNachweise`, `Leistungen`,
+  (`pages/controlling/ProjektListe.tsx`, `Projekt.tsx` mit `ProjektNachweise`, `Bestaetigungen`
+  – `#/controlling/leistungsnachweise/projekt/<id>/bestaetigungen` –, `Leistungen`,
   `ProjektEinstellungen`) und die Abrechnung mit der Ansicht „Leistungstexte“
-  (`pages/controlling/Leistungstexte.tsx`).
-  Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). Angemeldet ist der
-  aktive Mitarbeiter, dessen Name dem gemeinsamen „Angemeldet als“ entspricht
-  (`mitarbeiterZumNamen`; der Store setzt `einstellungen.mitarbeiterId` danach), fehlt er, legt
-  „Als Mitarbeiter anmelden“ ihn an. `domain/nachweis.ts`
-  Zeilen, Zeiträume, Ergänzen, Aufschläge, Abschluss (Nachweise eines Projekts überschneiden sich
+  (`pages/controlling/Leistungstexte.tsx`) und dem Stand der Bestätigungen (`BestaetigungsStand`,
+  `FehlendeBestaetigungen` beim Abschließen – abschließen bleibt möglich).
+  Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). **Eine eigene
+  Anmeldung gibt es nicht:** Angemeldet ist der aktive Mitarbeiter, dessen Name dem gemeinsamen
+  „Angemeldet als“ entspricht (`mitarbeiterZumNamen`); der Store zieht `einstellungen.mitarbeiterId`
+  nach und legt im Bereich bei `ladeZustand` 'ok' eine fehlende Person selbst an
+  (`anmeldungAnwenden`, `anmeldeLage`: Vor- und Nachname nötig, kein ausgeschiedener gleichen
+  Namens; Kennung aus dem Namen, `mitarbeiterKennung`, vor `mutate` gebildet – StrictMode und
+  zwei Fenster erzeugen keine Doppel; hat das Controlling die so angelegte Person umbenannt,
+  legt er keine neue an; ein Namenswechsel entfernt sie nur, solange sie keine Leistungen hat und
+  noch so ist, wie der Bereich sie angelegt hat – Name und Kürzel unverändert,
+  `automatischAngelegtOhneLeistungen`). Im Controlling wird niemand angelegt. Übrige Lagen nennt
+  `components/Anmeldung.tsx` (`AnmeldeHinweis` als Leiste, `useMitAnmeldung` als Kurzmeldung
+  vor Handlungen) – keinen Dialog. **Gemeinsame Leistungstexte und Monatsbestätigung**
+  (`domain/erfassung.ts`, rein): Erfassungsperiode = Periode im Raster des Projekts, auf den
+  Kalendermonat gekürzt und an den Grenzen aller Nachweise geteilt (`erfassungsPeriode` in
+  `domain/zeitraum.ts`, `erfassungsGliederung`/`erfassungsPeriodeIn` in `domain/nachweis.ts`;
+  abgeschlossene Nachweise im Raster ihres Abschlusses, `NachweisStand.erfassungsRaster`);
+  gesperrt ist ein Zeitraum, den ein abgeschlossener Nachweis umfasst (`abgeschlossenIm`);
+  `monatsStatus` mit Kennung je Zeitraum (`periodenKennung`, inhaltlich ohne IDs, samt
+  gemeinsamem Text – ändert ein anderer ihn, erlischt die Bestätigung); Store-Methoden
+  `periodentextSetzen`, `monatBestaetigen`, `bestaetigungZuruecknehmen`; nach jedem `mutate`
+  `periodentexteNachziehen` (Texte ziehen mit, wenn sich Grenzen der Nachweise ändern),
+  `bestaetigungenNachziehen` (gehen bestätigte Teile unverändert in einem Zeitraum auf, gilt die
+  Bestätigung weiter – nur, wenn der zusammengeführte Text nichts enthält, was die Person nicht
+  bestätigt hat, verglichen nach Sätzen ohne Reihenfolge, `nurBekannteTeile`; eine Teilung lässt
+  sie erlöschen – die Rückfragen im Controlling nennen das,
+  `grenzFolgen` rechnet wie der Store) und `erfassungBereinigen`. Eine abgerechnete Leistung, deren Datum aus ihrem
+  abgeschlossenen Nachweis herausgelegt wurde, gehört zu keinem Zeitraum (`AnderswoAbgerechnet`);
+  nach dem Abschluss geänderte abgerechnete erkennt `nachAbschlussGeaendert` (`domain/nachweis.ts`:
+  `Leistung.geaendert` nach dem Abschluss – gesetzt von `updateLeistung` und vom Neuimport mit
+  anderem Inhalt – und Abweichung vom Stand, `NachweisStand.inhalte`/`abschnittIds`;
+  Zurückändern hebt es auf; ordnet das Controlling Abschnitte neu zu, zieht
+  `standAbschnitteNachziehen` den Abschnitt im Stand mit). Im Bereich sieht niemand Stichpunkte, Stunden oder Leistungen der
+  anderen – auch nicht als Zahl (`stichpunkteDerPeriode`); gemeinsam ist allein der Text; das
+  Controlling liest alles. `domain/nachweis.ts`
+  Zeilen (Text ohne Bearbeitung von Hand aus den gemeinsamen Texten, `gemeinsamerZeilentext`,
+  `textGemeinsam`; sonst `automatikText`), Zeiträume, Ergänzen, Aufschläge, Abschluss (Nachweise eines Projekts überschneiden sich
   nie; welche Leistungen ein Nachweis zeigt, ergibt sich aus dem Datum – außer nachgereichten
   Leistungen, die ein späterer Nachweis nach Rückfrage übernommen hat (`nachgereicht`, eigene
   Zeile mit `NACHGEREICHT_PRAEFIX`), und Leistungen im Stand eines anderen abgeschlossenen
@@ -137,7 +176,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Adressen des Controllings (`CONTROLLING_PREFIX`) und nimmt nur Adressen dieser beiden Präfixe an;
   frühere Adressen `#/leistungsnachweise/controlling/…` lenkt `App.tsx` um. Ohne eigenen Bestand
   gibt es Demodaten nur bei leerem Projektregister (`ladeDaten`), sonst beginnt der Bereich leer. Kennungen, die erst in einer Änderung
-  anfallen, liefert `idVorrat` (StrictMode). Neue Felder über `DATEN_VERSION` und `migriere()`.
+  anfallen, liefert `idVorrat` (StrictMode). Neue Felder über `DATEN_VERSION` (derzeit 7:
+  `periodentexte`, `bestaetigungen`) und `migriere()`.
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
   `localStorage`-Schlüssel, eigenen Einstellungen und eigenem Router.
 * `src/shared/` – fachfreie Bausteine (UI, Icons, Datumsrechnung, Excel lesen/schreiben, Druck,
@@ -304,7 +344,12 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   vollzieht ein Bereich beim nächsten Öffnen. PIN des Controllings: `0000`. Wer den
   `localStorage` leert, leert auch `kaplan-projektregister.v1`.
 * Leistungsnachweise: Wer unter „Angemeldet als“ „Anna Becker“ einträgt, ist in den Demodaten
-  Mitarbeiterin; mit einem anderen Namen erscheint der Hinweis zum Anmelden als Mitarbeiter.
+  Mitarbeiterin (ebenso Jonas Keller, Miriam Vogt und Tobias Brandt); bei der Brücke
+  (monatsscharf) steht im Vormonat ein gemeinsamer Text, den Anna Becker bestätigt hat. Ein
+  anderer Name mit Vor- und Nachnamen – auch die Vorgabe „Max Mustermann“ – wird beim Öffnen des
+  Bereichs automatisch als Mitarbeiter angelegt (im Controlling nicht); ein Name aus nur einem
+  Wort zeigt den Hinweis, Vor- und Nachnamen einzutragen. Wer zwei Personen gegeneinander
+  prüft (gemeinsamer Text, erlöschende Bestätigung), wechselt den Namen unter „Angemeldet als“.
   Demodaten gibt es nur, solange das Projektregister leer ist – nach dem Leeren des
   `localStorage` also zuerst `#/leistungsnachweise` öffnen, sonst beginnt der Bereich leer.
   Abrechnung, Abschluss und Aufschläge prüft man im Controlling

@@ -1,8 +1,12 @@
 /**
  * Zeiträume der Leistungsnachweise: Tage, ISO-Kalenderwochen und Monate als
  * Perioden, ihre Texte in der Spalte „Datum“ und in Überschriften sowie das
- * Stundenformat. Alles rein und ohne Zeitzonenbezug – gerechnet wird auf
- * ISO-Daten (JJJJ-MM-TT) mit den Datumshilfen aus `src/shared/dates.ts`.
+ * Stundenformat. Dazu die Erfassungsperioden der gemeinsamen Leistungstexte
+ * (`erfassungsPeriode`): die Periode im Raster, auf den Kalendermonat gekürzt
+ * und an Schnitten – den Grenzen der Nachweise – geteilt, und ihr Schlüssel
+ * (`erfassungsPeriodeAusSchluessel`). Alles rein und ohne Zeitzonenbezug –
+ * gerechnet wird auf ISO-Daten (JJJJ-MM-TT) mit den Datumshilfen aus
+ * `src/shared/dates.ts`.
  */
 import { addDays, diffDays, parseISO, wochentag } from '../../../shared/dates';
 import type { ISODate, Raster } from './types';
@@ -113,6 +117,90 @@ export function perioden(von: ISODate, bis: ISODate, raster: Raster): Periode[] 
     p = periodeVon(addDays(p.bis, 1), raster);
   }
   return liste;
+}
+
+/* ------------------------------------------------------------------ */
+/* Erfassungsperioden (gemeinsame Leistungstexte)                      */
+/* ------------------------------------------------------------------ */
+
+/** Trenner zwischen Monat und Periode im Schlüssel einer Erfassungsperiode („2026-10|W2026-44“). */
+export const ERFASSUNG_TRENNER = '|';
+
+/** Ist der Text ein Monat JJJJ-MM? */
+export function istMonat(w: unknown): w is string {
+  return typeof w === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(w);
+}
+
+/**
+ * Erfassungsperiode eines Datums: die Periode im Raster des Projekts
+ * (`periodeVon`), auf den Kalendermonat gekürzt – eine Woche über ein
+ * Monatsende zählt so in jedem Monat für sich (26.–31.10. im Oktober, 1.11.
+ * im November). Schlüssel „<JJJJ-MM>|<Periode>“, etwa „2026-10|W2026-44“;
+ * so stehen die gemeinsamen Leistungstexte (`Periodentext`) im Bestand.
+ *
+ * `schnitte` sind Tage, an denen zusätzlich ein neuer Teil beginnt – Beginn
+ * und Tag nach dem Ende jedes Nachweises (`erfassungsGliederung` in
+ * domain/nachweis.ts): Liegt eine Grenze eines Nachweises in der Periode –
+ * etwa nach einem Abschluss oder einem festgelegten Ende mitten darin, auch
+ * wenn danach (noch) kein Nachweis beginnt –, bekommt jeder Teil einen eigenen
+ * Text, statt den schon abgerechneten zu erben; so liegt jeder Teil in
+ * höchstens einem Nachweis. Der erste Teil behält den Schlüssel, jeder
+ * weitere hängt seinen Beginn an („2026-11|M2026-11|2026-11-06“).
+ */
+export function erfassungsPeriode(datum: ISODate, raster: Raster, schnitte: readonly ISODate[] = []): Periode {
+  const p = periodeKuerzen(periodeVon(datum, raster), monatsanfang(datum), monatsende(datum));
+  const basis = `${datum.slice(0, 7)}${ERFASSUNG_TRENNER}${p.schluessel}`;
+  let von = p.von;
+  let bis = p.bis;
+  for (const s of schnitte) {
+    if (s <= p.von || s > p.bis) continue;
+    if (s <= datum) {
+      if (s > von) von = s;
+    } else {
+      const vorher = addDays(s, -1);
+      if (vorher < bis) bis = vorher;
+    }
+  }
+  return { schluessel: von === p.von ? basis : `${basis}${ERFASSUNG_TRENNER}${von}`, von, bis };
+}
+
+/** Montag der ISO-Kalenderwoche `woche` des ISO-Jahres `jahr` (der 4. Januar liegt stets in KW 1). */
+function wocheBeginn(jahr: number, woche: number): ISODate {
+  return addDays(wochenanfang(`${jahr}-01-04`), (woche - 1) * 7);
+}
+
+/**
+ * Erfassungsperiode zu einem Schlüssel („2026-10|W2026-44“) samt Monat und
+ * Raster – null, wenn der Schlüssel keiner ist. Ein Teil nach einem Schnitt
+ * („2026-11|M2026-11|2026-11-06“, `erfassungsPeriode`) beginnt an seinem Tag;
+ * sein Ende hängt von späteren Schnitten ab, die der Schlüssel nicht kennt –
+ * geliefert wird das Ende der Periode (ein Zeitraum, der den Teil sicher umfasst).
+ */
+export function erfassungsPeriodeAusSchluessel(schluessel: string): (Periode & { monat: string; raster: Raster }) | null {
+  const [monat, roh, ab, ...rest] = schluessel.split(ERFASSUNG_TRENNER);
+  if (!istMonat(monat) || !roh || rest.length > 0) return null;
+  const anfang = `${monat}-01`;
+  const ende = monatsende(anfang);
+  let p: Periode | null = null;
+  let raster: Raster;
+  if (roh[0] === 'T' && istDatum(roh.slice(1))) {
+    raster = 'tag';
+    p = periodeVon(roh.slice(1), 'tag');
+  } else if (/^W\d{4}-\d{2}$/.test(roh)) {
+    raster = 'woche';
+    const von = wocheBeginn(Number(roh.slice(1, 5)), Number(roh.slice(6, 8)));
+    p = periodeVon(von, 'woche');
+    if (p.schluessel !== roh) return null;
+  } else if (/^M\d{4}-\d{2}$/.test(roh) && istMonat(roh.slice(1))) {
+    raster = 'monat';
+    p = periodeVon(`${roh.slice(1)}-01`, 'monat');
+  } else return null;
+  if (p.bis < anfang || p.von > ende) return null;
+  const gekuerzt = periodeKuerzen(p, anfang, ende);
+  if (ab === undefined) return { ...gekuerzt, schluessel, monat, raster };
+  // Teil nach einem Schnitt: beginnt nach dem Anfang der Periode und in ihr
+  if (!istDatum(ab) || ab <= gekuerzt.von || ab > gekuerzt.bis) return null;
+  return { schluessel, von: ab, bis: gekuerzt.bis, monat, raster };
 }
 
 /** Liegt das Datum in [von, bis]? */

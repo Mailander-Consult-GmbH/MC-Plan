@@ -1,8 +1,10 @@
 /**
- * Projekt im Controlling der Leistungsnachweise mit drei Reitern:
+ * Projekt im Controlling der Leistungsnachweise mit vier Reitern:
  * „Leistungsnachweise“ (ProjektNachweise.tsx – ein Klick öffnet die
- * Abrechnung), „Leistungen“ (die aller Mitarbeiter, nur lesen) und
- * „Einstellungen“ (Nachweis-Vorgaben, Abschnitte, Logos). Darüber
+ * Abrechnung), „Bestätigungen“ (Bestaetigungen.tsx – je Monat, wer Leistungen
+ * im Projekt hat und ob er Stunden und Leistungstexte bestätigt hat),
+ * „Leistungen“ (die aller Mitarbeiter, nur lesen) und „Einstellungen“
+ * (Nachweis-Vorgaben samt Raster der Leistungstexte, Abschnitte, Logos). Darüber
  * Projektnummer, Status, Raster und Leistungsbereich sowie „Bearbeiten“ und
  * „Löschen“ – im Bereich gibt es davon nichts, dort erfassen die Mitarbeiter
  * nur ihre Leistungen (domain/rechte.ts). Jedes Projekt gehört in die
@@ -10,8 +12,12 @@
  * Projekt oder ist es dort zur Übernahme vorgesehen, lässt es sich hier nicht
  * löschen – nur im Controlling unter „Projekte“ für alle Bereiche (dort lässt
  * sich auch eine vorgesehene Übernahme zurücknehmen).
+ *
+ * Die Reiterleiste scrollt auf schmalen Bildschirmen quer (`.tabs` in
+ * src/shared/global.css); der aktive Reiter (`aria-selected`) wird dabei in den
+ * sichtbaren Teil gerollt – auch, wenn die Adresse ihn direkt aufruft.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { andereBereiche, vorgeseheneBereiche } from '../../../../gemeinsam/ProjektBereiche';
 import { useRegister } from '../../../../gemeinsam/register';
 import { Icon } from '../../../../shared/icons';
@@ -23,11 +29,13 @@ import { PROJEKT_STATUS_LABEL, ZEITRAUMREGEL_LABEL, projektKurzname, projektTite
 import type { ProjektTab, Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { Leistungen } from '../projekt/Leistungen';
+import { Bestaetigungen } from './Bestaetigungen';
 import { ProjektEinstellungen } from './ProjektEinstellungen';
 import { ProjektNachweise } from './ProjektNachweise';
 
 const TABS: { id: ProjektTab; label: string; titel: string }[] = [
   { id: 'nachweise', label: 'Leistungsnachweise', titel: 'Leistungsnachweise des Projekts – Klick öffnet die Abrechnung' },
+  { id: 'bestaetigungen', label: 'Bestätigungen', titel: 'Je Monat, wer Leistungen im Projekt hat und ob er Stunden und Leistungstexte bestätigt hat' },
   { id: 'leistungen', label: 'Leistungen', titel: 'Leistungen aller Mitarbeiter – nur lesen' },
   { id: 'einstellungen', label: 'Einstellungen', titel: 'Vorgaben für Leistungsnachweise, Abschnitte und Logos' },
 ];
@@ -47,6 +55,11 @@ export function ControllingProjekt({
   const [bearbeiten, setBearbeiten] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
   const projekt = data.projekte.find((p) => p.id === projektId);
+  // Auf schmalen Bildschirmen liegt der aktive Reiter sonst womöglich außerhalb der quer scrollenden Leiste
+  const aktiverReiter = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    aktiverReiter.current?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [tab, projektId]);
 
   if (!projekt) {
     return (
@@ -134,11 +147,14 @@ export function ControllingProjekt({
         </p>
       ) : null}
 
-      <div className="tabs">
+      <div className="tabs" role="tablist" aria-label="Projekt">
         {TABS.map((t) => (
           <button
             key={t.id}
+            ref={t.id === tab ? aktiverReiter : undefined}
             type="button"
+            role="tab"
+            aria-selected={t.id === tab}
             className={t.id === tab ? 'active' : ''}
             title={t.titel}
             onClick={() => navigate({ view: 'controllingProjekt', projektId: projekt.id, tab: t.id })}
@@ -149,6 +165,7 @@ export function ControllingProjekt({
       </div>
 
       {tab === 'nachweise' ? <ProjektNachweise projekt={projekt} navigate={navigate} /> : null}
+      {tab === 'bestaetigungen' ? <Bestaetigungen projekt={projekt} navigate={navigate} /> : null}
       {tab === 'leistungen' ? <Leistungen projekt={projekt} navigate={navigate} /> : null}
       {tab === 'einstellungen' ? <ProjektEinstellungen projekt={projekt} /> : null}
 

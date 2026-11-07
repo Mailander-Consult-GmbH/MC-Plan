@@ -3,6 +3,11 @@
  * einspielen. Die Sicherung trägt das Kennzeichen des Bereichs; Sicherungen
  * der anderen Bereiche werden abgewiesen (sicherungLesen in store/storage.ts).
  *
+ * Die Sicherung umfasst den gesamten Bestand samt den Leistungen aller
+ * Mitarbeiter – solange alles lokal im Browser liegt, die einzige Ausnahme von
+ * der Regel, dass im Bereich niemand Stichpunkte und Stunden der anderen
+ * sieht (domain/rechte.ts); „Einspielen“ ersetzt ihn ganz.
+ *
  * Nach einem Ladefehler oder bei einem Stand aus einer neueren Fassung zeigt
  * der Bereich nur Demodaten (`ladeZustand`): Dann sichert „Sicherung“ den
  * gespeicherten Stand unverändert, und über einen Stand aus einer neueren
@@ -126,7 +131,8 @@ export function SicherungEinspielenDialog({
   const einspielen = () => {
     if (neuereFassung) return;
     if (mitEinstellungen) benutzerAendern({ name: daten.einstellungen.bearbeiter, farbmodus: daten.einstellungen.farbmodus });
-    // Die Anmeldung bleibt nur, wenn die angemeldete Person auch in der Sicherung vorkommt
+    // Die Anmeldung bleibt nur, wenn die angemeldete Person auch in der Sicherung vorkommt – sonst ordnet
+    // der Store danach den Mitarbeiter des Namens zu bzw. legt ihn an (`anmeldungAnwenden`)
     const eigene = data.einstellungen;
     const einstellungen = mitEinstellungen
       ? daten.einstellungen

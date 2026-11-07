@@ -1,5 +1,7 @@
 /**
- * Leistungen eines Projekts. Im Bereich (ProjektDetail.tsx) die eigenen
+ * Leistungen eines Projekts. Im Bereich (ProjektDetail.tsx, Ansicht „Meine
+ * Leistungen“, #/leistungsnachweise/projekt/<id>/leistungen – neben den
+ * „Leistungstexten“, MonatsErfassung.tsx) die eigenen
  * erfassten und importierten Leistungen der angemeldeten Person mit „Leistung
  * erfassen“, Excel-Import, Filter nach Monat, Suche und Summe der angezeigten
  * Stunden. Jede Zeile nennt den Leistungsnachweis, in dem sie erscheint – das
@@ -21,7 +23,7 @@ import { wochentag } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Callout, Card, CardHeader, ConfirmDialog, EmptyState, Search, Segmented, Select } from '../../../../shared/ui';
-import { useAnmeldung, useMitAnmeldung } from '../../components/AnmeldeDialog';
+import { useMitAnmeldung } from '../../components/Anmeldung';
 import { ImportDialog } from '../../components/ImportDialog';
 import { LeistungDialog, abgeschlossenHinweis, nachweisName } from '../../components/LeistungDialog';
 import { LeistungsKalender } from '../../components/LeistungsKalender';
@@ -51,7 +53,6 @@ function nachDatum(namen: Map<string, string>) {
 export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: (r: Route) => void }) {
   const { data, deleteLeistung, deleteLeistungen, zugang, controlling } = useStore();
   const toast = useToast();
-  const anmeldung = useAnmeldung();
   const mitAnmeldung = useMitAnmeldung();
   const [suche, setSuche] = useState('');
   const [monat, setMonat] = useState(ALLE);
@@ -145,13 +146,8 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
       <Card>
         <EmptyState
           icon="person"
-          titel="Bitte anmelden"
-          text="Hier stehen die eigenen Leistungen in diesem Projekt – erfasst und importiert wird immer für die angemeldete Person."
-          action={
-            <button type="button" className="btn btn-primary" onClick={() => anmeldung()}>
-              Anmelden
-            </button>
-          }
+          titel="Nicht als Mitarbeiter angemeldet"
+          text="Hier stehen die eigenen Leistungen in diesem Projekt – erfasst und importiert wird immer für die Person unter „Angemeldet als“."
         />
       </Card>
     );

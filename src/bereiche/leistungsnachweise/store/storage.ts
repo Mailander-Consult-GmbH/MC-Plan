@@ -21,7 +21,9 @@
  * (`migriere`); 3 – ohne Rolle, das Controlling ist ein eigener Bereich mit
  * PIN (`aufbereiten` übernimmt die Rolle nicht); 4 – Zeitraumregel
  * „fortlaufend“; 5 – nachgereichte Leistungen; 6 – festgelegtes Ende
- * (`bisFest`) und gekennzeichnete nachgereichte Zeilen im Stand.
+ * (`bisFest`) und gekennzeichnete nachgereichte Zeilen im Stand; 7 –
+ * gemeinsame Leistungstexte je Zeitraum (`periodentexte`) und
+ * Monatsbestätigungen (`bestaetigungen`).
  *
  * Speichern meldet, ob es gelungen ist (`SpeicherZustand`) – ist der Speicher
  * des Browsers voll, zeigt der Bereich einen dauerhaften Hinweis
@@ -37,6 +39,7 @@ import {
   OHNE_ABSCHNITT,
   STANDARD_BEARBEITER,
   type Abschnitt,
+  type Bestaetigung,
   type Leistung,
   type Leistungsnachweis,
   type LeistungsnachweisDaten,
@@ -44,11 +47,13 @@ import {
   type Mitarbeiter,
   type NachweisStand,
   type NachweisZeile,
+  type Periodentext,
   type Projekt,
+  type Raster,
   type ZeilenText,
 } from '../domain/types';
 import { nachgereichteZeilenUmstellen } from '../domain/nachweis';
-import { istDatum, runden } from '../domain/zeitraum';
+import { erfassungsPeriodeAusSchluessel, istDatum, istMonat, runden } from '../domain/zeitraum';
 
 export { DATEN_VERSION };
 
@@ -103,6 +108,13 @@ function zahlen(w: unknown): Record<string, number> {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, stunden(v)]));
 }
 
+/** Texte je Schlüssel – nur nicht leere (Kennungen der bestätigten Zeiträume, Inhalte und Abschnitte abgerechneter Leistungen). */
+function texteJeSchluessel(w: unknown): Record<string, string> {
+  const o = objekt(w);
+  if (!o) return {};
+  return Object.fromEntries(Object.entries(o).filter((e): e is [string, string] => !!e[0] && typeof e[1] === 'string' && !!e[1]));
+}
+
 /** Je Kennung nur der erste Eintrag – ein von Hand bearbeiteter Bestand kann Kennungen doppelt führen. */
 function eindeutig<T extends { id: string }>(eintraege: T[]): T[] {
   const gesehen = new Set<string>();
@@ -127,6 +139,7 @@ function zeileAufbereiten(z: Roh): NachweisZeile {
     bearbeiter: Array.isArray(z.bearbeiter) ? z.bearbeiter.map(text) : [],
     text: text(z.text),
     textBearbeitet: z.textBearbeitet === true,
+    ...(z.textGemeinsam === true ? { textGemeinsam: true } : {}),
     stunden: erfasst,
     stundenJeAbschnitt: jeAbschnitt,
     stundenJeMitarbeiter: zahlen(z.stundenJeMitarbeiter),
@@ -156,6 +169,10 @@ function standAufbereiten(w: unknown): NachweisStand | null {
   const erfasst = stunden(s.stunden);
   return {
     zeilen: liste(s.zeilen).map(zeileAufbereiten),
+    ...((RASTER as readonly unknown[]).includes(s.erfassungsRaster) ? { erfassungsRaster: s.erfassungsRaster as Raster } : {}),
+    // Inhalt und Abschnitt der abgerechneten Leistungen – fehlen in früher abgeschlossenen Ständen
+    ...(objekt(s.inhalte) ? { inhalte: texteJeSchluessel(s.inhalte) } : {}),
+    ...(objekt(s.abschnittIds) ? { abschnittIds: texteJeSchluessel(s.abschnittIds) } : {}),
     abschnitte: liste(s.abschnitte).map(abschnittAufbereiten),
     projekt: {
       nummer: text(p.nummer),
@@ -175,7 +192,9 @@ function texteAufbereiten(w: unknown): Record<string, ZeilenText> {
   const ergebnis: Record<string, ZeilenText> = {};
   for (const [schluessel, wert] of Object.entries(o)) {
     const t = objekt(wert);
-    if (t && typeof t.text === 'string') ergebnis[schluessel] = { text: t.text, leistungIds: ids(t.leistungIds) };
+    if (t && typeof t.text === 'string') {
+      ergebnis[schluessel] = { text: t.text, leistungIds: ids(t.leistungIds), ...(typeof t.ausgang === 'string' ? { ausgang: t.ausgang } : {}) };
+    }
   }
   return ergebnis;
 }
@@ -185,7 +204,11 @@ function texteAufbereiten(w: unknown): Record<string, ZeilenText> {
  * laden, und verwirft kaputte Verweise: Leistungen und Nachweise ohne
  * (bekanntes) Projekt oder ohne gültiges Datum fallen weg; ein unbekannter
  * Mitarbeiter bleibt als Verweis stehen (der Nachweis zeigt dann „?“), ein
- * unbekannter Abschnitt wird zu „ohne Abschnitt“. Für Prüfungen exportiert.
+ * unbekannter Abschnitt wird zu „ohne Abschnitt“. Gemeinsame Texte ohne
+ * bekanntes Projekt, mit ungültigem Schlüssel oder leerem Text fallen weg,
+ * ebenso Bestätigungen ohne bekanntes Projekt bzw. bekannten Mitarbeiter oder
+ * ohne gültigen Monat; je Schlüssel bleibt der erste Eintrag. Für Prüfungen
+ * exportiert.
  */
 export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   const e = objekt(roh.einstellungen) ?? {};
@@ -244,6 +267,7 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
           projektelement: text(l.projektelement),
           quelle: l.quelle === 'import' ? 'import' : 'manuell',
           erfasst: text(l.erfasst),
+          ...(text(l.geaendert) ? { geaendert: text(l.geaendert) } : {}),
         };
       }),
   );
@@ -277,6 +301,42 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
       }),
   );
 
+  const mitarbeiterIds = new Set(mitarbeiter.map((m) => m.id));
+  const textSchluessel = new Set<string>();
+  const periodentexte = liste(roh.periodentexte)
+    .filter((t) => projektVon.has(text(t.projektId)) && !!erfassungsPeriodeAusSchluessel(text(t.schluessel)) && text(t.text).trim())
+    .map(
+      (t): Periodentext => ({
+        projektId: text(t.projektId),
+        schluessel: text(t.schluessel),
+        text: text(t.text).trim(),
+        leistungIds: [...new Set(ids(t.leistungIds))],
+        ...(Array.isArray(t.inhalte) ? { inhalte: [...new Set(t.inhalte.map(text).filter(Boolean))] } : {}),
+        bearbeiter: text(t.bearbeiter),
+        geaendert: text(t.geaendert),
+      }),
+    )
+    .filter((t) => {
+      const k = `${t.projektId}\u0000${t.schluessel}`;
+      return textSchluessel.has(k) ? false : (textSchluessel.add(k), true);
+    });
+  const bestaetigungsSchluessel = new Set<string>();
+  const bestaetigungen = liste(roh.bestaetigungen)
+    .filter((b) => projektVon.has(text(b.projektId)) && mitarbeiterIds.has(text(b.mitarbeiterId)) && istMonat(b.monat))
+    .map(
+      (b): Bestaetigung => ({
+        projektId: text(b.projektId),
+        mitarbeiterId: text(b.mitarbeiterId),
+        monat: text(b.monat),
+        am: text(b.am),
+        perioden: texteJeSchluessel(b.perioden),
+      }),
+    )
+    .filter((b) => {
+      const k = `${b.projektId}\u0000${b.mitarbeiterId}\u0000${b.monat}`;
+      return bestaetigungsSchluessel.has(k) ? false : (bestaetigungsSchluessel.add(k), true);
+    });
+
   const mitarbeiterId = idOderNull(e.mitarbeiterId);
   return {
     version: DATEN_VERSION,
@@ -289,6 +349,8 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
     projekte,
     leistungen,
     nachweise,
+    periodentexte,
+    bestaetigungen,
   };
 }
 
@@ -330,6 +392,14 @@ function vonFassung3(roh: Roh): Roh {
 }
 
 /**
+ * Fassung 6 → 7: gemeinsame Leistungstexte je Zeitraum und
+ * Monatsbestätigungen – bisher gab es keine, beide Listen beginnen leer.
+ */
+function vonFassung6(roh: Roh): Roh {
+  return { ...roh, periodentexte: [], bestaetigungen: [] };
+}
+
+/**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt; neue Schritte kommen hier vor `aufbereiten` hinzu. Auch
  * Sicherungen älterer Fassungen laufen hierdurch. Fassung 4 → 5: `nachgereicht`
@@ -338,13 +408,15 @@ function vonFassung3(roh: Roh): Roh {
  * Texten, Aufschlägen und im festgeschriebenen Stand; Aufschläge einer Zeile
  * mit laufenden und nachgereichten Leistungen werden auf beide aufgeteilt,
  * ohne die abgerechneten Stunden zu ändern – mit Abschnittsspalten auch nicht
- * die einer Spalte (`nachgereichteZeilenUmstellen`).
+ * die einer Spalte (`nachgereichteZeilenUmstellen`); 6 → 7: leere Listen
+ * `periodentexte` und `bestaetigungen` (`vonFassung6`).
  */
 function migriere(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   let stand = roh as unknown as Roh;
   const fassung = typeof stand.version === 'number' ? stand.version : 0;
   if (fassung < 2) stand = vonFassung1(stand);
   if (fassung < 4) stand = vonFassung3(stand);
+  if (fassung < 7) stand = vonFassung6(stand);
   const daten = aufbereiten(stand as Partial<LeistungsnachweisDaten>);
   return fassung < 6 ? nachgereichteZeilenUmstellen(daten) : daten;
 }

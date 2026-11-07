@@ -24,16 +24,10 @@
 /* Hinweise mit Knopf (row-between im Callout): Der Inhalt nimmt die ganze Breite, damit der Knopf rechts steht */
 .ln-app .callout > div:last-child { flex: 1 1 auto; min-width: 0; }
 
-/* Hinweis ohne Anmeldung oben im Inhalt */
+/* Hinweis oben im Inhalt, solange der Name unter „Angemeldet als“ keinem aktiven Mitarbeiter gehört
+   (components/Anmeldung.tsx) */
 .ln-anmeldehinweis { margin-bottom: 18px; }
 .ln-anmeldehinweis .callout { box-shadow: inset 3px 0 0 var(--accent); }
-
-/* Hinweis unter „Angemeldet als“, solange der Name keinem Mitarbeiter gehört */
-.ln-anmeldung-link { display: block; margin: 4px 0 0 2px; font-size: 11.5px; text-align: left; }
-
-/* Anmeldedialog */
-.ln-anmeldung-dialog { gap: 14px; }
-.ln-anmeldung-hinweis { margin: 0; }
 
 /* Gruppe von Feldern und Knöpfen, die sich gemeinsam sperren lässt (ohne Anmeldung, fremde
    Leistung) – ohne eigenen Rahmen und ohne Einfluss auf die Anordnung */

@@ -2,6 +2,8 @@
  * Projekt anlegen bzw. bearbeiten – nur im Controlling (domain/rechte.ts,
  * `projektVerwalten`): Projektnummer, Status, Name, Bezeichnung im Nachweis,
  * Leistungsbereich, Raster und Zeitraumregel neuer Nachweise, Beschreibung.
+ * Das Raster gliedert auch die gemeinsamen Leistungstexte der Mitarbeiter;
+ * ein Wechsel nennt Texte, die danach nicht mehr gelten (`RasterwechselHinweis`).
  * Die Projektnummer („K9101“) ist der Schlüssel, über den der Excel-Import
  * die Leistungen einem Projekt zuordnet; sie ist deshalb eindeutig.
  */
@@ -22,6 +24,7 @@ import {
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { RASTER_OPTIONEN, REGEL_OPTIONEN } from './common';
+import { RasterwechselHinweis } from './RasterwechselHinweis';
 
 const STATUS_OPTIONEN = (Object.keys(PROJEKT_STATUS_LABEL) as ProjektStatus[]).map((s) => ({
   value: s,
@@ -137,7 +140,10 @@ export function ProjektDialog({
             ))}
           </datalist>
         </Field>
-        <Field label="Nachweis" hint="Zeilen je Tag, Woche oder Monat – Vorgabe für neue Leistungsnachweise.">
+        <Field
+          label="Nachweis"
+          hint="Zeilen je Tag, Woche oder Monat – Vorgabe für neue Leistungsnachweise; gliedert auch die gemeinsamen Leistungstexte der Mitarbeiter."
+        >
           <Segmented<Raster> value={form.raster} onChange={(v) => set('raster', v)} options={RASTER_OPTIONEN} />
         </Field>
         <Field
@@ -154,6 +160,7 @@ export function ProjektDialog({
           <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={3} />
         </Field>
       </div>
+      {projekt ? <RasterwechselHinweis projekt={projekt} raster={form.raster} /> : null}
       {projekt ? null : <VerknuepfungsHinweis bereich="leistungsnachweise" nummer={form.nummer} />}
     </Modal>
   );

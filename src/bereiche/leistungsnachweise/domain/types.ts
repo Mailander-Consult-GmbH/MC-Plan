@@ -12,11 +12,15 @@
  * eigenen Leistungen ein, der Nachweis rechnet die Zeilen daraus.
  *
  * Wer angemeldet ist (`Einstellungen.mitarbeiterId`), erfasst nur eigene
- * Leistungen – sonst nichts. Das Controlling (der Controlling-Bereich von
- * KaPlan nach der PIN) stellt die Projekte ein, bearbeitet die Nachweise,
- * schließt sie ab, schlägt Stunden je Zeile auf
- * (`Leistungsnachweis.aufschlaege`) und exportiert – die Rechte stehen zentral
- * in domain/rechte.ts.
+ * Leistungen, schreibt mit den Kolleginnen und Kollegen derselben Zeiträume
+ * am gemeinsamen Leistungstext (`Periodentext` – deren Stichpunkte und Stunden
+ * sieht sie nicht) und bestätigt je Monat, dass Stunden und Texte vollständig
+ * sind (`Bestaetigung`, domain/erfassung.ts). Fehlt der Mitarbeiter zum Namen
+ * unter „Angemeldet als“, legt der Bereich ihn selbst an (domain/rechte.ts).
+ * Das Controlling (der Controlling-Bereich von KaPlan nach der PIN) stellt die
+ * Projekte ein, bearbeitet die Nachweise, schließt sie ab, schlägt Stunden je
+ * Zeile auf (`Leistungsnachweis.aufschlaege`) und exportiert – die Rechte
+ * stehen zentral in domain/rechte.ts.
  *
  * Projekte teilt der Bereich über das Projektregister (`src/gemeinsam/`) mit
  * den anderen Bereichen (domain/register.ts).
@@ -35,8 +39,10 @@ export type ISODate = string;
  * Fassung 5: nachgereichte Leistungen am Nachweis (`nachgereicht`, leer).
  * Fassung 6: von Hand festgelegtes Ende am Nachweis (`bisFest`, false);
  * nachgereichte Zeilen im festgeschriebenen Stand (`NachweisZeile.nachgereicht`).
+ * Fassung 7: gemeinsame Leistungstexte je Zeitraum (`periodentexte`) und
+ * Monatsbestätigungen der Mitarbeiter (`bestaetigungen`), beide leer.
  */
-export const DATEN_VERSION = 6;
+export const DATEN_VERSION = 7;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Mitarbeiter MIC';
@@ -52,9 +58,12 @@ export interface Einstellungen {
   /**
    * Angemeldete Person: der aktive Mitarbeiter, dessen Name dem unter
    * „Angemeldet als“ entspricht (`mitarbeiterZumNamen`, vom Store nachgezogen).
-   * Sie erfasst und importiert nur eigene Leistungen (domain/rechte.ts). null = nicht
-   * angemeldet – dann lässt sich nichts erfassen. Solange die Daten nur im
-   * Browser liegen, ist die Anmeldung eine Auswahl ohne Kennwort.
+   * Fehlt er, legt der Store ihn im Bereich selbst an (`anmeldungAnwenden` in
+   * domain/rechte.ts) – eine eigene Anmeldung gibt es nicht. Sie erfasst und
+   * importiert nur eigene Leistungen (domain/rechte.ts). null = nicht
+   * angemeldet (Name ohne Nachnamen, ausgeschiedener Mitarbeiter) – dann lässt
+   * sich nichts erfassen. Solange die Daten nur im Browser liegen, ist die
+   * Anmeldung eine Angabe ohne Kennwort.
    */
   mitarbeiterId: ID | null;
   farbmodus: Farbmodus;
@@ -223,6 +232,16 @@ export interface Leistung {
   quelle: Quelle;
   /** Zeitpunkt der Erfassung bzw. des Imports (ISO). */
   erfasst: string;
+  /**
+   * Zeitpunkt der letzten Änderung von Datum, Stunden, Text oder Abschnitt
+   * durch die Person (ISO): `updateLeistung` im Store bzw. ein Neuimport, der
+   * eine abgerechnete Leistung mit anderem Inhalt ersetzt (`importPlanen`);
+   * fehlt, solange sie nicht geändert wurde. Daran und am festgeschriebenen
+   * Stand (`NachweisStand.inhalte`, `abschnittIds`) erkennt die Seite „Leistungstexte“
+   * abgerechnete Leistungen, die nach dem Abschluss geändert wurden
+   * (`nachAbschlussGeaendert` in domain/nachweis.ts).
+   */
+  geaendert?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -241,10 +260,19 @@ export const NACHWEIS_STATUS_LABEL: Record<NachweisStatus, string> = {
  * Leistungen, die beim Bearbeiten in der Zeile standen, zeigen später, ob
  * seitdem Leistungen hinzugekommen sind – der Text wird dann nicht
  * überschrieben, sondern die neuen Leistungen werden zum Ergänzen angeboten.
+ * Ebenso zeigt `ausgang`, ob sich der Text der Mitarbeiter seitdem geändert hat.
  */
 export interface ZeilenText {
   text: string;
   leistungIds: ID[];
+  /**
+   * Text, den die Zeile ohne die Bearbeitung von Hand hatte (aus den
+   * gemeinsamen Texten der Mitarbeiter bzw. automatisch), als das Controlling
+   * sie zu bearbeiten begann bzw. zuletzt „Text so lassen“ wählte
+   * (`zeilenTextOhneBearbeitung`). Weicht der heutige davon ab, nennt die Zeile
+   * ihn. Fehlt in Einträgen, die vor Fassung 7 in der Entwicklung entstanden.
+   */
+  ausgang?: string;
 }
 
 /**
@@ -268,6 +296,11 @@ export interface NachweisZeile {
   text: string;
   /** Der Text wurde von Hand bearbeitet. */
   textBearbeitet: boolean;
+  /**
+   * Der Text stammt (ganz oder teilweise) aus den gemeinsamen Leistungstexten
+   * der Mitarbeiter (`Periodentext`) – nur ohne Bearbeitung von Hand; fehlt sonst.
+   */
+  textGemeinsam?: boolean;
   stunden: number;
   /** Stunden je Abschnitt; Schlüssel ist die Abschnitts-ID, `OHNE_ABSCHNITT` für Leistungen ohne. */
   stundenJeAbschnitt: Record<string, number>;
@@ -307,6 +340,29 @@ export function aufschlagSchluessel(zeilenSchluessel: string, abschnittId: ID | 
  */
 export interface NachweisStand {
   zeilen: NachweisZeile[];
+  /**
+   * Raster des Projekts beim Abschluss – es gliedert die gemeinsamen
+   * Leistungstexte der Zeilen (`nachweisZeilen`), auch wenn das Controlling das
+   * Raster des Projekts später umstellt. Fehlt in Ständen vor Fassung 7.
+   */
+  erfassungsRaster?: Raster;
+  /**
+   * Inhalt jeder abgerechneten Leistung beim Abschluss (Kennung → Prüfsumme
+   * aus Datum, Stunden und Text) – daran und an `abschnittIds` misst
+   * `nachAbschlussGeaendert`, ob eine Leistung jetzt anders ist als
+   * abgerechnet; wer auf den abgerechneten Wert zurückändert, hebt den Hinweis
+   * wieder auf. Fehlt in Ständen, die früher abgeschlossen wurden (dort zählt
+   * allein `Leistung.geaendert`).
+   */
+  inhalte?: Record<ID, string>;
+  /**
+   * Abschnitt jeder abgerechneten Leistung mit Abschnitt (Kennung → Abschnitt).
+   * Ordnet das Controlling danach Abschnitte neu zu (Abschnitt entfernt,
+   * „Abschnitte aus Projektelementen“), zieht er mit
+   * (`standAbschnitteNachziehen` in domain/nachweis.ts) – so zählt nur, was die
+   * Person geändert hat.
+   */
+  abschnittIds?: Record<ID, ID>;
   abschnitte: Abschnitt[];
   projekt: { nummer: string; name: string; kurzname: string; leistungsbereich: string };
   titel: string;
@@ -359,6 +415,75 @@ export interface Leistungsnachweis {
 }
 
 /* ------------------------------------------------------------------ */
+/* Gemeinsame Leistungstexte und Monatsbestätigung                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Gemeinsamer Leistungstext eines Projekts für einen Zeitraum – alle mit
+ * Leistungen darin sehen und bearbeiten ihn (domain/erfassung.ts). Der
+ * Zeitraum ist eine Periode im Raster des Projekts (in einem abgeschlossenen
+ * Nachweis im Raster seines Abschlusses), auf den Kalendermonat gekürzt und an
+ * den Grenzen der Nachweise geteilt – an jedem Beginn und am Tag nach jedem
+ * Ende (`erfassungsPeriode` in domain/zeitraum.ts, `erfassungsGliederung` in
+ * domain/nachweis.ts): Eine Woche über ein Monatsende hat je Monat einen
+ * eigenen Text, und jeder Text gehört zu höchstens einem Nachweis. Im
+ * Leistungsnachweis setzt sich der Text einer Zeile daraus zusammen
+ * (`nachweisZeilen`), solange das Controlling ihn nicht von Hand bearbeitet hat.
+ */
+export interface Periodentext {
+  projektId: ID;
+  /**
+   * Monat und Periode im Raster des Projekts, etwa „2026-10|W2026-44“ (Wochen am Monatsende
+   * geteilt); liegt eine Grenze eines Nachweises in der Periode (sein Beginn oder der Tag nach
+   * seinem Ende, etwa nach einem Abschluss mitten darin), der Teil ab dann mit seinem Beginn,
+   * etwa „2026-11|M2026-11|2026-11-06“ (`erfassungsPeriode`, `erfassungsGliederung`).
+   */
+  schluessel: string;
+  text: string;
+  /**
+   * Leistungen, deren Stichpunkte beim Bearbeiten berücksichtigt waren (je Person die eigenen) –
+   * die übrigen gelten für ihre Person als neue Stichpunkte (`periodentextAnwenden`).
+   */
+  leistungIds: ID[];
+  /**
+   * Dieselben Leistungen nach ihrem Inhalt (Person, Tag, Text – `stichpunktInhalt`): So gilt
+   * auch eine unverändert neu importierte Leistung (neue Kennung) als berücksichtigt.
+   * Fehlt in Einträgen, die vor Fassung 7 in der Entwicklung entstanden.
+   */
+  inhalte?: string[];
+  /** Name unter „Angemeldet als“ beim letzten Bearbeiten. */
+  bearbeiter: string;
+  /** Zeitpunkt des letzten Bearbeitens (ISO). */
+  geaendert: string;
+}
+
+/**
+ * Bestätigung eines Mitarbeiters, dass seine Stunden und die Leistungstexte
+ * eines Monats in einem Projekt vollständig erfasst sind. Sie gilt, solange
+ * sich kein Zeitraum des Monats ändert, der noch nicht abgerechnet ist
+ * (`perioden`, `bestaetigungGilt` in domain/erfassung.ts) – sonst ist sie
+ * erloschen.
+ */
+export interface Bestaetigung {
+  projektId: ID;
+  mitarbeiterId: ID;
+  /** JJJJ-MM */
+  monat: string;
+  /** Zeitpunkt (ISO). */
+  am: string;
+  /**
+   * Kennungen der bestätigten Zeiträume (Schlüssel → `periodenKennung`), auch
+   * der damals schon abgerechneten – verglichen werden nur die, die jetzt
+   * nicht gesperrt sind. Gehen bestätigte Teile mit geänderten Grenzen der
+   * Nachweise in einem Zeitraum auf, trägt `bestaetigungenNachziehen` ihn ein –
+   * nur, wenn sein Text nichts enthält, was die Person nicht bestätigt hat.
+   * Leer in Einträgen, die vor dieser Fassung in der Entwicklung entstanden
+   * (sie gelten als geändert).
+   */
+  perioden: Record<string, string>;
+}
+
+/* ------------------------------------------------------------------ */
 /* Gesamtbestand                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -369,6 +494,10 @@ export interface LeistungsnachweisDaten {
   projekte: Projekt[];
   leistungen: Leistung[];
   nachweise: Leistungsnachweis[];
+  /** Gemeinsame Leistungstexte je Projekt und Zeitraum (Fassung 7). */
+  periodentexte: Periodentext[];
+  /** Monatsbestätigungen der Mitarbeiter je Projekt (Fassung 7). */
+  bestaetigungen: Bestaetigung[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -377,6 +506,23 @@ export interface LeistungsnachweisDaten {
 
 export function newId(prefix = 'id'): ID {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Prüfsumme eines Texts: zweimal FNV-1a (32 Bit, verschiedene Startwerte),
+ * 16 Hexadezimalziffern. Gleicher Text → gleiche Prüfsumme – für Kennungen,
+ * die sich aus dem Inhalt ergeben (`periodenKennung`, `mitarbeiterKennung`).
+ */
+export function pruefsumme(text: string): string {
+  const fnv = (start: number) => {
+    let h = start >>> 0;
+    for (let i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+  };
+  return `${fnv(0x811c9dc5)}${fnv(0x2f4b6a1d)}`;
 }
 
 /**
