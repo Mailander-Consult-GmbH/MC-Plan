@@ -82,7 +82,9 @@ export function ProjektDetail({
       {loeschen ? (
         <ConfirmDialog
           titel="Projekt löschen?"
-          text={`„${projekt.name}“ wird mit ${umfang.beteiligte} Projektbeteiligten und ${umfang.protokolle} Protokollen endgültig gelöscht.${loeschHinweis}`}
+          text={`„${projekt.name}“ wird mit ${umfang.beteiligte} Projektbeteiligten und ${umfang.protokolle} Protokollen aus der Projektsteuerung gelöscht.${
+            umfang.protokolle > 0 ? ' Die Protokolle lassen sich nicht wiederherstellen.' : ''
+          }${loeschHinweis}`}
           onConfirm={() => {
             deleteProjekt(projekt.id);
             toast('Projekt gelöscht.');

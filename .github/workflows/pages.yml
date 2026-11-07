@@ -6,6 +6,10 @@
 #      (Settings → Pages → Source: „GitHub Actions“)
 #   3. Ablage desselben Builds im Branch gh-pages und im Ordner app/ auf main –
 #      für den Fall, dass Pages auf „Deploy from a branch“ steht (siehe README).
+#      Erst nach Schritt 2: Der Push nach app/ stößt bei „Deploy from a branch“
+#      einen Branch-Build von GitHub an, und der bricht eine noch wartende
+#      Bereitstellung aus Schritt 2 ab („Deployment cancelled.“) – so blieb nach
+#      PR #31 die Fassung von PR #30 online.
 #
 # Bei Pull Requests (und manuellen Läufen auf anderen Branches) läuft nur
 # Schritt 1 als Prüfung.
@@ -73,15 +77,30 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.zweiter_versuch.outputs.page_url }}
     steps:
       - id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      # Auch der Branch-Build zum Merge-Commit kann eine wartende Bereitstellung
+      # abbrechen. Dann nach einer Pause ein zweiter Versuch – sonst bliebe der
+      # vorige Build online, ohne dass es auffällt.
+      - name: Vor dem zweiten Versuch warten
+        if: steps.deployment.outcome == 'failure'
+        run: |
+          echo "::warning::Bereitstellung fehlgeschlagen oder abgebrochen – zweiter Versuch in 150 Sekunden."
+          sleep 150
+
+      - id: zweiter_versuch
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
 
   ablage:
     name: Ablage in gh-pages und app/
-    needs: build
-    if: github.ref == 'refs/heads/main'
+    # Nach der Bereitstellung (siehe oben, Schritt 3) – auch wenn sie scheitert
+    needs: [build, pages]
+    if: ${{ !cancelled() && needs.build.result == 'success' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -65,6 +65,8 @@
   color: var(--text-secondary);
 }
 .pl-zweig .step-row { padding: 10px 12px; gap: 10px; }
+/* Zugeklappte Schritte bleiben auch im Zweig kompakt (wie `.step-row.kompakt` in global.css) */
+.pl-zweig .step-row.kompakt { padding-top: 7px; padding-bottom: 7px; }
 .pl-zweig-leer { padding: 10px 12px; font-size: 12.5px; color: var(--text-tertiary); }
 .pl-block-fuss {
   padding: 8px 14px;
@@ -126,8 +128,10 @@
 .pl-durchlauf { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
 .pl-durchlauf-titel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; }
 
-/* Schritte außerhalb des Verlaufs */
+/* Schritte außerhalb des Verlaufs – lange Namen brechen im Kennzeichen um,
+   statt am Rand der Karte abgeschnitten zu werden */
 .pl-abseits { padding: 12px 20px; border-top: 1px solid var(--separator); display: flex; flex-direction: column; gap: 8px; }
+.pl-abseits .badge { white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
 
 /* Terminnachweis */
 .pl-summen {
@@ -185,36 +189,9 @@
 .pl-zustaendig-haken { color: var(--gruen-text); display: flex; }
 .pl-zustaendig-haken.offen { color: var(--text-tertiary); }
 
-/* Erledigt-Haken mit Auswahl bei mehreren anstehenden Schritten */
-.pl-haken { position: relative; display: inline-flex; }
-.pl-haken-menue {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 30;
-  min-width: 220px;
-  max-width: min(320px, 90vw);
-  padding: 4px;
-  background: var(--bg-elev);
-  border: 1px solid var(--separator-strong);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-}
-.pl-haken-menue button {
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 7px 10px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-.pl-haken-menue button:hover { background: var(--bg-hover); }
-.pl-haken-menue .pl-haken-titel { padding: 5px 10px; font-size: 11.5px; color: var(--text-secondary); }
+/* Erledigt-Haken mit Auswahl bei mehreren anstehenden Schritten; das Menü ist
+   das gemeinsame AufklappMenue (.aufklapp-menue, src/shared/menue.tsx). */
+.pl-haken { display: inline-flex; }
 
 @media (max-width: 640px) {
   .pl-zustaendig { grid-template-columns: 22px minmax(0, 1fr); }

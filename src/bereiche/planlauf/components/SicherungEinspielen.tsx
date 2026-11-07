@@ -9,9 +9,9 @@
  * übernimmt nur das Gewählte (components/Abgleich.tsx).
  */
 import { benutzerAendern } from '../../../gemeinsam/benutzer';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { STANDARD_BEARBEITER, type AppData, type ISODate } from '../domain/types';
-import { exportiereDaten, sicherungLesen } from '../store/storage';
+import { exportiereDaten, rohdatenHerunterladen, rohkopieVorEinspielen, sicherungLesen } from '../store/storage';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { Callout, Modal } from '../../../shared/ui';
@@ -76,7 +76,11 @@ export function SicherungWaehlen({ onGelesen }: { onGelesen: (sicherung: Sicheru
 /**
  * Nach dem Lesen: nennt den Inhalt der Sicherung und bietet „Alles ersetzen“
  * (mit Rückfrage und dem Angebot, vorher zu sichern) oder „Abgleichen und
- * auswählen“ an.
+ * auswählen“ an. Nach einem Lade- oder Fassungsfehler sichert „Gespeicherten
+ * Stand herunterladen“ den gespeicherten Text unverändert
+ * (`rohdatenHerunterladen`); vor dem Ersetzen eines unlesbaren Stands bleibt
+ * eine Rohkopie im Browser (`rohkopieVorEinspielen`). Passt sie nicht in den
+ * Speicher, sagt der Dialog das und ersetzt erst auf „Ohne Kopie ersetzen“.
  */
 export function SicherungEinspielenDialog({
   sicherung,
@@ -92,6 +96,9 @@ export function SicherungEinspielenDialog({
   // Ohne eingerichteten Namen liegt es nahe, den aus der Sicherung zu nehmen
   const [nameUebernehmen, setNameUebernehmen] = useState(data.bearbeiter.name === STANDARD_BEARBEITER);
   const [abgleichen, setAbgleichen] = useState(false);
+  // Die Rohkopie passte nicht in den Speicher – ersetzt wird erst auf ausdrücklichen Wunsch
+  const [ohneKopie, setOhneKopie] = useState(false);
+  const herunterladenKnopf = useRef<HTMLButtonElement>(null);
 
   const anzahl = (n: number, eins: string, mehr: string) => `${n} ${n === 1 ? eins : mehr}`;
   const fremderName = sicherung.daten.bearbeiter.name !== data.bearbeiter.name;
@@ -99,9 +106,23 @@ export function SicherungEinspielenDialog({
   // nach einem Ladefehler gibt es keinen Bestand, mit dem sich abgleichen ließe.
   const neuereFassung = ladeZustand === 'neuere_fassung';
   const ohneBestand = ladeZustand !== 'ok';
+  // Gilt nur, solange der gespeicherte Stand unlesbar bleibt (ein anderes Fenster kann ihn ersetzen)
+  const kopieFehlt = ohneKopie && ohneBestand;
+
+  // Nach dem Hinweis steht der Fokus auf dem Herunterladen, nicht mehr auf dem Ersetzen
+  useEffect(() => {
+    if (kopieFehlt) herunterladenKnopf.current?.focus();
+  }, [kopieFehlt]);
 
   const einspielen = () => {
     const { daten } = sicherung;
+    if (neuereFassung) return;
+    // Den unlesbaren Stand nicht ohne Kopie überschreiben – er ließe sich vielleicht noch retten.
+    // Passt die Kopie nicht in den Speicher, erst darauf hinweisen
+    if (ohneBestand && rohkopieVorEinspielen() === 'gescheitert' && !kopieFehlt) {
+      setOhneKopie(true);
+      return;
+    }
     // „Angemeldet als“ samt Farbmodus kommt nur auf ausdrücklichen Wunsch aus der Sicherung –
     // dann für alle Bereiche (gemeinsame Anmeldung)
     const mitName = fremderName && nameUebernehmen;
@@ -128,12 +149,18 @@ export function SicherungEinspielenDialog({
       footer={
         <>
           <button
+            ref={herunterladenKnopf}
             type="button"
             className="btn btn-outline"
-            onClick={() => exportiereDaten(data)}
-            title="Den jetzigen Bestand vorher als JSON sichern"
+            onClick={() => {
+              // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
+              // gesichert wird dann der gespeicherte Stand, unverändert
+              if (!ohneBestand) exportiereDaten(data);
+              else if (!rohdatenHerunterladen()) toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
+            }}
+            title={ohneBestand ? 'Gespeicherten Stand unverändert herunterladen' : 'Den jetzigen Bestand vorher als JSON sichern'}
           >
-            <Icon name="export" size={14} /> Aktuellen Stand sichern
+            <Icon name="export" size={14} /> {ohneBestand ? 'Gespeicherten Stand herunterladen' : 'Aktuellen Stand sichern'}
           </button>
           <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>
@@ -146,7 +173,7 @@ export function SicherungEinspielenDialog({
             disabled={neuereFassung}
             onClick={einspielen}
           >
-            Alles ersetzen
+            {kopieFehlt ? 'Ohne Kopie ersetzen' : 'Alles ersetzen'}
           </button>
           <button type="button" className="btn btn-primary" disabled={ohneBestand} onClick={() => setAbgleichen(true)}>
             Abgleichen und auswählen …
@@ -180,10 +207,16 @@ export function SicherungEinspielenDialog({
             Gespeichert ist ein Stand aus einer neueren Fassung von KaPlan. Damit er nicht überschrieben wird, lässt sich
             hier nichts einspielen – bitte zuerst die Seite neu laden.
           </Callout>
+        ) : kopieFehlt ? (
+          <Callout key="ohne-kopie" ton="error" icon="!" role="alert">
+            Für eine Kopie des gespeicherten Stands reicht der Speicher des Browsers nicht. Wer ihn noch braucht, lädt ihn
+            jetzt mit „Gespeicherten Stand herunterladen“ herunter; „Ohne Kopie ersetzen“ überschreibt ihn endgültig.
+          </Callout>
         ) : ladeZustand === 'ladefehler' ? (
           <Callout ton="error" icon="!">
             Der gespeicherte Stand ließ sich nicht laden; abgleichen ist deshalb nicht möglich. „Alles ersetzen“
-            überschreibt ihn – wer ihn noch braucht, lädt ihn vorher über die Hinweisleiste herunter.
+            überschreibt ihn; eine unveränderte Kopie bleibt im Browser, solange der Speicher reicht. Wer ihn noch
+            braucht, lädt ihn vorher mit „Gespeicherten Stand herunterladen“ herunter.
           </Callout>
         ) : (
           <Callout ton="warn" icon="!">

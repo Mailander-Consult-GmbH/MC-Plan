@@ -142,7 +142,7 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
             <ZeileKarte
               key={z.schluessel}
               zeile={z}
-              nachgereicht={z.bis < n.von}
+              nachgereicht={!!z.nachgereicht || z.bis < n.von}
               spalten={spalten}
               bearbeitbar={bearbeitbar}
               leistungen={[...eigene, ...andere].sort((a, b) => a.datum.localeCompare(b.datum))}
@@ -204,7 +204,7 @@ function ZeileKarte({
   onAutomatisch,
 }: {
   zeile: NachweisZeile;
-  /** Zeile vor dem Zeitraum – aus nachgereichten Leistungen. */
+  /** Zeile aus nachgereichten Leistungen (`NachweisZeile.nachgereicht`; in älteren Ständen: vor dem Zeitraum). */
   nachgereicht: boolean;
   spalten: Spalte[];
   /** Offen und im Controlling: der Text lässt sich bearbeiten. */

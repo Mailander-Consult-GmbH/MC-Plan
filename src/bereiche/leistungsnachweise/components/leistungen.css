@@ -182,7 +182,7 @@
   .table.ln-le-tabelle td.ln-le-text { min-width: 150px; }
   /* Die ganze Zeile öffnet die Leistung – der Stift entfällt */
   .table.ln-le-tabelle .btn-icon.ln-le-bearbeiten { display: none; }
-  /* Reicht der Platz trotzdem nicht, scrollt die Tabelle quer (.ln-app .table-scroll in leistungsnachweise.css) */
+  /* Reicht der Platz trotzdem nicht, scrollt die Tabelle quer (.table-scroll, src/shared/global.css) */
 }
 @media (min-width: 641px) and (max-width: 1000px) {
   .table.ln-le-tabelle .ln-le-spalte-wer { display: none; }
@@ -227,13 +227,14 @@
 /* Kalender zum Erfassen (LeistungsKalender.tsx, Präfix ln-kal-)       */
 /* ------------------------------------------------------------------ */
 
-.ln-kal { overflow: hidden; }
+.ln-kal { overflow: hidden; container-type: inline-size; }
 .ln-kal-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 20px 4px; }
 .ln-kal-titel { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ln-kal-titel h2 { margin: 0; font-size: 16px; }
 .ln-kal-nav { display: flex; align-items: center; gap: 6px; }
 .ln-kal-monat { min-width: 128px; text-align: center; font-size: 14px; }
 .ln-kal-hinweis { margin: 0; padding: 0 20px 10px; }
+.ln-kal-hinweis-schmal { display: none; }
 
 .ln-kal-raster { display: flex; flex-direction: column; gap: 4px; padding: 0 12px 12px; }
 .ln-kal-zeile { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) 64px; gap: 4px; }
@@ -300,6 +301,10 @@
   opacity: 0; transition: opacity 0.12s;
 }
 .ln-kal-tag:hover .ln-kal-plus, .ln-kal-tag:focus-visible .ln-kal-plus { opacity: 1; }
+/* Ohne Maus (Touch) gibt es kein Überfahren – das Plus steht dort immer da */
+@media (hover: none) {
+  .ln-kal-plus { opacity: 0.75; }
+}
 
 .ln-kal-woche {
   display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px;
@@ -309,10 +314,26 @@
 .ln-kal-wochensumme { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ln-kal-wochensumme.leer { color: var(--text-tertiary); font-weight: 400; }
 
-/* Schmal: je Tag nur Nummer und Stunden – die Einträge öffnet die Liste */
-@media (max-width: 760px) {
+/* Leistungen eines Tages im schmalen Kalender (TagesListe) */
+.ln-kal-tagesliste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ln-kal-tageseintrag {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; min-width: 0;
+  padding: 8px 10px; border: 1px solid var(--separator); border-radius: var(--radius-sm);
+  background: var(--bg-elev); color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.ln-kal-tageseintrag:hover { border-color: var(--accent); background: var(--bg-subtle); }
+.ln-kal-tageseintrag:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ln-kal-tageskopf { display: flex; flex-wrap: wrap; gap: 2px 10px; font-variant-numeric: tabular-nums; }
+.ln-kal-tagestext { color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Schmaler Kalender (auch neben der Seitenleiste): je Tag nur Nummer und Stunden – ein belegter Tag
+   öffnet erst die Liste seiner Leistungen (TagesListe in LeistungsKalender.tsx). Die Grenze gilt der
+   Breite des Kalenders (.ln-kal ist der Container), nicht der des Fensters. */
+@container (max-width: 730px) {
   .ln-kal-kopf { padding: 14px 14px 4px; }
   .ln-kal-hinweis { padding: 0 14px 8px; }
+  .ln-kal-hinweis-breit { display: none; }
+  .ln-kal-hinweis-schmal { display: inline; }
   .ln-kal-raster { padding: 0 6px 8px; gap: 3px; }
   .ln-kal-zeile { grid-template-columns: repeat(7, minmax(0, 1fr)) 40px; gap: 3px; }
   .ln-kal-wt { padding: 2px; text-align: center; font-size: 10.5px; }

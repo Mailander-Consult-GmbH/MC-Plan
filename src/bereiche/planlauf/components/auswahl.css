@@ -53,13 +53,9 @@
   cursor: help;
 }
 
-/* Überschrift im Menü zur Schrittwahl (Erledigt-Haken, Erinnern bei parallelen Schritten) */
-.pll-menu-titel {
-  padding: 4px 10px 6px;
-  font-size: 11.5px;
-  color: var(--text-tertiary);
-}
-.filter-menu button .pll-menu-sub {
+/* Person und Termin unter dem Schrittnamen im Menü zur Schrittwahl (Erledigt-Haken,
+   Erinnern bei parallelen Schritten; AufklappMenue, src/shared/menue.tsx) */
+.aufklapp-menue .pll-menu-sub {
   display: block;
   font-size: 11.5px;
   color: var(--text-tertiary);

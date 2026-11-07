@@ -1,4 +1,8 @@
-/** Kurze Bestätigungsmeldungen am unteren Bildschirmrand. */
+/**
+ * Kurze Bestätigungsmeldungen am unteren Bildschirmrand. Bildschirmleser lesen
+ * sie vor (`role="status"`), jede neue für sich (`aria-atomic="false"` – sonst
+ * läse er bei zwei gleichzeitigen Meldungen die ältere noch einmal).
+ */
 import { createContext, useCallback, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 
@@ -16,7 +20,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={zeige}>
       {children}
-      <div className="toast-wrap">
+      {/* Bildschirmleser lesen neue Meldungen vor, ohne den Fokus zu verschieben */}
+      <div className="toast-wrap" role="status" aria-atomic="false">
         {items.map((i) => (
           <div key={i.id} className="toast">
             {i.text}

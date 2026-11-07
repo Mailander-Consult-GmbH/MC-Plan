@@ -14,7 +14,7 @@
  * „Angemeldet als“ kommen aus der gemeinsamen Anmeldung aller Bereiche
  * (`useBenutzerAbgleich`, src/gemeinsam/benutzer.ts); `bearbeiter` spiegelt sie.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { laufUebernehmen, planlaufName, schritteFuerNeuenLauf } from '../domain/engine';
 import {
@@ -50,8 +50,9 @@ import { basisplanFestlegen } from '../domain/simulation';
 import { seedData } from '../domain/seed';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
+import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
 import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
-import { ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
+import { SPEICHER_SCHLUESSEL, ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 import { formatDate, today } from '../../../shared/dates';
 import { funktionsName } from '../domain/types';
 import type {
@@ -256,8 +257,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [stammdatenKopien, setStammdatenKopien] = useState<string[]>(geladen.stammdatenKopien);
 
   // Nach einem Ladefehler bzw. bei einer neueren Fassung bleibt der gespeicherte Stand unberührt
+  // Ein aus einem anderen Fenster nachgeladener Stand steht schon im Speicher – nicht zurückschreiben
+  const uebernommen = useRef<AppData | null>(null);
   useEffect(() => {
-    if (ladeZustand !== 'ok') return;
+    if (ladeZustand !== 'ok' || data === uebernommen.current) return;
     setSpeicherZustand(speichereDaten(data));
   }, [data, ladeZustand]);
 
@@ -289,13 +292,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ),
   );
 
-  // Projekte und Kontakte mit dem Projektregister abgleichen
-  const { ersetzt } = useRegisterAbgleich({
+  // Projekte und Kontakte mit dem Projektregister abgleichen – solange der gespeicherte Stand gelesen werden konnte.
+  // Muss nach dem Speichern stehen: Ein anderes Fenster soll erst den Bestand, dann das Register erhalten.
+  const { ersetzt, nachgeladen } = useRegisterAbgleich({
     bereich: 'planlauf',
     daten: data,
     aktiv: ladeZustand === 'ok',
     sicht: sichtFuerRegister,
     anwenden: (plan) => mutate((d, v) => registerPlanAnwenden(d, plan, v, newId)),
+  });
+
+  // Hat ein anderes Fenster den Bestand gespeichert, gilt sein Stand: nachladen,
+  // statt ihn mit dem nächsten Speichern zu überschreiben. Das andere Fenster hat
+  // ihn schon ins Register übertragen und abgeglichen (`nachgeladen`: hier weder
+  // übertragen noch abgleichen, bis sich das Register ändert); er wird nicht
+  // zurückgeschrieben (`uebernommen`). Stammt er aus einer neueren Fassung, ruht das Speichern.
+  useFremdeAenderung(SPEICHER_SCHLUESSEL, ladeZustand === 'ok', () => {
+    const neu = ladeDaten();
+    uebernommen.current = neu.daten;
+    nachgeladen(neu.daten);
+    setLadeZustand(neu.zustand);
+    setData(neu.daten);
   });
 
   const value = useMemo<StoreValue>(

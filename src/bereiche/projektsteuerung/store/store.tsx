@@ -10,9 +10,10 @@
  * gemeinsame Anmeldung aller Bereiche (`useBenutzerAbgleich`,
  * src/gemeinsam/benutzer.ts).
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
+import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
 import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
 import { folgeprotokoll, naechsteNr, teilnehmerNachziehen } from '../domain/protokoll';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
@@ -29,7 +30,7 @@ import {
   type Protokoll,
 } from '../domain/types';
 import type { Punkt } from '../domain/punkte';
-import { ladeDaten, speichereDaten } from './storage';
+import { SPEICHER_SCHLUESSEL, ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 
 export { newId };
 
@@ -43,6 +44,10 @@ function reihenLogosBereinigen(d: ProjektsteuerungDaten): ProjektsteuerungDaten 
 
 interface StoreValue {
   data: ProjektsteuerungDaten;
+  /** Ergebnis des Ladens; außer bei 'ok' werden Demodaten gezeigt und nichts gespeichert. */
+  ladeZustand: LadeZustand;
+  /** Ergebnis des letzten Speicherns: 'voll' bzw. 'gesperrt' – nicht gespeichert (Hinweis: components/Hinweisleisten.tsx). */
+  speicherZustand: SpeicherZustand;
   /* Einstellungen */
   setEinstellungen: (e: Partial<Einstellungen>) => void;
   /* Gewerke */
@@ -88,11 +93,18 @@ interface StoreValue {
 const StoreContext = createContext<StoreValue | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<ProjektsteuerungDaten>(() => ladeDaten());
+  const [geladen] = useState(ladeDaten);
+  const [data, setData] = useState<ProjektsteuerungDaten>(geladen.daten);
+  const [ladeZustand, setLadeZustand] = useState<LadeZustand>(geladen.zustand);
+  const [speicherZustand, setSpeicherZustand] = useState<SpeicherZustand>('ok');
 
+  // Nach einem Ladefehler bzw. bei einer neueren Fassung bleibt der gespeicherte Stand unberührt
+  // Ein aus einem anderen Fenster nachgeladener Stand steht schon im Speicher – nicht zurückschreiben
+  const uebernommen = useRef<ProjektsteuerungDaten | null>(null);
   useEffect(() => {
-    speichereDaten(data);
-  }, [data]);
+    if (ladeZustand !== 'ok' || data === uebernommen.current) return;
+    setSpeicherZustand(speichereDaten(data));
+  }, [data, ladeZustand]);
 
   /** Jede Änderung läuft hierüber – die Funktion muss rein sein. */
   const mutate = useCallback((fn: (d: ProjektsteuerungDaten) => ProjektsteuerungDaten) => {
@@ -114,13 +126,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ),
   );
 
-  // Projekte und Beteiligte mit dem Projektregister abgleichen
-  const { ersetzt } = useRegisterAbgleich({
+  // Projekte und Beteiligte mit dem Projektregister abgleichen – solange der gespeicherte Stand gelesen werden konnte.
+  // Muss nach dem Speichern stehen: Ein anderes Fenster soll erst den Bestand, dann das Register erhalten.
+  const { ersetzt, nachgeladen } = useRegisterAbgleich({
     bereich: 'projektsteuerung',
     daten: data,
-    aktiv: true,
+    aktiv: ladeZustand === 'ok',
     sicht: sichtFuerRegister,
     anwenden: (plan) => mutate((d) => registerPlanAnwenden(d, plan)),
+  });
+
+  // Hat ein anderes Fenster den Bestand gespeichert, gilt sein Stand: nachladen,
+  // statt ihn mit dem nächsten Speichern zu überschreiben. Das andere Fenster hat
+  // ihn schon ins Register übertragen und abgeglichen (`nachgeladen`: hier weder
+  // übertragen noch abgleichen, bis sich das Register ändert); er wird nicht
+  // zurückgeschrieben (`uebernommen`). Stammt er aus einer neueren Fassung, ruht das Speichern.
+  useFremdeAenderung(SPEICHER_SCHLUESSEL, ladeZustand === 'ok', () => {
+    const neu = ladeDaten();
+    uebernommen.current = neu.daten;
+    nachgeladen(neu.daten);
+    setLadeZustand(neu.zustand);
+    setData(neu.daten);
   });
 
   const protokollAendern = useCallback(
@@ -135,6 +161,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StoreValue>(
     () => ({
       data,
+      ladeZustand,
+      speicherZustand,
       setEinstellungen: (e) => mutate((d) => ({ ...d, einstellungen: { ...d.einstellungen, ...e } })),
 
       addGewerk: (name) =>
@@ -272,15 +300,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       ersetzeDaten: (d) => {
+        // Ein Stand aus einer neueren Fassung darf nicht überschrieben werden
+        if (ladeZustand === 'neuere_fassung') return;
         ersetzt();
         mutate(() => d);
+        setLadeZustand('ok');
       },
       zuruecksetzen: () => {
+        if (ladeZustand === 'neuere_fassung') return;
         ersetzt();
         mutate(() => seedDaten());
+        setLadeZustand('ok');
       },
     }),
-    [data, mutate, protokollAendern, ersetzt],
+    [data, ladeZustand, speicherZustand, mutate, protokollAendern, ersetzt],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

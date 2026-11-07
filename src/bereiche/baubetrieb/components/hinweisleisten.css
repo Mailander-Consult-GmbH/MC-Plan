@@ -1,0 +1,5 @@
+/* Hinweisleisten über dem Inhalt (Hinweisleisten.tsx): Ladefehler, neuere Fassung, Speicher voll */
+.bb-ladehinweis { display: grid; gap: 10px; margin-bottom: 18px; }
+.bb-ladehinweis .callout.error { box-shadow: inset 3px 0 0 var(--red); }
+.bb-ladehinweis .callout.warn { box-shadow: inset 3px 0 0 var(--orange); }
+.bb-ladehinweis-knoepfe { gap: 6px; margin-top: 8px; }

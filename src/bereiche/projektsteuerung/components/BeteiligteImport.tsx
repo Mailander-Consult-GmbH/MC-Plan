@@ -8,7 +8,7 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Callout, Modal } from '../../../shared/ui';
+import { Callout, Modal, alsKnopf } from '../../../shared/ui';
 import { tabelleLesen } from '../../../shared/xlsxLesen';
 import { BETEILIGTE_KOPF, beteiligteLesen, funktionsSchluessel, neueFunktion, type ImportZeile } from '../domain/beteiligteImport';
 import { beteiligteVorlageLaden } from '../domain/export';
@@ -32,7 +32,27 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
     setVorschau([]);
     try {
       const tabellen = await tabelleLesen(f);
-      const zeilen = beteiligteLesen(tabellen[0]?.zeilen ?? [], data, projekt.id);
+      // Das erste Blatt mit Kopfzeile und Personen gilt – ein vorangestelltes
+      // Hinweis- oder Deckblatt wird übersprungen. Findet sich in keinem Blatt
+      // eine Kopfzeile, meldet `beteiligteLesen` die fehlende Spalte.
+      let zeilen: ImportZeile[] | null = null;
+      let ersterFehler: unknown = null;
+      for (const t of tabellen) {
+        try {
+          const gelesen = beteiligteLesen(t.zeilen, data, projekt.id);
+          zeilen ??= gelesen;
+          if (gelesen.length > 0) {
+            zeilen = gelesen;
+            break;
+          }
+        } catch (e) {
+          ersterFehler ??= e;
+        }
+      }
+      if (!zeilen) {
+        if (ersterFehler) throw ersterFehler;
+        zeilen = beteiligteLesen([], data, projekt.id);
+      }
       if (zeilen.length === 0) setFehler('Die Datei enthält keine Zeile mit einem Nachnamen.');
       setVorschau(zeilen);
     } catch (e) {
@@ -99,7 +119,7 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
       <div className="stack" style={{ gap: 14 }}>
         <div
           className={`drop-zone ${ueber ? 'over' : ''}`}
-          onClick={() => eingabe.current?.click()}
+          {...alsKnopf(() => eingabe.current?.click())}
           onDragOver={(e) => {
             e.preventDefault();
             setUeber(true);

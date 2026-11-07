@@ -3,7 +3,8 @@
  * erfassten und importierten Leistungen der angemeldeten Person mit „Leistung
  * erfassen“, Excel-Import, Filter nach Monat, Suche und Summe der angezeigten
  * Stunden. Jede Zeile nennt den Leistungsnachweis, in dem sie erscheint – das
- * ergibt sich allein aus dem Datum. Mehrere Leistungen lassen sich mit Haken
+ * ergibt sich aus dem Datum, außer die Leistung ist nachgereicht oder schon in
+ * einem abgeschlossenen Nachweis abgerechnet (`nachweisDerLeistung`). Mehrere Leistungen lassen sich mit Haken
  * auswählen und gemeinsam löschen.
  *
  * Im Bereich zeigt die Seite zuerst den Kalender (components/LeistungsKalender.tsx):

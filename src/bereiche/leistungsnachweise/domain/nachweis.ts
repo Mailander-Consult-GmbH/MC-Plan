@@ -2,8 +2,11 @@
  * Leistungsnachweise aus den Leistungen eines Projekts. Ein Nachweis ist nur
  * ein Zeitraum; welche Leistungen er zeigt, ergibt sich aus deren Datum – nur
  * nachgereichte Leistungen (`nachgereicht`, aus früheren, schon abgerechneten
- * Zeiträumen) stehen ausdrücklich in einem späteren Nachweis
- * (`leistungenDesNachweises`, `nachweisDerLeistung`). Seine Zeilen – je Tag, Woche oder Monat mit Leistungen – werden
+ * Zeiträumen) stehen ausdrücklich in einem späteren Nachweis, und eine
+ * Leistung im festgeschriebenen Stand eines abgeschlossenen Nachweises bleibt
+ * dort abgerechnet, auch wenn sich ihr Datum später ändert – kein anderer
+ * Nachweis rechnet sie noch einmal ab (`leistungenDesNachweises`,
+ * `nachweisDerLeistung`). Seine Zeilen – je Tag, Woche oder Monat mit Leistungen – werden
  * jedes Mal neu gerechnet (`nachweisZeilen`); nur von Hand bearbeitete Texte
  * (`texte`) und beim Abschluss der festgeschriebene Stand (`stand`) werden
  * gespeichert.
@@ -39,6 +42,7 @@ import {
   type NachweisZeile,
   type Projekt,
   type Raster,
+  type ZeilenText,
 } from './types';
 import {
   datumText,
@@ -65,26 +69,89 @@ export function nachweisFuer(daten: LeistungsnachweisDaten, projektId: ID, datum
   return daten.nachweise.find((n) => n.projektId === projektId && imZeitraum(datum, n.von, n.bis));
 }
 
-/** Nachweis, in den die Leistung nachgereicht wurde, sonst der ihres Datums. */
+/** Kennungen im festgeschriebenen Stand eines abgeschlossenen Nachweises (ohne Stand bzw. ältere Stände ohne Kennungen: leer). */
+const standKennungen = (n: Leistungsnachweis): ID[] =>
+  n.status === 'abgeschlossen' && n.stand ? n.stand.zeilen.flatMap((z) => z.leistungIds) : [];
+
+/** Verzeichnis je Projekt und Leistung: abgerechnet in (Stand) bzw. nachgereicht in – jeweils der erste Nachweis der Liste. */
+interface Verzeichnis {
+  abgerechnet: Map<string, Leistungsnachweis>;
+  nachgereicht: Map<string, Leistungsnachweis>;
+}
+
+const verzeichnisSchluessel = (projektId: ID, leistungId: ID) => `${projektId}\u0000${leistungId}`;
+
+/*
+ * Je Liste der Nachweise einmal aufgebaut: Der Bestand wird nie an Ort und
+ * Stelle geändert (jede Änderung liefert eine neue Liste), so bleibt das
+ * Verzeichnis gültig, solange es die Liste gibt. Ohne es würde jede Abfrage
+ * alle Stände durchsuchen – in Schleifen über alle Leistungen quadratisch.
+ */
+const verzeichnisse = new WeakMap<Leistungsnachweis[], Verzeichnis>();
+
+function verzeichnis(nachweise: Leistungsnachweis[]): Verzeichnis {
+  const vorhanden = verzeichnisse.get(nachweise);
+  if (vorhanden) return vorhanden;
+  const v: Verzeichnis = { abgerechnet: new Map(), nachgereicht: new Map() };
+  for (const n of nachweise) {
+    for (const id of standKennungen(n)) {
+      const k = verzeichnisSchluessel(n.projektId, id);
+      if (!v.abgerechnet.has(k)) v.abgerechnet.set(k, n);
+    }
+    for (const id of n.nachgereicht) {
+      const k = verzeichnisSchluessel(n.projektId, id);
+      if (!v.nachgereicht.has(k)) v.nachgereicht.set(k, n);
+    }
+  }
+  verzeichnisse.set(nachweise, v);
+  return v;
+}
+
+/** Abgeschlossener Nachweis, in dessen festgeschriebenem Stand die Leistung abgerechnet ist. */
+export function abgerechnetIn(
+  daten: Pick<LeistungsnachweisDaten, 'nachweise'>,
+  l: Pick<Leistung, 'id' | 'projektId'>,
+): Leistungsnachweis | undefined {
+  return verzeichnis(daten.nachweise).abgerechnet.get(verzeichnisSchluessel(l.projektId, l.id));
+}
+
+/** Nachweis, in den die Leistung nachgereicht wurde. */
+export function nachgereichtIn(
+  daten: Pick<LeistungsnachweisDaten, 'nachweise'>,
+  l: Pick<Leistung, 'id' | 'projektId'>,
+): Leistungsnachweis | undefined {
+  return verzeichnis(daten.nachweise).nachgereicht.get(verzeichnisSchluessel(l.projektId, l.id));
+}
+
+/**
+ * Nachweis, in den die Leistung nachgereicht wurde, sonst der, in dessen
+ * festgeschriebenem Stand sie abgerechnet ist (auch nach einer
+ * Datumsänderung), sonst der ihres Datums – wie `leistungenDesNachweises`.
+ */
 export function nachweisDerLeistung(
   daten: LeistungsnachweisDaten,
   l: Pick<Leistung, 'id' | 'projektId' | 'datum'>,
 ): Leistungsnachweis | undefined {
   return (
-    daten.nachweise.find((n) => n.projektId === l.projektId && n.nachgereicht.includes(l.id)) ??
+    nachgereichtIn(daten, l) ??
+    abgerechnetIn(daten, l) ??
     nachweisFuer(daten, l.projektId, l.datum)
   );
 }
 
 /**
  * Leistungen eines Nachweises, nach Datum: die seines Zeitraums – ohne die in
- * einen anderen Nachweis nachgereichten – und seine nachgereichten.
+ * einen anderen Nachweis nachgereichten und ohne die im festgeschriebenen
+ * Stand eines anderen, abgeschlossenen Nachweises (sie sind dort abgerechnet,
+ * etwa nach einer späteren Datumsänderung oder einem Import, der sie ersetzt
+ * hat; erst „Wieder öffnen“ dort gibt sie frei) – und seine nachgereichten.
+ * Der eigene Stand zählt nicht: So zeigt ein abgeschlossener Nachweis live,
+ * was „Wieder öffnen“ ergäbe (`standVeraltet`).
  */
 export function leistungenDesNachweises(daten: LeistungsnachweisDaten, n: Leistungsnachweis): Leistung[] {
   const eigene = new Set(n.nachgereicht);
-  const anderswo = new Set(
-    daten.nachweise.filter((x) => x.projektId === n.projektId && x.id !== n.id).flatMap((x) => x.nachgereicht),
-  );
+  const andere = daten.nachweise.filter((x) => x.projektId === n.projektId && x.id !== n.id);
+  const anderswo = new Set([...andere.flatMap((x) => x.nachgereicht), ...andere.flatMap(standKennungen)]);
   return daten.leistungen
     .filter(
       (l) =>
@@ -197,6 +264,17 @@ const addieren = (ziel: Record<string, number>, schluessel: string, stunden: num
 
 const gerundet = (werte: Record<string, number>) =>
   Object.fromEntries(Object.entries(werte).map(([k, v]) => [k, runden(v)]));
+
+/** Spalte einer Leistung in `stundenJeAbschnitt`: ihr Abschnitt, wenn es ihn im Projekt gibt, sonst „ohne“. */
+const spalteDerLeistung = (l: Pick<Leistung, 'abschnittId'>, abschnittIds: Set<ID>): string =>
+  l.abschnittId && abschnittIds.has(l.abschnittId) ? l.abschnittId : OHNE_ABSCHNITT;
+
+/** Summen je Schlüssel über Zeilen (etwa `stundenJeAbschnitt`). */
+const summeJe = (werte: Record<string, number>[]): Record<string, number> => {
+  const summe: Record<string, number> = {};
+  for (const w of werte) for (const [k, v] of Object.entries(w)) addieren(summe, k, v);
+  return gerundet(summe);
+};
 
 /* ------------------------------------------------------------------ */
 /* Aufschläge                                                          */
@@ -372,9 +450,15 @@ export function anzahlAufschlaege(n: Pick<Leistungsnachweis, 'aufschlaege'>): nu
   return Object.values(n.aufschlaege).filter((v) => v !== 0).length;
 }
 
+/** Präfix des Schlüssels einer Zeile aus nachgereichten Leistungen („NW2026-44“). */
+export const NACHGEREICHT_PRAEFIX = 'N';
+
 /**
  * Zeilen des Nachweises aus den Leistungen (live – auch bei abgeschlossenen; für die Anzeige
  * abgeschlossener Nachweise `zeilenFuerAnzeige` verwenden). Nur Perioden mit Leistungen.
+ * Nachgereichte Leistungen außerhalb des Zeitraums bilden eigene Zeilen
+ * (`NACHGEREICHT_PRAEFIX` vor dem Periodenschlüssel, `nachgereicht`) – nie zusammen mit
+ * laufenden derselben Woche bzw. desselben Monats –, auf die Tage vor dem Zeitraum gekürzt.
  * Bearbeiter: Namen in der Reihenfolge der ersten Leistung, unbekannte Mitarbeiter als „?“.
  * Text: `texte[schluessel].text`, sonst `automatikText`. Dazu Aufschlag und abgerechnete
  * Stunden aus `aufschlaege` (`abrechnen`).
@@ -384,21 +468,24 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
   const abschnittIds = new Set((projekt?.abschnitte ?? []).map((a) => a.id));
   const spalten = mitAbschnittsspalten(projekt?.abschnitte ?? []);
   const mitarbeiter = new Map(daten.mitarbeiter.map((m) => [m.id, m]));
-  const gruppen = new Map<string, { von: ISODate; bis: ISODate; leistungen: Leistung[] }>();
+  const gruppen = new Map<string, { von: ISODate; bis: ISODate; nachgereicht: boolean; leistungen: Leistung[] }>();
   for (const l of leistungenDesNachweises(daten, n)) {
-    // Nachgereichte Leistungen liegen vor dem Zeitraum – ihre Periode bleibt ungekürzt
     const roh = periodeVon(l.datum, n.raster);
-    const p = imZeitraum(l.datum, n.von, n.bis) ? periodeKuerzen(roh, n.von, n.bis) : roh;
+    // Nachgereichte Leistungen liegen vor dem Zeitraum: eigene Zeile, gekürzt auf die Tage davor
+    const nachgereicht = !imZeitraum(l.datum, n.von, n.bis);
+    const p = nachgereicht
+      ? { ...periodeKuerzen(roh, roh.von, l.datum < n.von ? addDays(n.von, -1) : roh.bis), schluessel: `${NACHGEREICHT_PRAEFIX}${roh.schluessel}` }
+      : periodeKuerzen(roh, n.von, n.bis);
     const gruppe = gruppen.get(p.schluessel);
     if (gruppe) {
       gruppe.leistungen.push(l);
       if (p.von < gruppe.von) gruppe.von = p.von;
       if (p.bis > gruppe.bis) gruppe.bis = p.bis;
-    } else gruppen.set(p.schluessel, { von: p.von, bis: p.bis, leistungen: [l] });
+    } else gruppen.set(p.schluessel, { von: p.von, bis: p.bis, nachgereicht, leistungen: [l] });
   }
   return [...gruppen.entries()]
     .sort(([, a], [, b]) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0))
-    .map(([schluessel, { von, bis, leistungen }]): NachweisZeile => {
+    .map(([schluessel, { von, bis, nachgereicht, leistungen }]): NachweisZeile => {
       const bearbeiter: string[] = [];
       const stundenJeAbschnitt: Record<string, number> = {};
       const stundenJeMitarbeiter: Record<ID, number> = {};
@@ -408,7 +495,7 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
         const name = m ? mitarbeiterName(m) || m.kuerzel || '?' : '?';
         if (!bearbeiter.includes(name)) bearbeiter.push(name);
         stunden += l.stunden;
-        addieren(stundenJeAbschnitt, l.abschnittId && abschnittIds.has(l.abschnittId) ? l.abschnittId : OHNE_ABSCHNITT, l.stunden);
+        addieren(stundenJeAbschnitt, spalteDerLeistung(l, abschnittIds), l.stunden);
         addieren(stundenJeMitarbeiter, l.mitarbeiterId, l.stunden);
       }
       const bearbeitet = n.texte[schluessel];
@@ -426,6 +513,7 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
         stundenJeAbschnitt: jeAbschnitt,
         stundenJeMitarbeiter: gerundet(stundenJeMitarbeiter),
         leistungIds: leistungen.map((l) => l.id),
+        ...(nachgereicht ? { nachgereicht: true } : {}),
         aufschlag: abrechnung.aufschlag,
         aufschlagJeAbschnitt: abrechnung.aufschlagJeAbschnitt,
         abgerechnet: abrechnung.abgerechnet,
@@ -572,20 +660,36 @@ const RASTER_PRAEFIX: Record<Raster, string> = { tag: 'T', woche: 'W', monat: 'M
 
 /**
  * Was ein Wechsel des Rasters verdeckt: von Hand bearbeitete Texte und
- * Aufschläge, die zu Zeilen des bisherigen Rasters gehören. Sie bleiben
+ * Aufschläge, die zu Zeilen des bisherigen Rasters gehören (auch zu Zeilen
+ * nachgereichter Leistungen, `NACHGEREICHT_PRAEFIX`). Sie bleiben
  * gespeichert und kehren zurück, wenn das Raster wieder umgestellt wird.
  */
 export function rasterwechselVerdeckt(n: Pick<Leistungsnachweis, 'raster' | 'texte' | 'aufschlaege'>, raster: Raster): { texte: number; aufschlaege: number } {
   if (raster === n.raster) return { texte: 0, aufschlaege: 0 };
   const bisher = RASTER_PRAEFIX[n.raster];
+  const imRaster = (k: string) => k.startsWith(bisher) || k.startsWith(`${NACHGEREICHT_PRAEFIX}${bisher}`);
   return {
-    texte: Object.keys(n.texte).filter((k) => k.startsWith(bisher)).length,
-    aufschlaege: Object.entries(n.aufschlaege).filter(([k, v]) => k.startsWith(bisher) && v !== 0).length,
+    texte: Object.keys(n.texte).filter(imRaster).length,
+    aufschlaege: Object.entries(n.aufschlaege).filter(([k, v]) => imRaster(k) && v !== 0).length,
   };
 }
 
+/** Summe von `rasterwechselVerdeckt` über mehrere Nachweise (etwa die offenen, die in einem neuen aufgehen). */
+export function rasterwechselVerdecktAlle(
+  nachweise: Pick<Leistungsnachweis, 'raster' | 'texte' | 'aufschlaege'>[],
+  raster: Raster,
+): { texte: number; aufschlaege: number } {
+  return nachweise.reduce(
+    (s, n) => {
+      const v = rasterwechselVerdeckt(n, raster);
+      return { texte: s.texte + v.texte, aufschlaege: s.aufschlaege + v.aufschlaege };
+    },
+    { texte: 0, aufschlaege: 0 },
+  );
+}
+
 /**
- * Warnung im Dialog „Zeitraum ändern“ bei einem Rasterwechsel, etwa
+ * Warnung in den Dialogen „Zeitraum ändern“ und „Neuer Leistungsnachweis“ bei einem Rasterwechsel, etwa
  * „2 bearbeitete Texte und 1 Aufschlag gehören zu einem anderen Raster und
  * werden nicht mehr angezeigt – sie kehren zurück, wenn das Raster wieder
  * umgestellt wird.“; null, wenn nichts verdeckt wird.
@@ -613,6 +717,7 @@ export function neuerNachweis(id: ID, projekt: Projekt, von: ISODate, bis: ISODa
     titel: '',
     von,
     bis,
+    bisFest: false,
     raster: projekt.raster,
     status: 'entwurf',
     texte: {},
@@ -639,7 +744,8 @@ export interface Ergaenzung {
  *   nicht mit vorhandenen überschneidet.
  * * „fortlaufend“: Liegt vor dem Tag der zeitlich letzte Nachweis des Projekts und ist er in
  *   Bearbeitung (und liegt kein anderer dazwischen), wird sein `bis` bis zum Monatsende des Tages
- *   verlängert (gekürzt vor dem nächsten Nachweis); sonst neuer Nachweis ab Monatsanfang.
+ *   verlängert (gekürzt vor dem nächsten Nachweis); sonst neuer Nachweis ab Monatsanfang. Ein
+ *   Nachweis mit von Hand festgelegtem Ende (`bisFest`) wird nicht verlängert.
  * Tage in abgeschlossenen Nachweisen sind bereits abgedeckt. Rein; `neueId` liefert IDs (vorab erzeugt
  * an der Oberfläche oder im Plan).
  */
@@ -653,7 +759,7 @@ export function nachweiseErgaenzen(
   // Arbeitsstand: die Nachweise des Projekts samt der in diesem Aufruf angelegten bzw. verlängerten
   const stand = daten.nachweise
     .filter((n) => n.projektId === projekt.id)
-    .map((n) => ({ id: n.id, von: n.von, bis: n.bis, offen: n.status === 'entwurf', neu: null as Leistungsnachweis | null }));
+    .map((n) => ({ id: n.id, von: n.von, bis: n.bis, offen: n.status === 'entwurf' && !n.bisFest, neu: null as Leistungsnachweis | null }));
   const ausgangBis = new Map(stand.map((s) => [s.id, s.bis]));
 
   for (const tag of [...new Set(tage.filter(istDatum))].sort()) {
@@ -803,6 +909,21 @@ export function nichtAbgerechnet(daten: LeistungsnachweisDaten, projektId: ID, h
   return { leistungen, offene, nichtErfasst, von, bis, vorhanden };
 }
 
+/**
+ * Zwei bearbeitete Texte derselben Zeile verbinden (beim Zusammenfassen offener
+ * Nachweise): der frühere vorn, der spätere mit „, “ dahinter – ohne Teile, die
+ * schon im früheren vorkommen; die Kennungen beider zählen als bekannt
+ * (`neueLeistungenSeitText`).
+ */
+export function texteVerbinden(frueher: ZeilenText, spaeter: ZeilenText): ZeilenText {
+  const fehlend = textTeile(spaeter.text).filter((teil) => !kommtVor(frueher.text, teil));
+  const basis = frueher.text.replace(/\s+$/, '');
+  return {
+    text: fehlend.length === 0 ? frueher.text : basis ? `${basis}, ${fehlend.join(', ')}` : fehlend.join(', '),
+    leistungIds: [...new Set([...frueher.leistungIds, ...spaeter.leistungIds])],
+  };
+}
+
 /** Nimmt Kennungen in `nachgereicht` auf – ohne doppelte. */
 const mitNachgereichten = (n: Leistungsnachweis, ids: ID[]): ID[] => [...new Set([...n.nachgereicht, ...ids])];
 
@@ -811,8 +932,10 @@ const mitNachgereichten = (n: Leistungsnachweis, ids: ID[]): ID[] => [...new Set
  * Leistungsnachweis an (`nichtAbgerechnet`) – rein; so arbeitet
  * `nachweisFuerNichtAbgerechnete` im Store. Gibt es offene Nachweise, wird der
  * erste erweitert und nimmt Leistungstexte, Aufschläge (summiert),
- * Bemerkungen und nachgereichte Leistungen der übrigen auf, die entfallen;
- * sonst entsteht ein neuer mit der Kennung `id`. Raster und – wenn angegeben –
+ * Bemerkungen und nachgereichte Leistungen der übrigen auf, die entfallen –
+ * bearbeitete Texte derselben Zeile werden in zeitlicher Reihenfolge verbunden
+ * (`texteVerbinden`); sonst entsteht ein neuer mit der Kennung `id`. Er läuft
+ * bis zum Abschluss (ein festgelegtes Ende, `bisFest`, entfällt). Raster und – wenn angegeben –
  * Überschrift kommen aus dem Dialog. Mit `nachreichen` (nach der Rückfrage)
  * kommen die nicht erfassten Leistungen als nachgereichte hinzu. Liegt schon
  * alles in genau einem offenen Nachweis, ändert sich nur das (`nachreichenAnwenden`).
@@ -833,7 +956,7 @@ export function nachweisFuerNichtAbgerechneteAnwenden(
   const texte = { ...basis.texte };
   const aufschlaege = { ...basis.aufschlaege };
   for (const w of weitere) {
-    for (const [k, v] of Object.entries(w.texte)) if (!(k in texte)) texte[k] = v;
+    for (const [k, v] of Object.entries(w.texte)) texte[k] = texte[k] ? texteVerbinden(texte[k], v) : v;
     for (const [k, v] of Object.entries(w.aufschlaege)) aufschlaege[k] = runden((aufschlaege[k] ?? 0) + v);
   }
   const bemerkung = [...new Set([basis, ...weitere].map((n) => n.bemerkung.trim()).filter(Boolean))].join('\n');
@@ -845,6 +968,7 @@ export function nachweisFuerNichtAbgerechneteAnwenden(
     ...basis,
     von: plan.von,
     bis: plan.bis,
+    bisFest: false,
     raster: vorgaben.raster,
     titel: vorgaben.titel.trim() || basis.titel,
     texte,
@@ -875,11 +999,29 @@ export function nachreichenAnwenden(daten: LeistungsnachweisDaten, nachweisId: I
 /**
  * Läuft der Nachweis bis zum Abschluss? Offen und nach der Regel
  * „Fortlaufend bis zum Abschluss“ oder mit einem Ende nach heute – sein
- * Zeitraum steht dann erst beim Abschluss fest (`abschlussZeitraum`).
+ * Zeitraum steht dann erst beim Abschluss fest (`abschlussZeitraum`). Nicht,
+ * wenn das Controlling das Ende von Hand festgelegt hat (`bisFest`).
  */
 export function laeuftBisAbschluss(daten: Pick<LeistungsnachweisDaten, 'projekte'>, n: Leistungsnachweis, heute: ISODate): boolean {
-  if (n.status !== 'entwurf') return false;
+  if (n.status !== 'entwurf' || n.bisFest) return false;
   return daten.projekte.find((p) => p.id === n.projektId)?.zeitraumregel === 'fortlaufend' || n.bis > heute;
+}
+
+/**
+ * Bewirkt ein von Hand festgelegtes Ende (`bisFest`) etwas, wenn der Nachweis
+ * am Tag `bis` endet? Nur wenn er ohne es bis zum Abschluss liefe
+ * (`laeuftBisAbschluss`: offen und Regel „fortlaufend“ oder ein Ende nach
+ * heute) – sonst endet er ohnehin an diesem Tag, wird nicht verlängert und
+ * beim Abschluss nicht gekürzt. Danach richtet „Zeitraum ändern“, ob es
+ * „Ende festlegen“ bzw. „Wieder bis zum Abschluss laufen lassen“ anbietet.
+ */
+export function endeFestlegenWirkt(
+  daten: Pick<LeistungsnachweisDaten, 'projekte'>,
+  n: Leistungsnachweis,
+  bis: ISODate,
+  heute: ISODate,
+): boolean {
+  return laeuftBisAbschluss(daten, { ...n, bisFest: false, bis }, heute);
 }
 
 /* ------------------------------------------------------------------ */
@@ -895,7 +1037,7 @@ export function tagVon(zeitpunkt: string): ISODate {
 /**
  * Ende eines Nachweises beim Abschluss – erst hier steht sein Zeitraum fest:
  * Läuft er bis zum Abschluss (`laeuftBisAbschluss` – Regel „Fortlaufend bis
- * zum Abschluss“ oder ein Ende nach heute), endet er am letzten Tag mit
+ * zum Abschluss“ oder ein Ende nach heute, aber kein von Hand festgelegtes), endet er am letzten Tag mit
  * Leistungen in ihm, spätestens heute (ohne Leistungen heute) – nie später als
  * bisher und nie vor seinem Beginn. Sonst bleibt `bis`. Dazu die Leistungen,
  * die danach liegen und deshalb in einen neuen Nachweis kommen.
@@ -997,4 +1139,182 @@ export function nachweiseBereinigen(
       return { ...n, geaendert: jetzt };
     });
   return geaendert ? { ...neu, nachweise } : neu;
+}
+
+/* ------------------------------------------------------------------ */
+/* Umstellung älterer Bestände                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Aufschläge einer bis Fassung 5 gemischten Zeile (laufende und nachgereichte
+ * Leistungen derselben Woche bzw. desselben Monats unter einem Schlüssel) auf
+ * die heutige laufende und die nachgereichte Zeile aufteilen – so, dass beide
+ * zusammen abgerechnet ergeben, was die alte Zeile ergab. `vorher` sind die
+ * erfassten Stunden je Abschnitt der alten Zeile in deren Reihenfolge (nach
+ * ihr mindert `abrechnen` einen Abzug auf die ganze Zeile).
+ *
+ * * Mit Abschnittsspalten bleibt jede Spalte, wie sie war: Ihre Abweichung in
+ *   der alten Zeile (abgerechnet − erfasst) wird zum Aufschlag auf den
+ *   Abschnitt bzw. auf „ohne“ (`OHNE_ABSCHNITT`, mindert dann nur „ohne“). Ein
+ *   Zuschlag geht an die laufende Zeile – an die nachgereichte, wenn nur sie
+ *   Stunden in der Spalte hat –, ein Abzug mindert zuerst die laufende bis 0,
+ *   den Rest die nachgereichte. Ein Abzug auf die ganze Zeile wird so zu
+ *   Abzügen auf die Spalten, die er traf.
+ * * Ohne Abschnittsspalten wirkt nur der Aufschlag auf die ganze Zeile: bei
+ *   der laufenden; ein Abzug mindert sie höchstens bis 0, den Rest die
+ *   nachgereichte. (Spalten zeigt ein solcher Nachweis nicht.)
+ *
+ * Aufschläge, die nicht wirken (`aufschlaegeDerZeile`), bleiben, wo sie sind.
+ * Hat die nachgereichte Zeile schon Aufschläge, ist die Zeile bereits
+ * aufgeteilt und bleibt unverändert. Liefert alle Aufschläge des Nachweises.
+ */
+function aufschlaegeAufteilen(
+  aufschlaege: Record<string, number>,
+  laufend: Pick<NachweisZeile, 'schluessel' | 'stundenJeAbschnitt'>,
+  nachgereicht: Pick<NachweisZeile, 'schluessel' | 'stundenJeAbschnitt'>,
+  vorher: Record<string, number>,
+  abschnittIds: Set<ID>,
+  spalten: boolean,
+): Record<string, number> {
+  const L = laufend.schluessel;
+  const N = nachgereicht.schluessel;
+  const wirkend = aufschlaegeDerZeile(aufschlaege, L, abschnittIds, spalten);
+  if (Object.keys(wirkend).length === 0 || Object.keys(aufschlaege).some((k) => k.startsWith(`${N}|`))) return aufschlaege;
+  const ergebnis = { ...aufschlaege };
+  for (const a of Object.keys(wirkend)) delete ergebnis[`${L}|${a}`];
+  const setzen = (zeile: string, a: string, wert: number) => {
+    const w = runden(wert);
+    if (w !== 0) ergebnis[`${zeile}|${a}`] = w;
+  };
+  const hL = laufend.stundenJeAbschnitt;
+  const hN = nachgereicht.stundenJeAbschnitt;
+
+  if (spalten) {
+    const alt = abrechnen(vorher, wirkend).abgerechnetJeAbschnitt;
+    for (const a of new Set([...Object.keys(alt), ...Object.keys(hL), ...Object.keys(hN)])) {
+      const l = Math.max(0, hL[a] ?? 0);
+      const m = Math.max(0, hN[a] ?? 0);
+      const abweichung = runden((alt[a] ?? 0) - l - m);
+      if (abweichung > 0) setzen(l <= 0 && m > 0 ? N : L, a, abweichung);
+      else if (abweichung < 0) {
+        const vonL = Math.min(l, -abweichung);
+        setzen(L, a, -vonL);
+        setzen(N, a, abweichung + vonL);
+      }
+    }
+    return ergebnis;
+  }
+
+  const zeile = wirkend[OHNE_ABSCHNITT] ?? 0;
+  const erfasstL = runden(Object.values(hL).reduce((s, v) => s + v, 0));
+  const hier = zeile > 0 ? zeile : Math.max(zeile, -erfasstL);
+  setzen(L, OHNE_ABSCHNITT, hier);
+  setzen(N, OHNE_ABSCHNITT, zeile - hier);
+  return ergebnis;
+}
+
+const gleicheEintraege = <T>(a: Record<string, T>, b: Record<string, T>) => {
+  const ka = Object.keys(a);
+  return ka.length === Object.keys(b).length && ka.every((k) => k in b && a[k] === b[k]);
+};
+
+/**
+ * Fassung 5 → 6 (`migriere` in store/storage.ts): Bis Fassung 5 liefen
+ * nachgereichte Leistungen unter dem Schlüssel ihrer Periode („W2026-38“) –
+ * zusammen mit laufenden derselben Woche bzw. desselben Monats und ohne
+ * Kennzeichen. Seitdem bilden sie eigene Zeilen (`NACHGEREICHT_PRAEFIX`,
+ * `nachweisZeilen`). Damit bearbeitete Texte und Aufschläge weiter greifen
+ * und abgeschlossene Nachweise nicht grundlos als geändert gelten (`standVeraltet`):
+ *
+ * * Texte und Aufschläge einer Zeile, die heute nur noch als nachgereichte
+ *   besteht, ziehen auf deren Schlüssel um.
+ * * Gehörte eine Zeile laufenden und nachgereichten Leistungen zugleich
+ *   (gemischte Zeile), zieht ein Text auf die nachgereichte um, wenn er nur
+ *   nachgereichte Leistungen kennt (`leistungIds`), sonst bleibt er bei der
+ *   laufenden. Aufschläge teilt `aufschlaegeAufteilen` auf beide Zeilen auf,
+ *   ohne die abgerechneten Stunden zu ändern – mit Abschnittsspalten auch
+ *   nicht die einer Spalte.
+ * * Im festgeschriebenen Stand wird eine Zeile mit nachgereichten Leistungen
+ *   (sie beginnt vor dem Zeitraum) durch die heutigen Zeilen ersetzt, wenn
+ *   diese dieselben Leistungen mit denselben erfassten Stunden (auch je
+ *   Abschnitt und Mitarbeiter) und denselben abgerechneten enthalten – zeigt
+ *   der Stand Abschnittsspalten, auch je Spalte; abgerechnet bleibt, was
+ *   abgerechnet war. Sonst wird
+ *   eine Zeile nur aus nachgereichten Leistungen bloß gekennzeichnet; eine
+ *   gemischte bleibt, wie sie ist (der Nachweis gilt dann zu Recht als geändert).
+ */
+export function nachgereichteZeilenUmstellen(daten: LeistungsnachweisDaten): LeistungsnachweisDaten {
+  let geaendert = false;
+  const nachweise = daten.nachweise.map((n) => {
+    if (n.nachgereicht.length === 0) return n;
+    const projekt = daten.projekte.find((p) => p.id === n.projektId);
+    const abschnittIds = new Set((projekt?.abschnitte ?? []).map((a) => a.id));
+    const spalten = mitAbschnittsspalten(projekt?.abschnitte ?? []);
+    const nachgereichtIds = new Set(n.nachgereicht);
+    const heute = new Map(nachweisZeilen(daten, n).map((z) => [z.schluessel, z]));
+    const nk = (k: string) => `${NACHGEREICHT_PRAEFIX}${k}`;
+    const nurNachgereicht = (k: string) => !k.startsWith(NACHGEREICHT_PRAEFIX) && !heute.has(k) && heute.has(nk(k));
+    const gemischt = (k: string) => !k.startsWith(NACHGEREICHT_PRAEFIX) && heute.has(k) && heute.has(nk(k));
+
+    const texte: Record<string, ZeilenText> = {};
+    for (const [k, t] of Object.entries(n.texte)) {
+      // Ein Text der gemischten Zeile, der nur nachgereichte Leistungen kennt, gehört zu deren Zeile
+      const nurZuNachgereichten = t.leistungIds.length > 0 && t.leistungIds.every((id) => nachgereichtIds.has(id));
+      const umziehen = (nurNachgereicht(k) || (gemischt(k) && nurZuNachgereichten)) && !(nk(k) in n.texte);
+      texte[umziehen ? nk(k) : k] = t;
+    }
+    let aufschlaege: Record<string, number> = {};
+    for (const [k, wert] of Object.entries(n.aufschlaege)) {
+      const trenner = k.indexOf('|');
+      const zeile = trenner < 0 ? k : k.slice(0, trenner);
+      const ziel = trenner >= 0 && nurNachgereicht(zeile) ? `${nk(zeile)}${k.slice(trenner)}` : k;
+      aufschlaege[ziel] = ziel in aufschlaege ? runden(aufschlaege[ziel] + wert) : wert;
+    }
+    const gemischteZeilen = new Set(
+      Object.keys(n.aufschlaege)
+        .map((k) => k.slice(0, Math.max(0, k.indexOf('|'))))
+        .filter((k) => k && gemischt(k)),
+    );
+    // Erfasste Stunden je Abschnitt der alten gemischten Zeile – in deren Reihenfolge (die der Leistungen)
+    const leistungen = gemischteZeilen.size > 0 ? leistungenDesNachweises(daten, n) : [];
+    const vorher = (k: string) => {
+      const ids = new Set([...heute.get(k)!.leistungIds, ...heute.get(nk(k))!.leistungIds]);
+      const je: Record<string, number> = {};
+      for (const l of leistungen) if (ids.has(l.id)) addieren(je, spalteDerLeistung(l, abschnittIds), l.stunden);
+      return gerundet(je);
+    };
+    for (const k of gemischteZeilen) {
+      aufschlaege = aufschlaegeAufteilen(aufschlaege, heute.get(k)!, heute.get(nk(k))!, vorher(k), abschnittIds, spalten);
+    }
+    let neu: Leistungsnachweis = { ...n, texte, aufschlaege };
+
+    if (n.status === 'abgeschlossen' && n.stand) {
+      const live = nachweisZeilen({ ...daten, nachweise: daten.nachweise.map((x) => (x.id === n.id ? neu : x)) }, neu);
+      const standSpalten = mitAbschnittsspalten(n.stand.abschnitte);
+      const zeilen = n.stand.zeilen.flatMap((z): NachweisZeile[] => {
+        if (z.nachgereicht || z.von >= n.von || !z.leistungIds.some((id) => nachgereichtIds.has(id))) return [z];
+        const schluesselN = nk(z.schluessel);
+        const gruppe = live.filter((x) => x.schluessel === z.schluessel || x.schluessel === schluesselN);
+        // Gleich: dieselben Leistungen mit denselben Stunden je Abschnitt und Mitarbeiter und denselben
+        // abgerechneten Stunden – mit Abschnittsspalten (wie der Stand sie zeigt) auch je Spalte
+        const gleich =
+          gruppe.some((x) => x.schluessel === schluesselN) &&
+          gleicheIds(z.leistungIds, gruppe.flatMap((x) => x.leistungIds)) &&
+          runden(z.stunden) === summeStunden(gruppe) &&
+          runden(z.abgerechnet) === summeAbgerechnet(gruppe) &&
+          gleicheWerte(z.stundenJeAbschnitt, summeJe(gruppe.map((x) => x.stundenJeAbschnitt))) &&
+          gleicheWerte(z.stundenJeMitarbeiter, summeJe(gruppe.map((x) => x.stundenJeMitarbeiter))) &&
+          (!standSpalten || gleicheWerte(z.abgerechnetJeAbschnitt, summeJe(gruppe.map((x) => x.abgerechnetJeAbschnitt))));
+        if (gleich) return gruppe;
+        return z.leistungIds.every((id) => nachgereichtIds.has(id)) ? [{ ...z, schluessel: schluesselN, nachgereicht: true }] : [z];
+      });
+      const alt = n.stand.zeilen;
+      if (zeilen.length !== alt.length || zeilen.some((z, i) => z !== alt[i])) neu = { ...neu, stand: { ...n.stand, zeilen } };
+    }
+    const anders = !gleicheEintraege(texte, n.texte) || !gleicheEintraege(aufschlaege, n.aufschlaege) || neu.stand !== n.stand;
+    if (!anders) return n;
+    geaendert = true;
+    return neu;
+  });
+  return geaendert ? { ...daten, nachweise } : daten;
 }

@@ -92,6 +92,28 @@ function textVon(el: Element | null): string {
     .join('');
 }
 
+/**
+ * Stellenzahl je Zellstil, dessen Zahlenformat eine ganze Zahl mit führenden
+ * Nullen auffüllt (nur Nullen, z. B. „00000“ – Excels Sonderformat
+ * „Postleitzahl“). Ohne sie würde aus der Postleitzahl 01067 die Zahl „1067“,
+ * denn gespeichert ist nur der Zahlenwert.
+ */
+function nullenFormate(xml: Document): Map<number, number> {
+  const codes = new Map<string, string>();
+  for (const f of Array.from(xml.getElementsByTagNameNS(NS, 'numFmt'))) {
+    codes.set(f.getAttribute('numFmtId') ?? '', f.getAttribute('formatCode') ?? '');
+  }
+  const stellen = new Map<number, number>();
+  const xfs = xml.getElementsByTagNameNS(NS, 'cellXfs')[0];
+  if (!xfs) return stellen;
+  Array.from(xfs.getElementsByTagNameNS(NS, 'xf')).forEach((xf, index) => {
+    // Erster Abschnitt des Formats (positive Zahlen), Maskierungen entfernt
+    const code = (codes.get(xf.getAttribute('numFmtId') ?? '') ?? '').split(';')[0].replace(/[\\"]/g, '');
+    if (/^0{2,}$/.test(code)) stellen.set(index, code.length);
+  });
+  return stellen;
+}
+
 /** Liest alle Tabellenblätter einer Arbeitsmappe. */
 export async function xlsxLesen(datei: File): Promise<GeleseneTabelle[]> {
   const puffer = await datei.arrayBuffer();
@@ -105,6 +127,13 @@ export async function xlsxLesen(datei: File): Promise<GeleseneTabelle[]> {
   if (sharedEintrag) {
     const xml = new DOMParser().parseFromString(await entpacke(puffer, daten, sharedEintrag), 'application/xml');
     for (const si of Array.from(xml.getElementsByTagNameNS(NS, 'si'))) geteilt.push(textVon(si));
+  }
+
+  // Zahlenformate mit führenden Nullen
+  let nullen = new Map<number, number>();
+  const stilEintrag = finde('xl/styles.xml');
+  if (stilEintrag) {
+    nullen = nullenFormate(new DOMParser().parseFromString(await entpacke(puffer, daten, stilEintrag), 'application/xml'));
   }
 
   // Blattnamen in der Reihenfolge der Mappe
@@ -145,6 +174,11 @@ export async function xlsxLesen(datei: File): Promise<GeleseneTabelle[]> {
           wert = textVon(c.getElementsByTagNameNS(NS, 'is')[0] ?? null);
         } else {
           wert = c.getElementsByTagNameNS(NS, 'v')[0]?.textContent ?? '';
+          // Ganze Zahl mit Format „00000“ o. Ä.: wie in Excel angezeigt auffüllen
+          const stellen = nullen.get(Number(c.getAttribute('s') ?? '0'));
+          if (stellen && (typ === null || typ === 'n') && /^\d+$/.test(wert.trim())) {
+            wert = wert.trim().padStart(stellen, '0');
+          }
         }
         while (zeile.length < spalte) zeile.push('');
         zeile[spalte] = wert.trim();

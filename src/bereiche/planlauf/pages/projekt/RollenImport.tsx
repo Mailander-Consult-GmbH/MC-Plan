@@ -29,7 +29,7 @@ import {
 import { seiteAusText } from '../../components/SeiteAuswahl';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
-import { Callout, Modal } from '../../../../shared/ui';
+import { Callout, Modal, alsKnopf } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 
 /**
@@ -345,7 +345,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       <div className="stack" style={{ gap: 14 }}>
         <div
           className={`drop-zone ${over ? 'over' : ''}`}
-          onClick={() => inputRef.current?.click()}
+          {...alsKnopf(() => inputRef.current?.click())}
           onDragOver={(e) => {
             e.preventDefault();
             setOver(true);

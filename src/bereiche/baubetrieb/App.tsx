@@ -8,7 +8,10 @@ import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { useToast } from '../../shared/toast';
 import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
+import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
+import { useSeitenleiste } from '../../shared/seitenleiste';
 import { BereichWechsel } from '../../shell/BereichWechsel';
+import { Hinweisleisten } from './components/Hinweisleisten';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { ausstehendeErstanmeldungen, offeneTermine } from './domain/fristen';
 import { anmeldungBezeichnung } from './domain/workflow';
@@ -20,16 +23,21 @@ import { Projekte } from './pages/Projekte';
 import { Termine } from './pages/Termine';
 import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
 import { Workflows } from './pages/Workflows';
-import { exportiereDaten } from './store/storage';
+import { exportiereDaten, rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 
 export function App() {
-  const { data, zuruecksetzen } = useStore();
+  const { data, ladeZustand, zuruecksetzen } = useStore();
+  // Ein Stand aus einer neueren Fassung darf weder ersetzt noch zurückgesetzt werden
+  const gesperrt = ladeZustand === 'neuere_fassung';
+  const gesperrtTitel = 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt';
   const toast = useToast();
   const [route, navigate] = useRoute();
-  const [menuOffen, setMenuOffen] = useState(false);
+  // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
+  const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projektId}` : route.view === 'anmeldung' ? `anmeldung/${route.anmeldungId}` : route.view);
+  const [menuOffen, setMenuOffen] = useSeitenleiste();
   const inEinstellungen = route.view === 'workflows' || route.view === 'fristen';
   const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
   // Wer eine der Seiten unter „Einstellungen“ aufruft, sieht die Gruppe aufgeklappt
@@ -59,7 +67,8 @@ export function App() {
 
   const farbmodus = data.einstellungen.farbmodus;
   useEffect(() => {
-    // Eigene Einstellung dieses Bereichs – unabhängig vom Planlaufmanagement.
+    // Spiegel des gemeinsamen Farbmodus aus „Angemeldet als“ (src/gemeinsam/benutzer.ts),
+    // nachgezogen über useBenutzerAbgleich im Store.
     document.documentElement.dataset.farbmodus = farbmodus;
   }, [farbmodus]);
 
@@ -127,13 +136,35 @@ export function App() {
             <button
               type="button"
               className="btn btn-sm btn-outline"
-              onClick={() => exportiereDaten(data)}
-              title="Gesamten Datenbestand der Baubetriebsplanung als JSON sichern"
+              onClick={() => {
+                // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
+                // gesichert wird dann der gespeicherte Stand, unverändert.
+                if (ladeZustand === 'ok') exportiereDaten(data);
+                else if (!rohdatenHerunterladen())
+                  toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
+              }}
+              title={
+                ladeZustand === 'ok'
+                  ? 'Gesamten Datenbestand der Baubetriebsplanung als JSON sichern'
+                  : 'Gespeicherten Stand unverändert herunterladen'
+              }
             >
               <Icon name="export" size={12} /> Sicherung
             </button>
-            <SicherungWaehlen onGelesen={setSicherung} />
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => setZuruecksetzenDialog(true)}>
+            {gesperrt ? (
+              <button type="button" className="btn btn-sm btn-outline" disabled title={gesperrtTitel}>
+                <Icon name="importieren" size={12} /> Einspielen
+              </button>
+            ) : (
+              <SicherungWaehlen onGelesen={setSicherung} />
+            )}
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setZuruecksetzenDialog(true)}
+              disabled={gesperrt}
+              title={gesperrt ? gesperrtTitel : undefined}
+            >
               Zurücksetzen
             </button>
           </div>
@@ -156,8 +187,9 @@ export function App() {
           </div>
         </header>
 
-        <div className="content">
+        <div className="content" ref={inhalt}>
           <div className="content-inner">
+            <Hinweisleisten />
             {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
             {route.view === 'termine' ? <Termine navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}

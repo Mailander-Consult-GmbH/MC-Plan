@@ -5,14 +5,19 @@
  * (Tag anklicken erfasst dort eine Leistung, das Projekt wählt der Dialog;
  * eine Leistung anklicken bearbeitet sie), die zuletzt erfassten eigenen
  * Leistungen und die Projekte mit den eigenen Stunden im Monat. Angezeigt werden die markierten
- * Projekte – auch die in anderen Bereichen markierten (`istMarkiert`); ohne Markierung alle. Leistungsnachweise, Abschluss und Abrechnung
+ * Projekte – auch die in anderen Bereichen markierten (`istMarkiert`); ist kein
+ * nicht archiviertes markiert, alle. Steht kein Projekt zur Wahl, sagt ein
+ * Hinweis über dem Kalender, woher Projekte kommen – bzw., wenn alle archiviert
+ * sind, dass sich im archivierten Projekt selbst (Projekte › Archiv) weiterhin
+ * erfassen lässt. Leistungsnachweise, Abschluss und Abrechnung
  * liegen im Controlling. Ohne Anmeldung steht darüber der Hinweis zum
  * Anmelden (App.tsx, `AnmeldeHinweis`).
  */
 import { useState } from 'react';
 import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
-import { Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
+import { useToast } from '../../../shared/toast';
+import { Callout, Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
 import { useAnmeldung, useMitAnmeldung } from '../components/AnmeldeDialog';
 import { LeistungDialog } from '../components/LeistungDialog';
 import { LeistungsKalender } from '../components/LeistungsKalender';
@@ -33,7 +38,7 @@ const LETZTE = 8;
  */
 export const istMarkiert = (p: Projekt, anderswo: Map<string, string[]>) => p.markiert || anderswo.has(p.id);
 
-/** Markierte Projekte (auch die in anderen Bereichen markierten); ohne Markierung alle. */
+/** Markierte Projekte (auch die in anderen Bereichen markierten); ist kein nicht archiviertes markiert, alle nicht archivierten. */
 export function sichtbareProjekte(projekte: Projekt[], archiviert: Set<string>, anderswo: Map<string, string[]>): Projekt[] {
   const aktiv = projekte.filter((p) => !archiviert.has(p.id));
   const markiert = aktiv.filter((p) => istMarkiert(p, anderswo));
@@ -45,6 +50,7 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
   const anmeldung = useAnmeldung();
   const mitAnmeldung = useMitAnmeldung();
   const ich = angemeldet(data);
+  const toast = useToast();
   const [dialog, setDialog] = useState<{ leistung?: Leistung; datum?: ISODate } | null>(null);
 
   const archiviert = useArchivierte('leistungsnachweise');
@@ -61,17 +67,20 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
   const meineImMonat = meine.filter((l) => l.datum >= anfang && l.datum <= ende);
   const meineImJahr = meine.filter((l) => l.datum.startsWith(jahr));
   const letzte = [...meine].sort((a, b) => b.datum.localeCompare(a.datum) || b.erfasst.localeCompare(a.erfasst)).slice(0, LETZTE);
-  const alleMarkiert = data.projekte.filter((p) => istMarkiert(p, anderswo)).length;
+  // Hinweis „Kein Projekt markiert“ nach derselben Regel wie sichtbareProjekte: Markierte archivierte zählen nicht
+  const aktive = data.projekte.filter((p) => !archiviert.has(p.id));
+  const keinesMarkiert = aktive.length > 0 && !aktive.some((p) => istMarkiert(p, anderswo));
   const projektVon = new Map(data.projekte.map((p) => [p.id, p]));
 
   // Projekte zur Wahl beim Erfassen aus dem Kalender: alle nicht archivierten; vorgewählt ist das
   // Projekt der zuletzt erfassten eigenen Leistung, sonst das erste angezeigte
-  const auswahl = data.projekte
-    .filter((p) => !archiviert.has(p.id))
-    .sort((a, b) => a.nummer.localeCompare(b.nummer, 'de', { numeric: true }) || a.name.localeCompare(b.name, 'de'));
+  const auswahl = [...aktive].sort((a, b) => a.nummer.localeCompare(b.nummer, 'de', { numeric: true }) || a.name.localeCompare(b.name, 'de'));
   const zuletztProjekt = [...meine].sort((a, b) => b.erfasst.localeCompare(a.erfasst))[0]?.projektId;
   const vorgabeProjekt =
     auswahl.find((p) => p.id === zuletztProjekt) ?? projekte.find((p) => auswahl.includes(p)) ?? auswahl[0];
+  // Kein Projekt zur Wahl, obwohl es Projekte gibt: Sie sind alle im Bereich archiviert. Archivierte stehen hier
+  // nicht zur Wahl; im archivierten Projekt selbst (Projekte › Archiv) lässt sich weiterhin erfassen
+  const alleArchiviert = !vorgabeProjekt && data.projekte.length > 0;
   const projektKurz = (id: string) => {
     const p = projektVon.get(id);
     return p ? p.nummer || projektKurzname(p) : '?';
@@ -101,22 +110,45 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
         <Stat wert={ich ? stundenText(stundenVon(meineImJahr)) : '–'} label={`Meine Stunden ${jahr}`} />
       </div>
 
-      {alleMarkiert === 0 ? (
+      {keinesMarkiert ? (
         <p className="small tertiary">
           Kein Projekt markiert – es werden alle angezeigt. Unter <strong>Projekte</strong> lassen sich einzelne
           markieren; dann erscheinen nur diese hier und in der Seitenleiste.
         </p>
       ) : null}
 
-      {vorgabeProjekt ? (
-        <LeistungsKalender
-          titel="Mein Kalender"
-          leistungen={meine}
-          projektKurz={projektKurz}
-          onNeu={(datum) => mitAnmeldung(() => setDialog({ datum }))}
-          onOeffnen={(leistung) => setDialog({ leistung })}
-        />
+      {!vorgabeProjekt ? (
+        <Callout icon="i">
+          {alleArchiviert ? (
+            <>
+              Alle Projekte sind archiviert – hier in der Übersicht stehen sie deshalb nicht zur Wahl. Leistungen
+              lassen sich weiterhin im archivierten Projekt erfassen (<strong>Projekte › Archiv</strong>); aus dem
+              Archiv zurückholen kann sie das Controlling. Erfasste Leistungen bleiben im Kalender sichtbar.
+            </>
+          ) : (
+            <>
+              Es gibt noch kein Projekt, in dem Sie Leistungen erfassen können. Projekte legt das Controlling an;
+              Projekte der anderen Bereiche erscheinen hier von selbst, unbekannte legt auch der Excel-Import an.
+            </>
+          )}
+        </Callout>
       ) : null}
+
+      <LeistungsKalender
+        titel="Mein Kalender"
+        leistungen={meine}
+        projektKurz={projektKurz}
+        onNeu={(datum) =>
+          vorgabeProjekt
+            ? mitAnmeldung(() => setDialog({ datum }))
+            : toast(
+                alleArchiviert
+                  ? 'Kein Projekt zur Wahl – alle sind archiviert. Erfassen lässt sich im Projekt unter Projekte › Archiv.'
+                  : 'Kein Projekt zum Erfassen – Projekte legt das Controlling an.',
+              )
+        }
+        onOeffnen={(leistung) => setDialog({ leistung })}
+      />
 
       <Card>
         <CardHeader titel="Zuletzt erfasst" sub="Meine neuesten Leistungen – Klick öffnet das Projekt" />
@@ -226,10 +258,10 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
         )}
       </Card>
 
-      {dialog && vorgabeProjekt ? (
+      {dialog && (dialog.leistung || vorgabeProjekt) ? (
         <LeistungDialog
           key={dialog.leistung?.id ?? `neu-${dialog.datum ?? ''}`}
-          projektId={dialog.leistung?.projektId ?? vorgabeProjekt.id}
+          projektId={dialog.leistung?.projektId ?? vorgabeProjekt?.id ?? ''}
           leistung={dialog.leistung}
           vorgabeDatum={dialog.datum}
           projektAuswahl={dialog.leistung ? undefined : auswahl}

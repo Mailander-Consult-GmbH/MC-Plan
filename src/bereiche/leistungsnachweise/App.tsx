@@ -22,10 +22,13 @@ import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import { useArchivierte, useMarkiertAnderswo } from '../../gemeinsam/ProjektBereiche';
 import { AnmeldeDialog, AnmeldeHinweis, AnmeldungBereitstellen, type AnmeldungOeffnen } from './components/AnmeldeDialog';
 import { ImportDialog } from './components/ImportDialog';
+import { SpeicherHinweis } from './components/SpeicherHinweis';
 import { SicherungEinspielenDialog, SicherungKnopf, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { angemeldet } from './domain/rechte';
 import { projektTitel, type Projekt } from './domain/types';
 import { istControllingRoute, routeToHash, useRoute, type Route } from './lib/router';
+import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
+import { useSeitenleiste } from '../../shared/seitenleiste';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
 import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
@@ -36,7 +39,7 @@ export function App() {
   const { data, ladeZustand, zuruecksetzen } = useStore();
   const toast = useToast();
   const [route, navigate] = useRoute();
-  const [menuOffen, setMenuOffen] = useState(false);
+  const [menuOffen, setMenuOffen] = useSeitenleiste();
   const [anmeldung, setAnmeldung] = useState<{ danach?: () => void } | null>(null);
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
@@ -54,6 +57,9 @@ export function App() {
   useEffect(() => {
     if (controllingAnsicht) window.location.replace(routeToHash(route));
   }, [controllingAnsicht, route]);
+
+  // Eine neue Seite beginnt oben (src/shared/scrollen.ts)
+  const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projektId}` : route.view);
 
   const gehe = (r: Route) => {
     navigate(r);
@@ -75,7 +81,8 @@ export function App() {
 
   const farbmodus = data.einstellungen.farbmodus;
   useEffect(() => {
-    // Eigene Einstellung dieses Bereichs – unabhängig von den anderen Bereichen.
+    // Spiegel des gemeinsamen Farbmodus aus „Angemeldet als“ (src/gemeinsam/benutzer.ts),
+    // nachgezogen über useBenutzerAbgleich im Store.
     document.documentElement.dataset.farbmodus = farbmodus;
   }, [farbmodus]);
 
@@ -159,9 +166,10 @@ export function App() {
             </div>
           </header>
 
-          <div className="content">
+          <div className="content" ref={inhalt}>
             <div className="content-inner">
               <LadeHinweis />
+              <SpeicherHinweis />
               <AnmeldeHinweis daten={data} />
               {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} onImport={importOeffnen} /> : null}
               {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}

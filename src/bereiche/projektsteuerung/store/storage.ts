@@ -2,8 +2,19 @@
  * Lokale Persistenz des Bereichs „Projektsteuerung“ unter einem eigenen
  * Schlüssel. Die Bestände der anderen Bereiche werden weder gelesen noch
  * geschrieben.
+ *
+ * Wie im Planlaufmanagement wird nur gespeichert, wenn der Bestand
+ * einwandfrei geladen wurde (`LadeZustand` 'ok'): Nach einem Ladefehler oder
+ * bei einem Stand aus einer neueren Fassung zeigt der Bereich Demodaten und
+ * lässt den gespeicherten Stand unberührt. Vor jeder Umstellung auf eine neue
+ * Fassung legt `ladeDaten` eine Rohkopie `<Schlüssel>.vor-fassung-<n>` an,
+ * vor dem Einspielen über einen unlesbaren Stand `rohkopieVorEinspielen` eine
+ * `<Schlüssel>.vor-einspielen-<Zeitpunkt>`.
+ * Speichern meldet, ob es gelungen ist (`SpeicherZustand`); ist der Speicher
+ * des Browsers voll, zeigt der Bereich einen dauerhaften Hinweis.
  */
 import { today } from '../../../shared/dates';
+import { nachRaeumenSpeichern, rohkopieVorEinspielen as rohkopieAnlegen, speicherVoll, type RohkopieErgebnis } from '../../../shared/speicher';
 import { zeilenAusAltform } from '../domain/protokoll';
 import { STANDARD_GEWERKE, seedDaten } from '../domain/seed';
 import {
@@ -27,7 +38,12 @@ import {
 
 export { DATEN_VERSION };
 
-const KEY = 'projektsteuerung.data.v1';
+/** Schlüssel des Bestands im localStorage (auch für `storage`-Ereignisse anderer Fenster). */
+export const SPEICHER_SCHLUESSEL = 'projektsteuerung.data.v1';
+const KEY = SPEICHER_SCHLUESSEL;
+
+/** Präfix der Rohkopien vor einer Umstellung: `<KEY>.vor-fassung-<n>`. */
+const VOR_FASSUNG = `${KEY}.vor-fassung-`;
 
 /** Kennzeichen in Sicherungsdateien, damit sie dem richtigen Bereich zugeordnet werden. */
 const SICHERUNG_BEREICH = 'projektsteuerung';
@@ -253,36 +269,130 @@ function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   return aufbereiten(stand);
 }
 
-export function ladeDaten(): ProjektsteuerungDaten {
+/**
+ * Zustand nach dem Laden: `ladefehler` – der gespeicherte Stand ließ sich nicht
+ * lesen; `neuere_fassung` – er stammt aus einer neueren Fassung von KaPlan. In
+ * beiden Fällen zeigt der Bereich Demodaten und speichert nicht, damit der
+ * gespeicherte Stand erhalten bleibt (Hinweis: components/Hinweisleisten.tsx).
+ */
+export type LadeZustand = 'ok' | 'ladefehler' | 'neuere_fassung';
+
+export interface Geladen {
+  daten: ProjektsteuerungDaten;
+  zustand: LadeZustand;
+}
+
+/**
+ * Liest den gespeicherten Stand. Vor einer Umstellung auf die aktuelle Fassung
+ * legt es den gespeicherten Text einmalig unter `<Schlüssel>.vor-fassung-<n>` ab.
+ */
+export function ladeDaten(): Geladen {
+  const demo = (zustand: LadeZustand): Geladen => ({ daten: seedDaten(), zustand });
+  let roh: string | null;
   try {
-    const roh = localStorage.getItem(KEY);
-    if (!roh) return seedDaten();
-    const daten = JSON.parse(roh) as Partial<ProjektsteuerungDaten>;
-    if (!daten || typeof daten !== 'object') return seedDaten();
-    return daten.version === DATEN_VERSION ? aufbereiten(daten) : migriere(daten);
+    roh = localStorage.getItem(KEY);
   } catch {
-    return seedDaten();
+    return demo('ladefehler');
+  }
+  if (!roh) return demo('ok');
+  let daten: Partial<ProjektsteuerungDaten>;
+  try {
+    daten = JSON.parse(roh) as Partial<ProjektsteuerungDaten>;
+  } catch {
+    return demo('ladefehler');
+  }
+  if (!daten || typeof daten !== 'object' || !Array.isArray(daten.projekte)) return demo('ladefehler');
+  if (typeof daten.version === 'number' && daten.version > DATEN_VERSION) return demo('neuere_fassung');
+  // Vor einer Umstellung den gespeicherten Text einmalig sichern – scheitert das, wird trotzdem umgestellt
+  if ((daten.version ?? 1) < DATEN_VERSION) {
+    try {
+      const schluessel = `${VOR_FASSUNG}${daten.version ?? 1}`;
+      if (localStorage.getItem(schluessel) === null) localStorage.setItem(schluessel, roh);
+    } catch {
+      /* kein Platz für die Kopie – der Stand lässt sich weiterhin herunterladen */
+    }
+  }
+  try {
+    return { daten: daten.version === DATEN_VERSION ? aufbereiten(daten) : migriere(daten), zustand: 'ok' };
+  } catch {
+    return demo('ladefehler');
   }
 }
 
-export function speichereDaten(daten: ProjektsteuerungDaten): void {
+/** Ergebnis des Speicherns: gespeichert, Speicher voll oder Speicher nicht nutzbar (gesperrt). */
+export type SpeicherZustand = 'ok' | 'voll' | 'gesperrt';
+
+/**
+ * Speichert den Bestand; der Store ruft das nur bei `ladeZustand === 'ok'`
+ * auf. Ist der Speicher voll, werden Rohkopien (`<Schlüssel>.vor-fassung-<n>`,
+ * `<Schlüssel>.vor-einspielen-…`) entfernt, bis er passt – zuerst die vor einer
+ * Umstellung (die eigenen vor denen anderer Bereiche und des Projektregisters),
+ * dann die vor dem Einspielen, gleich welchen Bereichs, die älteste zuerst
+ * (`nachRaeumenSpeichern`).
+ * Liefert, ob der Bestand gespeichert ist bzw. warum nicht – dann zeigt der
+ * Bereich einen dauerhaften Hinweis (components/Hinweisleisten.tsx).
+ */
+export function speichereDaten(daten: ProjektsteuerungDaten): SpeicherZustand {
+  const inhalt = JSON.stringify(daten);
   try {
-    localStorage.setItem(KEY, JSON.stringify(daten));
+    localStorage.setItem(KEY, inhalt);
+    return 'ok';
+  } catch (err) {
+    if (!speicherVoll(err)) {
+      console.warn('Daten konnten nicht lokal gespeichert werden:', err);
+      return 'gesperrt';
+    }
+  }
+  try {
+    return nachRaeumenSpeichern(KEY, inhalt) ? 'ok' : 'voll';
   } catch (err) {
     console.warn('Daten konnten nicht lokal gespeichert werden:', err);
+    return speicherVoll(err) ? 'voll' : 'gesperrt';
   }
+}
+
+/**
+ * Legt den gespeicherten Text unverändert als
+ * `<Schlüssel>.vor-einspielen-<Zeitpunkt>` ab – vor dem Einspielen einer
+ * Sicherung, wenn er sich nicht laden ließ und sonst ohne Kopie überschrieben
+ * würde. Wie die Rohkopien vor einer Umstellung räumt das Speichern sie, wenn
+ * der Speicher voll ist (src/shared/speicher.ts). Liefert `gescheitert`, wenn
+ * die Kopie nicht in den Speicher passt – dann fragt der Dialog nach.
+ */
+export function rohkopieVorEinspielen(): RohkopieErgebnis {
+  return rohkopieAnlegen(KEY);
+}
+
+function herunterladen(inhalt: string, dateiname: string): void {
+  const blob = new Blob([inhalt], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = dateiname;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /** Lädt den gesamten Bestand des Bereichs als JSON-Datei herunter. */
 export function exportiereDaten(daten: ProjektsteuerungDaten): void {
   const inhalt = { bereich: SICHERUNG_BEREICH, ...daten };
-  const blob = new Blob([JSON.stringify(inhalt, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `projektsteuerung-sicherung-${today()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  herunterladen(JSON.stringify(inhalt, null, 2), `projektsteuerung-sicherung-${today()}.json`);
+}
+
+/**
+ * Lädt den gespeicherten Stand unverändert herunter – nach einem Ladefehler,
+ * damit er nicht verloren geht. Liefert false, wenn keiner vorhanden ist.
+ */
+export function rohdatenHerunterladen(): boolean {
+  let roh: string | null = null;
+  try {
+    roh = localStorage.getItem(KEY);
+  } catch {
+    return false;
+  }
+  if (roh === null) return false;
+  herunterladen(roh, `projektsteuerung-gespeicherter-stand-${today()}.json`);
+  return true;
 }
 
 /**

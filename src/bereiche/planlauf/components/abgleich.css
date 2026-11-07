@@ -1,6 +1,6 @@
 /* Abgleich mit einer Sicherung und Hinweisleisten – Präfix ab-, nur Design-Tokens. */
 
-/* Breites Modal (schließt nicht per Hintergrundklick) */
+/* „Sicherung abgleichen“: breiter als .modal.wide (Modal mit klasse="ab-modal", schließt nicht per Klick daneben) */
 .modal.ab-modal {
   width: min(1100px, 100%);
 }

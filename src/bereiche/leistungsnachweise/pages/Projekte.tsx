@@ -107,7 +107,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
         <span className="small tertiary">
           Alle sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der Seitenleiste – in
           anderen Bereichen markierte sind es hier von selbst, weitere lassen sich dazu markieren. Projekte
-          legt das Controlling an.
+          legt das Controlling an, unbekannte auch der Excel-Import.
         </span>
       </div>
 

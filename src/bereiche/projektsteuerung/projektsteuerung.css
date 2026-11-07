@@ -104,7 +104,11 @@
 .ps-zeile .ps-herkunft { margin-top: 3px; }
 .ps-zeile-feld { display: flex; gap: 6px; align-items: flex-start; }
 .ps-zeile-feld .textarea { flex: 1; min-width: 0; }
+/* Leere Auswahl „Wer“/„Verantwortlich“: nur das geschlossene Feld und der Platzhalter sind gedämpft –
+   die Optionen erben sonst die Farbe und stehen in der aufgeklappten Liste hellgrau. */
 .select.ps-leer-wahl { color: var(--text-tertiary); }
+.select.ps-leer-wahl option { color: var(--text); }
+.select.ps-leer-wahl option[value=''] { color: var(--text-tertiary); }
 /* Ergänzung mit eigener Art: Randlinie in der Farbe ihres Typs, darunter Art, Verantwortlich, Termin */
 .ps-zeile-eigen { border-left: 3px solid var(--ps-typ); padding-left: 8px; }
 .ps-zeile-art { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; }
@@ -191,3 +195,9 @@
 /* Kontrastmodus: Ergänzungen kräftiger */
 :root[data-farbmodus='kontrast'] .textarea.ps-zusatz { border-width: 1.5px; }
 :root[data-farbmodus='kontrast'] .ps-typwahl button.aktiv { box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35); }
+
+/* Hinweisleisten über dem Inhalt (components/Hinweisleisten.tsx): Ladefehler, neuere Fassung, Speicher voll */
+.ps-ladehinweis { display: grid; gap: 10px; margin-bottom: 18px; }
+.ps-ladehinweis .callout.error { box-shadow: inset 3px 0 0 var(--red); }
+.ps-ladehinweis .callout.warn { box-shadow: inset 3px 0 0 var(--orange); }
+.ps-ladehinweis-knoepfe { gap: 6px; margin-top: 8px; }

@@ -19,7 +19,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Badge, Callout, Field, Modal, Select } from '../../../shared/ui';
+import { Badge, Callout, Field, Modal, Select, alsKnopf } from '../../../shared/ui';
 import { tabelleLesen, type GeleseneTabelle } from '../../../shared/xlsxLesen';
 import { importVorlageLaden } from '../domain/export';
 import {
@@ -60,6 +60,9 @@ const SPALTEN_ERKLAERUNG: { feld: ImportFeld; wofuer: string }[] = [
   { feld: 'projekt', wofuer: 'Projektnummer, etwa „K9101: …“ – ordnet die Zeile ihrem Projekt zu' },
   { feld: 'projektelement', wofuer: 'optional, der Abschnitt – fehlende Abschnitte legt der Import an' },
 ];
+
+/** Erklärung der Spalte Mitarbeiter im Sammel-Import (Controlling) – dort zählen alle Zeilen. */
+const MITARBEITER_SAMMEL = 'etwa „MM: Mustermann, Max“ – ordnet die Zeile ihrem Mitarbeiter zu; unbekannte werden angelegt';
 
 /** Spaltenbuchstabe wie in Excel: 0 → „A“. */
 const spaltenBuchstabe = (index: number) => String.fromCharCode(65 + index);
@@ -114,7 +117,8 @@ export function blattLesen(tabellen: GeleseneTabelle[]): ImportGelesen {
  * angemeldeten Person (`angemeldetId`), im Controlling der Sammel-Import aller
  * Mitarbeiter; unbekannte Projekte anlegen (Vorgabe an), frühere Importe
  * ersetzen (Vorgabe an, eine frühere Wahl bleibt) und – im Sammel-Import –
- * Zeilen ohne Mitarbeiter der angemeldeten Person zuordnen (wählbar).
+ * Zeilen ohne Mitarbeiter der angemeldeten Person zuordnen (wählbar; zu Beginn
+ * „nicht übernehmen“, eine frühere Wahl bleibt).
  */
 export function importVorgaben(
   daten: LeistungsnachweisDaten,
@@ -329,7 +333,8 @@ export function ImportDialog({ onClose, navigate }: { onClose: () => void; navig
     <Modal
       titel="Leistungen aus Excel übernehmen"
       sub={
-        ich
+        // Der Sammel-Import (Controlling) übernimmt alle Mitarbeiter – dort nennt der Untertitel niemanden
+        ich && !sammel
           ? `Export der Zeiterfassung (.xlsx oder .csv) – auch mit mehreren Projekten · für ${ichName}`
           : 'Export der Zeiterfassung (.xlsx oder .csv) – auch mit mehreren Projekten'
       }
@@ -377,7 +382,7 @@ export function ImportDialog({ onClose, navigate }: { onClose: () => void; navig
         <div
           className={`drop-zone ${ueber ? 'over' : ''} ${datei ? 'ln-imp-klein' : ''}`}
           style={bereit ? undefined : { display: 'none' }}
-          onClick={() => eingabe.current?.click()}
+          {...alsKnopf(() => eingabe.current?.click())}
           onDragOver={(e) => {
             e.preventDefault();
             setUeber(true);
@@ -432,7 +437,8 @@ export function ImportDialog({ onClose, navigate }: { onClose: () => void; navig
             <ul style={{ margin: '6px 0', paddingLeft: 18 }}>
               {SPALTEN_ERKLAERUNG.map(({ feld, wofuer }) => (
                 <li key={feld}>
-                  <strong>{IMPORT_SPALTEN[feld][0]}</strong> ({spaltenBuchstabe(IMPORT_STANDARDSPALTEN[feld])}) – {wofuer}
+                  <strong>{IMPORT_SPALTEN[feld][0]}</strong> ({spaltenBuchstabe(IMPORT_STANDARDSPALTEN[feld])}) –{' '}
+                  {feld === 'mitarbeiter' && sammel ? MITARBEITER_SAMMEL : wofuer}
                 </li>
               ))}
             </ul>

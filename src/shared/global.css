@@ -200,8 +200,10 @@ a:hover { text-decoration: underline; }
 .topbar-logo { flex: none; display: flex; align-items: center; padding-left: 12px; }
 
 /* Der obere Abstand sitzt im Inneren, damit die fixierte Tabellenkopfzeile
-   unmittelbar unter der Kopfleiste stehen bleibt. */
-.content { flex: 1; overflow-y: auto; padding: 0 32px 64px; }
+   unmittelbar unter der Kopfleiste stehen bleibt. Unten kommt die Höhe des
+   Hinweises „Neue Fassung“ hinzu (--neue-fassung-hoehe), damit sich auch die
+   letzten Bedienelemente über ihn hinaus scrollen lassen. */
+.content { flex: 1; overflow-y: auto; padding: 0 32px calc(64px + var(--neue-fassung-hoehe, 0px)); }
 /* Breite Arbeitsfläche – auf großen Bildschirmen bleibt ein Rand für die Lesbarkeit */
 .content-inner { max-width: 1560px; margin: 0 auto; padding-top: 24px; }
 
@@ -403,10 +405,13 @@ a:hover { text-decoration: underline; }
 /* ------------------------------------------------------------------ */
 /* Tabellen scrollen bei schmalen Fenstern quer, statt abgeschnitten zu werden. */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-/* Ab Tabletbreite passen die Tabellen; ohne eigenen Scrollbereich bleibt die
-   Kopfzeile beim Blättern der Seite stehen. */
+/* Ab Tabletbreite ohne eigenen Scrollbereich, damit die Kopfzeile beim Blättern
+   der Seite stehen bleibt. Passt eine Tabelle nicht in ihre Karte, setzt
+   tabellenBreiteBeobachten (src/shared/tabellen.ts) table-scroll-quer: Dann
+   scrollt sie quer, statt Spalten und Aktionen stumm abzuschneiden. */
 @media (min-width: 861px) {
   .table-scroll { overflow-x: clip; }
+  .table-scroll.table-scroll-quer { overflow-x: auto; }
 }
 .table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .table th {
@@ -514,37 +519,47 @@ a:hover { text-decoration: underline; }
 }
 .filter-btn.aktiv, .filter-btn.offen { color: var(--accent); }
 
-.filter-schatten { position: fixed; inset: 0; z-index: 40; }
-.filter-menu {
+
+/* Auswahlmenü an einem Knopf (AufklappMenue, src/shared/menue.tsx): fest
+   positioniert im body, die Lage setzt der Baustein. Über Dialogen (100) und
+   dem Workflow-Editor (150), unter Meldungen (200). */
+.aufklapp-menue {
   position: fixed;
-  z-index: 41;
-  min-width: 170px;
-  max-height: 280px;
+  z-index: 160;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 4px;
   background: var(--bg-elev);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--separator);
-}
-.filter-menu button {
-  display: block;
-  width: 100%;
-  padding: 6px 10px;
-  border: none;
-  background: none;
+  border: 1px solid var(--separator-strong);
   border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
   text-align: left;
+  white-space: normal;
   font-size: 13px;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
   color: var(--text);
-  white-space: nowrap;
+}
+.aufklapp-menue button {
+  flex: none;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
-.filter-menu button:hover { background: var(--bg-hover); }
-.filter-menu button.aktiv { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.aufklapp-menue button:hover, .aufklapp-menue button:focus-visible { background: var(--bg-hover); }
+.aufklapp-menue button.gefahr { color: var(--rot-text); }
+.aufklapp-menue button.aktiv { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.aufklapp-menue .aufklapp-menue-titel { flex: none; padding: 5px 10px; font-size: 11.5px; color: var(--text-secondary); }
 
 
 /* Antwortmöglichkeiten einer Entscheidung */
@@ -751,7 +766,10 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   width: min(680px, 100%);
+  /* dvh: auf Telefonen ohne die Werkzeugleisten des Browsers, sonst läge der
+     Dialogfuß darunter; 100vh bleibt Rückfall für ältere Browser. */
   max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   display: flex; flex-direction: column;
   animation: pop 0.18s cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -775,7 +793,32 @@ a:hover { text-decoration: underline; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop { from { opacity: 0; transform: scale(0.97) translateY(6px); } to { opacity: 1; transform: none; } }
 
-.toast-wrap { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+/* Hinweis „Neue Fassung verfügbar“ (src/shell/NeueFassung.tsx) – über dem
+   Inhalt, aber unter der aufgeklappten Seitenleiste (90) und unter Dialogen
+   (100), damit er deren Fuß nicht verdeckt. Meldungen rücken über ihn, und
+   der Inhalt (.content, .start) erhält unten zusätzlich seine Höhe als
+   Abstand, damit er nichts dauerhaft verdeckt (--neue-fassung-hoehe, gesetzt
+   vom Hinweis). */
+.neue-fassung {
+  position: fixed; right: 18px; bottom: 18px; z-index: 80;
+  width: min(420px, calc(100vw - 24px));
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 16px;
+  background: var(--bg-elev);
+  border: 1px solid var(--separator-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: 12.5px; line-height: 1.45;
+  animation: pop 0.2s ease;
+}
+.neue-fassung-text { display: flex; flex-direction: column; gap: 3px; color: var(--text-secondary); }
+.neue-fassung-text strong { font-size: 13.5px; color: var(--text); }
+.neue-fassung-knoepfe { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 520px) {
+  .neue-fassung { left: 12px; right: 12px; bottom: 12px; width: auto; }
+}
+
+.toast-wrap { position: fixed; bottom: calc(22px + var(--neue-fassung-hoehe, 0px)); left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; }
 .toast {
   background: rgba(30, 30, 32, 0.92);
   backdrop-filter: blur(12px);
@@ -853,6 +896,8 @@ a:hover { text-decoration: underline; }
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  /* Platz für den Hinweis „Neue Fassung“, damit der Fuß mit der Fassung nicht darunter liegt */
+  padding-bottom: var(--neue-fassung-hoehe, 0px);
 }
 
 .start-inner {
@@ -985,6 +1030,7 @@ a:hover { text-decoration: underline; }
   color: var(--text-tertiary);
   text-align: center;
 }
+.start-fassung { display: block; margin-top: 6px; }
 
 /* Bereichswechsel am Fuss der Menueleiste */
 .bereich-wechsel {
@@ -1051,7 +1097,7 @@ a:hover { text-decoration: underline; }
   .step-row { padding: 12px 16px; }
   .table th, .table td { padding: 9px 12px; }
 
-  .modal { max-height: calc(100vh - 24px); border-radius: var(--radius-lg); }
+  .modal { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); border-radius: var(--radius-lg); }
   .modal-header, .modal-body, .modal-footer { padding-left: 16px; padding-right: 16px; }
   .modal-footer { flex-wrap: wrap; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
   .overlay { padding: 12px; }
@@ -1060,7 +1106,7 @@ a:hover { text-decoration: underline; }
   .segmented { width: 100%; overflow-x: auto; }
   .search { width: 100%; }
   .topbar-title h1 { font-size: 17px; }
-  .content { padding-bottom: 48px; }
+  .content { padding-bottom: calc(48px + var(--neue-fassung-hoehe, 0px)); }
 }
 
 @media (max-width: 860px) {
@@ -1073,7 +1119,7 @@ a:hover { text-decoration: underline; }
     transition: transform 0.2s ease;
   }
   .sidebar.open { transform: none; box-shadow: var(--shadow-lg); }
-  .content { padding: 0 16px 60px; }
+  .content { padding: 0 16px calc(60px + var(--neue-fassung-hoehe, 0px)); }
   .content-inner { padding-top: 18px; }
   .topbar { padding: 12px 16px; }
   .topbar-logo { display: none; }

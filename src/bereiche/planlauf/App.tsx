@@ -24,12 +24,16 @@ import { Hinweisleisten } from './components/Hinweisleisten';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import type { IconName } from '../../shared/icons';
+import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
+import { useSeitenleiste } from '../../shared/seitenleiste';
 
 export function App() {
   const { data, zuruecksetzen, ladeZustand, setBearbeiter } = useStore();
   const toast = useToast();
   const [route, navigate] = useRoute();
-  const [menuOffen, setMenuOffen] = useState(false);
+  // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
+  const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projectId}` : route.view === 'planlauf' ? `planlauf/${route.runId}` : route.view);
+  const [menuOffen, setMenuOffen] = useSeitenleiste();
   const inEinstellungen = route.view === 'ketten' || route.view === 'rollen' || route.view === 'vorlagen';
   const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
   // Wer eine der Seiten unter „Einstellungen“ aufruft, sieht die Gruppe aufgeklappt
@@ -184,7 +188,7 @@ export function App() {
 
         <Hinweisleisten />
 
-        <div className="content">
+        <div className="content" ref={inhalt}>
           <div className="content-inner">
             {route.view === 'dashboard' ? <Dashboard navigate={gehe} /> : null}
             {route.view === 'fristen' ? <Fristen navigate={gehe} /> : null}

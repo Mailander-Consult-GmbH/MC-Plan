@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { formatDate, today } from '../../../shared/dates';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
+import { bauzeitraumAbgleichen } from '../domain/ablauf';
 import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon, ganzesFahrplanjahr } from '../domain/fristen';
 import {
   ANNEX_VII,
@@ -130,11 +131,20 @@ export function AnmeldungDialog({
       ...bauzeit,
     };
     if (anmeldung) {
-      updateAnmeldung(anmeldung.id, {
+      const patch = {
         ...gemeinsam,
         ...(aenderung ? { aenderungsNr: form.aenderungsNr.trim(), annexVII: form.annexVII || null } : {}),
-      });
-      toast('Anmeldung gespeichert.');
+      };
+      // Wie updateAnmeldung: Zählt nur eine tatsächliche Änderung – ohne sie nur schließen, nichts melden
+      const vorher = bauzeitraumAbgleichen(anmeldung, data.workflows);
+      const nachher = bauzeitraumAbgleichen({ ...anmeldung, ...patch }, data.workflows);
+      const geaendert = (Object.keys(nachher) as (keyof Anmeldung)[]).some(
+        (k) => vorher[k] !== nachher[k] && JSON.stringify(vorher[k]) !== JSON.stringify(nachher[k]),
+      );
+      if (geaendert) {
+        updateAnmeldung(anmeldung.id, patch);
+        toast('Anmeldung gespeichert.');
+      }
       onClose();
       return;
     }

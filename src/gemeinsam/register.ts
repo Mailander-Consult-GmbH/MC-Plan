@@ -17,9 +17,15 @@
  *
  * Gespeichert wird unter einem eigenen Schlüssel – nur, wenn sich der
  * gespeicherte Stand lesen ließ (sonst bleibt er unberührt, und die Bereiche
- * gleichen nicht ab).
+ * gleichen nicht ab). Ob das letzte Speichern gelungen ist, meldet
+ * `useRegisterSpeicherZustand`; das Controlling zeigt sonst einen dauerhaften
+ * Hinweis (src/bereiche/controlling/App.tsx). Speichert ein anderes Fenster das
+ * Register, lädt dieses Fenster den neuen Stand; Änderungen, die sich hier nicht
+ * speichern ließen, trägt es darauf nach und speichert erneut
+ * (`eigeneAenderungenNachziehen`).
  */
 import { useSyncExternalStore } from 'react';
+import { nachRaeumenSpeichern, speicherVoll } from '../shared/speicher';
 
 export type ID = string;
 
@@ -308,7 +314,12 @@ export function aufbereiten(roh: Roh): Register {
   return { version: REGISTER_VERSION, projekte, personen, geloescht };
 }
 
-function laden(): { register: Register; zustand: RegisterZustand } {
+/**
+ * Liest das Register. `nachgezogenAuf` steht nur in einem Stand, den ein Fenster
+ * nach dem Speichern eines anderen geschrieben hat (`eigeneAenderungenNachziehen`):
+ * die Kennung des fremden Stands, auf den es nachgezogen hat (`kennung`).
+ */
+function laden(): { register: Register; zustand: RegisterZustand; nachgezogenAuf?: string } {
   let roh: string | null;
   try {
     roh = localStorage.getItem(KEY);
@@ -331,17 +342,42 @@ function laden(): { register: Register; zustand: RegisterZustand } {
         /* kein Platz für die Kopie */
       }
     }
-    return { register: aufbereiten(daten), zustand: 'ok' };
+    return { register: aufbereiten(daten), zustand: 'ok', nachgezogenAuf: text(daten.nachgezogenAuf) };
   } catch {
     return { register: leeresRegister(), zustand: 'ladefehler' };
   }
 }
 
-function speichern(register: Register): void {
+/** Ergebnis des Speicherns: gespeichert, Speicher voll oder Speicher nicht nutzbar (gesperrt). */
+export type RegisterSpeicherZustand = 'ok' | 'voll' | 'gesperrt';
+
+/**
+ * Schreibt das Register (`text` = sein JSON). Ist der Speicher voll, macht
+ * `nachRaeumenSpeichern` (src/shared/speicher.ts) Platz, indem es Rohkopien
+ * (`.vor-fassung-<n>`, `.vor-einspielen-…`) entfernt – das Register wiegt
+ * schwerer als eine Kopie. Liefert, ob es gespeichert ist bzw. warum nicht;
+ * ein Fehlschlag steht in der Konsole (`melden`, bei erneuten Versuchen nicht).
+ */
+function speichern(text: string, melden = true): RegisterSpeicherZustand {
+  const warnen = (grund: unknown) => {
+    if (melden) console.warn('Projektregister konnte nicht gespeichert werden:', grund);
+  };
   try {
-    localStorage.setItem(KEY, JSON.stringify(register));
+    localStorage.setItem(KEY, text);
+    return 'ok';
   } catch (err) {
-    console.warn('Projektregister konnte nicht gespeichert werden:', err);
+    if (!speicherVoll(err)) {
+      warnen(err);
+      return 'gesperrt';
+    }
+  }
+  try {
+    if (nachRaeumenSpeichern(KEY, text)) return 'ok';
+    warnen('Speicher voll');
+    return 'voll';
+  } catch (err) {
+    warnen(err);
+    return speicherVoll(err) ? 'voll' : 'gesperrt';
   }
 }
 
@@ -349,14 +385,35 @@ function speichern(register: Register): void {
 /* Gemeinsamer Zustand mit Abonnement                                  */
 /* ------------------------------------------------------------------ */
 
-let stand: { register: Register; zustand: RegisterZustand; text: string } | null = null;
+/**
+ * Der Stand dieses Fensters: `text` ist das JSON von `register`, `gespeichert`
+ * das Ergebnis des letzten Speicherns – nach dem Laden 'ok', denn der Stand
+ * kommt ja aus dem Speicher. `basis` ist das Register, das zuletzt im Speicher
+ * stand, soweit dieses Fenster es kennt (geladen oder selbst gespeichert):
+ * Gegen sie ermittelt `eigeneAenderungenNachziehen` die Änderungen, die sich
+ * hier nicht speichern ließen. `nachgezogen`: Hat dieses Fenster zuletzt nach
+ * dem Speichern eines anderen nachgezogen und gespeichert, Kennung und Register
+ * des fremden Stands, auf den es nachzog – bis zum nächsten `storage`-Ereignis.
+ */
+interface Stand {
+  register: Register;
+  zustand: RegisterZustand;
+  text: string;
+  gespeichert: RegisterSpeicherZustand;
+  basis: Register;
+  nachgezogen: { auf: string; basis: Register } | null;
+}
+
+let stand: Stand | null = null;
 const hoerer = new Set<() => void>();
 
-function aktuell() {
-  if (!stand) {
-    const geladen = laden();
-    stand = { ...geladen, text: JSON.stringify(geladen.register) };
-  }
+function ausGeladen(geladen: { register: Register; zustand: RegisterZustand }): Stand {
+  const { register, zustand } = geladen;
+  return { register, zustand, text: JSON.stringify(register), gespeichert: 'ok', basis: register, nachgezogen: null };
+}
+
+function aktuell(): Stand {
+  if (!stand) stand = ausGeladen(laden());
   return stand;
 }
 
@@ -372,21 +429,46 @@ export function registerZustand(): RegisterZustand {
   return aktuell().zustand;
 }
 
+export function registerSpeicherZustand(): RegisterSpeicherZustand {
+  return aktuell().gespeichert;
+}
+
+/**
+ * Schreibt einen nicht gespeicherten Stand erneut – etwa, wenn inzwischen
+ * wieder Platz ist. Der Stand selbst bleibt derselbe; benachrichtigt wird nur,
+ * wenn sich das Ergebnis ändert.
+ */
+export function registerErneutSpeichern(): RegisterSpeicherZustand {
+  const s = aktuell();
+  if (s.zustand !== 'ok' || s.gespeichert === 'ok') return s.gespeichert;
+  const gespeichert = speichern(s.text, false);
+  if (gespeichert !== s.gespeichert) {
+    stand = { ...s, gespeichert, basis: gespeichert === 'ok' ? s.register : s.basis };
+    benachrichtigen();
+  }
+  return gespeichert;
+}
+
 /**
  * Ändert das Register über eine Funktion (darf außerhalb von React-Updates
  * aufgerufen werden, läuft genau einmal). Ändert sich nichts, bleibt der
- * Stand unberührt und niemand wird benachrichtigt. Nach einem Ladefehler
- * bleibt das Register unverändert.
+ * Stand unberührt und niemand wird benachrichtigt – nur ein noch nicht
+ * gespeicherter Stand wird dann erneut geschrieben (`registerErneutSpeichern`).
+ * Der neue Stand gilt auch, wenn er sich nicht speichern lässt (der
+ * Speicherzustand sagt es); nach einem Ladefehler bleibt das Register
+ * unverändert.
  */
 export function registerAendern(fn: (r: Register) => Register): Register {
   const s = aktuell();
   if (s.zustand !== 'ok') return s.register;
   const neu = fn(s.register);
-  if (neu === s.register) return s.register;
-  const neuText = JSON.stringify(neu);
-  if (neuText === s.text) return s.register;
-  stand = { register: neu, zustand: s.zustand, text: neuText };
-  speichern(neu);
+  const neuText = neu === s.register ? s.text : JSON.stringify(neu);
+  if (neuText === s.text) {
+    registerErneutSpeichern();
+    return s.register;
+  }
+  const gespeichert = speichern(neuText);
+  stand = { ...s, register: neu, text: neuText, gespeichert, basis: gespeichert === 'ok' ? neu : s.basis };
   benachrichtigen();
   return neu;
 }
@@ -396,11 +478,184 @@ function abonnieren(h: () => void): () => void {
   return () => hoerer.delete(h);
 }
 
-// Ein anderes Fenster hat das Register geändert: neu laden.
+/* ------------------------------------------------------------------ */
+/* Nicht gespeicherte Änderungen auf einen fremden Stand nachziehen    */
+/* ------------------------------------------------------------------ */
+
+const gleich = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
+const istObjekt = (w: unknown): w is Record<string, unknown> => !!w && typeof w === 'object' && !Array.isArray(w);
+
+/**
+ * Dreiwege-Zusammenführung eines Werts: Hat dieses Fenster ihn geändert
+ * (`eigen` ≠ `basis`), gilt seine Fassung, sonst die fremde. Objekte führt sie
+ * Feld für Feld zusammen, wenn es sie in allen drei Ständen gibt – so bleibt
+ * etwa die ★ eines anderen Bereichs erhalten, wenn hier eine Übernahme
+ * vorgesehen wurde; hat das andere Fenster ein Objekt entfernt (etwa eine
+ * Mitgliedschaft gelöst), bleibt es entfernt. Listen gelten als ein Wert.
+ */
+function wertZusammenfuehren(basis: unknown, eigen: unknown, fremd: unknown): unknown {
+  if (gleich(eigen, basis)) return fremd;
+  if (istObjekt(basis) && fremd === undefined) return undefined;
+  if (!istObjekt(basis) || !istObjekt(eigen) || !istObjekt(fremd)) return eigen;
+  const ergebnis: Record<string, unknown> = {};
+  for (const k of new Set([...Object.keys(fremd), ...Object.keys(eigen), ...Object.keys(basis)])) {
+    const w = wertZusammenfuehren(basis[k], eigen[k], fremd[k]);
+    if (w !== undefined) ergebnis[k] = w;
+  }
+  return ergebnis;
+}
+
+/**
+ * Projekte bzw. Personen über ihre Kennung zusammenführen: in der Reihenfolge
+ * des fremden Stands, hier neu Hinzugekommenes am Ende – nur, was `nachziehen`
+ * zulässt. Was eine Seite gelöscht hat, bleibt gelöscht – auch wenn die andere
+ * es geändert hat.
+ */
+function listeZusammenfuehren<T extends { id: ID }>(basis: T[], eigen: T[], fremd: T[], nachziehen: (x: T) => boolean): T[] {
+  const alt = new Map(basis.map((x) => [x.id, x]));
+  const mein = new Map(eigen.map((x) => [x.id, x]));
+  const fremdIds = new Set(fremd.map((x) => x.id));
+  const ergebnis: T[] = [];
+  for (const f of fremd) {
+    const b = alt.get(f.id);
+    const e = mein.get(f.id);
+    if (!b) ergebnis.push(e && nachziehen(e) ? e : f);
+    else if (e) ergebnis.push(wertZusammenfuehren(b, e, f) as T);
+    // b ohne e: hier gelöscht
+  }
+  // Hier neu (im fremden Stand nicht vorhanden, in der Basis auch nicht); fehlt etwas
+  // aus der Basis im fremden Stand, hat das andere Fenster es gelöscht.
+  for (const e of eigen) if (!alt.has(e.id) && !fremdIds.has(e.id) && nachziehen(e)) ergebnis.push(e);
+  return ergebnis;
+}
+
+/** Kennungen in den Bereichen: die `ids` einer Person bzw. die Mitgliedschaften eines Projekts (alle oder nur die übernommenen). */
+type Kennungen = Partial<Record<ProjektBereich, ID>>;
+const kennungenIn = (p: RegisterProjekt, auchOffene: boolean): Kennungen =>
+  Object.fromEntries(Object.entries(p.bereiche).flatMap(([b, m]) => (m && (auchOffene || !m.offen) ? [[b, m.id]] : [])));
+
+/**
+ * Trägt die Änderungen dieses Fensters, die sich nicht speichern ließen
+ * (`eigen` gegenüber `basis`, dem zuletzt bekannten gespeicherten Stand), auf
+ * den Stand nach, den ein anderes Fenster gespeichert hat (`fremd`) – je Feld;
+ * bei Widerspruch gilt die eigene Änderung, eine Löschung geht jeder Änderung
+ * vor. Personen ohne Projekt entfallen. Löschvermerke: die fremden ohne die
+ * hier erledigten, dazu die hier neuen.
+ *
+ * Neu nachgezogen werden nur Projekte des Controllings: Was ein Bereich neu
+ * eingetragen hat (Projekte mit Herkunft im Bereich, Personen), steht auch in
+ * seinem Bestand, und sein nächster Abgleich trägt es wieder ein – verknüpft
+ * mit einem Projekt gleicher Nummer bzw. einer Person gleicher E-Mail, das das
+ * andere Fenster inzwischen eingetragen hat. Ein unverändertes Nachziehen
+ * hinterließe Doppel; was hier am Register eines solchen Projekts sonst noch
+ * geändert wurde (etwa im Controlling desselben Fensters), entfällt.
+ *
+ * Hat die andere Seite ein Projekt bzw. eine Person, die eine Seite gelöscht
+ * hat, seit `basis` in weitere Bereiche übernommen, ergänzt sie deren
+ * Kennungen als Löschvermerk – sonst führte der Bereich sie weiter, und sein
+ * Abgleich trüge sie wieder ein. Eine noch offene Mitgliedschaft zählt dabei
+ * mit: Der Bereich legt das Projekt an, bevor sein nächster Abgleich sie als
+ * übernommen einträgt. Reine Funktion; `jetzt` ist der Zeitpunkt solcher
+ * Vermerke.
+ */
+export function eigeneAenderungenNachziehen(basis: Register, eigen: Register, fremd: Register, jetzt: string): Register {
+  const projekte = listeZusammenfuehren(basis.projekte, eigen.projekte, fremd.projekte, (p) => p.herkunft === 'controlling');
+  const projektIds = new Set(projekte.map((p) => p.id));
+  const personen = listeZusammenfuehren(basis.personen, eigen.personen, fremd.personen, () => false).filter((p) =>
+    projektIds.has(p.projektId),
+  );
+  const schluessel = (g: Grabstein) => JSON.stringify(g);
+  const alt = new Set(basis.geloescht.map(schluessel));
+  const mein = new Set(eigen.geloescht.map(schluessel));
+  const fremdeVermerke = new Set(fremd.geloescht.map(schluessel));
+  const geloescht = [
+    ...fremd.geloescht.filter((g) => !alt.has(schluessel(g)) || mein.has(schluessel(g))),
+    ...eigen.geloescht.filter((g) => !alt.has(schluessel(g)) && !fremdeVermerke.has(schluessel(g))),
+  ];
+
+  // Gelöscht gegen übernommen: Kennungen, die in `basis` nicht (übernommen) standen und noch kein Vermerk nennt
+  const vermerkt = new Set(geloescht.flatMap((g) => Object.entries(g.offen).map(([b, id]) => `${g.art}|${b}|${id}`)));
+  const vermerken = (art: Grabstein['art'], bezeichnung: string, vorher: Kennungen, nachher: Kennungen) => {
+    const offen = Object.fromEntries(
+      Object.entries(nachher).filter(([b, id]) => vorher[b as ProjektBereich] !== id && !vermerkt.has(`${art}|${b}|${id}`)),
+    );
+    if (Object.keys(offen).length === 0) return;
+    geloescht.push({ art, offen, bezeichnung, am: jetzt });
+    Object.entries(offen).forEach(([b, id]) => vermerkt.add(`${art}|${b}|${id}`));
+  };
+  const altProjekte = new Map(basis.projekte.map((p) => [p.id, p]));
+  for (const p of [...eigen.projekte, ...fremd.projekte]) {
+    const b = altProjekte.get(p.id);
+    if (b && !projektIds.has(p.id)) vermerken('projekt', projektTitel(p), kennungenIn(b, false), kennungenIn(p, true));
+  }
+  const altPersonen = new Map(basis.personen.map((x) => [x.id, x]));
+  const personIds = new Set(personen.map((x) => x.id));
+  for (const x of [...eigen.personen, ...fremd.personen]) {
+    const b = altPersonen.get(x.id);
+    // Personen eines gelöschten Projekts deckt dessen Vermerk
+    if (b && !personIds.has(x.id) && projektIds.has(x.projektId)) vermerken('person', personName(x), b.ids, x.ids);
+  }
+  return { version: REGISTER_VERSION, projekte, personen, geloescht };
+}
+
+/** Kurze Kennung eines Registerstands (FNV-1a über sein JSON und dessen Länge) – für `nachgezogenAuf`. */
+function kennung(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return `${(h >>> 0).toString(36)}-${text.length.toString(36)}`;
+}
+
+// Ein anderes Fenster hat das Register gespeichert: neu laden. Hält dieses
+// Fenster Änderungen, die sich nicht speichern ließen (`gespeichert` ≠ 'ok'),
+// trägt es sie auf den neuen Stand nach und versucht erneut zu speichern – sonst
+// gingen sie wortlos verloren, und der Hinweis im Controlling verschwände, als
+// sei gespeichert. Gelingt das Speichern nicht, bleibt der Hinweis. Ist der neue
+// Stand unlesbar oder aus einer neueren Fassung, gilt er; die Änderungen entfallen.
+//
+// Hielten zwei Fenster nicht Gespeichertes, ziehen beide auf denselben fremden
+// Stand nach, und das spätere Schreiben überschriebe das frühere. Deshalb trägt
+// ein so geschriebener Stand die Kennung des Stands, auf den nachgezogen wurde
+// (`nachgezogenAuf`); bringt das nächste Ereignis einen Stand mit derselben
+// Kennung (im Ereignis oder im Speicher), zieht dieses Fenster seine Änderungen
+// gegenüber jenem fremden Stand noch einmal nach.
 if (typeof window !== 'undefined') {
+  const nachgezogenAuf = (wert: string | null): string => {
+    try {
+      const daten = JSON.parse(wert ?? '') as Roh | null;
+      return daten && typeof daten === 'object' ? text(daten.nachgezogenAuf) : '';
+    } catch {
+      return '';
+    }
+  };
   window.addEventListener('storage', (e) => {
     if (e.key !== KEY || !stand) return;
-    stand = null;
+    const vorher = stand;
+    const geladen = laden();
+    const fremd = ausGeladen(geladen);
+    stand = fremd;
+    const auf = vorher.nachgezogen?.auf;
+    const zugleich = !!auf && (geladen.nachgezogenAuf === auf || nachgezogenAuf(e.newValue) === auf);
+    if (vorher.zustand === 'ok' && fremd.zustand === 'ok' && (vorher.gespeichert !== 'ok' || zugleich)) {
+      const basis = zugleich ? vorher.nachgezogen!.basis : vorher.basis;
+      // In der Form von `aufbereiten`, damit derselbe Stand auch derselbe Text ist
+      const register = aufbereiten(
+        eigeneAenderungenNachziehen(basis, vorher.register, fremd.register, new Date().toISOString()) as unknown as Roh,
+      );
+      const neuText = JSON.stringify(register);
+      if (neuText !== fremd.text) {
+        const kennungFremd = kennung(fremd.text);
+        const gespeichert = speichern(JSON.stringify({ ...register, nachgezogenAuf: kennungFremd }));
+        const ok = gespeichert === 'ok';
+        stand = {
+          ...fremd,
+          register,
+          text: neuText,
+          gespeichert,
+          basis: ok ? register : fremd.register,
+          nachgezogen: ok ? { auf: kennungFremd, basis: fremd.register } : null,
+        };
+      }
+    }
     benachrichtigen();
   });
 }
@@ -413,4 +668,9 @@ export function useRegister(): Register {
 /** Ob sich das Register lesen ließ; sonst gleichen die Bereiche nicht ab. */
 export function useRegisterZustand(): RegisterZustand {
   return useSyncExternalStore(abonnieren, registerZustand, registerZustand);
+}
+
+/** Ob sich der letzte Stand des Registers speichern ließ (Hinweis im Controlling). */
+export function useRegisterSpeicherZustand(): RegisterSpeicherZustand {
+  return useSyncExternalStore(abonnieren, registerSpeicherZustand, registerSpeicherZustand);
 }

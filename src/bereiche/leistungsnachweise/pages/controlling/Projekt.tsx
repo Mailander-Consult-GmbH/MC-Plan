@@ -7,11 +7,12 @@
  * „Löschen“ – im Bereich gibt es davon nichts, dort erfassen die Mitarbeiter
  * nur ihre Leistungen (domain/rechte.ts). Jedes Projekt gehört in die
  * Leistungsnachweise (`JEDES_PROJEKT_IN`): Führt ein anderer Bereich das
- * Projekt, lässt es sich hier nicht löschen – nur im Controlling unter
- * „Projekte“ für alle Bereiche.
+ * Projekt oder ist es dort zur Übernahme vorgesehen, lässt es sich hier nicht
+ * löschen – nur im Controlling unter „Projekte“ für alle Bereiche (dort lässt
+ * sich auch eine vorgesehene Übernahme zurücknehmen).
  */
 import { useState } from 'react';
-import { andereBereiche } from '../../../../gemeinsam/ProjektBereiche';
+import { andereBereiche, vorgeseheneBereiche } from '../../../../gemeinsam/ProjektBereiche';
 import { useRegister } from '../../../../gemeinsam/register';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
@@ -69,8 +70,10 @@ export function ControllingProjekt({
     leistungen: data.leistungen.filter((l) => l.projektId === projekt.id).length,
   };
   const kurzname = projektKurzname(projekt);
-  // Führt ein anderer Bereich das Projekt, nähme der Abgleich es gleich wieder auf
+  // Führt ein anderer Bereich das Projekt oder ist es dort vorgesehen, nähme der Abgleich es gleich wieder auf
   const geteilt = andereBereiche(register, 'leistungsnachweise', projekt.id);
+  const vorgesehen = vorgeseheneBereiche(register, 'leistungsnachweise', projekt.id);
+  const gesperrt = !!geteilt || !!vorgesehen;
 
   return (
     <div className="stack">
@@ -88,11 +91,13 @@ export function ControllingProjekt({
           <button
             type="button"
             className="btn btn-sm btn-danger"
-            disabled={!!geteilt}
+            disabled={gesperrt}
             title={
               geteilt
                 ? `Wird auch in ${geteilt} geführt – jedes Projekt gehört in die Leistungsnachweise. Für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`
-                : undefined
+                : vorgesehen
+                  ? `Ist für ${vorgesehen} zur Übernahme vorgesehen – jedes Projekt gehört in die Leistungsnachweise. Die Übernahme zurücknehmen bzw. für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`
+                  : undefined
             }
             onClick={() => setLoeschen(true)}
           >
@@ -122,6 +127,11 @@ export function ControllingProjekt({
           Auch in {geteilt} geführt – löschen lässt sich das Projekt nur im Controlling unter „Projekte“, für alle
           Bereiche.
         </p>
+      ) : vorgesehen ? (
+        <p className="small tertiary" style={{ margin: 0 }}>
+          Für {vorgesehen} zur Übernahme vorgesehen – löschen lässt sich das Projekt erst, wenn die Übernahme im
+          Controlling unter „Projekte“ zurückgenommen ist, oder dort für alle Bereiche.
+        </p>
       ) : null}
 
       <div className="tabs">
@@ -144,7 +154,7 @@ export function ControllingProjekt({
 
       {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
 
-      {loeschen && !geteilt ? (
+      {loeschen && !gesperrt ? (
         <ConfirmDialog
           titel="Projekt löschen?"
           text={`„${projekt.name}“ wird mit ${anzahl(umfang.nachweise, 'Leistungsnachweis', 'Leistungsnachweisen')} und ${anzahl(

@@ -7,11 +7,13 @@
  * nicht im Controlling – der Dialog zeigt sie dann nur an.
  *
  * Die Leistung gehört dem Projekt; in welchem Leistungsnachweis sie erscheint,
- * ergibt sich aus ihrem Datum. Liegt das Datum in keinem Nachweis, legt der
- * Store nach der Zeitraumregel des Projekts einen an oder verlängert den
- * offenen – der Dialog sagt das vorher an. Ein abgeschlossener Nachweis ändert
- * sich erst nach „Wieder öffnen“ im Controlling. Hat das Projekt genau einen
- * Abschnitt, ist er vorausgewählt.
+ * ergibt sich aus ihrem Datum – außer sie ist nachgereicht oder schon in einem
+ * abgeschlossenen Nachweis abgerechnet (`nachweisDerLeistung`; dort bleibt sie
+ * auch mit einem neuen Datum, bis das Controlling ihn wieder öffnet). Liegt
+ * das Datum in keinem Nachweis, legt der Store nach der Zeitraumregel des
+ * Projekts einen an oder verlängert den offenen – der Dialog sagt das vorher
+ * an. Ein abgeschlossener Nachweis ändert sich erst nach „Wieder öffnen“ im
+ * Controlling. Hat das Projekt genau einen Abschnitt, ist er vorausgewählt.
  */
 import { useRef, useState } from 'react';
 import { today } from '../../../shared/dates';
@@ -19,10 +21,17 @@ import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Callout, ConfirmDialog, Field, Modal, Select, TextArea } from '../../../shared/ui';
 import { zahlLesen } from '../domain/import';
-import { mitAbschnittsspalten, nachweisDerLeistung, nachweiseErgaenzen, nachweisFuer, type Ergaenzung } from '../domain/nachweis';
+import {
+  abgerechnetIn,
+  mitAbschnittsspalten,
+  nachweisDerLeistung,
+  nachweiseErgaenzen,
+  nachweisFuer,
+  type Ergaenzung,
+} from '../domain/nachweis';
 import { NICHT_ANGEMELDET, angemeldet, darfLeistungAendern } from '../domain/rechte';
 import { mitarbeiterName, type ID, type ISODate, type Leistung, type Leistungsnachweis, type LeistungsnachweisDaten, type Projekt } from '../domain/types';
-import { istDatum, langDatum, stundenText, zeitraumText } from '../domain/zeitraum';
+import { imZeitraum, istDatum, langDatum, stundenText, zeitraumText } from '../domain/zeitraum';
 import { useStore } from '../store/store';
 import { useAnmeldung } from './AnmeldeDialog';
 import './leistungen.css';
@@ -55,16 +64,29 @@ export function abgeschlossenHinweis(n: Leistungsnachweis): string {
   return `Die Leistung liegt im abgeschlossenen Nachweis „${nachweisName(n)}“ – er ändert sich erst nach „Wieder öffnen“ im Controlling.`;
 }
 
+/**
+ * Nachweis, in dem die Leistung mit dem Datum steht: bei einer vorhandenen
+ * nach `nachweisDerLeistung` (nachgereicht bzw. abgerechnet zählt vor dem
+ * Datum), bei einer neuen der des Datums.
+ */
+function nachweisMitDatum(daten: LeistungsnachweisDaten, projekt: Projekt, datum: ISODate, leistung?: Leistung): Leistungsnachweis | undefined {
+  return leistung ? nachweisDerLeistung(daten, { ...leistung, datum }) : nachweisFuer(daten, projekt.id, datum);
+}
+
 /** Was mit dem Nachweis zum gewählten Datum geschieht – als Hinweis unter dem Datum. */
-function datumHinweis(daten: LeistungsnachweisDaten, projekt: Projekt, datum: ISODate, eigenesDatum: boolean): string {
+function datumHinweis(daten: LeistungsnachweisDaten, projekt: Projekt, datum: ISODate, leistung?: Leistung): string {
   if (!istDatum(datum)) return 'Tag der Leistung';
-  const n = nachweisFuer(daten, projekt.id, datum);
+  const eigenesDatum = !!leistung && leistung.datum === datum;
+  const n = nachweisMitDatum(daten, projekt, datum, leistung);
   if (n) {
     if (n.status !== 'abgeschlossen') return `Erscheint im Leistungsnachweis „${nachweisName(n)}“.`;
     // Beim unveränderten Datum sagt es schon der Hinweis über dem Formular
-    return eigenesDatum
-      ? 'Tag der Leistung'
-      : `Liegt im abgeschlossenen Leistungsnachweis „${nachweisName(n)}“ – er ändert sich erst nach „Wieder öffnen“ im Controlling.`;
+    if (eigenesDatum) return 'Tag der Leistung';
+    // Schon abgerechnet: Sie bleibt dort – kein anderer Nachweis rechnet sie ein zweites Mal ab
+    if (!imZeitraum(datum, n.von, n.bis)) {
+      return `Bleibt im abgeschlossenen Leistungsnachweis „${nachweisName(n)}“ abgerechnet – mit dem neuen Datum erscheint sie erst, wenn das Controlling ihn wieder öffnet.`;
+    }
+    return `Liegt im abgeschlossenen Leistungsnachweis „${nachweisName(n)}“ – er ändert sich erst nach „Wieder öffnen“ im Controlling.`;
   }
   if (eigenesDatum) return 'Liegt in keinem Leistungsnachweis.';
   const vorschau = nachweiseErgaenzen(daten, projekt, [datum], new Date().toISOString(), () => 'vorschau');
@@ -160,11 +182,12 @@ export function LeistungDialog({
     const werte = { datum, stunden, abschnittId, text };
 
     // Was der Store für das Datum an Nachweisen ergänzt – vorab auf dem angezeigten Stand gerechnet
-    const datumNeu = !leistung || leistung.datum !== datum;
+    const datumNeu = !leistung || (leistung.datum !== datum && !abgerechnetIn(data, leistung));
     const ergaenzung: Ergaenzung = datumNeu
       ? nachweiseErgaenzen(data, projekt, [datum], new Date().toISOString(), () => 'vorschau')
       : { neu: [], erweitert: [] };
-    const geschlossen = [nachweisFuer(data, projekt.id, datum), leistung ? nachweisDerLeistung(data, leistung) : undefined].find(
+    // Nachgereicht bzw. abgerechnet zählt vor dem Datum (`nachweisDerLeistung`); dazu der bisherige Nachweis
+    const geschlossen = [nachweisMitDatum(data, projekt, datum, leistung), leistung ? nachweisDerLeistung(data, leistung) : undefined].find(
       (n) => n?.status === 'abgeschlossen',
     );
 
@@ -279,7 +302,7 @@ export function LeistungDialog({
               ) : null}
               <Field
                 label="Datum"
-                hint={nurLesen ? undefined : datumHinweis(data, projekt, form.datum, !!leistung && leistung.datum === form.datum)}
+                hint={nurLesen ? undefined : datumHinweis(data, projekt, form.datum, leistung)}
               >
                 <input
                   className="input"

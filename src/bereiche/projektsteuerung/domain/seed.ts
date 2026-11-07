@@ -138,7 +138,7 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
       eintraege: [
         eintrag('I', 'Die Sperrpause für den Einhub des Überbaus ist bestätigt.'),
         eintrag('F', 'Baubesprechungen finden zweiwöchentlich dienstags um 9:00 Uhr im Baucontainer statt.'),
-        // Aufgaben der Projektsteuerung (Lena Roth, angemeldet) – die eigenen To-Dos der Übersicht
+        // Aufgaben der Projektsteuerin Lena Roth – eigene To-Dos der Übersicht, wenn unter „Angemeldet als“ „Lena Roth“ steht
         eintrag('A', 'Terminplan mit den Sperrpausen fortschreiben und an den Auftraggeber übergeben.', {
           wer: 'PS',
           termin: tag(-2),
@@ -237,7 +237,9 @@ export function seedDaten(): ProjektsteuerungDaten {
 
   return {
     version: DATEN_VERSION,
-    // Angemeldet ist die Projektsteuerung der Demoprojekte – so zeigt die Übersicht ihre To-Dos.
+    // Nur ein Spiegel der gemeinsamen Anmeldung: `useBenutzerAbgleich` ersetzt ihn sofort durch den Namen
+    // unter „Angemeldet als“ (kaplan-benutzer.v1). Wer dort „Lena Roth“ einträgt, sieht die Aufgaben der
+    // Projektsteuerung als eigene To-Dos; „Lena Roth“ zählt in benutzer.ts (`FRUEHER`) als Vorgabe.
     einstellungen: { bearbeiter: personName(b.ps), farbmodus: 'standard' },
     gewerke: [...STANDARD_GEWERKE],
     funktionen: STANDARD_FUNKTIONEN.map((f) => ({ ...f })),

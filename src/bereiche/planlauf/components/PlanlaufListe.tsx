@@ -16,7 +16,7 @@
  * Schritt“ den führenden (frühestes Soll) mit „+n parallel“; Erinnern und der
  * Erledigt-Haken fragen dann nach dem Schritt.
  */
-import { Fragment, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { abbruchHinweis } from '../domain/engine';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import {
@@ -49,10 +49,11 @@ import { useStore } from '../store/store';
 import { AmpelBadge, AngekuendigtBadge, DocKindIcon, RunStatusBadge } from './common';
 import { BuendelnDialog } from './BuendelnDialog';
 import { EmailDialog } from './EmailDialog';
-import { ErledigtButton, useSchrittStatus } from './SchrittStatus';
+import { useSchrittStatus } from './SchrittStatus';
 import { ConfirmDialog, EmptyState, Progress } from '../../../shared/ui';
 import { useToast } from '../../../shared/toast';
 import { Icon } from '../../../shared/icons';
+import { AufklappMenue } from '../../../shared/menue';
 
 /** Spalten, nach denen sich die Liste sortieren lässt. */
 type SortFeld = 'titel' | 'gewerk' | 'stand' | 'schritt' | 'zustaendig' | 'fortschritt' | 'status';
@@ -122,15 +123,15 @@ export function PlanlaufListe({
   const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
   /**
    * Stehen mehrere Schritte an, fragt ein kleines Menü am Erledigt-Haken bzw.
-   * an der Erinnern-Schaltfläche nach dem Schritt.
+   * an der Erinnern-Schaltfläche nach dem Schritt (AufklappMenue am Knopf in
+   * `wahlKnopf`).
    */
   const [schrittWahl, setSchrittWahl] = useState<{
     art: 'erledigt' | 'mail';
     run: PlanRun;
     schritte: RunStep[];
-    x: number;
-    y: number;
   } | null>(null);
+  const wahlKnopf = useRef<HTMLElement | null>(null);
   /** Paketzeilen, die von Hand abweichend auf- bzw. zugeklappt sind. */
   const [abweichend, setAbweichend] = useState<string[]>([]);
   /** Aufgeklappte Planverzeichnisse – zunächst sind alle zugeklappt. */
@@ -141,10 +142,11 @@ export function PlanlaufListe({
   const [sortFeld, setSortFeld] = useState<SortFeld | null>(null);
   const [absteigend, setAbsteigend] = useState(false);
   /**
-   * Offene Filterauswahl samt Position. Das Menü liegt fest im Fenster, weil
-   * Karte und Tabelle ihren Inhalt beschneiden.
+   * Spalte mit offener Filterauswahl; das Menü (AufklappMenue) hängt am
+   * Filterknopf in `filterKnopf`.
    */
-  const [filterOffen, setFilterOffen] = useState<{ feld: FilterFeld; x: number; y: number } | null>(null);
+  const [filterOffen, setFilterOffen] = useState<FilterFeld | null>(null);
+  const filterKnopf = useRef<HTMLElement | null>(null);
   const [zuletzt, setZuletzt] = useState(String(ebene));
 
   // Beim Umschalten der Gliederung gilt wieder die einheitliche Darstellung.
@@ -275,17 +277,21 @@ export function PlanlaufListe({
     );
   };
 
-  /** Öffnet das Menü zur Schrittwahl an der angeklickten Schaltfläche. */
+  /**
+   * Öffnet das Menü zur Schrittwahl an der angeklickten Schaltfläche; ein
+   * zweiter Klick auf dieselbe schließt es wieder.
+   */
   const schrittWaehlen = (art: 'erledigt' | 'mail', run: PlanRun, schritte: RunStep[], ziel: HTMLElement) => {
-    const platz = ziel.getBoundingClientRect();
-    setSchrittWahl({
-      art,
-      run,
-      schritte,
-      x: Math.max(8, Math.min(platz.right - 240, window.innerWidth - 248)),
-      y: platz.bottom + 6,
-    });
+    if (schrittWahl && wahlKnopf.current === ziel) {
+      setSchrittWahl(null);
+      return;
+    }
+    wahlKnopf.current = ziel;
+    setSchrittWahl({ art, run, schritte });
   };
+  /** Ist das Menü zur Schrittwahl an diesem Knopf offen? */
+  const wahlOffen = (art: 'erledigt' | 'mail', run: PlanRun) =>
+    schrittWahl?.art === art && schrittWahl.run.id === run.id;
 
   /** Person eines Schritts für Anzeige und Tooltip. */
   const personVon = (step: RunStep) => {
@@ -333,26 +339,25 @@ export function PlanlaufListe({
    * Spaltenüberschrift: Klick auf die Bezeichnung sortiert, der Trichter
    * daneben öffnet die Auswahl der Spalte. Der gewählte Wert steht
    * anschließend in der Überschrift.
+   *
+   * Eine Funktion, kein Baustein: Als Baustein, der bei jeder Darstellung neu
+   * entsteht, würde React die Überschriften jedes Mal neu einhängen – der
+   * Filterknopf, an dem das Menü hängt, wäre dann nicht mehr im Dokument.
    */
-  const Kopf = ({
-    feld,
-    children,
-    klasse = '',
-    titel,
-    stil,
-    filter,
-  }: {
-    feld: SortFeld;
-    children: React.ReactNode;
-    klasse?: string;
-    titel?: string;
-    stil?: React.CSSProperties;
-    filter?: FilterFeld;
-  }) => {
+  const kopf = (
+    feld: SortFeld,
+    children: React.ReactNode,
+    {
+      klasse = '',
+      titel,
+      stil,
+      filter,
+    }: { klasse?: string; titel?: string; stil?: React.CSSProperties; filter?: FilterFeld } = {},
+  ) => {
     const optionen = filter && spaltenFilter ? spaltenFilter.optionen[filter] : null;
     const wert = filter && spaltenFilter ? spaltenFilter.werte[filter] : '';
     const gewaehlt = optionen?.find((o) => o.value === wert);
-    const offen = filter !== undefined && filterOffen?.feld === filter;
+    const offen = filter !== undefined && filterOffen === filter;
     return (
       <th className={`${klasse} ${gewaehlt ? 'gefiltert' : ''}`} style={stil}>
         <span className="th-inhalt">
@@ -369,18 +374,15 @@ export function PlanlaufListe({
               className={`filter-btn ${gewaehlt ? 'aktiv' : ''} ${offen ? 'offen' : ''}`}
               title={gewaehlt ? `Filter: ${gewaehlt.label}` : 'Filtern'}
               aria-label="Spalte filtern"
+              aria-haspopup="menu"
+              aria-expanded={offen}
               onClick={(e) => {
                 if (offen) {
                   setFilterOffen(null);
                   return;
                 }
-                const platz = e.currentTarget.getBoundingClientRect();
-                setFilterOffen({
-                  feld: filter!,
-                  // Nach rechts hinaus stehende Menüs klappen nach links auf
-                  x: Math.min(platz.left, window.innerWidth - 200),
-                  y: platz.bottom + 6,
-                });
+                filterKnopf.current = e.currentTarget;
+                setFilterOffen(filter!);
               }}
             >
               <Icon name="filter" size={11} />
@@ -389,34 +391,22 @@ export function PlanlaufListe({
         </span>
 
         {offen && optionen ? (
-          <>
-            <div className="filter-schatten" onClick={() => setFilterOffen(null)} />
-            <div className="filter-menu" style={{ top: filterOffen!.y, left: filterOffen!.x }}>
-              <button
-                type="button"
-                className={wert === '' ? 'aktiv' : ''}
-                onClick={() => {
-                  spaltenFilter!.setzen(filter!, '');
-                  setFilterOffen(null);
-                }}
-              >
-                Alle
-              </button>
-              {optionen.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  className={wert === o.value ? 'aktiv' : ''}
-                  onClick={() => {
-                    spaltenFilter!.setzen(filter!, o.value);
-                    setFilterOffen(null);
-                  }}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </>
+          <AufklappMenue
+            anker={filterKnopf}
+            eintraege={[{ value: '', label: 'Alle' }, ...optionen].map((o) => ({
+              key: o.value,
+              inhalt: o.label,
+              aktiv: wert === o.value,
+              onWaehle: () => {
+                spaltenFilter!.setzen(filter!, o.value);
+                setFilterOffen(null);
+              },
+            }))}
+            onSchliessen={(fokusZurueck) => {
+              setFilterOffen(null);
+              if (fokusZurueck) filterKnopf.current?.focus();
+            }}
+          />
         ) : null}
       </th>
     );
@@ -609,6 +599,8 @@ export function PlanlaufListe({
                     : 'Vorbereitete E-Mail an die zuständige Person'
                 }
                 aria-label="Erinnerung vorbereiten"
+                aria-haspopup={weitere.length > 0 ? 'menu' : undefined}
+                aria-expanded={weitere.length > 0 ? wahlOffen('mail', run) : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (weitere.length > 0) schrittWaehlen('mail', run, schritte, e.currentTarget);
@@ -617,22 +609,28 @@ export function PlanlaufListe({
               >
                 <Icon name="mail" size={13} />
               </button>{' '}
-              {weitere.length > 0 ? (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-haken"
-                  title={`${schritte.length} Schritte stehen an – welcher ist erledigt?`}
-                  aria-label="Schritt als erledigt vermerken"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    schrittWaehlen('erledigt', run, schritte, e.currentTarget);
-                  }}
-                >
-                  <Icon name="check" size={13} />
-                </button>
-              ) : (
-                <ErledigtButton run={run} step={step} onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')} />
-              )}
+              {/* Ein Knopf für einen wie für mehrere anstehende Schritte: Steht nach der Wahl im
+                  Menü nur noch einer an, bleibt er dasselbe Element, und der Fokus kehrt zu ihm
+                  zurück (AufklappMenue) */}
+              <button
+                type="button"
+                className="btn btn-sm btn-haken"
+                title={
+                  weitere.length > 0
+                    ? `${schritte.length} Schritte stehen an – welcher ist erledigt?`
+                    : `„${step.name}“ als erledigt vermerken`
+                }
+                aria-label="Schritt als erledigt vermerken"
+                aria-haspopup={weitere.length > 0 ? 'menu' : undefined}
+                aria-expanded={weitere.length > 0 ? wahlOffen('erledigt', run) : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (weitere.length > 0) schrittWaehlen('erledigt', run, schritte, e.currentTarget);
+                  else setzeStatus(run, step, 'erledigt');
+                }}
+              >
+                <Icon name="check" size={13} />
+              </button>
             </>
           ) : null}
         </td>
@@ -794,25 +792,13 @@ export function PlanlaufListe({
                     );
                   })()
                 : null}
-              <Kopf feld="titel">Plan / Planverzeichnis</Kopf>
-              <Kopf feld="gewerk" filter="gewerk">
-                Gewerk
-              </Kopf>
-              <Kopf feld="stand" titel="Nach dem Datum des zuletzt erledigten Schritts sortieren">
-                Aktueller Stand
-              </Kopf>
-              <Kopf feld="schritt" titel="Nach Soll-Termin des nächsten Schritts sortieren">
-                Nächster Schritt
-              </Kopf>
-              <Kopf feld="zustaendig" klasse="col-optional" filter="zustaendig">
-                Zuständig
-              </Kopf>
-              <Kopf feld="fortschritt" klasse="col-optional" stil={{ width: 112 }}>
-                Fortschritt
-              </Kopf>
-              <Kopf feld="status" titel="Überfällige zuerst" filter="status">
-                Status
-              </Kopf>
+              {kopf('titel', 'Plan / Planverzeichnis')}
+              {kopf('gewerk', 'Gewerk', { filter: 'gewerk' })}
+              {kopf('stand', 'Aktueller Stand', { titel: 'Nach dem Datum des zuletzt erledigten Schritts sortieren' })}
+              {kopf('schritt', 'Nächster Schritt', { titel: 'Nach Soll-Termin des nächsten Schritts sortieren' })}
+              {kopf('zustaendig', 'Zuständig', { klasse: 'col-optional', filter: 'zustaendig' })}
+              {kopf('fortschritt', 'Fortschritt', { klasse: 'col-optional', stil: { width: 112 } })}
+              {kopf('status', 'Status', { titel: 'Überfällige zuerst', filter: 'status' })}
               <th className="actions" />
             </tr>
           </thead>
@@ -919,32 +905,31 @@ export function PlanlaufListe({
       </div>
 
       {schrittWahl ? (
-        <>
-          <div className="filter-schatten" onClick={() => setSchrittWahl(null)} />
-          <div className="filter-menu" style={{ top: schrittWahl.y, left: schrittWahl.x, width: 240 }} role="menu">
-            <div className="pll-menu-titel">
-              {schrittWahl.art === 'erledigt' ? 'Welcher Schritt ist erledigt?' : 'Erinnerung zu welchem Schritt?'}
-            </div>
-            {schrittWahl.schritte.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  const { art, run } = schrittWahl;
-                  setSchrittWahl(null);
-                  if (art === 'erledigt') setzeStatus(run, s, 'erledigt');
-                  else setMail({ run, step: s });
-                }}
-              >
+        <AufklappMenue
+          anker={wahlKnopf}
+          titel={schrittWahl.art === 'erledigt' ? 'Welcher Schritt ist erledigt?' : 'Erinnerung zu welchem Schritt?'}
+          eintraege={schrittWahl.schritte.map((s) => ({
+            key: s.id,
+            inhalt: (
+              <>
                 {s.name}
                 <span className="pll-menu-sub">
                   {personVon(s)} · {relativeLabel(s.sollDatum)}
                 </span>
-              </button>
-            ))}
-          </div>
-        </>
+              </>
+            ),
+            onWaehle: () => {
+              const { art, run } = schrittWahl;
+              setSchrittWahl(null);
+              if (art === 'erledigt') setzeStatus(run, s, 'erledigt');
+              else setMail({ run, step: s });
+            },
+          }))}
+          onSchliessen={(fokusZurueck) => {
+            setSchrittWahl(null);
+            if (fokusZurueck) wahlKnopf.current?.focus();
+          }}
+        />
       ) : null}
       {mail ? (
         <EmailDialog project={project} run={mail.run} step={mail.step} onClose={() => setMail(null)} />

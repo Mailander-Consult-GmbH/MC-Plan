@@ -49,7 +49,9 @@ wählt danach aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
 Baubetriebsplanung, Projektsteuerung, Leistungsnachweise und Controlling, die
 mittleren drei mit dem Kennzeichen „Erster Entwurf“, das Controlling mit „Mit
 PIN“ aus `marke` in `src/shell/bereiche.ts`; unter 1240 px drei, unter 900 px
-zwei, unter 720 px eine je Zeile), `#/planlauf/…` das Planlaufmanagement,
+zwei, unter 720 px eine je Zeile; am Fuß „Fassung vom …“ mit Bauzeit und – im
+Build des Workflows – Commit, `fassungText` in `src/shared/pwa.ts`),
+`#/planlauf/…` das Planlaufmanagement,
 `#/baubetrieb/…` die Baubetriebsplanung (Abschnitt 7), `#/projektsteuerung/…`
 die Projektsteuerung (Abschnitt 8), `#/leistungsnachweise/…` die
 Leistungsnachweise (Abschnitt 10), `#/controlling/…` das Controlling
@@ -77,7 +79,7 @@ und bleiben damit als Lesezeichen gültig.
 
 | Reiter | Seite | Aktionen |
 | --- | --- | --- |
-| `uebersicht` | Planläufe – Reiterbezeichnung „Planläufe“ (`src/bereiche/planlauf/pages/projekt/Uebersicht.tsx`, Liste in `src/bereiche/planlauf/components/PlanlaufListe.tsx`) | Kennzahlen (Planpakete, Planverzeichnisse, Pläne – je ein Klick führt auf die Planliste –, fällige und überfällige Schritte) und Gesamtfortschritt. Liste der Planläufe, gegliedert nach Planpaketen, je Eintrag in der Spalte „Aktueller Stand“ mit dem zuletzt erledigten Schritt vor dem offenen – übersprungene Schritte zählen nicht, nach dem Wiederöffnen eines früheren Schritts also nie ein späterer – und darunter in Grau seinem Ist-Datum („ohne Datum“, wenn keines eingetragen ist; `letzterAbgeschlossenerSchritt` in `src/bereiche/planlauf/domain/uebersicht.ts`), in der Spalte „Nächster Schritt“ mit dem offenen Schritt: Gliederung umschalten („Planpakete“ / „+ Pläne & Verzeichnisse“), Pakete und Planverzeichnisse am Pfeil auf- und zuklappen (Verzeichnisse zunächst zugeklappt; der Pfeil steht vor Symbol und Titel, sodass Pläne und Verzeichnisse auf einer Linie beginnen), Suche, Filter in den Spaltenüberschriften (Gewerk, Zuständig, Status – einschließlich „Angekündigt“), Sortierung je Spalte („Aktueller Stand“ nach dem Datum des zuletzt erledigten Schritts), Erinnerungs-Mail, Erledigt-Haken, Planlauf öffnen, „Export“ (`ExportDialog.tsx`, siehe `einstellungen`; bei gesetztem Filter sind die gezeigten Einträge vorgewählt – „Vorgewählt sind die Einträge, die der Filter im Reiter „Planläufe“ zeigt.“). Welche Läufe die Liste zeigt und wie sie sie gliedert, legen `massgeblicheLaeufe`, `gliederungBilden` und `knotenBilden` in `uebersicht.ts` fest – dieselben Funktionen gliedern den Export. Die Bezeichnung steht gelb, solange „Eingang PLM“ aussteht – diese Läufe tragen den Status „Angekündigt“, ist der Eingang überfällig jedoch „Überfällig“; Filter und Sortierung folgen derselben Regel –, und grün, wenn der Lauf abgeschlossen ist. Unter einem gebündelten Verzeichnis stehen seine Pläne mit „läuft im Planlauf des Verzeichnisses mit“ – solange der Verzeichnislauf läuft, mit der Schaltfläche „Herauslösen …“ (`planHerausloesen`; die Liste bleibt danach stehen) –, herausgelöste Pläne dagegen mit ihrem eigenen Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als Zeile „… · Pläne einzeln“ ohne eigenen Lauf, mit der Zahl seiner laufenden Pläne, dem aus ihnen zusammengefassten Fortschritt und Status (wie ein Planpaket) und der Schaltfläche „Bündeln …“; seine Pläne stehen darunter. Abgebrochene Läufe – ersatzlos wie durch neuen Index ersetzt – stehen gesammelt am Ende unter der zunächst zugeklappten Zeile „Abgebrochen · … Planläufe“, ausgegraut ohne Schritt, Fortschritt und Schaltflächen, mit dem Index des abgebrochenen Laufs, „Abgebrochen am …“ und dem Zusatz *ersatzlos* bzw. *ersetzt durch Index …*. Aufgeteilte bzw. wieder gebündelte Läufe erscheinen dort nicht (`laufUeberfuehrt` in `engine.ts`). Fortschrittsbalken stehen immer in der Hausfarbe; der Fortschritt ist nach Fristen gewichtet und schließt die laut Prognose noch ausstehenden Ausführungen ein (`fortschritt` in `engine.ts`, Mittel in `mittlererFortschritt`). Nach einem Rücksprung nennt „Aktueller Stand“ den zuletzt bis zum Wiedereingang erledigten Schritt. Stehen in parallelen Zweigen mehrere Schritte an, zeigt die Zeile den führenden mit „+… parallel“ (`src/bereiche/planlauf/components/common.tsx`); Erinnerungs-Mail und Erledigt-Haken fragen dann nach dem Schritt („… Schritte stehen an – welcher ist erledigt?“), Status, Filter und Suche berücksichtigen alle anstehenden Schritte. **Mehrfachauswahl:** Kästchen-Spalte – Planpaket, „Ohne Planpaket“, Verzeichnis und Kopfzeile wählen ihren Inhalt dreistufig, abgebrochene Läufe sind nicht wählbar; Aktionsleiste („Aktionen für die Auswahl“, „… ausgewählt“) mit „Schritte erledigen …“ (`src/bereiche/planlauf/components/SammelErledigen.tsx`: Ist-Datum, erledigt oder übersprungen, je Lauf die anstehenden Schritte, gemeinsame Antwort und Nachweis-Nr. für gleichnamige Schritte, Vorschau mit Rücksprüngen und Abschlüssen, danach Ergebnis und auf Wunsch „E-Mail senden“; Store `schritteAbschliessen`), „Erinnern …“ (`src/bereiche/planlauf/components/SammelErinnern.tsx`: eine Zeile je Person mit Outlook, Web, Kopieren und „Kopieren (formatiert)“), „Versandmail …“ (dieselbe Komponente mit `art="versand"`, Titel „Versandmail“: je Empfänger und Anliegen eine E-Mail mit der Vorlage „Versand“ über alle gewählten Pläne am Versandschritt – `versandPosten` in `src/bereiche/planlauf/domain/email.ts`: steht ein Versandschritt an, sind die Zuständigen der Schritte danach Empfänger, steht ein Schritt direkt nach einem erledigten Versandschritt an, dessen Zuständige; vermerkt wird am anstehenden Schritt; Läufe ohne Versandschritt nennt „Ohne Versandschritt und hier außen vor: …“), „Exportieren …“ („Vorgewählt ist Ihre Auswahl im Reiter „Planläufe“.“) und „Auswahl aufheben“. Vor den Aktionen wird die Auswahl in Planläufe aufgelöst; ein mitlaufender Plan wirkt auf den Lauf seines Verzeichnisses. |
+| `uebersicht` | Planläufe – Reiterbezeichnung „Planläufe“ (`src/bereiche/planlauf/pages/projekt/Uebersicht.tsx`, Liste in `src/bereiche/planlauf/components/PlanlaufListe.tsx`) | Kennzahlen (Planpakete, Planverzeichnisse, Pläne – je ein Klick führt auf die Planliste –, fällige und überfällige Schritte) und Gesamtfortschritt. Liste der Planläufe, gegliedert nach Planpaketen, je Eintrag in der Spalte „Aktueller Stand“ mit dem zuletzt erledigten Schritt vor dem offenen – übersprungene Schritte zählen nicht, nach dem Wiederöffnen eines früheren Schritts also nie ein späterer – und darunter in Grau seinem Ist-Datum („ohne Datum“, wenn keines eingetragen ist; `letzterAbgeschlossenerSchritt` in `src/bereiche/planlauf/domain/uebersicht.ts`), in der Spalte „Nächster Schritt“ mit dem offenen Schritt: Gliederung umschalten („Planpakete“ / „+ Pläne & Verzeichnisse“), Pakete und Planverzeichnisse am Pfeil auf- und zuklappen (Verzeichnisse zunächst zugeklappt; der Pfeil steht vor Symbol und Titel, sodass Pläne und Verzeichnisse auf einer Linie beginnen), Suche, Filter in den Spaltenüberschriften (Gewerk, Zuständig, Status – einschließlich „Angekündigt“), Sortierung je Spalte („Aktueller Stand“ nach dem Datum des zuletzt erledigten Schritts), Erinnerungs-Mail, Erledigt-Haken, Planlauf öffnen, „Export“ (`ExportDialog.tsx`, siehe `einstellungen`; bei gesetztem Filter sind die gezeigten Einträge vorgewählt – „Vorgewählt sind die Einträge, die der Filter im Reiter „Planläufe“ zeigt.“). Welche Läufe die Liste zeigt und wie sie sie gliedert, legen `massgeblicheLaeufe`, `gliederungBilden` und `knotenBilden` in `uebersicht.ts` fest – dieselben Funktionen gliedern den Export. Die Bezeichnung steht gelb, solange „Eingang PLM“ aussteht – diese Läufe tragen den Status „Angekündigt“, ist der Eingang überfällig jedoch „Überfällig“; Filter und Sortierung folgen derselben Regel –, und grün, wenn der Lauf abgeschlossen ist. Unter einem gebündelten Verzeichnis stehen seine Pläne mit „läuft im Planlauf des Verzeichnisses mit“ – solange der Verzeichnislauf läuft, mit der Schaltfläche „Herauslösen …“ (`planHerausloesen`; die Liste bleibt danach stehen) –, herausgelöste Pläne dagegen mit ihrem eigenen Schritt und Status. Ein Verzeichnis mit Plänen einzeln erscheint als Zeile „… · Pläne einzeln“ ohne eigenen Lauf, mit der Zahl seiner laufenden Pläne, dem aus ihnen zusammengefassten Fortschritt und Status (wie ein Planpaket) und der Schaltfläche „Bündeln …“; seine Pläne stehen darunter. Abgebrochene Läufe – ersatzlos wie durch neuen Index ersetzt – stehen gesammelt am Ende unter der zunächst zugeklappten Zeile „Abgebrochen · … Planläufe“, ausgegraut ohne Schritt, Fortschritt und Schaltflächen, mit dem Index des abgebrochenen Laufs, „Abgebrochen am …“ und dem Zusatz *ersatzlos* bzw. *ersetzt durch Index …*. Aufgeteilte bzw. wieder gebündelte Läufe erscheinen dort nicht (`laufUeberfuehrt` in `engine.ts`). Fortschrittsbalken stehen immer in der Hausfarbe; der Fortschritt ist nach Fristen gewichtet und schließt die laut Prognose noch ausstehenden Ausführungen ein (`fortschritt` in `engine.ts`, Mittel in `mittlererFortschritt`). Nach einem Rücksprung nennt „Aktueller Stand“ den zuletzt bis zum Wiedereingang erledigten Schritt. Stehen in parallelen Zweigen mehrere Schritte an, zeigt die Zeile den führenden mit „+… parallel“ (`src/bereiche/planlauf/components/common.tsx`); Erinnerungs-Mail und Erledigt-Haken fragen dann nach dem Schritt („… Schritte stehen an – welcher ist erledigt?“; Menü „Welcher Schritt ist erledigt?“ bzw. „Erinnerung zu welchem Schritt?“, `AufklappMenue`), Status, Filter und Suche berücksichtigen alle anstehenden Schritte. **Mehrfachauswahl:** Kästchen-Spalte – Planpaket, „Ohne Planpaket“, Verzeichnis und Kopfzeile wählen ihren Inhalt dreistufig, abgebrochene Läufe sind nicht wählbar; Aktionsleiste („Aktionen für die Auswahl“, „… ausgewählt“) mit „Schritte erledigen …“ (`src/bereiche/planlauf/components/SammelErledigen.tsx`: Ist-Datum, erledigt oder übersprungen, je Lauf die anstehenden Schritte, gemeinsame Antwort und Nachweis-Nr. für gleichnamige Schritte, Vorschau mit Rücksprüngen und Abschlüssen, danach Ergebnis und auf Wunsch „E-Mail senden“; Store `schritteAbschliessen`), „Erinnern …“ (`src/bereiche/planlauf/components/SammelErinnern.tsx`: eine Zeile je Person mit Outlook, Web, Kopieren und „Kopieren (formatiert)“), „Versandmail …“ (dieselbe Komponente mit `art="versand"`, Titel „Versandmail“: je Empfänger und Anliegen eine E-Mail mit der Vorlage „Versand“ über alle gewählten Pläne am Versandschritt – `versandPosten` in `src/bereiche/planlauf/domain/email.ts`: steht ein Versandschritt an, sind die Zuständigen der Schritte danach Empfänger, steht ein Schritt direkt nach einem erledigten Versandschritt an, dessen Zuständige; vermerkt wird am anstehenden Schritt; Läufe ohne Versandschritt nennt „Ohne Versandschritt und hier außen vor: …“), „Exportieren …“ („Vorgewählt ist Ihre Auswahl im Reiter „Planläufe“.“) und „Auswahl aufheben“. Vor den Aktionen wird die Auswahl in Planläufe aufgelöst; ein mitlaufender Plan wirkt auf den Lauf seines Verzeichnisses. |
 | `plaene` | Planliste (`src/bereiche/planlauf/pages/projekt/Plaene.tsx`) | Alle Pläne und Planverzeichnisse mit laufender Nummer, Art, Bezeichnung/Titel, Gewerk, zugehörigem Planverzeichnis und Eingang Soll, gegliedert nach Planpaketen: je Paket eine Kopfzeile mit Name, Kurzzeichen, Gewerk und Zahl der angezeigten Einträge samt eingerückter Pläne („noch nichts zugeordnet“ bei leeren Paketen) – der Pfeil klappt sie zu, ein Klick öffnet das Paket –, danach die Einträge ohne Paket, sobald Pakete angezeigt werden unter „Ohne Planpaket · …“ (gleich gezählt). Leere Pakete erscheinen ohne Suche und Filter bzw. wenn Name, Kurzzeichen oder Gewerk zur Suche passen; die Suche erfasst auch den Paketnamen. Die Schaltflächen über der Liste brechen auf schmalen Bildschirmen um. „Neues Planpaket“ und die Kopfzeilen öffnen den Paketdialog (`src/bereiche/planlauf/components/PaketDialog.tsx`): Name, Kurzzeichen, Gewerk, Bemerkung, Löschen mit Rückfrage – die Einträge bleiben mit ihren Planläufen erhalten und verlieren ihre Paketzuordnung (`deleteDocument`) –, beim Bearbeiten außerdem „Inhalt“ (mit dem Hinweis „gilt sofort“) mit „Entfernen“ je Eintrag und „Hinzufügen:“ für Planverzeichnisse und Pläne ohne Verzeichnis und ohne (noch vorhandenes) Paket; Pläne eines Verzeichnisses folgen dessen Paket (`paketVon` in `uebersicht.ts`). Reines Ordnungsmerkmal ohne Einfluss auf Planläufe. Pläne eines Planverzeichnisses stehen unter ihm, mit Symbol, Art und Titel eingerückt; der Pfeil zum Auf- und Zuklappen steht zwischen Nummer und Symbol (zunächst aufgeklappt). Ist das Verzeichnis ausgefiltert, stehen seine Pläne für sich. Filter (Alle / Pläne / Verzeichnisse), Suche, Sortierung je Spalte. Einträge, deren Planlauf noch beim Schritt „Eingang PLM“ steht, tragen eine gelbe Bezeichnung und das Kennzeichen „Angekündigt“; bei abgeschlossenen Läufen steht die Bezeichnung grün. Kennzeichen „Pläne einzeln“ an Verzeichnissen mit Einzelläufen, „eigener Lauf“ an herausgelösten Plänen eines gebündelten Verzeichnisses. Eintrag anlegen (startet zugleich den Planlauf, sofern der Eintrag einen eigenen hat; „Ablauf dieses Planlaufs“ zeigt den gewählten Workflow, „Individueller Workflow“ öffnet den Workflow-Editor nur für diesen Lauf, Kennzeichen „Individuell angepasst“, „Auf Workflow zurücksetzen“ – `LaufSchritte` in `AblaufVorschau.tsx`), bearbeiten, löschen – beim Löschen eines gebündelten Verzeichnisses bleiben seine Pläne als Einzelpläne im Paket des Verzeichnisses, mitlaufende führen den Stand des Verzeichnislaufs in einem eigenen Lauf weiter (`deleteDocument` mit `laufUebernehmen`); Planverzeichnis oder Planpaket direkt aus den Auswahlfeldern neu anlegen – ein so angelegtes Planverzeichnis fragt „Codierung“ und „Titel“ ab (ohne Titel gilt die Codierung als Titel); sein Planlauf startet mit „Anlegen und Planlauf starten“ des Plans nach dem Workflow im Dialog, der Hinweis „Das Planverzeichnis „…“ hat noch keinen Planlauf.“ steht darüber (`verzeichnisOhneLauf`; gilt für jedes gebündelte Verzeichnis, das noch nie einen Lauf hatte). Bei „Abbrechen“ oder Wahl eines anderen Verzeichnisses entfällt das angelegte Verzeichnis wieder. Excel-Import (`PlaeneImport.tsx`): jede Zeile erhält ihren eigenen Eintrag; jeder Eintrag mit eigenem Planlauf – auch ohne Codierung, ein beim Import neu angelegtes Verzeichnis und ein vorhandenes gebündeltes Verzeichnis, das noch nie einen Lauf hatte – startet ihn sofort, nach dem Workflow der Spalte „Workflow“, sonst nach dem unter „Workflow für Einträge ohne Angabe“ gewählten (`planlaufAusWorkflow` in `engine.ts`). Pakete und Verzeichnisse werden je Art über Codierung bzw. Kurzzeichen oder Titel gefunden, auch in derselben Datei; ein neu angelegtes Verzeichnis übernimmt das früheste Eingang Soll seiner Pläne. Die Nummer eines Planverzeichnisses heißt „Codierung“ (`NUMMER_LABEL` in `types.ts`). Einträge, deren Lauf durch einen neuen Index ersetzt oder ersatzlos abgebrochen wurde, tragen einen grauen Zusatz; aufgeteilte bzw. wieder gebündelte Läufe zählen nicht als Abbruch. Im Dialog eines Planverzeichnisses: Haken „Pläne einzeln durch den Planlauf führen“ – frei wählbar, solange weder das Verzeichnis noch seine Pläne einen Lauf haben – und bei laufendem gebündeltem Lauf „Alle Pläne einzeln weiterführen …“ (`verzeichnisAufteilen`). Im Dialog eines mitlaufenden Plans: „Aus dem Verzeichnislauf herauslösen …“ (`planHerausloesen`). Haben Pläne des Verzeichnisses einen eigenen Lauf, bietet der Verzeichnis-Dialog „Pläne wieder bündeln …“: Der Dialog (`src/bereiche/planlauf/components/BuendelnDialog.tsx`) listet diese Pläne mit Haken, aktuellem Schritt und Fortschritt; die angekreuzten kehren in einen gemeinsamen Verzeichnislauf zurück (`planeBuendeln`), ihre eigenen Läufe enden mit der Abbruchart `gebuendelt`, nicht angekreuzte behalten ihren Lauf. Läuft das Verzeichnis noch, übernehmen sie dessen Stand – ein Plan, der weiter ist, wird mit „weiter als das Verzeichnis – fällt zurück“ gekennzeichnet. Ist es aufgeteilt, entsteht ein neuer Verzeichnislauf; sein Stand wird unter „Stand des Verzeichnislaufs übernehmen von“ gewählt, vorgeschlagen ist der am wenigsten weit gediehene Plan. In beiden Fällen übernimmt der Plan den Stand des Verzeichnislaufs – erledigte Schritte bleiben erledigt, Start und Termine laufen weiter (`laufUebernehmen` in `engine.ts`); der gebündelte Lauf endet beim Aufteilen mit der Abbruchart `aufgeteilt`. Ein Plan, der schon einen eigenen Lauf hat, behält ihn beim Verschieben in ein anderes Verzeichnis. „Angekündigt“ prüft alle anstehenden Schritte. Läuft ein Plan im Lauf seines Verzeichnisses mit, nennt der Dialog zu „Eingang Soll“: „Der Plan läuft im Planlauf seines Verzeichnisses mit – maßgeblich ist das Eingang Soll des Verzeichnisses.“ **Mehrfachauswahl:** Kästchen-Spalte (ein Verzeichnis wählt sich samt seinen sichtbaren Plänen; Paketzeile, „Ohne Planpaket“ und Kopfzeile wählen ihren Inhalt; was Suche oder Filter ausblenden, fällt aus der Auswahl) mit Aktionsleiste „… ausgewählt“: „Planpaket zuweisen …“ (`dokumentePaketZuweisen`, auch „– keinem Paket –“; Pläne folgen dem Paket ihres Verzeichnisses), „Neues Planpaket aus Auswahl …“ (PaketDialog mit `paketAusAuswahl`, das kein leeres Paket anlegt), „Gewerk/Planungsphase …“ (`dokumenteAendern`, „Leer lassen = unverändert“), „Löschen …“ (`dokumenteLoeschen`; die Rückfrage nennt Verzeichnisse mit oder ohne ihre Pläne, die Zahl der Planläufe samt denen mit Ist-Daten bzw. Protokoll und die künftigen Einzelpläne, mit „Sicherung vorher herunterladen“) und „Auswahl aufheben“ – Dialoge in `src/bereiche/planlauf/components/PlanlisteAktionen.tsx`. Auch „Hinzufügen“ und „Entfernen“ im Paketdialog laufen über `dokumentePaketZuweisen`. |
 | `rollen` | Funktion (`src/bereiche/planlauf/pages/projekt/RollenFunktionen.tsx`) | Nach Gewerken gegliedert („Übergreifend“ + je Gewerk, **+** für ein weiteres Gewerk, „Gewerk … löschen“ am Seitenende). Je Funktion die Besetzung mit einer Person samt Adressdaten und den Feldern „SharePoint-Link Eingang“ und „SharePoint-Link Ausgang“ (`sharepointEingang`, `sharepointAusgang` an `Contact`; in der Liste als kleine Links „SharePoint Eingang“ / „SharePoint Ausgang“): Funktion anlegen, bearbeiten, löschen; Besetzung setzen, wechseln, aufheben – von der Funktion aus (Person übernehmen oder neu erfassen) oder über „Person hinzufügen“ von der Person aus (Funktion optional gleich mitwählen). Suche über Funktion, Person und Firma; Personen ohne Funktion in einer eigenen Liste, je Zeile bearbeiten und löschen (Rückfrage „Person löschen?“); das Planlaufmanagement wird nicht angezeigt (immer die angemeldete Person); Excel-Import (`RollenImport.tsx`), der fehlende Gewerke und Funktionen anlegt; die optionale Spalte „Seite“ setzt die Seite für den Verzug, die Spalten „SharePoint Eingang“ und „SharePoint Ausgang“ (`ROLLEN_SPALTEN` in `src/bereiche/planlauf/domain/importVorlagen.ts`) die Links – leere Zellen lassen vorhandene stehen. Feld „Seite für den Verzug“ im Funktionsdialog, Abzeichen in der Liste („Seite offen“ ohne Seite). |
 | `ketten` | Workflows im Projekt (`src/bereiche/planlauf/pages/Workflows.tsx` mit `projectId`) | Wie der globale Bereich, zusätzlich unter „Projektvarianten“ die Varianten dieses Projekts. |
@@ -199,12 +201,31 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   (`src/bereiche/planlauf/store/storage.ts`, Anhebung wie beim Laden) und
   zeigt „Sicherung einspielen“ – mit der Zahl der Projekte, Pläne und
   Planverzeichnisse und Planläufe, der Warnung, dass der jetzige Bestand
-  ersetzt wird, „Aktuellen Stand sichern“ und, wenn die Namen abweichen, dem
+  ersetzt wird, „Aktuellen Stand sichern“ (Titel „Den jetzigen Bestand vorher
+  als JSON sichern“; nach einem Lade- oder Fassungsfehler stattdessen
+  „Gespeicherten Stand herunterladen“, Titel „Gespeicherten Stand unverändert
+  herunterladen“, `rohdatenHerunterladen` – ohne gespeicherten Stand „Es ist
+  kein gespeicherter Stand vorhanden, der sich herunterladen ließe.“) und, wenn die Namen abweichen, dem
   Haken „„Angemeldet als“ aus der Sicherung übernehmen“ (vorgewählt, solange
   der Name `STANDARD_BEARBEITER` ist; mit Haken gelten Name und Farbmodus der
   Sicherung danach in allen Bereichen, `benutzerAendern`); ohne gesetzten Haken
   bleiben Name, Farbmodus und E-Mail-Nachfrage der Person am Rechner. „Alles ersetzen“ ersetzt den Bestand über
-  `ersetzeDaten` und wechselt zur Übersicht. „Abgleichen und auswählen …“
+  `ersetzeDaten` und wechselt zur Übersicht. Nach einem Ladefehler sagt der
+  Dialog „Der gespeicherte Stand ließ sich nicht laden; abgleichen ist deshalb
+  nicht möglich. „Alles ersetzen“ überschreibt ihn; eine unveränderte Kopie
+  bleibt im Browser, solange der Speicher reicht. Wer ihn noch braucht, lädt
+  ihn vorher mit „Gespeicherten Stand herunterladen“ herunter.“ Vor dem
+  Ersetzen des unlesbaren Stands legt `rohkopieVorEinspielen`
+  (`src/bereiche/planlauf/store/storage.ts`, umgesetzt in
+  `src/shared/speicher.ts`, Ergebnis `RohkopieErgebnis`: `'angelegt'`,
+  `'kein-stand'` oder `'gescheitert'`) die Rohkopie
+  `planlauf-management.data.v1.vor-einspielen-<Zeitpunkt>` an (ISO-Zeitpunkt,
+  UTC). Passt sie nicht in den Speicher, ersetzt der Dialog nichts, sondern
+  meldet „Für eine Kopie des gespeicherten Stands reicht der Speicher des
+  Browsers nicht. Wer ihn noch braucht, lädt ihn jetzt mit „Gespeicherten
+  Stand herunterladen“ herunter; „Ohne Kopie ersetzen“ überschreibt ihn
+  endgültig.“ (`role="alert"`, der Fokus springt auf das Herunterladen); erst
+  „Ohne Kopie ersetzen“ ersetzt den Stand. „Abgleichen und auswählen …“
   öffnet „Sicherung abgleichen“ (`src/bereiche/planlauf/components/Abgleich.tsx`,
   Logik `abgleichErmitteln`/`abgleichAnwenden` in
   `src/bereiche/planlauf/domain/abgleich.ts`): ein Baum mit Kästchen –
@@ -231,6 +252,66 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   („Der Speicher des Browsers ist voll“ bzw. „Der Browser lässt das Speichern
   nicht zu (etwa durch Datenschutzeinstellungen)“); „Standard-Workflows
   aktualisiert.“ mit den Kopien „… (eigene Fassung)“, quittiert mit „Verstanden“.
+* **Aufklappmenüs** (`AufklappMenue` in `src/shared/menue.tsx`, Gestaltung `.aufklapp-menue` in
+  `src/shared/global.css`): die Schrittwahl und die Spaltenfilter der Planlaufliste (Eintrag
+  „Alle“, der gewählte Wert hervorgehoben), der Haken „Erledigt“ (`ErledigtButton` in
+  `src/bereiche/planlauf/components/SchrittStatus.tsx`) und „Status ändern“ der
+  Baubetriebsplanung. Das Menü liegt per Portal im `body`, öffnet bei Platzmangel nach oben,
+  bleibt im Fenster und scrollt selbst; der erste Eintrag erhält den Fokus, Pfeiltasten,
+  Home und End wechseln den Eintrag, Escape schließt und gibt den Fokus an den Knopf zurück;
+  Tab, ein Klick oder Tippen daneben, Scrollen und eine Größenänderung schließen es ebenfalls.
+  Nach einer Wahl setzt das Menü den Fokus im nächsten Bild (`requestAnimationFrame`) auf den
+  Knopf, wenn der Fokus auf `body` gefallen ist und der Knopf noch im Dokument steht; ein Dialog, den
+  die Wahl öffnet, behält ihn. Der Erledigt-Haken einer Zeile der Planlaufliste
+  (`src/bereiche/planlauf/components/PlanlaufListe.tsx`) ist für einen wie für mehrere anstehende
+  Schritte derselbe Knopf (bei einem erledigt er direkt) und bleibt so auch dann im Dokument, wenn
+  nach der Wahl nur noch ein Schritt ansteht.
+* **Dialoge** (alle Bereiche; `Modal` in `src/shared/ui.tsx`, `role="dialog"` mit
+  `aria-modal` und `aria-labelledby` auf den Titel): Beim Öffnen behält ein Feld mit
+  `autoFocus` den Fokus; sonst setzt ihn `anfangsFokus` auf das erste Eingabefeld des Inhalts
+  (`eingabeFeld`: Text-, Zahl- und Datumsfelder, Textbereiche, Auswahllisten – keine Kästchen,
+  Optionsfelder oder Knöpfe), wenn es ohne Scrollen ganz zu sehen ist (`ganzSichtbar`), sonst
+  auf den Dialog selbst (`tabIndex={-1}`); auf Touch-Geräten (`(pointer: coarse)`) setzt
+  `anfangsFokus` ihn immer auf den Dialog selbst – ein Feld mit `autoFocus` behält ihn auch
+  dort. Fokussiert wird mit `preventScroll`. Tab und Umschalt+Tab bleiben im
+  obersten Dialog (`fokusHalten`; Optionsfelder einer Gruppe sind ein Tab-Halt), Escape schließt
+  nur ihn (`obersterDialog`; ein Listener `dialogTaste` am `window`, solange ein Dialog offen
+  ist – was ein Feld oder Menü selbst mit `preventDefault` behandelt, erreicht ihn nicht). Liegt
+  ein eigener Dialog mit `role="dialog"` und `aria-modal="true"` darüber (der Workflow-Editor
+  `src/bereiche/planlauf/components/WorkflowEditor.tsx`, mit `tabIndex={-1}`), regelt er die
+  Tasten selbst. Ein Klick neben den Dialog (`mousedown` auf dem Overlay, mit `preventDefault` –
+  der Fokus bleibt stehen) schließt ihn ebenfalls, außer bei `klickDanebenSchliesst={false}`:
+  „Sicherung abgleichen“ (`src/bereiche/planlauf/components/Abgleich.tsx`, ein breiter `Modal`
+  mit `klasse="ab-modal"`) bleibt dann offen, damit eine aufwendige Auswahl nicht verloren geht.
+  Löst er den Dialog „Sicherung einspielen“ ab, erhält er selbst den Fokus (er hat kein
+  Eingabefeld), nicht sein Knopf „Schließen“; nach dem Schließen geht der Fokus an das Element
+  zurück, von dem „Sicherung einspielen“ kam („Einspielen“).
+  Verschwindet das fokussierte Element, bleibt der Fokus im Dialog (`MutationObserver`). Nach dem
+  Schließen geht der Fokus an das Element zurück, das ihn vor dem Öffnen hatte
+  (`fokusVorDemOeffnen`; kam die Wahl aus einem Aufklappmenü, an dessen Knopf mit
+  `aria-haspopup="menu"` und `aria-expanded="true"`), sofern es noch im Dokument steht; löst ein
+  Dialog einen anderen ab, landet der Fokus im neuen. Das Overlay hat eine Spalte
+  `minmax(0, 1fr)`, damit breiter Inhalt den Dialog auf schmalen Bildschirmen nicht
+  verbreitert. `Callout` nimmt eine `role` („alert“ für Hinweise, die erst auf eine Handlung hin
+  erscheinen). Kurzmeldungen (`ToastProvider` in `src/shared/toast.tsx`) stehen in `.toast-wrap`
+  mit `role="status"` und `aria-atomic="false"` – Bildschirmleser lesen jede neue Meldung für sich
+  vor, auch wenn eine ältere noch steht, ohne dass der Fokus wandert. Die Ablagefläche `.drop-zone` der Import-Dialoge `PlaeneImport.tsx`,
+  `RollenImport.tsx` (`src/bereiche/planlauf/pages/projekt/`),
+  `src/bereiche/projektsteuerung/components/BeteiligteImport.tsx` und
+  `src/bereiche/leistungsnachweise/components/ImportDialog.tsx` ist über `alsKnopf`
+  (`src/shared/ui.tsx`) per Tastatur bedienbar: `role="button"`, Tab-Halt, Enter und Leertaste
+  öffnen die Dateiauswahl.
+* **Tabellen** (alle Bereiche): `.table-scroll` schneidet ab 861 px quer ab, damit die
+  Kopfzeile stehen bleibt; passt eine Tabelle nicht in ihre Karte, setzt
+  `tabellenBreiteBeobachten` (`src/shared/tabellen.ts`, aufgerufen in `src/main.tsx`) die
+  Klasse `table-scroll-quer`, und sie scrollt quer. Eine neue Seite beginnt oben
+  (`useNachObenBeiSeitenwechsel` in `src/shared/scrollen.ts`, am Inhaltsbereich jedes
+  Bereichs; ein Reiterwechsel scrollt nicht). Dialoge sind auf `100dvh` begrenzt.
+* **Seitenleiste in der schmalen Ansicht** (alle Bereiche und das Controlling): Bis 860 px Breite klappt sie über die
+  Schaltfläche „Menü“ (`.menu-toggle`) auf (`.sidebar.open`). Sie schließt bei jedem
+  Seitenwechsel – auch bei einem, der nicht aus ihr kommt, etwa per Zurück im Browser
+  (`useSeitenleiste` in `src/shared/seitenleiste.ts`, hört auf `hashchange`) – und bei einem
+  Klick auf den abgedunkelten Hintergrund.
 * **E-Mail-Dialog** (`src/bereiche/planlauf/components/EmailDialog.tsx`): Vorlage wählen, Betreff
   und Text bearbeiten, „In Outlook öffnen“ (mailto), „Outlook im Web“ oder „Kopieren“
   (in die Zwischenablage). Bei mehreren Schritten einer Person eine Sammel-E-Mail
@@ -254,16 +335,18 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
 
 ## 3. Nutzerrollen und Rechte
 
-**Es gibt keine Anmeldung, keine Benutzerverwaltung und keine Rechteprüfung.**
+**Es gibt keine Anmeldung mit Kennwort und keine Rechteprüfung außerhalb des Browsers.**
 Weder `src/bereiche/planlauf/App.tsx` noch der Store (`src/bereiche/planlauf/store/store.tsx`) prüfen irgendeine
-Berechtigung; jede Person, die die Anwendung im Browser öffnet, kann alles
-lesen und ändern. Einzig das Controlling fragt eine PIN ab
+Berechtigung; in Planlaufmanagement, Baubetriebsplanung und Projektsteuerung kann jede Person,
+die die Anwendung im Browser öffnet, alles lesen und ändern. Das Controlling fragt eine PIN ab
 (`CONTROLLING_PIN = '0000'` in `src/bereiche/controlling/domain/pin.ts`) – sie
 steht im Quelltext und schützt nur vor versehentlichem Zugriff (Abschnitt 9).
 „Angemeldet als“ ist ein Name ohne Kennwort, gemeinsam für alle Bereiche
 (Abschnitt 11). In den Leistungsnachweisen erfasst, wer unter diesem Namen als
-Mitarbeiter geführt ist; die Rechte stehen in
-`src/bereiche/leistungsnachweise/domain/rechte.ts` (Abschnitt 10.3). Der Bestand liegt ausschließlich im `localStorage` des
+Mitarbeiter geführt ist; dort prüft der Store die Rechte je Zugang (`darf`,
+`darfLeistungAendern` in `src/bereiche/leistungsnachweise/domain/rechte.ts`,
+Abschnitt 10.3) – Leistungen anderer ändert niemand, auch das Controlling nicht –,
+und die Mitarbeiter verwaltet das Controlling (`src/bereiche/leistungsnachweise/pages/controlling/Mitarbeiter.tsx`). Der Bestand liegt ausschließlich im `localStorage` des
 jeweiligen Browsers, wird also ohnehin nicht geteilt.
 
 Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
@@ -306,14 +389,17 @@ setzt in laufenden Planläufen die zuständige Person aus der aktuellen Besetzun
 **Eine `.env.example` existiert in diesem Repository nicht**, ebenso wenig eine
 `.env`-Datei oder ein Zugriff auf `process.env` im Anwendungscode. Die
 Anwendung benötigt keine Umgebungsvariablen – es gibt keinen Server, keine
-Datenbank und keine API-Schlüssel.
+Datenbank und keine API-Schlüssel. Nur der Build liest eine optional:
+`GITHUB_SHA` (im Workflow von GitHub gesetzt) über `loadEnv` in
+`vite.config.ts` für die Kennung der Fassung.
 
 Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 
 | Variable | Bedeutung | Pflicht |
 | --- | --- | --- |
 | `import.meta.env.BASE_URL` | Basispfad der Auslieferung; wird für die Pfade der Logos (`public/logos/`) und des Hauslogos verwendet (`src/shared/logos.tsx`). Vite setzt ihn aus `base: './'` in `vite.config.ts`. | von Vite gesetzt, keine eigene Pflege |
-| `import.meta.env.PROD` | Nur im Produktionsbuild wird der Service Worker registriert (`src/shared/pwa.ts`). | von Vite gesetzt, keine eigene Pflege |
+| `import.meta.env.PROD` | Nur im Produktionsbuild wird der Service Worker registriert und auf eine neuere Fassung geprüft (`src/shared/pwa.ts`). | von Vite gesetzt, keine eigene Pflege |
+| `GITHUB_SHA` | Nur beim Bauen: Commit für die Kennung der Fassung (`__FASSUNG__` und `fassung.json`, `vite.config.ts`); fehlt er, heißt die Kennung `lokal-<Bauzeit>`. | nein, im Workflow von GitHub gesetzt |
 
 ## 5. Setup von Null bis zur laufenden Anwendung
 
@@ -331,8 +417,14 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
    (`src/bereiche/planlauf/store/storage.ts`). Vor einer Umstellung auf eine
    neue Daten- oder Stammdatenfassung legt `ladeDaten` den gespeicherten Text
    einmalig unter `planlauf-management.data.v1.vor-fassung-<n>` ab (n = bisherige
-   `version`); ist der Speicher voll, entfernt `speichereDaten` diese Kopien
-   zuerst und versucht es erneut.
+   `version`); vor dem Einspielen über einen unlesbaren Stand entsteht ebenso
+   `planlauf-management.data.v1.vor-einspielen-<Zeitpunkt>` (2.4). Ist der
+   Speicher voll, entfernt `speichereDaten` Rohkopien einzeln und versucht es
+   nach jeder erneut (`nachRaeumenSpeichern` und `rohkopienZumRaeumen` in
+   `src/shared/speicher.ts`): zuerst die `…vor-fassung-…` – die eigenen vor
+   denen anderer Bereiche und des Projektregisters –, dann die
+   `…vor-einspielen-…`, die älteste zuerst. Passt der Bestand auch ohne alle
+   nicht, stellt es die Kopien zurück.
 4. **Migrationen**: laufen automatisch beim Laden. `DATEN_VERSION = 14` und
    `STAMMDATEN_VERSION = 6` (`src/bereiche/planlauf/domain/types.ts`) steuern, ob `migriere()`
    einen älteren Bestand auf die aktuelle Struktur hebt und ob neue Stammdaten
@@ -375,7 +467,10 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
    im Ordner `app/` auf `main` ab. Steht Pages auf „Deploy from a branch“ mit
    `main`, liefert GitHub den Zweig selbst aus: Die Wurzel-`index.html`
    verweist auf `/src/main.tsx`, das der Browser nicht ausführen kann; ihr
-   Skript wechselt deshalb nach 1,5 Sekunden auf `app/`. Bei Pull Requests
+   Skript wechselt deshalb nach 1,5 Sekunden auf `app/`. Die Ablage in `app/`
+   folgt erst nach der Bereitstellung (Job `ablage` mit `needs: [build,
+   pages]`), eine abgebrochene Bereitstellung versucht der Job `pages` nach
+   150 Sekunden ein zweites Mal (`zweiter_versuch`). Bei Pull Requests
    baut der Workflow nur (einschließlich Typprüfung). Wegen
    `base: './'` funktioniert die Anwendung auch in einem Unterverzeichnis.
 
@@ -419,6 +514,7 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | „Die Datei verwendet ein nicht unterstütztes Packverfahren.“ | Der ZIP-Eintrag ist nicht „deflate“ (`methode !== 8`). |
 | „Dieser Browser kann keine Excel-Dateien entpacken – bitte die Liste als CSV speichern.“ | `DecompressionStream` fehlt im Browser. |
 | „Die Datei konnte nicht gelesen werden.“ | Auffangmeldung für alle übrigen Lesefehler. |
+| Postleitzahl ohne führende Null | Tritt nicht mehr auf: `xlsxLesen` liest die Zahlenformate aus `xl/styles.xml` (`nullenFormate`) und füllt ganze Zahlen in Zellen mit einem Format nur aus Nullen (mindestens zwei Stellen, etwa `00000` – Excels Sonderformat „Postleitzahl“) auf diese Stellenzahl auf. |
 | Hinweise je Zeile: „Eintrag mit dieser Bezeichnung ist bereits vorhanden“, „Planpaket ‚…‘ wird angelegt“, „Workflow ‚…‘ ist nicht hinterlegt – es gilt der im Dialog gewählte“, „Bezeichnung kommt in der Datei mehrfach vor“, „Planverzeichnis ‚…‘ wird angelegt“, „Planverzeichnis ‚…‘ startet seinen Planlauf“, „Gewerk ‚…‘ wird angelegt“, „Funktion ‚…‘ wird angelegt“, „ersetzt … in dieser Funktion“ | Kein Fehler: Die Vorschau nennt, was beim Übernehmen geschieht. |
 
 ### Sicherung einspielen
@@ -441,7 +537,7 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | --- | --- |
 | „Kopieren nicht möglich – bitte Text manuell markieren.“ | `navigator.clipboard.writeText` wurde abgelehnt (fehlende Berechtigung oder unsicherer Kontext), `src/bereiche/planlauf/components/EmailDialog.tsx`. |
 | „Druckdialog geöffnet – dort ‚Als PDF sichern‘ wählen.“ | Kein Fehler: Der PDF-Export läuft über den Druckdialog des Browsers (`src/shared/print.ts`). |
-| Konsole: „Daten konnten nicht lokal gespeichert werden: …“ | `localStorage.setItem` schlug fehl – Speicher voll oder gesperrt (privates Fenster), `src/bereiche/planlauf/store/storage.ts`. `speichereDaten` liefert dann `voll` oder `gesperrt` (bei vollem Speicher erst nach dem Entfernen der Rohkopien `…vor-fassung-…`). |
+| Konsole: „Daten konnten nicht lokal gespeichert werden: …“ | `localStorage.setItem` schlug aus einem anderen Grund als vollem Speicher fehl – etwa gesperrt (privates Fenster), `src/bereiche/planlauf/store/storage.ts`; `speichereDaten` liefert dann `gesperrt`. Bei vollem Speicher liefert es ohne diese Meldung `voll`, wenn der Bestand auch nach dem einzelnen Räumen aller Rohkopien (`…vor-fassung-…`, `…vor-einspielen-…`, auch die anderer Bereiche; `nachRaeumenSpeichern` in `src/shared/speicher.ts`) nicht passt – die Kopien werden dann zurückgestellt. |
 | Hinweisleiste „Nicht gespeichert – bitte Sicherung herunterladen.“ | Derselbe Fall in der Oberfläche (`speicherZustand`), mit „Der Speicher des Browsers ist voll“ bzw. „Der Browser lässt das Speichern nicht zu (etwa durch Datenschutzeinstellungen)“ (`src/bereiche/planlauf/components/Hinweisleisten.tsx`). |
 | Hinweisleiste „Der gespeicherte Stand ließ sich nicht laden.“ | `ladeDaten` konnte den gespeicherten Text nicht lesen oder aufbereiten (`ladefehler`). Angezeigt werden Demodaten, gespeichert wird nicht; „Mit Demodaten neu beginnen?“ ersetzt den Stand erst nach Rückfrage. |
 | Hinweisleiste „Die gespeicherten Daten stammen aus einer neueren Fassung von KaPlan.“ | `version` des gespeicherten Stands ist größer als `DATEN_VERSION` (`neuere_fassung`): Demodaten, kein Speichern, Einspielen und Zurücksetzen gesperrt; Abhilfe „Seite neu laden“. |
@@ -450,7 +546,8 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | Konsole: „Service Worker konnte nicht registriert werden: …“ | Registrierung abgelehnt, etwa ohne HTTPS (`src/shared/pwa.ts`). Die Anwendung läuft weiter, nur der Offline-Betrieb entfällt. |
 | Ausnahme: „useStore muss innerhalb des StoreProvider verwendet werden.“ | Entwicklungsfehler: Eine Komponente nutzt `useStore` außerhalb von `StoreProvider` (`src/bereiche/planlauf/store/store.tsx`). |
 | Seite „Nicht gefunden – Der aufgerufene Eintrag existiert nicht (mehr).“ | Die Adresse nennt ein Projekt oder einen Planlauf, den es nicht (mehr) gibt (`src/bereiche/planlauf/App.tsx`). |
-| Ein alter Stand erscheint nach einer Aktualisierung | Entweder liegt unter `app/` noch ein älterer Build (siehe Abschnitt 5, Schritt 7), oder der Service Worker liefert aus seinem Cache, derzeit `mc-plan-v7` (`public/sw.js`). Beim Aktivieren löscht er alle älteren Caches; bis dahin hilft einmal Neuladen bzw. Strg+Umschalt+R. |
+| Ein alter Stand erscheint nach einer Aktualisierung | Meist ist das Fenster (Tab oder installierte App) noch vor der Veröffentlichung geöffnet worden – es behält seine Fassung bis zum Neuladen; GitHub Pages lässt die Startseite außerdem bis zu zehn Minuten im Browser-Cache. Seltener liegt unter `app/` noch ein älterer Build (siehe Abschnitt 5, Schritt 7), oder der Service Worker liefert aus seinem Cache, derzeit `mc-plan-v8` (`public/sw.js`). Abhilfe: Neuladen bzw. Strg+Umschalt+R; welche Fassung läuft, steht am Fuß des Startbildschirms. |
+| Hinweis „Neue Fassung von KaPlan verfügbar“ mit „Neu laden“ und „Später“ | Kein Fehler: Die veröffentlichte `fassung.json` nennt eine andere Kennung als das laufende Programm (`useNeueFassung` in `src/shared/pwa.ts`, geprüft beim Start, bei Rückkehr ins Fenster und alle fünf Minuten; `src/shell/NeueFassung.tsx`). „Später“ blendet den Hinweis für diese Fassung aus. Der Hinweis liegt mit `z-index: 80` unter der aufgeklappten mobilen Seitenleiste und unter Dialogen; seine Höhe setzt er als `--neue-fassung-hoehe`, damit Meldungen (`.toast-wrap` in `src/shared/global.css`) über ihm erscheinen und der Inhalt (`.content`, auf dem Startbildschirm `.start`, in der PIN-Abfrage des Controllings `.ct-pin`) unten um diese Höhe mehr Abstand erhält – so lassen sich auch die letzten Bedienelemente einer Seite über ihn hinaus scrollen. |
 | Planliste: Haken „Pläne einzeln durch den Planlauf führen“ ist ausgegraut – „Es bestehen bereits Planläufe. Die Pläne lassen sich nur noch nachträglich einzeln weiterführen.“ bzw. „Die Pläne laufen bereits einzeln. Über „Pläne wieder bündeln …“ lassen sich ausgewählte Pläne zurückführen.“ | Kein Fehler: Sobald das Verzeichnis oder einer seiner Pläne einen Lauf hat, ist die Wahl gesperrt (`modusGesperrt` in `Plaene.tsx`). Weiter geht es über die Nachträge „Herauslösen …“, „Alle Pläne einzeln weiterführen …“ und „Pläne wieder bündeln …“ bzw. „Bündeln …“ – im Dialog der Planliste, in der Karte „Pläne dieses Verzeichnisses“ des Planlaufs und im Reiter „Planläufe“. |
 | Konsole der Wurzelseite: 404 für `/src/main.tsx` und die Symbole unter `icons/` | Kein Fehler: Die Wurzelseite ist der ausgelieferte Quellcode und springt nur nach `app/` weiter; dort gibt es diese Fehlanfragen nicht. |
 
@@ -486,7 +583,13 @@ N-x und unterjährige Anmeldung.
   notfalls das Gewerk – `anmeldungBezeichnung`), `bbk` (Zuständiger BBK),
   `anmelder` (Anmelder; soll aus dem Import der Anmeldungen kommen, bis dahin
   von Hand) und `geaendertAm` (Tag der letzten Änderung der Merkmale – gesetzt
-  von `updateAnmeldung` und `terminSetzen` im Store).
+  von `updateAnmeldung` und `terminSetzen` im Store, nur bei einer tatsächlichen
+  Änderung: `updateAnmeldung` vergleicht feldweise mit dem bisherigen Stand,
+  `unterscheidet`; ohne Änderung bleibt der Bestand unverändert). „Speichern“
+  in „Anmeldung bearbeiten“ (`src/bereiche/baubetrieb/components/AnmeldungDialog.tsx`)
+  prüft das vorab ebenso (beide Stände über `bauzeitraumAbgleichen`) und ruft
+  `updateAnmeldung` samt Meldung „Anmeldung gespeichert.“ nur bei einer
+  Änderung auf; sonst schließt es den Dialog nur.
 * Sachstand (`sachstand` in `src/bereiche/baubetrieb/domain/ablauf.ts`): Datum
   und Anlass des jüngsten Eintrags im Verlauf (fachliches Datum; Anlass
   „Statuswechsel“, „Angelegt“ oder der Text des Vermerks, etwa „Nachgehakt“)
@@ -526,6 +629,36 @@ N-x und unterjährige Anmeldung.
   Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekte mit acht
   Anmeldungen, Termine relativ zum heutigen Tag, und die Standard-Workflows.
+* Ladezustand wie im Planlaufmanagement: `ladeDaten` liefert `{ daten, zustand }`
+  mit `LadeZustand` `'ok'`, `'ladefehler'` (Text nicht lesbar, kein Objekt, ab
+  Fassung 2 ohne `projekte`, Fehler beim Aufbereiten) oder `'neuere_fassung'`
+  (`version` größer als `DATEN_VERSION`). Vor einer Umstellung legt `ladeDaten`
+  einmalig die Rohkopie `baubetrieb-planung.data.v1.vor-fassung-<n>` an, vor
+  dem Einspielen über einen unlesbaren Stand `rohkopieVorEinspielen` die
+  Rohkopie `baubetrieb-planung.data.v1.vor-einspielen-<Zeitpunkt>` (7.4). Der
+  Store speichert und gleicht mit dem Projektregister nur bei `'ok'` ab;
+  `speichereDaten` liefert `SpeicherZustand` (`'ok'`, `'voll'`, `'gesperrt'`)
+  und räumt bei vollem Speicher die Rohkopien einzeln wie im
+  Planlaufmanagement (`nachRaeumenSpeichern` in `src/shared/speicher.ts`,
+  Abschnitt 5). Hinweisleisten
+  (`src/bereiche/baubetrieb/components/Hinweisleisten.tsx`, oben im Inhalt):
+  „Der gespeicherte Stand ließ sich nicht laden.“ mit „Gespeicherten Stand
+  herunterladen“ und „Mit Demodaten neu beginnen“ (Rückfrage „Mit Demodaten neu
+  beginnen?“, „Neu beginnen“, Meldung „Mit Demodaten neu begonnen.“); „Die
+  gespeicherten Daten stammen aus einer neueren Fassung von KaPlan.“ mit „Seite
+  neu laden“; „Nicht gespeichert – bitte Sicherung herunterladen.“ mit „Der
+  Speicher des Browsers ist voll“ bzw. „Der Browser lässt das Speichern nicht zu
+  (etwa durch Datenschutzeinstellungen)“ und „Sicherung herunterladen“. Bei
+  einem Stand aus einer neueren Fassung sind „Einspielen“ und „Zurücksetzen“
+  gesperrt („Gesperrt, damit der Stand aus der neueren Fassung erhalten
+  bleibt“; „Einspielen“ auch im Dialog, 7.4). „Sicherung“ lädt dann wie nach einem Ladefehler den gespeicherten
+  Stand unverändert (`rohdatenHerunterladen`, Datei
+  `baubetrieb-gespeicherter-stand-<Datum>.json`, Datum nach Ortszeit, Titel „Gespeicherten Stand
+  unverändert herunterladen“; ohne gespeicherten Stand „Es ist kein
+  gespeicherter Stand vorhanden, der sich herunterladen ließe.“), sonst den
+  Bestand („Gesamten Datenbestand der Baubetriebsplanung als JSON sichern“).
+  Speichert ein anderes Fenster `baubetrieb-planung.data.v1`, lädt der Store
+  ihn nach (`useFremdeAenderung`, `SPEICHER_SCHLUESSEL`).
 * Alle Schreibzugriffe über `mutate()` in
   `src/bereiche/baubetrieb/store/store.tsx`; Statuswechsel und Rücknahme als
   reine Funktionen `wechselAnwenden` und `wechselZuruecknehmen` in
@@ -544,7 +677,7 @@ N-x und unterjährige Anmeldung.
 | `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`, samt ausstehender Erstanmeldungen, diese mit Prozessphase und Projekt) mit den Spalten Anmeldung, Projekt, Status, Terminfrist und „Status ändern“ je Zeile (Haken, siehe 7.3); Karte „Anmeldebedarf aus den Projekten“ (nur wenn Bedarf besteht); Karte „Projekte“ mit der Zahl der Anmeldungen je Workflow, überfälligen Fristen (samt überfälliger Erstanmeldung) und nächster Frist (ohne Anmeldung die der Erstanmeldung). Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
 | `#/baubetrieb/termine` | Termine & Nachhaken (`src/bereiche/baubetrieb/pages/Termine.tsx`) | Alle Anmeldungen mit Terminfrist über alle Projekte, gegliedert nach Projekt; Filter Alle / Überfällig / Fällig / Im Plan / Zum Nachhaken, Suche; je Zeile „Nachgehakt“ (bei Status zum Nachhaken) und „Status ändern“ (Haken, siehe 7.3); je Projekt zuerst eine Zeile „Erstanmeldung ausstehend“ (`ausstehendeErstanmeldungen`) mit „Ausstehend“, Terminfrist und „Zum Projekt“ – sie zählt in den Filtern mit. Darunter „Anmeldebedarf aus den Projekten“. |
 | `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit MIC-Projektnummer, Bezeichnung, Bemerkung (falls vorhanden), Status der Betreuung, ★-Markierung und „Auch in“; Suche auch über DB-G-Nummer, Projektleiter und Hauptbearbeiter; „Neues Projekt“ (`ProjektDialog`). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Baubetriebsplanung“ (siehe 9.3). |
-| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen; nur in diesem Bereich); Archivhinweis (9.3); Stammdaten; am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; die Maßnahmenart in der zweiten Zeile nur, wo der Workflow mehrere führt), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip), Sachstand (`SachstandKompakt` in `src/bereiche/baubetrieb/components/common.tsx`: Datum, darunter Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; alles im Tooltip) und „Status ändern“ (Haken, siehe 7.3). Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
+| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen; nur in diesem Bereich; die Rückfrage endet mit „Die Anmeldung lässt sich nicht wiederherstellen.“ bzw. „Die Anmeldungen lassen sich nicht wiederherstellen.“ und dem Hinweis aus `useLoeschHinweis`, 9.3); Archivhinweis (9.3); Stammdaten; am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; die Maßnahmenart in der zweiten Zeile nur, wo der Workflow mehrere führt), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip), Sachstand (`SachstandKompakt` in `src/bereiche/baubetrieb/components/common.tsx`: Datum, darunter Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; alles im Tooltip) und „Status ändern“ (Haken, siehe 7.3; Tabellenklasse `bb-anmeldungen` – scrollt die Tabelle quer, bleibt die Haken-Spalte rechts stehen, `position: sticky` in `src/bereiche/baubetrieb/components/baubetrieb.css`). Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
 | `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“, „Letzten Wechsel zurücknehmen“, dazu „Zuständig:“ mit Rolle und Namen; Karte „Merkmale“ („Vorhabenname“ im SKM und wo er gesetzt ist, die Nummer als „tVE-Nr“ – bei älteren SKM-Einträgen ohne Vorhabenname weiter „Begriff / tVE-Nr“ –, „Zuständiger BBK“, „Anmelder“, Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; oben rechts „Bearbeiten“, „Duplizieren“ (Kopie mit aktuellem Stand und Statusverlauf, Vermerk „Dupliziert aus …“, „(Kopie)“ an der führenden Bezeichnung; öffnet die Kopie) und „Löschen“. |
 | `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Liste „Workflows“ mit Kennzeichen „Standard“ bzw. „Eigener Workflow“, Zahl der Status und Anmeldungen, den Status in ihrer Reihenfolge, „Öffnen“, „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
 | `#/baubetrieb/fristen` | Fristen (`src/bereiche/baubetrieb/pages/Fristen.tsx`), Menügruppe „Einstellungen“ | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase eine Gruppenzeile mit Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. Die frühere Adresse `#/baubetrieb/einstellungen` zeigt dieselbe Seite. |
@@ -583,14 +716,15 @@ die Übersicht.
   Status werden in allen Workflows entfernt. „Duplizieren“ (`workflowKopie`)
   hängt „(Kopie)“ an Name und Kurzbezeichnung.
 * „Status ändern“ (`NachfolgerAuswahl` in
-  `src/bereiche/baubetrieb/components/common.tsx`, Gestaltung in
+  `src/bereiche/baubetrieb/components/common.tsx`, Haken gestaltet in
   `src/bereiche/baubetrieb/components/baubetrieb.css`, Präfix `bb-`) ist ein
   Haken wie der Erledigt-Haken des Planlaufmanagements und bietet nur die
   Nachfolger des aktuellen Status an (`nachfolgerVon`): Mit einem Nachfolger
   wählt der Haken ihn direkt (Tooltip „Status ändern: …“), mit mehreren öffnet
-  er ein Menü „Welcher Status folgt?“ („Eintrag löschen“ in Rot); ein Klick
-  daneben oder Escape schließt es. Die Wahl öffnet den Dialog des
-  Statuswechsels.
+  er ein Menü „Welcher Status folgt?“ („Eintrag löschen“ in Rot) – das
+  gemeinsame `AufklappMenue` (`src/shared/menue.tsx`, Abschnitt 2.4: bleibt im
+  Fenster, Tastatur, schließt mit Escape, Tab, Klick daneben oder Scrollen).
+  Die Wahl öffnet den Dialog des Statuswechsels.
 * Statuswechsel im Dialog `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx`:
   Datum, Bemerkung, beim Eintritt in eine Änderungsabstimmung ÄAbst-Nr und
   AnnexVII; bei einem Wechsel in einen anderen Workflow (`istUebernahme`)
@@ -643,12 +777,33 @@ die Übersicht.
   `einstellungen.bearbeiter` und `einstellungen.farbmodus` spiegeln sie),
   „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich wechseln“.
 * Sicherung (`exportiereDaten`) lädt `baubetrieb-sicherung-<Datum>.json` mit
-  `"bereich": "baubetrieb"`. Einspielen
+  `"bereich": "baubetrieb"` (Datum nach Ortszeit, `today()` aus
+  `src/shared/dates.ts`). Einspielen
   (`src/bereiche/baubetrieb/components/Sicherung.tsx`) fragt „Sicherung
-  einspielen?“, bietet „Aktuellen Stand sichern“ und übernimmt „Angemeldet
+  einspielen?“ – mit „Der gesamte jetzige Bestand der Baubetriebsplanung in
+  diesem Browser wird ersetzt. Die anderen Bereiche bleiben unberührt.“ –,
+  bietet „Aktuellen Stand sichern“ (Titel „Den jetzigen Bestand vorher als
+  JSON sichern“) und übernimmt „Angemeldet
   als“ und Farbmodus – dann für alle Bereiche – nur mit dem Haken „Auch
   „Angemeldet als“ und Farbmodus aus der Sicherung übernehmen – gilt dann in
-  allen Bereichen“.
+  allen Bereichen“. Nach einem Lade- oder Fassungsfehler heißt der erste Knopf
+  „Gespeicherten Stand herunterladen“ (Titel „Gespeicherten Stand unverändert
+  herunterladen“, `rohdatenHerunterladen`; ohne gespeicherten Stand „Es ist
+  kein gespeicherter Stand vorhanden, der sich herunterladen ließe.“). Nach
+  einem Ladefehler warnt der Dialog „Der gespeicherte Stand ließ sich nicht
+  laden. Das Einspielen ersetzt ihn; eine unveränderte Kopie bleibt im Browser,
+  solange der Speicher reicht. Wer ihn noch braucht, lädt ihn vorher mit
+  „Gespeicherten Stand herunterladen“ herunter.“ und legt vor dem Ersetzen mit
+  `rohkopieVorEinspielen` (`src/bereiche/baubetrieb/store/storage.ts`) die
+  Rohkopie `baubetrieb-planung.data.v1.vor-einspielen-<Zeitpunkt>` an. Passt
+  sie nicht in den Speicher, ersetzt er nichts und meldet „Für eine Kopie des
+  gespeicherten Stands reicht der Speicher des Browsers nicht. Wer ihn noch
+  braucht, lädt ihn jetzt mit „Gespeicherten Stand herunterladen“ herunter;
+  „Ohne Kopie einspielen“ ersetzt ihn endgültig.“; erst „Ohne Kopie
+  einspielen“ ersetzt den Stand. Bei einem Stand aus einer neueren Fassung ist
+  „Einspielen“ auch im Dialog gesperrt: „Gespeichert ist ein Stand aus einer
+  neueren Fassung von KaPlan. Damit er nicht überschrieben wird, lässt sich
+  hier nichts einspielen – bitte zuerst die Seite neu laden.“
 * Excel (`monitorExportieren` in `src/bereiche/baubetrieb/domain/export.ts`):
   Blätter „Anmeldungen“ (mit den Spalten „Workflow“, „Status“ und „Anmelder“) und
   „Projekte“, Terminfristen bei überfälligen Anmeldungen rot, bei fälligen
@@ -723,8 +878,23 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
   TK), die Standard-Funktionen (`STANDARD_FUNKTIONEN`, je Gewerk die
   Fachplanung, für LST und OLA zusätzlich die Bauüberwachung) und zwei
   Projekte mit Projektbeteiligten und zwei Protokollen einer Reihe, darunter
-  Aufgaben der Projektsteuerung; angemeldet ist deren Projektsteuerin
-  (`einstellungen.bearbeiter`). Termine relativ zum heutigen Tag.
+  Aufgaben der Projektsteuerin „Lena Roth“ – als eigene To-Dos erscheinen sie,
+  wenn unter „Angemeldet als“ dieser Name steht (`einstellungen.bearbeiter` aus
+  den Demodaten ist nur ein Spiegel der gemeinsamen Anmeldung und wird von
+  `useBenutzerAbgleich` sofort ersetzt). Termine relativ zum heutigen Tag.
+* Ladezustand, Rohkopie, Speicherzustand, Hinweisleisten und Nachladen aus
+  anderen Fenstern wie in der Baubetriebsplanung (7.1): `ladeDaten` liefert
+  `LadeZustand` (`'ladefehler'` auch ohne `projekte`), Rohkopien
+  `projektsteuerung.data.v1.vor-fassung-<n>` und – vor dem Einspielen über
+  einen unlesbaren Stand – `projektsteuerung.data.v1.vor-einspielen-<Zeitpunkt>`
+  (8.5), `speichereDaten` liefert `SpeicherZustand` und räumt bei vollem
+  Speicher wie dort (`nachRaeumenSpeichern`); Hinweisleisten in
+  `src/bereiche/projektsteuerung/components/Hinweisleisten.tsx` mit denselben
+  Texten; „Sicherung“ lädt nach einem Ladefehler bzw. bei neuerer Fassung
+  `projektsteuerung-gespeicherter-stand-<Datum>.json` („Gespeicherten Stand
+  unverändert herunterladen“), sonst den Bestand („Gesamten Datenbestand der
+  Projektsteuerung als JSON sichern“); „Einspielen“ und „Zurücksetzen“ sind bei
+  neuerer Fassung gesperrt. Gespeichert und abgeglichen wird nur bei `'ok'`.
 * Alle Schreibzugriffe über `mutate()` in `src/bereiche/projektsteuerung/store/store.tsx`. Danach
   gleicht `teilnehmerNachziehen` (`src/bereiche/projektsteuerung/domain/protokoll.ts`) Name, Funktion,
   Firma und Kürzel verknüpfter Teilnehmender mit der Projektbeteiligtenliste
@@ -738,7 +908,7 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
 | `#/projektsteuerung` bzw. `#/projektsteuerung/uebersicht` | Übersicht (`src/bereiche/projektsteuerung/pages/Uebersicht.tsx`) | Nur eigene To-Dos (`eigeneTodos` in `src/bereiche/projektsteuerung/domain/punkte.ts`): offene Aufgaben der Protokolle – Einträge vom Typ A und Ergänzungen mit eigener Art „Aufgabe“ (`protokollAufgaben`) –, deren „Verantwortlich“ Kürzel oder Namen der angemeldeten Person nennt – aus ihrem Eintrag in der Projektbeteiligtenliste oder aus den Teilnehmenden, verknüpft oder gleichen Namens (`eigeneZuordnungen`; Groß- und Kleinschreibung zählen nicht). Steht der Name in keiner Projektbeteiligtenliste der angezeigten Projekte (`angemeldetBeteiligt`), nennt ein Hinweis „Angemeldet als“. Kacheln „Aktive Projekte“, „Meine To-Dos“, „Überfällig“, „Demnächst fällig“. Karte „Meine To-Dos“, Filter Alle / Überfällig / Fällig, zunächst zehn Zeilen (`ANZAHL_PUNKTE`), je Zeile „Erledigt“ (Store `punktErledigen`, auch für Ergänzungen); ein Klick führt zum Protokoll (`punktZiel`). Karte „Projekte“ mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin, eigenen To-Dos („To-Dos“, „Überfällig“) und „Protokolle“. Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
 | `#/projektsteuerung/projekte` | Projekte (`src/bereiche/projektsteuerung/pages/Projekte.tsx`) | Projektkarten mit Nummer, Projektname, Beschreibung (falls vorhanden), Status, ★-Markierung und „Auch in“; „Neues Projekt“ (`ProjektDialog`: Projektnummer, Status, Projektname, Beschreibung). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Projektsteuerung“ (siehe 9.3). |
 | `#/projektsteuerung/funktionen` | Funktionen (`src/bereiche/projektsteuerung/pages/Funktionen.tsx`) | Reiter „Übergreifend“ und je Gewerk, **+** legt ein Gewerk an (`GewerkDialog` in `src/bereiche/projektsteuerung/components/GewerkDialog.tsx`). Je Seite die Funktionen mit Suche und Spalten Kürzel, Gewerk, Beschreibung, „Verwendet“; „Neue Funktion“ und Bearbeiten per Klick (`FunktionDialog` in `src/bereiche/projektsteuerung/components/FunktionDialog.tsx`: Bezeichnung, Gewerk mit „Gewerk“ zum Anlegen, Kürzel – leer aus der Bezeichnung gebildet, `kuerzelAus` –, Farbe, Beschreibung); auf Gewerkseiten „Vorhandene Funktion“ (Funktion eines anderen Gewerks übernehmen, Kürzel nach `kuerzelFuer`) und „Gewerk „…“ löschen“ (`GewerkLoeschenDialog`, entfernt das Gewerk samt Funktionen). Funktionen und Gewerke, die Projektbeteiligte tragen, lassen sich nicht löschen. |
-| `#/projektsteuerung/projekt/<id>/<seite>` | Projekt (`src/bereiche/projektsteuerung/pages/ProjektDetail.tsx`) | Kopfzeile mit Nummer, Status, Beschreibung, „Bearbeiten“ und „Löschen“ (samt Beteiligten und Protokollen; nur in diesem Bereich), darunter ggf. der Archivhinweis (9.3). Seiten `beteiligte` („Projektbeteiligte“) und `protokolle` („Protokolle“); die frühere Seite `lop` führt zu `protokolle`, ohne gültige Angabe `beteiligte`. Siehe 8.3 und 8.4. |
+| `#/projektsteuerung/projekt/<id>/<seite>` | Projekt (`src/bereiche/projektsteuerung/pages/ProjektDetail.tsx`) | Kopfzeile mit Nummer, Status, Beschreibung, „Bearbeiten“ und „Löschen“ (samt Beteiligten und Protokollen; nur in diesem Bereich – die Rückfrage nennt „… aus der Projektsteuerung gelöscht.“, bei Protokollen dazu „Die Protokolle lassen sich nicht wiederherstellen.“, und den Hinweis aus `useLoeschHinweis`, 9.3), darunter ggf. der Archivhinweis (9.3). Seiten `beteiligte` („Projektbeteiligte“) und `protokolle` („Protokolle“); die frühere Seite `lop` führt zu `protokolle`, ohne gültige Angabe `beteiligte`. Siehe 8.3 und 8.4. |
 | `#/projektsteuerung/projekt/<id>/protokoll/<id>` | Protokoll (`src/bereiche/projektsteuerung/pages/projekt/ProtokollEditor.tsx`) | Siehe 8.4. |
 
 Router: `src/bereiche/projektsteuerung/lib/router.ts`; unbekannte Adressen führen auf die Übersicht.
@@ -763,7 +933,9 @@ Gewerk gruppiert, der Hinweis nennt, wer die Funktion im Projekt bereits führt;
 
 Excel-Import (`BeteiligteImport` in
 `src/bereiche/projektsteuerung/components/BeteiligteImport.tsx`, Logik in
-`src/bereiche/projektsteuerung/domain/beteiligteImport.ts`): .xlsx oder .csv, Kopfzeile in den ersten 15
+`src/bereiche/projektsteuerung/domain/beteiligteImport.ts`): .xlsx oder .csv; gelesen wird das erste
+Blatt mit Kopfzeile und Personen (ohne Personen das erste mit Kopfzeile – ein vorangestelltes
+Hinweisblatt wird übersprungen), Kopfzeile in den ersten 15
 Zeilen gesucht, Spalten nach `BETEILIGTE_KOPF` (Funktion, Gewerk, Kürzel,
 Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift,
 Notiz) mit weiteren Schreibweisen; statt Vor- und Nachname genügt „Name“
@@ -871,10 +1043,21 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
   Tage vorher), im Plan, ohne Termin.
 * Sicherung (`exportiereDaten`) lädt `projektsteuerung-sicherung-<Datum>.json`
   mit `"bereich": "projektsteuerung"`. Einspielen
-  (`src/bereiche/projektsteuerung/components/Sicherung.tsx`) fragt „Sicherung einspielen?“, bietet
+  (`src/bereiche/projektsteuerung/components/Sicherung.tsx`) fragt „Sicherung einspielen?“ – mit
+  „Der gesamte jetzige Bestand der Projektsteuerung in diesem Browser wird ersetzt. Die anderen
+  Bereiche bleiben unberührt.“ –, bietet
   „Aktuellen Stand sichern“ und übernimmt „Angemeldet als“ und Farbmodus –
   dann für alle Bereiche – nur mit dem Haken „Auch „Angemeldet als“ und
   Farbmodus aus der Sicherung übernehmen – gilt dann in allen Bereichen“.
+  Wie in der Baubetriebsplanung (7.4) heißt der erste Knopf nach einem Lade-
+  oder Fassungsfehler „Gespeicherten Stand herunterladen“
+  (`rohdatenHerunterladen`); nach einem Ladefehler warnt der Dialog mit
+  demselben Text, legt vor dem Ersetzen mit `rohkopieVorEinspielen`
+  (`src/bereiche/projektsteuerung/store/storage.ts`) die Rohkopie
+  `projektsteuerung.data.v1.vor-einspielen-<Zeitpunkt>` an und ersetzt, wenn
+  sie nicht in den Speicher passt, erst auf „Ohne Kopie einspielen“; bei
+  einem Stand aus einer neueren Fassung ist „Einspielen“ auch im Dialog
+  gesperrt.
 
 ### 8.6 Meldungen
 
@@ -922,11 +1105,52 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   (Fassung 2: `markiert`, vor der Umstellung eine Rohkopie
   `kaplan-projektregister.v1.vor-fassung-<n>`); `aufbereiten()` ergänzt fehlende Felder. Lässt sich der gespeicherte Stand
   nicht lesen oder stammt er aus einer neueren Fassung, bleibt er unberührt
-  (`registerZustand`), und die Bereiche gleichen nicht ab. Ein Fenster lädt das
-  Register neu, wenn ein anderes es ändert (`storage`-Ereignis).
+  (`registerZustand`), und die Bereiche gleichen nicht ab. Ist der Speicher
+  voll, räumt `speichern` Rohkopien über `nachRaeumenSpeichern`
+  (`src/shared/speicher.ts`) und meldet sonst in der Konsole „Projektregister konnte
+  nicht gespeichert werden: …“. `speichern` liefert `RegisterSpeicherZustand`
+  (`'ok'`, `'voll'` oder `'gesperrt'`); der Stand des Fensters gilt auch
+  ungespeichert und merkt sich das Ergebnis (`gespeichert`) sowie das Register,
+  das zuletzt im Speicher stand (`basis`). Solange es nicht `'ok'` ist, schreibt
+  auch ein Aufruf von `registerAendern` ohne Änderung – etwa der Abgleich eines
+  Bereichs – den Stand erneut (`registerErneutSpeichern`, ohne Konsolenmeldung);
+  ein Aufruf mit Änderung schreibt ohnehin den neuen Stand und meldet einen
+  Fehlschlag wieder in der Konsole. `useRegisterSpeicherZustand` liefert das
+  Ergebnis für den Hinweis im Controlling (9.4).
+* Ein Fenster lädt das Register neu, wenn ein anderes es speichert
+  (`storage`-Ereignis). Hält es Änderungen, die sich nicht speichern ließen,
+  trägt es sie auf den neuen Stand nach und speichert erneut
+  (`eigeneAenderungenNachziehen`, reine Funktion: eigener Stand gegen `basis`,
+  je Projekt bzw. Person über die Kennung und darin je Feld – Mitgliedschaften
+  je Bereich und Feld –; bei Widerspruch gilt die eigene Änderung, eine
+  Löschung geht jeder Änderung vor, Personen ohne Projekt entfallen;
+  Löschvermerke: die fremden ohne die hier erledigten, dazu die hier neuen).
+  Neu nachgezogen werden nur Projekte des Controllings (`herkunft`
+  `'controlling'`): Was ein Bereich neu eingetragen hat – Projekte seiner
+  Herkunft, Personen –, steht in seinem Bestand, und sein nächster Abgleich
+  trägt es wieder ein, verknüpft mit einem Projekt gleicher Nummer bzw. einer
+  Person gleicher E-Mail aus dem fremden Stand (was das Controlling in diesem
+  Fenster an einem solchen Projekt geändert hat, entfällt dabei). Hat eine Seite ein Projekt bzw.
+  eine Person gelöscht, die die andere seit `basis` in Bereiche übernommen hat,
+  ergänzt die Funktion deren Kennungen als Löschvermerk – bei Projekten auch
+  noch offene Mitgliedschaften, denn der Bereich legt das Projekt an, bevor
+  sein nächster Abgleich die Übernahme einträgt. Verglichen und gespeichert wird
+  der nachgezogene Stand in der Form von `aufbereiten`; geschrieben wird er mit
+  `nachgezogenAuf`, der Kennung des fremden Stands (`kennung`, FNV-1a über
+  dessen JSON; `aufbereiten` lässt das Feld beim Laden fallen). Bringt das
+  nächste `storage`-Ereignis – im Ereignis selbst oder im Speicher – einen Stand
+  mit derselben Kennung, hat ein zweites Fenster zugleich auf denselben Stand
+  nachgezogen und das Schreiben dieses Fensters überschrieben; dann zieht es
+  seine Änderungen gegenüber jenem Stand noch einmal nach (`nachgezogen` im
+  Stand des Fensters). Lässt sich auch das nicht speichern, bleibt der Stand
+  ungespeichert; stammt der neue Stand aus einer neueren Fassung oder ist er
+  unlesbar, gilt er, und die nicht gespeicherten Änderungen entfallen (Meldung
+  im Controlling, 9.4). Schreiben zwei Fenster sonst im selben Augenblick, gilt
+  der zuletzt geschriebene Stand.
 * `registerAendern` ändert das Register über eine Funktion und benachrichtigt
-  nur bei einer tatsächlichen Änderung; `useRegister` liefert es für die
-  Oberfläche (`useSyncExternalStore`).
+  nur bei einer tatsächlichen Änderung (bzw. wenn sich das Ergebnis des
+  Speicherns ändert); `useRegister` liefert es für die Oberfläche
+  (`useSyncExternalStore`).
 * Funktionen gelten bereichsübergreifend als dieselben, wenn Bezeichnung und
   Gewerk übereinstimmen (`funktionsSchluessel`).
 * `JEDES_PROJEKT_IN` (`'leistungsnachweise'`): Bereich, in dem jedes Projekt
@@ -940,17 +1164,43 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
 
 * `src/gemeinsam/useRegisterAbgleich.ts`: Jeder Store
   (`src/bereiche/planlauf/store/store.tsx`, `src/bereiche/baubetrieb/store/store.tsx`,
-  `src/bereiche/projektsteuerung/store/store.tsx`) gleicht nach jeder Änderung seines Bestands
-  und jeder Änderung des Registers ab – das Planlaufmanagement nur bei
-  `ladeZustand === 'ok'`. Zuerst überträgt `uebertragen`
+  `src/bereiche/projektsteuerung/store/store.tsx`, `src/bereiche/leistungsnachweise/store/store.tsx`)
+  gleicht nach jeder Änderung seines Bestands und jeder Änderung des Registers ab – außer
+  einem aus einem anderen Fenster nachgeladenen Stand (siehe unten, *Mehrere Fenster*) –, alle vier nur
+  bei `ladeZustand === 'ok'`. Zuerst überträgt `uebertragen`
   (`src/gemeinsam/abgleich.ts`) die Änderungen des Bereichs (alter gegen neuen
   Stand) ins Register, dann trägt `abgleichen` Unbekanntes ein und liefert einen
   `Plan`, den der Store über sein eigenes `mutate()` übernimmt. Nach
   `ersetzeDaten` und `zuruecksetzen` meldet der Store `ersetzt()`: Dann entfällt
   das Übertragen, und für verknüpfte Projekte und Personen gilt das Register.
+* Vollständig gleicht `abgleichen` (Parameter `vollstaendig`) nur beim ersten
+  Abgleich nach dem Laden (Ref `erstmals` in `useRegisterAbgleich`) und nach
+  `ersetzt()` ab: Nur dann löst es Mitgliedschaften von Projekten, die der
+  Bereich nicht mehr führt, und übernimmt die ★ aus dem Bestand – außerdem die ★
+  eines eben übernommenen Projekts, dessen Mitgliedschaft noch `offen` ist.
+  Sonst meldet beides allein `uebertragen` (gelöscht, wenn das Projekt im alten
+  Stand vorkam und im neuen fehlt; ★, wenn sich `markiert` geändert hat). So
+  kommen zwei Fenster mit verschiedenen Ständen zur Ruhe.
+* Mehrere Fenster: Jeder Store lädt seinen Bestand nach, wenn ein anderes
+  Fenster ihn speichert (`useFremdeAenderung` in `src/gemeinsam/useFremdeAenderung.ts`,
+  `storage`-Ereignis auf `SPEICHER_SCHLUESSEL` des Bereichs, nur bei
+  `ladeZustand === 'ok'`). Den nachgeladenen Stand meldet der Store vorher mit
+  `nachgeladen(daten)` (`useRegisterAbgleich` in `src/gemeinsam/useRegisterAbgleich.ts`,
+  dasselbe Objekt, das danach der Bestand wird) – nicht mit `ersetzt()`, ein noch offenes
+  `ersetzt()` verfällt. Dieser Stand wird weder übertragen noch abgeglichen, nur als
+  Ausgangspunkt (`vorher`) für die nächste eigene Änderung vermerkt: Das andere Fenster hat
+  beides schon getan, und sein Register kommt als eigenes `storage`-Ereignis, oft erst nach
+  dem Bestand – ein Abgleich dazwischen nähme dessen Änderungen zurück. Erst wenn sich danach
+  das Register ändert, gleicht der Store mit beiden aktuellen Ständen ab (nicht
+  `vollstaendig`). Deshalb steht in jedem Store der Abgleich-Effekt (`useRegisterAbgleich`)
+  nach dem Speicher-Effekt: Ein anderes Fenster erhält erst den Bestand, dann das Register.
+  Der nachgeladene Stand wird nicht zurückgeschrieben (`uebernommen`); stammt er aus
+  einer neueren Fassung, übernimmt der Store den Ladezustand und speichert nicht
+  mehr.
 * Je Bereich beschreibt `sichtFuerRegister` den Bestand und wendet
   `registerPlanAnwenden` einen Plan an (`src/bereiche/planlauf/domain/register.ts`,
-  `src/bereiche/baubetrieb/domain/register.ts`, `src/bereiche/projektsteuerung/domain/register.ts`):
+  `src/bereiche/baubetrieb/domain/register.ts`, `src/bereiche/projektsteuerung/domain/register.ts`,
+  `src/bereiche/leistungsnachweise/domain/register.ts`):
   * Planlaufmanagement: Projekte mit Nummer, Name und Beschreibung; Kontakte
     ohne den eigenen (`eigen`) mit ihren Funktionen außer der eigenen
     (`istEigeneFunktion`). Übernommene Projekte erhalten die
@@ -983,12 +1233,24 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
 * Beim ersten Abgleich verknüpft `abgleichen` ein Projekt mit einem nicht
   archivierten Registerprojekt gleicher Projektnummer, das der Bereich noch
   nicht führt (ohne Nummer: gleicher Bezeichnung), und darin Personen gleicher
-  E-Mail-Adresse, ersatzweise gleichen Vor- und Nachnamens. Leere Angaben des
-  Registers füllt der Bereich, sonst gilt das Register.
+  E-Mail-Adresse, ersatzweise gleichen Vor- und Nachnamens. Ebenso verknüpft es
+  eine offene Mitgliedschaft (vom Controlling vorgesehen) mit einem noch nicht
+  verknüpften eigenen Projekt gleicher Nummer, statt ein zweites anzulegen.
+  An beiden Stellen führt `stammdatenZusammenfuehren` die Stammdaten zusammen:
+  Leere Angaben des Registers füllt der Bereich, sonst gilt das Register; eine
+  abweichende Bezeichnung oder Beschreibung des Bereichs hängt es als Vermerk an
+  die Beschreibung des Registerprojekts („Bezeichnung in … vor der
+  Zusammenführung: …“ – der Name in Anführungszeichen – bzw. „Beschreibung in …
+  vor der Zusammenführung: …“, mit dem Titel des Bereichs). Vermerkzeilen zählen beim Lückenfüllen nicht als
+  Beschreibung, gleiche Vermerke entstehen nicht doppelt.
 * Führt ein Bereich ein Projekt nicht mehr, entfällt seine Mitgliedschaft; ohne
   weitere Mitgliedschaft entfällt das Projekt samt Personen auch im Register,
   außer es stammt aus dem Controlling und der löschende Bereich ist nicht
-  `JEDES_PROJEKT_IN` (`mitgliedschaftLoesen`). Löscht ein
+  `JEDES_PROJEKT_IN` (`mitgliedschaftLoesen`). In `JEDES_PROJEKT_IN` entfällt
+  ein Projekt aus dem Controlling nur, wenn es dort ausdrücklich gelöscht wurde
+  (Parameter `geloescht`, von `uebertragen` gesetzt); fehlt es nach
+  Zurücksetzen oder Einspielen, bleibt es im Register und wird im selben
+  Abgleich wieder als offen angelegt. Löscht ein
   Bereich eine Person, entfernt das Register sie und vermerkt die Löschung für
   die anderen Bereiche.
 
@@ -1000,19 +1262,27 @@ Bausteine in `src/gemeinsam/ProjektBereiche.tsx` (Gestaltung in
 * `BereichsMarken` unten in jeder Projektkachel: „Auch in“ mit den anderen
   Bereichen des Projekts (`genannteBereiche` – außerhalb der
   Leistungsnachweise ohne diese), als „… · archiviert“ bzw. „… · vorgesehen“.
-  Ebenso nennen „Geführt in“ und der Löschhinweis (`andereBereiche`,
-  `useLoeschHinweis`) die Leistungsnachweise nur dort selbst.
+  Ebenso lassen „Geführt in“ und der Löschhinweis (`andereBereiche`,
+  `useLoeschHinweis`) die Leistungsnachweise außerhalb ihres Bereichs weg.
 * `FremdeProjekte`: grau hinterlegter Abschnitt „Projekte aus anderen
   Bereichen“ mit den nicht archivierten Registerprojekten, die der Bereich nicht
   führt (mit der Suche der Projektliste gefiltert), je Karte Nummer,
-  Bezeichnung, Beschreibung (falls vorhanden), „Geführt in“ (ohne genannte
-  Bereiche bei Projekten aus dem Controlling „Im Controlling angelegt“) und
-  „Übernehmen in …“ (`inBereichUebernehmen`). In den Leistungsnachweisen ist
+  Bezeichnung, Beschreibung (falls vorhanden), „Geführt in“ – führt kein
+  genannter Bereich das Projekt, die Herkunft (`herkunftOhneBereich`): „Im
+  Controlling angelegt“, „Hier gelöscht – weiter in den Leistungsnachweisen
+  geführt“ (Herkunft ist dieser Bereich) bzw. „Nur in den Leistungsnachweisen
+  geführt“ – und „Übernehmen in …“ (`inBereichUebernehmen`). In den Leistungsnachweisen ist
   der Abschnitt leer, weil sie jedes Projekt führen.
 * `ArchivAbschnitt`: aufklappbares „Archiv“ mit den im Bereich archivierten
   Projekten und dem Hinweis „Archiviert wird im Controlling – je Bereich oder
   für alle.“ Archivierte Projekte fehlen in Übersicht und Seitenleiste
-  (`useArchivierte`, `sichtbareProjekte`).
+  (`useArchivierte`, `sichtbareProjekte`). Nach derselben Regel erscheint in
+  den Übersichten aller vier Bereiche der Hinweis „Kein Projekt markiert – es
+  werden alle angezeigt.“ (im Planlaufmanagement „Kein Projekt markiert – es
+  werden alle Projekte angezeigt.“): wenn es nicht archivierte Projekte gibt und
+  keines davon markiert ist; archivierte markierte zählen nicht, in den
+  Leistungsnachweisen gilt auch ein anderswo markiertes Projekt als markiert
+  (`istMarkiert`).
 * `ArchivHinweis` oben im Projekt eines archivierten Projekts: „Dieses Projekt
   ist … archiviert. Es erscheint nicht in Übersicht und Seitenleiste;
   zurückholen lässt es sich im Controlling.“
@@ -1022,7 +1292,11 @@ Bausteine in `src/gemeinsam/ProjektBereiche.tsx` (Gestaltung in
   Bezeichnung und Projektbeteiligte kommen von dort und gelten in allen
   Bereichen.“
 * Löschdialoge der Projekte ergänzen bei geteilten Projekten „In … bleibt das
-  Projekt mit seinen Projektbeteiligten erhalten.“ (`useLoeschHinweis`).
+  Projekt mit seinen Projektbeteiligten erhalten.“ (`useLoeschHinweis`); führt
+  außer den Leistungsnachweisen kein genannter Bereich das Projekt, „In den
+  Leistungsnachweisen bleibt das Projekt mit seinen Leistungen und
+  Projektbeteiligten erhalten und steht danach hier unter „Projekte aus anderen
+  Bereichen“; ganz löschen lässt es sich nur im Controlling unter „Projekte“.“
 * `RegisterBeteiligte`: Karte „Projektbeteiligte“ in der Baubetriebsplanung mit
   Name, Funktion, Firma und Kontakt.
 
@@ -1031,16 +1305,33 @@ Bausteine in `src/gemeinsam/ProjektBereiche.tsx` (Gestaltung in
 Einstiegspunkt `src/bereiche/controlling/index.tsx`; ohne Entsperrung zeigt er
 die PIN-Abfrage (`src/bereiche/controlling/PinEingabe.tsx`: „Controlling“, Feld für
 die PIN, „Entsperren“, „Zur Bereichsauswahl“; mit der vierten Ziffer wird
-geprüft). Die Entsperrung gilt für die Sitzung (`sessionStorage`, Schlüssel
+geprüft; `.ct-pin` hat unten zusätzlich die Höhe des Hinweises „Neue Fassung“,
+`--neue-fassung-hoehe`, und reicht der Platz nicht, scrollt die Seite). Die Entsperrung gilt für die Sitzung (`sessionStorage`, Schlüssel
 `kaplan-controlling.entsperrt`) bis „Sperren“ in der Seitenleiste
 (`src/bereiche/controlling/App.tsx`). Einen eigenen Bestand hat das Controlling
 nicht; Gestaltung in `src/bereiche/controlling/controlling.css` (Präfix `ct-`).
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich; Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich; „Leistungsnachweise“ fest angehakt mit „(immer)“). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“ – in den Leistungsnachweisen (`JEDES_PROJEKT_IN`) ohne Übernehmen und Zurücknehmen, ohne Mitgliedschaft „Vorgesehen“. |
+| `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich (gezählt wird nur der Zustand „Aktiv“, ohne vorgesehene Übernahmen – `zustandIm`); Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich; „Leistungsnachweise“ fest angehakt mit „(immer)“). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“ – in den Leistungsnachweisen (`JEDES_PROJEKT_IN`) ohne Übernehmen und Zurücknehmen, ohne Mitgliedschaft „Vorgesehen“ (Tooltip „Jedes Projekt gehört in die Leistungsnachweise – sie legen es beim nächsten Öffnen an“, bei archiviertem Projekt „Jedes Projekt gehört in die Leistungsnachweise – sie legen es an, sobald es aus dem Archiv geholt ist“). Die Beschreibung behält ihre Zeilenumbrüche (`.ct-beschreibung`, `white-space: pre-line`). |
 | `#/controlling/archiv` | Archiv (dieselbe Seite) | Die im Controlling archivierten Projekte mit „Bearbeiten“, „Aus dem Archiv holen“ und „Löschen“; der Stand je Bereich ohne Schaltflächen. |
 | `#/controlling/leistungsnachweise/<reiter>`, `…/projekt/<id>/<reiter>` bzw. `…/projekt/<id>/nachweis/<id>` | Controlling der Leistungsnachweise (`LeistungsnachweiseControlling` in `src/bereiche/leistungsnachweise/controlling.tsx`), Menüpunkt „Leistungsnachweise“ unter „Bereiche“ | Siehe 10.4. |
+
+Lässt sich das Projektregister nicht speichern (`useRegisterSpeicherZustand`,
+9.1), steht über jeder Ansicht des Controllings „Projektregister nicht
+gespeichert.“ mit dem Grund („Der Speicher des Browsers ist voll“ bzw. „Der
+Browser lässt das Speichern nicht zu (etwa durch Datenschutzeinstellungen)“) und
+„Erneut speichern“ (`registerErneutSpeichern`; `RegisterSpeicherHinweis` in
+`src/bereiche/controlling/App.tsx`, Gestaltung `.ct-speicherhinweis`). Gelingt
+das Speichern – über den Knopf, einen weiteren Schreibzugriff oder nachdem ein
+anderes Fenster gespeichert hat (9.1) –, verschwindet der Hinweis mit der Meldung
+„Projektregister gespeichert.“; fiele der Fokus dabei auf `body`, setzt ihn
+`RegisterSpeicherHinweis` auf die Überschrift der Kopfzeile (`h1.ct-ueberschrift`,
+`tabIndex={-1}`, ohne Fokusrahmen). Hat das andere Fenster einen Stand gespeichert,
+den dieses nicht lesen kann (`useRegisterZustand` nicht `'ok'`), entfallen die
+Änderungen; statt der Erfolgsmeldung erscheint dann „Nicht gespeicherte Änderungen
+am Projektregister verworfen – ein anderes Fenster hat einen Stand gespeichert, den
+diese Seite nicht lesen kann.“
 
 Router: `src/bereiche/controlling/lib/router.ts`; unbekannte Adressen führen auf
 die Projekte. Die Aktionen auf dem Register stehen als reine Funktionen in
@@ -1056,13 +1347,17 @@ beim nächsten Abgleich.
 | „Die PIN stimmt nicht.“ | `src/bereiche/controlling/PinEingabe.tsx` | Falsche PIN. |
 | „Bitte eine Bezeichnung angeben.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Projekt ohne Bezeichnung. |
 | „Die Projektnummer gehört bereits zu „…“.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Projektnummer schon vergeben (ohne Rücksicht auf Groß- und Kleinschreibung). |
-| „Projekt angelegt.“ / „Projekt angelegt – die gewählten Bereiche übernehmen es beim nächsten Öffnen.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: neues Projekt ohne bzw. mit Bereichen. |
+| „Projekt angelegt – die gewählten Bereiche übernehmen es beim nächsten Öffnen.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: neues Projekt (die Leistungsnachweise übernehmen es immer, `JEDES_PROJEKT_IN`). |
 | „Projekt gespeichert – die Bereiche übernehmen die Angaben.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: „Bearbeiten“. |
 | „„…“ archiviert – in allen Bereichen.“ / „„…“ aus dem Archiv geholt.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler. |
 | „„…“ wird beim nächsten Öffnen in … übernommen.“, „Übernahme zurückgenommen.“, „In … archiviert.“, „In … wieder aktiv.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: Aktionen je Bereich. |
 | „Projekt gelöscht.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: Löschen nach der Rückfrage „Projekt löschen?“ („Endgültig löschen“). |
 | „„…“ übernommen – mit … Projektbeteiligten.“ bzw. „„…“ übernommen.“ | `src/gemeinsam/ProjektBereiche.tsx` | Kein Fehler: „Übernehmen in …“ in einem Bereich. |
 | „Das Projektregister ließ sich nicht lesen. …“ bzw. „Das Projektregister stammt aus einer neueren Fassung von KaPlan. …“ | `src/bereiche/controlling/App.tsx` | Gespeichertes Register unlesbar bzw. `version` größer als `REGISTER_VERSION`. |
+| „Projektregister nicht gespeichert. …; Änderungen an den Projekten gehen beim Schließen der Seite verloren.“ | `src/bereiche/controlling/App.tsx` | Das letzte Speichern des Registers ist gescheitert (`RegisterSpeicherZustand` `'voll'` bzw. `'gesperrt'`, 9.1) – auch nach dem Räumen der Rohkopien. Verschwindet, sobald ein erneuter Versuch gelingt. Speichert ein anderes Fenster das Register, trägt das Fenster seine nicht gespeicherten Änderungen auf dessen Stand nach und versucht es erneut (`eigeneAenderungenNachziehen`); scheitert auch das, bleibt der Hinweis. Ist dessen Stand unlesbar oder aus einer neueren Fassung, entfallen die Änderungen („Nicht gespeicherte Änderungen am Projektregister verworfen – …“). |
+| „Das Projektregister lässt sich weiterhin nicht speichern.“ | `src/bereiche/controlling/App.tsx` | „Erneut speichern“ ist wieder gescheitert. |
+| „Projektregister gespeichert.“ | `src/bereiche/controlling/App.tsx` | Kein Fehler: Nach dem Hinweis „Projektregister nicht gespeichert.“ ließ sich das Register wieder speichern. |
+| „Nicht gespeicherte Änderungen am Projektregister verworfen – ein anderes Fenster hat einen Stand gespeichert, den diese Seite nicht lesen kann.“ | `src/bereiche/controlling/App.tsx` | Während der Hinweis „Projektregister nicht gespeichert.“ stand, hat ein anderes Fenster das Register gespeichert – unlesbar oder aus einer neueren Fassung von KaPlan (`registerZustand`, 9.1). Dessen Stand gilt; neu laden. |
 
 ## 10. Bereich Leistungsnachweise
 
@@ -1091,20 +1386,55 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   `manuell` oder `import`) und `Leistungsnachweis` (Zeitraum `von`/`bis`,
   Raster, Status `entwurf` oder `abgeschlossen`, bearbeitete `texte`,
   `aufschlaege` je Zeile und Abschnitt, `bemerkung`, `nachgereicht` –
-  Kennungen übernommener Leistungen aus früheren Zeiträumen –, festgeschriebener
-  `stand`). Welche Leistungen ein Nachweis zeigt, ergibt sich aus ihrem Datum,
-  nachgereichte stehen statt dessen in dem Nachweis, der sie übernommen hat
-  (`leistungenDesNachweises`, `nachweisDerLeistung` in
-  `src/bereiche/leistungsnachweise/domain/nachweis.ts`). `einstellungen.mitarbeiterId` ist die angemeldete Person.
+  Kennungen übernommener Leistungen aus früheren Zeiträumen –, `bisFest` – das
+  Ende hat das Controlling von Hand festgelegt –, festgeschriebener `stand`;
+  dessen Zeilen tragen `nachgereicht` für die Zeile nachgereichter Leistungen).
+  Welche Leistungen ein Nachweis zeigt, ergibt sich aus ihrem Datum,
+  nachgereichte stehen statt dessen in dem Nachweis, der sie übernommen hat, und
+  Leistungen im Stand eines anderen abgeschlossenen Nachweises bleiben dort
+  (`leistungenDesNachweises`; `nachweisDerLeistung` prüft nachgereicht, dann
+  `abgerechnetIn`, dann das Datum – beide in
+  `src/bereiche/leistungsnachweise/domain/nachweis.ts`). `abgerechnetIn`,
+  `nachgereichtIn` und `nachweisDerLeistung` lesen aus einem Verzeichnis je
+  Nachweisliste (`WeakMap`) – Nachweislisten werden deshalb nie an Ort und
+  Stelle geändert. Nachgereichte Leistungen außerhalb des Zeitraums bilden eine
+  eigene Zeile: Schlüssel mit `NACHGEREICHT_PRAEFIX` (`N`) vor dem
+  Periodenschlüssel, etwa `NW2026-45`, die Periode gekürzt auf die Tage vor `von`. `einstellungen.mitarbeiterId` ist die angemeldete Person.
 * Schlüssel `leistungsnachweise.data.v1` im `localStorage`
-  (`src/bereiche/leistungsnachweise/store/storage.ts`), `DATEN_VERSION = 5`.
+  (`src/bereiche/leistungsnachweise/store/storage.ts`), `DATEN_VERSION = 6`.
   Fassung 3 kennt die Rolle Controlling an Mitarbeitern nicht mehr;
   `aufbereiten()` übernimmt sie nicht. Fassung 4 (`vonFassung3`) stellt alle
   Projekte auf `zeitraumregel` `fortlaufend`; vorhandene Nachweise bleiben.
-  Fassung 5: `nachgereicht` ergänzt `aufbereiten()` leer. Gespeichert wird nur bei
+  Fassung 5: `nachgereicht` ergänzt `aufbereiten()` leer. Fassung 6: `bisFest`
+  ergänzt `aufbereiten()` als false; `migriere()` stellt mit
+  `nachgereichteZeilenUmstellen` die Zeilen nachgereichter Leistungen in
+  Texten, Aufschlägen und im festgeschriebenen Stand auf N-Schlüssel um – bei
+  Zeilen, in denen laufende und nachgereichte Leistungen zusammenstanden, zieht
+  ein Text, dessen `leistungIds` nur nachgereichte enthalten, auf den
+  N-Schlüssel um, und `aufschlaegeAufteilen` teilt die Aufschläge auf beide
+  Zeilen auf: mit Abschnittsspalten so, dass jede Spalte abgerechnet bleibt,
+  wie sie war (ein Abzug auf die ganze Zeile wird zu Abzügen auf die
+  getroffenen Abschnitte), sonst über den Aufschlag auf die ganze Zeile (ein
+  Abzug mindert zuerst die laufende Zeile bis 0). Im festgeschriebenen Stand
+  ersetzt das Zeilenpaar die alte Zeile nur, wenn Leistungen, erfasste Stunden
+  (auch je Abschnitt und Mitarbeiter) und abgerechnete Stunden übereinstimmen –
+  zeigt der Stand Abschnittsspalten, auch je Spalte –, ohne
+  die abgerechneten Stunden zu ändern. Gespeichert wird nur bei
   `ladeZustand` 'ok'; vor einer Umstellung legt `ladeDaten` eine Rohkopie
-  `leistungsnachweise.data.v1.vor-fassung-<n>` an. Sicherungen tragen
-  `"bereich": "leistungsnachweise"`.
+  `leistungsnachweise.data.v1.vor-fassung-<n>` an. Ohne gespeicherten Bestand
+  gibt es die Demodaten nur, solange das Projektregister leer ist; sonst beginnt
+  der Bereich leer und nimmt die Registerprojekte auf (`ladeDaten`).
+  `speichereDaten` liefert `SpeicherZustand` (`'ok'`, `'voll'`, `'gesperrt'`)
+  und räumt bei vollem Speicher Rohkopien einzeln (`nachRaeumenSpeichern` in
+  `src/shared/speicher.ts`, auch die anderer Bereiche, zurückgestellt, wenn es nicht
+  reicht); dann zeigt
+  `SpeicherHinweis` (`src/bereiche/leistungsnachweise/components/SpeicherHinweis.tsx`,
+  im Bereich und im Controlling) „Nicht gespeichert – bitte Sicherung
+  herunterladen.“ mit „Der Speicher des Browsers ist voll“ bzw. „Der Browser
+  lässt das Speichern nicht zu (etwa durch Datenschutzeinstellungen)“ und
+  „Sicherung herunterladen“. Speichert ein anderes Fenster den Schlüssel, lädt
+  der Store ihn nach (`useFremdeAenderung`, `SPEICHER_SCHLUESSEL`, 9.2).
+  Sicherungen tragen `"bereich": "leistungsnachweise"`.
 * Alle Schreibzugriffe über `mutate()` in
   `src/bereiche/leistungsnachweise/store/store.tsx`; danach räumt
   `nachweiseBereinigen` (`src/bereiche/leistungsnachweise/domain/nachweis.ts`)
@@ -1124,8 +1454,8 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
 
 | Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Kalender „Mein Kalender“ über alle nicht archivierten Projekte (siehe unten; die Einträge nennen die Projektnummer, beim Erfassen fragt der Dialog das Projekt ab – `projektAuswahl`, vorgewählt das Projekt der zuletzt erfassten eigenen Leistung); Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ohne Anmeldung „Bitte anmelden“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat und „Zuletzt erfasst“. Angezeigt werden markierte Projekte – auch die in anderen Bereichen markierten (`istMarkiert`) –, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall. |
-| `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ (in einem anderen Bereich markierte fest – `useMarkiertAnderswo`, Tooltip „In … markiert – deshalb auch hier markiert; aufheben lässt es sich nur dort“ – sonst umschaltbar) und „Auch in“; kein Anlegen („Projekte legt das Controlling an.“); jedes Projekt des Registers steht von selbst hier (9.2); darunter „Archiv“ (9.3). |
+| `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Kalender „Mein Kalender“ über alle eigenen Leistungen, auch in archivierten Projekten (siehe unten; die Einträge nennen die Projektnummer, beim Erfassen fragt der Dialog das Projekt ab – `projektAuswahl`, zur Wahl stehen nur nicht archivierte Projekte, vorgewählt das Projekt der zuletzt erfassten eigenen Leistung). Gibt es kein nicht archiviertes Projekt, steht der Kalender trotzdem da, darüber „Es gibt noch kein Projekt, in dem Sie Leistungen erfassen können. Projekte legt das Controlling an; Projekte der anderen Bereiche erscheinen hier von selbst, unbekannte legt auch der Excel-Import an.“ bzw. – sind alle archiviert – „Alle Projekte sind archiviert – hier in der Übersicht stehen sie deshalb nicht zur Wahl. Leistungen lassen sich weiterhin im archivierten Projekt erfassen (…); aus dem Archiv zurückholen kann sie das Controlling. Erfasste Leistungen bleiben im Kalender sichtbar.“ (in der Klammer fett „Projekte › Archiv“); ein Klick auf einen Tag meldet dann „Kein Projekt zum Erfassen – Projekte legt das Controlling an.“ bzw. „Kein Projekt zur Wahl – alle sind archiviert. Erfassen lässt sich im Projekt unter Projekte › Archiv.“; Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ohne Anmeldung „Bitte anmelden“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat und „Zuletzt erfasst“. Angezeigt werden markierte Projekte – auch die in anderen Bereichen markierten (`istMarkiert`) –, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall; „Kein Projekt markiert – es werden alle angezeigt.“ nach derselben Regel (9.3). |
+| `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ (in einem anderen Bereich markierte fest – `useMarkiertAnderswo`, Tooltip „In … markiert – deshalb auch hier markiert; aufheben lässt es sich nur dort“ – sonst umschaltbar) und „Auch in“; kein Anlegen („Projekte legt das Controlling an, unbekannte auch der Excel-Import.“); jedes Projekt des Registers steht von selbst hier (9.2); darunter „Archiv“ (9.3). |
 | `#/leistungsnachweise/projekt/<id>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`) | Projektnummer, Status, Leistungsbereich; ggf. Archivhinweis (9.3); darunter ohne Reiter die eigenen Leistungen (`src/bereiche/leistungsnachweise/pages/projekt/Leistungen.tsx`: Umschalter „Kalender“ – Vorgabe, Kalender „Meine Leistungen“ – und „Liste“, dazu „Leistung erfassen“ und „Excel-Import“; die Liste mit Filter nach Monat, Suche, Auswahl löschen; der Nachweis je Leistung steht ohne Verweis). Bearbeiten, Einstellungen und Löschen gibt es nur im Controlling. Frühere Adressen `…/projekt/<id>/<reiter>` zeigen dieselbe Seite; `…/projekt/<id>/nachweis/<id>` führt in die Abrechnung des Controllings. |
 
 Kalender (`LeistungsKalender` in
@@ -1137,7 +1467,17 @@ im Kopf die Summe des Monats, „Vorheriger Monat“, „Nächster Monat“ und
 „Heute“, darunter „Tag anklicken, um dort eine Leistung zu erfassen – eine
 Leistung anklicken, um sie zu bearbeiten.“ Ein Tag öffnet „Leistung erfassen“
 mit seinem Datum (ohne Anmeldung zuerst die Anmeldung), eine Leistung „Leistung
-bearbeiten“. Bis 760 px Breite zeigt jeder Tag nur Nummer und Stunden.
+bearbeiten“. Tooltip und `aria-label` eines Tags enden auf „Leistung erfassen“,
+bei belegten Tagen auf „Leistungen ansehen oder erfassen“. Auf Geräten ohne
+Maus (`hover: none`) steht das Plus je Tag dauerhaft da. Kompakt wird der
+Kalender bis 730 px Kalenderbreite (Container-Abfrage auf `.ln-kal`, also auch
+neben der Seitenleiste): Jeder Tag zeigt nur Nummer und Stunden, der Hinweis
+lautet „Tag anklicken, um dort eine Leistung zu erfassen – ein Tag mit Stunden
+zeigt erst seine Leistungen.“ Ein leerer Tag öffnet „Leistung erfassen“, ein
+belegter den Dialog `TagesListe` (Titel Wochentag und Datum, Untertitel
+„… Std. · … Leistung“ bzw. „Leistungen“, je Leistung ein Knopf zum Öffnen,
+„Schließen“ und „Neue Leistung“). Ob der Kalender kompakt ist, liest
+`tagWaehlen` aus dem berechneten Stil von `.ln-kal-eintraege`.
 
 Unten in der Seitenleiste „Angemeldet als“ (gemeinsam für alle Bereiche,
 Abschnitt 11) und – solange der Name keinem aktiven Mitarbeiter gehört –
@@ -1147,7 +1487,11 @@ Abschnitt 11) und – solange der Name keinem aktiven Mitarbeiter gehört –
 Controllings – auch frühere unter `#/leistungsnachweise/controlling/…` und
 `#/leistungsnachweise/mitarbeiter` – lenkt `App.tsx` nach
 `#/controlling/leistungsnachweise/…` um (`hashToRoute`, `routeToHash` in
-`src/bereiche/leistungsnachweise/lib/router.ts`).
+`src/bereiche/leistungsnachweise/lib/router.ts`). `hashToRoute` nimmt nur
+Adressen unter `#/leistungsnachweise/…` und `#/controlling/leistungsnachweise/…`
+an; jede andere ergibt die Übersicht ohne Umlenkung. Eine neue Seite beginnt
+oben (`useNachObenBeiSeitenwechsel` aus `src/shared/scrollen.ts` in `App.tsx`
+und `controlling.tsx`); Reiterwechsel und Blättern im Kalender scrollen nicht.
 
 ### 10.3 Rechte
 
@@ -1160,7 +1504,15 @@ Leistungstexte, Bemerkung, „Nachweise anlegen“), `abschliessen`,
 `aufschlag`, `export`, `auswertung` und `mitarbeiterVerwalten` nur im
 Controlling. Im Bereich bleibt nur das Erfassen, Ändern und Importieren
 eigener Leistungen und die ★-Markierung; die Nachweise dazu entstehen in
-`addLeistung`/`updateLeistung` bzw. beim Import von selbst. Eigene Leistungen ändert nur die angemeldete Person
+`addLeistung`/`updateLeistung` bzw. beim Import von selbst. Einzige Ausnahme
+zu `projektVerwalten`: Der Excel-Import legt auch im Bereich unbekannte
+Projekte (nur mit dem Haken „Projekt anlegen“) und fehlende Abschnitte an,
+soweit die eigenen Leistungen sie brauchen (`planErlaubt` in
+`src/bereiche/leistungsnachweise/store/store.tsx`); einstellen lassen sie sich
+nur im Controlling. Eine Anmeldung als Mitarbeiter braucht das Controlling
+nicht; ist die Person unter „Angemeldet als“ Mitarbeiter, gilt sie aber auch
+dort als angemeldet (eigene Leistungen beim Löschen eines Nachweises
+mitlöschen, Zeilen ohne Mitarbeiter im Sammel-Import ihr zuordnen). Eigene Leistungen ändert nur die angemeldete Person
 (`darfLeistungAendern`); im Controlling sind die Leistungen anderer nur zu
 lesen (`darfLeistungSehen`, `leistungenDerZeile`). Der Store prüft jede
 Änderung auf dem Stand, den sie ändert.
@@ -1172,7 +1524,10 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 
 * Reiter (`src/bereiche/leistungsnachweise/pages/controlling/Controlling.tsx`)
   „Auswertung“ (`Auswertung.tsx`), „Leistungsnachweise“ (`NachweisListe.tsx`,
-  mit „Neuer Leistungsnachweis“, siehe unten), „Projekte“ (`ProjektListe.tsx`: Projekte mit
+  mit „Neuer Leistungsnachweis“, siehe unten; die Filterleiste – Status,
+  Projekt, Zeitraum, Knöpfe – bricht um, das Statusfeld wird nie schmaler als
+  sein Umschalter, bis 640 px steht alles untereinander,
+  `src/bereiche/leistungsnachweise/pages/controlling/controlling.css`), „Projekte“ (`ProjektListe.tsx`: Projekte mit
   Raster und Regel, „In Bearbeitung“, „Ohne Nachweis“, Stunden; Suche; „Neues
   Projekt“ über `ProjektDialog` in
   `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx`; archivierte am
@@ -1182,7 +1537,11 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   `#/controlling/leistungsnachweise/projekt/<id>/<reiter>`): „Alle Projekte“,
   „Bearbeiten“ (`ProjektDialog`), „Löschen“ – gesperrt, solange ein anderer
   Bereich das Projekt führt (Hinweis „Auch in … geführt – löschen lässt sich
-  das Projekt nur im Controlling unter „Projekte“, für alle Bereiche.“); Reiter „Leistungsnachweise“
+  das Projekt nur im Controlling unter „Projekte“, für alle Bereiche.“) oder es
+  dort zur Übernahme vorgesehen ist (`vorgeseheneBereiche` in
+  `src/gemeinsam/ProjektBereiche.tsx`; Hinweis „Für … zur Übernahme vorgesehen –
+  löschen lässt sich das Projekt erst, wenn die Übernahme im Controlling unter
+  „Projekte“ zurückgenommen ist, oder dort für alle Bereiche.“); Reiter „Leistungsnachweise“
   (`ProjektNachweise.tsx`: Nachweise des Projekts, „Nachweise anlegen“ für
   Leistungen ohne Nachweis, „Neuer Leistungsnachweis“; ein Klick öffnet die
   Abrechnung), „Leistungen“ (`Leistungen.tsx` im Controlling: die Leistungen
@@ -1191,7 +1550,14 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   Vorgaben mit „Neue Nachweise“, Abschnitte, Logos).
 * Darüber „Excel-Import (alle Mitarbeiter)“: der Import als Sammel-Export, ohne
   Anmeldung; nach dem Übernehmen geht es zu den Leistungsnachweisen des
-  Controllings (`importZiel`).
+  Controllings (`importZiel`). Der Untertitel nennt hier keine Person, die
+  Spalte Mitarbeiter erklärt „etwa „MM: Mustermann, Max“ – ordnet die Zeile
+  ihrem Mitarbeiter zu; unbekannte werden angelegt“ (im Bereich „… –
+  übernommen werden nur die eigenen Zeilen“). „Zeilen ohne Mitarbeiter
+  zuordnen zu“ steht zu Beginn auf „– nicht übernehmen –“. Bei „Frühere
+  Importe ersetzen“ übernimmt eine neue Zeile derselben Person für dasselbe
+  Projekt und denselben Tag die Kennung einer ersetzten Leistung, die
+  abgerechnet oder nachgereicht ist (`src/bereiche/leistungsnachweise/domain/import.ts`).
 * „Neuer Leistungsnachweis“ (`NeuerNachweisDialog` in
   `src/bereiche/leistungsnachweise/components/NachweisDialog.tsx`) fragt keinen
   Zeitraum ab – nur das Projekt (in der Liste aller Nachweise), „Raster“ und
@@ -1200,11 +1566,36 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   `src/bereiche/leistungsnachweise/domain/nachweis.ts`; Zeitraum ab dem Tag
   danach, ohne abgeschlossenen ab der ersten Leistung, bis zum Monatsende bzw.
   zur letzten Leistung). Offene Nachweise in diesem Bereich gehen darin auf –
-  der erste wird erweitert, Leistungstexte, Aufschläge (summiert) und
-  Bemerkungen der übrigen gehen auf ihn über (`nachweisFuerNichtAbgerechneteAnwenden`,
-  im Store `nachweisFuerNichtAbgerechnete`). Liegt schon alles in genau einem
-  offenen Nachweis, heißt der Knopf „Öffnen“.
-  Vorhandene Nachweise korrigiert „Zeitraum ändern“ (`ZeitraumDialog`).
+  der erste wird erweitert, Leistungstexte (gleiche Zeilen verbunden,
+  `texteVerbinden`), Aufschläge (summiert) und Bemerkungen der übrigen gehen
+  auf ihn über, ein festgelegtes Ende (`bisFest`) entfällt
+  (`nachweisFuerNichtAbgerechneteAnwenden`, im Store
+  `nachweisFuerNichtAbgerechnete`). Weicht das gewählte Raster ab, warnt der
+  Dialog mit `rasterwechselHinweis` (über `rasterwechselVerdecktAlle`), etwa „…
+  gehört zu einem anderen Raster und wird nicht mehr angezeigt – er kehrt
+  zurück, wenn das Raster wieder umgestellt wird.“; der Satz über die offenen
+  Nachweise endet dann mit „bleiben gespeichert“ statt „bleiben erhalten“.
+  Liegt schon alles in genau einem offenen Nachweis, heißt der Knopf „Öffnen“.
+  Vorhandene Nachweise korrigiert „Zeitraum ändern“ (`ZeitraumDialog`). Ob ein
+  festgelegtes Ende (`bisFest`) mit dem eingegebenen Ende etwas bewirkt, sagt
+  `endeFestlegenWirkt` (`src/bereiche/leistungsnachweise/domain/nachweis.ts`:
+  offen und Regel `fortlaufend` oder Ende nach heute – ohne `bisFest` liefe er
+  dann bis zum Abschluss). Nur dann bietet der Dialog die Kästchen an: ohne
+  `bisFest` „Ende festlegen – der Leistungsnachweis läuft nicht mehr bis zum
+  Abschluss“ (lief er bisher nicht bis zum Abschluss: „Ende festlegen – der
+  Leistungsnachweis läuft nicht bis zum Abschluss“), das das Ende auch ohne
+  Änderung festlegt und bei geändertem Ende vorgewählt, aber abwählbar ist;
+  mit `bisFest` „Wieder bis zum Abschluss laufen lassen (das Ende ist von Hand
+  festgelegt)“, das es aufhebt. Wo ein festgelegtes Ende nichts bewirkt (Regel
+  `monat`, Ende nicht nach heute), setzt ein geändertes Ende `bisFest`
+  trotzdem – es wirkt, sobald das Projekt auf `fortlaufend` wechselt –, und ein
+  gesetztes bleibt. Läuft der Nachweis danach nicht bis zum Abschluss, obwohl
+  er es bisher tat bzw. mit dem geänderten Ende ohne Festlegung täte, sagt der
+  Hinweis „Das Ende steht damit fest: Der Leistungsnachweis endet am …, läuft
+  nicht mehr bis zum Abschluss und wird beim Abschluss nicht gekürzt. Spätere
+  Leistungen kommen in einen neuen Leistungsnachweis.“ – lief er bisher nicht
+  bis zum Abschluss, heißt es „… läuft nicht bis zum Abschluss …“. Der Dialog
+  übergibt `bisFest` stets ausdrücklich an `updateNachweis`.
 * Nicht erfasste Leistungen: Abgerechnet ist, was im festgeschriebenen Stand
   der abgeschlossenen Nachweise steht (`abgerechneteLeistungen`). Leistungen vor
   dem letzten abgeschlossenen Nachweis, die dort fehlen und in keinem offenen
@@ -1213,16 +1604,27 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   sie (`NichtErfasstHinweis` in
   `src/bereiche/leistungsnachweise/components/NachweisDialog.tsx`: „… noch nicht
   erfasst“, je Leistung Datum, Person, Stunden, Text und Grund – „nach dem
-  Abschluss von „…“ erfasst“ bzw. „in keinem Leistungsnachweis“). Übernommen
+  Abschluss von „…“ erfasst“ bzw. „in keinem Leistungsnachweis“); die ersten
+  acht einzeln, bei mehr „Alle … anzeigen (… weitere)“ bzw. „Weniger
+  anzeigen“ (aufgeklappt in einem Bildlaufbereich). Übernommen
   werden sie nur nach Bestätigung: im Dialog mit dem Haken „In diesen
-  Leistungsnachweis übernehmen“ bzw. „Alle in diesen Leistungsnachweis
+  Leistungsnachweis übernehmen“ bzw. „Alle … in diesen Leistungsnachweis
   übernehmen“ (Knopf dann „Übernehmen und öffnen“ bzw. „Anlegen“), in der
   Abrechnung mit „In diesen Leistungsnachweis übernehmen …“ und der Rückfrage
   „Nicht erfasste Leistungen übernehmen?“ (`leistungenNachreichen`,
-  `nachreichenAnwenden`). Sie stehen danach in `nachgereicht`; ihre Zeilen sind
-  in Abrechnung und Leistungstexten mit „nachgereicht“ gekennzeichnet.
-* Der Zeitraum steht erst beim Abschluss fest: Läuft ein Nachweis bis zum
-  Abschluss (`laeuftBisAbschluss` – offen und Regel `fortlaufend` oder Ende nach
+  `nachreichenAnwenden`). Sie stehen danach in `nachgereicht`; ihre Zeilen
+  (eigener N-Schlüssel, 10.1) sind in Abrechnung und Leistungstexten mit
+  „nachgereicht“ gekennzeichnet (`NachweisZeile.nachgereicht`, für ältere
+  Stände auch eine Zeile vor `von`).
+* Abgerechnet bleibt abgerechnet: Wird eine Leistung aus dem Stand eines
+  abgeschlossenen Nachweises auf ein anderes Datum gelegt, bleibt sie dort;
+  `updateLeistung` legt für sie keinen Nachweis an, und der Dialog sagt
+  „Bleibt im abgeschlossenen Leistungsnachweis „…“ abgerechnet – mit dem neuen
+  Datum erscheint sie erst, wenn das Controlling ihn wieder öffnet.“
+  (`src/bereiche/leistungsnachweise/components/LeistungDialog.tsx`).
+* Der Zeitraum steht erst beim Abschluss fest – außer das Ende ist festgelegt
+  (`bisFest`): Läuft ein Nachweis bis zum
+  Abschluss (`laeuftBisAbschluss` – offen, ohne `bisFest` und Regel `fortlaufend` oder Ende nach
   heute), zeigen Listen und Abrechnung „ab … · läuft bis zum Abschluss“
   (`nachweisZeitraumText` in
   `src/bereiche/leistungsnachweise/components/common.tsx`); beim Abschluss endet
@@ -1235,7 +1637,11 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   neuen Leistungen, „Automatischen Text wiederherstellen“, je Zeile
   „Leistungen (…)“ aller Mitarbeiter zum Lesen) und „Vorschau“, „Drucken /
   PDF“, „Excel“, „Abschließen“ bzw. „Wieder öffnen“, „Zeitraum ändern“,
-  „Löschen“; Aufschläge je Zeile, „Aufschläge zurücksetzen“, „Bemerkung“.
+  „Löschen“ (mit dem Haken „Auch meine … in diesem Leistungsnachweis
+  endgültig löschen“ – gemeint sind die eigenen Leistungen aus
+  `leistungenDesNachweises`, samt nachgereichten; Meldung „Leistungsnachweis
+  und … gelöscht.“ bzw. „Leistungsnachweis gelöscht.“); Aufschläge je Zeile,
+  „Aufschläge zurücksetzen“, „Bemerkung“.
   Kamen nach einer Textbearbeitung Leistungen hinzu, weist ein Hinweis mit
   „Leistungstexte prüfen“ darauf hin.
 * Die Kopfzeile nennt „Leistungsnachweise“ mit dem Untertitel aus
@@ -1257,6 +1663,8 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 | „Die Datei ist keine Sicherung der Leistungsnachweise.“ | `src/bereiche/leistungsnachweise/store/storage.ts` | Einspielen einer fremden Datei. |
 | „Leistungsnachweis wieder geöffnet – er zeigt die aktuellen Leistungen.“ / „Aufschläge zurückgesetzt.“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` | Kein Fehler. |
 | „Der gespeicherte Stand der Leistungsnachweise ließ sich nicht laden bzw. stammt aus einer neueren Fassung. …“ | `src/bereiche/leistungsnachweise/controlling.tsx` | Controlling bei `ladeZustand` ≠ 'ok'. |
+| „Nicht gespeichert – bitte Sicherung herunterladen.“ | `src/bereiche/leistungsnachweise/components/SpeicherHinweis.tsx` | `speicherZustand` ≠ 'ok': Speicher voll oder gesperrt; Änderungen gehen beim Schließen verloren. |
+| „Kein Projekt zum Erfassen – Projekte legt das Controlling an.“ / „Kein Projekt zur Wahl – alle sind archiviert. Erfassen lässt sich im Projekt unter Projekte › Archiv.“ | `src/bereiche/leistungsnachweise/pages/Uebersicht.tsx` | Klick auf einen Tag in „Mein Kalender“ ohne nicht archiviertes Projekt. |
 
 ## 11. Angemeldet als – für alle Bereiche
 
@@ -1265,7 +1673,9 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   Mustermann'`. Ohne gespeicherten Stand übernimmt `laden` einmalig den ersten
   selbst eingetragenen Namen samt Farbmodus aus den Beständen des
   Planlaufmanagements, der Projektsteuerung, der Baubetriebsplanung und der
-  Leistungsnachweise (`FRUEHER`; deren Vorgabenamen zählen nicht).
+  Leistungsnachweise (`FRUEHER`; deren Vorgabenamen zählen nicht – auch nicht
+  die Demonamen „Lena Roth“ der Projektsteuerung und „Anna Becker“ der
+  Leistungsnachweise).
   `benutzerAendern` ändert Name bzw. Farbmodus für alle Bereiche, `useBenutzer`
   liefert sie der Oberfläche; ein anderes Fenster lädt sie bei einer Änderung neu
   (`storage`-Ereignis).

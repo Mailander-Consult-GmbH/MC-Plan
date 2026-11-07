@@ -30,7 +30,8 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
   const { data } = useStore();
   const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const [mail, setMail] = useState<{ project: Project; run: PlanRun; step: RunStep } | null>(null);
-  const projekte = sichtbareProjekte(data.projects, useArchivierte('planlauf'));
+  const archiviert = useArchivierte('planlauf');
+  const projekte = sichtbareProjekte(data.projects, archiviert);
   const ids = projekte.map((p) => p.id);
 
   const fristen = offeneFristen(data, ids);
@@ -43,7 +44,9 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
     (r) => ids.includes(r.projectId) && istAktiv(r),
   );
 
-  const alleMarkiert = data.projects.filter((p) => p.markiert).length;
+  // Hinweis „Kein Projekt markiert“ nach derselben Regel wie sichtbareProjekte: Markierte archivierte zählen nicht
+  const aktive = data.projects.filter((p) => !archiviert.has(p.id));
+  const keinesMarkiert = aktive.length > 0 && !aktive.some((p) => p.markiert);
 
   return (
     <div className="stack">
@@ -64,7 +67,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
         />
       </div>
 
-      {alleMarkiert === 0 ? (
+      {keinesMarkiert ? (
         <p className="small tertiary">
           Kein Projekt markiert – es werden alle Projekte angezeigt. Unter <strong>Projekte</strong> lassen sich
           einzelne Projekte markieren; dann erscheinen nur diese hier und in der Seitenleiste.

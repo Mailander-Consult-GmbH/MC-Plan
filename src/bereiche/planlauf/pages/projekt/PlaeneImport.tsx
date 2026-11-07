@@ -28,7 +28,7 @@ import { laufUeberfuehrt, planlaufAusWorkflow } from '../../domain/engine';
 import { formatDate, today } from '../../../../shared/dates';
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
-import { Callout, Field, Modal, Select } from '../../../../shared/ui';
+import { Callout, Field, Modal, Select, alsKnopf } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 
 /** Erkennt die Art aus der Spaltenangabe. */
@@ -330,7 +330,7 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
       <div className="stack" style={{ gap: 14 }}>
         <div
           className={`drop-zone ${over ? 'over' : ''}`}
-          onClick={() => inputRef.current?.click()}
+          {...alsKnopf(() => inputRef.current?.click())}
           onDragOver={(e) => {
             e.preventDefault();
             setOver(true);
