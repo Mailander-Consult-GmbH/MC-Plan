@@ -147,7 +147,8 @@ und **Später** (`src/shell/NeueFassung.tsx`). Dialoge und die aufgeklappte Seit
 darüber; Meldungen erscheinen oberhalb des Hinweises statt ihn zu verdecken, und der Inhalt erhält
 unten zusätzlich die Höhe des Hinweises als Abstand, sodass sich auch die letzten Schaltflächen
 einer Seite über ihn hinaus scrollen lassen (der Hinweis setzt seine Höhe als `--neue-fassung-hoehe`, genutzt von
-`.content` und `.start` in `src/shared/global.css`). Welche Fassung läuft, steht am Fuß des
+`.content` und `.start` in `src/shared/global.css` und von der PIN-Abfrage des Controllings,
+`.ct-pin` in `src/bereiche/controlling/controlling.css`). Welche Fassung läuft, steht am Fuß des
 Startbildschirms („Fassung vom …“, im Build des Workflows mit dem Commit).
 
 Technische Voraussetzung für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade).
@@ -192,21 +193,28 @@ erhält den Fokus, Pfeiltasten sowie Pos1/Ende wechseln den Eintrag; Escape schl
 gibt den Fokus an den Knopf zurück. Tab, ein Klick oder Tippen daneben, Scrollen, eine
 Größenänderung des Fensters und ein zweiter Klick auf den Knopf schließen es ebenfalls. Nach einer
 Wahl kehrt der Fokus an den Knopf zurück, sofern es ihn noch gibt – öffnet die Wahl einen
-Dialog, steht er dort und kehrt erst nach dessen Schließen zurück.
+Dialog, steht er dort und kehrt erst nach dessen Schließen zurück. Der Erledigt-Haken einer Zeile
+der Planlaufliste bleibt dabei derselbe Knopf, auch wenn nach der Wahl nur noch ein Schritt
+ansteht (dann erledigt er ihn direkt).
 
 Dialoge sind ebenfalls ein gemeinsamer Baustein (`Modal` in `src/shared/ui.tsx`). Beim Öffnen
 behält ein Feld mit `autoFocus` den Fokus; sonst bekommt ihn das erste Eingabefeld (Text, Zahl,
 Datum, Auswahlliste), wenn es ohne Scrollen zu sehen ist, ansonsten der Dialog selbst. Kästchen und
 Knöpfe erhalten nie den Anfangsfokus, und gescrollt wird dabei nie; ohne Feld mit `autoFocus`
 bekommt auf Touch-Geräten immer der Dialog selbst den Fokus, damit sich die Bildschirmtastatur nicht
-ungefragt öffnet (ein Feld mit `autoFocus`, etwa in „Angemeldet als“ oder „Neue Funktion“, behält
-ihn auch dort). Tab und
-Umschalt+Tab bleiben im obersten Dialog, Escape und ein Klick daneben schließen nur ihn. Verschwindet
+ungefragt öffnet (ein Feld mit `autoFocus`, etwa in „Angemeldet als“ oder in „Neue Funktion“ der
+Projektsteuerung, behält ihn auch dort). Tab und
+Umschalt+Tab bleiben im obersten Dialog, Escape und ein Klick daneben schließen nur ihn – nur
+*Sicherung abgleichen* bleibt bei einem Klick daneben offen, damit eine aufwendige Auswahl nicht
+verloren geht (`klickDanebenSchliesst={false}`); der Fokus bleibt dabei im Dialog. Verschwindet
 das fokussierte Element, bleibt der Fokus im Dialog. Nach dem Schließen – auch per Klick daneben –
 geht er an das Element zurück, von dem der Dialog kam, bzw. an den Knopf des Aufklappmenüs, sofern es
-noch da ist; löst ein Dialog einen anderen ab, landet er im neuen. Die Ablageflächen der Importe von
+noch da ist; löst ein Dialog einen anderen ab, landet er im neuen und kehrt nach dessen Schließen
+dorthin zurück, wo der erste herkam (etwa *Sicherung abgleichen* nach *Sicherung einspielen* an
+**Einspielen**). Die Ablageflächen der Importe von
 Plänen, Funktionen, Projektbeteiligten und Leistungen sind per Tab erreichbar; Enter oder Leertaste
-öffnen die Dateiauswahl.
+öffnen die Dateiauswahl. Kurzmeldungen am unteren Rand (`src/shared/toast.tsx`) lesen
+Bildschirmleser vor (`role="status"`).
 
 ## Funktionsumfang
 
@@ -1397,11 +1405,17 @@ Die Bereiche vollziehen Übernahmen, Archivierung und Löschungen beim nächsten
 
 Lässt sich das Projektregister nicht speichern – meist, weil der Speicher des Browsers voll ist und
 auch das Räumen der Rohkopien nicht reicht –, zeigt das Controlling über allen Ansichten den
-dauerhaften Hinweis **„Projektregister nicht gespeichert.“** samt Grund; Änderungen gelten bis zum
-Schließen der Seite, gingen dann aber verloren. **Erneut speichern** versucht es noch einmal (etwa
-nachdem anderswo Platz frei geworden ist), ebenso jeder weitere Schreibzugriff auf das Register –
-auch einer ohne neuen Inhalt, etwa der Abgleich eines Bereichs (`useRegisterSpeicherZustand` und
-`registerErneutSpeichern` in `src/gemeinsam/register.ts`).
+dauerhaften Hinweis **„Projektregister nicht gespeichert.“** samt Grund. Die Änderungen gelten in
+diesem Fenster weiter, gingen aber beim Schließen der Seite verloren. **Erneut speichern** versucht
+es noch einmal (etwa nachdem anderswo Platz frei geworden ist), ebenso jeder weitere Schreibzugriff
+auf das Register – auch einer ohne neuen Inhalt, etwa der Abgleich eines Bereichs
+(`useRegisterSpeicherZustand` und `registerErneutSpeichern` in `src/gemeinsam/register.ts`).
+Speichert ein anderes Fenster das Register – etwa, weil dort ein Projekt gelöscht und so Platz
+geschaffen wurde –, übernimmt dieses Fenster dessen Stand, trägt seine noch nicht gespeicherten
+Änderungen darauf nach und speichert erneut (`eigeneAenderungenNachziehen`): je Projekt, Person und
+Feld; bei Widerspruch gilt die eigene Änderung, eine Löschung geht jeder Änderung vor. Gelingt das
+Speichern auf einem dieser Wege, verschwindet der Hinweis mit der Meldung **„Projektregister
+gespeichert.“**; stand der Fokus auf *Erneut speichern*, geht er an die Überschrift der Seite.
 
 ## Aufbau des Codes
 
@@ -1436,7 +1450,7 @@ src/
                  Controls, alsKnopf …
     icons.tsx    Strichsymbole
     logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
-    toast.tsx    Kurzmeldungen
+    toast.tsx    Kurzmeldungen (role="status")
     menue.tsx    Aufklappmenü an einem Knopf (AufklappMenue): Portal, bleibt im Fenster, Tastatur
     tabellen.ts  Breite Tabellen scrollen quer (tabellenBreiteBeobachten, Klasse table-scroll-quer)
     scrollen.ts  Eine neue Seite beginnt oben (useNachObenBeiSeitenwechsel)
@@ -1454,7 +1468,8 @@ src/
     global.css   Design-Tokens im hellen Apple-Erscheinungsbild
   gemeinsam/     Projektregister – der einzige Bestand, den sich die Bereiche teilen
     register.ts  Datenmodell, Laden/Speichern, gemeinsamer Zustand (useRegister, Ergebnis des
-                 Speicherns: useRegisterSpeicherZustand)
+                 Speicherns: useRegisterSpeicherZustand; nicht Gespeichertes übersteht das
+                 Speichern eines anderen Fensters: eigeneAenderungenNachziehen)
     abgleich.ts  Abgleich Bereich ↔ Register als reine Funktionen (uebertragen, abgleichen)
                  und die Aktionen des Controllings
     useRegisterAbgleich.ts  Bindet den Store eines Bereichs an das Register
