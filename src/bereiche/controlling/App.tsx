@@ -145,20 +145,28 @@ export function App({ onSperren }: { onSperren: () => void }) {
  * dessen Stand nach und speichert erneut (`eigeneAenderungenNachziehen`).
  * Gelingt es – wie auch immer –, verschwindet der Hinweis mit der Meldung
  * „Projektregister gespeichert.“; ein Fokus, der mit dem Knopf auf `body`
- * fiele, geht an die Überschrift der Seite (`fokusZiel`).
+ * fiele, geht an die Überschrift der Seite (`fokusZiel`). Hat ein anderes
+ * Fenster einen Stand gespeichert, den dieses nicht lesen kann (unlesbar oder
+ * aus einer neueren Fassung), gilt jener, und die Änderungen entfallen – dann
+ * sagt die Meldung das.
  */
 function RegisterSpeicherHinweis({ fokusZiel }: { fokusZiel: RefObject<HTMLElement | null> }) {
   const gespeichert = useRegisterSpeicherZustand();
+  const zustand = useRegisterZustand();
   const toast = useToast();
   const vorher = useRef(gespeichert);
   useEffect(() => {
     const war = vorher.current;
     vorher.current = gespeichert;
     if (war === 'ok' || gespeichert !== 'ok') return;
-    toast('Projektregister gespeichert.');
+    toast(
+      zustand === 'ok'
+        ? 'Projektregister gespeichert.'
+        : 'Nicht gespeicherte Änderungen am Projektregister verworfen – ein anderes Fenster hat einen Stand gespeichert, den diese Seite nicht lesen kann.',
+    );
     const aktiv = document.activeElement;
     if (!aktiv || aktiv === document.body) fokusZiel.current?.focus({ preventScroll: true });
-  }, [gespeichert, toast, fokusZiel]);
+  }, [gespeichert, zustand, toast, fokusZiel]);
   if (gespeichert === 'ok') return null;
   return (
     <div className="ct-speicherhinweis" role="alert">
