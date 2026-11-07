@@ -19,7 +19,10 @@
  * gespeicherte Stand lesen ließ (sonst bleibt er unberührt, und die Bereiche
  * gleichen nicht ab). Ob das letzte Speichern gelungen ist, meldet
  * `useRegisterSpeicherZustand`; das Controlling zeigt sonst einen dauerhaften
- * Hinweis (src/bereiche/controlling/App.tsx).
+ * Hinweis (src/bereiche/controlling/App.tsx). Speichert ein anderes Fenster das
+ * Register, lädt dieses Fenster den neuen Stand; Änderungen, die sich hier nicht
+ * speichern ließen, trägt es darauf nach und speichert erneut
+ * (`eigeneAenderungenNachziehen`).
  */
 import { useSyncExternalStore } from 'react';
 import { nachRaeumenSpeichern, speicherVoll } from '../shared/speicher';
@@ -380,13 +383,17 @@ function speichern(text: string, melden = true): RegisterSpeicherZustand {
 /**
  * Der Stand dieses Fensters: `text` ist das JSON von `register`, `gespeichert`
  * das Ergebnis des letzten Speicherns – nach dem Laden 'ok', denn der Stand
- * kommt ja aus dem Speicher.
+ * kommt ja aus dem Speicher. `basis` ist das Register, das zuletzt im Speicher
+ * stand, soweit dieses Fenster es kennt (geladen oder selbst gespeichert):
+ * Gegen sie ermittelt `eigeneAenderungenNachziehen` die Änderungen, die sich
+ * hier nicht speichern ließen.
  */
 interface Stand {
   register: Register;
   zustand: RegisterZustand;
   text: string;
   gespeichert: RegisterSpeicherZustand;
+  basis: Register;
 }
 
 let stand: Stand | null = null;
@@ -395,7 +402,7 @@ const hoerer = new Set<() => void>();
 function aktuell(): Stand {
   if (!stand) {
     const geladen = laden();
-    stand = { ...geladen, text: JSON.stringify(geladen.register), gespeichert: 'ok' };
+    stand = { ...geladen, text: JSON.stringify(geladen.register), gespeichert: 'ok', basis: geladen.register };
   }
   return stand;
 }
@@ -426,7 +433,7 @@ export function registerErneutSpeichern(): RegisterSpeicherZustand {
   if (s.zustand !== 'ok' || s.gespeichert === 'ok') return s.gespeichert;
   const gespeichert = speichern(s.text, false);
   if (gespeichert !== s.gespeichert) {
-    stand = { ...s, gespeichert };
+    stand = { ...s, gespeichert, basis: gespeichert === 'ok' ? s.register : s.basis };
     benachrichtigen();
   }
   return gespeichert;
@@ -450,7 +457,8 @@ export function registerAendern(fn: (r: Register) => Register): Register {
     registerErneutSpeichern();
     return s.register;
   }
-  stand = { register: neu, zustand: s.zustand, text: neuText, gespeichert: speichern(neuText) };
+  const gespeichert = speichern(neuText);
+  stand = { register: neu, zustand: s.zustand, text: neuText, gespeichert, basis: gespeichert === 'ok' ? neu : s.basis };
   benachrichtigen();
   return neu;
 }
@@ -460,12 +468,102 @@ function abonnieren(h: () => void): () => void {
   return () => hoerer.delete(h);
 }
 
-// Ein anderes Fenster hat das Register geändert: neu laden. Ein hier nicht
-// gespeicherter Stand entfällt damit – gilt, was im Speicher steht.
+/* ------------------------------------------------------------------ */
+/* Nicht gespeicherte Änderungen auf einen fremden Stand nachziehen    */
+/* ------------------------------------------------------------------ */
+
+const gleich = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
+const istObjekt = (w: unknown): w is Record<string, unknown> => !!w && typeof w === 'object' && !Array.isArray(w);
+
+/**
+ * Dreiwege-Zusammenführung eines Werts: Hat dieses Fenster ihn geändert
+ * (`eigen` ≠ `basis`), gilt seine Fassung, sonst die fremde. Objekte führt sie
+ * Feld für Feld zusammen, wenn es sie in allen drei Ständen gibt – so bleibt
+ * etwa die ★ eines anderen Bereichs erhalten, wenn hier eine Übernahme
+ * vorgesehen wurde; hat das andere Fenster ein Objekt entfernt (etwa eine
+ * Mitgliedschaft gelöst), bleibt es entfernt. Listen gelten als ein Wert.
+ */
+function wertZusammenfuehren(basis: unknown, eigen: unknown, fremd: unknown): unknown {
+  if (gleich(eigen, basis)) return fremd;
+  if (istObjekt(basis) && fremd === undefined) return undefined;
+  if (!istObjekt(basis) || !istObjekt(eigen) || !istObjekt(fremd)) return eigen;
+  const ergebnis: Record<string, unknown> = {};
+  for (const k of new Set([...Object.keys(fremd), ...Object.keys(eigen), ...Object.keys(basis)])) {
+    const w = wertZusammenfuehren(basis[k], eigen[k], fremd[k]);
+    if (w !== undefined) ergebnis[k] = w;
+  }
+  return ergebnis;
+}
+
+/**
+ * Projekte bzw. Personen über ihre Kennung zusammenführen: in der Reihenfolge
+ * des fremden Stands, hier neu Hinzugekommenes am Ende. Was eine Seite gelöscht
+ * hat, bleibt gelöscht – auch wenn die andere es geändert hat.
+ */
+function listeZusammenfuehren<T extends { id: ID }>(basis: T[], eigen: T[], fremd: T[]): T[] {
+  const alt = new Map(basis.map((x) => [x.id, x]));
+  const mein = new Map(eigen.map((x) => [x.id, x]));
+  const fremdIds = new Set(fremd.map((x) => x.id));
+  const ergebnis: T[] = [];
+  for (const f of fremd) {
+    const b = alt.get(f.id);
+    const e = mein.get(f.id);
+    if (!b) ergebnis.push(e ?? f);
+    else if (e) ergebnis.push(wertZusammenfuehren(b, e, f) as T);
+    // b ohne e: hier gelöscht
+  }
+  // Hier neu (im fremden Stand nicht vorhanden, in der Basis auch nicht); fehlt etwas
+  // aus der Basis im fremden Stand, hat das andere Fenster es gelöscht.
+  for (const e of eigen) if (!alt.has(e.id) && !fremdIds.has(e.id)) ergebnis.push(e);
+  return ergebnis;
+}
+
+/**
+ * Trägt die Änderungen dieses Fensters, die sich nicht speichern ließen
+ * (`eigen` gegenüber `basis`, dem zuletzt bekannten gespeicherten Stand), auf
+ * den Stand nach, den ein anderes Fenster gespeichert hat (`fremd`) – je Feld;
+ * bei Widerspruch gilt die eigene Änderung, eine Löschung geht jeder Änderung
+ * vor. Personen ohne Projekt entfallen. Löschvermerke: die fremden ohne die
+ * hier erledigten, dazu die hier neuen. Reine Funktion.
+ */
+export function eigeneAenderungenNachziehen(basis: Register, eigen: Register, fremd: Register): Register {
+  const projekte = listeZusammenfuehren(basis.projekte, eigen.projekte, fremd.projekte);
+  const projektIds = new Set(projekte.map((p) => p.id));
+  const personen = listeZusammenfuehren(basis.personen, eigen.personen, fremd.personen).filter((p) =>
+    projektIds.has(p.projektId),
+  );
+  const schluessel = (g: Grabstein) => JSON.stringify(g);
+  const alt = new Set(basis.geloescht.map(schluessel));
+  const mein = new Set(eigen.geloescht.map(schluessel));
+  const fremdeVermerke = new Set(fremd.geloescht.map(schluessel));
+  const geloescht = [
+    ...fremd.geloescht.filter((g) => !alt.has(schluessel(g)) || mein.has(schluessel(g))),
+    ...eigen.geloescht.filter((g) => !alt.has(schluessel(g)) && !fremdeVermerke.has(schluessel(g))),
+  ];
+  return { version: REGISTER_VERSION, projekte, personen, geloescht };
+}
+
+// Ein anderes Fenster hat das Register gespeichert: neu laden. Hält dieses
+// Fenster Änderungen, die sich nicht speichern ließen (`gespeichert` ≠ 'ok'),
+// trägt es sie auf den neuen Stand nach und versucht erneut zu speichern – sonst
+// gingen sie wortlos verloren, und der Hinweis im Controlling verschwände, als
+// sei gespeichert. Gelingt das Speichern nicht, bleibt der Hinweis.
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key !== KEY || !stand) return;
+    const vorher = stand;
     stand = null;
+    if (vorher.zustand === 'ok' && vorher.gespeichert !== 'ok') {
+      const neu = aktuell();
+      if (neu.zustand === 'ok') {
+        const register = eigeneAenderungenNachziehen(vorher.basis, vorher.register, neu.register);
+        const text = JSON.stringify(register);
+        if (text !== neu.text) {
+          const gespeichert = speichern(text);
+          stand = { register, zustand: 'ok', text, gespeichert, basis: gespeichert === 'ok' ? register : neu.register };
+        }
+      }
+    }
     benachrichtigen();
   });
 }

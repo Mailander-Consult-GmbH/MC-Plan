@@ -6,7 +6,7 @@
  * Über jeder Ansicht steht ein Hinweis, solange sich das Projektregister nicht
  * speichern lässt (`RegisterSpeicherHinweis`).
  */
-import { useEffect } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { registerErneutSpeichern, useRegister, useRegisterSpeicherZustand, useRegisterZustand } from '../../gemeinsam/register';
 import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
@@ -29,6 +29,8 @@ export function App({ onSperren }: { onSperren: () => void }) {
   // setzen innerhalb ihres Menüpunkts selbst zurück.
   const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view);
   const [menuOffen, setMenuOffen] = useSeitenleiste();
+  // Bleibende Stelle für den Fokus, wenn der Hinweis zum Speichern samt Knopf verschwindet
+  const ueberschrift = useRef<HTMLHeadingElement>(null);
 
   // Das Controlling hat keine eigenen Einstellungen – es folgt dem Farbmodus der gemeinsamen Anmeldung.
   const { farbmodus } = useBenutzer();
@@ -97,7 +99,9 @@ export function App({ onSperren }: { onSperren: () => void }) {
             <Icon name="menu" size={18} />
           </button>
           <div className="topbar-title">
-            <h1>{kopf.titel}</h1>
+            <h1 ref={ueberschrift} tabIndex={-1} className="ct-ueberschrift">
+              {kopf.titel}
+            </h1>
             <div className="sub">{kopf.sub}</div>
           </div>
           <div className="topbar-logo">
@@ -107,7 +111,7 @@ export function App({ onSperren }: { onSperren: () => void }) {
 
         <div className="content" ref={inhalt}>
           <div className="content-inner">
-            <RegisterSpeicherHinweis />
+            <RegisterSpeicherHinweis fokusZiel={ueberschrift} />
             {route.view === 'leistungsnachweise' ? (
               <LeistungsnachweiseControlling />
             ) : zustand !== 'ok' ? (
@@ -133,14 +137,28 @@ export function App({ onSperren }: { onSperren: () => void }) {
 /**
  * Dauerhafter Hinweis, solange sich das Projektregister nicht speichern lässt
  * (`useRegisterSpeicherZustand`, src/gemeinsam/register.ts): Was das
- * Controlling an Projekten ändert, steht nur im Register und ginge beim
- * Schließen der Seite verloren. „Erneut speichern“ versucht es noch einmal,
- * etwa nachdem anderswo Platz frei geworden ist; das tut auch jeder weitere
- * Aufruf von `registerAendern` (etwa der Abgleich eines Bereichs).
+ * Controlling an Projekten ändert, steht nur im Register dieses Fensters und
+ * ginge beim Schließen der Seite verloren. „Erneut speichern“ versucht es noch
+ * einmal, etwa nachdem anderswo Platz frei geworden ist; das tut auch jeder
+ * weitere Aufruf von `registerAendern` (etwa der Abgleich eines Bereichs), und
+ * speichert ein anderes Fenster das Register, trägt dieses seine Änderungen auf
+ * dessen Stand nach und speichert erneut (`eigeneAenderungenNachziehen`).
+ * Gelingt es – wie auch immer –, verschwindet der Hinweis mit der Meldung
+ * „Projektregister gespeichert.“; ein Fokus, der mit dem Knopf auf `body`
+ * fiele, geht an die Überschrift der Seite (`fokusZiel`).
  */
-function RegisterSpeicherHinweis() {
+function RegisterSpeicherHinweis({ fokusZiel }: { fokusZiel: RefObject<HTMLElement | null> }) {
   const gespeichert = useRegisterSpeicherZustand();
   const toast = useToast();
+  const vorher = useRef(gespeichert);
+  useEffect(() => {
+    const war = vorher.current;
+    vorher.current = gespeichert;
+    if (war === 'ok' || gespeichert !== 'ok') return;
+    toast('Projektregister gespeichert.');
+    const aktiv = document.activeElement;
+    if (!aktiv || aktiv === document.body) fokusZiel.current?.focus({ preventScroll: true });
+  }, [gespeichert, toast, fokusZiel]);
   if (gespeichert === 'ok') return null;
   return (
     <div className="ct-speicherhinweis" role="alert">

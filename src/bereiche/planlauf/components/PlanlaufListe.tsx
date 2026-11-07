@@ -49,7 +49,7 @@ import { useStore } from '../store/store';
 import { AmpelBadge, AngekuendigtBadge, DocKindIcon, RunStatusBadge } from './common';
 import { BuendelnDialog } from './BuendelnDialog';
 import { EmailDialog } from './EmailDialog';
-import { ErledigtButton, useSchrittStatus } from './SchrittStatus';
+import { useSchrittStatus } from './SchrittStatus';
 import { ConfirmDialog, EmptyState, Progress } from '../../../shared/ui';
 import { useToast } from '../../../shared/toast';
 import { Icon } from '../../../shared/icons';
@@ -609,24 +609,28 @@ export function PlanlaufListe({
               >
                 <Icon name="mail" size={13} />
               </button>{' '}
-              {weitere.length > 0 ? (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-haken"
-                  title={`${schritte.length} Schritte stehen an – welcher ist erledigt?`}
-                  aria-label="Schritt als erledigt vermerken"
-                  aria-haspopup="menu"
-                  aria-expanded={wahlOffen('erledigt', run)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    schrittWaehlen('erledigt', run, schritte, e.currentTarget);
-                  }}
-                >
-                  <Icon name="check" size={13} />
-                </button>
-              ) : (
-                <ErledigtButton run={run} step={step} onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')} />
-              )}
+              {/* Ein Knopf für einen wie für mehrere anstehende Schritte: Steht nach der Wahl im
+                  Menü nur noch einer an, bleibt er dasselbe Element, und der Fokus kehrt zu ihm
+                  zurück (AufklappMenue) */}
+              <button
+                type="button"
+                className="btn btn-sm btn-haken"
+                title={
+                  weitere.length > 0
+                    ? `${schritte.length} Schritte stehen an – welcher ist erledigt?`
+                    : `„${step.name}“ als erledigt vermerken`
+                }
+                aria-label="Schritt als erledigt vermerken"
+                aria-haspopup={weitere.length > 0 ? 'menu' : undefined}
+                aria-expanded={weitere.length > 0 ? wahlOffen('erledigt', run) : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (weitere.length > 0) schrittWaehlen('erledigt', run, schritte, e.currentTarget);
+                  else setzeStatus(run, step, 'erledigt');
+                }}
+              >
+                <Icon name="check" size={13} />
+              </button>
             </>
           ) : null}
         </td>

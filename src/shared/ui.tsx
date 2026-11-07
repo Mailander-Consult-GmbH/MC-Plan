@@ -302,10 +302,10 @@ function ganzSichtbar(el: HTMLElement, inhalt: HTMLElement): boolean {
  * beginnt und kein Knopf mit sofortiger Wirkung den Fokus hat. Auf
  * Touch-Geräten immer der Dialog selbst: Der Fokus soll dort weder ungefragt
  * die Bildschirmtastatur aufklappen noch den Inhalt verschieben. Gescrollt
- * wird beim Fokussieren nie. Eigene Dialoge der Bereiche (der Workflow-Editor,
- * „Sicherung abgleichen“, der einen `Modal` ablöst) tragen dafür ebenfalls
- * `tabIndex={-1}`; einer ohne `tabindex` ließe sich selbst nicht fokussieren –
- * dort gälte sein erster Tab-Halt.
+ * wird beim Fokussieren nie. Auch einen eigenen Dialog eines Bereichs kann
+ * es treffen – wenn ein `Modal` über ihm schließt und sein Öffner fehlt –; der
+ * Workflow-Editor trägt dafür ebenfalls `tabIndex={-1}`, einer ohne `tabindex`
+ * ließe sich selbst nicht fokussieren – dort gälte sein erster Tab-Halt.
  */
 function anfangsFokus(dialog: HTMLElement) {
   const inhalt = dialog.querySelector<HTMLElement>('.modal-body') ?? dialog;
@@ -391,7 +391,10 @@ function dialogAbmelden(d: OffenerDialog) {
  * `autoFocus` behält ihn, sonst `anfangsFokus`), Tab bleibt in ihm, Escape
  * und ein Klick daneben schließen ihn – bei verschachtelten Dialogen nur den
  * obersten –, und nach dem Schließen geht der Fokus dorthin zurück, wo er
- * vorher stand, sofern das Element noch im Dokument ist.
+ * vorher stand, sofern das Element noch im Dokument ist. Mit
+ * `klickDanebenSchliesst={false}` schließt ein Klick daneben nicht – für
+ * Dialoge mit aufwendiger Auswahl (etwa „Sicherung abgleichen“); `klasse`
+ * ergänzt die Klassen des Dialogs.
  */
 export function Modal({
   titel,
@@ -400,6 +403,8 @@ export function Modal({
   footer,
   onClose,
   wide = false,
+  klickDanebenSchliesst = true,
+  klasse,
 }: {
   titel: ReactNode;
   sub?: ReactNode;
@@ -407,6 +412,8 @@ export function Modal({
   footer?: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  klickDanebenSchliesst?: boolean;
+  klasse?: string;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titelId = useId();
@@ -456,15 +463,15 @@ export function Modal({
       style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}
       onMouseDown={(e) => {
         if (e.target !== e.currentTarget) return;
-        // Ohne preventDefault setzte der Browser den Fokus nach dem Schließen auf body –
-        // er gehört an das Element, von dem der Dialog kam
+        // Ohne preventDefault setzte der Browser den Fokus auf body – nach dem Schließen
+        // gehört er an das Element, von dem der Dialog kam, sonst bleibt er im Dialog
         e.preventDefault();
-        onClose();
+        if (klickDanebenSchliesst) onClose();
       }}
     >
       <div
         ref={dialogRef}
-        className={`modal ${wide ? 'wide' : ''}`}
+        className={['modal', wide ? 'wide' : '', klasse ?? ''].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titelId}

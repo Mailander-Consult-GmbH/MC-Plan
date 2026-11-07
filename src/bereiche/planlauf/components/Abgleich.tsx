@@ -3,10 +3,14 @@
  * Sicherung als Baum mit Kästchen (domain/abgleich.ts) und übernimmt die
  * gewählten Elemente samt Abhängigkeiten über store.datenAbgleichen.
  *
- * Das breite Modal schließt bewusst nicht per Klick auf den Hintergrund, damit
- * eine aufwendige Auswahl nicht versehentlich verloren geht.
+ * Ein breiter `Modal` (src/shared/ui.tsx) mit Fokus, Tab-Reihenfolge, Escape
+ * und Fokus zurück wie jeder Dialog. Er schließt bewusst nicht per Klick auf
+ * den Hintergrund (`klickDanebenSchliesst={false}`), damit eine aufwendige
+ * Auswahl nicht versehentlich verloren geht. Er löst „Sicherung einspielen“ ab:
+ * Der Fokus landet dabei in ihm und geht nach dem Schließen an „Einspielen“
+ * zurück (die Kandidaten des abgelösten Dialogs, `fokusVorDemOeffnen`).
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ZUSTAND_LABEL,
   abgleichAnwenden,
@@ -21,56 +25,10 @@ import {
 import type { ID } from '../domain/types';
 import { newId, useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
-import { Callout, EmptyState } from '../../../shared/ui';
+import { Callout, EmptyState, Modal } from '../../../shared/ui';
 import { formatDate, today } from '../../../shared/dates';
 import type { Sicherung } from './SicherungEinspielen';
 import './abgleich.css';
-
-/**
- * Breites Modal ohne Schließen per Hintergrundklick (Escape und ✕ schließen).
- * Es löst „Sicherung einspielen“ ab und erhält dabei den Fokus selbst
- * (`tabIndex={-1}`, `anfangsFokus` in src/shared/ui.tsx) – nicht der Knopf ✕,
- * den ein Enter sonst sofort auslöste.
- */
-function BreitesModal({
-  titel,
-  sub,
-  children,
-  footer,
-  onClose,
-}: {
-  titel: ReactNode;
-  sub?: ReactNode;
-  children: ReactNode;
-  footer: ReactNode;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return (
-    <div className="overlay">
-      <div className="modal wide ab-modal" role="dialog" aria-modal="true" tabIndex={-1}>
-        <div className="modal-header">
-          <div style={{ minWidth: 0 }}>
-            <h2>{titel}</h2>
-            {sub ? <div className="sub">{sub}</div> : null}
-          </div>
-          <button type="button" className="btn-icon" onClick={onClose} aria-label="Schließen">
-            ✕
-          </button>
-        </div>
-        <div className="modal-body">{children}</div>
-        <div className="modal-footer">{footer}</div>
-      </div>
-    </div>
-  );
-}
 
 const ZUSTAND_FARBE: Record<AbgleichElement['zustand'], string> = {
   neu: 'blue',
@@ -325,10 +283,13 @@ export function AbgleichDialog({
   };
 
   return (
-    <BreitesModal
+    <Modal
       titel="Sicherung abgleichen"
       sub={sicherung.datei}
       onClose={onClose}
+      wide
+      klasse="ab-modal"
+      klickDanebenSchliesst={false}
       footer={
         <>
           <span className="ab-zahl">
@@ -404,6 +365,6 @@ export function AbgleichDialog({
           ) : null}
         </>
       )}
-    </BreitesModal>
+    </Modal>
   );
 }

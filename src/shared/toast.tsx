@@ -1,4 +1,4 @@
-/** Kurze Bestätigungsmeldungen am unteren Bildschirmrand. */
+/** Kurze Bestätigungsmeldungen am unteren Bildschirmrand (`role="status"`, Bildschirmleser lesen sie vor). */
 import { createContext, useCallback, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 
@@ -16,7 +16,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={zeige}>
       {children}
-      <div className="toast-wrap">
+      {/* Bildschirmleser lesen Meldungen vor, ohne den Fokus zu verschieben */}
+      <div className="toast-wrap" role="status">
         {items.map((i) => (
           <div key={i.id} className="toast">
             {i.text}

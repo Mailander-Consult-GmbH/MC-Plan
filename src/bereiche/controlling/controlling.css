@@ -3,13 +3,16 @@
  * src/shared/global.css). Marken der Bereiche: src/gemeinsam/gemeinsam.css.
  */
 
-/* PIN-Abfrage */
+/* PIN-Abfrage – unten zusätzlich die Höhe des Hinweises „Neue Fassung“
+   (--neue-fassung-hoehe, src/shell/NeueFassung.tsx): Die Karte steht dann über
+   ihm, und reicht der Platz nicht, scrollt die Seite, statt dass er
+   „Entsperren“ oder „Zur Bereichsauswahl“ verdeckt. */
 .ct-pin {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
+  padding: 24px 16px calc(24px + var(--neue-fassung-hoehe, 0px));
   background: var(--bg);
 }
 .ct-pin-karte {
@@ -92,6 +95,10 @@
 .ct-bereich-name { flex: 1 1 150px; font-size: 13px; }
 .ct-bereich-stand { flex: none; min-width: 96px; display: flex; }
 .ct-bereich-aktion { flex: none; margin-left: auto; display: flex; }
+
+/* Überschrift der Kopfzeile: nimmt den Fokus auf, wenn der Hinweis zum Speichern
+   samt Knopf verschwindet (App.tsx) – ohne Rahmen, wie ein Dialog */
+.ct-ueberschrift:focus { outline: none; }
 
 /* Hinweis: Projektregister nicht gespeichert (App.tsx, RegisterSpeicherHinweis) */
 .ct-speicherhinweis { margin-bottom: 18px; }
