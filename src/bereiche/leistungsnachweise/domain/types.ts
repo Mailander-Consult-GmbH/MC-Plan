@@ -4,10 +4,10 @@
  *
  * Ein Projekt sammelt die erfassten Leistungen seiner Mitarbeiter (je Tag,
  * Person und Tätigkeit eine `Leistung` mit Stunden). Ein Leistungsnachweis
- * ist ein Zeitraum eines Projekts – er läuft, bis das Controlling ihn
- * abschließt (`Zeitraumregel`), über einen oder mehrere Monate – und fasst
- * die Leistungen darin je Tag, Woche oder Monat zu Zeilen zusammen
- * (`Raster`). Mehrere Mitarbeiter schreiben so an einem gemeinsamen
+ * ist ein Zeitraum eines Projekts – nach dem Abrechnungsrhythmus des Projekts
+ * (`Zeitraumregel`) ein, zwei oder drei Monate ab Projektbeginn oder bis das
+ * Controlling ihn abschließt – und fasst die Leistungen darin je Tag, Woche
+ * oder Monat zu Zeilen zusammen (`Raster`). Mehrere Mitarbeiter schreiben so an einem gemeinsamen
  * Nachweis, ohne einander zu überschreiben: Jede Person bringt nur ihre
  * eigenen Leistungen ein, der Nachweis rechnet die Zeilen daraus.
  *
@@ -41,8 +41,11 @@ export type ISODate = string;
  * nachgereichte Zeilen im festgeschriebenen Stand (`NachweisZeile.nachgereicht`).
  * Fassung 7: gemeinsame Leistungstexte je Zeitraum (`periodentexte`) und
  * Monatsbestätigungen der Mitarbeiter (`bestaetigungen`), beide leer.
+ * Fassung 8: Zeitraumregeln „Alle 2 Monate“ und „Alle 3 Monate“
+ * (`zweiMonate`, `quartal`) und der Monat, ab dem ihre Blöcke zählen
+ * (`Projekt.rhythmusAb`, optional).
  */
-export const DATEN_VERSION = 7;
+export const DATEN_VERSION = 8;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Mitarbeiter MIC';
@@ -118,19 +121,44 @@ export const RASTER_KURZ: Record<Raster, string> = {
 };
 
 /**
- * Wie neue Leistungen außerhalb der vorhandenen Nachweise einen Nachweis
- * erhalten. Vorgabe ist „fortlaufend“: Ein Leistungsnachweis ist nicht an
- * einen Monat gebunden – der offene Nachweis wächst mit, bis das Controlling
- * ihn abschließt; danach beginnt ein neuer. Wer es so will, stellt ein Projekt
- * auf „je Kalendermonat“ (ein eigener Nachweis je Monat).
+ * Abrechnungsrhythmus des Projekts: über welche Monate ein Leistungsnachweis
+ * geht – und damit, wie neue Leistungen außerhalb der vorhandenen Nachweise
+ * einen Nachweis erhalten (`nachweiseErgaenzen` in domain/nachweis.ts).
+ * * „monat“, „zweiMonate“, „quartal“: feste Blöcke von 1, 2 bzw. 3 Monaten
+ *   (`rhythmusMonate`), gezählt ab Projektbeginn (`Projekt.rhythmusAb`,
+ *   `rhythmusAnker` in domain/nachweis.ts), nicht am Kalenderquartal
+ *   ausgerichtet – etwa Okt–Dez, Jan–Mär …; je Block ein eigener Nachweis.
+ *   Wird einer vorzeitig abgeschlossen, bildet der Rest seines Blocks einen
+ *   eigenen Nachweis, danach geht es im Raster weiter.
+ * * „fortlaufend“ (Vorgabe für neue Projekte, `IMPORT_PROJEKT_VORGABEN`): Ein
+ *   Leistungsnachweis ist nicht an Monate gebunden – der offene Nachweis wächst
+ *   mit, bis das Controlling ihn abschließt; danach beginnt ein neuer.
+ * Stellt das Controlling den Rhythmus um, plant `regelAnwenden` die offenen
+ * Nachweise neu.
  */
-export type Zeitraumregel = 'fortlaufend' | 'monat';
+export type Zeitraumregel = 'monat' | 'zweiMonate' | 'quartal' | 'fortlaufend';
 
-/** In der Reihenfolge der Auswahl – die Vorgabe zuerst. */
+/** In der Reihenfolge der Auswahl (`REGEL_OPTIONEN`): nach der Länge, „Bis zum Abschluss“ zuletzt. */
 export const ZEITRAUMREGEL_LABEL: Record<Zeitraumregel, string> = {
-  fortlaufend: 'Fortlaufend bis zum Abschluss',
-  monat: 'Je Kalendermonat',
+  monat: 'Monatlich',
+  zweiMonate: 'Alle 2 Monate',
+  quartal: 'Alle 3 Monate',
+  fortlaufend: 'Bis zum Abschluss',
 };
+
+/** Monate je Nachweis nach der Regel: 1, 2 bzw. 3 – null bei „fortlaufend“ (bis zum Abschluss). */
+export function rhythmusMonate(regel: Zeitraumregel): number | null {
+  switch (regel) {
+    case 'monat':
+      return 1;
+    case 'zweiMonate':
+      return 2;
+    case 'quartal':
+      return 3;
+    case 'fortlaufend':
+      return null;
+  }
+}
 
 /** Logo im Kopf des Leistungsnachweises. */
 export interface Logo {
@@ -174,6 +202,15 @@ export interface Projekt {
   /** Vorgabe für neue Nachweise. */
   raster: Raster;
   zeitraumregel: Zeitraumregel;
+  /**
+   * Monat (JJJJ-MM), ab dem die Blöcke des Abrechnungsrhythmus zählen (Regeln
+   * mit Monaten, `rhythmusMonate`) – gesetzt beim Umstellen auf eine solche
+   * Regel (`regelAnwenden` in domain/nachweis.ts), entfernt beim Wechsel auf
+   * „fortlaufend“. Fehlt er, zählen die Blöcke ab dem Monat des frühesten
+   * Nachweises des Projekts, ohne einen ab der ersten Leistung
+   * (`rhythmusAnker`). Seit Fassung 8.
+   */
+  rhythmusAb?: string;
   abschnitte: Abschnitt[];
   /** Logos im Druckkopf; null = Standardlogos (`STANDARD_LOGOS`). */
   logos: Logo[] | null;
@@ -382,8 +419,10 @@ export interface Leistungsnachweis {
   /**
    * Das Ende hat das Controlling von Hand festgelegt („Zeitraum ändern“): Der
    * Nachweis läuft dann nicht bis zum Abschluss (`laeuftBisAbschluss`), wird
-   * nicht verlängert (`nachweiseErgaenzen`) und beim Abschluss nicht gekürzt
-   * (`abschlussZeitraum`). „Neuer Leistungsnachweis“ hebt es wieder auf.
+   * nicht verlängert (`nachweiseErgaenzen`), beim Umstellen des
+   * Abrechnungsrhythmus nicht neu geplant (`regelAnwenden`) und beim Abschluss
+   * nicht gekürzt (`abschlussZeitraum`). „Neuer Leistungsnachweis“ hebt es
+   * wieder auf.
    */
   bisFest: boolean;
   raster: Raster;

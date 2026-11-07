@@ -16,7 +16,9 @@
  *
  * Nachweise eines Projekts überschneiden sich nie (`ueberschneidung`). Fehlt
  * für Leistungen ein Nachweis, legt `nachweiseErgaenzen` ihn nach der
- * Zeitraumregel des Projekts an oder verlängert den offenen. „Neuer
+ * Zeitraumregel (dem Abrechnungsrhythmus) des Projekts an oder verlängert den
+ * offenen; stellt das Controlling den Rhythmus um, plant `regelAnwenden` die
+ * offenen Nachweise neu. „Neuer
  * Leistungsnachweis“ im Controlling fragt keinen Zeitraum ab: Er umfasst alle
  * nicht abgerechneten Leistungen (`nichtAbgerechnet`,
  * `nachweisFuerNichtAbgerechnete`). Der Zeitraum steht erst beim Abschluss
@@ -47,6 +49,8 @@ import {
   type Projekt,
   type Raster,
   type ZeilenText,
+  type Zeitraumregel,
+  rhythmusMonate,
 } from './types';
 import {
   datumText,
@@ -57,6 +61,7 @@ import {
   istWochenende,
   monatsanfang,
   monatsende,
+  monatVersetzt,
   periodeKuerzen,
   periodeVon,
   runden,
@@ -1252,11 +1257,35 @@ export interface Ergaenzung {
   erweitert: { id: ID; von: ISODate; bis: ISODate }[];
 }
 
+/** Ganze Monate vom Monat von `a` bis zum Monat von `b`, etwa 2026-10-… → 2027-02-…: 4. */
+const monatsAbstand = (a: ISODate, b: ISODate): number =>
+  (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7));
+
+/** Letzter Tag eines Blocks aus `monate` Monaten, der im Monat von `von` beginnt. */
+const blockEnde = (von: ISODate, monate: number): ISODate => monatsende(monatVersetzt(von, monate - 1));
+
+/**
+ * Block aus `monate` Monaten, in dem `tag` liegt – die Blöcke gezählt ab dem
+ * Monat von `anker` (ganze Monate): [erster Tag seines ersten Monats, letzter
+ * Tag seines letzten]. Mit einem Monat ist das der Kalendermonat des Tages.
+ */
+function rhythmusBlock(tag: ISODate, anker: ISODate, monate: number): { von: ISODate; bis: ISODate } {
+  const schritte = Math.floor(monatsAbstand(anker, tag) / monate);
+  const von = monatVersetzt(anker, schritte * monate);
+  return { von, bis: blockEnde(von, monate) };
+}
+
 /**
  * Nachweise anlegen bzw. erweitern, damit die genannten Tage des Projekts in einem Nachweis liegen –
- * nach `projekt.zeitraumregel`:
- * * „monat“: je Kalendermonat ein neuer Nachweis [Monatsanfang, Monatsende], gekürzt, damit er sich
- *   nicht mit vorhandenen überschneidet.
+ * nach `projekt.zeitraumregel`; die Tage der Reihe nach, der früheste zuerst:
+ * * „monat“, „zweiMonate“, „quartal“ (N = 1, 2 bzw. 3 Monate, `rhythmusMonate`): ein neuer Nachweis
+ *   für den Block aus N Monaten, in dem der Tag liegt. Die Blöcke zählen ab Projektbeginn, nicht ab
+ *   dem Kalenderquartal: im Anschluss an den letzten Nachweis vor dem Tag (ab dem Monat des Tages
+ *   nach seinem Ende), ohne einen solchen ab dem Monat des Tages selbst – so beginnt der erste Block
+ *   im Monat der ersten Leistung. Der Nachweis beginnt frühestens am Tag nach dem vorigen und endet
+ *   vor dem nächsten, damit er sich nicht mit vorhandenen überschneidet. Mit N = 1 ist das je
+ *   Kalendermonat ein Nachweis [Monatsanfang, Monatsende]. Ein offener Nachweis wird nicht
+ *   verlängert.
  * * „fortlaufend“: Liegt vor dem Tag der zeitlich letzte Nachweis des Projekts und ist er in
  *   Bearbeitung (und liegt kein anderer dazwischen), wird sein `bis` bis zum Monatsende des Tages
  *   verlängert (gekürzt vor dem nächsten Nachweis); sonst neuer Nachweis ab Monatsanfang. Ein
@@ -1271,6 +1300,7 @@ export function nachweiseErgaenzen(
   jetzt: string,
   neueId: () => ID,
 ): Ergaenzung {
+  const monate = rhythmusMonate(projekt.zeitraumregel);
   // Arbeitsstand: die Nachweise des Projekts samt der in diesem Aufruf angelegten bzw. verlängerten
   const stand = daten.nachweise
     .filter((n) => n.projektId === projekt.id)
@@ -1286,13 +1316,18 @@ export function nachweiseErgaenzen(
       if (s.bis < tag && (!vorher || s.bis > vorher.bis)) vorher = s;
       if (s.von > tag && (!danach || s.von < danach.von)) danach = s;
     }
-    const ende = danach && danach.von <= monatsende(tag) ? addDays(danach.von, -1) : monatsende(tag);
-    if (projekt.zeitraumregel === 'fortlaufend' && vorher?.offen) {
+    // Fortlaufend: der Monat des Tages; sonst der Block im Rhythmus ab dem Anschluss an `vorher`
+    const block =
+      monate === null
+        ? { von: monatsanfang(tag), bis: monatsende(tag) }
+        : rhythmusBlock(tag, vorher ? addDays(vorher.bis, 1) : tag, monate);
+    const ende = danach && danach.von <= block.bis ? addDays(danach.von, -1) : block.bis;
+    if (monate === null && vorher?.offen) {
       vorher.bis = ende;
       if (vorher.neu) vorher.neu = { ...vorher.neu, bis: ende };
       continue;
     }
-    const anfang = vorher && vorher.bis >= monatsanfang(tag) ? addDays(vorher.bis, 1) : monatsanfang(tag);
+    const anfang = vorher && vorher.bis >= block.von ? addDays(vorher.bis, 1) : block.von;
     const n = neuerNachweis(neueId(), projekt, anfang, ende, jetzt);
     stand.push({ id: n.id, von: n.von, bis: n.bis, offen: true, neu: n });
   }
@@ -1342,6 +1377,72 @@ export function nachweiseSichern(
   if (!projekt || tage.length === 0) return { daten, ergaenzung: { neu: [], erweitert: [] } };
   const ergaenzung = nachweiseErgaenzen(daten, projekt, tage, jetzt, neueId);
   return { daten: ergaenzungAnwenden(daten, ergaenzung, jetzt), ergaenzung };
+}
+
+/* ------------------------------------------------------------------ */
+/* Abrechnungsrhythmus umstellen                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Stellt den Abrechnungsrhythmus des Projekts um (`zeitraumregel`) und plant
+ * seine offenen Nachweise neu – rein; so arbeitet `updateProjekt` im Store,
+ * und die Oberfläche rechnet damit die Folgen vorab (`grenzFolgen` in
+ * domain/erfassung.ts, dort mit beliebiger `neueId`).
+ * * Regel mit Monaten (`rhythmusMonate`, N = 1, 2, 3): Jeder offene Nachweis
+ *   des Projekts, dessen Ende nicht von Hand festgelegt ist (`bisFest`), endet
+ *   am Ende seines Blocks ab seinem eigenen Beginn – am letzten Tag des
+ *   (N−1)-ten Monats nach dem Monat von `von`, gekürzt vor dem nächsten
+ *   Nachweis des Projekts; er kann dabei wachsen oder schrumpfen, sein Beginn
+ *   bleibt. Leistungen, die dadurch aus jedem Nachweis fallen, erhalten nach
+ *   der neuen Regel einen (`nachweiseSichern`, Kennungen über `neueId`);
+ *   Leistungen, die schon vorher ohne Nachweis waren, bleiben es („Nachweise
+ *   anlegen“ im Controlling).
+ * * „fortlaufend“: Die Nachweise bleiben, wie sie sind – der letzte offene
+ *   wächst ab dann mit neuen Leistungen mit.
+ * Abgeschlossene Nachweise bleiben stets unverändert. Beispiele: offen
+ * 01.10.–30.11. (fortlaufend) → „quartal“ → 01.10.–31.12.; offen
+ * 01.10.–31.12. (quartal) → „monat“ → 01.10.–31.10., Leistungen im November
+ * und Dezember erhalten je Monat einen neuen Nachweis. Unbekanntes Projekt
+ * oder dieselbe Regel: derselbe Bestand.
+ */
+export function regelAnwenden(
+  daten: LeistungsnachweisDaten,
+  projektId: ID,
+  regel: Zeitraumregel,
+  jetzt: string,
+  neueId: () => ID,
+): LeistungsnachweisDaten {
+  const projekt = daten.projekte.find((p) => p.id === projektId);
+  if (!projekt || projekt.zeitraumregel === regel) return daten;
+  const umgestellt: LeistungsnachweisDaten = {
+    ...daten,
+    projekte: daten.projekte.map((p) => (p.id === projektId ? { ...p, zeitraumregel: regel } : p)),
+  };
+  const monate = rhythmusMonate(regel);
+  if (monate === null) return umgestellt;
+
+  // Neues Ende je offenem Nachweis – der Beginn bleibt, also auch der des nächsten
+  const eigene = nachweiseVon(daten, projektId);
+  const neuesEnde = new Map<ID, ISODate>();
+  for (const n of eigene) {
+    if (n.status !== 'entwurf' || n.bisFest) continue;
+    const ende = blockEnde(n.von, monate);
+    const naechster = eigene.find((x) => x.von > n.von);
+    const bis = naechster && naechster.von <= ende ? addDays(naechster.von, -1) : ende;
+    if (bis !== n.bis && bis >= n.von) neuesEnde.set(n.id, bis);
+  }
+  if (neuesEnde.size === 0) return umgestellt;
+  const geplant: LeistungsnachweisDaten = {
+    ...umgestellt,
+    nachweise: daten.nachweise.map((n) => {
+      const bis = neuesEnde.get(n.id);
+      return bis ? { ...n, bis, geaendert: jetzt } : n;
+    }),
+  };
+  // Leistungen, die aus ihrem Nachweis gefallen sind, erhalten einen nach der neuen Regel
+  const schonOhne = new Set(leistungenOhneNachweis(daten, projektId).map((l) => l.id));
+  const herausgefallen = leistungenOhneNachweis(geplant, projektId).filter((l) => !schonOhne.has(l.id));
+  return nachweiseSichern(geplant, projektId, herausgefallen.map((l) => l.datum), jetzt, neueId).daten;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1512,8 +1613,9 @@ export function nachreichenAnwenden(daten: LeistungsnachweisDaten, nachweisId: I
 }
 
 /**
- * Läuft der Nachweis bis zum Abschluss? Offen und nach der Regel
- * „Fortlaufend bis zum Abschluss“ oder mit einem Ende nach heute – sein
+ * Läuft der Nachweis bis zum Abschluss? Offen und nach der Regel „Bis zum
+ * Abschluss“ (`fortlaufend`) oder – bei einer Regel mit Monaten („Monatlich“,
+ * „Alle 2 Monate“, „Alle 3 Monate“) – mit einem Ende nach heute: Sein
  * Zeitraum steht dann erst beim Abschluss fest (`abschlussZeitraum`). Nicht,
  * wenn das Controlling das Ende von Hand festgelegt hat (`bisFest`).
  */
@@ -1540,6 +1642,35 @@ export function endeFestlegenWirkt(
 }
 
 /* ------------------------------------------------------------------ */
+/* Übersicht des Controllings                                          */
+/* ------------------------------------------------------------------ */
+
+/** Offene Nachweise des Projekts (in Bearbeitung), nach `von` aufsteigend. */
+export function offeneNachweise(daten: LeistungsnachweisDaten, projektId: ID): Leistungsnachweis[] {
+  return nachweiseVon(daten, projektId).filter((n) => n.status === 'entwurf');
+}
+
+/**
+ * Nachweis, der für das Projekt gerade ansteht: der früheste offene, sonst der
+ * jüngste abgeschlossene (mit dem spätesten Zeitraum), sonst null.
+ */
+export function aktuellerNachweis(daten: LeistungsnachweisDaten, projektId: ID): Leistungsnachweis | null {
+  const alle = nachweiseVon(daten, projektId);
+  return alle.find((n) => n.status === 'entwurf') ?? alle.filter((n) => n.status === 'abgeschlossen').at(-1) ?? null;
+}
+
+/**
+ * Ist der Nachweis fällig – offen und sein Zeitraum vorbei? Nicht, solange er
+ * bis zum Abschluss läuft (`laeuftBisAbschluss`), und nur mit einem Ende vor
+ * heute. Bei der Regel „Bis zum Abschluss“ (`fortlaufend`) wird ein Nachweis
+ * also nie von selbst fällig – außer das Controlling hat sein Ende festgelegt
+ * (`bisFest`).
+ */
+export function nachweisFaellig(daten: Pick<LeistungsnachweisDaten, 'projekte'>, n: Leistungsnachweis, heute: ISODate): boolean {
+  return n.status === 'entwurf' && !laeuftBisAbschluss(daten, n, heute) && n.bis < heute;
+}
+
+/* ------------------------------------------------------------------ */
 /* Abschließen                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -1551,8 +1682,8 @@ export function tagVon(zeitpunkt: string): ISODate {
 
 /**
  * Ende eines Nachweises beim Abschluss – erst hier steht sein Zeitraum fest:
- * Läuft er bis zum Abschluss (`laeuftBisAbschluss` – Regel „Fortlaufend bis
- * zum Abschluss“ oder ein Ende nach heute, aber kein von Hand festgelegtes), endet er am letzten Tag mit
+ * Läuft er bis zum Abschluss (`laeuftBisAbschluss` – Regel „Bis zum
+ * Abschluss“ oder ein Ende nach heute, aber kein von Hand festgelegtes), endet er am letzten Tag mit
  * Leistungen in ihm, spätestens heute (ohne Leistungen heute) – nie später als
  * bisher und nie vor seinem Beginn. Sonst bleibt `bis`. Dazu die Leistungen,
  * die danach liegen und deshalb in einen neuen Nachweis kommen.

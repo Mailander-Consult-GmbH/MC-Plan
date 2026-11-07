@@ -214,13 +214,13 @@
     letter-spacing: 0.03em; color: var(--text-tertiary);
   }
 
-  /* Projekte der Leistungsnachweise: das Projekt, darunter Raster und Stunden, dann „Leistungsnachweis erstellen“ */
-  .table-stack.ln-co-projektliste tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: end; }
+  /* Übersicht der Projekte: das Projekt, darunter je zwei Angaben nebeneinander, dann „Öffnen“ */
+  .table-stack.ln-co-projektliste tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 12px; align-items: start; }
   .table-stack.ln-co-projektliste td { width: auto; padding: 1px 0; }
   .table-stack.ln-co-projektliste td:first-child, .table-stack.ln-co-projektliste td.actions { grid-column: 1 / -1; }
-  .table-stack.ln-co-projektliste td.ln-co-raster { width: auto; }
-  .table-stack.ln-co-projektliste td.ln-co-raster .select { width: 100%; min-width: 0; }
-  .table-stack.ln-co-projektliste td.ln-stunden { text-align: right; }
+  .table-stack.ln-co-projektliste td.ln-co-auswahl { width: auto; white-space: normal; }
+  .table-stack.ln-co-projektliste td.ln-co-auswahl .select { width: 100%; min-width: 0; }
+  .table-stack.ln-co-projektliste td.ln-stunden { text-align: left; }
   .table-stack.ln-co-projektliste td.ln-stunden::after { content: none; }
   .table-stack.ln-co-projektliste td[data-label]::before {
     content: attr(data-label); display: block; font-size: 10.5px; font-weight: 600; text-transform: uppercase;
@@ -242,37 +242,67 @@
 }
 :root[data-farbmodus='kontrast'] .input.ln-co-zahl.ln-co-fehlerhaft { border-width: 2px; }
 
-/* Projekt im Controlling und Liste der Projekte */
-.ln-co-projekttitel { font-size: 15px; margin: 0; min-width: 0; }
-/* Raster-Auswahl in der Spalte „Nachweis“ – so breit wie ihr Inhalt */
-.table.ln-co-projektliste td.ln-co-raster { width: 1%; white-space: nowrap; }
-.table.ln-co-projektliste td.ln-co-raster .select { width: auto; min-width: 150px; }
+/* ------------------------------------------------------------------ */
+/* Übersicht der Projekte (ProjektListe.tsx)                            */
+/* ------------------------------------------------------------------ */
+.ln-co-summen { gap: 6px; }
+/* Rhythmus und Raster als Auswahl in der Zeile – so breit wie ihr Inhalt */
+.table.ln-co-projektliste td.ln-co-auswahl { width: 1%; white-space: nowrap; }
+.table.ln-co-projektliste td.ln-co-auswahl .select { width: auto; min-width: 150px; }
+.ln-co-nachweisstand { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .table tr.ln-co-archiviert td { color: var(--text-tertiary); }
 
 /* ------------------------------------------------------------------ */
-/* Bestätigungen der Mitarbeiter in der Abrechnung (BestaetigungsStand.tsx) */
+/* Seite eines Projekts (Projekt.tsx) und Leistungsnachweis            */
+/* (Abrechnung.tsx)                                                    */
 /* ------------------------------------------------------------------ */
-/* Kurzer Stand in der Abrechnung eines offenen Nachweises (`BestaetigungsStand`) */
-.ln-co-bst-stand { border-top: 1px solid var(--separator); padding: 12px 20px 14px; display: flex; flex-direction: column; gap: 8px; }
-.ln-co-bst-stand-kopf { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
-.ln-co-bst-stand-titel {
-  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary);
-}
-.ln-co-bst-monate { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.ln-co-bst-monate > li {
-  display: grid; grid-template-columns: 130px 150px minmax(0, 1fr); align-items: center; gap: 4px 12px; font-size: 13px;
-}
-.ln-co-bst-monat { font-weight: 600; font-variant-numeric: tabular-nums; }
-.ln-co-bst-monate > li > .badge { justify-self: start; }
-.ln-co-bst-fehlend { display: flex; flex-wrap: wrap; gap: 2px 14px; min-width: 0; color: var(--text-secondary); }
+.ln-co-projektkopf { gap: 8px 12px; min-width: 0; }
+.ln-co-projekttitel { font-size: 16px; margin: 0; min-width: 0; }
+.ln-co-mehr { padding-left: 10px; padding-right: 10px; }
+/* Das Menü „Mehr“ bleibt schmal – auch, wo die Knöpfe der Leiste die Breite füllen */
+.ln-co-leiste .btn.ln-co-mehr { flex: none; }
+.ln-co-nachweiswahl { gap: 8px 10px; min-width: 0; }
+.ln-co-nachweiswahl .select { width: auto; max-width: 100%; min-width: 0; }
+.ln-co-wahl-label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+.ln-co-aktionen { gap: 8px; }
+.ln-co-erstellt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--gruen-text); }
+.ln-co-tabellenhinweis { margin: 0; padding: 10px 20px 0; }
+.ln-co-bemerkung { display: flex; flex-direction: column; gap: 6px; padding: 14px 20px 18px; border-top: 1px solid var(--separator); margin-top: 12px; }
 
-/* Rückfrage beim Abschließen: fehlende Bestätigungen je Monat */
+/* Mitarbeiter und Bestätigungen (BestaetigungsStand.tsx) */
+.ln-co-bst-leer { margin: 0; padding: 14px 20px; }
+.table.ln-co-bst-tabelle td { vertical-align: middle; }
+.ln-co-bst-person { font-weight: 500; }
+.ln-co-bst-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ln-co-bst-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 12px; white-space: nowrap;
+  background: var(--gray-soft); color: var(--text-secondary);
+}
+.ln-co-bst-chip-monat { font-weight: 600; font-variant-numeric: tabular-nums; }
+.ln-co-bst-chip-bestaetigt { background: var(--green-soft); color: var(--gruen-text); }
+.ln-co-bst-chip-offen { background: var(--orange-soft); color: var(--orange-text); }
+.ln-co-bst-chip-geaendert { background: var(--red-soft); color: var(--rot-text); }
+.ln-co-bst-chip-abgerechnet { background: var(--accent-soft); color: var(--accent); }
+.ln-co-bst-monat { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Kontrast: Kennzeichen zusätzlich umrandet */
+:root[data-farbmodus='kontrast'] .ln-co-bst-chip { box-shadow: inset 0 0 0 1px currentColor; }
+
+/* Rückfrage beim Erstellen: fehlende Bestätigungen je Monat */
 .ln-co-bst-fehlende { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
 
 @media (max-width: 640px) {
-  .ln-co-bst-stand { padding: 12px 16px 14px; }
-  /* Je Monat: Monat und „x von y bestätigt“ in einer Zeile, darunter wer fehlt */
-  .ln-co-bst-monate > li { grid-template-columns: minmax(0, 1fr) auto; }
-  .ln-co-bst-fehlend { grid-column: 1 / -1; }
-
+  .ln-co-tabellenhinweis { padding: 10px 16px 0; }
+  .ln-co-bemerkung { padding: 12px 16px 16px; }
+  .ln-co-bst-leer { padding: 12px 16px; }
+  .ln-co-nachweiswahl, .ln-co-aktionen { width: 100%; }
+  .ln-co-nachweiswahl .select { flex: 1 1 100%; }
+  .ln-co-aktionen > .btn-primary { flex: 1 1 100%; justify-content: center; }
+  .table-stack.ln-co-bst-tabelle tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .table-stack.ln-co-bst-tabelle td { width: auto; padding: 1px 0; }
+  .table-stack.ln-co-bst-tabelle td:nth-child(3) { grid-column: 1 / -1; }
+  .table-stack.ln-co-bst-tabelle td.ln-stunden::after { content: none; }
+  .table-stack.ln-co-bst-tabelle td[data-label]::before { content: none; }
 }

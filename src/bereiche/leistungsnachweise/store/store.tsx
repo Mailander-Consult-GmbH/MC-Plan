@@ -81,6 +81,7 @@ import {
   nichtAbgerechnet,
   tagVon,
   nachweiseSichern,
+  regelAnwenden,
   standAbschnitteNachziehen,
   ueberschneidung,
   zeilenTextOhneBearbeitung,
@@ -139,7 +140,9 @@ interface StoreValue {
   addProjekt: (p: Omit<Projekt, 'id'>) => ID | null;
   /**
    * Ändern (nur Controlling); entfallene Abschnitte verlieren ihre Leistungen (diese stehen dann ohne Abschnitt –
-   * abgerechnete auch im Stand ihres Nachweises, `standAbschnitteNachziehen`).
+   * abgerechnete auch im Stand ihres Nachweises, `standAbschnitteNachziehen`). Ein anderer Abrechnungsrhythmus
+   * (`zeitraumregel`) plant die offenen Nachweise des Projekts neu (`regelAnwenden`; die Folgen für gemeinsame
+   * Texte und Bestätigungen rechnet die Oberfläche vorab mit `grenzFolgen`).
    */
   updateProjekt: (id: ID, patch: Partial<Omit<Projekt, 'id'>>) => void;
   /** Mit allen Leistungen und Nachweisen – nur Controlling. */
@@ -370,26 +373,35 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       mutate(controllingNur((d) => (d.projekte.some((x) => x.id === id) ? d : { ...d, projekte: [...d.projekte, { ...p, id }] })));
       return id;
     },
-    updateProjekt: (id, patch) =>
+    updateProjekt: (id, patch) => {
+      // Kennungen neuer Nachweise beim Umstellen des Rhythmus – im StrictMode in beiden Durchläufen dieselben
+      const folge = idVorrat();
       mutate(
-        controllingNur((d) => {
-          const projekte = aendern(d.projekte, id, (p) => ({ ...p, ...patch }));
-          if (!patch.abschnitte) return { ...d, projekte };
-          const gueltig = new Set(patch.abschnitte.map((a) => a.id));
+        controllingNur((d, jetzt) => {
+          // Die Regel stellt `regelAnwenden` um – sie vergleicht mit der bisherigen
+          const { zeitraumregel, ...uebrige } = patch;
+          const projekte = aendern(d.projekte, id, (p) => ({ ...p, ...uebrige }));
+          const gueltig = patch.abschnitte ? new Set(patch.abschnitte.map((a) => a.id)) : null;
           // Leistungen eines entfernten Abschnitts sind ohne Abschnitt – auch im Stand abgeschlossener Nachweise
-          return standAbschnitteNachziehen(
-            d,
-            {
-              ...d,
-              projekte,
-              leistungen: d.leistungen.map((l) =>
-                l.projektId === id && l.abschnittId && !gueltig.has(l.abschnittId) ? { ...l, abschnittId: null } : l,
-              ),
-            },
-            id,
-          );
+          const geaendert = gueltig
+            ? standAbschnitteNachziehen(
+                d,
+                {
+                  ...d,
+                  projekte,
+                  leistungen: d.leistungen.map((l) =>
+                    l.projektId === id && l.abschnittId && !gueltig.has(l.abschnittId) ? { ...l, abschnittId: null } : l,
+                  ),
+                },
+                id,
+              )
+            : { ...d, projekte };
+          if (zeitraumregel === undefined) return geaendert;
+          const ids = folge();
+          return regelAnwenden(geaendert, id, zeitraumregel, jetzt, () => ids('ln'));
         }),
-      ),
+      );
+    },
     deleteProjekt: (id) =>
       mutate(
         controllingNur((d) => ({

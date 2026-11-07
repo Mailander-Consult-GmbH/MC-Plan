@@ -107,8 +107,8 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
             <Segmented<Raster> value={form.raster} onChange={(v) => set('raster', v)} options={RASTER_OPTIONEN} />
           </Field>
           <Field
-            label="Neue Nachweise"
-            hint="Vorgabe: Der offene Nachweis läuft weiter – auch über mehrere Monate –, bis er abgeschlossen wird; danach beginnt ein neuer. Alternativ je Kalendermonat ein eigener."
+            label="Rhythmus"
+            hint="Über welche Monate ein Leistungsnachweis geht: monatlich, alle 2 oder alle 3 Monate – gezählt ab Projektbeginn – oder bis er abgeschlossen wird (danach beginnt ein neuer)."
           >
             <Select value={form.zeitraumregel} onChange={(v) => set('zeitraumregel', v as Zeitraumregel)} options={REGEL_OPTIONEN} />
           </Field>

@@ -1,10 +1,13 @@
 /**
  * Kleine Bausteine des Controllings: Stunden mit Vorzeichen, Lesen einer
  * Zahleneingabe („1,5“, „-0,5“), das Eingabefeld für Aufschläge und
- * abgerechnete Stunden, das beim Verlassen bzw. mit Enter speichert, und die
- * Auswahl der Filter, solange die Seite offen ist.
+ * abgerechnete Stunden, das beim Verlassen bzw. mit Enter speichert, die
+ * Auswahl der Filter, solange die Seite offen ist, und das Menü „Mehr“ (⋯) für
+ * seltene Aktionen (`MehrMenue`, über `AufklappMenue`).
  */
 import { useEffect, useRef, useState } from 'react';
+import { Icon } from '../../../../shared/icons';
+import { AufklappMenue } from '../../../../shared/menue';
 import { useToast } from '../../../../shared/toast';
 import { AUFSCHLAG_KEINE_ZAHL } from '../../domain/nachweis';
 import { runden, stundenText } from '../../domain/zeitraum';
@@ -134,4 +137,59 @@ export function useAuswahl<T>(speicher: { wert: T }): [T, (neu: T) => void] {
       setWert(neu);
     },
   ];
+}
+
+/** Eintrag im Menü „Mehr“; ausgeblendete (`zeigen: false`) entfallen. */
+export interface MehrEintrag {
+  key: string;
+  label: string;
+  onWaehle: () => void;
+  gefahr?: boolean;
+  zeigen?: boolean;
+}
+
+/**
+ * Knopf „⋯“ mit einem Menü seltener Aktionen (Zeitraum ändern, Löschen,
+ * Projekt einstellen …) – so bleibt die Leiste darüber kurz. `label` nennt
+ * den Knopf für Bildschirmleser und als Tooltip.
+ */
+export function MehrMenue({ label, eintraege }: { label: string; eintraege: MehrEintrag[] }) {
+  const [offen, setOffen] = useState(false);
+  const knopf = useRef<HTMLButtonElement>(null);
+  const sichtbar = eintraege.filter((e) => e.zeigen !== false);
+  if (sichtbar.length === 0) return null;
+  return (
+    <>
+      <button
+        ref={knopf}
+        type="button"
+        className="btn btn-outline ln-co-mehr"
+        aria-label={label}
+        title={label}
+        aria-haspopup="menu"
+        aria-expanded={offen}
+        onClick={() => setOffen((o) => !o)}
+      >
+        <Icon name="mehr" size={18} strokeWidth={2.6} />
+      </button>
+      {offen ? (
+        <AufklappMenue
+          anker={knopf}
+          eintraege={sichtbar.map((e) => ({
+            key: e.key,
+            inhalt: e.label,
+            gefahr: e.gefahr,
+            onWaehle: () => {
+              setOffen(false);
+              e.onWaehle();
+            },
+          }))}
+          onSchliessen={(fokusZurueck) => {
+            setOffen(false);
+            if (fokusZurueck) knopf.current?.focus();
+          }}
+        />
+      ) : null}
+    </>
+  );
 }
