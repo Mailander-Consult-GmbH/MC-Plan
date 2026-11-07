@@ -29,7 +29,9 @@
  * Zeitraums, der nicht abgerechnet ist, ist sie erloschen (`monatsStatus`
  * 'geaendert', `bestaetigungGilt`). Ändern sich nur die Grenzen der Nachweise,
  * gilt: Gehen bestätigte Teile in einem Zeitraum auf, zieht die Bestätigung
- * mit (`bestaetigungenNachziehen`); teilt eine neue Grenze einen Zeitraum,
+ * mit (`bestaetigungenNachziehen`) – außer der zusammengeführte Text enthält
+ * Text, den die Person nicht bestätigt hat (aus einem Teil ohne eigene
+ * Leistungen): Dann hat sich der Text für sie geändert; teilt eine neue Grenze einen Zeitraum,
  * braucht der neue Teil einen eigenen Text, und die Bestätigung erlischt –
  * die Rückfragen im Controlling nennen das (`grenzFolgen`).
  *
@@ -42,8 +44,11 @@
  * Abschluss), bekommt der Rest einen eigenen Text, und dessen Leistungen
  * bleiben zu beschreiben und zu bestätigen. Eigene Leistungen in einem
  * gesperrten Zeitraum, die nach dem Abschluss erfasst (nicht abgerechnet) bzw.
- * als abgerechnete geändert wurden (`Leistung.geaendert`), nennt ein Hinweis
- * (`nachAbschlussHinweis`). Eine abgerechnete Leistung, deren Datum nach dem
+ * als abgerechnete geändert wurden – auch durch einen Neuimport – und jetzt
+ * anders sind als im festgeschriebenen Stand (`nachAbschlussGeaendert` in
+ * domain/nachweis.ts), nennt ein Hinweis (`nachAbschlussHinweis`); wer auf den
+ * abgerechneten Wert zurückändert, hebt ihn auf. Abschnitte, die das Controlling
+ * danach neu zuordnet, zählen dabei nicht (`standAbschnitteNachziehen`). Eine abgerechnete Leistung, deren Datum nach dem
  * Abschluss aus ihrem Nachweis herausgelegt wurde, bleibt dort abgerechnet und
  * gehört zu keinem Zeitraum – sie zählt weder zu Stunden noch zur Bestätigung,
  * nur ein Hinweis nennt sie (`AnderswoAbgerechnet`).
@@ -62,12 +67,15 @@ import {
   erfassungsPeriodeIn,
   gleicheGliederung,
   leistungenDesNachweises,
+  nachAbschlussGeaendert,
   nachweisTitel,
+  nurBekannteTeile,
   stundenVon,
   tagVon,
   textErgaenzen,
   textSchluessel,
   texteZusammenfuehren,
+  type ErfassungsGliederung,
 } from './nachweis';
 import {
   mitarbeiterName,
@@ -265,15 +273,12 @@ export interface ErfassungsPeriode {
   nachAbschluss: Leistung[];
   /**
    * Eigene, abgerechnete Leistungen einer gesperrten Periode, die nach dem
-   * Abschluss geändert wurden (`Leistung.geaendert` nach
-   * `Leistungsnachweis.abgeschlossen`) – abgerechnet bleibt der Stand des
-   * Abschlusses.
+   * Abschluss geändert wurden und jetzt anders sind als im festgeschriebenen
+   * Stand (`nachAbschlussGeaendert` in domain/nachweis.ts) – abgerechnet bleibt
+   * der Stand des Abschlusses.
    */
   nachAbschlussGeaendert: Leistung[];
 }
-
-/** Wurde die Leistung nach dem Abschluss des Nachweises geändert? */
-const nachDemAbschlussGeaendert = (l: Leistung, n: Leistungsnachweis) => !!l.geaendert && !!n.abgeschlossen && l.geaendert > n.abgeschlossen;
 
 function periodeAus(projektId: ID, v: ProjektVerzeichnis, g: Gruppe, mitarbeiterId: ID | null): ErfassungsPeriode {
   const eigene = g.leistungen.filter((l) => l.mitarbeiterId === mitarbeiterId);
@@ -312,7 +317,7 @@ function periodeAus(projektId: ID, v: ProjektVerzeichnis, g: Gruppe, mitarbeiter
     // Die Periode liegt ganz im sperrenden Nachweis (`erfassungsGliederung`) – jede eigene Leistung darin gehört dazu
     nachAbschluss: gesperrtIn ? eigene.filter((l) => !v.abgerechnet.has(l.id) && !v.nachgereicht.has(l.id)) : [],
     nachAbschlussGeaendert: gesperrtIn
-      ? eigene.filter((l) => v.abgerechnet.has(l.id) && nachDemAbschlussGeaendert(l, gesperrtIn))
+      ? eigene.filter((l) => v.abgerechnet.has(l.id) && nachAbschlussGeaendert(l, gesperrtIn))
       : [],
   };
 }
@@ -374,7 +379,8 @@ const T2 = '\u0002';
  * nur um (`periodentexteNachziehen`), bleibt sie gleich; zwei Zeiträume
  * unterscheiden sich stets in den Tagen ihrer Leistungen. Gehen Teile in einem
  * Zeitraum auf, ändert sie sich mit dem zusammengeführten Text – dann trägt
- * `bestaetigungenNachziehen` die Bestätigung um.
+ * `bestaetigungenNachziehen` die Bestätigung um, wenn die Person allen Text
+ * darin bestätigt hat.
  */
 export function periodenKennung(p: Pick<ErfassungsPeriode, 'eigene' | 'text'>): string {
   const teile = p.eigene.map((l) => ['L', l.datum, runden(l.stunden).toFixed(2), l.abschnittId ?? '', l.text.trim()].join(T1)).sort();
@@ -948,6 +954,32 @@ const grundSchluessel = (schluessel: string) => schluessel.split(ERFASSUNG_TRENN
 const beginnVon = (schluessel: string) => erfassungsPeriodeAusSchluessel(schluessel)?.von ?? '';
 
 /**
+ * Wohin die gemeinsamen Texte eines Projekts ziehen, wenn sich die Gliederung
+ * von `vorher` nach `nachher` ändert: je bisherigem Zeitraum mit Leistungen
+ * (Leistungen von `leistungen`, dem neuen Stand) der neue Zeitraum seiner
+ * frühesten Leistung – null bei einem anderen Raster (der Text bleibt, wo er
+ * ist). Texte ohne Eintrag (Zeiträume ohne Leistungen) bleiben ebenfalls.
+ */
+function textZiele(
+  vorher: ErfassungsGliederung,
+  nachher: ErfassungsGliederung,
+  leistungen: Leistung[],
+  projektId: ID,
+): Map<string, string | null> {
+  const ziel = new Map<string, string | null>();
+  for (const l of leistungen.filter((x) => x.projektId === projektId).sort(nachDatum)) {
+    const bisher = erfassungsPeriodeIn(vorher, l.datum).schluessel;
+    if (ziel.has(bisher)) continue;
+    const jetzt = erfassungsPeriodeIn(nachher, l.datum).schluessel;
+    ziel.set(bisher, grundSchluessel(bisher) === grundSchluessel(jetzt) ? jetzt : null);
+  }
+  return ziel;
+}
+
+/** Ziel eines Texts nach `textZiele` – ohne Eintrag bzw. bei anderem Raster sein bisheriger Zeitraum. */
+const textZiel = (ziele: Map<string, string | null>, t: Pick<Periodentext, 'schluessel'>) => ziele.get(t.schluessel) ?? t.schluessel;
+
+/**
  * Läuft nach jeder Änderung (`aenderungAnwenden` im Store, nicht beim
  * Einspielen): Ändern sich die Grenzen der Nachweise eines Projekts
  * (`erfassungsGliederung` – etwa „Zeitraum ändern“, Löschen, Zusammenfassen
@@ -975,16 +1007,9 @@ export function periodentexteNachziehen(alt: LeistungsnachweisDaten, neu: Leistu
     const nachher = erfassungsGliederung(neu, projektId);
     if (gleicheGliederung(vorher, nachher)) continue;
     // Je bisherigem Zeitraum: der neue Zeitraum seiner frühesten Leistung (null: anderes Raster – bleibt)
-    const ziel = new Map<string, string | null>();
-    const leistungen = neu.leistungen.filter((l) => l.projektId === projektId).sort(nachDatum);
-    for (const l of leistungen) {
-      const bisher = erfassungsPeriodeIn(vorher, l.datum).schluessel;
-      if (ziel.has(bisher)) continue;
-      const jetzt = erfassungsPeriodeIn(nachher, l.datum).schluessel;
-      ziel.set(bisher, grundSchluessel(bisher) === grundSchluessel(jetzt) ? jetzt : null);
-    }
+    const ziele = textZiele(vorher, nachher, neu.leistungen, projektId);
     const eigene = liste.filter((t) => t.projektId === projektId);
-    const wohin = (t: Periodentext) => ziel.get(t.schluessel) ?? t.schluessel;
+    const wohin = (t: Periodentext) => textZiel(ziele, t);
     if (eigene.every((t) => wohin(t) === t.schluessel)) continue;
     const jeZiel = new Map<string, Periodentext[]>();
     for (const t of eigene) jeZiel.set(wohin(t), [...(jeZiel.get(wohin(t)) ?? []), t]);
@@ -1050,12 +1075,20 @@ const texteDesProjekts = (d: LeistungsnachweisDaten, projektId: ID) => (d.period
  *   eines abgeschlossenen Nachweises weg, wird neu bestätigt),
  * * ihre eigenen Leistungen darin genau die dieser Teile sind und
  *   unverändert (gleiche Kennung mit dem neuen Text),
+ * * der zusammengeführte Text nichts enthält, was sie nicht bestätigt hat: Er
+ *   darf nur aus Sätzen bzw. Teilen bestehen, die in den Texten ihrer
+ *   bestätigten Teile stehen – in welcher Reihenfolge, zählt nicht
+ *   (`nurBekannteTeile` in domain/nachweis.ts). Bringt ein Teil ohne eigene
+ *   Leistungen neuen Text mit, hat sich der Text für sie geändert – die
+ *   Bestätigung erlischt; steht sein Text schon in ihrem, nicht (auch wenn
+ *   seine Sätze dadurch nach vorn rücken),
  * * alle Teile zur selben Periode im selben Raster gehören (kein Rasterwechsel) und
  * * die Änderung selbst keinen gemeinsamen Text des Projekts gesetzt hat
  *   (`roh` ist der Stand vor dem Nachziehen der Texte).
  * Die Kennungen der aufgegangenen Teile entfallen aus `perioden`. Eine Teilung
  * (neue Grenze mitten in einem Zeitraum) zieht keine Bestätigung mit: Der
- * neue Teil braucht einen eigenen Text. Rein; ohne Änderung derselbe Bestand.
+ * neue Teil braucht einen eigenen Text. `grenzFolgen` rechnet ebenso – die
+ * Rückfragen nennen jede Bestätigung, die erlischt. Rein; ohne Änderung derselbe Bestand.
  */
 export function bestaetigungenNachziehen(
   alt: LeistungsnachweisDaten,
@@ -1067,6 +1100,22 @@ export function bestaetigungenNachziehen(
   const vorherige = new Set(alt.bestaetigungen ?? []);
   const gleichGegliedert = new Map<ID, boolean>();
   const texteUnberuehrt = new Map<ID, boolean>();
+  // Je Projekt und neuem Zeitraum die bisherigen Texte, die in seinem aufgehen (`periodentexteNachziehen`)
+  const quelltexte = new Map<ID, Map<string, Periodentext[]>>();
+  const quelltexteVon = (projektId: ID, schluessel: string): Periodentext[] => {
+    let jeZiel = quelltexte.get(projektId);
+    if (!jeZiel) {
+      const ziele = textZiele(erfassungsGliederung(alt, projektId), erfassungsGliederung(neu, projektId), neu.leistungen, projektId);
+      jeZiel = new Map();
+      for (const t of texteDesProjekts(alt, projektId)) {
+        if (!t.text.trim()) continue;
+        const ziel = textZiel(ziele, t);
+        jeZiel.set(ziel, [...(jeZiel.get(ziel) ?? []), t]);
+      }
+      quelltexte.set(projektId, jeZiel);
+    }
+    return jeZiel.get(schluessel) ?? [];
+  };
   let geaendert = false;
   const ergebnis = liste.map((b) => {
     // Nur Bestätigungen, die die Änderung selbst nicht gesetzt hat, in Projekten mit neuen Grenzen
@@ -1100,6 +1149,12 @@ export function bestaetigungenNachziehen(
       if (quellen.some((t) => !bestaetigt.has(kennungVorher.get(t.schluessel) ?? ''))) continue;
       // Eigene Leistungen genau die der Teile und unverändert
       if (periodenKennung({ eigene: quellen.flatMap((t) => t.eigene), text: q.text }) !== kennung) continue;
+      // Kein Text, den sie nicht bestätigt hat: nur Sätze bzw. Teile aus den Texten ihrer Teile, gleich in welcher Folge
+      const eigeneTeile = new Set(quellen.map((t) => t.schluessel));
+      const bestaetigteTexte = quelltexteVon(b.projektId, q.schluessel)
+        .filter((t) => eigeneTeile.has(t.schluessel))
+        .map((t) => t.text);
+      if (!nurBekannteTeile(q.text.text, bestaetigteTexte)) continue;
       const aufgegangen = new Set(quellen.map((t) => kennungVorher.get(t.schluessel)));
       perioden = { ...Object.fromEntries(Object.entries(perioden).filter(([, k]) => !aufgegangen.has(k))), [q.schluessel]: kennung };
     }

@@ -44,7 +44,7 @@
  */
 import { namensTeile } from '../../../gemeinsam/benutzer';
 import type { ErfassungsPeriode } from './erfassung';
-import { kuerzelFrei } from './import';
+import { kuerzelFrei, kuerzelNormal } from './import';
 import {
   kuerzelAus,
   mitarbeiterName,
@@ -234,9 +234,10 @@ export function mitarbeiterKennung(name: string): ID {
  *
  * Wechselt der Name, entfernt es mit `automatisch` zudem die Person, die der
  * Bereich unter dem bisherigen Namen angelegt hat (Kennung
- * `mitarbeiterKennung` des bisherigen Namens), wenn sie aktiv ist und weder
- * Leistungen hat noch in einem festgeschriebenen Stand steht
- * (`automatischAngelegtOhneLeistungen`) – so bleibt nach einem Tippfehler
+ * `mitarbeiterKennung` des bisherigen Namens), wenn sie aktiv ist, das
+ * Controlling sie nicht bearbeitet hat (noch der bisherige Name, Kürzel aus dem
+ * Namen) und sie weder Leistungen hat noch in einem festgeschriebenen Stand
+ * steht (`automatischAngelegtOhneLeistungen`) – so bleibt nach einem Tippfehler
  * unter „Angemeldet als“ kein Mitarbeiter zurück. Ändert sich nichts, liefert
  * es denselben Bestand.
  */
@@ -282,8 +283,11 @@ export function anmeldungAnwenden<T extends Pick<LeistungsnachweisDaten, 'einste
 
 /**
  * Die Person, die der Bereich unter `name` angelegt hat (Kennung
- * `mitarbeiterKennung`), wenn sie aktiv ist, keine Leistungen hat und in
- * keinem festgeschriebenen Stand steht (`stundenJeMitarbeiter`) – sonst null.
+ * `mitarbeiterKennung`), wenn sie noch so ist, wie er sie angelegt hat – aktiv,
+ * mit diesem Namen (`mitarbeiterZumNamen`) und einem Kürzel aus dem Namen
+ * (`kuerzelWieAngelegt`); hat das Controlling sie bearbeitet, bleibt sie –,
+ * keine Leistungen hat und in keinem festgeschriebenen Stand steht
+ * (`stundenJeMitarbeiter`) – sonst null.
  */
 function automatischAngelegtOhneLeistungen(
   d: Pick<LeistungsnachweisDaten, 'mitarbeiter' | 'leistungen' | 'nachweise'>,
@@ -293,9 +297,24 @@ function automatischAngelegtOhneLeistungen(
   const kennung = mitarbeiterKennung(name);
   const m = d.mitarbeiter.find((x) => x.id === kennung && x.aktiv);
   if (!m) return null;
+  // Vom Controlling bearbeitet (umbenannt, anderes Kürzel)? Dann ist sie mehr als ein Tippfehler
+  if (mitarbeiterZumNamen([m], name) === null || !kuerzelWieAngelegt(m)) return null;
   if (d.leistungen.some((l) => l.mitarbeiterId === m.id)) return null;
   const imStand = d.nachweise.some((n) => n.stand?.zeilen.some((z) => m.id in z.stundenJeMitarbeiter));
   return imStand ? null : m;
+}
+
+/**
+ * Trägt die Person das Kürzel, das `anmeldungAnwenden` ihr beim Anlegen gibt –
+ * aus dem Namen (`kuerzelAus`), wenn es vergeben war mit Zahl („CZ2“,
+ * `kuerzelFrei`)?
+ */
+function kuerzelWieAngelegt(m: Mitarbeiter): boolean {
+  const basis = kuerzelNormal(kuerzelAus(`${m.vorname} ${m.nachname}`) || 'MA');
+  const kuerzel = kuerzelNormal(m.kuerzel);
+  if (kuerzel === basis) return true;
+  const zahl = kuerzel.startsWith(basis) ? kuerzel.slice(basis.length) : '';
+  return /^[1-9]\d*$/.test(zahl) && Number(zahl) >= 2;
 }
 
 /** Darf der Zugang das? Alle Rechte gewährt das Controlling. */

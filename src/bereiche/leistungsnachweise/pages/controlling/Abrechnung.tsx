@@ -7,7 +7,11 @@
  * sind; Druck und Excel zeigen die abgerechneten.
  *
  * Die Ansicht „Leistungstexte“ (Leistungstexte.tsx) bearbeitet die Texte je
- * Zeile – mit „Ergänzen“, wenn Leistungen hinzukamen. Gibt es nicht erfasste
+ * Zeile – mit „Ergänzen“, wenn Leistungen hinzukamen. Kamen in von Hand
+ * bearbeiteten Zeilen seitdem Leistungen hinzu oder hat sich dort der Text der
+ * Mitarbeiter bzw. der automatische Text geändert (`ueberholteZeilen`), nennt
+ * das eine Warnung mit „Leistungstexte prüfen“ (`ueberholtHinweis`) und die
+ * Rückfrage beim Abschließen (`ueberholtRueckfrage`). Gibt es nicht erfasste
  * Leistungen aus schon abgerechneten Zeiträumen und ist dies der laufende
  * Nachweis, teilt ein Hinweis das mit; übernommen werden sie erst nach
  * Bestätigung (`leistungenNachreichen`) – nachgereichte Zeilen sind gekennzeichnet.
@@ -56,9 +60,11 @@ import {
   stundenVon,
   mitAbschnittsspalten,
   nachweisSummen,
-  neueLeistungenSeitText,
   standVeraltet,
   standVergleich,
+  ueberholtHinweis,
+  ueberholtRueckfrage,
+  ueberholteZeilen,
 } from '../../domain/nachweis';
 import { eigeneLeistungen, leistungenDerZeile } from '../../domain/rechte';
 import {
@@ -226,7 +232,9 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
         const abschnitt = k.slice(trenner + 1);
         return !zeilenSchluessel.has(zeile) || (abschnitt !== OHNE_ABSCHNITT && (!spalten || !abschnittVon.has(abschnitt)));
       }).length;
-  const zeilenMitNeuen = abgeschlossen ? 0 : zeilen.filter((z) => neueLeistungenSeitText(data, n, z).length > 0).length;
+  // Von Hand bearbeitete Zeilen mit neuen Leistungen bzw. geändertem Text der Mitarbeiter (`ueberholteZeilen`)
+  const ueberholt = abgeschlossen ? [] : [...ueberholteZeilen(data, n).values()];
+  const ueberholtText = ueberholtHinweis(ueberholt);
 
   const umschalten = (setze: typeof setOffeneTexte, schluessel: string) =>
     setze((alt) => {
@@ -264,9 +272,9 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
     restAb
       ? `Er endet mitten in einem Zeitraum der gemeinsamen Leistungstexte – für die Tage ab ${langDatum(restAb)} verfassen die Mitarbeiter einen eigenen Text.`
       : '',
-    zeilenMitNeuen ? `Achtung: In ${anzahl(zeilenMitNeuen, 'Zeile', 'Zeilen')} fehlen neue Leistungen noch im bearbeiteten Text.` : '',
-    // Bestätigungen, die mit dem neuen Teil erlöschen (der Satz zum eigenen Text steht oben)
-    abschliessen && restAb
+    ueberholtRueckfrage(ueberholt) ?? '',
+    // Bestätigungen, die mit geänderten Grenzen erlöschen – etwa mit dem neuen Teil (der Satz zum eigenen Text steht oben)
+    abschliessen
       ? (erloschenHinweis(
           grenzFolgen(data, nachweisAbschliessenAnwenden(data, n.id, new Date().toISOString(), () => 'vorschau')),
           data.mitarbeiter,
@@ -432,12 +440,10 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           </div>
         </NichtErfasstHinweis>
       ) : null}
-      {zeilenMitNeuen > 0 && ansicht !== 'texte' ? (
+      {ueberholtText && ansicht !== 'texte' ? (
         <Callout ton="warn" icon="!">
           <div className="row-between wrap">
-            <span>
-              In {anzahl(zeilenMitNeuen, 'Zeile', 'Zeilen')} kamen nach der Bearbeitung des Leistungstexts Leistungen hinzu.
-            </span>
+            <span>{ueberholtText}</span>
             <button type="button" className="btn btn-sm btn-outline" onClick={() => setAnsicht('texte')}>
               Leistungstexte prüfen
             </button>

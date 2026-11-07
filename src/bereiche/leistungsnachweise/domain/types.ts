@@ -234,9 +234,12 @@ export interface Leistung {
   erfasst: string;
   /**
    * Zeitpunkt der letzten Änderung von Datum, Stunden, Text oder Abschnitt
-   * (ISO, `updateLeistung` im Store); fehlt, solange sie nicht geändert wurde.
-   * Daran erkennt die Seite „Leistungstexte“ abgerechnete Leistungen, die nach
-   * dem Abschluss geändert wurden (`nachAbschlussGeaendert` in domain/erfassung.ts).
+   * durch die Person (ISO): `updateLeistung` im Store bzw. ein Neuimport, der
+   * eine abgerechnete Leistung mit anderem Inhalt ersetzt (`importPlanen`);
+   * fehlt, solange sie nicht geändert wurde. Daran und am festgeschriebenen
+   * Stand (`NachweisStand.inhalte`, `abschnittIds`) erkennt die Seite „Leistungstexte“
+   * abgerechnete Leistungen, die nach dem Abschluss geändert wurden
+   * (`nachAbschlussGeaendert` in domain/nachweis.ts).
    */
   geaendert?: string;
 }
@@ -343,6 +346,23 @@ export interface NachweisStand {
    * Raster des Projekts später umstellt. Fehlt in Ständen vor Fassung 7.
    */
   erfassungsRaster?: Raster;
+  /**
+   * Inhalt jeder abgerechneten Leistung beim Abschluss (Kennung → Prüfsumme
+   * aus Datum, Stunden und Text) – daran und an `abschnittIds` misst
+   * `nachAbschlussGeaendert`, ob eine Leistung jetzt anders ist als
+   * abgerechnet; wer auf den abgerechneten Wert zurückändert, hebt den Hinweis
+   * wieder auf. Fehlt in Ständen, die früher abgeschlossen wurden (dort zählt
+   * allein `Leistung.geaendert`).
+   */
+  inhalte?: Record<ID, string>;
+  /**
+   * Abschnitt jeder abgerechneten Leistung mit Abschnitt (Kennung → Abschnitt).
+   * Ordnet das Controlling danach Abschnitte neu zu (Abschnitt entfernt,
+   * „Abschnitte aus Projektelementen“), zieht er mit
+   * (`standAbschnitteNachziehen` in domain/nachweis.ts) – so zählt nur, was die
+   * Person geändert hat.
+   */
+  abschnittIds?: Record<ID, ID>;
   abschnitte: Abschnitt[];
   projekt: { nummer: string; name: string; kurzname: string; leistungsbereich: string };
   titel: string;
@@ -455,7 +475,8 @@ export interface Bestaetigung {
    * Kennungen der bestätigten Zeiträume (Schlüssel → `periodenKennung`), auch
    * der damals schon abgerechneten – verglichen werden nur die, die jetzt
    * nicht gesperrt sind. Gehen bestätigte Teile mit geänderten Grenzen der
-   * Nachweise in einem Zeitraum auf, trägt `bestaetigungenNachziehen` ihn ein.
+   * Nachweise in einem Zeitraum auf, trägt `bestaetigungenNachziehen` ihn ein –
+   * nur, wenn sein Text nichts enthält, was die Person nicht bestätigt hat.
    * Leer in Einträgen, die vor dieser Fassung in der Entwicklung entstanden
    * (sie gelten als geändert).
    */

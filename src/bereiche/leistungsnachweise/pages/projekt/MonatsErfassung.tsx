@@ -18,10 +18,12 @@
  * Jeder Entwurf merkt sich den gespeicherten Text, von dem er ausging
  * (`Entwurf.basis`). Hat inzwischen jemand anderes – etwa in einem anderen
  * Fenster – den Text gespeichert, überschreibt ihn der Entwurf nicht still:
- * Das Feld sagt es an, und gespeichert wird die Zusammenführung beider
- * Fassungen (`texteZusammenfuehren`) mit einer Kurzmeldung. Entfällt der
- * Zeitraum eines Entwurfs (geänderte Grenzen der Nachweise), zieht der Entwurf
- * in den Zeitraum um, der seinen Beginn jetzt enthält; gibt es keinen (keine
+ * Das Feld sagt es an, und gespeichert wird die dreiseitige Zusammenführung
+ * beider Fassungen (`texteDreiseitig` – was der andere gelöscht hat, kehrt
+ * nicht zurück; nur die eigenen Änderungen kommen hinzu) mit einer Kurzmeldung;
+ * ein netto unveränderter Entwurf entfällt. Entfällt der
+ * Zeitraum eines Entwurfs (geänderte Grenzen der Nachweise), zieht er mit
+ * seinen eigenen Änderungen in den Zeitraum um, der seinen Beginn jetzt enthält; gibt es keinen (keine
  * eigenen Leistungen mehr, inzwischen abgerechnet) oder scheitert das
  * Speichern sonst, steht die Eingabe als „Nicht gespeichert“ über den
  * Zeiträumen, statt still zu verschwinden.
@@ -75,7 +77,7 @@ import {
   type ErfassungsPeriode,
   type MonatsStatusArt,
 } from '../../domain/erfassung';
-import { automatikText, textErgaenzen, texteZusammenfuehren } from '../../domain/nachweis';
+import { automatikText, textErgaenzen, texteDreiseitig } from '../../domain/nachweis';
 import { angemeldet, darfPeriodentextBearbeiten, stichpunkteDerPeriode } from '../../domain/rechte';
 import { RASTER_LABEL, type Leistung, type Projekt } from '../../domain/types';
 import { erfassungsPeriodeAusSchluessel, kurzDatum, stundenText } from '../../domain/zeitraum';
@@ -102,11 +104,15 @@ interface NichtGespeichert {
 /**
  * Was beim Speichern eines Entwurfs geschrieben wird: der Entwurf – oder, hat
  * inzwischen jemand anderes den Text gespeichert (`basis` weicht ab), beide
- * Fassungen zusammengeführt (`zusammengefuehrt`), damit keine verloren geht.
+ * Fassungen dreiseitig zusammengeführt (`texteDreiseitig`, `zusammengefuehrt`):
+ * Was der andere gelöscht hat, kehrt nicht zurück, die eigenen Ergänzungen und
+ * Streichungen bleiben. Ist der Entwurf netto unverändert (gleich der Basis),
+ * wird er verworfen – es bleibt der gespeicherte Text.
  */
 function zuSpeichern(e: Entwurf, gespeichert: string): { text: string; zusammengefuehrt: boolean } {
   if (gespeichert.trim() === e.basis.trim()) return { text: e.text, zusammengefuehrt: false };
-  return { text: texteZusammenfuehren([gespeichert, e.text]), zusammengefuehrt: true };
+  if (e.text.trim() === e.basis.trim()) return { text: gespeichert, zusammengefuehrt: false };
+  return { text: texteDreiseitig(e.basis, gespeichert, e.text), zusammengefuehrt: true };
 }
 
 /** Kurzmeldung nach dem Zusammenführen mit einer inzwischen gespeicherten Fassung. */
@@ -222,13 +228,17 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
       const beginn = erfassungsPeriodeAusSchluessel(k)?.von;
       const ziel = beginn ? offenePerioden.find((p) => p.von <= beginn && beginn <= p.bis) : undefined;
       if (ziel) {
-        const gespeichert = ziel.text?.text ?? '';
-        const dort = neu[ziel.schluessel];
-        neu[ziel.schluessel] = {
-          text: texteZusammenfuehren([dort?.text ?? gespeichert, e.text]),
-          basis: dort?.basis ?? gespeichert,
-          zeitraum: periodeKurztext(ziel),
-        };
+        // Der gespeicherte Text des Teils ging im Text des Zeitraums auf: Nur die eigenen Änderungen daran ziehen um
+        // (`texteDreiseitig`) – ein netto unveränderter Entwurf entfällt
+        if (e.text.trim() !== e.basis.trim()) {
+          const gespeichert = ziel.text?.text ?? '';
+          const dort = neu[ziel.schluessel];
+          neu[ziel.schluessel] = {
+            text: texteDreiseitig(e.basis, dort?.text ?? gespeichert, e.text),
+            basis: dort?.basis ?? gespeichert,
+            zeitraum: periodeKurztext(ziel),
+          };
+        }
         if (fokusVerloren) setFokusZeitraum(ziel.schluessel);
       } else {
         const gesperrt = s.perioden.find((p) => p.schluessel === k && p.gesperrt);
@@ -489,8 +499,10 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
             const text = aktuellerText(p);
             const entwurf = entwuerfe[p.schluessel];
             const ungespeichert = !!entwurf && entwurf.text.trim() !== (p.text?.text ?? '');
-            // Inzwischen von jemand anderem gespeichert – beim Verlassen wird zusammengeführt
+            // Inzwischen von jemand anderem gespeichert – beim Verlassen wird zusammengeführt bzw. ein netto
+            // unveränderter Entwurf verworfen (`zuSpeichern`)
             const inzwischen = ungespeichert && (p.text?.text ?? '') !== entwurf.basis.trim();
+            const eigeneAenderung = !!entwurf && entwurf.text.trim() !== entwurf.basis.trim();
             const vorschlag = automatikText(eigene);
             const nachAbschlussIds = new Set(p.nachAbschluss.map((l) => l.id));
             const geaendertIds = new Set(p.nachAbschlussGeaendert.map((l) => l.id));
@@ -579,10 +591,15 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
                           aria-describedby={`${praefix}-stand-${i}`}
                         />
                         <div id={`${praefix}-stand-${i}`} className="ln-me-stand small">
-                          {inzwischen ? (
+                          {inzwischen && eigeneAenderung ? (
                             <span className="ln-me-ungespeichert">
                               Inzwischen von {p.text?.bearbeiter || 'jemand anderem'} geändert – Ihre Eingabe wird beim Verlassen des
                               Felds mit dieser Fassung zusammengeführt.
+                            </span>
+                          ) : inzwischen ? (
+                            <span className="ln-me-ungespeichert">
+                              Inzwischen von {p.text?.bearbeiter || 'jemand anderem'} geändert – Ihre Eingabe ändert nichts daran; beim
+                              Verlassen des Felds gilt diese Fassung.
                             </span>
                           ) : ungespeichert ? (
                             <span className="ln-me-ungespeichert">Wird beim Verlassen des Felds gespeichert.</span>

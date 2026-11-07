@@ -20,8 +20,8 @@
  * und Nachnamen hat (`anmeldungAnwenden`, domain/rechte.ts) – mit einer aus
  * dem Namen abgeleiteten Kennung (`mitarbeiterKennung`), damit StrictMode und
  * zwei Fenster keine Doppel erzeugen; wechselt der Name, entfernt er die so
- * angelegte Person wieder, solange sie keine Leistungen hat (Tippfehler). Nur
- * bei `ladeZustand` 'ok'.
+ * angelegte Person wieder, solange sie keine Leistungen hat und das
+ * Controlling sie nicht bearbeitet hat (Tippfehler). Nur bei `ladeZustand` 'ok'.
  *
  * Gemeinsame Leistungstexte je Zeitraum und Monatsbestätigungen
  * (domain/erfassung.ts) ändern nur `periodentextSetzen`, `monatBestaetigen`
@@ -81,6 +81,7 @@ import {
   nichtAbgerechnet,
   tagVon,
   nachweiseSichern,
+  standAbschnitteNachziehen,
   ueberschneidung,
   zeilenTextOhneBearbeitung,
 } from '../domain/nachweis';
@@ -145,7 +146,10 @@ interface StoreValue {
   /* Projekte */
   /** Nur Controlling; null ohne Recht. */
   addProjekt: (p: Omit<Projekt, 'id'>) => ID | null;
-  /** Ändern (nur Controlling); entfallene Abschnitte verlieren ihre Leistungen (diese stehen dann ohne Abschnitt). */
+  /**
+   * Ändern (nur Controlling); entfallene Abschnitte verlieren ihre Leistungen (diese stehen dann ohne Abschnitt –
+   * abgerechnete auch im Stand ihres Nachweises, `standAbschnitteNachziehen`).
+   */
   updateProjekt: (id: ID, patch: Partial<Omit<Projekt, 'id'>>) => void;
   /** Mit allen Leistungen und Nachweisen – nur Controlling. */
   deleteProjekt: (id: ID) => void;
@@ -153,7 +157,8 @@ interface StoreValue {
   toggleMarkiert: (id: ID) => void;
   /**
    * Abschnitte aus den Projektelementen der Leistungen anlegen und Leistungen ohne Abschnitt
-   * zuordnen (nur Controlling); liefert die Zahl neuer Abschnitte.
+   * zuordnen (nur Controlling; abgerechnete auch im Stand ihres Nachweises, `standAbschnitteNachziehen`);
+   * liefert die Zahl neuer Abschnitte.
    */
   abschnitteAusProjektelementen: (projektId: ID) => number;
   /* Leistungen – nur eigene */
@@ -164,7 +169,8 @@ interface StoreValue {
   addLeistung: (l: Omit<Leistung, 'id' | 'erfasst' | 'quelle' | 'mitarbeiterId'> & { quelle?: Quelle }) => ID | null;
   /**
    * Ändern – nur eigene; Mitarbeiter und Projekt bleiben. Ändern sich Datum, Stunden, Text oder Abschnitt, merkt
-   * sich die Leistung den Zeitpunkt (`geaendert`). Ein neues Datum außerhalb aller Nachweise ergänzt einen –
+   * sich die Leistung den Zeitpunkt (`geaendert`; ob eine abgerechnete danach anders ist als abgerechnet, sagt der
+   * Vergleich mit dem festgeschriebenen Stand, `nachAbschlussGeaendert`). Ein neues Datum außerhalb aller Nachweise ergänzt einen –
    * außer die Leistung ist schon abgerechnet (`abgerechnetIn`): Sie bleibt im Stand ihres abgeschlossenen Nachweises.
    */
   updateLeistung: (id: ID, patch: Partial<Omit<Leistung, 'id' | 'projektId' | 'mitarbeiterId'>>) => void;
@@ -407,13 +413,18 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
           const projekte = aendern(d.projekte, id, (p) => ({ ...p, ...patch }));
           if (!patch.abschnitte) return { ...d, projekte };
           const gueltig = new Set(patch.abschnitte.map((a) => a.id));
-          return {
-            ...d,
-            projekte,
-            leistungen: d.leistungen.map((l) =>
-              l.projektId === id && l.abschnittId && !gueltig.has(l.abschnittId) ? { ...l, abschnittId: null } : l,
-            ),
-          };
+          // Leistungen eines entfernten Abschnitts sind ohne Abschnitt – auch im Stand abgeschlossener Nachweise
+          return standAbschnitteNachziehen(
+            d,
+            {
+              ...d,
+              projekte,
+              leistungen: d.leistungen.map((l) =>
+                l.projektId === id && l.abschnittId && !gueltig.has(l.abschnittId) ? { ...l, abschnittId: null } : l,
+              ),
+            },
+            id,
+          );
         }),
       ),
     deleteProjekt: (id) =>
@@ -434,7 +445,10 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       const folge = idVorrat();
       // Die Zahl auf dem angezeigten Stand; die Kennungen gelten auch in der Änderung
       const { anzahl } = abschnitteAusElementen(data, projektId, folge());
-      mutate(controllingNur((d) => abschnitteAusElementen(d, projektId, folge()).daten));
+      // Neu zugeordnete abgerechnete Leistungen tragen ihren Abschnitt auch im Stand ihres Nachweises
+      mutate(
+        controllingNur((d) => standAbschnitteNachziehen(d, abschnitteAusElementen(d, projektId, folge()).daten, projektId)),
+      );
       return anzahl;
     },
 
@@ -475,7 +489,8 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
           mitarbeiterId: alt.mitarbeiterId,
           stunden: runden(patch.stunden ?? alt.stunden),
         };
-        // Der Zeitpunkt zeigt später, ob eine abgerechnete Leistung nach dem Abschluss geändert wurde
+        // Der Zeitpunkt zeigt später, ob eine abgerechnete Leistung nach dem Abschluss geändert wurde – sie gilt
+        // dann als geändert, solange sie vom festgeschriebenen Stand abweicht (`nachAbschlussGeaendert`)
         const inhaltNeu =
           geaendert.datum !== alt.datum ||
           geaendert.stunden !== alt.stunden ||

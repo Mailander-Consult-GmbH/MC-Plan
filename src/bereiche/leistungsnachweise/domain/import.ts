@@ -27,10 +27,21 @@
  * abgerechnet (im Stand eines abgeschlossenen Nachweises) oder nachgereicht,
  * übernimmt die neue Zeile derselben Person vom selben Tag ihre Kennung – so
  * bleibt sie dort abgerechnet bzw. nachgereicht und wird nicht als „nicht
- * erfasst“ ein zweites Mal abgerechnet.
+ * erfasst“ ein zweites Mal abgerechnet. Hat sie einen anderen Inhalt (Stunden,
+ * Text, Abschnitt – `leistungsInhalt`), gilt sie als geändert
+ * (`Leistung.geaendert`): Ist sie abgerechnet, nennt der Bereich die Änderung
+ * nach dem Abschluss (`nachAbschlussGeaendert`).
  */
 import { datumLesen, spaltenZuordnen } from '../../../shared/xlsxLesen';
-import { abgerechnetIn, nachgereichtIn, nachweisDerLeistung, nachweiseErgaenzen, nachweisTitel, textSchluessel } from './nachweis';
+import {
+  abgerechnetIn,
+  leistungsInhalt,
+  nachgereichtIn,
+  nachweisDerLeistung,
+  nachweiseErgaenzen,
+  nachweisTitel,
+  textSchluessel,
+} from './nachweis';
 import {
   kuerzelAus,
   mitarbeiterName,
@@ -581,7 +592,8 @@ function dublettenSchluessel(
  * gleichem Projektelement, danach gegen händisch erfasste ohne Rücksicht auf das Projektelement
  * (`dublettenSchluessel`). Mit `ersetzen` übernimmt eine neue Leistung die Kennung einer
  * ersetzten, die abgerechnet oder nachgereicht ist (gleiche Person, gleiches Projekt, gleicher
- * Tag). Danach `nachweiseErgaenzen` je Projekt für die neuen Leistungen.
+ * Tag) – mit anderem Inhalt samt `geaendert` (`jetzt`), sonst mit dem `geaendert` der ersetzten.
+ * Danach `nachweiseErgaenzen` je Projekt für die neuen Leistungen.
  * `neueId(prefix)` erzeugt alle IDs. Neue Mitarbeiter und Projekte nimmt der Plan nur auf, wenn
  * sie neue Leistungen erhalten.
  */
@@ -823,19 +835,20 @@ export function importPlanen(
    * Nachweises und als „nicht erfasst“ noch einmal zur Abrechnung an.
    */
   const tagSchluessel = (l: Pick<Leistung, 'mitarbeiterId' | 'projektId' | 'datum'>) => `${l.mitarbeiterId}|${l.projektId}|${l.datum}`;
-  const festeKennungen = new Map<string, ID[]>();
+  const festeKennungen = new Map<string, Leistung[]>();
   for (const l of [...entfernt].sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0))) {
     const fest = !!abgerechnetIn(daten, l) || !!nachgereichtIn(daten, l);
     if (!fest) continue;
     const k = tagSchluessel(l);
-    festeKennungen.set(k, [...(festeKennungen.get(k) ?? []), l.id]);
+    festeKennungen.set(k, [...(festeKennungen.get(k) ?? []), l]);
   }
 
   /* Neue Leistungen und Nachweise */
   const neueLeistungen: Leistung[] = neu.map((k) => {
     const kennung = kennungNormal(projektelementTeilen(k.posten.projektelement).kennung);
-    return {
-      id: festeKennungen.get(tagSchluessel({ mitarbeiterId: k.mitarbeiterId, projektId: k.projekt.id, datum: k.posten.datum }))?.shift() ?? neueId('le'),
+    const ersetzt = festeKennungen.get(tagSchluessel({ mitarbeiterId: k.mitarbeiterId, projektId: k.projekt.id, datum: k.posten.datum }))?.shift();
+    const leistung: Leistung = {
+      id: ersetzt?.id ?? neueId('le'),
       projektId: k.projekt.id,
       mitarbeiterId: k.mitarbeiterId,
       datum: k.posten.datum,
@@ -846,6 +859,11 @@ export function importPlanen(
       quelle: 'import',
       erfasst: jetzt,
     };
+    if (!ersetzt) return leistung;
+    // Mit der Kennung einer ersetzten: Ist der Inhalt anders, gilt sie als geändert – wie mit `updateLeistung`
+    // (so nennt der Bereich eine abgerechnete Leistung, die nach dem Abschluss anders importiert wurde)
+    const geaendert = leistungsInhalt(leistung) !== leistungsInhalt(ersetzt) ? jetzt : ersetzt.geaendert;
+    return geaendert ? { ...leistung, geaendert } : leistung;
   });
   const neueNachweise: Leistungsnachweis[] = [];
   const erweiterteNachweise: ImportPlan['erweiterteNachweise'] = [];

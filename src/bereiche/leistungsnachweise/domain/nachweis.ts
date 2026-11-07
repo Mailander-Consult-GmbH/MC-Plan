@@ -35,6 +35,7 @@ import {
   OHNE_ABSCHNITT,
   aufschlagSchluessel,
   mitarbeiterName,
+  pruefsumme,
   type Abschnitt,
   type ID,
   type ISODate,
@@ -319,6 +320,83 @@ export function texteZusammenfuehren(texte: string[]): string {
     }
   }
   return ergebnis;
+}
+
+/**
+ * Teile eines Texts in der Vergleichsform: Satz für Satz (`saetze`) an „,“
+ * und „;“ zerlegt (`textTeile`), ohne Satzzeichen am Ende, ohne Rücksicht auf
+ * Groß-/Kleinschreibung und Leerraum (`textSchluessel`).
+ */
+const vergleichsTeile = (text: string): string[] =>
+  saetze(text)
+    .flatMap(textTeile)
+    .map((teil) => textSchluessel(ohneSchlusszeichen(teil)))
+    .filter(Boolean);
+
+/**
+ * Bringt `text` dem Inhalt nach nichts mit, was nicht schon in einem der
+ * Texte `bekannt` steht? Verglichen werden Sätze bzw. ihre Teile
+ * (`vergleichsTeile`) – die Reihenfolge zählt nicht, ein Satz, der nur in
+ * einem längeren vorkommt, aber als neuer Teil.
+ */
+export function nurBekannteTeile(text: string, bekannt: string[]): boolean {
+  const teile = new Set(bekannt.flatMap(vergleichsTeile));
+  return vergleichsTeile(text).every((teil) => teile.has(teil));
+}
+
+/**
+ * Ein Text in Stücken je Satz (wie `saetze`), jedes samt dem Leerraum davor –
+ * aneinandergehängt ergeben sie wieder den Text. `schluessel` ist die
+ * Vergleichsform des Satzes (ohne Satzzeichen am Ende, `textSchluessel`); null
+ * bei einem Stück nur aus Leerraum (etwa einer Leerzeile).
+ */
+function satzStuecke(text: string): { roh: string; schluessel: string | null }[] {
+  const stuecke: string[] = [];
+  const ende = /[.!?]+(?=\s|$)|\n/g;
+  let start = 0;
+  for (let m = ende.exec(text); m; m = ende.exec(text)) {
+    stuecke.push(text.slice(start, m.index + m[0].length));
+    start = m.index + m[0].length;
+  }
+  if (start < text.length) stuecke.push(text.slice(start));
+  return stuecke.map((roh) => {
+    const satz = textSchluessel(ohneSchlusszeichen(roh.trim()));
+    return { roh, schluessel: satz || null };
+  });
+}
+
+/**
+ * Dreiseitiges Zusammenführen eines Entwurfs, wenn jemand anderes den Text
+ * inzwischen gespeichert hat: `basis` ist der gespeicherte Text, von dem der
+ * Entwurf ausging, `gespeichert` der heutige. Ist der Entwurf (bis auf
+ * Leerraum am Rand) die Basis, bleibt der gespeicherte Text; hat niemand
+ * anderes geändert, gilt der Entwurf. Sonst wird Satz für Satz
+ * (`satzStuecke`) zusammengeführt: Sätze der Basis, die der Entwurf gestrichen
+ * hat, fallen auch aus dem gespeicherten Text, und von den Sätzen des
+ * Entwurfs kommen nur die eigenen Ergänzungen (nicht in der Basis) hinzu – an
+ * den gespeicherten Text angehängt, ohne Wiederholungen
+ * (`texteZusammenfuehren`). So kehrt nichts zurück, was der andere gelöscht
+ * hat, und von beiden geänderte Sätze bleiben in beiden Fassungen stehen.
+ */
+export function texteDreiseitig(basis: string, gespeichert: string, entwurf: string): string {
+  if (entwurf.trim() === basis.trim()) return gespeichert.trim();
+  if (gespeichert.trim() === basis.trim()) return entwurf.trim();
+  const ausBasis = new Set(satzStuecke(basis).flatMap((s) => (s.schluessel ? [s.schluessel] : [])));
+  const entwurfStuecke = satzStuecke(entwurf);
+  const imEntwurf = new Set(entwurfStuecke.flatMap((s) => (s.schluessel ? [s.schluessel] : [])));
+  // Selbst gestrichen: in der Basis, nicht mehr im Entwurf
+  const gestrichen = (s: { schluessel: string | null }) => !!s.schluessel && ausBasis.has(s.schluessel) && !imEntwurf.has(s.schluessel);
+  const bleibt = satzStuecke(gespeichert)
+    .filter((s) => !gestrichen(s))
+    .map((s) => s.roh)
+    .join('')
+    .trim();
+  const ergaenzt = entwurfStuecke
+    .filter((s) => !!s.schluessel && !ausBasis.has(s.schluessel))
+    .map((s) => s.roh)
+    .join('')
+    .trim();
+  return texteZusammenfuehren([bleibt, ergaenzt]);
 }
 
 /**
@@ -810,6 +888,100 @@ export function zeilenTextOhneBearbeitung(daten: LeistungsnachweisDaten, n: Leis
   return nachweisZeilen(daten, { ...n, texte }).find((z) => z.schluessel === schluessel)?.text;
 }
 
+/**
+ * Eine von Hand bearbeitete Zeile eines offenen Nachweises, deren Text
+ * überholt sein kann (`ueberholteZeilen`).
+ */
+export interface UeberholteZeile {
+  schluessel: string;
+  /** Leistungen, die nach der Bearbeitung hinzukamen (`neueLeistungenSeitText`). */
+  neue: Leistung[];
+  /**
+   * Der Text, den die Zeile ohne die Bearbeitung jetzt hätte, wenn er sich
+   * seitdem geändert hat (`ZeilenText.ausgang`, `zeilenTextOhneBearbeitung`); sonst null.
+   */
+  textNeu: string | null;
+  /** Käme dieser Text aus den gemeinsamen Texten der Mitarbeiter (`textGemeinsam`) – sonst automatisch? */
+  gemeinsam: boolean;
+}
+
+/**
+ * Von Hand bearbeitete Zeilen eines offenen Nachweises, in denen seit der
+ * Bearbeitung Leistungen hinzukamen oder sich der Text der Mitarbeiter bzw.
+ * der automatische Text geändert hat – je Zeilenschlüssel, in der Folge der
+ * Zeilen. Die Ansicht „Leistungstexte“ nennt sie je Zeile, die Abrechnung
+ * zählt sie (`ueberholtHinweis`, `ueberholtRueckfrage`). Leer bei
+ * abgeschlossenen Nachweisen.
+ */
+export function ueberholteZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachweis): Map<string, UeberholteZeile> {
+  const ergebnis = new Map<string, UeberholteZeile>();
+  if (n.status === 'abgeschlossen' || Object.keys(n.texte).length === 0) return ergebnis;
+  const zeilen = nachweisZeilen(daten, n).filter((z) => z.textBearbeitet);
+  if (zeilen.length === 0) return ergebnis;
+  // Ohne die Bearbeitungen von Hand – jede Zeile wie mit `zeilenTextOhneBearbeitung`
+  const ohne = new Map(nachweisZeilen(daten, { ...n, texte: {} }).map((z) => [z.schluessel, z]));
+  for (const z of zeilen) {
+    const neue = neueLeistungenSeitText(daten, n, z);
+    const ausgang = n.texte[z.schluessel]?.ausgang;
+    const heute = ohne.get(z.schluessel);
+    const textNeu = heute && ausgang !== undefined && heute.text !== ausgang ? heute.text : null;
+    if (neue.length > 0 || textNeu !== null) ergebnis.set(z.schluessel, { schluessel: z.schluessel, neue, textNeu, gemeinsam: !!heute?.textGemeinsam });
+  }
+  return ergebnis;
+}
+
+/** „1 Zeile“, „2 Zeilen“. */
+const zeilenAnzahl = (anzahl: number) => (anzahl === 1 ? '1 Zeile' : `${anzahl} Zeilen`);
+
+/**
+ * Zahlen zu `ueberholteZeilen`: Zeilen mit neuen Leistungen, mit geändertem
+ * Text der Mitarbeiter und – ohne neue Leistungen, die ihn schon erklären –
+ * mit geändertem automatischem Text.
+ */
+function ueberholtZahlen(liste: UeberholteZeile[]): { neue: number; mitarbeiter: number; automatisch: number } {
+  return {
+    neue: liste.filter((u) => u.neue.length > 0).length,
+    mitarbeiter: liste.filter((u) => u.textNeu !== null && u.gemeinsam).length,
+    automatisch: liste.filter((u) => u.textNeu !== null && !u.gemeinsam && u.neue.length === 0).length,
+  };
+}
+
+/**
+ * Warnung über der Abrechnung zu `ueberholteZeilen`, etwa „In 2 Zeilen kamen
+ * nach der Bearbeitung des Leistungstexts Leistungen hinzu. In 1 Zeile hat
+ * sich der Text der Mitarbeiter seit der Bearbeitung des Leistungstexts
+ * geändert.“; null ohne solche Zeilen.
+ */
+export function ueberholtHinweis(liste: UeberholteZeile[]): string | null {
+  const z = ueberholtZahlen(liste);
+  const saetze: string[] = [];
+  if (z.neue) saetze.push(`In ${zeilenAnzahl(z.neue)} kamen nach der Bearbeitung des Leistungstexts Leistungen hinzu.`);
+  if (z.mitarbeiter) saetze.push(`In ${zeilenAnzahl(z.mitarbeiter)} hat sich der Text der Mitarbeiter seit der Bearbeitung des Leistungstexts geändert.`);
+  if (z.automatisch) saetze.push(`In ${zeilenAnzahl(z.automatisch)} hat sich der automatische Text seit der Bearbeitung des Leistungstexts geändert.`);
+  return saetze.length ? saetze.join(' ') : null;
+}
+
+/** Satz in der Rückfrage „Leistungsnachweis abschließen?“ zu `ueberholteZeilen`; null ohne solche Zeilen. */
+export function ueberholtRueckfrage(liste: UeberholteZeile[]): string | null {
+  const z = ueberholtZahlen(liste);
+  const saetze: string[] = [];
+  if (z.neue) saetze.push(`Achtung: In ${zeilenAnzahl(z.neue)} fehlen neue Leistungen noch im bearbeiteten Text.`);
+  if (z.mitarbeiter && z.automatisch) {
+    saetze.push(
+      `Achtung: In ${zeilenAnzahl(z.mitarbeiter)} hat sich der Text der Mitarbeiter, in ${zeilenAnzahl(z.automatisch)} der automatische Text seit der Bearbeitung geändert – abgeschlossen wird der von Hand bearbeitete Text.`,
+    );
+  } else if (z.mitarbeiter) {
+    saetze.push(
+      `Achtung: In ${zeilenAnzahl(z.mitarbeiter)} hat sich der Text der Mitarbeiter seit der Bearbeitung geändert – abgeschlossen wird der von Hand bearbeitete Text.`,
+    );
+  } else if (z.automatisch) {
+    saetze.push(
+      `Achtung: In ${zeilenAnzahl(z.automatisch)} hat sich der automatische Text seit der Bearbeitung geändert – abgeschlossen wird der von Hand bearbeitete Text.`,
+    );
+  }
+  return saetze.length ? saetze.join(' ') : null;
+}
+
 /** Summe der Stunden. */
 export function summeStunden(zeilen: NachweisZeile[]): number {
   return runden(zeilen.reduce((s, z) => s + z.stunden, 0));
@@ -846,13 +1018,54 @@ export function bearbeiterVon(zeilen: NachweisZeile[]): string[] {
   return [...new Set(zeilen.flatMap((z) => z.bearbeiter))];
 }
 
-/** Stand zum Festschreiben beim Abschließen – mit den Aufschlägen und abgerechneten Stunden. */
+/**
+ * Inhalt einer Leistung zum Vergleich: Datum, Stunden, Abschnitt und Text –
+ * ohne Kennung, Quelle und Projektelement, damit ein unveränderter Neuimport
+ * gleich bleibt (`importPlanen`). Eine Prüfsumme (`pruefsumme`).
+ */
+export function leistungsInhalt(l: Pick<Leistung, 'datum' | 'stunden' | 'abschnittId' | 'text'>): string {
+  return pruefsumme([l.datum, runden(l.stunden).toFixed(2), l.abschnittId ?? '', l.text.trim()].join('\u0001'));
+}
+
+/**
+ * Inhalt einer abgerechneten Leistung im festgeschriebenen Stand
+ * (`NachweisStand.inhalte`): Datum, Stunden und Text als Prüfsumme – den
+ * Abschnitt hält der Stand getrennt fest (`NachweisStand.abschnittIds`).
+ */
+const standInhalt = (l: Pick<Leistung, 'datum' | 'stunden' | 'text'>): string =>
+  pruefsumme([l.datum, runden(l.stunden).toFixed(2), l.text.trim()].join('\u0001'));
+
+/**
+ * Wurde die abgerechnete Leistung nach dem Abschluss des Nachweises `n` (in
+ * dessen Stand sie steht) geändert? Ja, wenn die Person sie danach geändert hat
+ * (`Leistung.geaendert` nach `abgeschlossen` – `updateLeistung` bzw. ein
+ * Neuimport mit anderem Inhalt) und sie vom festgeschriebenen Stand abweicht
+ * (`NachweisStand.inhalte` und `abschnittIds`): Wer auf den abgerechneten Wert
+ * zurückändert, hebt es wieder auf. Den Abschnitt, den das Controlling danach
+ * neu zugeordnet hat, führt der Stand mit (`standAbschnitteNachziehen`).
+ * Ältere Stände ohne `inhalte` zählen allein den Zeitpunkt.
+ */
+export function nachAbschlussGeaendert(l: Leistung, n: Pick<Leistungsnachweis, 'abgeschlossen' | 'stand'>): boolean {
+  if (!l.geaendert || !n.abgeschlossen || l.geaendert <= n.abgeschlossen) return false;
+  const abgerechnet = n.stand?.inhalte?.[l.id];
+  if (abgerechnet === undefined || abgerechnet !== standInhalt(l)) return true;
+  return (n.stand?.abschnittIds?.[l.id] ?? null) !== (l.abschnittId ?? null);
+}
+
+/**
+ * Stand zum Festschreiben beim Abschließen – mit den Aufschlägen und
+ * abgerechneten Stunden und dem Inhalt jeder abgerechneten Leistung
+ * (`inhalte`, `abschnittIds`).
+ */
 export function standErzeugen(daten: LeistungsnachweisDaten, n: Leistungsnachweis): NachweisStand {
   const projekt = daten.projekte.find((p) => p.id === n.projektId);
   const zeilen = nachweisZeilen(daten, n);
+  const leistungen = leistungenDesNachweises(daten, n);
   return {
     zeilen,
     ...(projekt ? { erfassungsRaster: projekt.raster } : {}),
+    inhalte: Object.fromEntries(leistungen.map((l) => [l.id, standInhalt(l)])),
+    abschnittIds: Object.fromEntries(leistungen.flatMap((l) => (l.abschnittId ? [[l.id, l.abschnittId]] : []))),
     abschnitte: (projekt?.abschnitte ?? []).map((a) => ({ ...a })),
     projekt: {
       nummer: projekt?.nummer ?? '',
@@ -864,6 +1077,49 @@ export function standErzeugen(daten: LeistungsnachweisDaten, n: Leistungsnachwei
     stunden: summeStunden(zeilen),
     abgerechnet: summeAbgerechnet(zeilen),
   };
+}
+
+/**
+ * Ändert das Controlling die Abschnitte des Projekts `projektId` (einen
+ * Abschnitt entfernt – seine Leistungen sind dann ohne Abschnitt –, bzw.
+ * „Abschnitte aus Projektelementen“), ordnet es auch abgerechnete Leistungen
+ * neu zu, ohne dass die Person etwas geändert hat. Damit
+ * `nachAbschlussGeaendert` nur zählt, was die Person geändert hat, zieht der
+ * festgeschriebene Abschnitt (`NachweisStand.abschnittIds`) mit: Hatte die
+ * Leistung vor der Änderung (`alt`) noch ihren abgerechneten Abschnitt, gilt
+ * ihr neuer; ein Abschnitt, den es im Projekt nicht mehr gibt, entfällt. Die
+ * Abrechnung des Stands (Zeilen, `abschnitte`) bleibt, wie sie ist. Rein; ohne
+ * Änderung derselbe Bestand.
+ */
+export function standAbschnitteNachziehen(
+  alt: LeistungsnachweisDaten,
+  neu: LeistungsnachweisDaten,
+  projektId: ID,
+): LeistungsnachweisDaten {
+  const gueltig = new Set((neu.projekte.find((p) => p.id === projektId)?.abschnitte ?? []).map((a) => a.id));
+  const vorher = new Map(alt.leistungen.filter((l) => l.projektId === projektId).map((l) => [l.id, l.abschnittId ?? null]));
+  const nachher = new Map(neu.leistungen.filter((l) => l.projektId === projektId).map((l) => [l.id, l.abschnittId ?? null]));
+  let geaendert = false;
+  const nachweise = neu.nachweise.map((n) => {
+    if (n.projektId !== projektId || n.status !== 'abgeschlossen' || !n.stand?.inhalte) return n;
+    const bisher = n.stand.abschnittIds ?? {};
+    const abschnittIds: Record<ID, ID> = {};
+    let anders = false;
+    for (const id of Object.keys(n.stand.inhalte)) {
+      const war: ID | null = bisher[id] ?? null;
+      let abschnitt: ID | null = war;
+      const a = vorher.get(id);
+      const b = nachher.get(id);
+      if (a !== undefined && b !== undefined && a !== b && a === war) abschnitt = b;
+      if (abschnitt && !gueltig.has(abschnitt)) abschnitt = null;
+      if (abschnitt) abschnittIds[id] = abschnitt;
+      if (abschnitt !== war) anders = true;
+    }
+    if (!anders) return n;
+    geaendert = true;
+    return { ...n, stand: { ...n.stand, abschnittIds } };
+  });
+  return geaendert ? { ...neu, nachweise } : neu;
 }
 
 const gleicheWerte = (a: Record<string, number>, b: Record<string, number>) => {

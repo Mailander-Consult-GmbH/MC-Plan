@@ -818,14 +818,23 @@ a:hover { text-decoration: underline; }
   .neue-fassung { left: 12px; right: 12px; bottom: 12px; width: auto; }
 }
 
-.toast-wrap { position: fixed; bottom: calc(22px + var(--neue-fassung-hoehe, 0px)); left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+/* Kurzmeldungen (src/shared/toast.tsx): so breit wie ihr Text, höchstens
+   640 px und mit 16 px Abstand zu den Fensterrändern. Lange Meldungen brechen
+   um – der Radius bleibt deshalb fest (einzeilig ergibt er die Pillenform),
+   sonst würde die Fläche zur Ellipse und schnitte den Text an den Ecken ab. */
+.toast-wrap {
+  position: fixed; bottom: calc(22px + var(--neue-fassung-hoehe, 0px)); left: 50%; transform: translateX(-50%); z-index: 200;
+  display: flex; flex-direction: column; gap: 8px;
+  width: max-content; max-width: min(640px, calc(100vw - 32px));
+}
 .toast {
   background: rgba(30, 30, 32, 0.92);
   backdrop-filter: blur(12px);
   color: #fff;
   padding: 9px 18px;
-  border-radius: 980px;
+  border-radius: var(--radius-xl);
   font-size: 13px;
+  overflow-wrap: anywhere;
   box-shadow: var(--shadow);
   animation: pop 0.2s ease;
 }

@@ -108,7 +108,7 @@ function zahlen(w: unknown): Record<string, number> {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, stunden(v)]));
 }
 
-/** Texte je Schlüssel – nur nicht leere (Kennungen der bestätigten Zeiträume). */
+/** Texte je Schlüssel – nur nicht leere (Kennungen der bestätigten Zeiträume, Inhalte und Abschnitte abgerechneter Leistungen). */
 function texteJeSchluessel(w: unknown): Record<string, string> {
   const o = objekt(w);
   if (!o) return {};
@@ -170,6 +170,9 @@ function standAufbereiten(w: unknown): NachweisStand | null {
   return {
     zeilen: liste(s.zeilen).map(zeileAufbereiten),
     ...((RASTER as readonly unknown[]).includes(s.erfassungsRaster) ? { erfassungsRaster: s.erfassungsRaster as Raster } : {}),
+    // Inhalt und Abschnitt der abgerechneten Leistungen – fehlen in früher abgeschlossenen Ständen
+    ...(objekt(s.inhalte) ? { inhalte: texteJeSchluessel(s.inhalte) } : {}),
+    ...(objekt(s.abschnittIds) ? { abschnittIds: texteJeSchluessel(s.abschnittIds) } : {}),
     abschnitte: liste(s.abschnitte).map(abschnittAufbereiten),
     projekt: {
       nummer: text(p.nummer),

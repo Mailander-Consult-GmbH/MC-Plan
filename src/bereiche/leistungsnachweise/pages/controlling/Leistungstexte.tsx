@@ -14,7 +14,8 @@
  * automatisch aus den Texten der Leistungen. Wer ihn hier bearbeitet, behält seinen Text: Kommen danach
  * Leistungen hinzu, nennt die Zeile sie und bietet „Ergänzen“ an; ändert sich
  * danach der Text der Mitarbeiter (die Zeile merkt sich, von welchem die
- * Bearbeitung ausging, `ZeilenText.ausgang`), nennt sie den neuen und bietet
+ * Bearbeitung ausging, `ZeilenText.ausgang`), nennt sie den neuen
+ * (`ueberholteZeilen` – dieselben zählt die Warnung der Abrechnung) und bietet
  * „Text der Mitarbeiter übernehmen“ an – überschrieben wird nie still, „Text
  * so lassen“ blendet den Hinweis aus. „Text der Mitarbeiter wiederherstellen“
  * bzw. „Automatischen Text wiederherstellen“ verwirft die Bearbeitung.
@@ -32,11 +33,12 @@ import { QuelleBadge, anzahl } from '../../components/common';
 import {
   mitAbschnittsspalten,
   nachweisZeilen,
-  neueLeistungenSeitText,
   periodentexteVon,
   summeStunden,
   textErgaenzen,
+  ueberholteZeilen,
   zeilenFuerAnzeige,
+  type UeberholteZeile,
 } from '../../domain/nachweis';
 import { darf, leistungenDerZeile } from '../../domain/rechte';
 import {
@@ -101,7 +103,8 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
   );
   const mitarbeiterVon = new Map(data.mitarbeiter.map((m) => [m.id, m]));
   const abschnittVon = new Map(projekt.abschnitte.map((a) => [a.id, a]));
-  const neueJeZeile = new Map(zeilen.map((z) => [z.schluessel, bearbeitbar ? neueLeistungenSeitText(data, n, z) : []]));
+  // Von Hand bearbeitete Zeilen mit neuen Leistungen bzw. geändertem Text der Mitarbeiter – wie die Abrechnung sie zählt
+  const ueberholt = bearbeitbar ? ueberholteZeilen(data, n) : new Map<string, UeberholteZeile>();
   // Zeilen ohne die Bearbeitung von Hand – ob es dort einen Text der Mitarbeiter gäbe (`textGemeinsam`)
   const ohneBearbeitung =
     bearbeitbar && zeilen.some((z) => z.textBearbeitet)
@@ -177,8 +180,7 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
           const ohne = z.textBearbeitet ? ohneBearbeitung?.get(z.schluessel) : undefined;
           const gemeinsamMoeglich = !!ohne?.textGemeinsam;
           // Hat sich der Text der Mitarbeiter seit der Bearbeitung geändert?
-          const ausgang = n.texte[z.schluessel]?.ausgang;
-          const mitarbeiterTextNeu = ohne && ausgang !== undefined && ohne.text !== ausgang ? ohne.text : null;
+          const mitarbeiterTextNeu = ueberholt.get(z.schluessel)?.textNeu ?? null;
           return (
             <ZeileKarte
               key={z.schluessel}
@@ -189,7 +191,7 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
               leistungen={leistungen}
               gemeinsamMoeglich={gemeinsamMoeglich}
               mitarbeiterTextNeu={mitarbeiterTextNeu}
-              neue={neueJeZeile.get(z.schluessel) ?? []}
+              neue={ueberholt.get(z.schluessel)?.neue ?? []}
               offen={offen.has(z.schluessel)}
               mitAbschnitt={projekt.abschnitte.length > 0}
               personName={personName}
