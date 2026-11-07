@@ -25,7 +25,10 @@
  * gemeinsame Leistungstexte je Zeitraum (`periodentexte`) und
  * Monatsbestätigungen (`bestaetigungen`); 8 – Zeitraumregeln „Alle 2 Monate“
  * und „Alle 3 Monate“ (`zweiMonate`, `quartal`) und der Monat, ab dem ihre
- * Blöcke zählen (`Projekt.rhythmusAb`, optional).
+ * Blöcke zählen (`Projekt.rhythmusAb`, optional); 9 – ohne
+ * Abrechnungsrhythmus (`zeitraumregel` und `rhythmusAb` entfallen, je Projekt
+ * ein laufender Nachweis – `laufendeZusammenfuehren`) und mit Gesamtaufschlag
+ * am Nachweis (`gesamtAufschlag`).
  *
  * Speichern meldet, ob es gelungen ist (`SpeicherZustand`) – ist der Speicher
  * des Browsers voll, zeigt der Bereich einen dauerhaften Hinweis
@@ -35,14 +38,15 @@
 import { today } from '../../../shared/dates';
 import { nachRaeumenSpeichern, speicherVoll } from '../../../shared/speicher';
 import { registerLesen } from '../../../gemeinsam/register';
+import { bestaetigungenNachziehen, periodentexteNachziehen } from '../domain/erfassung';
 import { seedDaten } from '../domain/seed';
 import {
   DATEN_VERSION,
   OHNE_ABSCHNITT,
   STANDARD_BEARBEITER,
-  ZEITRAUMREGEL_LABEL,
   type Abschnitt,
   type Bestaetigung,
+  type GesamtAufschlag,
   type Leistung,
   type Leistungsnachweis,
   type LeistungsnachweisDaten,
@@ -54,9 +58,8 @@ import {
   type Projekt,
   type Raster,
   type ZeilenText,
-  type Zeitraumregel,
 } from '../domain/types';
-import { nachgereichteZeilenUmstellen } from '../domain/nachweis';
+import { gesamtAufschlagNormal, laufendeZusammenfuehren, nachgereichteZeilenUmstellen } from '../domain/nachweis';
 import { erfassungsPeriodeAusSchluessel, istDatum, istMonat, runden } from '../domain/zeitraum';
 
 export { DATEN_VERSION };
@@ -127,8 +130,12 @@ function eindeutig<T extends { id: string }>(eintraege: T[]): T[] {
 
 const RASTER = ['tag', 'woche', 'monat'] as const;
 
-/** Alle Zeitraumregeln – in der Reihenfolge von `ZEITRAUMREGEL_LABEL`. */
-const ZEITRAUMREGELN = Object.keys(ZEITRAUMREGEL_LABEL) as Zeitraumregel[];
+/** Gesamtaufschlag eines Nachweises: Art „stunden“ oder „prozent“ und eine Zahl (auch als Text) ≠ 0 – sonst null. */
+function gesamtAufschlagAufbereiten(w: unknown): GesamtAufschlag | null {
+  const g = objekt(w);
+  if (!g || (g.art !== 'stunden' && g.art !== 'prozent')) return null;
+  return gesamtAufschlagNormal({ art: g.art, wert: stunden(g.wert) });
+}
 
 function abschnittAufbereiten(a: Roh): Abschnitt {
   return { id: text(a.id) || zufallsId('ab'), kennung: text(a.kennung), kurz: text(a.kurz), name: text(a.name) };
@@ -157,6 +164,9 @@ function zeileAufbereiten(z: Roh): NachweisZeile {
     aufschlagJeAbschnitt: ohneNull(zahlen(z.aufschlagJeAbschnitt)),
     abgerechnet: typeof z.abgerechnet === 'number' || typeof z.abgerechnet === 'string' ? stunden(z.abgerechnet) : erfasst,
     abgerechnetJeAbschnitt: objekt(z.abgerechnetJeAbschnitt) ? zahlen(z.abgerechnetJeAbschnitt) : { ...jeAbschnitt },
+    // Anteil am Gesamtaufschlag (Fassung 9) – nur ≠ 0
+    ...(runden(stunden(z.anteilGesamt)) !== 0 ? { anteilGesamt: runden(stunden(z.anteilGesamt)) } : {}),
+    ...(objekt(z.anteilGesamtJeAbschnitt) ? { anteilGesamtJeAbschnitt: ohneNull(zahlen(z.anteilGesamtJeAbschnitt)) } : {}),
   };
 }
 
@@ -214,8 +224,10 @@ function texteAufbereiten(w: unknown): Record<string, ZeilenText> {
  * unbekannter Abschnitt wird zu „ohne Abschnitt“. Gemeinsame Texte ohne
  * bekanntes Projekt, mit ungültigem Schlüssel oder leerem Text fallen weg,
  * ebenso Bestätigungen ohne bekanntes Projekt bzw. bekannten Mitarbeiter oder
- * ohne gültigen Monat; je Schlüssel bleibt der erste Eintrag. Für Prüfungen
- * exportiert.
+ * ohne gültigen Monat; je Schlüssel bleibt der erste Eintrag. Ein
+ * Gesamtaufschlag ohne gültige Art oder mit 0 entfällt (null); den
+ * Abrechnungsrhythmus früherer Fassungen (`zeitraumregel`, `rhythmusAb`)
+ * übernimmt es nicht. Für Prüfungen exportiert.
  */
 export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   const e = objekt(roh.einstellungen) ?? {};
@@ -241,10 +253,8 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
         markiert: p.markiert !== false,
         beschreibung: text(p.beschreibung),
         leistungsbereich: typeof p.leistungsbereich === 'string' ? p.leistungsbereich : 'Projektsteuerung',
+        // Abrechnungsrhythmus (`zeitraumregel`, `rhythmusAb`) gibt es seit Fassung 9 nicht mehr – entfällt
         raster: auswahl(p.raster, RASTER, 'monat'),
-        zeitraumregel: auswahl(p.zeitraumregel, ZEITRAUMREGELN, 'fortlaufend'),
-        // Beginn der Blöcke des Rhythmus – nur ein gültiger Monat, sonst zählen sie ab dem frühesten Nachweis
-        ...(istMonat(p.rhythmusAb) ? { rhythmusAb: p.rhythmusAb } : {}),
         abschnitte: eindeutig(liste(p.abschnitte).map(abschnittAufbereiten)),
         logos: Array.isArray(p.logos)
           ? liste(p.logos)
@@ -300,6 +310,7 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
           status,
           texte: texteAufbereiten(n.texte),
           aufschlaege: ohneNull(zahlen(n.aufschlaege)),
+          gesamtAufschlag: gesamtAufschlagAufbereiten(n.gesamtAufschlag),
           bemerkung: text(n.bemerkung),
           nachgereicht: [...new Set(ids(n.nachgereicht))],
           erstellt: text(n.erstellt) || geaendert,
@@ -392,15 +403,6 @@ function vonFassung1(roh: Roh): Roh {
 }
 
 /**
- * Fassung 3 → 4: Leistungsnachweise laufen bis zum Abschluss – bisher war je
- * Kalendermonat die Vorgabe, nun erhalten alle Projekte die Regel
- * „fortlaufend“. Vorhandene Nachweise bleiben, wie sie sind.
- */
-function vonFassung3(roh: Roh): Roh {
-  return { ...roh, projekte: liste(roh.projekte).map((p) => ({ ...p, zeitraumregel: 'fortlaufend' })) };
-}
-
-/**
  * Fassung 6 → 7: gemeinsame Leistungstexte je Zeitraum und
  * Monatsbestätigungen – bisher gab es keine, beide Listen beginnen leer.
  */
@@ -409,27 +411,52 @@ function vonFassung6(roh: Roh): Roh {
 }
 
 /**
+ * Fassung 8 → 9: Ohne Abrechnungsrhythmus läuft je Projekt ein Nachweis, bis
+ * das Controlling ihn erstellt. Aufeinanderfolgende offene Nachweise ohne
+ * festgelegtes Ende (etwa je Monat bzw. Block der Regeln „Monatlich“, „Alle 2
+ * Monate“, „Alle 3 Monate“) gehen im ersten auf – mit Texten, Aufschlägen,
+ * Bemerkungen und nachgereichten Leistungen (`laufendeZusammenfuehren`);
+ * abgeschlossene Nachweise und solche mit festgelegtem Ende (`bisFest`)
+ * bleiben. Fallen dabei Grenzen der Nachweise weg, ziehen die gemeinsamen
+ * Texte und die Bestätigungen mit wie nach jeder Änderung im Store
+ * (`periodentexteNachziehen`, `bestaetigungenNachziehen`). Läuft nach
+ * `aufbereiten` – auf einem vollständigen Bestand (Projekte ohne
+ * `zeitraumregel` und `rhythmusAb`, Nachweise mit `gesamtAufschlag` null).
+ */
+function vonFassung8(daten: LeistungsnachweisDaten): LeistungsnachweisDaten {
+  const zusammen = laufendeZusammenfuehren(daten);
+  if (zusammen === daten) return daten;
+  return bestaetigungenNachziehen(daten, zusammen, periodentexteNachziehen(daten, zusammen));
+}
+
+/**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
- * für Schritt; neue Schritte kommen hier vor `aufbereiten` hinzu. Auch
- * Sicherungen älterer Fassungen laufen hierdurch. Fassung 4 → 5: `nachgereicht`
- * ergänzt `aufbereiten` leer; 5 → 6: `bisFest` ergänzt `aufbereiten` mit false,
- * Zeilen nachgereichter Leistungen erhalten ihren eigenen Schlüssel – in
- * Texten, Aufschlägen und im festgeschriebenen Stand; Aufschläge einer Zeile
- * mit laufenden und nachgereichten Leistungen werden auf beide aufgeteilt,
- * ohne die abgerechneten Stunden zu ändern – mit Abschnittsspalten auch nicht
- * die einer Spalte (`nachgereichteZeilenUmstellen`); 6 → 7: leere Listen
- * `periodentexte` und `bestaetigungen` (`vonFassung6`); 7 → 8: nichts
- * umzurechnen – die neuen Zeitraumregeln und `rhythmusAb` (nur ein gültiger
- * Monat) nimmt `aufbereiten` an, vorhandene Regeln und Nachweise bleiben.
+ * für Schritt; Schritte auf dem rohen Stand kommen vor `aufbereiten`, solche,
+ * die mit den Funktionen der Domäne rechnen, danach. Auch Sicherungen älterer
+ * Fassungen laufen hierdurch. Fassung 3 → 4 (Zeitraumregel „fortlaufend“ für
+ * alle Projekte) ist mit Fassung 9 entfallen – den Rhythmus gibt es nicht
+ * mehr; 4 → 5: `nachgereicht` ergänzt `aufbereiten` leer; 5 → 6: `bisFest`
+ * ergänzt `aufbereiten` mit false, Zeilen nachgereichter Leistungen erhalten
+ * ihren eigenen Schlüssel – in Texten, Aufschlägen und im festgeschriebenen
+ * Stand; Aufschläge einer Zeile mit laufenden und nachgereichten Leistungen
+ * werden auf beide aufgeteilt, ohne die abgerechneten Stunden zu ändern – mit
+ * Abschnittsspalten auch nicht die einer Spalte (`nachgereichteZeilenUmstellen`,
+ * nach `aufbereiten`); 6 → 7: leere Listen `periodentexte` und
+ * `bestaetigungen` (`vonFassung6`); 7 → 8: nichts umzurechnen; 8 → 9:
+ * `zeitraumregel` und `rhythmusAb` übernimmt `aufbereiten` nicht mehr,
+ * `gesamtAufschlag` ergänzt es mit null, laufende Nachweise führt
+ * `vonFassung8` zusammen (nach `nachgereichteZeilenUmstellen`, das die
+ * Zeilen der bisherigen Nachweise braucht).
  */
 function migriere(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   let stand = roh as unknown as Roh;
   const fassung = typeof stand.version === 'number' ? stand.version : 0;
   if (fassung < 2) stand = vonFassung1(stand);
-  if (fassung < 4) stand = vonFassung3(stand);
   if (fassung < 7) stand = vonFassung6(stand);
-  const daten = aufbereiten(stand as Partial<LeistungsnachweisDaten>);
-  return fassung < 6 ? nachgereichteZeilenUmstellen(daten) : daten;
+  let daten = aufbereiten(stand as Partial<LeistungsnachweisDaten>);
+  if (fassung < 6) daten = nachgereichteZeilenUmstellen(daten);
+  if (fassung < 9) daten = vonFassung8(daten);
+  return daten;
 }
 
 /** Lädt den Bestand; ohne gespeicherten Stand die Demodaten. */

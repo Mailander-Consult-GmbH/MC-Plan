@@ -548,12 +548,12 @@ export interface ImportVorschau {
 
 /**
  * Vorgaben eines neuen Projekts (Import, Projektregister, „Neues Projekt“):
- * Nachweise laufen bis zum Abschluss.
+ * Leistungsbereich und Raster. Einen Abrechnungsrhythmus gibt es nicht (mehr,
+ * Fassung 9) – Nachweise laufen, bis das Controlling sie erstellt.
  */
-export const IMPORT_PROJEKT_VORGABEN: Pick<Projekt, 'leistungsbereich' | 'raster' | 'zeitraumregel'> = {
+export const IMPORT_PROJEKT_VORGABEN: Pick<Projekt, 'leistungsbereich' | 'raster'> = {
   leistungsbereich: 'Projektsteuerung',
   raster: 'monat',
-  zeitraumregel: 'fortlaufend',
 };
 
 const textNormal = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -586,14 +586,15 @@ function dublettenSchluessel(
  * freiem Kürzel (`kuerzelFrei`, etwa „MM2“) und Hinweis.
  *
  * Projekte über die Nummer (ohne Leerzeichen, Großschreibung; sonst neu mit name aus der Datei,
- * Vorgaben aus `IMPORT_PROJEKT_VORGABEN` – Regel „fortlaufend“ –, markiert). Abschnitte über
+ * Vorgaben aus `IMPORT_PROJEKT_VORGABEN`, markiert). Abschnitte über
  * die Kennung des Projektelements (Spalte J); fehlende legt der Plan an. Doppelte werden
  * übersprungen – je vorhandener Leistung höchstens einmal: zuerst gegen frühere Importe mit
  * gleichem Projektelement, danach gegen händisch erfasste ohne Rücksicht auf das Projektelement
  * (`dublettenSchluessel`). Mit `ersetzen` übernimmt eine neue Leistung die Kennung einer
  * ersetzten, die abgerechnet oder nachgereicht ist (gleiche Person, gleiches Projekt, gleicher
  * Tag) – mit anderem Inhalt samt `geaendert` (`jetzt`), sonst mit dem `geaendert` der ersetzten.
- * Danach `nachweiseErgaenzen` je Projekt für die neuen Leistungen.
+ * Danach `nachweiseErgaenzen` je Projekt für die neuen Leistungen (der laufende Nachweis wächst mit
+ * bzw. ein neuer entsteht).
  * `neueId(prefix)` erzeugt alle IDs. Neue Mitarbeiter und Projekte nimmt der Plan nur auf, wenn
  * sie neue Leistungen erhalten.
  */

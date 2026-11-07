@@ -1,7 +1,8 @@
 /**
  * Projekt anlegen bzw. bearbeiten – nur im Controlling (domain/rechte.ts,
  * `projektVerwalten`): Projektnummer, Status, Name, Bezeichnung im Nachweis,
- * Leistungsbereich, Raster und Zeitraumregel neuer Nachweise, Beschreibung.
+ * Leistungsbereich, Raster neuer Nachweise, Beschreibung. Einen Rhythmus gibt
+ * es nicht – den Umfang eines Nachweises legt das Erstellen fest.
  * Das Raster gliedert auch die gemeinsamen Leistungstexte der Mitarbeiter;
  * ein Wechsel nennt Texte, die danach nicht mehr gelten (`RasterwechselHinweis`).
  * Die Projektnummer („K9101“) ist der Schlüssel, über den der Excel-Import
@@ -19,11 +20,10 @@ import {
   type Projekt,
   type ProjektStatus,
   type Raster,
-  type Zeitraumregel,
 } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
-import { RASTER_OPTIONEN, REGEL_OPTIONEN } from './common';
+import { RASTER_OPTIONEN } from './common';
 import { RasterwechselHinweis } from './RasterwechselHinweis';
 
 const STATUS_OPTIONEN = (Object.keys(PROJEKT_STATUS_LABEL) as ProjektStatus[]).map((s) => ({
@@ -50,7 +50,6 @@ export function ProjektDialog({
     status: projekt?.status ?? ('aktiv' as ProjektStatus),
     leistungsbereich: projekt?.leistungsbereich ?? IMPORT_PROJEKT_VORGABEN.leistungsbereich,
     raster: projekt?.raster ?? IMPORT_PROJEKT_VORGABEN.raster,
-    zeitraumregel: projekt?.zeitraumregel ?? IMPORT_PROJEKT_VORGABEN.zeitraumregel,
     beschreibung: projekt?.beschreibung ?? '',
   });
 
@@ -145,16 +144,6 @@ export function ProjektDialog({
           hint="Zeilen je Tag, Woche oder Monat – Vorgabe für neue Leistungsnachweise; gliedert auch die gemeinsamen Leistungstexte der Mitarbeiter."
         >
           <Segmented<Raster> value={form.raster} onChange={(v) => set('raster', v)} options={RASTER_OPTIONEN} />
-        </Field>
-        <Field
-          label="Rhythmus"
-          hint="Über welche Monate ein Leistungsnachweis geht: monatlich, alle 2 oder alle 3 Monate – gezählt ab Projektbeginn – oder bis er abgeschlossen wird (danach beginnt ein neuer)."
-        >
-          <Select
-            value={form.zeitraumregel}
-            onChange={(v) => set('zeitraumregel', v as Zeitraumregel)}
-            options={REGEL_OPTIONEN}
-          />
         </Field>
         <Field label="Beschreibung" full>
           <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={3} />

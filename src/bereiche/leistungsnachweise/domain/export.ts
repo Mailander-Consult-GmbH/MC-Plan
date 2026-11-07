@@ -10,8 +10,9 @@
  * * eine Vorlage für den Import im Aufbau der Zeiterfassung.
  *
  * Wie in der Vorlage stehen rechts neben dem Druckbereich die erfassten
- * Stunden je Mitarbeiter („Wiko LR“ …) und der Aufschlag – zusammen ergeben
- * sie die abgerechnete Summe; zur Kontrolle, nicht im Druck.
+ * Stunden je Mitarbeiter („Wiko LR“ …) und der Aufschlag (der der Zeile samt
+ * ihrem Anteil am Gesamtaufschlag, `NachweisZeile.anteilGesamt`) – zusammen
+ * ergeben sie die abgerechnete Summe; zur Kontrolle, nicht im Druck.
  *
  * Die Blätter entstehen rein (`nachweisBlatt`, `auswertungBlaetter`,
  * `leistungenBlatt`, `importVorlageBlatt`); erst die Funktionen

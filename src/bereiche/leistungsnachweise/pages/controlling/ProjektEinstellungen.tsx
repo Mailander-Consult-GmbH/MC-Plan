@@ -1,7 +1,7 @@
 /**
  * „Projekt einstellen“ im Controlling (Modal auf der Seite eines Projekts,
- * Menü „Mehr“, Projekt.tsx): Vorgaben für den Kopf, den Rhythmus und die
- * Zeilen neuer Leistungsnachweise – das Raster gliedert auch die
+ * Menü „Mehr“, Projekt.tsx): Vorgaben für den Kopf und die Zeilen neuer
+ * Leistungsnachweise – das Raster gliedert auch die
  * gemeinsamen Leistungstexte der Mitarbeiter; ein Wechsel nennt Texte, die im
  * neuen Raster nicht mehr gelten (components/RasterwechselHinweis.tsx) –, die
  * Abschnitte (ab zwei Abschnitten eigene Stundenspalten unter „Aufwand (Std)“,
@@ -14,10 +14,10 @@
 import { useId, useState } from 'react';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Callout, Card, CardHeader, ConfirmDialog, Field, Modal, Segmented, Select, TextInput } from '../../../../shared/ui';
+import { Callout, Card, CardHeader, ConfirmDialog, Field, Modal, Segmented, TextInput } from '../../../../shared/ui';
 import { LogoVerwaltung } from '../../components/Logos';
 import { RasterwechselHinweis } from '../../components/RasterwechselHinweis';
-import { RASTER_OPTIONEN, REGEL_OPTIONEN, anzahl } from '../../components/common';
+import { RASTER_OPTIONEN, anzahl } from '../../components/common';
 import { abschnitteAusElementen, kennungNormal, projektelementTeilen } from '../../domain/import';
 import { mitAbschnittsspalten } from '../../domain/nachweis';
 import { darf } from '../../domain/rechte';
@@ -27,7 +27,6 @@ import {
   type Abschnitt,
   type Projekt,
   type Raster,
-  type Zeitraumregel,
 } from '../../domain/types';
 import { useStore } from '../../store/store';
 import '../../components/leistungen.css';
@@ -38,7 +37,7 @@ export function ProjektEinstellungen({ projekt }: { projekt: Projekt }) {
   // Ohne Recht nur ansehen – der Store ändert dann ohnehin nichts
   const gesperrt = !darf(zugang, 'projektVerwalten');
   // Ändert sich das Projekt von anderer Stelle (Dialog „Bearbeiten“), beginnt das Formular neu
-  const stand = [projekt.leistungsbereich, projekt.kurzname, projekt.raster, projekt.zeitraumregel].join('\u0000');
+  const stand = [projekt.leistungsbereich, projekt.kurzname, projekt.raster].join('\u0000');
   return (
     <div className="stack">
       {gesperrt ? <Callout icon="i">Die Einstellungen des Projekts ändert nur das Controlling.</Callout> : null}
@@ -61,15 +60,13 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
     leistungsbereich: projekt.leistungsbereich,
     kurzname: projekt.kurzname,
     raster: projekt.raster,
-    zeitraumregel: projekt.zeitraumregel,
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
   const geaendert =
     form.leistungsbereich !== projekt.leistungsbereich ||
     form.kurzname !== projekt.kurzname ||
-    form.raster !== projekt.raster ||
-    form.zeitraumregel !== projekt.zeitraumregel;
+    form.raster !== projekt.raster;
 
   const speichern = () => {
     updateProjekt(projekt.id, {
@@ -107,12 +104,6 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
           >
             <Segmented<Raster> value={form.raster} onChange={(v) => set('raster', v)} options={RASTER_OPTIONEN} />
           </Field>
-          <Field
-            label="Rhythmus"
-            hint="Über welche Monate ein Leistungsnachweis geht: monatlich, alle 2 oder alle 3 Monate – gezählt ab Projektbeginn – oder bis er abgeschlossen wird (danach beginnt ein neuer)."
-          >
-            <Select value={form.zeitraumregel} onChange={(v) => set('zeitraumregel', v as Zeitraumregel)} options={REGEL_OPTIONEN} />
-          </Field>
         </div>
         <RasterwechselHinweis projekt={projekt} raster={form.raster} />
         <div className="ln-einst-knoepfe">
@@ -125,7 +116,6 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
                 leistungsbereich: projekt.leistungsbereich,
                 kurzname: projekt.kurzname,
                 raster: projekt.raster,
-                zeitraumregel: projekt.zeitraumregel,
               })
             }
           >

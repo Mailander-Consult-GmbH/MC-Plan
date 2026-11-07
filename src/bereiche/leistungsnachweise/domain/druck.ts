@@ -12,7 +12,9 @@
  * und Unterschrift und der Fuß „Erzeugt mit KaPlan am …“.
  *
  * Druck und Excel zeigen die abgerechneten Stunden (erfasst plus Aufschlag
- * des Controllings); der Aufschlag selbst erscheint nicht. Abgeschlossene
+ * des Controllings – je Zeile samt ihrem Anteil am Gesamtaufschlag,
+ * `NachweisZeile.anteilGesamt`); der Aufschlag selbst erscheint nicht, auch
+ * der Gesamtaufschlag nicht als eigene Zeile. Abgeschlossene
  * Nachweise zeigen ihren festgeschriebenen Stand (`nachweisFassung`); die
  * Excel-Ausgabe (domain/export.ts) nutzt dieselbe Fassung. Lange Nachweise
  * laufen über mehrere Seiten, der Tabellenkopf wiederholt sich, Zeilen

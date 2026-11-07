@@ -1,20 +1,17 @@
 /** Fachliche Anzeige-Bausteine und Texte, die in mehreren Ansichten gebraucht werden. */
-import { formatDate, toISO, today } from '../../../shared/dates';
+import { formatDate, toISO } from '../../../shared/dates';
 import { Badge } from '../../../shared/ui';
 import { laeuftBisAbschluss } from '../domain/nachweis';
 import { langDatum } from '../domain/zeitraum';
 import {
   QUELLE_LABEL,
   RASTER_KURZ,
-  ZEITRAUMREGEL_LABEL,
   mitarbeiterName,
   type Leistungsnachweis,
-  type LeistungsnachweisDaten,
   type Mitarbeiter,
   type ProjektStatus,
   type Quelle,
   type Raster,
-  type Zeitraumregel,
 } from '../domain/types';
 
 /** Farbe des Projektstatus – wie in der Projektsteuerung. */
@@ -37,12 +34,6 @@ export function anzahl(n: number, eins: string, mehr: string): string {
 /** Auswahl des Rasters (Tag/Woche/Monat) – im Projektdialog, in den Einstellungen und im Nachweisdialog. */
 export const RASTER_OPTIONEN = (['tag', 'woche', 'monat'] as Raster[]).map((r) => ({ value: r, label: RASTER_KURZ[r] }));
 
-/** Auswahl des Rhythmus (Regel für neue Nachweise) – in der Übersicht und in den Projektdialogen. */
-export const REGEL_OPTIONEN = (Object.keys(ZEITRAUMREGEL_LABEL) as Zeitraumregel[]).map((r) => ({
-  value: r,
-  label: ZEITRAUMREGEL_LABEL[r],
-}));
-
 /** Mitarbeiter nach Nach- und Vorname. */
 export function nachNamen(a: Mitarbeiter, b: Mitarbeiter): number {
   return a.nachname.localeCompare(b.nachname, 'de') || a.vorname.localeCompare(b.vorname, 'de');
@@ -53,7 +44,7 @@ export function mitarbeiterAuswahlText(m: Mitarbeiter): string {
   return `${m.kuerzel ? `${m.kuerzel}: ` : ''}${mitarbeiterName(m) || m.kuerzel}${m.aktiv ? '' : ' (ausgeschieden)'}`;
 }
 
-/** Meldung nach „Nach dem Rhythmus zuordnen“ auf der Seite eines Projekts im Controlling. */
+/** Meldung nach „Einem Leistungsnachweis zuordnen“ auf der Seite eines Projekts im Controlling. */
 export function nachweiseAngelegtText({ neu, erweitert }: { neu: number; erweitert: number }): string {
   if (neu === 0) return `${anzahl(erweitert, 'Leistungsnachweis', 'Leistungsnachweise')} erweitert.`;
   return `${anzahl(neu, 'Leistungsnachweis', 'Leistungsnachweise')} angelegt${erweitert ? `, ${erweitert} erweitert` : ''}.`;
@@ -69,14 +60,12 @@ export function zeitpunkt(iso: string | null): string {
 
 /**
  * Zeitraum eines Nachweises in Listen und Köpfen: „01.09.2026 – 30.11.2026“ –
- * läuft er nach dem Rhythmus „Bis zum Abschluss“ noch (`laeuftBisAbschluss`),
- * „ab 01.09.2026 · läuft bis zum Abschluss“, denn sein Ende legt erst der
- * Abschluss fest. Bei einem Rhythmus mit Monaten steht der Zeitraum seines
- * Blocks.
+ * läuft ein offener noch bis zum Erstellen (`laeuftBisAbschluss`: das
+ * Controlling hat sein Ende nicht festgelegt), „ab 01.09.2026 · offen bis zum
+ * Erstellen“, denn seinen Umfang legt erst das Erstellen fest.
  */
-export function nachweisZeitraumText(daten: Pick<LeistungsnachweisDaten, 'projekte'>, n: Leistungsnachweis): string {
-  const fortlaufend = daten.projekte.find((p) => p.id === n.projektId)?.zeitraumregel === 'fortlaufend';
-  return fortlaufend && laeuftBisAbschluss(daten, n, today())
-    ? `ab ${langDatum(n.von)} · läuft bis zum Abschluss`
+export function nachweisZeitraumText(n: Leistungsnachweis): string {
+  return laeuftBisAbschluss(n)
+    ? `ab ${langDatum(n.von)} · offen bis zum Erstellen`
     : `${langDatum(n.von)} – ${langDatum(n.bis)}`;
 }

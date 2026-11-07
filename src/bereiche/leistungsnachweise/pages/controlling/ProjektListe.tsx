@@ -2,16 +2,17 @@
  * Übersicht der Leistungsnachweise im Controlling – die Startseite des
  * Menüpunkts „Leistungsnachweise“ im Controlling-Bereich: je Projekt eine
  * Zeile mit
- * * Rhythmus (über welche Monate ein Leistungsnachweis geht – monatlich, alle
- *   2 bzw. 3 Monate ab Projektbeginn oder bis zum Abschluss, `Zeitraumregel`)
- *   und Raster (Tages-, Wochen- oder Monatsscharf) als Auswahl direkt in der
- *   Tabelle; ändert sich dadurch etwas an den gemeinsamen Leistungstexten bzw.
- *   Bestätigungen der Mitarbeiter, fragt ein Dialog vorher nach
- *   (RasterwechselHinweis.tsx bzw. `grenzFolgen` auf `regelAnwenden`),
+ * * dem Raster (Tages-, Wochen- oder Monatsscharf) als Auswahl direkt in der
+ *   Tabelle; ändert sich dadurch etwas an den gemeinsamen Leistungstexten der
+ *   Mitarbeiter, fragt ein Dialog vorher nach (RasterwechselHinweis.tsx),
  * * dem aktuellen Leistungsnachweis (`aktuellerNachweis`: der früheste
- *   offene, sonst der zuletzt abgeschlossene) mit Stand – „Fällig“, wenn sein
- *   Zeitraum vorbei ist (`nachweisFaellig`), sonst „läuft“ bzw.
- *   „Abgeschlossen“ – und weiteren offenen,
+ *   offene, sonst der zuletzt abgeschlossene) mit Stand – „Fällig“, wenn er
+ *   Leistungen aus einem schon vergangenen Monat enthält (`nachweisFaellig`,
+ *   dazu der Monat der ältesten, `offenSeit`), sonst „Offen“ bzw. „Abgeschlossen“ – und
+ *   weiteren offenen. Einen Rhythmus gibt es nicht: Erfasste Leistungen
+ *   sammeln sich im offenen Nachweis, bis das Controlling ihn erstellt und
+ *   dabei festlegt, bis zu welchem Tag er reicht – spätere bleiben für den
+ *   nächsten offen,
  * * seinen erfassten Stunden und
  * * „x von y bestätigt“: wer im Zeitraum Stunden gebucht und seine Monate
  *   bestätigt hat (`bestaetigungsZahl`, BestaetigungsStand.tsx).
@@ -32,37 +33,32 @@ import { Badge, Card, CardHeader, EmptyState, Modal, Search } from '../../../../
 import { ImportDialog } from '../../components/ImportDialog';
 import { ProjektDialog } from '../../components/ProjektDialog';
 import { RasterwechselHinweis } from '../../components/RasterwechselHinweis';
-import { RASTER_OPTIONEN, REGEL_OPTIONEN, STATUS_TON, anzahl } from '../../components/common';
-import { grenzFolgen, grenzFolgenHinweis, periodentexteNachRasterwechsel } from '../../domain/erfassung';
+import { RASTER_OPTIONEN, STATUS_TON, anzahl } from '../../components/common';
+import { periodentexteNachRasterwechsel } from '../../domain/erfassung';
 import {
   aktuellerNachweis,
-  laeuftBisAbschluss,
   leistungenDesNachweises,
   nachweisFaellig,
   nachweisTitel,
+  offenSeit,
   offeneNachweise,
-  regelAnwenden,
   stundenVon,
 } from '../../domain/nachweis';
 import {
   PROJEKT_STATUS_LABEL,
   RASTER_LABEL,
-  ZEITRAUMREGEL_LABEL,
   projektTitel,
   type Leistungsnachweis,
   type Projekt,
   type Raster,
-  type Zeitraumregel,
 } from '../../domain/types';
-import { langDatum, stundenText } from '../../domain/zeitraum';
+import { monatText, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { BestaetigtBadge, bestaetigungsZahl } from './BestaetigungsStand';
 
-/** Rückfrage vor einer Änderung, die gemeinsame Texte bzw. Bestätigungen der Mitarbeiter berührt. */
-type Rueckfrage =
-  | { art: 'raster'; projekt: Projekt; raster: Raster }
-  | { art: 'regel'; projekt: Projekt; regel: Zeitraumregel; hinweis: string };
+/** Rückfrage vor einem Rasterwechsel, der gemeinsame Texte der Mitarbeiter berührt. */
+type Rueckfrage = { projekt: Projekt; raster: Raster };
 
 export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
   const { data, updateProjekt } = useStore();
@@ -90,13 +86,16 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
     data.projekte.map((p) => {
       const n = aktuellerNachweis(data, p.id);
       const offen = offeneNachweise(data, p.id);
+      const leistungen = n ? leistungenDesNachweises(data, n) : [];
       return [
         p.id,
         {
           nachweis: n,
           weitereOffene: n && n.status === 'entwurf' ? offen.length - 1 : offen.length,
           faellig: !!n && nachweisFaellig(data, n, heute),
-          stunden: n ? stundenVon(leistungenDesNachweises(data, n)) : 0,
+          // Im Hinweis „Fällig“ der Monat, seit dem Leistungen offen sind (ohne nachgereichte)
+          seit: n ? offenSeit(data, n) : null,
+          stunden: stundenVon(leistungen),
           zahl: n ? bestaetigungsZahl(data, n) : null,
         },
       ];
@@ -105,52 +104,19 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
   const faellige = [...stand.values()].filter((s) => s.faellig).length;
   const fehlend = [...stand.values()].reduce((summe, s) => summe + (s.zahl ? s.zahl.gesamt - s.zahl.bestaetigt : 0), 0);
 
-  /* Rhythmus und Raster aus der Tabelle */
+  /* Raster aus der Tabelle */
   const rasterWaehlen = (p: Projekt, raster: Raster) => {
     if (raster === p.raster) return;
-    if (periodentexteNachRasterwechsel(data, p.id, raster) > 0) setRueckfrage({ art: 'raster', projekt: p, raster });
+    if (periodentexteNachRasterwechsel(data, p.id, raster) > 0) setRueckfrage({ projekt: p, raster });
     else {
       updateProjekt(p.id, { raster });
       toast(`${projektTitel(p)}: ${RASTER_LABEL[raster]}.`);
     }
   };
-  const regelWaehlen = (p: Projekt, regel: Zeitraumregel) => {
-    if (regel === p.zeitraumregel) return;
-    // Was sich an den offenen Nachweisen und an den Grenzen der Zeiträume ändert, nennt die Rückfrage – wie der Store es rechnet
-    const danach = regelAnwenden(data, p.id, regel, new Date().toISOString(), () => `vorschau-${Math.random()}`);
-    const zeitraeume = (d: typeof data) =>
-      offeneNachweise(d, p.id)
-        .map((n) => `${langDatum(n.von)} – ${langDatum(n.bis)}`)
-        .join(', ');
-    const vorher = zeitraeume(data);
-    const nachher = zeitraeume(danach);
-    const hinweis = [
-      vorher !== nachher
-        ? `Offene Leistungsnachweise bisher: ${vorher || 'keine'}; danach: ${nachher || 'keine'}${
-            offeneNachweise(danach, p.id).length < offeneNachweise(data, p.id).length
-              ? ' – offene Nachweise im selben Zeitraum werden zusammengelegt, mit ihren Texten, Aufschlägen und Bemerkungen'
-              : ''
-          }.`
-        : '',
-      grenzFolgenHinweis(grenzFolgen(data, danach), data.mitarbeiter) ?? '',
-    ]
-      .filter(Boolean)
-      .join(' ');
-    if (hinweis) setRueckfrage({ art: 'regel', projekt: p, regel, hinweis });
-    else {
-      updateProjekt(p.id, { zeitraumregel: regel });
-      toast(`${projektTitel(p)}: ${ZEITRAUMREGEL_LABEL[regel]}.`);
-    }
-  };
   const bestaetigen = () => {
     if (!rueckfrage) return;
-    if (rueckfrage.art === 'raster') {
-      updateProjekt(rueckfrage.projekt.id, { raster: rueckfrage.raster });
-      toast(`${projektTitel(rueckfrage.projekt)}: ${RASTER_LABEL[rueckfrage.raster]}.`);
-    } else {
-      updateProjekt(rueckfrage.projekt.id, { zeitraumregel: rueckfrage.regel });
-      toast(`${projektTitel(rueckfrage.projekt)}: ${ZEITRAUMREGEL_LABEL[rueckfrage.regel]}.`);
-    }
+    updateProjekt(rueckfrage.projekt.id, { raster: rueckfrage.raster });
+    toast(`${projektTitel(rueckfrage.projekt)}: ${RASTER_LABEL[rueckfrage.raster]}.`);
     setRueckfrage(null);
   };
 
@@ -178,7 +144,7 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
       <Card>
         <CardHeader
           titel="Projekte"
-          sub={`${anzahl(projekte.length, 'Projekt', 'Projekte')} · Rhythmus und Raster legen fest, über welche Zeit ein Leistungsnachweis geht und wie er gegliedert ist`}
+          sub={`${anzahl(projekte.length, 'Projekt', 'Projekte')} · Erfasste Leistungen sammeln sich im offenen Leistungsnachweis, bis das Controlling ihn erstellt; das Raster gliedert ihn`}
           actions={
             <span className="row wrap ln-co-summen">
               <Badge ton={faellige ? 'orange' : ''}>{anzahl(faellige, 'Nachweis fällig', 'Nachweise fällig')}</Badge>
@@ -200,7 +166,6 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
               <thead>
                 <tr>
                   <th>Projekt</th>
-                  <th title="Über welche Monate ein Leistungsnachweis geht">Rhythmus</th>
                   <th title="Zeilen je Tag, Woche oder Monat – gliedert auch die Leistungstexte der Mitarbeiter">Raster</th>
                   <th>Aktueller Leistungsnachweis</th>
                   <th className="ln-stunden">Stunden</th>
@@ -223,21 +188,7 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
                           {archiviert.has(p.id) ? <Badge>Archiviert</Badge> : null}
                         </span>
                       </td>
-                      {/* Auswahlen in der Zeile – ein Klick darauf öffnet nicht das Projekt */}
-                      <td data-label="Rhythmus" className="ln-co-auswahl" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          className="select"
-                          value={p.zeitraumregel}
-                          aria-label={`Rhythmus der Leistungsnachweise von ${projektTitel(p)}`}
-                          onChange={(e) => regelWaehlen(p, e.target.value as Zeitraumregel)}
-                        >
-                          {REGEL_OPTIONEN.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                      {/* Auswahl in der Zeile – ein Klick darauf öffnet nicht das Projekt */}
                       <td data-label="Raster" className="ln-co-auswahl" onClick={(e) => e.stopPropagation()}>
                         <select
                           className="select"
@@ -253,7 +204,7 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
                         </select>
                       </td>
                       <td data-label="Aktueller Leistungsnachweis">
-                        <NachweisStand nachweis={s.nachweis} faellig={s.faellig} weitere={s.weitereOffene} heute={heute} />
+                        <NachweisStand nachweis={s.nachweis} faellig={s.faellig} seit={s.seit} weitere={s.weitereOffene} />
                       </td>
                       <td className="ln-stunden" data-label="Stunden">
                         {s.nachweis ? stundenText(s.stunden) : '–'}
@@ -286,12 +237,8 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
       {importOffen ? <ImportDialog onClose={() => setImportOffen(false)} navigate={navigate} /> : null}
       {rueckfrage ? (
         <Modal
-          titel={rueckfrage.art === 'raster' ? 'Raster ändern?' : 'Rhythmus ändern?'}
-          sub={
-            rueckfrage.art === 'raster'
-              ? `${projektTitel(rueckfrage.projekt)}: ${RASTER_LABEL[rueckfrage.projekt.raster]} → ${RASTER_LABEL[rueckfrage.raster]}`
-              : `${projektTitel(rueckfrage.projekt)}: ${ZEITRAUMREGEL_LABEL[rueckfrage.projekt.zeitraumregel]} → ${ZEITRAUMREGEL_LABEL[rueckfrage.regel]}`
-          }
+          titel="Raster ändern?"
+          sub={`${projektTitel(rueckfrage.projekt)}: ${RASTER_LABEL[rueckfrage.projekt.raster]} → ${RASTER_LABEL[rueckfrage.raster]}`}
           onClose={() => setRueckfrage(null)}
           footer={
             <>
@@ -299,18 +246,12 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
                 Abbrechen
               </button>
               <button type="button" className="btn btn-primary" onClick={bestaetigen}>
-                {rueckfrage.art === 'raster' ? 'Raster ändern' : 'Rhythmus ändern'}
+                Raster ändern
               </button>
             </>
           }
         >
-          {rueckfrage.art === 'raster' ? (
-            <RasterwechselHinweis projekt={rueckfrage.projekt} raster={rueckfrage.raster} />
-          ) : (
-            <p className="muted">
-              Die offenen Leistungsnachweise richten sich nach dem neuen Rhythmus (gezählt ab Projektbeginn). {rueckfrage.hinweis}
-            </p>
-          )}
+          <RasterwechselHinweis projekt={rueckfrage.projekt} raster={rueckfrage.raster} />
         </Modal>
       ) : null}
     </div>
@@ -321,19 +262,16 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
 function NachweisStand({
   nachweis: n,
   faellig,
+  seit,
   weitere,
-  heute,
 }: {
   nachweis: Leistungsnachweis | null;
   faellig: boolean;
+  /** Datum der ältesten offenen Leistung (`offenSeit`) */
+  seit: string | null;
   weitere: number;
-  heute: string;
 }) {
-  const { data } = useStore();
   if (!n) return <span className="tertiary">Noch keiner</span>;
-  // Bis zum Abschluss läuft er nach der Regel „Bis zum Abschluss“, sonst bis zum Ende seines Zeitraums
-  const bisAbschluss =
-    laeuftBisAbschluss(data, n, heute) && data.projekte.find((p) => p.id === n.projektId)?.zeitraumregel === 'fortlaufend';
   return (
     <span className="ln-co-nachweisstand">
       <span>{nachweisTitel(n)}</span>
@@ -341,9 +279,12 @@ function NachweisStand({
         {n.status === 'abgeschlossen' ? (
           <Badge ton="green">Abgeschlossen</Badge>
         ) : faellig ? (
-          <Badge ton="orange">Fällig</Badge>
+          <>
+            <Badge ton="orange">Fällig</Badge>
+            {seit ? <span className="small muted">Leistungen seit {monatText(seit)} offen</span> : null}
+          </>
         ) : (
-          <Badge ton="blue">{bisAbschluss ? 'Läuft bis zum Abschluss' : `Läuft bis ${langDatum(n.bis)}`}</Badge>
+          <Badge ton="blue">Offen</Badge>
         )}
         {weitere > 0 ? <span className="small tertiary">+ {anzahl(weitere, 'weiterer offen', 'weitere offen')}</span> : null}
       </span>

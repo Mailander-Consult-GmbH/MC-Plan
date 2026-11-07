@@ -2,11 +2,12 @@
  * Einstieg für den Controlling-Bereich von KaPlan: die Controlling-Ansichten
  * der Leistungsnachweise – zwei Seiten, je Menüpunkt des Controlling-Bereichs:
  * „Leistungsnachweise“ zeigt die Übersicht der Projekte
- * (pages/controlling/ProjektListe.tsx: Rhythmus und Raster wählen, aktueller
+ * (pages/controlling/ProjektListe.tsx: Raster wählen, aktueller
  * Leistungsnachweis mit Stand, Stunden und Bestätigungen; Sammel-Import aus
  * Excel, Neues Projekt), ein Projekt seine Seite (pages/controlling/Projekt.tsx)
  * mit dem Leistungsnachweis (Abrechnung.tsx: Mitarbeiter und Bestätigungen,
- * Texte, Aufschläge, Leistungsnachweis erstellen, Druck und Export);
+ * Texte, Aufschläge je Zeile und auf den ganzen Nachweis, Leistungsnachweis
+ * erstellen mit „Leistungen bis einschließlich“, Druck und Export);
  * „Auswertung“ die Stunden je Mitarbeiter, Monat und Projekt
  * (pages/controlling/Auswertung.tsx). Eine eigene Seite für Mitarbeiter gibt es
  * nicht: Wer unter „Angemeldet als“ steht, wird im Bereich als Mitarbeiter
@@ -40,7 +41,7 @@ import './pages/controlling/controlling.css';
 export const LEISTUNGSNACHWEISE_CONTROLLING = CONTROLLING_PREFIX;
 
 const UNTERTITEL: Record<ControllingTab, string> = {
-  projekte: 'Projekte – Rhythmus, Raster, Stand der Leistungsnachweise und Bestätigungen',
+  projekte: 'Projekte – Raster, Stand der Leistungsnachweise und Bestätigungen',
   auswertung: 'Leistungsnachweise – Stunden je Mitarbeiter, Monat und Projekt',
 };
 
