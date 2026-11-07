@@ -114,6 +114,9 @@
 .ln-me-text .textarea.ln-textfeld { min-height: 64px; }
 .ln-me-stand { min-height: 18px; }
 .ln-me-ungespeichert { color: var(--accent); }
+/* Eingabe, die sich nicht speichern ließ – bleibt sichtbar, bis sie verworfen wird */
+.ln-me-nicht-gespeichert { gap: 6px; }
+.ln-me-nicht-gespeichert-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .ln-me-pflicht { color: var(--orange-text); }
 .ln-me-ohne { padding: 6px 0; }
 .ln-me-aktion { display: flex; flex-wrap: wrap; gap: 8px; }

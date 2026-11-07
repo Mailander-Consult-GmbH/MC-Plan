@@ -14,6 +14,17 @@
  * oder der Monat wechselt (etwa mit „Zurück“ im Browser); Gespeichertes ist
  * danach kein Entwurf mehr – zurück im Fenster zeigt das Feld den aktuellen
  * gemeinsamen Text, auch den eines anderen Fensters.
+ *
+ * Jeder Entwurf merkt sich den gespeicherten Text, von dem er ausging
+ * (`Entwurf.basis`). Hat inzwischen jemand anderes – etwa in einem anderen
+ * Fenster – den Text gespeichert, überschreibt ihn der Entwurf nicht still:
+ * Das Feld sagt es an, und gespeichert wird die Zusammenführung beider
+ * Fassungen (`texteZusammenfuehren`) mit einer Kurzmeldung. Entfällt der
+ * Zeitraum eines Entwurfs (geänderte Grenzen der Nachweise), zieht der Entwurf
+ * in den Zeitraum um, der seinen Beginn jetzt enthält; gibt es keinen (keine
+ * eigenen Leistungen mehr, inzwischen abgerechnet) oder scheitert das
+ * Speichern sonst, steht die Eingabe als „Nicht gespeichert“ über den
+ * Zeiträumen, statt still zu verschwinden.
  * „Stichpunkte übernehmen“ setzt in einen leeren Text
  * die eigenen Stichpunkte ein (`automatikText`), „Neue Stichpunkte ergänzen“
  * hängt eigene an, die noch nicht im Text stehen (`textErgaenzen`); „Als
@@ -23,10 +34,12 @@
  * Stichpunkte, Stunden und Leistungen der anderen zeigt die Seite nicht – auch
  * nicht als Zahl (`stichpunkteDerPeriode`, domain/rechte.ts); gemeinsam ist
  * allein der Text. Umfasst ein abgeschlossener Nachweis die Periode, ist der
- * Text nur zu lesen (`gesperrtHinweis`); danach erfasste eigene Leistungen
- * nennt ein Hinweis (`nachAbschlussHinweis`). Endet ein Leistungsnachweis
- * mitten in einer Periode (etwa beim Abschluss), steht der Rest als eigener
- * Zeitraum darunter.
+ * Text nur zu lesen (`gesperrtHinweis`); danach erfasste bzw. geänderte eigene
+ * Leistungen nennt ein Hinweis (`nachAbschlussHinweis`), ebenso abgerechnete
+ * Leistungen, deren Datum danach aus ihrem Nachweis herausgelegt wurde
+ * (`anderswoAbgerechnetHinweis` – sie zählen zu keinem Zeitraum). Endet ein
+ * Leistungsnachweis mitten in einer Periode (etwa beim Abschluss), steht der
+ * Rest als eigener Zeitraum darunter.
  *
  * Unten bestätigt die Person den Monat (`monatBestaetigen`) – erst, wenn jede
  * nicht gesperrte Periode einen Text hat; bis dahin nennt die Karte die
@@ -49,6 +62,7 @@ import { LeistungDialog } from '../../components/LeistungDialog';
 import { Textfeld } from '../../components/Textfeld';
 import { anzahl, zeitpunkt } from '../../components/common';
 import {
+  anderswoAbgerechnetHinweis,
   bestaetigungsSatz,
   gesperrtHinweis,
   monatName,
@@ -61,13 +75,43 @@ import {
   type ErfassungsPeriode,
   type MonatsStatusArt,
 } from '../../domain/erfassung';
-import { automatikText, textErgaenzen } from '../../domain/nachweis';
+import { automatikText, textErgaenzen, texteZusammenfuehren } from '../../domain/nachweis';
 import { angemeldet, darfPeriodentextBearbeiten, stichpunkteDerPeriode } from '../../domain/rechte';
 import { RASTER_LABEL, type Leistung, type Projekt } from '../../domain/types';
-import { kurzDatum, stundenText } from '../../domain/zeitraum';
+import { erfassungsPeriodeAusSchluessel, kurzDatum, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import '../../components/erfassung.css';
+
+/** Ungespeicherte Eingabe in einem Zeitraum. */
+interface Entwurf {
+  text: string;
+  /** Der gespeicherte gemeinsame Text, als die Eingabe begann – weicht der heutige ab, hat ihn inzwischen jemand geändert. */
+  basis: string;
+  /** Zeitraum für Meldungen, etwa „KW 48 · 23.11.26 - 27.11.26“. */
+  zeitraum: string;
+}
+
+/** Eine Eingabe, die sich nicht speichern ließ – sie steht über den Zeiträumen, bis sie verworfen wird. */
+interface NichtGespeichert {
+  zeitraum: string;
+  text: string;
+  grund: string;
+}
+
+/**
+ * Was beim Speichern eines Entwurfs geschrieben wird: der Entwurf – oder, hat
+ * inzwischen jemand anderes den Text gespeichert (`basis` weicht ab), beide
+ * Fassungen zusammengeführt (`zusammengefuehrt`), damit keine verloren geht.
+ */
+function zuSpeichern(e: Entwurf, gespeichert: string): { text: string; zusammengefuehrt: boolean } {
+  if (gespeichert.trim() === e.basis.trim()) return { text: e.text, zusammengefuehrt: false };
+  return { text: texteZusammenfuehren([gespeichert, e.text]), zusammengefuehrt: true };
+}
+
+/** Kurzmeldung nach dem Zusammenführen mit einer inzwischen gespeicherten Fassung. */
+const zusammengefuehrtMeldung = (zeitraum: string, von: string) =>
+  `Den Leistungstext für ${zeitraum} hat inzwischen ${von || 'jemand anderes'} geändert – Ihre Eingabe ist mit dieser Fassung zusammengeführt. Bitte prüfen.`;
 
 /** Kennzeichen des Monatsstands in der Statuszeile. */
 const STATUS_ICON: Record<MonatsStatusArt, IconName> = {
@@ -84,8 +128,13 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
   const mitAnmeldung = useMitAnmeldung();
   const praefix = useId();
   const ich = angemeldet(data);
+  const s = ich ? monatsStatus(data, projekt.id, ich.id, monat) : null;
   // Ungespeicherte Eingaben je Periode (Schlüssel) – gespeichert beim Verlassen des Felds
-  const [entwuerfe, setEntwuerfe] = useState<Record<string, string>>({});
+  const [entwuerfe, setEntwuerfe] = useState<Record<string, Entwurf>>({});
+  // Eingaben, die sich nicht speichern ließen – sie bleiben sichtbar, statt still zu verschwinden
+  const [nichtGespeichert, setNichtGespeichert] = useState<NichtGespeichert[]>([]);
+  // Zog ein Entwurf samt Fokus in einen anderen Zeitraum um, geht der Fokus in dessen Feld
+  const [fokusZeitraum, setFokusZeitraum] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Leistung | null>(null);
   const [importOffen, setImportOffen] = useState(false);
   // Nach Bestätigen bzw. Zurücknehmen bleibt der Fokus beim Gegenstück des Knopfs
@@ -101,21 +150,34 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
 
   // Offene Eingaben speichern, auch ohne dass jemand das Feld verlässt: beim Verlassen der Seite (andere
   // Ansicht, neu laden, schließen), wenn sie verdeckt wird und beim Wechsel des Monats
-  const offen = useRef({ entwuerfe, speichern: periodentextSetzen, projektId: projekt.id });
-  offen.current = { entwuerfe, speichern: periodentextSetzen, projektId: projekt.id };
-  const alleSpeichern = useCallback(() => {
-    const { entwuerfe: rest, speichern, projektId } = offen.current;
-    const gespeichert = Object.entries(rest)
-      .filter(([schluessel, text]) => speichern(projektId, schluessel, text, { neueStichpunkteOffenLassen: true }) === null)
-      .map(([schluessel]) => schluessel);
-    if (gespeichert.length === 0) return;
-    // Gespeichertes ist kein Entwurf mehr: Nach der Rückkehr zeigt das Feld den aktuellen gemeinsamen Text – auch
-    // den eines anderen Fensters –, und ein bloßes Verlassen des Felds schreibt den alten Stand nicht noch einmal
-    setEntwuerfe((alt) => {
-      const neu = { ...alt };
-      for (const k of gespeichert) if (neu[k] === rest[k]) delete neu[k];
-      return neu;
-    });
+  const offen = useRef({ entwuerfe, speichern: periodentextSetzen, projektId: projekt.id, data, toast });
+  offen.current = { entwuerfe, speichern: periodentextSetzen, projektId: projekt.id, data, toast };
+  /** Speichert alle Entwürfe; liefert die, die sich nicht speichern ließen (sie bleiben Entwurf). */
+  const alleSpeichern = useCallback((): NichtGespeichert[] => {
+    const { entwuerfe: rest, speichern, projektId, data: stand, toast: melden } = offen.current;
+    const erledigt: string[] = [];
+    const fehlgeschlagen: NichtGespeichert[] = [];
+    for (const [schluessel, e] of Object.entries(rest)) {
+      const gespeichert = stand.periodentexte.find((t) => t.projektId === projektId && t.schluessel === schluessel);
+      const { text, zusammengefuehrt } = zuSpeichern(e, gespeichert?.text ?? '');
+      const meldung = text.trim() === (gespeichert?.text ?? '') ? null : speichern(projektId, schluessel, text, { neueStichpunkteOffenLassen: true });
+      if (meldung) {
+        fehlgeschlagen.push({ zeitraum: e.zeitraum, text: e.text, grund: meldung });
+        continue;
+      }
+      erledigt.push(schluessel);
+      if (zusammengefuehrt) melden(zusammengefuehrtMeldung(e.zeitraum, gespeichert?.bearbeiter ?? ''));
+    }
+    if (erledigt.length > 0) {
+      // Gespeichertes ist kein Entwurf mehr: Nach der Rückkehr zeigt das Feld den aktuellen gemeinsamen Text – auch
+      // den eines anderen Fensters –, und ein bloßes Verlassen des Felds schreibt den alten Stand nicht noch einmal
+      setEntwuerfe((alt) => {
+        const neu = { ...alt };
+        for (const k of erledigt) if (neu[k] === rest[k]) delete neu[k];
+        return neu;
+      });
+    }
+    return fehlgeschlagen;
   }, []);
   useEffect(() => {
     // Beim Entladen läuft kein späterer Durchlauf mehr: synchron rechnen und speichern (Speicher-Effekt des Stores)
@@ -128,7 +190,8 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
     return () => {
       window.removeEventListener('pagehide', sofort);
       document.removeEventListener('visibilitychange', beiVerdecken);
-      alleSpeichern();
+      // Die Seite verschwindet: Was sich nicht speichern ließ, nennt eine Kurzmeldung
+      for (const f of alleSpeichern()) offen.current.toast(`Nicht gespeichert (${f.zeitraum}): ${f.grund} Ihre Eingabe: „${f.text}“`);
     };
   }, [alleSpeichern]);
   // Anderer Monat (‹ ›, „Zurück“ im Browser): Die Felder des bisherigen verschwinden ohne Verlassen
@@ -136,9 +199,55 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
   useEffect(() => {
     if (gezeigterMonat.current === monat) return;
     gezeigterMonat.current = monat;
-    alleSpeichern();
+    const fehlgeschlagen = alleSpeichern();
     setEntwuerfe({});
+    if (fehlgeschlagen.length) setNichtGespeichert((alt) => [...alt, ...fehlgeschlagen]);
   }, [monat, alleSpeichern]);
+  // Entfällt der Zeitraum eines Entwurfs (ein anderes Fenster hat die Grenzen der Nachweise geändert, Leistungen
+  // gelöscht oder abgeschlossen), zieht er in den Zeitraum, der seinen Beginn jetzt enthält – sonst bleibt er sichtbar
+  useEffect(() => {
+    if (!s) return;
+    const offenePerioden = s.perioden.filter((p) => !p.gesperrt);
+    const bekannt = new Set(offenePerioden.map((p) => p.schluessel));
+    // Entwürfe eines anderen Monats räumt der Monatswechsel oben ab
+    const verwaist = Object.keys(entwuerfe).filter((k) => k.slice(0, 7) === monat && !bekannt.has(k));
+    if (verwaist.length === 0) return;
+    const neu = { ...entwuerfe };
+    const weg: NichtGespeichert[] = [];
+    // Mit dem Abschnitt des Entwurfs verschwand sein Feld – hatte es den Fokus, folgt er dem Entwurf
+    const fokusVerloren = document.activeElement === document.body || document.activeElement === null;
+    for (const k of verwaist) {
+      const e = neu[k];
+      delete neu[k];
+      const beginn = erfassungsPeriodeAusSchluessel(k)?.von;
+      const ziel = beginn ? offenePerioden.find((p) => p.von <= beginn && beginn <= p.bis) : undefined;
+      if (ziel) {
+        const gespeichert = ziel.text?.text ?? '';
+        const dort = neu[ziel.schluessel];
+        neu[ziel.schluessel] = {
+          text: texteZusammenfuehren([dort?.text ?? gespeichert, e.text]),
+          basis: dort?.basis ?? gespeichert,
+          zeitraum: periodeKurztext(ziel),
+        };
+        if (fokusVerloren) setFokusZeitraum(ziel.schluessel);
+      } else {
+        const gesperrt = s.perioden.find((p) => p.schluessel === k && p.gesperrt);
+        weg.push({
+          zeitraum: e.zeitraum,
+          text: e.text,
+          grund: gesperrt ? gesperrtHinweis(gesperrt) : 'In diesem Zeitraum haben Sie keine eigenen Leistungen mehr.',
+        });
+      }
+    }
+    setEntwuerfe(neu);
+    if (weg.length) setNichtGespeichert((alt) => [...alt, ...weg]);
+  }, [entwuerfe, s, monat]);
+  useEffect(() => {
+    if (!fokusZeitraum || !s) return;
+    const index = s.perioden.findIndex((p) => p.schluessel === fokusZeitraum);
+    if (index >= 0) document.getElementById(`${praefix}-text-${index}`)?.focus();
+    setFokusZeitraum(null);
+  }, [fokusZeitraum, s, praefix]);
 
   // Ein zweiter Klick kurz nach Bestätigen bzw. Zurücknehmen (Doppelklick, doppeltes Tippen) zählt nicht
   const umgeschaltet = useRef(0);
@@ -151,7 +260,7 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
   const zuMonat = (m: string) => navigate({ view: 'projekt', projektId: projekt.id, monat: m });
   const textfeldId = (i: number) => `${praefix}-text-${i}`;
 
-  if (!ich) {
+  if (!ich || !s) {
     return (
       <Card>
         <EmptyState
@@ -163,17 +272,21 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
     );
   }
 
-  const s = monatsStatus(data, projekt.id, ich.id, monat);
   const laufend = monat === today().slice(0, 7);
   const weitereOffene = offeneBestaetigungen(data, ich.id).filter((o) => o.projektId === projekt.id && o.monat !== monat);
   const abschnitte = new Map(projekt.abschnitte.map((a) => [a.id, a]));
 
   // Wie der Text gerade dasteht – mit der ungespeicherten Eingabe
-  const aktuellerText = (p: ErfassungsPeriode) => entwuerfe[p.schluessel] ?? p.text?.text ?? '';
+  const aktuellerText = (p: ErfassungsPeriode) => entwuerfe[p.schluessel]?.text ?? p.text?.text ?? '';
   const fehlend = s.perioden.filter((p) => !p.gesperrt && !aktuellerText(p).trim());
   const bestaetigbar = (s.status === 'offen' || s.status === 'geaendert') && fehlend.length === 0;
 
-  const entwurfSetzen = (schluessel: string, text: string) => setEntwuerfe((alt) => ({ ...alt, [schluessel]: text }));
+  // Die erste Eingabe merkt sich den gespeicherten Text, von dem sie ausgeht
+  const entwurfSetzen = (p: ErfassungsPeriode, text: string) =>
+    setEntwuerfe((alt) => ({
+      ...alt,
+      [p.schluessel]: { text, basis: alt[p.schluessel]?.basis ?? p.text?.text ?? '', zeitraum: periodeKurztext(p) },
+    }));
   const entwurfVerwerfen = (schluessel: string) =>
     setEntwuerfe((alt) => {
       if (!(schluessel in alt)) return alt;
@@ -181,27 +294,42 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
       return rest;
     });
 
-  /** Speichert die Eingabe beim Verlassen des Felds; die gemerkten Stichpunkte bleiben (Hinweis auf neue bleibt). */
+  /**
+   * Speichert die Eingabe beim Verlassen des Felds; die gemerkten Stichpunkte bleiben (Hinweis auf neue bleibt).
+   * Hat inzwischen jemand anderes gespeichert, werden beide Fassungen zusammengeführt (`zuSpeichern`); scheitert
+   * das Speichern, bleibt die Eingabe ein Entwurf.
+   */
   const speichern = (p: ErfassungsPeriode) => {
     const entwurf = entwuerfe[p.schluessel];
     if (entwurf === undefined) return;
-    entwurfVerwerfen(p.schluessel);
-    if (entwurf.trim() === (p.text?.text ?? '')) return;
+    const gespeichert = p.text?.text ?? '';
+    if (entwurf.text.trim() === gespeichert) {
+      entwurfVerwerfen(p.schluessel);
+      return;
+    }
     mitAnmeldung(() => {
-      const meldung = periodentextSetzen(projekt.id, p.schluessel, entwurf, { neueStichpunkteOffenLassen: true });
-      if (meldung) toast(meldung);
+      const { text, zusammengefuehrt } = zuSpeichern(entwurf, gespeichert);
+      if (text.trim() !== gespeichert) {
+        const meldung = periodentextSetzen(projekt.id, p.schluessel, text, { neueStichpunkteOffenLassen: true });
+        if (meldung) {
+          toast(meldung);
+          return;
+        }
+      }
+      entwurfVerwerfen(p.schluessel);
+      if (zusammengefuehrt) toast(zusammengefuehrtMeldung(entwurf.zeitraum, p.text?.bearbeiter ?? ''));
     });
   };
 
   /** Setzt einen neuen Text sofort (Stichpunkte übernehmen bzw. ergänzen) und führt zurück ins Feld. */
   const setzen = (p: ErfassungsPeriode, index: number, text: string, erledigt: string) =>
     mitAnmeldung(() => {
-      entwurfVerwerfen(p.schluessel);
       const meldung = periodentextSetzen(projekt.id, p.schluessel, text);
       if (meldung) {
         toast(meldung);
         return;
       }
+      entwurfVerwerfen(p.schluessel);
       toast(erledigt);
       document.getElementById(textfeldId(index))?.focus();
     });
@@ -224,7 +352,8 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
       setFokusNach('bestaetigen');
     });
 
-  const nachAbschluss = nachAbschlussHinweis(s.nachAbschluss);
+  const nachAbschluss = nachAbschlussHinweis(s.nachAbschluss, s.nachAbschlussGeaendert);
+  const anderswo = anderswoAbgerechnetHinweis(s.anderswoAbgerechnet);
 
   return (
     <div className="stack ln-me">
@@ -302,11 +431,33 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
         ) : null}
       </div>
 
+      {nichtGespeichert.map((f, i) => (
+        <Callout key={`${f.zeitraum}-${i}`} ton="warn" icon="!">
+          <div className="stack ln-me-nicht-gespeichert">
+            <span>
+              <strong>Nicht gespeichert ({f.zeitraum}):</strong> {f.grund} Ihre Eingabe:
+            </span>
+            <span className="ln-me-nicht-gespeichert-text">„{f.text}“</span>
+            <div>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={() => setNichtGespeichert((alt) => alt.filter((x) => x !== f))}
+              >
+                Verwerfen
+              </button>
+            </div>
+          </div>
+        </Callout>
+      ))}
+
       {nachAbschluss ? (
         <Callout ton="warn" icon="!">
           {nachAbschluss}
         </Callout>
       ) : null}
+
+      {anderswo ? <Callout icon="i">{anderswo}</Callout> : null}
 
       {s.status === 'keine' ? (
         <Card>
@@ -336,9 +487,13 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
             const { eigene } = stichpunkteDerPeriode(data, p, zugang);
             const bearbeitbar = darfPeriodentextBearbeiten(data, p, zugang);
             const text = aktuellerText(p);
-            const ungespeichert = p.schluessel in entwuerfe && entwuerfe[p.schluessel].trim() !== (p.text?.text ?? '');
+            const entwurf = entwuerfe[p.schluessel];
+            const ungespeichert = !!entwurf && entwurf.text.trim() !== (p.text?.text ?? '');
+            // Inzwischen von jemand anderem gespeichert – beim Verlassen wird zusammengeführt
+            const inzwischen = ungespeichert && (p.text?.text ?? '') !== entwurf.basis.trim();
             const vorschlag = automatikText(eigene);
             const nachAbschlussIds = new Set(p.nachAbschluss.map((l) => l.id));
+            const geaendertIds = new Set(p.nachAbschlussGeaendert.map((l) => l.id));
             const titelId = `${praefix}-titel-${i}`;
             return (
               <section key={p.schluessel} className={`card ln-me-periode ${p.gesperrt ? 'ln-me-gesperrt' : ''}`} aria-labelledby={titelId}>
@@ -381,6 +536,7 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
                                 {a ? <span className="ln-me-punkt-abschnitt">{a.kurz}</span> : null}
                                 {l.text || <span className="tertiary">ohne Stichpunkt</span>}
                                 {nachAbschlussIds.has(l.id) ? <span className="ln-me-punkt-nach">nach dem Abschluss erfasst</span> : null}
+                                {geaendertIds.has(l.id) ? <span className="ln-me-punkt-nach">nach dem Abschluss geändert</span> : null}
                               </span>
                             </button>
                           </li>
@@ -415,7 +571,7 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
                         <Textfeld
                           id={textfeldId(i)}
                           value={text}
-                          onChange={(v) => entwurfSetzen(p.schluessel, v)}
+                          onChange={(v) => entwurfSetzen(p, v)}
                           onBlur={() => speichern(p)}
                           readOnly={!bearbeitbar}
                           aria-labelledby={`${praefix}-feld-${i} ${titelId}`}
@@ -423,7 +579,12 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
                           aria-describedby={`${praefix}-stand-${i}`}
                         />
                         <div id={`${praefix}-stand-${i}`} className="ln-me-stand small">
-                          {ungespeichert ? (
+                          {inzwischen ? (
+                            <span className="ln-me-ungespeichert">
+                              Inzwischen von {p.text?.bearbeiter || 'jemand anderem'} geändert – Ihre Eingabe wird beim Verlassen des
+                              Felds mit dieser Fassung zusammengeführt.
+                            </span>
+                          ) : ungespeichert ? (
                             <span className="ln-me-ungespeichert">Wird beim Verlassen des Felds gespeichert.</span>
                           ) : p.text ? (
                             <span className="tertiary">
@@ -482,8 +643,8 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
               <h3 className="ln-me-bestaetigen-titel">Monat bestätigen</h3>
               {s.status === 'abgerechnet' ? (
                 <p className="small muted">
-                  {s.nachAbschluss.length > 0
-                    ? `Alle Zeiträume in ${monatName(monat)} sind abgerechnet – eine Bestätigung ist nicht mehr nötig; über danach erfasste Leistungen entscheidet das Controlling.`
+                  {s.nachAbschluss.length > 0 || s.nachAbschlussGeaendert.length > 0
+                    ? `Alle Zeiträume in ${monatName(monat)} sind abgerechnet – eine Bestätigung ist nicht mehr nötig; über danach erfasste bzw. geänderte Leistungen entscheidet das Controlling.`
                     : `Alle Ihre Leistungen in ${monatName(monat)} sind bereits abgerechnet – eine Bestätigung ist nicht mehr nötig.`}
                 </p>
               ) : (

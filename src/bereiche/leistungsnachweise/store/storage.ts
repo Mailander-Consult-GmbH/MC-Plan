@@ -189,7 +189,9 @@ function texteAufbereiten(w: unknown): Record<string, ZeilenText> {
   const ergebnis: Record<string, ZeilenText> = {};
   for (const [schluessel, wert] of Object.entries(o)) {
     const t = objekt(wert);
-    if (t && typeof t.text === 'string') ergebnis[schluessel] = { text: t.text, leistungIds: ids(t.leistungIds) };
+    if (t && typeof t.text === 'string') {
+      ergebnis[schluessel] = { text: t.text, leistungIds: ids(t.leistungIds), ...(typeof t.ausgang === 'string' ? { ausgang: t.ausgang } : {}) };
+    }
   }
   return ergebnis;
 }
@@ -262,6 +264,7 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
           projektelement: text(l.projektelement),
           quelle: l.quelle === 'import' ? 'import' : 'manuell',
           erfasst: text(l.erfasst),
+          ...(text(l.geaendert) ? { geaendert: text(l.geaendert) } : {}),
         };
       }),
   );
@@ -323,7 +326,6 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
         mitarbeiterId: text(b.mitarbeiterId),
         monat: text(b.monat),
         am: text(b.am),
-        kennung: text(b.kennung),
         perioden: texteJeSchluessel(b.perioden),
       }),
     )

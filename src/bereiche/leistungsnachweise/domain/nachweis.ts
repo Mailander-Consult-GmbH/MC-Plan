@@ -788,14 +788,26 @@ export function neueLeistungenSeitText(
 
 /**
  * Text einer Zeile setzen – mit den Leistungs-IDs der Zeile, damit später
- * hinzukommende Leistungen erkannt werden; null = wieder automatisch. Rein;
- * so arbeitet `zeilenTextSetzen` im Store.
+ * hinzukommende Leistungen erkannt werden, und dem Text der Mitarbeiter, an dem
+ * sich die Bearbeitung ausrichtet (`ausgang`, `ZeilenText.ausgang`); null =
+ * wieder automatisch. Rein; so arbeitet `zeilenTextSetzen` im Store.
  */
-export function mitZeilenText(n: Leistungsnachweis, zeile: NachweisZeile, text: string | null): Leistungsnachweis {
+export function mitZeilenText(n: Leistungsnachweis, zeile: NachweisZeile, text: string | null, ausgang?: string): Leistungsnachweis {
   const texte = { ...n.texte };
   if (text === null) delete texte[zeile.schluessel];
-  else texte[zeile.schluessel] = { text, leistungIds: [...zeile.leistungIds] };
+  else texte[zeile.schluessel] = { text, leistungIds: [...zeile.leistungIds], ...(ausgang !== undefined ? { ausgang } : {}) };
   return { ...n, texte };
+}
+
+/**
+ * Text, den die Zeile ohne ihre Bearbeitung von Hand hätte – aus den
+ * gemeinsamen Texten der Mitarbeiter bzw. automatisch (`nachweisZeilen`);
+ * undefined, wenn es die Zeile nicht gibt.
+ */
+export function zeilenTextOhneBearbeitung(daten: LeistungsnachweisDaten, n: Leistungsnachweis, schluessel: string): string | undefined {
+  const texte = { ...n.texte };
+  delete texte[schluessel];
+  return nachweisZeilen(daten, { ...n, texte }).find((z) => z.schluessel === schluessel)?.text;
 }
 
 /** Summe der Stunden. */

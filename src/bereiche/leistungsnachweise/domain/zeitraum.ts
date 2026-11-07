@@ -1,8 +1,12 @@
 /**
  * Zeiträume der Leistungsnachweise: Tage, ISO-Kalenderwochen und Monate als
  * Perioden, ihre Texte in der Spalte „Datum“ und in Überschriften sowie das
- * Stundenformat. Alles rein und ohne Zeitzonenbezug – gerechnet wird auf
- * ISO-Daten (JJJJ-MM-TT) mit den Datumshilfen aus `src/shared/dates.ts`.
+ * Stundenformat. Dazu die Erfassungsperioden der gemeinsamen Leistungstexte
+ * (`erfassungsPeriode`): die Periode im Raster, auf den Kalendermonat gekürzt
+ * und an Schnitten – den Grenzen der Nachweise – geteilt, und ihr Schlüssel
+ * (`erfassungsPeriodeAusSchluessel`). Alles rein und ohne Zeitzonenbezug –
+ * gerechnet wird auf ISO-Daten (JJJJ-MM-TT) mit den Datumshilfen aus
+ * `src/shared/dates.ts`.
  */
 import { addDays, diffDays, parseISO, wochentag } from '../../../shared/dates';
 import type { ISODate, Raster } from './types';
@@ -136,9 +140,11 @@ export function istMonat(w: unknown): w is string {
  *
  * `schnitte` sind Tage, an denen zusätzlich ein neuer Teil beginnt – Beginn
  * und Tag nach dem Ende jedes Nachweises (`erfassungsGliederung` in
- * domain/nachweis.ts): Liegt eine Periode in zwei Nachweisen (etwa nach einem
- * Abschluss mitten darin), bekommt jeder Teil einen eigenen Text, statt den
- * schon abgerechneten zu erben. Der erste Teil behält den Schlüssel, jeder
+ * domain/nachweis.ts): Liegt eine Grenze eines Nachweises in der Periode –
+ * etwa nach einem Abschluss oder einem festgelegten Ende mitten darin, auch
+ * wenn danach (noch) kein Nachweis beginnt –, bekommt jeder Teil einen eigenen
+ * Text, statt den schon abgerechneten zu erben; so liegt jeder Teil in
+ * höchstens einem Nachweis. Der erste Teil behält den Schlüssel, jeder
  * weitere hängt seinen Beginn an („2026-11|M2026-11|2026-11-06“).
  */
 export function erfassungsPeriode(datum: ISODate, raster: Raster, schnitte: readonly ISODate[] = []): Periode {

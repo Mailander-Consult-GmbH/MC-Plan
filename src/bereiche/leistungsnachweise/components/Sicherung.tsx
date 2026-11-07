@@ -3,6 +3,11 @@
  * einspielen. Die Sicherung trägt das Kennzeichen des Bereichs; Sicherungen
  * der anderen Bereiche werden abgewiesen (sicherungLesen in store/storage.ts).
  *
+ * Die Sicherung umfasst den gesamten Bestand samt den Leistungen aller
+ * Mitarbeiter – solange alles lokal im Browser liegt, die einzige Ausnahme von
+ * der Regel, dass im Bereich niemand Stichpunkte und Stunden der anderen
+ * sieht (domain/rechte.ts); „Einspielen“ ersetzt ihn ganz.
+ *
  * Nach einem Ladefehler oder bei einem Stand aus einer neueren Fassung zeigt
  * der Bereich nur Demodaten (`ladeZustand`): Dann sichert „Sicherung“ den
  * gespeicherten Stand unverändert, und über einen Stand aus einer neueren

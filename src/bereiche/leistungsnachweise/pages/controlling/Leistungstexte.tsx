@@ -12,9 +12,12 @@
  * gekennzeichnet, `textGemeinsam`), wo keiner steht bzw. keiner gilt (etwa in
  * Zeilen, die feiner gegliedert sind als das Projekt – ein Hinweis nennt das)
  * automatisch aus den Texten der Leistungen. Wer ihn hier bearbeitet, behält seinen Text: Kommen danach
- * Leistungen hinzu, nennt die Zeile sie und bietet „Ergänzen“ an –
- * überschrieben wird nie still. „Text der Mitarbeiter wiederherstellen“ bzw.
- * „Automatischen Text wiederherstellen“ verwirft die Bearbeitung.
+ * Leistungen hinzu, nennt die Zeile sie und bietet „Ergänzen“ an; ändert sich
+ * danach der Text der Mitarbeiter (die Zeile merkt sich, von welchem die
+ * Bearbeitung ausging, `ZeilenText.ausgang`), nennt sie den neuen und bietet
+ * „Text der Mitarbeiter übernehmen“ an – überschrieben wird nie still, „Text
+ * so lassen“ blendet den Hinweis aus. „Text der Mitarbeiter wiederherstellen“
+ * bzw. „Automatischen Text wiederherstellen“ verwirft die Bearbeitung.
  * Bearbeiten darf nur das Controlling, solange der Nachweis offen ist;
  * abgeschlossene Nachweise zeigen den festgeschriebenen Stand, nur zum Lesen.
  * Die Bemerkung steht in der Abrechnung.
@@ -117,8 +120,9 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
     const bekannt = n.texte[z.schluessel];
     zeilenTextSetzen(n.id, bekannt ? { ...z, leistungIds: bekannt.leistungIds } : z, text);
   };
-  const ergaenzen = (z: NachweisZeile, neue: Leistung[]) => zeilenTextSetzen(n.id, z, textErgaenzen(z.text, neue));
-  const beibehalten = (z: NachweisZeile) => zeilenTextSetzen(n.id, z, z.text);
+  // „Ergänzen“ und „Text so lassen“: Die Zeile ist gesehen – neue Leistungen und Text der Mitarbeiter gelten als bekannt
+  const ergaenzen = (z: NachweisZeile, neue: Leistung[]) => zeilenTextSetzen(n.id, z, textErgaenzen(z.text, neue), { gesehen: true });
+  const beibehalten = (z: NachweisZeile) => zeilenTextSetzen(n.id, z, z.text, { gesehen: true });
   const automatisch = (z: NachweisZeile, gemeinsam: boolean) => {
     zeilenTextSetzen(n.id, z, null);
     toast(gemeinsam ? 'Leistungstext der Mitarbeiter wiederhergestellt.' : 'Automatischer Leistungstext wiederhergestellt.');
@@ -170,7 +174,11 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
           const { eigene, andere } = leistungenDerZeile(data, z, zugang);
           const leistungen = [...eigene, ...andere].sort((a, b) => a.datum.localeCompare(b.datum));
           // Gäbe es ohne die Bearbeitung von Hand einen Text der Mitarbeiter? (Nur für die Beschriftung von „wiederherstellen“)
-          const gemeinsamMoeglich = z.textBearbeitet && !!ohneBearbeitung?.get(z.schluessel)?.textGemeinsam;
+          const ohne = z.textBearbeitet ? ohneBearbeitung?.get(z.schluessel) : undefined;
+          const gemeinsamMoeglich = !!ohne?.textGemeinsam;
+          // Hat sich der Text der Mitarbeiter seit der Bearbeitung geändert?
+          const ausgang = n.texte[z.schluessel]?.ausgang;
+          const mitarbeiterTextNeu = ohne && ausgang !== undefined && ohne.text !== ausgang ? ohne.text : null;
           return (
             <ZeileKarte
               key={z.schluessel}
@@ -180,6 +188,7 @@ export function Leistungstexte({ projekt, nachweis: n }: { projekt: Projekt; nac
               bearbeitbar={bearbeitbar}
               leistungen={leistungen}
               gemeinsamMoeglich={gemeinsamMoeglich}
+              mitarbeiterTextNeu={mitarbeiterTextNeu}
               neue={neueJeZeile.get(z.schluessel) ?? []}
               offen={offen.has(z.schluessel)}
               mitAbschnitt={projekt.abschnitte.length > 0}
@@ -227,6 +236,7 @@ function ZeileKarte({
   bearbeitbar,
   leistungen,
   gemeinsamMoeglich,
+  mitarbeiterTextNeu,
   neue,
   offen,
   mitAbschnitt,
@@ -248,6 +258,8 @@ function ZeileKarte({
   leistungen: Leistung[];
   /** Von Hand bearbeitet, und ohne die Bearbeitung käme der Text aus den gemeinsamen Texten der Mitarbeiter. */
   gemeinsamMoeglich: boolean;
+  /** Von Hand bearbeitet, und der Text der Mitarbeiter hat sich seitdem geändert: der heutige – sonst null. */
+  mitarbeiterTextNeu: string | null;
   /** Leistungen, die nach der Textbearbeitung hinzukamen. */
   neue: Leistung[];
   offen: boolean;
@@ -309,22 +321,43 @@ function ZeileKarte({
               ) : null}
             </>
           )}
-          {neue.length > 0 ? (
+          {bearbeitbar && (neue.length > 0 || mitarbeiterTextNeu !== null) ? (
             <div className="ln-zeile-neu">
               <Callout ton="warn" icon="!">
                 <div className="stack" style={{ gap: 6 }}>
-                  <strong>{anzahl(neue.length, 'neue Leistung', 'neue Leistungen')} seit der Bearbeitung</strong>
-                  <ul className="ln-zeile-neu-liste">
-                    {neue.map((l) => (
-                      <li key={l.id}>
-                        {kurzDatum(l.datum)} · {personName(l.mitarbeiterId)}: {l.text}
-                      </li>
-                    ))}
-                  </ul>
+                  {neue.length > 0 ? (
+                    <>
+                      <strong>{anzahl(neue.length, 'neue Leistung', 'neue Leistungen')} seit der Bearbeitung</strong>
+                      <ul className="ln-zeile-neu-liste">
+                        {neue.map((l) => (
+                          <li key={l.id}>
+                            {kurzDatum(l.datum)} · {personName(l.mitarbeiterId)}: {l.text}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
+                  {mitarbeiterTextNeu !== null ? (
+                    <>
+                      <strong>
+                        {gemeinsamMoeglich
+                          ? 'Der Text der Mitarbeiter hat sich seit der Bearbeitung geändert:'
+                          : 'Der automatische Text hat sich seit der Bearbeitung geändert:'}
+                      </strong>
+                      <span className="ln-zeile-neu-liste">„{mitarbeiterTextNeu}“</span>
+                    </>
+                  ) : null}
                   <div className="row wrap" style={{ gap: 6 }}>
-                    <button type="button" className="btn btn-sm btn-primary" onClick={() => onErgaenzen(neue)}>
-                      Ergänzen
-                    </button>
+                    {neue.length > 0 ? (
+                      <button type="button" className="btn btn-sm btn-primary" onClick={() => onErgaenzen(neue)}>
+                        Ergänzen
+                      </button>
+                    ) : null}
+                    {mitarbeiterTextNeu !== null ? (
+                      <button type="button" className={`btn btn-sm ${neue.length > 0 ? 'btn-outline' : 'btn-primary'}`} onClick={onAutomatisch}>
+                        {gemeinsamMoeglich ? 'Text der Mitarbeiter übernehmen' : 'Automatischen Text übernehmen'}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="btn btn-sm btn-ghost"

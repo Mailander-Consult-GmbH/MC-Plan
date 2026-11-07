@@ -232,6 +232,13 @@ export interface Leistung {
   quelle: Quelle;
   /** Zeitpunkt der Erfassung bzw. des Imports (ISO). */
   erfasst: string;
+  /**
+   * Zeitpunkt der letzten Änderung von Datum, Stunden, Text oder Abschnitt
+   * (ISO, `updateLeistung` im Store); fehlt, solange sie nicht geändert wurde.
+   * Daran erkennt die Seite „Leistungstexte“ abgerechnete Leistungen, die nach
+   * dem Abschluss geändert wurden (`nachAbschlussGeaendert` in domain/erfassung.ts).
+   */
+  geaendert?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -250,10 +257,19 @@ export const NACHWEIS_STATUS_LABEL: Record<NachweisStatus, string> = {
  * Leistungen, die beim Bearbeiten in der Zeile standen, zeigen später, ob
  * seitdem Leistungen hinzugekommen sind – der Text wird dann nicht
  * überschrieben, sondern die neuen Leistungen werden zum Ergänzen angeboten.
+ * Ebenso zeigt `ausgang`, ob sich der Text der Mitarbeiter seitdem geändert hat.
  */
 export interface ZeilenText {
   text: string;
   leistungIds: ID[];
+  /**
+   * Text, den die Zeile ohne die Bearbeitung von Hand hatte (aus den
+   * gemeinsamen Texten der Mitarbeiter bzw. automatisch), als das Controlling
+   * sie zu bearbeiten begann bzw. zuletzt „Text so lassen“ wählte
+   * (`zeilenTextOhneBearbeitung`). Weicht der heutige davon ab, nennt die Zeile
+   * ihn. Fehlt in Einträgen, die vor Fassung 7 in der Entwicklung entstanden.
+   */
+  ausgang?: string;
 }
 
 /**
@@ -385,19 +401,22 @@ export interface Leistungsnachweis {
 /**
  * Gemeinsamer Leistungstext eines Projekts für einen Zeitraum – alle mit
  * Leistungen darin sehen und bearbeiten ihn (domain/erfassung.ts). Der
- * Zeitraum ist eine Periode im Raster des Projekts, auf den Kalendermonat
- * gekürzt (`erfassungsPeriode` in domain/zeitraum.ts): Eine Woche über ein
- * Monatsende hat je Monat einen eigenen Text. Im Leistungsnachweis setzt sich
- * der Text einer Zeile daraus zusammen (`nachweisZeilen`), solange das
- * Controlling ihn nicht von Hand bearbeitet hat.
+ * Zeitraum ist eine Periode im Raster des Projekts (in einem abgeschlossenen
+ * Nachweis im Raster seines Abschlusses), auf den Kalendermonat gekürzt und an
+ * den Grenzen der Nachweise geteilt – an jedem Beginn und am Tag nach jedem
+ * Ende (`erfassungsPeriode` in domain/zeitraum.ts, `erfassungsGliederung` in
+ * domain/nachweis.ts): Eine Woche über ein Monatsende hat je Monat einen
+ * eigenen Text, und jeder Text gehört zu höchstens einem Nachweis. Im
+ * Leistungsnachweis setzt sich der Text einer Zeile daraus zusammen
+ * (`nachweisZeilen`), solange das Controlling ihn nicht von Hand bearbeitet hat.
  */
 export interface Periodentext {
   projektId: ID;
   /**
    * Monat und Periode im Raster des Projekts, etwa „2026-10|W2026-44“ (Wochen am Monatsende
-   * geteilt); beginnt ein Nachweis mitten in der Periode (etwa nach einem Abschluss mitten
-   * darin), der Teil ab dann mit seinem Beginn, etwa „2026-11|M2026-11|2026-11-06“
-   * (`erfassungsPeriode`, `erfassungsGliederung`).
+   * geteilt); liegt eine Grenze eines Nachweises in der Periode (sein Beginn oder der Tag nach
+   * seinem Ende, etwa nach einem Abschluss mitten darin), der Teil ab dann mit seinem Beginn,
+   * etwa „2026-11|M2026-11|2026-11-06“ (`erfassungsPeriode`, `erfassungsGliederung`).
    */
   schluessel: string;
   text: string;
@@ -432,13 +451,13 @@ export interface Bestaetigung {
   monat: string;
   /** Zeitpunkt (ISO). */
   am: string;
-  /** Kennung des bestätigten Stands des ganzen Monats (`bestaetigungsKennung`). */
-  kennung: string;
   /**
    * Kennungen der bestätigten Zeiträume (Schlüssel → `periodenKennung`), auch
    * der damals schon abgerechneten – verglichen werden nur die, die jetzt
-   * nicht gesperrt sind. Leer in Einträgen, die vor dieser Fassung in der
-   * Entwicklung entstanden (sie gelten als geändert).
+   * nicht gesperrt sind. Gehen bestätigte Teile mit geänderten Grenzen der
+   * Nachweise in einem Zeitraum auf, trägt `bestaetigungenNachziehen` ihn ein.
+   * Leer in Einträgen, die vor dieser Fassung in der Entwicklung entstanden
+   * (sie gelten als geändert).
    */
   perioden: Record<string, string>;
 }
@@ -471,7 +490,7 @@ export function newId(prefix = 'id'): ID {
 /**
  * Prüfsumme eines Texts: zweimal FNV-1a (32 Bit, verschiedene Startwerte),
  * 16 Hexadezimalziffern. Gleicher Text → gleiche Prüfsumme – für Kennungen,
- * die sich aus dem Inhalt ergeben (`bestaetigungsKennung`, `mitarbeiterKennung`).
+ * die sich aus dem Inhalt ergeben (`periodenKennung`, `mitarbeiterKennung`).
  */
 export function pruefsumme(text: string): string {
   const fnv = (start: number) => {

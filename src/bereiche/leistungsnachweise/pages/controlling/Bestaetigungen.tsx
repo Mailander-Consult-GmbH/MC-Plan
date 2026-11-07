@@ -7,11 +7,12 @@
  * (`monatsStatusBadge`: „Bestätigt am …“, „Offen“, „Geändert seit
  * Bestätigung“, „Abgerechnet“) und die Zeiträume ohne gemeinsamen
  * Leistungstext („Ohne Text“, etwa „1 von 4“) samt dem Hinweis auf Leistungen,
- * die nach dem Abschluss in einem abgerechneten Zeitraum erfasst wurden –,
- * dazu „x von y bestätigt“ und die Leistungsnachweise, in denen der Monat
- * liegt (ein Klick öffnet die Abrechnung). Monate, deren Leistungen alle
- * abgerechnet sind und in denen nichts nach dem Abschluss erfasst wurde,
- * stehen eingeklappt darunter („Abgerechnete Monate anzeigen“).
+ * die nach dem Abschluss in einem abgerechneten Zeitraum erfasst bzw. als
+ * abgerechnete geändert wurden –, dazu „x von y bestätigt“ und die
+ * Leistungsnachweise, in denen der Monat liegt (ein Klick öffnet die
+ * Abrechnung). Monate, deren Leistungen alle abgerechnet sind und in denen
+ * nichts nach dem Abschluss erfasst bzw. geändert wurde, stehen eingeklappt
+ * darunter („Abgerechnete Monate anzeigen“).
  *
  * `BestaetigungsStand` ist der kurze Stand in der Abrechnung eines offenen
  * Nachweises: je Monat seines Zeitraums „x von y bestätigt“ und wer noch nicht
@@ -81,7 +82,8 @@ export function Bestaetigungen({ projekt, navigate }: { projekt: Projekt; naviga
     }
   }
   // Eingeklappt stehen nur Monate, in denen alles abgerechnet ist – auch nichts nach dem Abschluss Erfasstes
-  const offenBleiben = (m: BestaetigungsMonat) => m.zuBestaetigen > 0 || m.personen.some((p) => p.nachAbschluss.length > 0);
+  const offenBleiben = (m: BestaetigungsMonat) =>
+    m.zuBestaetigen > 0 || m.personen.some((p) => p.nachAbschluss.length > 0 || p.nachAbschlussGeaendert.length > 0);
   const laufend = monate.filter(offenBleiben);
   const abgerechnet = monate.filter((m) => !offenBleiben(m));
   const offen = laufend.reduce((s, m) => s + m.personen.filter((p) => p.status === 'offen').length, 0);
@@ -253,6 +255,14 @@ function PersonZeile({ status: p, person }: { status: MonatsStatus; person: Mita
               title="Liegen in einem bereits abgerechneten Zeitraum – sie gehen nicht in den abgeschlossenen Leistungsnachweis ein; über ein Nachreichen entscheidet das Controlling in der Abrechnung."
             >
               {anzahl(p.nachAbschluss.length, 'Leistung', 'Leistungen')} nach dem Abschluss erfasst
+            </span>
+          ) : null}
+          {p.nachAbschlussGeaendert.length > 0 ? (
+            <span
+              className="small ln-co-warnung ln-co-bst-zusatz"
+              title="Bereits abgerechnet und danach geändert – abgerechnet bleibt der Stand des Abschlusses; die Änderung geht erst nach „Wieder öffnen“ ein."
+            >
+              {anzahl(p.nachAbschlussGeaendert.length, 'Leistung', 'Leistungen')} nach dem Abschluss geändert
             </span>
           ) : null}
         </div>

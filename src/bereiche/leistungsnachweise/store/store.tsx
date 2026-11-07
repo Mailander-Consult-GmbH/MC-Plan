@@ -19,12 +19,15 @@
  * (nicht im Controlling) eine fehlende Person selbst an, sobald der Name Vor-
  * und Nachnamen hat (`anmeldungAnwenden`, domain/rechte.ts) – mit einer aus
  * dem Namen abgeleiteten Kennung (`mitarbeiterKennung`), damit StrictMode und
- * zwei Fenster keine Doppel erzeugen. Nur bei `ladeZustand` 'ok'.
+ * zwei Fenster keine Doppel erzeugen; wechselt der Name, entfernt er die so
+ * angelegte Person wieder, solange sie keine Leistungen hat (Tippfehler). Nur
+ * bei `ladeZustand` 'ok'.
  *
  * Gemeinsame Leistungstexte je Zeitraum und Monatsbestätigungen
  * (domain/erfassung.ts) ändern nur `periodentextSetzen`, `monatBestaetigen`
  * und `bestaetigungZuruecknehmen`; nach jeder Änderung ziehen die Texte mit,
- * wenn sich die Grenzen der Nachweise ändern (`periodentexteNachziehen`), und
+ * wenn sich die Grenzen der Nachweise ändern (`periodentexteNachziehen`), mit
+ * ihnen die Bestätigungen aufgegangener Teile (`bestaetigungenNachziehen`), und
  * `erfassungBereinigen` räumt Texte und Bestätigungen gelöschter Projekte bzw.
  * Mitarbeiter ab.
  *
@@ -55,6 +58,7 @@ import { abschnitteAusElementen, importAnwenden, type ImportPlan } from '../doma
 import {
   bestaetigenAnwenden,
   bestaetigenMeldung,
+  bestaetigungenNachziehen,
   bestaetigungZuruecknehmenAnwenden,
   erfassungBereinigen,
   erfassungsPeriodeZu,
@@ -78,6 +82,7 @@ import {
   tagVon,
   nachweiseSichern,
   ueberschneidung,
+  zeilenTextOhneBearbeitung,
 } from '../domain/nachweis';
 import {
   NICHT_ANGEMELDET,
@@ -158,7 +163,8 @@ interface StoreValue {
    */
   addLeistung: (l: Omit<Leistung, 'id' | 'erfasst' | 'quelle' | 'mitarbeiterId'> & { quelle?: Quelle }) => ID | null;
   /**
-   * Ändern – nur eigene; Mitarbeiter und Projekt bleiben. Ein neues Datum außerhalb aller Nachweise ergänzt einen –
+   * Ändern – nur eigene; Mitarbeiter und Projekt bleiben. Ändern sich Datum, Stunden, Text oder Abschnitt, merkt
+   * sich die Leistung den Zeitpunkt (`geaendert`). Ein neues Datum außerhalb aller Nachweise ergänzt einen –
    * außer die Leistung ist schon abgerechnet (`abgerechnetIn`): Sie bleibt im Stand ihres abgeschlossenen Nachweises.
    */
   updateLeistung: (id: ID, patch: Partial<Omit<Leistung, 'id' | 'projektId' | 'mitarbeiterId'>>) => void;
@@ -209,8 +215,12 @@ interface StoreValue {
    * nachgereichten. Leistungen anderer bleiben – sie löscht auch das Controlling nicht.
    */
   deleteNachweis: (id: ID, mitLeistungen: boolean) => void;
-  /** Text einer Zeile setzen (mit den Leistungs-IDs der Zeile); null = wieder automatisch. Nur Controlling, nur offene Nachweise. */
-  zeilenTextSetzen: (nachweisId: ID, zeile: NachweisZeile, text: string | null) => void;
+  /**
+   * Text einer Zeile setzen (mit den Leistungs-IDs der Zeile); null = wieder automatisch. Nur Controlling, nur offene
+   * Nachweise. Die erste Bearbeitung merkt sich den Text der Mitarbeiter (`ZeilenText.ausgang`,
+   * `zeilenTextOhneBearbeitung`), spätere behalten ihn – mit `gesehen` („Ergänzen“, „Text so lassen“) gilt der heutige.
+   */
+  zeilenTextSetzen: (nachweisId: ID, zeile: NachweisZeile, text: string | null, optionen?: { gesehen?: boolean }) => void;
   /**
    * Abschließen (nur Controlling, nur offene): fortlaufende Nachweise enden am letzten Tag mit
    * Leistungen (`abschlussZeitraum`), der Stand wird mit Aufschlägen festgeschrieben.
@@ -457,7 +467,7 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       mutate((d, jetzt) => {
         const alt = d.leistungen.find((l) => l.id === id);
         if (!alt || !darfLeistungAendern(d, alt)) return d;
-        const neu: Leistung = {
+        const geaendert: Leistung = {
           ...alt,
           ...ohneLeere(patch),
           id,
@@ -465,6 +475,13 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
           mitarbeiterId: alt.mitarbeiterId,
           stunden: runden(patch.stunden ?? alt.stunden),
         };
+        // Der Zeitpunkt zeigt später, ob eine abgerechnete Leistung nach dem Abschluss geändert wurde
+        const inhaltNeu =
+          geaendert.datum !== alt.datum ||
+          geaendert.stunden !== alt.stunden ||
+          geaendert.text !== alt.text ||
+          geaendert.abschnittId !== alt.abschnittId;
+        const neu: Leistung = inhaltNeu ? { ...geaendert, geaendert: jetzt } : geaendert;
         const daten = { ...d, leistungen: d.leistungen.map((l) => (l.id === id ? neu : l)) };
         // Eine abgerechnete Leistung bleibt im Stand ihres abgeschlossenen Nachweises – sie braucht keinen neuen
         if (neu.datum === alt.datum || abgerechnetIn(d, alt)) return daten;
@@ -568,11 +585,17 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
           };
         }),
       ),
-    zeilenTextSetzen: (nachweisId, zeile, text) =>
+    zeilenTextSetzen: (nachweisId, zeile, text, optionen = {}) =>
       nachweisAendern(
         nachweisId,
         (n) => darf(zugang, 'nachweisVerwalten') && n.status === 'entwurf',
-        (n) => mitZeilenText(n, zeile, text),
+        (n, d) => {
+          if (text === null) return mitZeilenText(n, zeile, null);
+          // Text der Mitarbeiter beim Beginn der Bearbeitung – bzw. der heutige, wenn sie ihn gesehen hat
+          const bisher = n.texte[zeile.schluessel];
+          const ausgang = bisher && !optionen.gesehen ? bisher.ausgang : zeilenTextOhneBearbeitung(d, n, zeile.schluessel);
+          return mitZeilenText(n, zeile, text, ausgang);
+        },
       ),
     nachweisAbschliessen: (id) => {
       const folge = idVorrat();
@@ -630,9 +653,11 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
 
 /**
  * Wendet eine Änderung an und räumt danach auf – rein: Ändern sich die Grenzen
- * der Nachweise, ziehen die gemeinsamen Texte mit (`periodentexteNachziehen`;
- * nicht ohne Zeitstempel – ein eingespielter Stand wird nicht mit dem
- * bisherigen verglichen), dann `nachweiseBereinigen` und `erfassungBereinigen`.
+ * der Nachweise, ziehen die gemeinsamen Texte mit (`periodentexteNachziehen`)
+ * und mit ihnen die Bestätigungen aufgegangener Teile
+ * (`bestaetigungenNachziehen`) – beides nicht ohne Zeitstempel: Ein
+ * eingespielter Stand wird nicht mit dem bisherigen verglichen. Dann
+ * `nachweiseBereinigen` und `erfassungBereinigen`.
  */
 export function aenderungAnwenden(
   alt: LeistungsnachweisDaten,
@@ -642,7 +667,8 @@ export function aenderungAnwenden(
 ): LeistungsnachweisDaten {
   const zeitstempel = optionen.zeitstempel !== false;
   const neu = fn(alt, jetzt);
-  return erfassungBereinigen(nachweiseBereinigen(alt, zeitstempel ? periodentexteNachziehen(alt, neu) : neu, jetzt, zeitstempel));
+  const nachgezogen = zeitstempel ? bestaetigungenNachziehen(alt, neu, periodentexteNachziehen(alt, neu)) : neu;
+  return erfassungBereinigen(nachweiseBereinigen(alt, nachgezogen, jetzt, zeitstempel));
 }
 
 const StoreContext = createContext<StoreValue | null>(null);

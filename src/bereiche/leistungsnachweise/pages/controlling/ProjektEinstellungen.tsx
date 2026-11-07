@@ -102,7 +102,7 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
           </Field>
           <Field
             label="Nachweis"
-            hint="Zeilen je Tag, Woche oder Monat – Vorgabe für neue Leistungsnachweise. Vorhandene behalten ihr Raster; das Controlling stellt es dort unter „Zeitraum ändern“ um. Das Raster gliedert auch die Leistungstexte, die die Mitarbeiter je Zeitraum gemeinsam verfassen (Wochen am Monatsende geteilt)."
+            hint="Zeilen je Tag, Woche oder Monat – Vorgabe für neue Leistungsnachweise. Vorhandene behalten ihr Raster; das Controlling stellt es dort unter „Zeitraum ändern“ um. Das Raster gliedert auch die Leistungstexte, die die Mitarbeiter je Zeitraum gemeinsam verfassen (Wochen am Monatsende und an den Grenzen der Leistungsnachweise geteilt)."
           >
             <Segmented<Raster> value={form.raster} onChange={(v) => set('raster', v)} options={RASTER_OPTIONEN} />
           </Field>

@@ -35,7 +35,9 @@
  * nicht in Zeiträumen, in denen man selbst Leistungen hat, und auch nicht als
  * Zahl. Gemeinsam ist dort allein der Leistungstext des Zeitraums
  * (`darfPeriodentextLesen`, `stichpunkteDerPeriode`); im Controlling ist
- * alles zu sehen (nur lesen).
+ * alles zu sehen (nur lesen). Ausnahme, solange alles lokal im Browser liegt:
+ * „Sicherung“ in der Seitenleiste des Bereichs lädt den gesamten Bestand
+ * herunter (components/Sicherung.tsx).
  *
  * Der Store (store/store.tsx) prüft jede Änderung hiermit; die Oberfläche
  * blendet Unerlaubtes zusätzlich aus. Alles rein, ohne React.
@@ -226,19 +228,35 @@ export function mitarbeiterKennung(name: string): ID {
  * nach – rein; so arbeitet der Store nach jeder Änderung. Mit `automatisch`
  * (im Bereich bei einwandfrei geladenem Stand) legt es eine fehlende Person
  * an (`anmeldeLage` `anlegen`): aktiv, Kürzel aus dem Namen (`kuerzelFrei`),
- * Kennung `kennung` (`mitarbeiterKennung`); ist sie schon an eine andere
- * Person vergeben, mit angehängter Zahl. Ändert sich nichts, liefert es
- * denselben Bestand.
+ * Kennung `kennung` (`mitarbeiterKennung`). Eine schon vergebene Kennung
+ * führt bereits zur Lage `umbenannt` (angelegt wird dann niemand); die
+ * angehängte Zahl sichert nur Aufrufe mit einer anderen `kennung` ab.
+ *
+ * Wechselt der Name, entfernt es mit `automatisch` zudem die Person, die der
+ * Bereich unter dem bisherigen Namen angelegt hat (Kennung
+ * `mitarbeiterKennung` des bisherigen Namens), wenn sie aktiv ist und weder
+ * Leistungen hat noch in einem festgeschriebenen Stand steht
+ * (`automatischAngelegtOhneLeistungen`) – so bleibt nach einem Tippfehler
+ * unter „Angemeldet als“ kein Mitarbeiter zurück. Ändert sich nichts, liefert
+ * es denselben Bestand.
  */
-export function anmeldungAnwenden<T extends Pick<LeistungsnachweisDaten, 'einstellungen' | 'mitarbeiter'>>(
+export function anmeldungAnwenden<T extends Pick<LeistungsnachweisDaten, 'einstellungen' | 'mitarbeiter' | 'leistungen' | 'nachweise'>>(
   d: T,
   benutzer: { name: string; farbmodus: LeistungsnachweisDaten['einstellungen']['farbmodus'] },
   automatisch: boolean,
   kennung: ID = mitarbeiterKennung(benutzer.name),
 ): T {
   let mitarbeiter = d.mitarbeiter;
-  const lage = anmeldeLage(d, benutzer.name, automatisch);
+  const bisher = d.einstellungen.bearbeiter;
+  if (automatisch && bisher !== benutzer.name) {
+    const verwaist = automatischAngelegtOhneLeistungen(d, bisher);
+    if (verwaist && mitarbeiterZumNamen([verwaist], benutzer.name) === null) {
+      mitarbeiter = mitarbeiter.filter((m) => m !== verwaist);
+    }
+  }
+  const lage = anmeldeLage({ mitarbeiter }, benutzer.name, automatisch);
   if (lage.art === 'anlegen') {
+    // Absicherung: Mit der Kennung aus dem Namen ist sie hier frei (sonst Lage `umbenannt`)
     let id = kennung;
     for (let i = 2; mitarbeiter.some((m) => m.id === id); i++) id = `${kennung}-${i}`;
     const neu: Mitarbeiter = {
@@ -260,6 +278,24 @@ export function anmeldungAnwenden<T extends Pick<LeistungsnachweisDaten, 'einste
     mitarbeiter,
     einstellungen: { ...e, bearbeiter: benutzer.name, farbmodus: benutzer.farbmodus, mitarbeiterId },
   };
+}
+
+/**
+ * Die Person, die der Bereich unter `name` angelegt hat (Kennung
+ * `mitarbeiterKennung`), wenn sie aktiv ist, keine Leistungen hat und in
+ * keinem festgeschriebenen Stand steht (`stundenJeMitarbeiter`) – sonst null.
+ */
+function automatischAngelegtOhneLeistungen(
+  d: Pick<LeistungsnachweisDaten, 'mitarbeiter' | 'leistungen' | 'nachweise'>,
+  name: string,
+): Mitarbeiter | null {
+  if (!name.trim()) return null;
+  const kennung = mitarbeiterKennung(name);
+  const m = d.mitarbeiter.find((x) => x.id === kennung && x.aktiv);
+  if (!m) return null;
+  if (d.leistungen.some((l) => l.mitarbeiterId === m.id)) return null;
+  const imStand = d.nachweise.some((n) => n.stand?.zeilen.some((z) => m.id in z.stundenJeMitarbeiter));
+  return imStand ? null : m;
 }
 
 /** Darf der Zugang das? Alle Rechte gewährt das Controlling. */
@@ -313,13 +349,13 @@ export function eigeneLeistungen<T extends Pick<Leistung, 'mitarbeiterId'>>(
 }
 
 /**
- * Leistungen einer Nachweiszeile, wie sie aufgeklappt werden dürfen: die
- * eigenen einzeln, die der anderen nur als Zahl („+ 3 Leistungen von
- * Kolleginnen und Kollegen“). Im Controlling stehen auch die der anderen
- * einzeln darin (`andere`, nur lesen). Genutzt wird es heute nur im
- * Controlling (Abrechnung, Leistungstexte); im Bereich zeigt keine Seite
- * Nachweiszeilen – die Seite „Leistungstexte“ nennt allein eigene Stichpunkte
- * (`stichpunkteDerPeriode`).
+ * Leistungen einer Nachweiszeile, wie sie aufgeklappt werden dürfen: im
+ * Bereich nur die eigenen – die der anderen bleiben verborgen, auch ihre Zahl
+ * (`andere` leer, `andereAnzahl` 0, wie `stichpunkteDerPeriode`). Im
+ * Controlling stehen auch die der anderen einzeln darin (`andere`, nur lesen).
+ * Genutzt wird es heute nur im Controlling (Abrechnung, Leistungstexte); im
+ * Bereich zeigt keine Seite Nachweiszeilen – die Seite „Leistungstexte“ nennt
+ * allein eigene Stichpunkte (`stichpunkteDerPeriode`).
  */
 export function leistungenDerZeile(
   d: Pick<LeistungsnachweisDaten, 'einstellungen' | 'mitarbeiter' | 'leistungen'>,
@@ -331,7 +367,8 @@ export function leistungenDerZeile(
   const ich = angemeldet(d);
   const eigene = ich ? alle.filter((l) => l.mitarbeiterId === ich.id) : [];
   const fremd = alle.filter((l) => !ich || l.mitarbeiterId !== ich.id);
-  return { eigene, andere: zugang === 'controlling' ? fremd : [], andereAnzahl: fremd.length };
+  if (zugang !== 'controlling') return { eigene, andere: [], andereAnzahl: 0 };
+  return { eigene, andere: fremd, andereAnzahl: fremd.length };
 }
 
 /* ------------------------------------------------------------------ */
@@ -358,9 +395,10 @@ export function darfPeriodentextLesen(
 
 /**
  * Darf den gemeinsamen Text der Periode bearbeiten? Nur im Bereich, wer darin
- * eigene Leistungen hat, und nur, solange die Periode nicht gesperrt ist
- * (keine ihrer Leistungen in einem abgeschlossenen Nachweis abgerechnet).
- * Das Controlling liest ihn nur – es bearbeitet die Texte im Nachweis.
+ * eigene Leistungen hat, und nur, solange die Periode nicht gesperrt ist (ein
+ * abgeschlossener Nachweis umfasst sie, `abgeschlossenIm` – auch wenn darin nur
+ * nach dem Abschluss erfasste Leistungen liegen). Das Controlling liest ihn
+ * nur – es bearbeitet die Texte im Nachweis.
  */
 export function darfPeriodentextBearbeiten(
   d: Pick<LeistungsnachweisDaten, 'einstellungen' | 'mitarbeiter'>,

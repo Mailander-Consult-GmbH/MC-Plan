@@ -19,8 +19,10 @@
  *
  * Dazu Vorschau, Drucken/PDF, Excel, Abschließen bzw. Wieder öffnen (mit
  * Rückfrage – sie nennt gekürzte Zeiträume, spätere Leistungen, fehlende
- * Bestätigungen der Mitarbeiter (abschließen bleibt möglich) und
- * Abweichungen vom festgeschriebenen Stand), Zeitraum ändern und Löschen, die
+ * Bestätigungen der Mitarbeiter (abschließen bleibt möglich), Abweichungen vom
+ * festgeschriebenen Stand und Bestätigungen, die damit erlöschen,
+ * `grenzFolgen`), Zeitraum ändern und Löschen (die Rückfrage nennt die Folgen
+ * für gemeinsame Texte und Bestätigungen, `grenzFolgenHinweis`), die
  * Kontrolle „Stunden je Mitarbeiter“ und die Bemerkung. Abgeschlossene
  * Nachweise zeigen ihren Stand und lassen sich nur lesen. Alle Änderungen
  * laufen über den Store, der den Controlling-Zugang prüft.
@@ -38,8 +40,8 @@ import { GESAMT, nachweisDrucken, nachweisFassung, nachweisHtml, type NachweisFa
 import {
   erfassungsPeriodeVon,
   fehlendeBestaetigungen,
-  nachgezogenePeriodentexte,
-  nachziehenHinweis,
+  grenzFolgen,
+  grenzFolgenHinweis,
   periodentexteNachOeffnen,
 } from '../../domain/erfassung';
 import { nachweisExportieren } from '../../domain/export';
@@ -49,6 +51,7 @@ import {
   aufschlagEingabe,
   aufschlagFuerAbgerechnet,
   leistungenDesNachweises,
+  nachweisAbschliessenAnwenden,
   nichtAbgerechnet,
   stundenVon,
   mitAbschnittsspalten,
@@ -262,6 +265,13 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
       ? `Er endet mitten in einem Zeitraum der gemeinsamen Leistungstexte – für die Tage ab ${langDatum(restAb)} verfassen die Mitarbeiter einen eigenen Text.`
       : '',
     zeilenMitNeuen ? `Achtung: In ${anzahl(zeilenMitNeuen, 'Zeile', 'Zeilen')} fehlen neue Leistungen noch im bearbeiteten Text.` : '',
+    // Bestätigungen, die mit dem neuen Teil erlöschen (der Satz zum eigenen Text steht oben)
+    abschliessen && restAb
+      ? (erloschenHinweis(
+          grenzFolgen(data, nachweisAbschliessenAnwenden(data, n.id, new Date().toISOString(), () => 'vorschau')),
+          data.mitarbeiter,
+        ) ?? '')
+      : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -285,9 +295,20 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
             : `${texteNachOeffnen} gemeinsame Texte gelten danach nicht mehr, die Mitarbeiter verfassen sie neu. Sie bleiben gespeichert und gelten wieder`
         }, wenn das Raster zurückgestellt wird.`
       : '';
-  // Fallen mit dem Nachweis Grenzen der Zeiträume weg, gehen Texte von Teilen im Text des ganzen Zeitraums auf
+  // Erlöschende Bestätigungen nach „Wieder öffnen“: Zählt ein Zeitraum wieder, gilt sie nur, wie er bestätigt war
+  const oeffnenBestaetigungen = oeffnen
+    ? erloschenHinweis(
+        grenzFolgen(data, {
+          ...data,
+          nachweise: data.nachweise.map((x) => (x.id === n.id ? { ...x, status: 'entwurf', abgeschlossen: null, stand: null } : x)),
+        }),
+        data.mitarbeiter,
+      )
+    : null;
+  // Fallen mit dem Nachweis Grenzen der Zeiträume weg, gehen Texte von Teilen im Text des ganzen Zeitraums auf;
+  // dazu, wessen Bestätigungen erlöschen (`grenzFolgen`)
   const loeschenTexte = loeschen
-    ? nachziehenHinweis(nachgezogenePeriodentexte(data, { ...data, nachweise: data.nachweise.filter((x) => x.id !== n.id) }))
+    ? grenzFolgenHinweis(grenzFolgen(data, { ...data, nachweise: data.nachweise.filter((x) => x.id !== n.id) }), data.mitarbeiter)
     : null;
 
   const bemerkung = (
@@ -590,7 +611,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
       {oeffnen ? (
         <ConfirmDialog
           titel="Leistungsnachweis wieder öffnen?"
-          text={oeffnenText + oeffnenRasterText}
+          text={[oeffnenText + oeffnenRasterText, oeffnenBestaetigungen].filter(Boolean).join(' ')}
           bestaetigenLabel="Wieder öffnen"
           ton="blau"
           onConfirm={() => {
@@ -653,6 +674,10 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
     </div>
   );
 }
+
+/** Nur der Satz zu erlöschenden Bestätigungen aus `grenzFolgenHinweis` – die Texte nennen die Rückfragen selbst. */
+const erloschenHinweis = (f: ReturnType<typeof grenzFolgen>, mitarbeiter: Parameters<typeof grenzFolgenHinweis>[1]) =>
+  grenzFolgenHinweis({ ...f, texte: 0, neueTeile: [] }, mitarbeiter);
 
 /* ------------------------------------------------------------------ */
 /* Eine Zeile der Abrechnung                                           */
@@ -953,7 +978,7 @@ function NachweisLoeschen({
   onLoeschen,
 }: {
   titel: string;
-  /** Gemeinsame Texte von Teilen eines Zeitraums, die im Text des ganzen aufgehen (`nachziehenHinweis`). */
+  /** Folgen für die gemeinsamen Texte und Bestätigungen (`grenzFolgenHinweis`). */
   texteHinweis: string | null;
   /** Zahl der eigenen Leistungen des Nachweises (`leistungenDesNachweises`, samt nachgereichten) – nur sie lassen sich mitlöschen. */
   eigene: number;

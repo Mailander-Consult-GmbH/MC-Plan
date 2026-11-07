@@ -6,10 +6,6 @@
  * (domain/druck.ts) mit festen Farben wie auf Papier.
  */
 
-/* Werkzeugleiste über Editor und Druckansicht */
-.ln-leiste { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.ln-leiste .row { flex-wrap: wrap; }
-
 /* Mitwachsende Textfelder */
 .textarea.ln-textfeld { min-height: 36px; resize: none; overflow: hidden; line-height: 1.45; padding: 7px 10px; }
 .textarea.ln-textfeld[readonly] { background: var(--fill-gruppe); color: var(--text-secondary); }
@@ -49,8 +45,6 @@
   display: flex; align-items: center; flex-wrap: wrap; gap: 2px 12px;
   border-top: 1px solid var(--separator); padding: 4px 12px;
 }
-/* „Keine eigenen Leistungen“ und „+ 3 Leistungen von Kolleginnen und Kollegen“ – nur die Zahl, keine Stunden */
-.ln-zeile-keine, .ln-zeile-andere { font-size: 12.5px; color: var(--text-tertiary); padding: 4px 6px; }
 .ln-zeile-aufklappen {
   display: inline-flex; align-items: center; gap: 6px;
   border: none; background: none; cursor: pointer;
@@ -87,7 +81,6 @@
   .ln-zeile-datum, .ln-zeile-stunden { padding-top: 0; }
   .ln-zeile-bearbeiter { flex-direction: row; flex-wrap: wrap; gap: 2px 10px; padding-top: 0; color: var(--text-secondary); }
   .ln-summe { padding: 12px 14px; }
-  .ln-leiste > .row { width: 100%; }
   /* Leistungen einer Zeile: Datum und Mitarbeiter, darunter der Text, dann Stunden und Knöpfe */
   .ln-zeile-leistungen .table-stack tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 10px 14px; }
   .ln-zeile-leistungen .table-stack td { width: auto; }

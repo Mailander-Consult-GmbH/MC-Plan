@@ -27,7 +27,11 @@
  * Zeitraum eine Kennung des bestätigten Stands (`periodenKennung`) – ändern
  * sich danach die eigenen Leistungen oder der gemeinsame Text eines
  * Zeitraums, der nicht abgerechnet ist, ist sie erloschen (`monatsStatus`
- * 'geaendert', `bestaetigungGilt`).
+ * 'geaendert', `bestaetigungGilt`). Ändern sich nur die Grenzen der Nachweise,
+ * gilt: Gehen bestätigte Teile in einem Zeitraum auf, zieht die Bestätigung
+ * mit (`bestaetigungenNachziehen`); teilt eine neue Grenze einen Zeitraum,
+ * braucht der neue Teil einen eigenen Text, und die Bestätigung erlischt –
+ * die Rückfragen im Controlling nennen das (`grenzFolgen`).
  *
  * **Gesperrt** ist eine Erfassungsperiode, sobald ein abgeschlossener Nachweis
  * sie umfasst (`abgeschlossenIm` in domain/nachweis.ts): Ihr Text ist dort
@@ -36,9 +40,13 @@
  * Weil an den Grenzen der Nachweise geteilt wird, trifft das nur den
  * abgerechneten Teil: Endet ein Nachweis mitten in einem Zeitraum (etwa beim
  * Abschluss), bekommt der Rest einen eigenen Text, und dessen Leistungen
- * bleiben zu beschreiben und zu bestätigen. Nicht abgerechnete eigene
- * Leistungen in einem gesperrten Zeitraum (nach dem Abschluss erfasst bzw.
- * geändert) nennt ein Hinweis (`nachAbschlussHinweis`).
+ * bleiben zu beschreiben und zu bestätigen. Eigene Leistungen in einem
+ * gesperrten Zeitraum, die nach dem Abschluss erfasst (nicht abgerechnet) bzw.
+ * als abgerechnete geändert wurden (`Leistung.geaendert`), nennt ein Hinweis
+ * (`nachAbschlussHinweis`). Eine abgerechnete Leistung, deren Datum nach dem
+ * Abschluss aus ihrem Nachweis herausgelegt wurde, bleibt dort abgerechnet und
+ * gehört zu keinem Zeitraum – sie zählt weder zu Stunden noch zur Bestätigung,
+ * nur ein Hinweis nennt sie (`AnderswoAbgerechnet`).
  *
  * Wer was sehen und ändern darf, steht in domain/rechte.ts
  * (`darfPeriodentextLesen`, `darfPeriodentextBearbeiten`,
@@ -48,6 +56,7 @@
  */
 import {
   abgeschlossenIm,
+  abgerechnetIn,
   abgerechneteLeistungen,
   erfassungsGliederung,
   erfassungsPeriodeIn,
@@ -77,6 +86,7 @@ import {
   ERFASSUNG_TRENNER,
   datumText,
   erfassungsPeriodeAusSchluessel,
+  imZeitraum,
   istMonat,
   istWochenende,
   langDatum,
@@ -111,6 +121,26 @@ interface ProjektVerzeichnis {
   /** In einen Nachweis nachgereichte Leistungen – über sie hat das Controlling schon entschieden. */
   nachgereicht: Set<ID>;
   texte: Map<string, Periodentext>;
+  /**
+   * Je Monat (JJJJ-MM) die Leistungen, die im Stand eines abgeschlossenen
+   * Nachweises abgerechnet sind, der ihr Datum nicht umfasst (`AnderswoAbgerechnet`)
+   * – sie stehen in keiner Gruppe.
+   */
+  anderswo: Map<string, AnderswoAbgerechnet[]>;
+}
+
+/**
+ * Eine Leistung, die im festgeschriebenen Stand eines abgeschlossenen
+ * Nachweises abgerechnet ist, dessen Zeitraum ihr Datum nicht (mehr) umfasst –
+ * etwa nach einer Datumsänderung nach dem Abschluss (`abgerechnetIn`). Sie
+ * bleibt dort abgerechnet (`leistungenDesNachweises`) und gehört deshalb zu
+ * keinem Zeitraum der gemeinsamen Texte: Sie zählt weder zu den eigenen
+ * Stunden noch zur Bestätigung, verlangt keinen Text und nennt nur einen
+ * Hinweis (`anderswoAbgerechnetHinweis`).
+ */
+export interface AnderswoAbgerechnet {
+  leistung: Leistung;
+  nachweis: Leistungsnachweis;
 }
 
 /*
@@ -132,8 +162,16 @@ function verzeichnis(daten: LeistungsnachweisDaten, projektId: ID): ProjektVerze
   // Raster des Projekts, an den Grenzen der Nachweise geteilt; abgeschlossene im Raster ihres Abschlusses
   const gliederung = erfassungsGliederung(daten, projektId);
   const gruppen = new Map<string, Gruppe>();
+  const anderswo = new Map<string, AnderswoAbgerechnet[]>();
   for (const l of daten.leistungen) {
     if (l.projektId !== projektId) continue;
+    // Abgerechnet in einem abgeschlossenen Nachweis, der ihr Datum nicht umfasst: Sie zählt dort, nicht hier
+    const abgerechnet = abgerechnetIn(daten, l);
+    if (abgerechnet && !imZeitraum(l.datum, abgerechnet.von, abgerechnet.bis)) {
+      const monat = l.datum.slice(0, 7);
+      anderswo.set(monat, [...(anderswo.get(monat) ?? []), { leistung: l, nachweis: abgerechnet }]);
+      continue;
+    }
     const { raster, ...p } = erfassungsPeriodeIn(gliederung, l.datum);
     const g = gruppen.get(p.schluessel);
     if (g) g.leistungen.push(l);
@@ -153,7 +191,8 @@ function verzeichnis(daten: LeistungsnachweisDaten, projektId: ID): ProjektVerze
     if (t.projektId === projektId && t.text.trim() && !texte.has(t.schluessel)) texte.set(t.schluessel, t);
   }
   const nachgereicht = new Set(daten.nachweise.filter((n) => n.projektId === projektId).flatMap((n) => n.nachgereicht));
-  const v: ProjektVerzeichnis = { monate, gruppen, abgerechnet: abgerechneteLeistungen(daten, projektId), nachgereicht, texte };
+  for (const liste of anderswo.values()) liste.sort((a, b) => nachDatum(a.leistung, b.leistung));
+  const v: ProjektVerzeichnis = { monate, gruppen, abgerechnet: abgerechneteLeistungen(daten, projektId), nachgereicht, texte, anderswo };
   jeProjekt.set(projektId, v);
   return v;
 }
@@ -166,9 +205,10 @@ function verzeichnis(daten: LeistungsnachweisDaten, projektId: ID): ProjektVerze
 export interface ErfassungsPeriode {
   /**
    * Monat und Periode, etwa „2026-10|W2026-44“ – Schlüssel des gemeinsamen
-   * Texts; beginnt ein Nachweis mitten in der Periode (etwa nach einem
-   * Abschluss mitten darin), trägt der Teil ab dann seinen Beginn
-   * („2026-11|M2026-11|2026-11-06“, `erfassungsPeriodeIn`).
+   * Texts; liegt eine Grenze eines Nachweises in der Periode (sein Beginn oder
+   * der Tag nach seinem Ende, etwa nach einem Abschluss mitten darin), trägt
+   * der Teil ab dann seinen Beginn („2026-11|M2026-11|2026-11-06“,
+   * `erfassungsPeriodeIn`).
    */
   schluessel: string;
   projektId: ID;
@@ -185,7 +225,10 @@ export interface ErfassungsPeriode {
    * Leistungen am Wochenende – die der anderen verrät er nicht.
    */
   datumText: string;
-  /** Alle Leistungen der Periode (aller Personen), nach Datum. */
+  /**
+   * Alle Leistungen der Periode (aller Personen), nach Datum – ohne die in
+   * einem anderen abgeschlossenen Nachweis abgerechneten (`AnderswoAbgerechnet`).
+   */
   leistungen: Leistung[];
   /** Die der Person (`mitarbeiterId` des Aufrufs). */
   eigene: Leistung[];
@@ -216,10 +259,21 @@ export interface ErfassungsPeriode {
   gesperrtIn: Leistungsnachweis | null;
   /**
    * Eigene Leistungen einer gesperrten Periode, die nicht abgerechnet sind
-   * (nach dem Abschluss erfasst bzw. geändert) und auch nicht nachgereicht.
+   * (nach dem Abschluss erfasst, etwa neu oder mit einem neuen Datum hierher
+   * gelegt) und auch nicht nachgereicht.
    */
   nachAbschluss: Leistung[];
+  /**
+   * Eigene, abgerechnete Leistungen einer gesperrten Periode, die nach dem
+   * Abschluss geändert wurden (`Leistung.geaendert` nach
+   * `Leistungsnachweis.abgeschlossen`) – abgerechnet bleibt der Stand des
+   * Abschlusses.
+   */
+  nachAbschlussGeaendert: Leistung[];
 }
+
+/** Wurde die Leistung nach dem Abschluss des Nachweises geändert? */
+const nachDemAbschlussGeaendert = (l: Leistung, n: Leistungsnachweis) => !!l.geaendert && !!n.abgeschlossen && l.geaendert > n.abgeschlossen;
 
 function periodeAus(projektId: ID, v: ProjektVerzeichnis, g: Gruppe, mitarbeiterId: ID | null): ErfassungsPeriode {
   const eigene = g.leistungen.filter((l) => l.mitarbeiterId === mitarbeiterId);
@@ -257,6 +311,9 @@ function periodeAus(projektId: ID, v: ProjektVerzeichnis, g: Gruppe, mitarbeiter
     gesperrtIn,
     // Die Periode liegt ganz im sperrenden Nachweis (`erfassungsGliederung`) – jede eigene Leistung darin gehört dazu
     nachAbschluss: gesperrtIn ? eigene.filter((l) => !v.abgerechnet.has(l.id) && !v.nachgereicht.has(l.id)) : [],
+    nachAbschlussGeaendert: gesperrtIn
+      ? eigene.filter((l) => v.abgerechnet.has(l.id) && nachDemAbschlussGeaendert(l, gesperrtIn))
+      : [],
   };
 }
 
@@ -315,25 +372,15 @@ const T2 = '\u0002';
  * Abschnitt, Text; sortiert), damit ein unveränderter Neuimport sie nicht
  * ändert – und über den gemeinsamen Text. Ohne den Schlüssel: Zieht ein Text
  * nur um (`periodentexteNachziehen`), bleibt sie gleich; zwei Zeiträume
- * unterscheiden sich stets in den Tagen ihrer Leistungen.
+ * unterscheiden sich stets in den Tagen ihrer Leistungen. Gehen Teile in einem
+ * Zeitraum auf, ändert sie sich mit dem zusammengeführten Text – dann trägt
+ * `bestaetigungenNachziehen` die Bestätigung um.
  */
 export function periodenKennung(p: Pick<ErfassungsPeriode, 'eigene' | 'text'>): string {
   const teile = p.eigene.map((l) => ['L', l.datum, runden(l.stunden).toFixed(2), l.abschnittId ?? '', l.text.trim()].join(T1)).sort();
   const text = p.text?.text.trim();
   if (text) teile.push(['T', text].join(T1));
   return pruefsumme(teile.join(T2));
-}
-
-/** Kennung eines ganzen Monats aus den Kennungen seiner Zeiträume (`Bestaetigung.kennung`). */
-const kennungAus = (kennungen: string[]): string => pruefsumme([...kennungen].sort().join(T2));
-
-/**
- * Kennung des Stands, den eine Person für einen Monat bestätigt – über alle
- * Zeiträume mit ihren Leistungen (`periodenKennung`). Zum Vergleich dienen die
- * Kennungen je Zeitraum (`bestaetigungGilt`).
- */
-export function bestaetigungsKennung(daten: LeistungsnachweisDaten, projektId: ID, mitarbeiterId: ID, monat: string): string {
-  return kennungAus(erfassungsPerioden(daten, projektId, mitarbeiterId, monat).map(periodenKennung));
 }
 
 /** Ist der Zeitraum mit diesem Schlüssel jetzt gesperrt? Auch, wenn darin keine Leistungen mehr liegen. */
@@ -397,12 +444,18 @@ export interface MonatsStatus {
   anzahl: number;
   /** Die gespeicherte Bestätigung – auch eine erloschene. */
   bestaetigung: Bestaetigung | null;
-  /** Kennung des aktuellen Stands (`bestaetigungsKennung`). */
-  kennung: string;
   /** Kennungen der Zeiträume mit eigenen Leistungen (Schlüssel → `periodenKennung`) – so merkt sie sich die Bestätigung. */
   periodenKennungen: Record<string, string>;
   /** Eigene, nicht abgerechnete Leistungen in gesperrten Perioden (`nachAbschlussHinweis`). */
   nachAbschluss: Leistung[];
+  /** Eigene, abgerechnete Leistungen in gesperrten Perioden, nach dem Abschluss geändert (`nachAbschlussHinweis`). */
+  nachAbschlussGeaendert: Leistung[];
+  /**
+   * Eigene Leistungen mit einem Datum im Monat, die ein abgeschlossener
+   * Nachweis abrechnet, der dieses Datum nicht umfasst – sie zählen nicht zum
+   * Monat (`AnderswoAbgerechnet`, `anderswoAbgerechnetHinweis`).
+   */
+  anderswoAbgerechnet: AnderswoAbgerechnet[];
   /** Lässt sich jetzt bestätigen? Status 'offen' oder 'geaendert' und kein Zeitraum ohne Text. */
   bestaetigbar: boolean;
 }
@@ -426,7 +479,6 @@ export function monatsStatus(daten: LeistungsnachweisDaten, projektId: ID, mitar
   const offenePerioden = perioden.filter((p) => !p.gesperrt);
   const ohneText = offenePerioden.filter((p) => !p.text);
   const periodenKennungen = Object.fromEntries(perioden.map((p) => [p.schluessel, periodenKennung(p)]));
-  const kennung = kennungAus(Object.values(periodenKennungen));
   const bestaetigung = bestaetigungVon(daten, projektId, mitarbeiterId, monat);
   const status: MonatsStatusArt =
     eigene.length === 0
@@ -448,9 +500,10 @@ export function monatsStatus(daten: LeistungsnachweisDaten, projektId: ID, mitar
     stunden: stundenVon(eigene),
     anzahl: eigene.length,
     bestaetigung,
-    kennung,
     periodenKennungen,
     nachAbschluss: perioden.flatMap((p) => p.nachAbschluss),
+    nachAbschlussGeaendert: perioden.flatMap((p) => p.nachAbschlussGeaendert),
+    anderswoAbgerechnet: (verzeichnis(daten, projektId).anderswo.get(monat) ?? []).filter((a) => a.leistung.mitarbeiterId === mitarbeiterId),
     bestaetigbar: (status === 'offen' || status === 'geaendert') && ohneText.length === 0,
   };
 }
@@ -690,16 +743,51 @@ export function gesperrtHinweis(p: Pick<ErfassungsPeriode, 'gesperrtIn'>): strin
     : 'Abgerechnet – der Leistungstext lässt sich nicht mehr ändern.';
 }
 
+const tageVon = (leistungen: Pick<Leistung, 'datum'>[]) => [...new Set(leistungen.map((l) => langDatum(l.datum)))].join(', ');
+
 /**
  * Hinweis auf eigene Leistungen in abgerechneten Zeiträumen, die nach dem
- * Abschluss erfasst bzw. geändert wurden; null ohne solche.
+ * Abschluss erfasst (`erfasst`, nicht abgerechnet – über ein Nachreichen
+ * entscheidet das Controlling) bzw. geändert wurden (`geaendert`, abgerechnet
+ * bleibt der Stand des Abschlusses); null ohne solche.
  */
-export function nachAbschlussHinweis(leistungen: Pick<Leistung, 'datum'>[]): string | null {
-  if (leistungen.length === 0) return null;
-  const tage = [...new Set(leistungen.map((l) => langDatum(l.datum)))].join(', ');
-  return leistungen.length === 1
-    ? `Ihre Leistung vom ${tage} liegt in einem bereits abgerechneten Zeitraum und wurde nach dem Abschluss erfasst bzw. geändert – sie geht nicht in den abgeschlossenen Leistungsnachweis ein; über ein Nachreichen entscheidet das Controlling.`
-    : `${leistungen.length} Ihrer Leistungen (${tage}) liegen in bereits abgerechneten Zeiträumen und wurden nach dem Abschluss erfasst bzw. geändert – sie gehen nicht in den abgeschlossenen Leistungsnachweis ein; über ein Nachreichen entscheidet das Controlling.`;
+export function nachAbschlussHinweis(erfasst: Pick<Leistung, 'datum'>[], geaendert: Pick<Leistung, 'datum'>[] = []): string | null {
+  const saetze: string[] = [];
+  if (erfasst.length === 1) {
+    saetze.push(
+      `Ihre Leistung vom ${tageVon(erfasst)} liegt in einem bereits abgerechneten Zeitraum und wurde nach dem Abschluss erfasst – sie geht nicht in den abgeschlossenen Leistungsnachweis ein; über ein Nachreichen entscheidet das Controlling.`,
+    );
+  } else if (erfasst.length > 1) {
+    saetze.push(
+      `${erfasst.length} Ihrer Leistungen (${tageVon(erfasst)}) liegen in bereits abgerechneten Zeiträumen und wurden nach dem Abschluss erfasst – sie gehen nicht in den abgeschlossenen Leistungsnachweis ein; über ein Nachreichen entscheidet das Controlling.`,
+    );
+  }
+  if (geaendert.length === 1) {
+    saetze.push(
+      `Ihre Leistung vom ${tageVon(geaendert)} ist bereits abgerechnet und wurde nach dem Abschluss geändert – abgerechnet bleibt der Stand des Abschlusses; die Änderung geht erst ein, wenn das Controlling den Leistungsnachweis wieder öffnet.`,
+    );
+  } else if (geaendert.length > 1) {
+    saetze.push(
+      `${geaendert.length} Ihrer Leistungen (${tageVon(geaendert)}) sind bereits abgerechnet und wurden nach dem Abschluss geändert – abgerechnet bleibt der Stand des Abschlusses; die Änderungen gehen erst ein, wenn das Controlling den Leistungsnachweis wieder öffnet.`,
+    );
+  }
+  return saetze.length ? saetze.join(' ') : null;
+}
+
+/**
+ * Hinweis auf eigene Leistungen des Monats, die ein abgeschlossener Nachweis
+ * abrechnet, der ihr Datum nicht umfasst (`AnderswoAbgerechnet`, etwa nach
+ * einer Datumsänderung nach dem Abschluss); null ohne solche.
+ */
+export function anderswoAbgerechnetHinweis(eintraege: AnderswoAbgerechnet[]): string | null {
+  if (eintraege.length === 0) return null;
+  const leistungen = eintraege.map((e) => e.leistung);
+  const nachweise = [...new Map(eintraege.map((e) => [e.nachweis.id, e.nachweis])).values()];
+  const titel = nachweise.map((n) => `„${nachweisTitel(n)}“`).join(', ');
+  const den = nachweise.length === 1 ? 'den Leistungsnachweis' : 'die Leistungsnachweise';
+  return eintraege.length === 1
+    ? `Ihre Leistung vom ${tageVon(leistungen)} ist bereits in ${titel} abgerechnet – sie zählt dort und nicht in den Zeiträumen dieses Monats. Änderungen an ihr gehen erst ein, wenn das Controlling ${den} wieder öffnet.`
+    : `${eintraege.length} Ihrer Leistungen (${tageVon(leistungen)}) sind bereits in ${titel} abgerechnet – sie zählen dort und nicht in den Zeiträumen dieses Monats. Änderungen an ihnen gehen erst ein, wenn das Controlling ${den} wieder öffnet.`;
 }
 
 /** Meldung, solange Zeiträume ohne gemeinsamen Text den Monat nicht bestätigen lassen; null ohne solche. */
@@ -796,7 +884,7 @@ export function bestaetigenAnwenden(
   const s = monatsStatus(daten, projektId, mitarbeiterId, monat);
   if (!s.bestaetigbar) return daten;
   // Je Zeitraum, auch die gesperrten: Hebt „Wieder öffnen“ eine Sperre auf, zählt der Zeitraum wieder, wie er bestätigt war
-  const neu: Bestaetigung = { projektId, mitarbeiterId, monat, am: jetzt, kennung: s.kennung, perioden: s.periodenKennungen };
+  const neu: Bestaetigung = { projektId, mitarbeiterId, monat, am: jetzt, perioden: s.periodenKennungen };
   const andere = (daten.bestaetigungen ?? []).filter(
     (b) => !(b.projektId === projektId && b.mitarbeiterId === mitarbeiterId && b.monat === monat),
   );
@@ -875,7 +963,8 @@ const beginnVon = (schluessel: string) => erfassungsPeriodeAusSchluessel(schlues
  * neuer Gliederung. Texte ohne Leistungen bleiben, wo sie sind, ebenso Texte
  * eines anderen Rasters (Rasterwechsel des Projekts bzw. „Wieder öffnen“ eines
  * im früheren Raster abgeschlossenen Nachweises: Sie gelten wieder, wenn das
- * Raster zurückgestellt wird). Rein; ohne Änderung derselbe Bestand.
+ * Raster zurückgestellt wird). Bestätigungen zieht danach
+ * `bestaetigungenNachziehen` mit. Rein; ohne Änderung derselbe Bestand.
  */
 export function periodentexteNachziehen(alt: LeistungsnachweisDaten, neu: LeistungsnachweisDaten): LeistungsnachweisDaten {
   const texte = neu.periodentexte ?? [];
@@ -943,6 +1032,170 @@ export function nachziehenHinweis(anzahl: number): string | null {
   return anzahl === 1
     ? '1 gemeinsamer Leistungstext der Mitarbeiter gehört zu einem Teil eines Zeitraums, dessen Grenze sich damit ändert – er geht im Text des neuen Zeitraums auf.'
     : `${anzahl} gemeinsame Leistungstexte der Mitarbeiter gehören zu Teilen von Zeiträumen, deren Grenzen sich damit ändern – sie gehen im Text der neuen Zeiträume auf.`;
+}
+
+/** Gemeinsame Texte eines Projekts in ihrer Reihenfolge im Bestand. */
+const texteDesProjekts = (d: LeistungsnachweisDaten, projektId: ID) => (d.periodentexte ?? []).filter((t) => t.projektId === projektId);
+
+/**
+ * Läuft nach `periodentexteNachziehen` (`aenderungAnwenden` im Store, nicht
+ * beim Einspielen): Gehen mit geänderten Grenzen der Nachweise Teile eines
+ * Zeitraums in einem Zeitraum auf, ändert sich dessen Kennung
+ * (`periodenKennung`) durch den zusammengeführten Text, obwohl niemand Stunden
+ * oder Texte geändert hat. Dann trägt die Bestätigung einer Person den neuen
+ * Zeitraum ein – je Zeitraum ohne Sperre und mit Text, wenn
+ * * alle Teile, aus denen ihre eigenen Leistungen darin stammen, nicht
+ *   gesperrt und so bestätigt waren, wie sie vor der Änderung waren (ein
+ *   gesperrter Teil brauchte keinen Text – fällt die Sperre mit dem Löschen
+ *   eines abgeschlossenen Nachweises weg, wird neu bestätigt),
+ * * ihre eigenen Leistungen darin genau die dieser Teile sind und
+ *   unverändert (gleiche Kennung mit dem neuen Text),
+ * * alle Teile zur selben Periode im selben Raster gehören (kein Rasterwechsel) und
+ * * die Änderung selbst keinen gemeinsamen Text des Projekts gesetzt hat
+ *   (`roh` ist der Stand vor dem Nachziehen der Texte).
+ * Die Kennungen der aufgegangenen Teile entfallen aus `perioden`. Eine Teilung
+ * (neue Grenze mitten in einem Zeitraum) zieht keine Bestätigung mit: Der
+ * neue Teil braucht einen eigenen Text. Rein; ohne Änderung derselbe Bestand.
+ */
+export function bestaetigungenNachziehen(
+  alt: LeistungsnachweisDaten,
+  roh: LeistungsnachweisDaten,
+  neu: LeistungsnachweisDaten,
+): LeistungsnachweisDaten {
+  const liste = neu.bestaetigungen ?? [];
+  if (liste.length === 0 || (alt.nachweise === neu.nachweise && alt.projekte === neu.projekte)) return neu;
+  const vorherige = new Set(alt.bestaetigungen ?? []);
+  const gleichGegliedert = new Map<ID, boolean>();
+  const texteUnberuehrt = new Map<ID, boolean>();
+  let geaendert = false;
+  const ergebnis = liste.map((b) => {
+    // Nur Bestätigungen, die die Änderung selbst nicht gesetzt hat, in Projekten mit neuen Grenzen
+    if (!vorherige.has(b)) return b;
+    if (!gleichGegliedert.has(b.projektId)) {
+      gleichGegliedert.set(b.projektId, gleicheGliederung(erfassungsGliederung(alt, b.projektId), erfassungsGliederung(neu, b.projektId)));
+    }
+    if (gleichGegliedert.get(b.projektId)) return b;
+    if (!texteUnberuehrt.has(b.projektId)) {
+      const vorher = texteDesProjekts(alt, b.projektId);
+      const danach = texteDesProjekts(roh, b.projektId);
+      texteUnberuehrt.set(b.projektId, vorher.length === danach.length && vorher.every((t, i) => t === danach[i]));
+    }
+    if (!texteUnberuehrt.get(b.projektId)) return b;
+
+    const vorher = erfassungsPerioden(alt, b.projektId, b.mitarbeiterId, b.monat);
+    const kennungVorher = new Map(vorher.map((p) => [p.schluessel, periodenKennung(p)]));
+    const teilDerLeistung = new Map<ID, ErfassungsPeriode>();
+    for (const p of vorher) for (const l of p.eigene) teilDerLeistung.set(l.id, p);
+    let perioden = b.perioden;
+    for (const q of erfassungsPerioden(neu, b.projektId, b.mitarbeiterId, b.monat)) {
+      if (q.gesperrt || !q.text) continue;
+      const kennung = periodenKennung(q);
+      const bestaetigt = new Set(Object.values(perioden));
+      if (bestaetigt.has(kennung)) continue;
+      const teile = [...new Set(q.eigene.map((l) => teilDerLeistung.get(l.id)))];
+      if (teile.length === 0 || teile.some((t) => !t)) continue;
+      const quellen = teile as ErfassungsPeriode[];
+      // Gesperrte Teile brauchten beim Bestätigen keinen Text – fällt ihre Sperre weg, wird neu bestätigt
+      if (quellen.some((t) => t.gesperrt || grundSchluessel(t.schluessel) !== grundSchluessel(q.schluessel))) continue;
+      if (quellen.some((t) => !bestaetigt.has(kennungVorher.get(t.schluessel) ?? ''))) continue;
+      // Eigene Leistungen genau die der Teile und unverändert
+      if (periodenKennung({ eigene: quellen.flatMap((t) => t.eigene), text: q.text }) !== kennung) continue;
+      const aufgegangen = new Set(quellen.map((t) => kennungVorher.get(t.schluessel)));
+      perioden = { ...Object.fromEntries(Object.entries(perioden).filter(([, k]) => !aufgegangen.has(k))), [q.schluessel]: kennung };
+    }
+    if (perioden === b.perioden) return b;
+    geaendert = true;
+    return { ...b, perioden };
+  });
+  return geaendert ? { ...neu, bestaetigungen: ergebnis } : neu;
+}
+
+/** Was eine Änderung der Grenzen der Nachweise für die gemeinsamen Texte und Bestätigungen bedeutet (`grenzFolgen`). */
+export interface GrenzFolgen {
+  /** Texte von Teilen, die umziehen bzw. im Text eines ganzen Zeitraums aufgehen (`nachgezogenePeriodentexte`). */
+  texte: number;
+  /**
+   * Neue Teile: Zeiträume mit Leistungen, nicht gesperrt und ohne Text, deren
+   * Leistungen bisher in einem Zeitraum mit Text lagen – dort verfassen die
+   * Mitarbeiter einen eigenen Text (nach Beginn sortiert).
+   */
+  neueTeile: Periode[];
+  /**
+   * Bestätigungen, die jetzt gelten (Status 'bestaetigt' – bzw. 'abgerechnet',
+   * wenn ein Zeitraum wieder zählt) und danach erloschen sind (Status
+   * 'geaendert'), nach Monat.
+   */
+  erloschen: { mitarbeiterId: ID; monat: string; projektId: ID }[];
+}
+
+/**
+ * Folgen einer Änderung von `alt` nach `neu` (etwa „Zeitraum ändern“,
+ * „Neuer Leistungsnachweis“, Löschen, „Wieder öffnen“) – gerechnet wie
+ * `aenderungAnwenden` im Store: mit `periodentexteNachziehen` und
+ * `bestaetigungenNachziehen`. Für die Rückfragen im Controlling
+ * (`grenzFolgenHinweis`).
+ */
+export function grenzFolgen(alt: LeistungsnachweisDaten, neu: LeistungsnachweisDaten): GrenzFolgen {
+  const danach = bestaetigungenNachziehen(alt, neu, periodentexteNachziehen(alt, neu));
+  const neueTeile: Periode[] = [];
+  const projekte = new Set([...alt.projekte, ...danach.projekte].map((p) => p.id));
+  for (const projektId of projekte) {
+    if (gleicheGliederung(erfassungsGliederung(alt, projektId), erfassungsGliederung(danach, projektId))) continue;
+    const vorher = verzeichnis(alt, projektId);
+    const nachher = verzeichnis(danach, projektId);
+    const gruppeVorher = new Map<ID, Gruppe>();
+    for (const g of vorher.gruppen.values()) for (const l of g.leistungen) gruppeVorher.set(l.id, g);
+    for (const g of nachher.gruppen.values()) {
+      if (g.gesperrtIn || nachher.texte.has(g.periode.schluessel)) continue;
+      const bisherMitText = g.leistungen.some((l) => {
+        const v = gruppeVorher.get(l.id);
+        return !!v && v.periode.schluessel !== g.periode.schluessel && vorher.texte.has(v.periode.schluessel);
+      });
+      if (bisherMitText) neueTeile.push(g.periode);
+    }
+  }
+  neueTeile.sort((a, b) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0));
+  const erloschen = (alt.bestaetigungen ?? [])
+    .filter(
+      (b) =>
+        ['bestaetigt', 'abgerechnet'].includes(monatsStatus(alt, b.projektId, b.mitarbeiterId, b.monat).status) &&
+        danach.projekte.some((p) => p.id === b.projektId) &&
+        monatsStatus(danach, b.projektId, b.mitarbeiterId, b.monat).status === 'geaendert',
+    )
+    .map((b) => ({ mitarbeiterId: b.mitarbeiterId, monat: b.monat, projektId: b.projektId }))
+    .sort((a, b) => a.monat.localeCompare(b.monat));
+  return { texte: nachgezogenePeriodentexte(alt, neu), neueTeile, erloschen };
+}
+
+/**
+ * Hinweis zu `grenzFolgen` in Rückfragen, etwa „Damit beginnt am 26.11.2026
+ * ein neuer Zeitraum der gemeinsamen Leistungstexte – für die Tage ab dann
+ * verfassen die Mitarbeiter einen eigenen Text. 2 Bestätigungen erlöschen:
+ * Anna Becker (November 2026), Bernd Kurz (November 2026) – diese Monate sind
+ * im Bereich erneut zu bestätigen.“; null ohne Folgen.
+ */
+export function grenzFolgenHinweis(f: GrenzFolgen, mitarbeiter: Mitarbeiter[]): string | null {
+  const saetze: string[] = [];
+  const texte = nachziehenHinweis(f.texte);
+  if (texte) saetze.push(texte);
+  if (f.neueTeile.length > 0) {
+    const tage = [...new Set(f.neueTeile.map((p) => langDatum(p.von)))];
+    saetze.push(
+      tage.length === 1
+        ? `Damit beginnt am ${tage[0]} ein neuer Zeitraum der gemeinsamen Leistungstexte – für die Tage ab dann verfassen die Mitarbeiter einen eigenen Text.`
+        : `Damit beginnen neue Zeiträume der gemeinsamen Leistungstexte (am ${tage.join(', ')}) – für diese Tage verfassen die Mitarbeiter eigene Texte.`,
+    );
+  }
+  if (f.erloschen.length > 0) {
+    const namen = new Map(mitarbeiter.map((m) => [m.id, mitarbeiterName(m) || m.kuerzel]));
+    const wer = f.erloschen.map((e) => `${namen.get(e.mitarbeiterId) || '?'} (${monatName(e.monat)})`).join(', ');
+    saetze.push(
+      f.erloschen.length === 1
+        ? `Die Bestätigung von ${wer} erlischt – der Monat ist im Bereich erneut zu bestätigen.`
+        : `${f.erloschen.length} Bestätigungen erlöschen: ${wer} – diese Monate sind im Bereich erneut zu bestätigen.`,
+    );
+  }
+  return saetze.length ? saetze.join(' ') : null;
 }
 
 /**
