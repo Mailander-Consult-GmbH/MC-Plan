@@ -19,7 +19,7 @@
  * Den Text einer Zeile liefern, solange das Controlling ihn nicht bearbeitet
  * hat, die gemeinsamen Leistungstexte der Mitarbeiter (`textGemeinsam`). Unter
  * den Kennzahlen eines offenen Nachweises steht der Stand der
- * Monatsbestätigungen (`BestaetigungsStand`, Bestaetigungen.tsx).
+ * Monatsbestätigungen (`BestaetigungsStand`, BestaetigungsStand.tsx).
  *
  * Dazu Vorschau, Drucken/PDF, Excel, Abschließen bzw. Wieder öffnen (mit
  * Rückfrage – sie nennt gekürzte Zeiträume, spätere Leistungen, fehlende
@@ -83,7 +83,7 @@ import {
 import { kurzDatum, langDatum, runden, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
-import { BestaetigungsStand, FehlendeBestaetigungen } from './Bestaetigungen';
+import { BestaetigungsStand, FehlendeBestaetigungen } from './BestaetigungsStand';
 import { StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
 import { Leistungstexte } from './Leistungstexte';
 import './controlling.css';
@@ -105,8 +105,8 @@ export function Abrechnung({ projektId, nachweisId, navigate }: { projektId: ID;
           titel="Nicht gefunden"
           text="Der Leistungsnachweis existiert nicht (mehr) – etwa weil er oder sein Projekt gelöscht wurde."
           action={
-            <button type="button" className="btn btn-primary" onClick={() => navigate({ view: 'controlling', tab: 'nachweise' })}>
-              Zu den Leistungsnachweisen
+            <button type="button" className="btn btn-primary" onClick={() => navigate({ view: 'controlling', tab: 'projekte' })}>
+              Zu den Projekten
             </button>
           }
         />
@@ -345,18 +345,10 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           <button
             type="button"
             className="btn btn-ghost"
-            title="Zurück zu allen Leistungsnachweisen im Controlling"
-            onClick={() => navigate({ view: 'controlling', tab: 'nachweise' })}
-          >
-            <Icon name="zurueck" size={14} /> Alle Nachweise
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            title="Leistungsnachweise, Bestätigungen, Leistungen und Einstellungen des Projekts"
+            title="Zurück zu den Leistungsnachweisen des Projekts"
             onClick={() => navigate({ view: 'controllingProjekt', projektId: projekt.id, tab: 'nachweise' })}
           >
-            Zum Projekt
+            <Icon name="zurueck" size={14} /> Zum Projekt
           </button>
           <Segmented<Ansicht>
             value={ansicht}
@@ -417,7 +409,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           <Stat wert={stundenText(summen.abgerechnet)} label="Abgerechnet" />
           <Stat wert={fassung.bearbeiter.length} label="Bearbeiter" />
         </div>
-        {abgeschlossen ? null : <BestaetigungsStand nachweis={n} navigate={navigate} />}
+        {abgeschlossen ? null : <BestaetigungsStand nachweis={n} />}
       </Card>
 
       {abgeschlossen ? (
@@ -673,7 +665,7 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
                 ? `Leistungsnachweis und ${anzahl(eigeneImZeitraum, 'eigene Leistung', 'eigene Leistungen')} gelöscht.`
                 : 'Leistungsnachweis gelöscht.',
             );
-            navigate({ view: 'controlling', tab: 'nachweise' });
+            navigate({ view: 'controllingProjekt', projektId: n.projektId, tab: 'nachweise' });
           }}
         />
       ) : null}

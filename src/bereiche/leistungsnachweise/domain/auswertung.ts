@@ -246,13 +246,6 @@ export function auswertung(daten: LeistungsnachweisDaten, filter: AuswertungFilt
   };
 }
 
-/** Erfasste Stunden einer Person im Zeitraum (Reiter „Mitarbeiter“: laufender Monat). */
-export function stundenVonMitarbeiter(daten: Pick<LeistungsnachweisDaten, 'leistungen'>, mitarbeiterId: ID, von: ISODate, bis: ISODate): number {
-  return runden(
-    daten.leistungen.filter((l) => l.mitarbeiterId === mitarbeiterId && imZeitraum(l.datum, von, bis)).reduce((s, l) => s + l.stunden, 0),
-  );
-}
-
 /** Zahl der Leistungen ohne Nachweis im Zeitraum (über alle bzw. das gefilterte Projekt). */
 export function anzahlOhneNachweis(daten: LeistungsnachweisDaten, filter: AuswertungFilter): number {
   return leistungenOhneNachweis(daten, filter.projektId ?? undefined).filter((l) => passt(filter, l)).length;

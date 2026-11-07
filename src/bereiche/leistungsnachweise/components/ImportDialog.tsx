@@ -214,11 +214,11 @@ export function importMeldung(plan: ImportPlan): string {
 /**
  * Ziel nach dem Übernehmen: Betrifft der Import genau ein Projekt, dessen Leistungstexte im
  * jüngsten Monat der übernommenen Leistungen (dort geht es mit dem gemeinsamen Text weiter),
- * sonst die Übersicht; im Controlling die Leistungsnachweise.
+ * sonst die Übersicht; im Controlling die Projekte der Leistungsnachweise.
  */
 export function importZiel(daten: LeistungsnachweisDaten, plan: ImportPlan, zugang: Zugang = 'bereich'): Route {
-  // Im Controlling bleibt man im Controlling – bei den Leistungsnachweisen
-  if (zugang === 'controlling') return { view: 'controlling', tab: 'nachweise' };
+  // Im Controlling bleibt man im Controlling – bei den Projekten der Leistungsnachweise
+  if (zugang === 'controlling') return { view: 'controlling', tab: 'projekte' };
   const entfernt = new Set(plan.entfernen);
   const projekte = new Set([
     ...plan.neueLeistungen.map((l) => l.projektId),

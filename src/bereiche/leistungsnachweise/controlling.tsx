@@ -1,49 +1,56 @@
 /**
  * Einstieg für den Controlling-Bereich von KaPlan: die Controlling-Ansichten
- * der Leistungsnachweise – Auswertung, Leistungsnachweise mit Abrechnung
- * (Leistungstexte, Aufschläge, Abschluss, Druck und Export), Projekte mit
- * den Monatsbestätigungen der Mitarbeiter und ihren Einstellungen,
- * Mitarbeiter und der Sammel-Import aus Excel. Sie arbeiten auf dem Bestand dieses Bereichs mit
- * dem Zugang 'controlling' (domain/rechte.ts) – eine Anmeldung als
- * Mitarbeiter ist nicht nötig, und angelegt wird hier niemand; die PIN fragt
- * der Controlling-Bereich ab. Ist die Person unter „Angemeldet als“
- * Mitarbeiter, gilt sie auch hier als angemeldet (eigene Leistungen beim
- * Löschen eines Nachweises mitlöschen; im Sammel-Import lassen sich ihr
- * Zeilen ohne Mitarbeiter zuordnen).
+ * der Leistungsnachweise – ohne Reiter, je Menüpunkt des Controlling-Bereichs
+ * eine Seite: „Leistungsnachweise“ zeigt die Projekte
+ * (pages/controlling/ProjektListe.tsx: Raster wählen, Leistungsnachweis
+ * erstellen, Sammel-Import aus Excel, Neues Projekt), „Auswertung“ die Stunden
+ * je Mitarbeiter, Monat und Projekt (pages/controlling/Auswertung.tsx). Ein
+ * Projekt öffnet seine Leistungsnachweise, Leistungen und Einstellungen
+ * (pages/controlling/Projekt.tsx), ein Nachweis die Abrechnung mit
+ * Leistungstexten, Aufschlägen, Bestätigungen der Mitarbeiter, Abschluss,
+ * Druck und Export. Eine eigene Seite für Mitarbeiter gibt es nicht mehr: Wer
+ * unter „Angemeldet als“ steht, wird im Bereich als Mitarbeiter geführt
+ * (domain/rechte.ts, `anmeldungAnwenden`), der Sammel-Import legt Personen
+ * der Datei an.
+ *
+ * Sie arbeiten auf dem Bestand dieses Bereichs mit dem Zugang 'controlling'
+ * (domain/rechte.ts) – eine Anmeldung als Mitarbeiter ist nicht nötig, und
+ * angelegt wird hier niemand; die PIN fragt der Controlling-Bereich ab. Ist
+ * die Person unter „Angemeldet als“ Mitarbeiter, gilt sie auch hier als
+ * angemeldet (eigene Leistungen beim Löschen eines Nachweises mitlöschen; im
+ * Sammel-Import lassen sich ihr Zeilen ohne Mitarbeiter zuordnen).
  *
  * Der Controlling-Bereich bindet nur dieses Modul ein (die Bereiche greifen
- * sonst nicht aufeinander zu). Adressen: #/controlling/leistungsnachweise/<reiter>
- * bzw. …/projekt/<id>/<reiter> und …/projekt/<id>/nachweis/<id> (lib/router.ts).
+ * sonst nicht aufeinander zu). Adressen: #/controlling/leistungsnachweise/projekte
+ * bzw. …/auswertung, …/projekt/<id>/<reiter> und …/projekt/<id>/nachweis/<id>
+ * (lib/router.ts).
  */
-import { useState } from 'react';
-import { Icon } from '../../shared/icons';
 import { Callout } from '../../shared/ui';
-import { ImportDialog } from './components/ImportDialog';
 import { SpeicherHinweis } from './components/SpeicherHinweis';
 import { CONTROLLING_PREFIX, hashToRoute, useRoute, type ControllingTab, type Route } from './lib/router';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
 import { Abrechnung } from './pages/controlling/Abrechnung';
-import { Controlling } from './pages/controlling/Controlling';
+import { AuswertungAnsicht } from './pages/controlling/Auswertung';
 import { ControllingProjekt } from './pages/controlling/Projekt';
+import { ProjektListe } from './pages/controlling/ProjektListe';
 import { StoreProvider, useStore } from './store/store';
 import './leistungsnachweise.css';
+import './pages/controlling/controlling.css';
 
 /** Präfix der Adressen im Controlling-Bereich (ohne „#/“). */
 export const LEISTUNGSNACHWEISE_CONTROLLING = CONTROLLING_PREFIX;
 
 const UNTERTITEL: Record<ControllingTab, string> = {
-  auswertung: 'Auswertung – Stunden je Mitarbeiter und Projekt',
-  nachweise: 'Leistungsnachweise aller Projekte – Abrechnung, Abschluss und Export',
-  projekte: 'Projekte – Leistungsnachweise, Bestätigungen, Leistungen und Einstellungen je Projekt',
-  mitarbeiter: 'Mitarbeiter verwalten',
+  projekte: 'Projekte – Raster, Leistungsnachweise erstellen, abrechnen und exportieren',
+  auswertung: 'Leistungsnachweise – Stunden je Mitarbeiter, Monat und Projekt',
 };
 
 /** Untertitel der Kopfzeile im Controlling-Bereich zur aktuellen Adresse. */
 export function leistungsnachweiseUntertitel(hash: string): string {
   const route = hashToRoute(hash);
   if (route.view === 'abrechnung') return 'Leistungsnachweis – Leistungstexte, Aufschläge, Abschluss und Export';
-  if (route.view === 'controllingProjekt') return 'Projekt – Leistungsnachweise, Bestätigungen, Leistungen und Einstellungen';
-  return route.view === 'controlling' ? UNTERTITEL[route.tab] : UNTERTITEL.auswertung;
+  if (route.view === 'controllingProjekt') return 'Projekt – Leistungsnachweise, Leistungen und Einstellungen';
+  return route.view === 'controlling' ? UNTERTITEL[route.tab] : UNTERTITEL.projekte;
 }
 
 /** Controlling der Leistungsnachweise – mit eigenem Store im Zugang 'controlling'. */
@@ -58,7 +65,6 @@ export function LeistungsnachweiseControlling() {
 function Rahmen() {
   const { ladeZustand } = useStore();
   const [route, navigate] = useRoute();
-  const [importOffen, setImportOffen] = useState(false);
   // Eine neue Seite beginnt oben – der Reiter eines Projekts ist keine neue Seite (src/shared/scrollen.ts)
   const oben = useNachObenBeiSeitenwechsel<HTMLDivElement>(seite(route));
 
@@ -76,27 +82,11 @@ function Rahmen() {
         <Abrechnung key={route.nachweisId} projektId={route.projektId} nachweisId={route.nachweisId} navigate={navigate} />
       ) : route.view === 'controllingProjekt' ? (
         <ControllingProjekt key={route.projektId} projektId={route.projektId} tab={route.tab} navigate={navigate} />
+      ) : route.view === 'controlling' && route.tab === 'auswertung' ? (
+        <AuswertungAnsicht navigate={navigate} />
       ) : (
-        <>
-          <div className="row-between wrap">
-            <p className="small muted" style={{ margin: 0, maxWidth: 640 }}>
-              Die Mitarbeiter erfassen ihre Leistungen im Bereich Leistungsnachweise; hier werden die Nachweise
-              abgerechnet, abgeschlossen und exportiert.
-            </p>
-            <button
-              type="button"
-              className="btn btn-outline"
-              title="Sammel-Export der Zeiterfassung: Leistungen aller Mitarbeiter der Datei übernehmen"
-              onClick={() => setImportOffen(true)}
-            >
-              <Icon name="importieren" size={14} /> Excel-Import (alle Mitarbeiter)
-            </button>
-          </div>
-          <Controlling tab={route.view === 'controlling' ? route.tab : 'auswertung'} navigate={navigate} />
-        </>
+        <ProjektListe navigate={navigate} />
       )}
-
-      {importOffen ? <ImportDialog onClose={() => setImportOffen(false)} navigate={navigate} /> : null}
     </div>
   );
 }

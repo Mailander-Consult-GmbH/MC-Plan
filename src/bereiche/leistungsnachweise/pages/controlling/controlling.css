@@ -23,12 +23,6 @@
   gap: 10px 14px;
   align-items: end;
 }
-/* Leistungsnachweise: umbrechende Zeile statt Raster – der Status-Umschalter wird nie schmaler als sein
-   Inhalt (sonst läge „Abgeschlossen“ unter dem Projekt-Auswahlfeld) */
-.ln-co-filter-auswahl.ln-co-filter-nachweise { display: flex; flex-wrap: wrap; align-items: flex-end; }
-.ln-co-filter-nachweise > .field { flex: 1 1 180px; max-width: 300px; }
-.ln-co-filter-nachweise > .field:first-child { flex: 0 0 auto; max-width: 100%; }
-.ln-co-filter-nachweise > .ln-co-filter-knoepfe { margin-left: auto; }
 .ln-co-filter-knoepfe { justify-content: flex-end; gap: 8px; }
 .ln-co-hinweise { border-top: 1px solid var(--separator); display: flex; flex-direction: column; gap: 4px; }
 .ln-co-warnung { color: var(--orange-text); font-weight: 600; }
@@ -56,7 +50,6 @@
 .table.ln-co-matrix th.ln-stunden, .table.ln-co-matrix td.ln-stunden { min-width: 72px; padding-left: 10px; padding-right: 12px; }
 
 /* Liste der Leistungsnachweise */
-.ln-co-projektzelle { white-space: nowrap; }
 .ln-co-projektname { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .table td.ln-co-abgerechnet { font-weight: 700; }
 
@@ -145,10 +138,7 @@
 }
 
 @media (max-width: 1180px) {
-  /* Liste und Mitarbeiter neben der Seitenleiste: engere Zellen, Projektname kürzer –
-     Raster, Projekte und Letzte Leistung entfallen dort (.ln-spalte-weit) */
-  .table.ln-co-nachweise th, .table.ln-co-nachweise td { padding-left: 8px; padding-right: 8px; }
-  .table.ln-co-personen th, .table.ln-co-personen td { padding-left: 10px; padding-right: 10px; }
+  /* Neben der Seitenleiste: Projektname kürzer */
   .ln-co-projektname { max-width: 120px; }
 }
 
@@ -205,29 +195,13 @@
 
 @media (max-width: 640px) {
   .ln-co-filter-auswahl { grid-template-columns: minmax(0, 1fr); }
-  /* Nachweise: alles untereinander; der Umschalter nimmt die ganze Breite und scrollt notfalls quer (global.css) */
-  .ln-co-filter-auswahl.ln-co-filter-nachweise { flex-direction: column; align-items: stretch; }
-  .ln-co-filter-nachweise > .field, .ln-co-filter-nachweise > .field:first-child { flex: none; max-width: none; }
-  .ln-co-filter-nachweise > .ln-co-filter-knoepfe { margin-left: 0; }
+  /* Zeitraum der Auswertung: alles untereinander */
   .ln-co-filter-zeitraum { align-items: stretch; flex-direction: column; }
   .ln-co-blaettern { justify-content: space-between; }
   .input.ln-co-monat { flex: 1 1 auto; width: auto; min-width: 0; }
   .ln-co-von-bis .input { flex: 1 1 120px; width: auto; }
   .ln-co-leiste > .row { width: 100%; }
   .ln-co-leiste > .row > .btn { flex: 1 1 auto; }
-
-  /* Liste der Leistungsnachweise: Projekt und Titel, darunter die drei Zahlen nebeneinander */
-  .table-stack.ln-co-nachweise tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 12px; }
-  .table-stack.ln-co-nachweise td { width: auto; padding: 1px 0; }
-  .table-stack.ln-co-nachweise td:nth-child(-n+4) { grid-column: 1 / -1; }
-  .table-stack.ln-co-nachweise td.ln-stunden { text-align: left; }
-  .table-stack.ln-co-nachweise td.ln-stunden::after { content: none; }
-  .table-stack.ln-co-nachweise td[data-label]::before {
-    content: attr(data-label); display: block; font-size: 10.5px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.03em; color: var(--text-tertiary);
-  }
-  .table-stack.ln-co-nachweise tr.ln-co-summe td:empty { display: none; }
-  .ln-co-projektzelle { display: flex !important; gap: 8px; align-items: baseline; }
 
   /* Stunden je Projekt: das Projekt, darunter die vier Zahlen nebeneinander */
   .table-stack.ln-co-projekte tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 10px; }
@@ -240,13 +214,19 @@
     letter-spacing: 0.03em; color: var(--text-tertiary);
   }
 
-  /* Mitarbeiter: Kürzel, Name, Status und Löschen oben, darunter die Stunden */
-  .table-stack.ln-co-personen tr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
-  .table-stack.ln-co-personen td { width: auto; padding: 1px 0; }
-  .table-stack.ln-co-personen td:nth-child(2) { flex: 1 1 auto; min-width: 0; }
-  .table-stack.ln-co-personen td.ln-stunden { order: 3; }
-  .table-stack.ln-co-personen td.actions { order: 4; margin-left: auto; padding-top: 0; flex: none; }
-  .table-stack.ln-co-personen td.ln-stunden::before { content: attr(data-label) ' '; font-weight: 400; color: var(--text-tertiary); }
+  /* Projekte der Leistungsnachweise: das Projekt, darunter Raster und Stunden, dann „Leistungsnachweis erstellen“ */
+  .table-stack.ln-co-projektliste tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: end; }
+  .table-stack.ln-co-projektliste td { width: auto; padding: 1px 0; }
+  .table-stack.ln-co-projektliste td:first-child, .table-stack.ln-co-projektliste td.actions { grid-column: 1 / -1; }
+  .table-stack.ln-co-projektliste td.ln-co-raster { width: auto; }
+  .table-stack.ln-co-projektliste td.ln-co-raster .select { width: 100%; min-width: 0; }
+  .table-stack.ln-co-projektliste td.ln-stunden { text-align: right; }
+  .table-stack.ln-co-projektliste td.ln-stunden::after { content: none; }
+  .table-stack.ln-co-projektliste td[data-label]::before {
+    content: attr(data-label); display: block; font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.03em; color: var(--text-tertiary); margin-bottom: 2px;
+  }
+  .table-stack.ln-co-projektliste td.actions .btn { width: 100%; justify-content: center; }
 
   /* Kontrolle je Mitarbeiter: so schmal wie möglich, mit vielen Abschnitten quer verschiebbar */
   .table-scroll.ln-co-scroll > .table.ln-co-kontrolle { min-width: 0; }
@@ -264,32 +244,14 @@
 
 /* Projekt im Controlling und Liste der Projekte */
 .ln-co-projekttitel { font-size: 15px; margin: 0; min-width: 0; }
+/* Raster-Auswahl in der Spalte „Nachweis“ – so breit wie ihr Inhalt */
+.table.ln-co-projektliste td.ln-co-raster { width: 1%; white-space: nowrap; }
+.table.ln-co-projektliste td.ln-co-raster .select { width: auto; min-width: 150px; }
 .table tr.ln-co-archiviert td { color: var(--text-tertiary); }
-.zahl.ln-co-warnzahl { color: var(--orange-text); font-weight: 600; }
 
 /* ------------------------------------------------------------------ */
-/* Bestätigungen der Mitarbeiter (Bestaetigungen.tsx)                  */
+/* Bestätigungen der Mitarbeiter in der Abrechnung (BestaetigungsStand.tsx) */
 /* ------------------------------------------------------------------ */
-.ln-co-bst-summe { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
-.ln-co-bst-ok { display: inline-flex; align-items: center; gap: 6px; color: var(--gruen-text); font-weight: 600; }
-.ln-co-bst-geaendert { color: var(--rot-text); font-weight: 600; }
-/* Feste Spalten – so stehen die Monate untereinander gleich */
-.table.ln-co-bestaetigungen { table-layout: fixed; }
-.table.ln-co-bestaetigungen td { vertical-align: top; }
-.table.ln-co-bestaetigungen th.ln-co-bst-zahl { width: 110px; }
-.table.ln-co-bestaetigungen th.ln-co-bst-spalte-status { width: 42%; }
-.ln-co-bst-person { min-width: 0; overflow-wrap: anywhere; }
-.ln-co-bst-status { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
-.ln-co-bst-zusatz { display: block; line-height: 1.3; }
-.table.ln-co-bestaetigungen td.ln-co-bst-ohne { font-weight: 500; }
-.table.ln-co-bestaetigungen td.ln-co-bst-ohne.ln-co-warnung { font-weight: 600; }
-.ln-co-bst-fuss {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
-  border-top: 1px solid var(--separator); padding: 10px 20px;
-}
-.ln-co-bst-nachweis { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-.ln-co-bst-nachweis .ln-co-link { font-size: 13px; text-align: left; }
-
 /* Kurzer Stand in der Abrechnung eines offenen Nachweises (`BestaetigungsStand`) */
 .ln-co-bst-stand { border-top: 1px solid var(--separator); padding: 12px 20px 14px; display: flex; flex-direction: column; gap: 8px; }
 .ln-co-bst-stand-kopf { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
@@ -308,20 +270,9 @@
 .ln-co-bst-fehlende { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
 
 @media (max-width: 640px) {
-  .ln-co-bst-fuss { padding: 10px 16px; }
   .ln-co-bst-stand { padding: 12px 16px 14px; }
   /* Je Monat: Monat und „x von y bestätigt“ in einer Zeile, darunter wer fehlt */
   .ln-co-bst-monate > li { grid-template-columns: minmax(0, 1fr) auto; }
   .ln-co-bst-fehlend { grid-column: 1 / -1; }
 
-  /* Person, darunter Stunden | Status | Ohne Text nebeneinander */
-  .table-stack.ln-co-bestaetigungen tr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 14px; }
-  .table-stack.ln-co-bestaetigungen td { width: auto; padding: 1px 0; }
-  .table-stack.ln-co-bestaetigungen td:first-child { grid-column: 1 / -1; }
-  .table-stack.ln-co-bestaetigungen td.ln-stunden { text-align: left; }
-  .table-stack.ln-co-bestaetigungen td.ln-co-bst-ohne::after { content: none; }
-  .table-stack.ln-co-bestaetigungen td[data-label]::before {
-    content: attr(data-label); display: block; font-size: 10.5px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.03em; color: var(--text-tertiary); margin-bottom: 2px;
-  }
 }

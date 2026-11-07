@@ -2,7 +2,9 @@
  * Rahmen des Controllings: Seitenleiste, Kopfzeile und Auswahl der Ansicht –
  * Projekte und Archiv auf dem Projektregister, dazu das Controlling der
  * Leistungsnachweise, das der Bereich selbst bereitstellt
- * (`LeistungsnachweiseControlling`, src/bereiche/leistungsnachweise/controlling.tsx).
+ * (`LeistungsnachweiseControlling`, src/bereiche/leistungsnachweise/controlling.tsx) –
+ * mit zwei Menüpunkten: „Leistungsnachweise“ (Projekte, Nachweise, Abrechnung)
+ * und „Auswertung“.
  * Über jeder Ansicht steht ein Hinweis, solange sich das Projektregister nicht
  * speichern lässt (`RegisterSpeicherHinweis`).
  */
@@ -28,6 +30,7 @@ export function App({ onSperren }: { onSperren: () => void }) {
   // Ein neuer Menüpunkt beginnt oben (src/shared/scrollen.ts); die Leistungsnachweise
   // setzen innerhalb ihres Menüpunkts selbst zurück.
   const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view);
+  const leistungsnachweise = route.view === 'leistungsnachweise' || route.view === 'auswertung';
   const [menuOffen, setMenuOffen] = useSeitenleiste();
   // Bleibende Stelle für den Fokus, wenn der Hinweis zum Speichern samt Knopf verschwindet
   const ueberschrift = useRef<HTMLHeadingElement>(null);
@@ -50,6 +53,8 @@ export function App({ onSperren }: { onSperren: () => void }) {
       ? { titel: 'Archiv', sub: 'Im Controlling archivierte Projekte – in allen Bereichen archiviert' }
       : route.view === 'leistungsnachweise'
         ? { titel: 'Leistungsnachweise', sub: leistungsnachweiseUntertitel(window.location.hash) }
+        : route.view === 'auswertung'
+          ? { titel: 'Auswertung', sub: leistungsnachweiseUntertitel(window.location.hash) }
         : { titel: 'Projekte', sub: 'Alle Projekte der Bereiche – anlegen, übernehmen, archivieren, löschen' };
 
   return (
@@ -82,6 +87,7 @@ export function App({ onSperren }: { onSperren: () => void }) {
           aktiv={route.view === 'leistungsnachweise'}
           onClick={() => gehe({ view: 'leistungsnachweise' })}
         />
+        <NavItem icon="diagramm" label="Auswertung" aktiv={route.view === 'auswertung'} onClick={() => gehe({ view: 'auswertung' })} />
 
         <div className="sidebar-footer">
           <AngemeldetAls />
@@ -112,7 +118,7 @@ export function App({ onSperren }: { onSperren: () => void }) {
         <div className="content" ref={inhalt}>
           <div className="content-inner">
             <RegisterSpeicherHinweis fokusZiel={ueberschrift} />
-            {route.view === 'leistungsnachweise' ? (
+            {leistungsnachweise ? (
               <LeistungsnachweiseControlling />
             ) : zustand !== 'ok' ? (
               <Callout ton="error" icon="!">

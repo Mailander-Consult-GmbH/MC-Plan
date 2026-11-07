@@ -47,6 +47,7 @@ const paths: Record<string, string> = {
   // Controlling: Schloss (PIN) und Archivkarton
   schloss: 'M6 11h12v9.5H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11M12 14.5v2.5',
   archiv: 'M3.5 4.5h17v4h-17zM5 8.5V20h14V8.5M10 12.5h4',
+  diagramm: 'M4 20.5h16M6.5 20.5v-6M11 20.5V8M15.5 20.5v-9M20 20.5V5',
 };
 
 export type IconName = keyof typeof paths;

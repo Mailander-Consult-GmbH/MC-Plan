@@ -1,6 +1,6 @@
 /**
- * Projekt im Bereich: oben Projektnummer, Status und Leistungsbereich, daneben
- * der Umschalter zwischen „Leistungstexte“ (Vorgabe, pages/projekt/
+ * Projekt im Bereich: oben Projektnummer, Status und Leistungsbereich, darunter
+ * die Reiter (wie in den anderen Bereichen, `.tabs`) „Leistungstexte“ (Vorgabe, pages/projekt/
  * MonatsErfassung.tsx – gemeinsame Texte je Zeitraum und Monatsbestätigung)
  * und „Meine Leistungen“ (pages/projekt/Leistungen.tsx – Kalender und Liste
  * der eigenen Leistungen). Die Ansicht steht in der Adresse
@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArchivHinweis } from '../../../gemeinsam/ProjektBereiche';
 import { today } from '../../../shared/dates';
-import { Badge, Segmented } from '../../../shared/ui';
+import { Badge } from '../../../shared/ui';
 import { STATUS_TON } from '../components/common';
 import { vorgabeMonat } from '../domain/erfassung';
 import { angemeldet } from '../domain/rechte';
@@ -24,6 +24,12 @@ import type { ProjektAnsicht, Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { Leistungen } from './projekt/Leistungen';
 import { MonatsErfassung } from './projekt/MonatsErfassung';
+
+/** Reiter der Projektseite in ihrer Reihenfolge. */
+const ANSICHTEN: { id: ProjektAnsicht; label: string; titel: string }[] = [
+  { id: 'texte', label: 'Leistungstexte', titel: 'Gemeinsame Leistungstexte je Zeitraum und Bestätigung des Monats' },
+  { id: 'leistungen', label: 'Meine Leistungen', titel: 'Eigene Leistungen im Kalender bzw. als Liste' },
+];
 
 export function ProjektDetail({
   projekt,
@@ -44,7 +50,7 @@ export function ProjektDetail({
   if (vorgabe.fuer !== ichId) setVorgabe({ fuer: ichId, monat: vorgabeMonat(data, projekt.id, ichId, today()) });
   const gezeigt = monat && istMonat(monat) ? monat : vorgabe.monat;
 
-  // Zuletzt gezeigter Monat der Leistungstexte – dorthin führt der Umschalter zurück
+  // Zuletzt gezeigter Monat der Leistungstexte – dorthin führt der Reiter zurück
   const zuletzt = useRef(gezeigt);
   useEffect(() => {
     if (ansicht === 'texte') zuletzt.current = gezeigt;
@@ -67,17 +73,26 @@ export function ProjektDetail({
           <Badge ton={STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
           {projekt.leistungsbereich ? <span className="small muted">{projekt.leistungsbereich}</span> : null}
         </div>
-        <Segmented<ProjektAnsicht>
-          value={ansicht}
-          onChange={umschalten}
-          options={[
-            { value: 'texte', label: 'Leistungstexte' },
-            { value: 'leistungen', label: 'Meine Leistungen' },
-          ]}
-        />
       </div>
 
       <ArchivHinweis bereich="leistungsnachweise" lokaleId={projekt.id} />
+
+      {/* Reiter wie in den anderen Bereichen (etwa „Planläufe“ und „Planliste“ im Planlaufmanagement) */}
+      <div className="tabs" role="tablist" aria-label="Ansicht des Projekts">
+        {ANSICHTEN.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            role="tab"
+            aria-selected={a.id === ansicht}
+            className={a.id === ansicht ? 'active' : ''}
+            title={a.titel}
+            onClick={() => umschalten(a.id)}
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
 
       {ansicht === 'leistungen' ? (
         <Leistungen projekt={projekt} navigate={navigate} />

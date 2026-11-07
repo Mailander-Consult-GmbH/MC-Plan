@@ -69,6 +69,7 @@ import {
   gesperrtHinweis,
   monatName,
   monatsStatus,
+  monatsStatusBadge,
   monatsStatusText,
   monatVerschieben,
   nachAbschlussHinweis,
@@ -364,18 +365,21 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
 
   const nachAbschluss = nachAbschlussHinweis(s.nachAbschluss, s.nachAbschlussGeaendert);
   const anderswo = anderswoAbgerechnetHinweis(s.anderswoAbgerechnet);
+  const badge = monatsStatusBadge(s);
+  const titelId = `${praefix}-titel`;
+  const bestaetigenTitelId = `${praefix}-bestaetigen`;
 
   return (
     <div className="stack ln-me">
-      <div className="card ln-me-kopf">
-        <div className="ln-me-kopf-zeile">
+      {/* Block 1: alle Zeiträume des Monats mit Stichpunkten und gemeinsamem Text */}
+      <section className="card ln-me-texte" aria-labelledby={titelId}>
+        <div className="ln-me-kopf">
           <div className="ln-me-kopf-titel">
-            <h2>Leistungstexte</h2>
+            <h2 id={titelId}>Leistungstexte</h2>
             <span className="small muted">
               {s.anzahl > 0 ? (
                 <>
-                  Meine Stunden: <b>{stundenText(s.stunden)} Std.</b> · {anzahl(s.anzahl, 'Leistung', 'Leistungen')} ·{' '}
-                  {anzahl(s.perioden.length, 'Zeitraum', 'Zeiträume')}
+                  Meine Stunden: <b>{stundenText(s.stunden)} Std.</b> · {anzahl(s.perioden.length, 'Zeitraum', 'Zeiträume')}
                 </>
               ) : (
                 'Keine eigenen Leistungen in diesem Monat'
@@ -385,92 +389,66 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
               {s.perioden.some((p) => p.raster !== projekt.raster) ? ' (abgerechnete Zeiträume im Raster ihres Abschlusses)' : null}
             </span>
           </div>
-          <div className="ln-me-monatwahl" role="group" aria-label="Monat wählen">
-            <button
-              type="button"
-              className="btn-icon"
-              aria-label="Vorheriger Monat"
-              title="Vorheriger Monat"
-              onClick={() => zuMonat(monatVerschieben(monat, -1))}
-            >
-              <Icon name="zurueck" size={16} />
-            </button>
-            <strong className="ln-me-monat" aria-live="polite">
-              {monatName(monat)}
-            </strong>
-            <button
-              type="button"
-              className="btn-icon"
-              aria-label="Nächster Monat"
-              title="Nächster Monat"
-              onClick={() => zuMonat(monatVerschieben(monat, 1))}
-            >
-              <Icon name="chevron" size={16} />
-            </button>
+          <div className="ln-me-kopf-rechts">
+            {s.status === 'keine' ? null : <Badge ton={badge.ton}>{badge.text}</Badge>}
+            <div className="ln-me-monatwahl" role="group" aria-label="Monat wählen">
+              <button
+                type="button"
+                className="btn-icon"
+                aria-label="Vorheriger Monat"
+                title="Vorheriger Monat"
+                onClick={() => zuMonat(monatVerschieben(monat, -1))}
+              >
+                <Icon name="zurueck" size={16} />
+              </button>
+              <strong className="ln-me-monat" aria-live="polite">
+                {monatName(monat)}
+              </strong>
+              <button
+                type="button"
+                className="btn-icon"
+                aria-label="Nächster Monat"
+                title="Nächster Monat"
+                onClick={() => zuMonat(monatVerschieben(monat, 1))}
+              >
+                <Icon name="chevron" size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
         {s.status === 'keine' ? null : (
-          <div className={`ln-me-status ln-me-status-${s.status}`} role="status">
-            <Icon name={STATUS_ICON[s.status]} size={15} />
-            <span>
-              {monatsStatusText(s)}
-              {laufend && (s.status === 'offen' || s.status === 'geaendert') ? (
-                <span className="ln-me-status-zusatz"> · Der Monat läuft noch – bestätigen Sie ihn, wenn er vollständig erfasst ist.</span>
-              ) : null}
-            </span>
-          </div>
+          <p className="small tertiary ln-me-erklaerung">
+            Je Zeitraum ein gemeinsamer Text für alle, die darin Leistungen haben. Ihre Stichpunkte dienen der Orientierung;
+            die der anderen sind hier nicht zu sehen.
+          </p>
         )}
 
-        <p className="small tertiary ln-me-erklaerung">
-          Je Zeitraum gibt es einen gemeinsamen Leistungstext für alle, die darin Leistungen haben – alle Beteiligten sehen
-          und bearbeiten ihn. Ihre Stichpunkte und Stunden dienen Ihnen zur Orientierung; die der anderen sind hier nicht zu
-          sehen. Ist jeder Zeitraum beschrieben, bestätigen Sie den Monat.
-        </p>
-
-        {weitereOffene.length > 0 ? (
-          <div className="ln-me-weitere small">
-            <span className="muted">Noch zu bestätigen:</span>
-            {weitereOffene.map((o) => (
-              <button key={o.monat} type="button" className="link-btn ln-me-link" onClick={() => zuMonat(o.monat)}>
-                {monatName(o.monat)}
-                {o.status === 'geaendert' ? ' (geändert)' : ''}
-              </button>
+        {nichtGespeichert.length > 0 ? (
+          <div className="ln-me-hinweise">
+            {nichtGespeichert.map((f, i) => (
+              <Callout key={`${f.zeitraum}-${i}`} ton="warn" icon="!">
+                <div className="stack ln-me-nicht-gespeichert">
+                  <span>
+                    <strong>Nicht gespeichert ({f.zeitraum}):</strong> {f.grund} Ihre Eingabe:
+                  </span>
+                  <span className="ln-me-nicht-gespeichert-text">„{f.text}“</span>
+                  <div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => setNichtGespeichert((alt) => alt.filter((x) => x !== f))}
+                    >
+                      Verwerfen
+                    </button>
+                  </div>
+                </div>
+              </Callout>
             ))}
           </div>
         ) : null}
-      </div>
 
-      {nichtGespeichert.map((f, i) => (
-        <Callout key={`${f.zeitraum}-${i}`} ton="warn" icon="!">
-          <div className="stack ln-me-nicht-gespeichert">
-            <span>
-              <strong>Nicht gespeichert ({f.zeitraum}):</strong> {f.grund} Ihre Eingabe:
-            </span>
-            <span className="ln-me-nicht-gespeichert-text">„{f.text}“</span>
-            <div>
-              <button
-                type="button"
-                className="btn btn-sm btn-ghost"
-                onClick={() => setNichtGespeichert((alt) => alt.filter((x) => x !== f))}
-              >
-                Verwerfen
-              </button>
-            </div>
-          </div>
-        </Callout>
-      ))}
-
-      {nachAbschluss ? (
-        <Callout ton="warn" icon="!">
-          {nachAbschluss}
-        </Callout>
-      ) : null}
-
-      {anderswo ? <Callout icon="i">{anderswo}</Callout> : null}
-
-      {s.status === 'keine' ? (
-        <Card>
+        {s.status === 'keine' ? (
           <EmptyState
             icon="stunden"
             titel={`Keine eigenen Leistungen in ${monatName(monat)}`}
@@ -490,10 +468,8 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
               </div>
             }
           />
-        </Card>
-      ) : (
-        <>
-          {s.perioden.map((p, i) => {
+        ) : (
+          s.perioden.map((p, i) => {
             const { eigene } = stichpunkteDerPeriode(data, p, zugang);
             const bearbeitbar = darfPeriodentextBearbeiten(data, p, zugang);
             const text = aktuellerText(p);
@@ -506,11 +482,12 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
             const vorschlag = automatikText(eigene);
             const nachAbschlussIds = new Set(p.nachAbschluss.map((l) => l.id));
             const geaendertIds = new Set(p.nachAbschlussGeaendert.map((l) => l.id));
-            const titelId = `${praefix}-titel-${i}`;
+            const periodeTitelId = `${praefix}-titel-${i}`;
+            const punkteId = `${praefix}-punkte-${i}`;
             return (
-              <section key={p.schluessel} className={`card ln-me-periode ${p.gesperrt ? 'ln-me-gesperrt' : ''}`} aria-labelledby={titelId}>
+              <section key={p.schluessel} className={`ln-me-periode ${p.gesperrt ? 'ln-me-gesperrt' : ''}`} aria-labelledby={periodeTitelId}>
                 <div className="ln-me-periode-kopf">
-                  <h3 id={titelId} className="ln-me-periode-titel">
+                  <h3 id={periodeTitelId} className="ln-me-periode-titel">
                     {periodeKurztext(p)}
                   </h3>
                   <div className="ln-me-periode-merkmale">
@@ -527,8 +504,16 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
 
                 <div className="ln-me-periode-inhalt">
                   <div className="ln-me-punkte">
-                    <div className="ln-me-feldtitel">Meine Stichpunkte</div>
-                    <ul className="ln-me-punktliste">
+                    <div className="ln-me-feldtitel" id={punkteId}>
+                      Meine Stichpunkte
+                    </div>
+                    {/* Datum, Stunden und Stichpunkt in festen Spalten – über alle Zeilen und Zeiträume bündig */}
+                    <div className="ln-me-punkt-kopf" aria-hidden="true">
+                      <span>Datum</span>
+                      <span className="ln-me-punkt-std">Std.</span>
+                      <span>Stichpunkt</span>
+                    </div>
+                    <ul className="ln-me-punktliste" aria-labelledby={punkteId}>
                       {eigene.map((l) => {
                         const a = l.abschnittId ? abschnitte.get(l.abschnittId) : undefined;
                         return (
@@ -543,7 +528,7 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
                               <span className="ln-me-punkt-datum">
                                 {wochentag(l.datum)} {kurzDatum(l.datum)}
                               </span>
-                              <span className="ln-me-punkt-std">{stundenText(l.stunden)} Std.</span>
+                              <span className="ln-me-punkt-std">{stundenText(l.stunden)}</span>
                               <span className="ln-me-punkt-text">
                                 {a ? <span className="ln-me-punkt-abschnitt">{a.kurz}</span> : null}
                                 {l.text || <span className="tertiary">ohne Stichpunkt</span>}
@@ -569,14 +554,16 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
                             value={p.text.text}
                             onChange={() => undefined}
                             readOnly
-                            aria-labelledby={`${praefix}-feld-${i} ${titelId}`}
+                            aria-labelledby={`${praefix}-feld-${i} ${periodeTitelId}`}
                           />
                         ) : (
                           <p id={textfeldId(i)} className="small tertiary ln-me-ohne">
                             Für diesen Zeitraum gibt es keinen gemeinsamen Leistungstext.
                           </p>
                         )}
-                        <Callout icon="i">{gesperrtHinweis(p)}</Callout>
+                        <p className="small ln-me-gesperrt-hinweis">
+                          <Icon name="schloss" size={12} /> {gesperrtHinweis(p)}
+                        </p>
                       </>
                     ) : (
                       <>
@@ -586,7 +573,7 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
                           onChange={(v) => entwurfSetzen(p, v)}
                           onBlur={() => speichern(p)}
                           readOnly={!bearbeitbar}
-                          aria-labelledby={`${praefix}-feld-${i} ${titelId}`}
+                          aria-labelledby={`${praefix}-feld-${i} ${periodeTitelId}`}
                           placeholder="Was wurde in diesem Zeitraum geleistet? – Ein Text für alle, die hier Leistungen haben."
                           aria-describedby={`${praefix}-stand-${i}`}
                         />
@@ -653,78 +640,114 @@ export function MonatsErfassung({ projekt, monat, navigate }: { projekt: Projekt
                 </div>
               </section>
             );
-          })}
+          })
+        )}
+      </section>
 
-          <Card className="ln-me-bestaetigen">
-            <div className="card-pad">
-              <h3 className="ln-me-bestaetigen-titel">Monat bestätigen</h3>
-              {s.status === 'abgerechnet' ? (
-                <p className="small muted">
-                  {s.nachAbschluss.length > 0 || s.nachAbschlussGeaendert.length > 0
-                    ? `Alle Zeiträume in ${monatName(monat)} sind abgerechnet – eine Bestätigung ist nicht mehr nötig; über danach erfasste bzw. geänderte Leistungen entscheidet das Controlling.`
-                    : `Alle Ihre Leistungen in ${monatName(monat)} sind bereits abgerechnet – eine Bestätigung ist nicht mehr nötig.`}
-                </p>
-              ) : (
-                <>
-                  <p className="ln-me-satz">{bestaetigungsSatz(monat)}</p>
-                  {fehlend.length > 0 ? (
-                    <div className="ln-me-fehlt" id={`${praefix}-fehlt`}>
-                      <span>
-                        {fehlend.length === 1
-                          ? 'Es fehlt noch der Leistungstext für diesen Zeitraum:'
-                          : `Es fehlen noch die Leistungstexte für ${fehlend.length} Zeiträume:`}
-                      </span>
-                      <ul>
-                        {fehlend.map((p) => {
-                          const index = s.perioden.indexOf(p);
-                          return (
-                            <li key={p.schluessel}>
-                              <button
-                                type="button"
-                                className="link-btn ln-me-link"
-                                onClick={() => document.getElementById(textfeldId(index))?.focus()}
-                              >
-                                {periodeKurztext(p)}
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
+      {/* Block 2: Stand und Bestätigung des Monats, Hinweise und weitere offene Monate */}
+      {s.status === 'keine' && weitereOffene.length === 0 ? null : (
+        <section className="card ln-me-bestaetigen" aria-labelledby={bestaetigenTitelId}>
+          <div className="card-pad">
+            <h3 id={bestaetigenTitelId} className="ln-me-bestaetigen-titel">
+              Monat bestätigen
+            </h3>
+
+            {s.status === 'keine' ? null : s.status === 'bestaetigt' ? (
+              // Bestätigt: Stand und „zurücknehmen“ in einer Zeile – der Knopf liegt nie dort, wo eben „Monat bestätigen“ stand
+              <div className="row wrap ln-me-bestaetigen-knoepfe" role="status">
+                <span className="ln-me-bestaetigt">
+                  <Icon name="check" size={14} /> {monatsStatusText(s)}
+                </span>
+                <button
+                  ref={zuruecknehmenKnopf}
+                  type="button"
+                  className="btn btn-sm btn-ghost ln-me-zuruecknehmen"
+                  onClick={(e) => einmal(e, zuruecknehmen)}
+                >
+                  Bestätigung zurücknehmen
+                </button>
+              </div>
+            ) : (
+              <div className={`ln-me-status ln-me-status-${s.status}`} role="status">
+                <Icon name={STATUS_ICON[s.status]} size={15} />
+                <span>
+                  {monatsStatusText(s)}
+                  {laufend && (s.status === 'offen' || s.status === 'geaendert') ? (
+                    <span className="ln-me-status-zusatz"> · Der Monat läuft noch – bestätigen Sie ihn, wenn er vollständig erfasst ist.</span>
                   ) : null}
-                  <div className="row wrap ln-me-bestaetigen-knoepfe">
-                    {s.status === 'bestaetigt' ? (
-                      <>
-                        <span className="ln-me-bestaetigt">
-                          <Icon name="check" size={14} /> {monatsStatusText(s)}
-                        </span>
-                        <button
-                          ref={zuruecknehmenKnopf}
-                          type="button"
-                          className="btn btn-sm btn-ghost ln-me-zuruecknehmen"
-                          onClick={(e) => einmal(e, zuruecknehmen)}
-                        >
-                          Bestätigung zurücknehmen
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        ref={bestaetigenKnopf}
-                        type="button"
-                        className="btn btn-primary"
-                        disabled={!bestaetigbar}
-                        aria-describedby={fehlend.length > 0 ? `${praefix}-fehlt` : undefined}
-                        onClick={(e) => einmal(e, bestaetigen)}
-                      >
-                        <Icon name="check" size={14} /> Monat bestätigen
-                      </button>
-                    )}
+                </span>
+              </div>
+            )}
+
+            {nachAbschluss ? (
+              <Callout ton="warn" icon="!">
+                {nachAbschluss}
+              </Callout>
+            ) : null}
+            {anderswo ? <Callout icon="i">{anderswo}</Callout> : null}
+
+            {s.status === 'abgerechnet' ? (
+              <p className="small muted">
+                {s.nachAbschluss.length > 0 || s.nachAbschlussGeaendert.length > 0
+                  ? `Alle Zeiträume in ${monatName(monat)} sind abgerechnet – eine Bestätigung ist nicht mehr nötig; über danach erfasste bzw. geänderte Leistungen entscheidet das Controlling.`
+                  : `Alle Ihre Leistungen in ${monatName(monat)} sind bereits abgerechnet – eine Bestätigung ist nicht mehr nötig.`}
+              </p>
+            ) : s.status === 'offen' || s.status === 'geaendert' ? (
+              <>
+                <p className="ln-me-satz">{bestaetigungsSatz(monat)}</p>
+                {fehlend.length > 0 ? (
+                  <div className="ln-me-fehlt" id={`${praefix}-fehlt`}>
+                    <span>
+                      {fehlend.length === 1
+                        ? 'Es fehlt noch der Leistungstext für diesen Zeitraum:'
+                        : `Es fehlen noch die Leistungstexte für ${fehlend.length} Zeiträume:`}
+                    </span>
+                    <ul>
+                      {fehlend.map((p) => {
+                        const index = s.perioden.indexOf(p);
+                        return (
+                          <li key={p.schluessel}>
+                            <button
+                              type="button"
+                              className="link-btn ln-me-link"
+                              onClick={() => document.getElementById(textfeldId(index))?.focus()}
+                            >
+                              {periodeKurztext(p)}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
-                </>
-              )}
-            </div>
-          </Card>
-        </>
+                ) : null}
+                <div className="row wrap ln-me-bestaetigen-knoepfe">
+                  <button
+                    ref={bestaetigenKnopf}
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={!bestaetigbar}
+                    aria-describedby={fehlend.length > 0 ? `${praefix}-fehlt` : undefined}
+                    onClick={(e) => einmal(e, bestaetigen)}
+                  >
+                    <Icon name="check" size={14} /> Monat bestätigen
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {weitereOffene.length > 0 ? (
+              <div className="ln-me-weitere small">
+                <span className="muted">Noch zu bestätigen:</span>
+                {weitereOffene.map((o) => (
+                  <button key={o.monat} type="button" className="link-btn ln-me-link" onClick={() => zuMonat(o.monat)}>
+                    {monatName(o.monat)}
+                    {o.status === 'geaendert' ? ' (geändert)' : ''}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </section>
       )}
 
       {dialog ? <LeistungDialog key={dialog.id} projektId={projekt.id} leistung={dialog} onClose={() => setDialog(null)} /> : null}
