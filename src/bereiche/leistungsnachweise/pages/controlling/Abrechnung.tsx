@@ -350,14 +350,6 @@ function AbrechnungAnsicht({ projekt, nachweis: n, navigate }: { projekt: Projek
           >
             <Icon name="zurueck" size={14} /> Zum Projekt
           </button>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            title="Leistungsnachweise, Bestätigungen, Leistungen und Einstellungen des Projekts"
-            onClick={() => navigate({ view: 'controllingProjekt', projektId: projekt.id, tab: 'nachweise' })}
-          >
-            Zum Projekt
-          </button>
           <Segmented<Ansicht>
             value={ansicht}
             onChange={setAnsicht}

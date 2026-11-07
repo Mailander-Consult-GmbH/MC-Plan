@@ -567,7 +567,7 @@ export function offeneBestaetigungen(daten: LeistungsnachweisDaten, mitarbeiterI
   );
 }
 
-/** Stand der Bestätigungen eines Monats im Controlling (`bestaetigungsUebersicht`). */
+/** Stand der Bestätigungen eines Monats in der Abrechnung (`bestaetigungenDesNachweises`). */
 export interface BestaetigungsMonat {
   /** JJJJ-MM */
   monat: string;
@@ -589,15 +589,8 @@ const nachName = (mitarbeiter: Map<ID, Mitarbeiter>) => (a: ID, b: ID) => {
 
 /**
  * Bestätigungen eines Projekts für das Controlling: je Monat mit Leistungen
- * (neueste zuerst; mit `monate` nur diese) die Personen mit Leistungen und ihr
- * Stand, dazu die Zahlen für „x von y bestätigt“.
- */
-export function bestaetigungsUebersicht(daten: LeistungsnachweisDaten, projektId: ID, monate?: string[]): BestaetigungsMonat[] {
-  return uebersichtFuer(daten, projektId, monate ? new Map(monate.map((m) => [m, null])) : null);
-}
-
-/**
- * Wie `bestaetigungsUebersicht`; `auswahl` nennt die Monate und je Monat die
+ * (neueste zuerst) die Personen mit Leistungen und ihr Stand, dazu die Zahlen
+ * für „x von y bestätigt“; `auswahl` nennt die Monate und je Monat die
  * Personen (null: alle mit Leistungen im Monat).
  */
 function uebersichtFuer(
@@ -633,7 +626,7 @@ export function monateDesNachweises(daten: LeistungsnachweisDaten, n: Leistungsn
 
 /**
  * Bestätigungen der Monate eines Nachweises (`monateDesNachweises`) – neueste
- * zuerst, wie `bestaetigungsUebersicht`, aber je Monat nur die Personen mit
+ * zuerst – je Monat nur die Personen mit
  * Leistungen in diesem Nachweis (`leistungenDesNachweises`): Wer im Monat nur
  * danach Leistungen hat, betrifft der Nachweis nicht.
  */

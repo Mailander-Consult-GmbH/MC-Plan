@@ -6,8 +6,7 @@
  *   ab: Er umfasst alle nicht abgerechneten Leistungen des Projekts
  *   (`nichtAbgerechnet`); offene Nachweise gehen darin auf. Der Zeitraum steht
  *   erst beim Abschluss fest. Liegt schon alles in einem offenen Nachweis,
- *   bietet der Dialog „Öffnen“ an. Das Projekt lässt sich im Dialog wählen
- *   (`projektWahl`). Nicht erfasste Leistungen aus schon abgerechneten
+ *   bietet der Dialog „Öffnen“ an. Nicht erfasste Leistungen aus schon abgerechneten
  *   Zeiträumen nennt der Dialog (`NichtErfasstHinweis`); übernommen werden sie
  *   erst nach Bestätigung – als nachgereichte.
  * * **Zeitraum ändern** (`ZeitraumDialog`) korrigiert Zeitraum, Raster und
@@ -43,7 +42,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { today, wochentag } from '../../../shared/dates';
 import { useToast } from '../../../shared/toast';
-import { Callout, Field, Modal, Segmented, Select, TextInput } from '../../../shared/ui';
+import { Callout, Field, Modal, Segmented, TextInput } from '../../../shared/ui';
 import { grenzFolgen, grenzFolgenHinweis, type GrenzFolgen } from '../domain/erfassung';
 import {
   endeFestlegenWirkt,
@@ -95,56 +94,37 @@ export function NachweisDialog({
   nachweis,
   onClose,
   navigate,
-  projektWahl = false,
 }: {
   projekt: Projekt;
   /** Vorhandener Nachweis: Zeitraum ändern; ohne: neuer Nachweis. */
   nachweis?: Leistungsnachweis;
   onClose: () => void;
   navigate?: (r: Route) => void;
-  /** Neuer Nachweis: das Projekt im Dialog wählen (Vorgabe `projekt`). */
-  projektWahl?: boolean;
 }) {
   return nachweis ? (
     <ZeitraumDialog projekt={projekt} nachweis={nachweis} onClose={onClose} />
   ) : (
-    <NeuerNachweisDialog projekt={projekt} onClose={onClose} navigate={navigate} projektWahl={projektWahl} />
+    <NeuerNachweisDialog projekt={projekt} onClose={onClose} navigate={navigate} />
   );
 }
 
 /** „Neuer Leistungsnachweis“: ohne Zeitraum – alle nicht abgerechneten Leistungen des Projekts. */
 function NeuerNachweisDialog({
-  projekt: vorgabe,
+  projekt,
   onClose,
   navigate,
-  projektWahl,
 }: {
   projekt: Projekt;
   onClose: () => void;
   navigate?: (r: Route) => void;
-  projektWahl: boolean;
 }) {
   const { data, nachweisFuerNichtAbgerechnete, leistungenNachreichen } = useStore();
   const toast = useToast();
-  const [projektId, setProjektId] = useState(vorgabe.id);
   // Nicht erfasste Leistungen kommen nur nach Bestätigung hinein
   const [nachreichen, setNachreichen] = useState(false);
-  const projekt = (projektWahl ? data.projekte.find((p) => p.id === projektId) : undefined) ?? vorgabe;
   const plan = nichtAbgerechnet(data, projekt.id, today());
   const [raster, setRaster] = useState<Raster>(plan.offene[0]?.raster ?? projekt.raster);
   const [titel, setTitel] = useState('');
-
-  // Ein anderes Projekt bringt sein Raster mit
-  const projektWechseln = (id: string) => {
-    const p = data.projekte.find((x) => x.id === id);
-    if (!p) return;
-    setProjektId(id);
-    setRaster(nichtAbgerechnet(data, id, today()).offene[0]?.raster ?? p.raster);
-    setNachreichen(false);
-  };
-  const projektOptionen = [...data.projekte]
-    .sort((a, b) => a.nummer.localeCompare(b.nummer, 'de', { numeric: true }) || a.name.localeCompare(b.name, 'de'))
-    .map((p) => ({ value: p.id, label: projektTitel(p) }));
 
   const stunden = stundenVon(plan.leistungen);
   const erste = plan.leistungen[0]?.datum;
@@ -202,7 +182,7 @@ function NeuerNachweisDialog({
   return (
     <Modal
       titel="Neuer Leistungsnachweis"
-      sub={projektWahl ? 'Alle nicht abgerechneten Leistungen eines Projekts' : projektTitel(projekt)}
+      sub={projektTitel(projekt)}
       onClose={onClose}
       footer={
         <>
@@ -216,14 +196,6 @@ function NeuerNachweisDialog({
       }
     >
       <div className="stack ln-nachweisdialog">
-        {projektWahl ? (
-          <div className="form-grid">
-            <Field label="Projekt" full>
-              <Select value={projekt.id} onChange={projektWechseln} options={projektOptionen} />
-            </Field>
-          </div>
-        ) : null}
-
         {vorhanden ? (
           <Callout icon="i">
             {umfang} – {plan.leistungen.length === 1 ? 'sie liegt' : 'sie liegen'} bereits im offenen Leistungsnachweis „

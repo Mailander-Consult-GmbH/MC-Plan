@@ -50,7 +50,7 @@ export function ProjektDetail({
   if (vorgabe.fuer !== ichId) setVorgabe({ fuer: ichId, monat: vorgabeMonat(data, projekt.id, ichId, today()) });
   const gezeigt = monat && istMonat(monat) ? monat : vorgabe.monat;
 
-  // Zuletzt gezeigter Monat der Leistungstexte – dorthin führt der Umschalter zurück
+  // Zuletzt gezeigter Monat der Leistungstexte – dorthin führt der Reiter zurück
   const zuletzt = useRef(gezeigt);
   useEffect(() => {
     if (ansicht === 'texte') zuletzt.current = gezeigt;
