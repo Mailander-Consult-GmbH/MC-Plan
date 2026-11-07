@@ -1,5 +1,6 @@
 /**
- * Reiter „Auswertung“ des Controllings: Zeitraum (Monat, Quartal, Jahr oder
+ * „Auswertung“ des Controllings der Leistungsnachweise (im Controlling-Bereich
+ * ein eigener Menüpunkt, #/controlling/leistungsnachweise/auswertung): Zeitraum (Monat, Quartal, Jahr oder
  * frei; Vorgabe laufender Monat), Filter Projekt und Mitarbeiter, Kennzahlen
  * und die Tabellen „Stunden je Mitarbeiter“ (Spalten Projekte), „Stunden je
  * Mitarbeiter und Monat“ (bei mehr als einem Monat) und „Stunden je Projekt“
@@ -24,7 +25,7 @@ import { mitarbeiterName, projektKurzname, projektTitel, type ID, type Leistungs
 import { MONATSNAMEN, istDatum, langDatum, monatVersetzt, stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
-import { auswertungAuswahl, nachweisAuswahl, type AuswertungAuswahl } from './auswahl';
+import { auswertungAuswahl, type AuswertungAuswahl } from './auswahl';
 import { aufschlagText, useAuswahl } from './hilfen';
 
 const ARTEN: { value: ZeitraumArt; label: string }[] = [
@@ -73,10 +74,7 @@ export function AuswertungAnsicht({ navigate }: { navigate: (r: Route) => void }
   };
   const aktuell = auswahl.art !== 'frei' && zeitraumVon(auswahl.art, auswahl.datum).von === zeitraumVon(auswahl.art, today()).von;
 
-  const zuNachweisen = (p: Projekt) => {
-    nachweisAuswahl.wert = { ...nachweisAuswahl.wert, projektId: p.id, zeitraum: '' };
-    navigate({ view: 'controlling', tab: 'nachweise' });
-  };
+  const zuNachweisen = (p: Projekt) => navigate({ view: 'controllingProjekt', projektId: p.id, tab: 'nachweise' });
 
   const fehlerText =
     auswahl.art === 'frei' && !filter

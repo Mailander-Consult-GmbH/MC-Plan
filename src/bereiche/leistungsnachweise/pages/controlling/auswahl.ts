@@ -1,11 +1,11 @@
 /**
  * Auswahl der Filter im Controlling – nur im Speicher der geöffneten Seite,
- * damit sie beim Wechsel der Reiter und zurück aus der Abrechnung erhalten
+ * damit sie beim Wechsel der Seiten und zurück aus der Abrechnung erhalten
  * bleibt. Nichts davon gehört zum Datenbestand.
  */
 import { today } from '../../../../shared/dates';
 import type { ZeitraumArt } from '../../domain/auswertung';
-import type { ID, ISODate, NachweisStatus } from '../../domain/types';
+import type { ID, ISODate } from '../../domain/types';
 import { monatsanfang, monatsende } from '../../domain/zeitraum';
 
 /** Zeitraum und Filter der Auswertung – Vorgabe: laufender Monat, alle Projekte und Mitarbeiter. */
@@ -29,16 +29,4 @@ export const auswertungAuswahl: { wert: AuswertungAuswahl } = {
     projektId: '',
     mitarbeiterId: '',
   },
-};
-
-/** Filter der Liste „Leistungsnachweise“. */
-export interface NachweisAuswahl {
-  status: NachweisStatus | 'alle';
-  projektId: ID | '';
-  /** '' = alle Zeiträume, „2026“ = ein Jahr, „2026-10“ = ein Monat. */
-  zeitraum: string;
-}
-
-export const nachweisAuswahl: { wert: NachweisAuswahl } = {
-  wert: { status: 'alle', projektId: '', zeitraum: '' },
 };

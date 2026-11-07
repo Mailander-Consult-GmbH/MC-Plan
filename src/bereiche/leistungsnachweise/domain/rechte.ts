@@ -75,8 +75,7 @@ export type Recht =
   | 'abschliessen'
   | 'aufschlag'
   | 'export'
-  | 'auswertung'
-  | 'mitarbeiterVerwalten';
+  | 'auswertung';
 
 /** Vergleichsform eines Namens: klein, Umlaute ausgeschrieben, ohne Kommas, einfache Leerzeichen. */
 function namensForm(name: string): string {
@@ -201,7 +200,7 @@ export function anmeldeHinweis(lage: AnmeldeLage, name: string, mitLeiste = fals
     case 'ohneNachname':
       return `„${n}“ ist kein vollständiger Name – bitte unten links unter „Angemeldet als“ Vor- und Nachnamen eintragen. Unter diesem Namen werden Ihre Leistungen geführt.`;
     case 'ausgeschieden':
-      return `${mitarbeiterName(lage.mitarbeiter) || lage.mitarbeiter.kuerzel} ist als ausgeschieden markiert – Leistungen erfasst nur, wer aktiv ist. Das Controlling kann die Person unter „Mitarbeiter“ wieder aktiv setzen.`;
+      return `${mitarbeiterName(lage.mitarbeiter) || lage.mitarbeiter.kuerzel} ist als ausgeschieden markiert – wieder aktiv gesetzt wird die Person im Bereich Leistungsnachweise, sobald der gespeicherte Stand geladen ist.`;
     case 'umbenannt':
       return `Unter „${n}“ ist kein Mitarbeiter mehr geführt – das Controlling hat die Person in „${mitarbeiterName(lage.mitarbeiter) || lage.mitarbeiter.kuerzel}“ umbenannt. Bitte unten links unter „Angemeldet als“ diesen Namen eintragen; dort stehen Ihre bisherigen Leistungen.`;
     case 'nichtGefuehrt':
@@ -228,7 +227,10 @@ export function mitarbeiterKennung(name: string): ID {
  * nach – rein; so arbeitet der Store nach jeder Änderung. Mit `automatisch`
  * (im Bereich bei einwandfrei geladenem Stand) legt es eine fehlende Person
  * an (`anmeldeLage` `anlegen`): aktiv, Kürzel aus dem Namen (`kuerzelFrei`),
- * Kennung `kennung` (`mitarbeiterKennung`). Eine schon vergebene Kennung
+ * Kennung `kennung` (`mitarbeiterKennung`); eine früher als ausgeschieden
+ * markierte Person dieses Namens setzt es wieder aktiv (`anmeldeLage`
+ * `ausgeschieden` – eine Pflege der Mitarbeiter gibt es im Controlling nicht
+ * mehr). Eine schon vergebene Kennung
  * führt bereits zur Lage `umbenannt` (angelegt wird dann niemand); die
  * angehängte Zahl sichert nur Aufrufe mit einer anderen `kennung` ab.
  *
@@ -256,6 +258,10 @@ export function anmeldungAnwenden<T extends Pick<LeistungsnachweisDaten, 'einste
     }
   }
   const lage = anmeldeLage({ mitarbeiter }, benutzer.name, automatisch);
+  // Früher als ausgeschieden markiert (eine Seite dafür gibt es nicht mehr): Wer sich so nennt, arbeitet wieder mit
+  if (automatisch && lage.art === 'ausgeschieden') {
+    mitarbeiter = mitarbeiter.map((m) => (m === lage.mitarbeiter ? { ...m, aktiv: true } : m));
+  }
   if (lage.art === 'anlegen') {
     // Absicherung: Mit der Kennung aus dem Namen ist sie hier frei (sonst Lage `umbenannt`)
     let id = kennung;
@@ -336,26 +342,6 @@ export function darfLeistungSehen(
   zugang: Zugang,
 ): boolean {
   return darfLeistungAendern(d, l) || zugang === 'controlling';
-}
-
-/**
- * Prüft das Löschen eines Mitarbeiters (Controlling): nur ohne Leistungen und
- * nicht die angemeldete Person – solange ihr Name unter „Angemeldet als“
- * steht, legte der Bereich sie gleich wieder an. Liefert die Meldung oder null.
- */
-export function mitarbeiterLoeschenPruefen(d: LeistungsnachweisDaten, mitarbeiterId: string, zugang: Zugang): string | null {
-  if (!darf(zugang, 'mitarbeiterVerwalten')) return NUR_CONTROLLING;
-  const m = d.mitarbeiter.find((x) => x.id === mitarbeiterId);
-  if (!m) return 'Diesen Mitarbeiter gibt es nicht (mehr).';
-  if (d.einstellungen.mitarbeiterId === mitarbeiterId) {
-    return `„${mitarbeiterName(m) || m.kuerzel}“ ist unter „Angemeldet als“ angemeldet – solange der Name dort steht, legt der Bereich Leistungsnachweise die Person gleich wieder an. Zum Löschen zuerst unten links unter „Angemeldet als“ einen anderen Namen eintragen.`;
-  }
-  const anzahl = d.leistungen.filter((l) => l.mitarbeiterId === mitarbeiterId).length;
-  if (anzahl > 0) {
-    const name = `${m.vorname} ${m.nachname}`.trim() || m.kuerzel;
-    return `„${name}“ hat noch ${anzahl} ${anzahl === 1 ? 'Leistung' : 'Leistungen'} und lässt sich deshalb nicht löschen – stattdessen als ausgeschieden markieren.`;
-  }
-  return null;
 }
 
 /** Eigene Leistungen der angemeldeten Person aus einer Liste (ohne Anmeldung keine). */

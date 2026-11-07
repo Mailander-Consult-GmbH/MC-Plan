@@ -96,7 +96,6 @@ import {
   darfPeriodentextBearbeiten,
   eigeneLeistungen,
   mitarbeiterKennung,
-  mitarbeiterLoeschenPruefen,
   type Zugang,
 } from '../domain/rechte';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
@@ -107,7 +106,6 @@ import {
   type Leistung,
   type Leistungsnachweis,
   type LeistungsnachweisDaten,
-  type Mitarbeiter,
   type NachweisZeile,
   type Projekt,
   type Quelle,
@@ -136,13 +134,6 @@ interface StoreValue {
    * gerade ist, sagt `anmeldeLage` (domain/rechte.ts; Oberfläche:
    * components/Anmeldung.tsx).
    */
-  /* Mitarbeiter (nur Controlling) */
-  /** Legt einen Mitarbeiter an; null ohne Recht. */
-  addMitarbeiter: (m: Omit<Mitarbeiter, 'id'>) => ID | null;
-  /** Ändert einen Mitarbeiter; liefert die Meldung oder null. */
-  updateMitarbeiter: (id: ID, patch: Partial<Omit<Mitarbeiter, 'id'>>) => string | null;
-  /** Nur ohne Leistungen; liefert die Meldung oder null. */
-  deleteMitarbeiter: (id: ID) => string | null;
   /* Projekte */
   /** Nur Controlling; null ohne Recht. */
   addProjekt: (p: Omit<Projekt, 'id'>) => ID | null;
@@ -373,34 +364,6 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
   };
 
   return {
-    addMitarbeiter: (m) => {
-      if (!darf(zugang, 'mitarbeiterVerwalten')) return null;
-      const id = newId('ma');
-      mutate(controllingNur((d) => (d.mitarbeiter.some((x) => x.id === id) ? d : { ...d, mitarbeiter: [...d.mitarbeiter, { ...m, id }] })));
-      return id;
-    },
-    updateMitarbeiter: (id, patch) => {
-      if (!darf(zugang, 'mitarbeiterVerwalten')) return NUR_CONTROLLING;
-      if (!data.mitarbeiter.some((m) => m.id === id)) return 'Diesen Mitarbeiter gibt es nicht (mehr).';
-      const sauber = ohneLeere(patch);
-      mutate(controllingNur((d) => ({ ...d, mitarbeiter: aendern(d.mitarbeiter, id, (m) => ({ ...m, ...sauber })) })));
-      return null;
-    },
-    deleteMitarbeiter: (id) => {
-      const meldung = mitarbeiterLoeschenPruefen(data, id, zugang);
-      mutate((d) =>
-        mitarbeiterLoeschenPruefen(d, id, zugang) === null
-          ? {
-              ...d,
-              mitarbeiter: d.mitarbeiter.filter((m) => m.id !== id),
-              bestaetigungen: d.bestaetigungen.filter((b) => b.mitarbeiterId !== id),
-              einstellungen: d.einstellungen.mitarbeiterId === id ? { ...d.einstellungen, mitarbeiterId: null } : d.einstellungen,
-            }
-          : d,
-      );
-      return meldung;
-    },
-
     addProjekt: (p) => {
       if (!darf(zugang, 'projektVerwalten')) return null;
       const id = newId('pr');
