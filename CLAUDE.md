@@ -139,8 +139,12 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `monatsStatus` mit Kennung je Zeitraum (`periodenKennung`, inhaltlich ohne IDs, samt
   gemeinsamem Text – ändert ein anderer ihn, erlischt die Bestätigung); Store-Methoden
   `periodentextSetzen`, `monatBestaetigen`, `bestaetigungZuruecknehmen`; nach jedem `mutate`
-  `periodentexteNachziehen` (Texte ziehen mit, wenn sich Grenzen der Nachweise ändern) und
-  `erfassungBereinigen`. Im Bereich sieht niemand Stichpunkte, Stunden oder Leistungen der
+  `periodentexteNachziehen` (Texte ziehen mit, wenn sich Grenzen der Nachweise ändern),
+  `bestaetigungenNachziehen` (gehen bestätigte Teile unverändert in einem Zeitraum auf, gilt die
+  Bestätigung weiter; eine Teilung lässt sie erlöschen – die Rückfragen im Controlling nennen das,
+  `grenzFolgen`) und `erfassungBereinigen`. Eine abgerechnete Leistung, deren Datum aus ihrem
+  abgeschlossenen Nachweis herausgelegt wurde, gehört zu keinem Zeitraum (`AnderswoAbgerechnet`);
+  nach dem Abschluss geänderte abgerechnete erkennt `Leistung.geaendert`. Im Bereich sieht niemand Stichpunkte, Stunden oder Leistungen der
   anderen – auch nicht als Zahl (`stichpunkteDerPeriode`); gemeinsam ist allein der Text; das
   Controlling liest alles. `domain/nachweis.ts`
   Zeilen (Text ohne Bearbeitung von Hand aus den gemeinsamen Texten, `gemeinsamerZeilentext`,

@@ -1108,7 +1108,10 @@ Anmeldung gibt es in den Leistungsnachweisen nicht. Leistungen erfasst, wer unte
 und Nachname, auch „Nachname, Vorname“) als aktiver Mitarbeiter geführt ist. **Fehlt die Person, legt
 der Bereich sie selbst an** (aktiv, Kürzel aus dem Namen; `anmeldungAnwenden`) – mit einer aus dem
 Namen abgeleiteten Kennung, sodass zwei Fenster keine Doppel erzeugen, und nur, solange der
-gespeicherte Stand einwandfrei geladen ist; das Controlling legt niemanden an. Übrig bleiben
+gespeicherte Stand einwandfrei geladen ist; das Controlling legt niemanden an. Wechselt der Name
+danach, entfernt der Bereich die unter dem bisherigen Namen angelegte Person wieder, solange sie
+keine Leistungen hat und in keinem abgeschlossenen Nachweis steht – ein Tippfehler unter
+„Angemeldet als“ hinterlässt so keinen Mitarbeiter. Übrig bleiben
 Hinweise über dem Inhalt: Der Name hat keinen Nachnamen (bitte unten links Vor- und Nachnamen
 eintragen), er gehört einem ausgeschiedenen Mitarbeiter (das Controlling kann ihn wieder aktiv
 setzen), das Controlling hat die unter dem Namen angelegte Person umbenannt (der Hinweis nennt den
@@ -1183,15 +1186,22 @@ Daraus schreiben alle, die in einem Zeitraum eines Projekts Leistungen haben, **
 Fließtext**; beide bzw. alle sehen und bearbeiten ihn. Gemeinsam ist allein dieser Text:
 **Stichpunkte, Stunden und Leistungen der anderen sieht im Bereich niemand** – auch nicht in
 Zeiträumen mit eigenen Leistungen und auch nicht als Zahl; im Controlling ist alles zu sehen.
+Ausnahme, solange alles nur lokal im Browser liegt: **Sicherung** in der Seitenleiste des Bereichs
+lädt den gesamten Bestand der Leistungsnachweise als JSON herunter – samt den Leistungen aller
+Mitarbeiter –, und **Einspielen** bzw. **Zurücksetzen** ersetzen ihn ganz.
 
 Die Zeiträume folgen dem **Raster des Projekts**, das das Controlling einstellt (tages-, wochen- oder
 monatsscharf), gekürzt auf den Kalendermonat: Eine Woche über ein Monatsende gehört mit ihren Tagen
 in jeden Monat für sich (26.–31.10. im Oktober, 1.11. im November); im Leistungsnachweis über beide
 Monate bleibt sie eine Zeile, deren Text sich aus beiden zusammensetzt. Geteilt wird zudem an den
-Grenzen der Leistungsnachweise – jeder Zeitraum liegt in höchstens einem Nachweis. Ändern sich diese
-Grenzen (etwa durch *Zeitraum ändern*, Löschen, Zusammenfassen oder einen Abschluss mitten in einem
-Zeitraum), ziehen die Texte mit: Der Text eines weggefallenen Teils geht im Text des ganzen Zeitraums
-auf, bei einer neuen Grenze behält der erste Teil den Text, der Rest bekommt einen eigenen.
+Grenzen der Leistungsnachweise (an jedem Beginn und am Tag nach jedem Ende) – jeder Zeitraum liegt
+in höchstens einem Nachweis. Ändern sich diese Grenzen (etwa durch *Zeitraum ändern*, Löschen,
+Zusammenfassen, einen Abschluss mitten in einem Zeitraum oder einen Nachweis, der mit einer späteren
+Leistung bis zum Monatsende wächst), ziehen die Texte mit: Der Text eines weggefallenen Teils geht im
+Text des ganzen Zeitraums auf – waren alle Teile so bestätigt, gilt die Bestätigung für den ganzen
+Zeitraum weiter –; bei einer neuen Grenze behält der erste Teil den Text, der Rest bekommt einen
+eigenen (Pflicht), und die Bestätigungen der Personen mit Leistungen darin erlöschen. Die
+Rückfragen im Controlling nennen beides vorher.
 
 Die Seite **Leistungstexte** eines Projekts zeigt einen Monat (‹ › blättern; ohne Angabe in der
 Adresse der jüngste Monat mit eigenen Leistungen, der noch zu bestätigen ist, sonst der jüngste mit
@@ -1203,7 +1213,14 @@ weitere zu bestätigende Monate des Projekts. Darunter je Zeitraum mit eigenen L
 Zeitraum, **eigene Stunden**, die **eigenen Stichpunkte** zur Orientierung (Datum, Stunden, Abschnitt,
 Text; ein Klick öffnet die Leistung) und der **gemeinsame Leistungstext** – gespeichert beim
 Verlassen des Felds (offene Eingaben auch beim Neuladen, Schließen, Verdecken der Seite und beim
-Monatswechsel) mit „Zuletzt bearbeitet von … am …“. **Stichpunkte übernehmen** setzt in einen leeren
+Monatswechsel) mit „Zuletzt bearbeitet von … am …“. Hat inzwischen jemand anderes – etwa in einem
+zweiten Fenster – den Text gespeichert, sagt das Feld es an („Inzwischen von … geändert – Ihre
+Eingabe wird beim Verlassen des Felds mit dieser Fassung zusammengeführt.“), und gespeichert wird
+die Zusammenführung beider Fassungen mit einer Kurzmeldung – keine geht still verloren. Entfällt der
+Zeitraum einer offenen Eingabe (ein anderes Fenster ändert die Grenzen), zieht sie in den Zeitraum
+um, der ihren Beginn jetzt enthält; lässt sie sich gar nicht speichern (keine eigenen Leistungen mehr
+darin, inzwischen abgerechnet), steht sie als **„Nicht gespeichert (…)“** mit **Verwerfen** über den
+Zeiträumen. **Stichpunkte übernehmen** setzt in einen leeren
 Text die eigenen Stichpunkte ein; kommen danach eigene Leistungen hinzu, nennt der Block sie („Noch
 nicht im Text“) mit **Neue Stichpunkte ergänzen** und **Als berücksichtigt markieren** (wenn sie
 umformuliert schon im Text stehen). Fremde Stichpunkte gelangen nie in diese Vorschläge; ein
@@ -1215,18 +1232,25 @@ Text hat**; bis dahin nennt die Karte die fehlenden (ein Klick führt ins Feld).
 „Bestätigt am …“ mit **Bestätigung zurücknehmen** (ein Doppelklick bestätigt nicht und nimmt gleich
 wieder zurück). **Die Bestätigung erlischt**, sobald sich in einem noch nicht abgerechneten Zeitraum
 die eigenen Leistungen (Datum, Stunden, Abschnitt, Text) oder der gemeinsame Text ändern – auch, wenn
-ein anderer den Text ändert –; dann heißt es „Seit der Bestätigung am … geändert – bitte erneut
-bestätigen.“. Hat ein Monat keine eigenen Leistungen, verweist die Seite auf *Meine Leistungen* und
-den Excel-Import.
+ein anderer den Text ändert –, und wenn eine neue Grenze eines Leistungsnachweises einen Zeitraum mit
+eigenen Leistungen teilt; dann heißt es „Seit der Bestätigung am … geändert – bitte erneut
+bestätigen.“. Gehen bestätigte Teile dagegen nur in einem Zeitraum auf, bleibt sie bestehen. Hat ein
+Monat keine eigenen Leistungen, verweist die Seite auf *Meine Leistungen* und den Excel-Import.
 
 **Abgerechnete Zeiträume:** Umfasst ein abgeschlossener Leistungsnachweis einen Zeitraum, ist sein
 Text nur noch zu lesen („Abgerechnet in „…“ – der Leistungstext lässt sich nicht mehr ändern.“), und
 er zählt nicht mehr zur Bestätigung – auch spätere Änderungen darin lassen sie nicht erlöschen. Sind
 alle eigenen Leistungen eines Monats abgerechnet, steht der Monat auf „Abgerechnet“. Eigene
-Leistungen, die nach dem Abschluss in einem abgerechneten Zeitraum erfasst bzw. geändert wurden,
-nennt ein Hinweis: Sie gehen nicht in den abgeschlossenen Nachweis ein, über ein Nachreichen
-entscheidet das Controlling. Abgeschlossene Nachweise gliedern ihre Tage weiter im Raster ihres
-Abschlusses, auch wenn das Projekt später umgestellt wird.
+Leistungen, die nach dem Abschluss in einem abgerechneten Zeitraum **erfasst** wurden, nennt ein
+Hinweis: Sie gehen nicht in den abgeschlossenen Nachweis ein, über ein Nachreichen entscheidet das
+Controlling. Ebenso nennt er abgerechnete Leistungen, die nach dem Abschluss **geändert** wurden
+(Stichpunkt „nach dem Abschluss geändert“): Abgerechnet bleibt der Stand des Abschlusses, die
+Änderung geht erst ein, wenn das Controlling den Nachweis wieder öffnet. Wird eine abgerechnete
+Leistung nach dem Abschluss auf einen Tag außerhalb ihres Nachweises gelegt, bleibt sie dort
+abgerechnet und zählt in keinem Zeitraum – weder zu den eigenen Stunden noch zur Bestätigung, einen
+Text verlangt sie nicht; ein Hinweis nennt sie („Ihre Leistung vom … ist bereits in „…“
+abgerechnet …“). Abgeschlossene Nachweise gliedern ihre Tage weiter im Raster ihres Abschlusses,
+auch wenn das Projekt später umgestellt wird.
 
 ### Leistungsnachweise
 Ein Nachweis ist ein Zeitraum eines Projekts; welche Leistungen er zeigt, ergibt sich aus ihrem
@@ -1269,8 +1293,11 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   So entsteht auch ein Nachweis über mehrere Monate, etwa Oktober bis Dezember.
   Liegt schon alles in einem offenen Nachweis, bietet der Dialog **Öffnen** an. Ändern sich mit dem
   neuen Nachweis – wie mit *Zeitraum ändern* und *Löschen* – Grenzen der Zeiträume, sagen Dialog und
-  Rückfragen, wie viele gemeinsame Leistungstexte von Teilen eines Zeitraums im Text des neuen
-  Zeitraums aufgehen. Für Korrekturen
+  Rückfragen, was das für die gemeinsamen Leistungstexte bedeutet: wie viele Texte von Teilen eines
+  Zeitraums im Text des neuen Zeitraums aufgehen, ab welchem Tag ein neuer Beginn bzw. ein neues Ende
+  mitten in einem Zeitraum einen eigenen Text verlangt und wessen Bestätigungen damit erlöschen (mit
+  Namen und Monat, dann als Warnung); *Wieder öffnen* und *Abschließen* nennen die erlöschenden
+  Bestätigungen ebenso. Für Korrekturen
   gibt es in der Abrechnung weiter **Zeitraum ändern**: Ein geändertes Ende steht danach fest – auch
   bei der Regel *Je Kalendermonat* mit einem Ende bis heute, wo das erst nach einem Wechsel auf
   *Fortlaufend bis zum Abschluss* etwas ändert. Liefe der Nachweis mit dem neuen Ende bis zum
@@ -1291,7 +1318,10 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   ein bearbeiteter Text wird nie still überschrieben, neue Leistungen bietet die Zeile zum
   **Ergänzen** an; die Leistungen aller Mitarbeiter lassen sich je Zeile aufklappen; stammt der
   Text aus den gemeinsamen Leistungstexten, ist er als **Text der Mitarbeiter** gekennzeichnet, und
-  nach einer Bearbeitung stellt **Text der Mitarbeiter wiederherstellen** ihn wieder her; sind die
+  nach einer Bearbeitung stellt **Text der Mitarbeiter wiederherstellen** ihn wieder her; ändern die
+  Mitarbeiter ihren Text nach der Bearbeitung, nennt die Zeile den neuen („Der Text der Mitarbeiter
+  hat sich seit der Bearbeitung geändert:“) mit **Text der Mitarbeiter übernehmen** und **Text so
+  lassen**; sind die
   Zeilen feiner gegliedert als das Raster des Projekts, erklärt ein Hinweis, warum dort die Texte der
   Leistungen stehen), die
   **Vorschau**, **Drucken / PDF**, **Excel**, **Abschließen** (der Stand wird festgeschrieben)
@@ -1319,10 +1349,10 @@ Im Controlling-Bereich (PIN) unter **Leistungsnachweise**:
   (`#/controlling/leistungsnachweise/projekt/<id>/bestaetigungen`) zeigt je Monat mit Leistungen –
   neueste zuerst – die Personen mit Leistungen im Projekt: Stunden, Status („Bestätigt am …“,
   „Offen“, „Geändert seit Bestätigung“, „Abgerechnet“), die Zeiträume ohne gemeinsamen Text („Ohne
-  Text“) und Leistungen, die nach dem Abschluss erfasst wurden; je Monat „x von y bestätigt“ und die
-  Leistungsnachweise, in denen er liegt (ein Klick öffnet die Abrechnung). Monate, deren Leistungen
-  alle abgerechnet sind und in denen nichts nach dem Abschluss erfasst wurde, stehen eingeklappt
-  darunter. Das **Raster** (in *Bearbeiten* und in den Einstellungen) gliedert auch die
+  Text“) und Leistungen, die nach dem Abschluss erfasst bzw. geändert wurden; je Monat „x von y
+  bestätigt“ und die Leistungsnachweise, in denen er liegt (ein Klick öffnet die Abrechnung). Monate,
+  deren Leistungen alle abgerechnet sind und in denen nichts nach dem Abschluss erfasst bzw. geändert
+  wurde, stehen eingeklappt darunter. Das **Raster** (in *Bearbeiten* und in den Einstellungen) gliedert auch die
   Leistungstexte der Mitarbeiter; ein Wechsel nennt die gemeinsamen Texte noch nicht abgerechneter
   Zeiträume, die im neuen Raster nicht mehr gelten, und die Bestätigungen, die damit erlöschen – die
   Texte bleiben gespeichert und gelten wieder, wenn das Raster zurückgestellt wird.

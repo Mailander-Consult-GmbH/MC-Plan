@@ -1387,8 +1387,12 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   Leistungen, `abschlussZeitraum`) oder `monat` (je Kalendermonat), Beschriftung
   `ZEITRAUMREGEL_LABEL` –, `abschnitte`, `logos`), `Leistung` (Projekt,
   Mitarbeiter, Datum, Text, Stunden, Abschnitt, `projektelement`, `quelle`
-  `manuell` oder `import`) und `Leistungsnachweis` (Zeitraum `von`/`bis`,
-  Raster, Status `entwurf` oder `abgeschlossen`, bearbeitete `texte`,
+  `manuell` oder `import`, `erfasst`, seit Fassung 7 `geaendert` – Zeitpunkt
+  der letzten Änderung von Datum, Stunden, Text oder Abschnitt, gesetzt von
+  `updateLeistung`) und `Leistungsnachweis` (Zeitraum `von`/`bis`,
+  Raster, Status `entwurf` oder `abgeschlossen`, bearbeitete `texte` –
+  `ZeilenText` mit `text`, `leistungIds` und seit Fassung 7 `ausgang`, dem Text
+  der Zeile ohne die Bearbeitung beim Beginn der Bearbeitung –,
   `aufschlaege` je Zeile und Abschnitt, `bemerkung`, `nachgereicht` –
   Kennungen übernommener Leistungen aus früheren Zeiträumen –, `bisFest` – das
   Ende hat das Controlling von Hand festgelegt –, festgeschriebener `stand`;
@@ -1399,8 +1403,10 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   „2026-10|W2026-44“, `text`, die beim Bearbeiten berücksichtigten Leistungen
   `leistungIds` und – nach Person, Tag und Text, `stichpunktInhalt` –
   `inhalte`, `bearbeiter`, `geaendert`) und `Bestaetigung` (`projektId`,
-  `mitarbeiterId`, `monat` JJJJ-MM, `am`, `kennung` des ganzen Monats und je
-  Zeitraum `perioden` – Schlüssel → `periodenKennung`); `NachweisZeile.textGemeinsam`
+  `mitarbeiterId`, `monat` JJJJ-MM, `am` und je Zeitraum `perioden` –
+  Schlüssel → `periodenKennung`; eine Kennung des ganzen Monats führt sie
+  nicht, `aufbereiten()` übernimmt eine solche aus der Entwicklung nicht);
+  `NachweisZeile.textGemeinsam`
   kennzeichnet einen Zeilentext aus den gemeinsamen Texten. `pruefsumme`
   (zweimal FNV-1a) bildet Kennungen aus dem Inhalt.
   Welche Leistungen ein Nachweis zeigt, ergibt sich aus ihrem Datum,
@@ -1459,6 +1465,8 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   ziehen die gemeinsamen Texte mit, wenn sich die Grenzen der Nachweise ändern
   (`periodentexteNachziehen` in
   `src/bereiche/leistungsnachweise/domain/erfassung.ts`, nicht beim Einspielen),
+  mit ihnen die Bestätigungen aufgegangener Teile (`bestaetigungenNachziehen`,
+  10.3),
   `nachweiseBereinigen` (`src/bereiche/leistungsnachweise/domain/nachweis.ts`)
   räumt auf – `geaendert` setzt es auch an offenen Nachweisen, in deren Zeitraum
   sich ein gemeinsamer Text geändert hat –, `erfassungBereinigen` entfernt Texte
@@ -1475,7 +1483,13 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   auch kein ausgeschiedener, und der Name hat Vor- und Nachnamen – aktiv, Kürzel
   `kuerzelFrei(kuerzelAus(…))`, Kennung aus dem Namen (`mitarbeiterKennung`, vor
   `mutate` gebildet; gleiche Namen ergeben dieselbe Kennung, sodass StrictMode
-  und zwei Fenster keine Doppel anlegen). Im Controlling wird niemand angelegt.
+  und zwei Fenster keine Doppel anlegen). Wechselt der Name, entfernt
+  `anmeldungAnwenden` im Bereich die unter dem bisherigen Namen angelegte Person
+  (Kennung `mitarbeiterKennung` des bisherigen Namens in
+  `einstellungen.bearbeiter`), wenn sie aktiv ist, keine Leistungen hat und in
+  keinem festgeschriebenen Stand steht (`stundenJeMitarbeiter`) – ein
+  Tippfehler hinterlässt so keinen Mitarbeiter. Eine vergebene Kennung führt
+  schon zur Lage `umbenannt`. Im Controlling wird niemand angelegt oder entfernt.
   Die übrigen Lagen (`AnmeldeLage`) nennt `anmeldeHinweis` als Leiste über dem
   Inhalt (`AnmeldeHinweis` in
   `src/bereiche/leistungsnachweise/components/Anmeldung.tsx`) und – über
@@ -1562,12 +1576,28 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   (`periodentexteNachziehen`): Texte weggefallener Teile gehen im Text des
   ganzen Zeitraums auf (`texteZusammenfuehren`), bei einer neuen Grenze behält
   der erste Teil mit Leistungen den Text; Texte eines anderen Rasters bleiben
-  stehen.
+  stehen. Danach zieht `bestaetigungenNachziehen` die Bestätigungen mit: Stammen
+  die eigenen Leistungen eines nicht gesperrten Zeitraums mit Text aus Teilen,
+  die nicht gesperrt und so bestätigt waren, wie sie vor der Änderung waren,
+  sind sie unverändert, gehören die Teile zur selben Periode im selben Raster
+  und hat die Änderung selbst keinen Text gesetzt, trägt die Bestätigung den
+  neuen Zeitraum ein (die Kennungen der Teile entfallen). Eine Teilung zieht
+  keine Bestätigung mit.
+* Eine Leistung, die im Stand eines abgeschlossenen Nachweises steht, der ihr
+  Datum nicht umfasst (`abgerechnetIn`, etwa nach einer Datumsänderung nach
+  dem Abschluss), gehört zu keinem Zeitraum (`AnderswoAbgerechnet`): Sie zählt
+  weder zu Stunden noch zur Kennung oder zur Bestätigung und verlangt keinen
+  Text; `MonatsStatus.anderswoAbgerechnet` nennt sie, die Seite zeigt
+  `anderswoAbgerechnetHinweis` („Ihre Leistung vom … ist bereits in …
+  abgerechnet – sie zählt dort und nicht in den Zeiträumen dieses Monats.
+  Änderungen an ihr gehen erst ein, wenn das Controlling … wieder öffnet.“,
+  dort „den Leistungsnachweis“ bzw. „die Leistungsnachweise“).
 * `erfassungsPerioden` liefert je Projekt, Person und Monat die Zeiträume mit
   eigenen Leistungen (`ErfassungsPeriode`: Schlüssel, `von`/`bis`, Raster,
   `datumText` – bis Sonntag nur bei eigenen Leistungen am Wochenende –, alle,
   eigene und andere Leistungen, `stundenEigene`, `stundenAlle`, gemeinsamer
-  `text`, `neueStichpunkte`, `gesperrt`/`gesperrtIn`, `nachAbschluss`). Die
+  `text`, `neueStichpunkte`, `gesperrt`/`gesperrtIn`, `nachAbschluss`,
+  `nachAbschlussGeaendert`). Die
   Leistungen und Stunden der anderen dienen nur der Rechnung und dem
   Controlling. `neueStichpunkte` sind aus Sicht einer Person nur ihre eigenen
   Leistungen, die beim letzten Bearbeiten weder nach Kennung (`leistungIds`)
@@ -1577,20 +1607,36 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   (`abgeschlossenIm`): Der Text ist nur zu lesen, und der Zeitraum zählt nicht
   zur Bestätigung. Eigene Leistungen darin, die weder abgerechnet
   (`abgerechneteLeistungen`) noch nachgereicht sind, stehen in
-  `nachAbschluss` und im Hinweis `nachAbschlussHinweis`.
+  `nachAbschluss`, abgerechnete, die nach dem Abschluss geändert wurden
+  (`Leistung.geaendert` nach `Leistungsnachweis.abgeschlossen`), in
+  `nachAbschlussGeaendert`; beide nennt der Hinweis `nachAbschlussHinweis`.
 * Bestätigung: `periodenKennung` (Prüfsumme über die eigenen Leistungen des
   Zeitraums nach Inhalt – Datum, Stunden, Abschnitt, Text, sortiert, ohne
-  Kennungen – und den gemeinsamen Text), `bestaetigungsKennung` über alle
-  Zeiträume des Monats. `monatsStatus` liefert `MonatsStatusArt`: 'keine'
+  Kennungen – und den gemeinsamen Text); verglichen wird je Zeitraum
+  (`Bestaetigung.perioden`). `monatsStatus` liefert `MonatsStatusArt`: 'keine'
   (keine eigenen Leistungen), 'abgerechnet' (alle eigenen in gesperrten
   Zeiträumen), 'offen' (keine Bestätigung), 'bestaetigt' bzw. 'geaendert'
   (`bestaetigungGilt`: jeder nicht gesperrte Zeitraum ist so bestätigt, wie er
   ist, und kein bestätigter ist weggefallen oder anders – außer er ist
   inzwischen gesperrt; sonst ist die Bestätigung erloschen), dazu `ohneText`
   (nicht gesperrte Zeiträume ohne gemeinsamen Text), Stunden, Anzahl,
-  `nachAbschluss` und `bestaetigbar` ('offen' oder 'geaendert' und kein
-  Zeitraum ohne Text). Ändert ein anderer den gemeinsamen Text, erlischt die
-  eigene Bestätigung ebenfalls.
+  `nachAbschluss`, `nachAbschlussGeaendert`, `anderswoAbgerechnet` und
+  `bestaetigbar` ('offen' oder 'geaendert' und kein Zeitraum ohne Text). Ändert
+  ein anderer den gemeinsamen Text, erlischt die eigene Bestätigung ebenfalls;
+  ebenso, wenn eine neue Grenze eines Nachweises einen Zeitraum mit eigenen
+  Leistungen teilt.
+* Folgen geänderter Grenzen für die Rückfragen im Controlling: `grenzFolgen`
+  rechnet wie `aenderungAnwenden` (mit `periodentexteNachziehen` und
+  `bestaetigungenNachziehen`) die nachgezogenen Texte
+  (`nachgezogenePeriodentexte`), die neuen Teile ohne Text, deren Leistungen
+  bisher in einem Zeitraum mit Text lagen, und die Bestätigungen, die jetzt
+  gelten ('bestaetigt' bzw. 'abgerechnet') und danach 'geaendert' sind;
+  `grenzFolgenHinweis` fasst sie in Sätze („Damit beginnt am … ein neuer
+  Zeitraum der gemeinsamen Leistungstexte – für die Tage ab dann verfassen die
+  Mitarbeiter einen eigenen Text.“, „Die Bestätigung von … erlischt – der
+  Monat ist im Bereich erneut zu bestätigen.“ bzw. „… Bestätigungen erlöschen:
+  … – diese Monate sind im Bereich erneut zu bestätigen.“, dazu
+  `nachziehenHinweis`).
 * Rechte: Den gemeinsamen Text liest, wer im Zeitraum eigene Leistungen hat
   (`darfPeriodentextLesen`, auch gesperrt), im Controlling jeder; bearbeiten nur
   im Bereich, mit eigenen Leistungen darin und nicht gesperrt
@@ -1629,14 +1675,26 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   26.10.26 - 30.10.26“ (`periodeKurztext`), Badge „Abgerechnet“ bzw. „Text
   fehlt“, die eigenen Stunden („Meine Stunden in diesem Zeitraum“), „Meine
   Stichpunkte“ (Wochentag, Datum, Stunden, Kurzname des Abschnitts, Text bzw.
-  „ohne Stichpunkt“, „nach dem Abschluss erfasst“; ein Klick öffnet „Leistung
-  bearbeiten“) und „Gemeinsamer Leistungstext“ (`Textfeld`, Platzhalter „Was
-  wurde in diesem Zeitraum geleistet? – Ein Text für alle, die hier Leistungen
-  haben.“). Darunter „Wird beim Verlassen des Felds gespeichert.“ (ungespeichert),
-  „Zuletzt bearbeitet von … am … um … Uhr“ bzw. „Pflicht – ohne Text lässt sich
-  der Monat nicht bestätigen.“ Gespeichert wird beim Verlassen des Felds, offene
-  Eingaben auch beim Monatswechsel, beim Verlassen der Seite und bei
-  `pagehide`/`visibilitychange` (synchron über `flushSync`). Bei leerem Text
+  „ohne Stichpunkt“, „nach dem Abschluss erfasst“ bzw. „nach dem Abschluss
+  geändert“; ein Klick öffnet „Leistung bearbeiten“) und „Gemeinsamer
+  Leistungstext“ (`Textfeld`, Platzhalter „Was wurde in diesem Zeitraum
+  geleistet? – Ein Text für alle, die hier Leistungen haben.“). Darunter „Wird
+  beim Verlassen des Felds gespeichert.“ (ungespeichert), „Inzwischen von …
+  geändert – Ihre Eingabe wird beim Verlassen des Felds mit dieser Fassung
+  zusammengeführt.“ (ein anderes Fenster hat seit Beginn der Eingabe
+  gespeichert, `Entwurf.basis`), „Zuletzt bearbeitet von … am … um … Uhr“ bzw.
+  „Pflicht – ohne Text lässt sich der Monat nicht bestätigen.“ Gespeichert wird
+  beim Verlassen des Felds, offene Eingaben auch beim Monatswechsel, beim
+  Verlassen der Seite und bei `pagehide`/`visibilitychange` (synchron über
+  `flushSync`); hat inzwischen jemand anderes gespeichert, die Zusammenführung
+  beider Fassungen (`zuSpeichern`, `texteZusammenfuehren`) mit „Den
+  Leistungstext für … hat inzwischen … geändert – Ihre Eingabe ist mit dieser
+  Fassung zusammengeführt. Bitte prüfen.“ Entfällt der Zeitraum einer Eingabe,
+  zieht sie in den Zeitraum um, der ihren Beginn jetzt enthält (mit dem Fokus,
+  wenn ihr Feld ihn hatte); sonst – und wenn das Speichern scheitert – steht
+  über den Zeiträumen „Nicht gespeichert (…):“ mit dem Grund, „Ihre Eingabe:“,
+  dem Text und „Verwerfen“ (beim Verlassen der Seite als Kurzmeldung). Darüber
+  `nachAbschlussHinweis` und `anderswoAbgerechnetHinweis`. Bei leerem Text
   „Stichpunkte übernehmen“ (setzt `automatikText` der eigenen Leistungen ein,
   Tooltip „Übernimmt Ihre Stichpunkte: …“, Meldung „Stichpunkte übernommen.“);
   bei neuen eigenen Stichpunkten „Noch nicht im Text:“ mit „Neue Stichpunkte
@@ -1655,9 +1713,9 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   der Fokus wandert jeweils zum Gegenstück, ein zweiter Klick binnen 800 ms
   bzw. ein Doppelklick zählt nicht. Bei 'abgerechnet' „Alle Ihre Leistungen in …
   sind bereits abgerechnet – eine Bestätigung ist nicht mehr nötig.“ bzw. – mit
-  nach dem Abschluss erfassten – „Alle Zeiträume in … sind abgerechnet – eine
-  Bestätigung ist nicht mehr nötig; über danach erfasste Leistungen entscheidet
-  das Controlling.“ Ohne eigene Leistungen im Monat „Keine eigenen Leistungen
+  nach dem Abschluss erfassten bzw. geänderten – „Alle Zeiträume in … sind
+  abgerechnet – eine Bestätigung ist nicht mehr nötig; über danach erfasste
+  bzw. geänderte Leistungen entscheidet das Controlling.“ Ohne eigene Leistungen im Monat „Keine eigenen Leistungen
   in …“ mit „Meine Leistungen“ und „Excel-Import“; ohne Anmeldung „Nicht als
   Mitarbeiter angemeldet“.
 * Demodaten (`src/bereiche/leistungsnachweise/domain/seed.ts`): Bei der Brücke
@@ -1689,12 +1747,18 @@ Mitarbeiter, gilt sie aber auch dort als angemeldet (eigene Leistungen beim
 Löschen eines Nachweises mitlöschen, Zeilen ohne Mitarbeiter im Sammel-Import
 ihr zuordnen). Eigene Leistungen ändert nur die angemeldete Person
 (`darfLeistungAendern`); im Controlling sind die Leistungen anderer nur zu
-lesen (`darfLeistungSehen`, `leistungenDerZeile`). Im Bereich sieht niemand
+lesen (`darfLeistungSehen`, `leistungenDerZeile` – im Bereich liefert es nur die
+eigenen, `andereAnzahl` 0). Im Bereich sieht niemand
 Stichpunkte, Stunden oder Leistungen der anderen, auch nicht als Zahl und
 auch nicht in Zeiträumen mit eigenen Leistungen – gemeinsam ist dort allein
 der Leistungstext des Zeitraums (`darfPeriodentextLesen`,
-`stichpunkteDerPeriode`, 10.3). Gemeinsame Texte und Bestätigungen liest das
-Controlling nur. Der Store prüft jede Änderung auf dem Stand, den sie ändert.
+`stichpunkteDerPeriode`, 10.3). Ausnahme, solange alles lokal im Browser
+liegt: „Sicherung“ in der Seitenleiste des Bereichs (`SicherungKnopf` in
+`src/bereiche/leistungsnachweise/components/Sicherung.tsx`, `exportiereDaten`)
+lädt den gesamten Bestand samt den Leistungen aller Mitarbeiter herunter, und
+„Einspielen“ bzw. „Zurücksetzen“ ersetzen ihn. Gemeinsame Texte und
+Bestätigungen liest das Controlling nur. Der Store prüft jede Änderung auf
+dem Stand, den sie ändert.
 
 ### 10.5 Controlling der Leistungsnachweise
 
@@ -1733,10 +1797,13 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   Abrechnung), „Bestätigungen“ (siehe unten), „Leistungen“ (`Leistungen.tsx` im Controlling: die Leistungen
   aller Mitarbeiter mit Filter nach Mitarbeiter, nur lesen, der Nachweis
   verweist auf die Abrechnung) und „Einstellungen“ (`ProjektEinstellungen.tsx`:
-  Vorgaben mit „Neue Nachweise“, Abschnitte, Logos). Beim Raster sagen die
+  Vorgaben mit „Neue Nachweise“, Abschnitte, Logos). Die Reiter tragen
+  `role="tab"` und `aria-selected`; scrollt die Leiste auf schmalen
+  Bildschirmen quer, rollt `scrollIntoView` den aktiven Reiter in den
+  sichtbaren Teil – auch beim direkten Aufruf der Adresse. Beim Raster sagen die
   Einstellungen „Das Raster gliedert auch die Leistungstexte, die die
-  Mitarbeiter je Zeitraum gemeinsam verfassen (Wochen am Monatsende
-  geteilt).“, der Dialog „Projekt bearbeiten“ „… gliedert auch die gemeinsamen
+  Mitarbeiter je Zeitraum gemeinsam verfassen (Wochen am Monatsende und an den
+  Grenzen der Leistungsnachweise geteilt).“, der Dialog „Projekt bearbeiten“ „… gliedert auch die gemeinsamen
   Leistungstexte der Mitarbeiter.“ Wird das Raster umgestellt, nennen beide
   (`RasterwechselHinweis` in
   `src/bereiche/leistungsnachweise/components/RasterwechselHinweis.tsx`) die
@@ -1760,12 +1827,13 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   „Abgerechnet“; Tabelle „Mitarbeiter“ (Name, Kürzel, ggf. „ausgeschieden“),
   „Stunden“, „Status“ (`monatsStatusBadge`: „Bestätigt am …“ grün, „Offen“
   orange, „Geändert seit Bestätigung“ rot – dazu „zuletzt bestätigt am …“ –,
-  „Abgerechnet“ blau; dazu „… nach dem Abschluss erfasst“) und „Ohne Text“
+  „Abgerechnet“ blau; dazu „… nach dem Abschluss erfasst“ bzw. „… nach dem
+  Abschluss geändert“) und „Ohne Text“
   (Zeiträume ohne gemeinsamen Text von den nicht gesperrten, etwa „1 von 4“,
   sonst „–“); darunter „Leistungsnachweis:“ bzw. „Leistungsnachweise:“ mit den
   Nachweisen des Monats (`monateDesNachweises`, Klick öffnet die Abrechnung).
-  Monate, in denen alles abgerechnet und nichts nach dem Abschluss erfasst ist,
-  stehen hinter „Abgerechnete Monate anzeigen (…)“. Ohne Leistungen „Noch
+  Monate, in denen alles abgerechnet und nichts nach dem Abschluss erfasst bzw.
+  geändert ist, stehen hinter „Abgerechnete Monate anzeigen (…)“. Ohne Leistungen „Noch
   keine Leistungen“, ist alles abgerechnet „Alles abgerechnet“. Nur lesen.
 * Darüber „Excel-Import (alle Mitarbeiter)“: der Import als Sammel-Export, ohne
   Anmeldung; nach dem Übernehmen geht es zu den Leistungsnachweisen des
@@ -1797,14 +1865,22 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   Liegt schon alles in genau einem offenen Nachweis, heißt der Knopf „Öffnen“.
   So lassen sich auch Leistungen mehrerer Monate (etwa Oktober bis Dezember) in
   einem Nachweis sammeln. Ändern sich mit dem neuen Nachweis Grenzen der
-  Zeiträume, nennt der Dialog die gemeinsamen Texte, die dabei zusammengehen
-  (`nachgezogenePeriodentexte`, `nachziehenHinweis` in
-  `src/bereiche/leistungsnachweise/domain/erfassung.ts`: „1 gemeinsamer
-  Leistungstext der Mitarbeiter gehört zu einem Teil eines Zeitraums, dessen
-  Grenze sich damit ändert – er geht im Text des neuen Zeitraums auf.“ bzw. „…
-  gemeinsame Leistungstexte der Mitarbeiter gehören zu Teilen von Zeiträumen,
-  deren Grenzen sich damit ändern – sie gehen im Text der neuen Zeiträume
-  auf.“); ebenso „Zeitraum ändern“ und „Löschen“.
+  Zeiträume, nennt der Dialog die Folgen (`grenzFolgen`, `grenzFolgenHinweis`
+  in `src/bereiche/leistungsnachweise/domain/erfassung.ts`, `FolgenHinweis` in
+  `src/bereiche/leistungsnachweise/components/NachweisDialog.tsx`): die
+  gemeinsamen Texte, die dabei zusammengehen (`nachziehenHinweis`: „1
+  gemeinsamer Leistungstext der Mitarbeiter gehört zu einem Teil eines
+  Zeitraums, dessen Grenze sich damit ändert – er geht im Text des neuen
+  Zeitraums auf.“ bzw. „… gemeinsame Leistungstexte der Mitarbeiter gehören zu
+  Teilen von Zeiträumen, deren Grenzen sich damit ändern – sie gehen im Text
+  der neuen Zeiträume auf.“), den Tag, ab dem ein neuer Beginn bzw. ein neues
+  Ende mitten in einem Zeitraum einen eigenen Text verlangt („Damit beginnt am
+  … ein neuer Zeitraum der gemeinsamen Leistungstexte – für die Tage ab dann
+  verfassen die Mitarbeiter einen eigenen Text.“), und die Bestätigungen, die
+  damit erlöschen (mit Namen und Monat) – mit neuem Teil oder erlöschenden
+  Bestätigungen als Warnung. Ebenso „Zeitraum ändern“ und „Löschen“; „Wieder
+  öffnen“ und – endet der Nachweis mitten in einem Zeitraum – „Abschließen“
+  nennen die erlöschenden Bestätigungen.
   Vorhandene Nachweise korrigiert „Zeitraum ändern“ (`ZeitraumDialog`). Ob ein
   festgelegtes Ende (`bisFest`) mit dem eingegebenen Ende etwas bewirkt, sagt
   `endeFestlegenWirkt` (`src/bereiche/leistungsnachweise/domain/nachweis.ts`:
@@ -1880,7 +1956,13 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   bzw. „Text von Hand bearbeitet“), „Leistungstexte“
   (`src/bereiche/leistungsnachweise/pages/controlling/Leistungstexte.tsx`: Text
   je Zeile bearbeiten, solange offen, „Ergänzen“ bzw. „Text so lassen“ bei
-  neuen Leistungen; stammt der Text aus den gemeinsamen Texten, „Text der
+  neuen Leistungen; ändert sich nach einer Bearbeitung der Text, den die Zeile
+  ohne sie hätte (`ZeilenText.ausgang`, `zeilenTextOhneBearbeitung`), „Der Text
+  der Mitarbeiter hat sich seit der Bearbeitung geändert:“ bzw. „Der
+  automatische Text hat sich seit der Bearbeitung geändert:“ mit dem neuen Text,
+  „Text der Mitarbeiter übernehmen“ bzw. „Automatischen Text übernehmen“ und
+  „Text so lassen“ („Ergänzen“ und „Text so lassen“ übernehmen den heutigen als
+  `ausgang`, `zeilenTextSetzen` mit `gesehen`); stammt der Text aus den gemeinsamen Texten, „Text der
   Mitarbeiter“ mit „aus ihren gemeinsamen Leistungstexten – Änderungen hier
   bleiben stehen“, nach einer Bearbeitung „Text der Mitarbeiter
   wiederherstellen“ – Meldung „Leistungstext der Mitarbeiter wiederhergestellt.“
@@ -1951,7 +2033,11 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 | „Bitte zuerst für jeden Zeitraum mit eigenen Leistungen einen Leistungstext verfassen – es fehlt noch: ….“ | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`ohneTextMeldung`, `bestaetigenMeldung`) | „Monat bestätigen“, solange ein nicht gesperrter Zeitraum keinen gemeinsamen Text hat. |
 | „In diesem Monat haben Sie keine eigenen Leistungen in diesem Projekt.“ / „Der Monat ist bereits abgerechnet – eine Bestätigung ist nicht mehr nötig.“ | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`bestaetigenMeldung`) | Bestätigen bei Status 'keine' bzw. 'abgerechnet'. |
 | „Diesen Monat bzw. dieses Projekt gibt es nicht.“ | `src/bereiche/leistungsnachweise/store/store.tsx` (`monatBestaetigen`) | Ungültiger Monat oder unbekanntes Projekt. |
-| „Ihre Leistung vom … liegt in einem bereits abgerechneten Zeitraum und wurde nach dem Abschluss erfasst bzw. geändert – sie geht nicht in den abgeschlossenen Leistungsnachweis ein; über ein Nachreichen entscheidet das Controlling.“ (mehrere: „… Ihrer Leistungen (…) liegen in bereits abgerechneten Zeiträumen …“) | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`nachAbschlussHinweis`) | Eigene, nicht abgerechnete Leistungen in einem gesperrten Zeitraum (Seite „Leistungstexte“). |
+| „Ihre Leistung vom … liegt in einem bereits abgerechneten Zeitraum und wurde nach dem Abschluss erfasst – sie geht nicht in den abgeschlossenen Leistungsnachweis ein; über ein Nachreichen entscheidet das Controlling.“ (mehrere: „… Ihrer Leistungen (…) liegen in bereits abgerechneten Zeiträumen …“) | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`nachAbschlussHinweis`) | Eigene, nicht abgerechnete Leistungen in einem gesperrten Zeitraum (Seite „Leistungstexte“). |
+| „Ihre Leistung vom … ist bereits abgerechnet und wurde nach dem Abschluss geändert – abgerechnet bleibt der Stand des Abschlusses; die Änderung geht erst ein, wenn das Controlling den Leistungsnachweis wieder öffnet.“ (mehrere: „… Ihrer Leistungen (…) sind bereits abgerechnet …“) | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`nachAbschlussHinweis`) | Eigene, abgerechnete Leistungen in einem gesperrten Zeitraum, nach dem Abschluss geändert (`Leistung.geaendert`). |
+| „Ihre Leistung vom … ist bereits in … abgerechnet – sie zählt dort und nicht in den Zeiträumen dieses Monats. Änderungen an ihr gehen erst ein, wenn das Controlling … wieder öffnet.“ (mehrere: „… Ihrer Leistungen (…) sind bereits in … abgerechnet …“) | `src/bereiche/leistungsnachweise/domain/erfassung.ts` (`anderswoAbgerechnetHinweis`) | Eigene Leistungen des Monats, die ein abgeschlossener Nachweis abrechnet, der ihr Datum nicht umfasst. |
+| „Nicht gespeichert (…): … Ihre Eingabe:“ mit „Verwerfen“ | `src/bereiche/leistungsnachweise/pages/projekt/MonatsErfassung.tsx` | Eine Eingabe im gemeinsamen Text ließ sich nicht speichern – ihr Zeitraum hat keine eigenen Leistungen mehr („In diesem Zeitraum haben Sie keine eigenen Leistungen mehr.“), ist inzwischen abgerechnet (`gesperrtHinweis`) oder das Speichern scheiterte; beim Verlassen der Seite als Kurzmeldung. |
+| „Den Leistungstext für … hat inzwischen … geändert – Ihre Eingabe ist mit dieser Fassung zusammengeführt. Bitte prüfen.“ | `src/bereiche/leistungsnachweise/pages/projekt/MonatsErfassung.tsx` | Kein Fehler: Ein anderer (etwa ein zweites Fenster) hat den Text seit Beginn der Eingabe gespeichert; gespeichert ist die Zusammenführung. |
 | „… bestätigt.“ / „Bestätigung für … zurückgenommen.“ / „Stichpunkte übernommen.“ / „Neue Stichpunkte ergänzt.“ / „Stichpunkte als berücksichtigt markiert.“ | `src/bereiche/leistungsnachweise/pages/projekt/MonatsErfassung.tsx` | Kein Fehler. |
 | „Leistungstext der Mitarbeiter wiederhergestellt.“ / „Automatischer Leistungstext wiederhergestellt.“ | `src/bereiche/leistungsnachweise/pages/controlling/Leistungstexte.tsx` | Kein Fehler: Bearbeitung von Hand verworfen. |
 
