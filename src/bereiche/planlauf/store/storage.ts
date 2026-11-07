@@ -672,10 +672,11 @@ export type SpeicherZustand = 'ok' | 'voll' | 'gesperrt';
 /**
  * Speichert den Bestand. Ist der Speicher voll, werden Rohkopien
  * (`<Schlüssel>.vor-fassung-<n>`, `<Schlüssel>.vor-einspielen-…`) entfernt,
- * bis er passt – die eigenen zuerst, nötigenfalls auch die anderer Bereiche
- * (`nachRaeumenSpeichern`). Liefert, ob der
- * Bestand gespeichert ist bzw. warum nicht – dann zeigt die Anwendung einen
- * dauerhaften Hinweis.
+ * bis er passt – zuerst die vor einer Umstellung (die eigenen vor denen
+ * anderer Bereiche und des Projektregisters), dann die vor dem Einspielen,
+ * gleich welchen Bereichs, die älteste zuerst (`nachRaeumenSpeichern`).
+ * Liefert, ob der Bestand gespeichert ist bzw. warum nicht – dann zeigt die
+ * Anwendung einen dauerhaften Hinweis.
  */
 export function speichereDaten(daten: AppData): SpeicherZustand {
   const text = JSON.stringify(daten);

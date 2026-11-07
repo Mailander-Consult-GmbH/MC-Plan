@@ -9,6 +9,12 @@
  * scrollt selbst, wenn es höher ist als der Platz. Es schließt bei einem Klick
  * oder Tippen daneben, mit Escape oder Tab, beim Scrollen und bei einer
  * Größenänderung des Fensters. Pfeiltasten wechseln zwischen den Einträgen.
+ *
+ * Mit dem Menü verschwindet der fokussierte Eintrag. Escape und Tab geben den
+ * Fokus deshalb an den Knopf zurück (`onSchliessen(true)`); nach einer Wahl
+ * tut das Menü es selbst, sofern niemand sonst ihn übernommen hat – öffnet die
+ * Wahl einen Dialog, bleibt er dort (und kehrt nach dem Schließen zum Knopf
+ * zurück, `fokusVorDemOeffnen` in ui.tsx).
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react';
@@ -38,7 +44,11 @@ export function AufklappMenue({
   anker: RefObject<HTMLElement | null>;
   titel?: ReactNode;
   eintraege: MenueEintrag[];
-  /** `fokusZurueck`: Der Fokus soll zum Knopf zurück (Escape). */
+  /**
+   * `fokusZurueck`: Der Fokus soll zum Knopf zurück (Escape, Tab). Nach einer
+   * Wahl ruft das Menü `onSchliessen` nicht auf – das erledigt `onWaehle` –
+   * und setzt den Fokus selbst zurück.
+   */
   onSchliessen: (fokusZurueck: boolean) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -114,6 +124,18 @@ export function AufklappMenue({
     };
   }, [anker]);
 
+  // Nach der Wahl: Ist der Fokus mit dem Eintrag verschwunden (auf body) und hat ihn kein
+  // Dialog übernommen – der setzt ihn schon im Effekt –, gehört er an den Knopf, sofern
+  // es den noch gibt; sonst begänne der nächste Tab am Seitenanfang.
+  const waehlen = (eintrag: MenueEintrag) => {
+    eintrag.onWaehle();
+    requestAnimationFrame(() => {
+      const aktiv = document.activeElement;
+      const knopf = anker.current;
+      if ((!aktiv || aktiv === document.body) && knopf?.isConnected) knopf.focus({ preventScroll: true });
+    });
+  };
+
   const pfeile = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     const knoepfe = Array.from(ref.current?.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]') ?? []);
     if (knoepfe.length === 0) return;
@@ -144,7 +166,7 @@ export function AufklappMenue({
           role="menuitem"
           className={[e.gefahr ? 'gefahr' : '', e.aktiv ? 'aktiv' : ''].filter(Boolean).join(' ') || undefined}
           aria-current={e.aktiv ? 'true' : undefined}
-          onClick={e.onWaehle}
+          onClick={() => waehlen(e)}
         >
           {e.inhalt}
         </button>

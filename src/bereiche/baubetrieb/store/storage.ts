@@ -581,8 +581,10 @@ export type SpeicherZustand = 'ok' | 'voll' | 'gesperrt';
 /**
  * Speichert den Bestand; der Store ruft das nur bei `ladeZustand === 'ok'`
  * auf. Ist der Speicher voll, werden Rohkopien (`<Schlüssel>.vor-fassung-<n>`,
- * `<Schlüssel>.vor-einspielen-…`) entfernt, bis er passt – die eigenen zuerst,
- * nötigenfalls auch die anderer Bereiche (`nachRaeumenSpeichern`).
+ * `<Schlüssel>.vor-einspielen-…`) entfernt, bis er passt – zuerst die vor einer
+ * Umstellung (die eigenen vor denen anderer Bereiche und des Projektregisters),
+ * dann die vor dem Einspielen, gleich welchen Bereichs, die älteste zuerst
+ * (`nachRaeumenSpeichern`).
  * Liefert, ob der Bestand gespeichert ist bzw. warum nicht – dann zeigt der
  * Bereich einen dauerhaften Hinweis (components/Hinweisleisten.tsx).
  */

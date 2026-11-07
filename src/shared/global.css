@@ -200,8 +200,10 @@ a:hover { text-decoration: underline; }
 .topbar-logo { flex: none; display: flex; align-items: center; padding-left: 12px; }
 
 /* Der obere Abstand sitzt im Inneren, damit die fixierte Tabellenkopfzeile
-   unmittelbar unter der Kopfleiste stehen bleibt. */
-.content { flex: 1; overflow-y: auto; padding: 0 32px 64px; }
+   unmittelbar unter der Kopfleiste stehen bleibt. Unten kommt die Höhe des
+   Hinweises „Neue Fassung“ hinzu (--neue-fassung-hoehe), damit sich auch die
+   letzten Bedienelemente über ihn hinaus scrollen lassen. */
+.content { flex: 1; overflow-y: auto; padding: 0 32px calc(64px + var(--neue-fassung-hoehe, 0px)); }
 /* Breite Arbeitsfläche – auf großen Bildschirmen bleibt ein Rand für die Lesbarkeit */
 .content-inner { max-width: 1560px; margin: 0 auto; padding-top: 24px; }
 
@@ -793,8 +795,10 @@ a:hover { text-decoration: underline; }
 
 /* Hinweis „Neue Fassung verfügbar“ (src/shell/NeueFassung.tsx) – über dem
    Inhalt, aber unter der aufgeklappten Seitenleiste (90) und unter Dialogen
-   (100), damit er deren Fuß nicht verdeckt. Meldungen rücken über ihn
-   (--neue-fassung-hoehe, gesetzt vom Hinweis). */
+   (100), damit er deren Fuß nicht verdeckt. Meldungen rücken über ihn, und
+   der Inhalt (.content, .start) erhält unten zusätzlich seine Höhe als
+   Abstand, damit er nichts dauerhaft verdeckt (--neue-fassung-hoehe, gesetzt
+   vom Hinweis). */
 .neue-fassung {
   position: fixed; right: 18px; bottom: 18px; z-index: 80;
   width: min(420px, calc(100vw - 24px));
@@ -892,6 +896,8 @@ a:hover { text-decoration: underline; }
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  /* Platz für den Hinweis „Neue Fassung“, damit der Fuß mit der Fassung nicht darunter liegt */
+  padding-bottom: var(--neue-fassung-hoehe, 0px);
 }
 
 .start-inner {
@@ -1100,7 +1106,7 @@ a:hover { text-decoration: underline; }
   .segmented { width: 100%; overflow-x: auto; }
   .search { width: 100%; }
   .topbar-title h1 { font-size: 17px; }
-  .content { padding-bottom: 48px; }
+  .content { padding-bottom: calc(48px + var(--neue-fassung-hoehe, 0px)); }
 }
 
 @media (max-width: 860px) {
@@ -1113,7 +1119,7 @@ a:hover { text-decoration: underline; }
     transition: transform 0.2s ease;
   }
   .sidebar.open { transform: none; box-shadow: var(--shadow-lg); }
-  .content { padding: 0 16px 60px; }
+  .content { padding: 0 16px calc(60px + var(--neue-fassung-hoehe, 0px)); }
   .content-inner { padding-top: 18px; }
   .topbar { padding: 12px 16px; }
   .topbar-logo { display: none; }

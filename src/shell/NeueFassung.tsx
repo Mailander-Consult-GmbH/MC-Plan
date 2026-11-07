@@ -5,8 +5,10 @@
  * nicht lesen. Erkannt wird das über `useNeueFassung` (src/shared/pwa.ts).
  *
  * Er liegt unter der aufgeklappten Seitenleiste und unter Dialogen (z-index in
- * global.css); Meldungen rücken über ihn – dafür meldet er seine Höhe als
- * `--neue-fassung-hoehe`.
+ * global.css). Seine Höhe meldet er als `--neue-fassung-hoehe`: Meldungen
+ * rücken über ihn, und der Inhaltsbereich (`.content`, auf dem Startbildschirm
+ * `.start`) erhält sie unten zusätzlich als Abstand – so lassen sich auch die
+ * letzten Bedienelemente einer Seite über ihn hinaus scrollen.
  */
 import { useLayoutEffect, useRef, useState } from 'react';
 import { FASSUNG, fassungText, useNeueFassung } from '../shared/pwa';

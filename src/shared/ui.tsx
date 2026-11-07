@@ -302,9 +302,10 @@ function ganzSichtbar(el: HTMLElement, inhalt: HTMLElement): boolean {
  * beginnt und kein Knopf mit sofortiger Wirkung den Fokus hat. Auf
  * Touch-Geräten immer der Dialog selbst: Der Fokus soll dort weder ungefragt
  * die Bildschirmtastatur aufklappen noch den Inhalt verschieben. Gescrollt
- * wird beim Fokussieren nie. Ein eigener Dialog eines Bereichs ohne
- * `tabindex` (etwa „Sicherung abgleichen“, der einen `Modal` ablöst) lässt sich
- * selbst nicht fokussieren – dort sein erster Tab-Halt.
+ * wird beim Fokussieren nie. Eigene Dialoge der Bereiche (der Workflow-Editor,
+ * „Sicherung abgleichen“, der einen `Modal` ablöst) tragen dafür ebenfalls
+ * `tabIndex={-1}`; einer ohne `tabindex` ließe sich selbst nicht fokussieren –
+ * dort gälte sein erster Tab-Halt.
  */
 function anfangsFokus(dialog: HTMLElement) {
   const inhalt = dialog.querySelector<HTMLElement>('.modal-body') ?? dialog;

@@ -17,7 +17,9 @@
  *
  * Gespeichert wird unter einem eigenen Schlüssel – nur, wenn sich der
  * gespeicherte Stand lesen ließ (sonst bleibt er unberührt, und die Bereiche
- * gleichen nicht ab).
+ * gleichen nicht ab). Ob das letzte Speichern gelungen ist, meldet
+ * `useRegisterSpeicherZustand`; das Controlling zeigt sonst einen dauerhaften
+ * Hinweis (src/bereiche/controlling/App.tsx).
  */
 import { useSyncExternalStore } from 'react';
 import { nachRaeumenSpeichern, speicherVoll } from '../shared/speicher';
@@ -338,26 +340,36 @@ function laden(): { register: Register; zustand: RegisterZustand } {
   }
 }
 
+/** Ergebnis des Speicherns: gespeichert, Speicher voll oder Speicher nicht nutzbar (gesperrt). */
+export type RegisterSpeicherZustand = 'ok' | 'voll' | 'gesperrt';
+
 /**
- * Schreibt das Register. Ist der Speicher voll, macht `nachRaeumenSpeichern`
- * (src/shared/speicher.ts) Platz, indem es Rohkopien (`.vor-fassung-<n>`,
- * `.vor-einspielen-…`) entfernt – das Register wiegt schwerer als eine Kopie.
+ * Schreibt das Register (`text` = sein JSON). Ist der Speicher voll, macht
+ * `nachRaeumenSpeichern` (src/shared/speicher.ts) Platz, indem es Rohkopien
+ * (`.vor-fassung-<n>`, `.vor-einspielen-…`) entfernt – das Register wiegt
+ * schwerer als eine Kopie. Liefert, ob es gespeichert ist bzw. warum nicht;
+ * ein Fehlschlag steht in der Konsole (`melden`, bei erneuten Versuchen nicht).
  */
-function speichern(register: Register): void {
-  const text = JSON.stringify(register);
+function speichern(text: string, melden = true): RegisterSpeicherZustand {
+  const warnen = (grund: unknown) => {
+    if (melden) console.warn('Projektregister konnte nicht gespeichert werden:', grund);
+  };
   try {
     localStorage.setItem(KEY, text);
-    return;
+    return 'ok';
   } catch (err) {
     if (!speicherVoll(err)) {
-      console.warn('Projektregister konnte nicht gespeichert werden:', err);
-      return;
+      warnen(err);
+      return 'gesperrt';
     }
   }
   try {
-    if (!nachRaeumenSpeichern(KEY, text)) console.warn('Projektregister konnte nicht gespeichert werden: Speicher voll');
+    if (nachRaeumenSpeichern(KEY, text)) return 'ok';
+    warnen('Speicher voll');
+    return 'voll';
   } catch (err) {
-    console.warn('Projektregister konnte nicht gespeichert werden:', err);
+    warnen(err);
+    return speicherVoll(err) ? 'voll' : 'gesperrt';
   }
 }
 
@@ -365,13 +377,25 @@ function speichern(register: Register): void {
 /* Gemeinsamer Zustand mit Abonnement                                  */
 /* ------------------------------------------------------------------ */
 
-let stand: { register: Register; zustand: RegisterZustand; text: string } | null = null;
+/**
+ * Der Stand dieses Fensters: `text` ist das JSON von `register`, `gespeichert`
+ * das Ergebnis des letzten Speicherns – nach dem Laden 'ok', denn der Stand
+ * kommt ja aus dem Speicher.
+ */
+interface Stand {
+  register: Register;
+  zustand: RegisterZustand;
+  text: string;
+  gespeichert: RegisterSpeicherZustand;
+}
+
+let stand: Stand | null = null;
 const hoerer = new Set<() => void>();
 
-function aktuell() {
+function aktuell(): Stand {
   if (!stand) {
     const geladen = laden();
-    stand = { ...geladen, text: JSON.stringify(geladen.register) };
+    stand = { ...geladen, text: JSON.stringify(geladen.register), gespeichert: 'ok' };
   }
   return stand;
 }
@@ -388,21 +412,45 @@ export function registerZustand(): RegisterZustand {
   return aktuell().zustand;
 }
 
+export function registerSpeicherZustand(): RegisterSpeicherZustand {
+  return aktuell().gespeichert;
+}
+
+/**
+ * Schreibt einen nicht gespeicherten Stand erneut – etwa, wenn inzwischen
+ * wieder Platz ist. Der Stand selbst bleibt derselbe; benachrichtigt wird nur,
+ * wenn sich das Ergebnis ändert.
+ */
+export function registerErneutSpeichern(): RegisterSpeicherZustand {
+  const s = aktuell();
+  if (s.zustand !== 'ok' || s.gespeichert === 'ok') return s.gespeichert;
+  const gespeichert = speichern(s.text, false);
+  if (gespeichert !== s.gespeichert) {
+    stand = { ...s, gespeichert };
+    benachrichtigen();
+  }
+  return gespeichert;
+}
+
 /**
  * Ändert das Register über eine Funktion (darf außerhalb von React-Updates
  * aufgerufen werden, läuft genau einmal). Ändert sich nichts, bleibt der
- * Stand unberührt und niemand wird benachrichtigt. Nach einem Ladefehler
- * bleibt das Register unverändert.
+ * Stand unberührt und niemand wird benachrichtigt – nur ein noch nicht
+ * gespeicherter Stand wird dann erneut geschrieben (`registerErneutSpeichern`).
+ * Der neue Stand gilt auch, wenn er sich nicht speichern lässt (der
+ * Speicherzustand sagt es); nach einem Ladefehler bleibt das Register
+ * unverändert.
  */
 export function registerAendern(fn: (r: Register) => Register): Register {
   const s = aktuell();
   if (s.zustand !== 'ok') return s.register;
   const neu = fn(s.register);
-  if (neu === s.register) return s.register;
-  const neuText = JSON.stringify(neu);
-  if (neuText === s.text) return s.register;
-  stand = { register: neu, zustand: s.zustand, text: neuText };
-  speichern(neu);
+  const neuText = neu === s.register ? s.text : JSON.stringify(neu);
+  if (neuText === s.text) {
+    registerErneutSpeichern();
+    return s.register;
+  }
+  stand = { register: neu, zustand: s.zustand, text: neuText, gespeichert: speichern(neuText) };
   benachrichtigen();
   return neu;
 }
@@ -412,7 +460,8 @@ function abonnieren(h: () => void): () => void {
   return () => hoerer.delete(h);
 }
 
-// Ein anderes Fenster hat das Register geändert: neu laden.
+// Ein anderes Fenster hat das Register geändert: neu laden. Ein hier nicht
+// gespeicherter Stand entfällt damit – gilt, was im Speicher steht.
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key !== KEY || !stand) return;
@@ -429,4 +478,9 @@ export function useRegister(): Register {
 /** Ob sich das Register lesen ließ; sonst gleichen die Bereiche nicht ab. */
 export function useRegisterZustand(): RegisterZustand {
   return useSyncExternalStore(abonnieren, registerZustand, registerZustand);
+}
+
+/** Ob sich der letzte Stand des Registers speichern ließ (Hinweis im Controlling). */
+export function useRegisterSpeicherZustand(): RegisterSpeicherZustand {
+  return useSyncExternalStore(abonnieren, registerSpeicherZustand, registerSpeicherZustand);
 }

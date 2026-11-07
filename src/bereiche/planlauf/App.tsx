@@ -25,6 +25,7 @@ import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import type { IconName } from '../../shared/icons';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
+import { useSeitenleiste } from '../../shared/seitenleiste';
 
 export function App() {
   const { data, zuruecksetzen, ladeZustand, setBearbeiter } = useStore();
@@ -32,7 +33,7 @@ export function App() {
   const [route, navigate] = useRoute();
   // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
   const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projectId}` : route.view === 'planlauf' ? `planlauf/${route.runId}` : route.view);
-  const [menuOffen, setMenuOffen] = useState(false);
+  const [menuOffen, setMenuOffen] = useSeitenleiste();
   const inEinstellungen = route.view === 'ketten' || route.view === 'rollen' || route.view === 'vorlagen';
   const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
   // Wer eine der Seiten unter „Einstellungen“ aufruft, sieht die Gruppe aufgeklappt

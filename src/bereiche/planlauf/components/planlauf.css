@@ -128,8 +128,10 @@
 .pl-durchlauf { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
 .pl-durchlauf-titel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; }
 
-/* Schritte außerhalb des Verlaufs */
+/* Schritte außerhalb des Verlaufs – lange Namen brechen im Kennzeichen um,
+   statt am Rand der Karte abgeschnitten zu werden */
 .pl-abseits { padding: 12px 20px; border-top: 1px solid var(--separator); display: flex; flex-direction: column; gap: 8px; }
+.pl-abseits .badge { white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
 
 /* Terminnachweis */
 .pl-summen {

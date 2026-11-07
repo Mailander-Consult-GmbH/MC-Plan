@@ -93,3 +93,7 @@
 .ct-bereich-stand { flex: none; min-width: 96px; display: flex; }
 .ct-bereich-aktion { flex: none; margin-left: auto; display: flex; }
 
+/* Hinweis: Projektregister nicht gespeichert (App.tsx, RegisterSpeicherHinweis) */
+.ct-speicherhinweis { margin-bottom: 18px; }
+.ct-speicherhinweis .callout.error { box-shadow: inset 3px 0 0 var(--red); }
+.ct-speicherhinweis-knoepfe { gap: 6px; margin-top: 8px; }

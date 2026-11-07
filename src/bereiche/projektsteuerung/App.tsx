@@ -5,6 +5,7 @@ import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { useToast } from '../../shared/toast';
 import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
+import { useSeitenleiste } from '../../shared/seitenleiste';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { Hinweisleisten } from './components/Hinweisleisten';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
@@ -30,7 +31,7 @@ export function App() {
   const [route, navigate] = useRoute();
   // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
   const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projektId}` : route.view === 'protokoll' ? `protokoll/${route.protokollId}` : route.view);
-  const [menuOffen, setMenuOffen] = useState(false);
+  const [menuOffen, setMenuOffen] = useSeitenleiste();
   const inEinstellungen = route.view === 'funktionen';
   const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
   // Wer eine der Seiten unter „Einstellungen“ aufruft, sieht die Gruppe aufgeklappt

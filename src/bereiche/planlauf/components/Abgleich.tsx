@@ -26,7 +26,12 @@ import { formatDate, today } from '../../../shared/dates';
 import type { Sicherung } from './SicherungEinspielen';
 import './abgleich.css';
 
-/** Breites Modal ohne Schließen per Hintergrundklick (Escape und ✕ schließen). */
+/**
+ * Breites Modal ohne Schließen per Hintergrundklick (Escape und ✕ schließen).
+ * Es löst „Sicherung einspielen“ ab und erhält dabei den Fokus selbst
+ * (`tabIndex={-1}`, `anfangsFokus` in src/shared/ui.tsx) – nicht der Knopf ✕,
+ * den ein Enter sonst sofort auslöste.
+ */
 function BreitesModal({
   titel,
   sub,
@@ -50,7 +55,7 @@ function BreitesModal({
 
   return (
     <div className="overlay">
-      <div className="modal wide ab-modal" role="dialog" aria-modal="true">
+      <div className="modal wide ab-modal" role="dialog" aria-modal="true" tabIndex={-1}>
         <div className="modal-header">
           <div style={{ minWidth: 0 }}>
             <h2>{titel}</h2>

@@ -28,6 +28,7 @@ import { angemeldet } from './domain/rechte';
 import { projektTitel, type Projekt } from './domain/types';
 import { istControllingRoute, routeToHash, useRoute, type Route } from './lib/router';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
+import { useSeitenleiste } from '../../shared/seitenleiste';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
 import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
@@ -38,7 +39,7 @@ export function App() {
   const { data, ladeZustand, zuruecksetzen } = useStore();
   const toast = useToast();
   const [route, navigate] = useRoute();
-  const [menuOffen, setMenuOffen] = useState(false);
+  const [menuOffen, setMenuOffen] = useSeitenleiste();
   const [anmeldung, setAnmeldung] = useState<{ danach?: () => void } | null>(null);
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);

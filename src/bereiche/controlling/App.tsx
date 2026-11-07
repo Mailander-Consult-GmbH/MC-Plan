@@ -3,13 +3,17 @@
  * Projekte und Archiv auf dem Projektregister, dazu das Controlling der
  * Leistungsnachweise, das der Bereich selbst bereitstellt
  * (`LeistungsnachweiseControlling`, src/bereiche/leistungsnachweise/controlling.tsx).
+ * Über jeder Ansicht steht ein Hinweis, solange sich das Projektregister nicht
+ * speichern lässt (`RegisterSpeicherHinweis`).
  */
-import { useEffect, useState } from 'react';
-import { useRegister, useRegisterZustand } from '../../gemeinsam/register';
+import { useEffect } from 'react';
+import { registerErneutSpeichern, useRegister, useRegisterSpeicherZustand, useRegisterZustand } from '../../gemeinsam/register';
 import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
+import { useToast } from '../../shared/toast';
 import { Callout } from '../../shared/ui';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
+import { useSeitenleiste } from '../../shared/seitenleiste';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import { useBenutzer } from '../../gemeinsam/benutzer';
@@ -24,7 +28,7 @@ export function App({ onSperren }: { onSperren: () => void }) {
   // Ein neuer Menüpunkt beginnt oben (src/shared/scrollen.ts); die Leistungsnachweise
   // setzen innerhalb ihres Menüpunkts selbst zurück.
   const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view);
-  const [menuOffen, setMenuOffen] = useState(false);
+  const [menuOffen, setMenuOffen] = useSeitenleiste();
 
   // Das Controlling hat keine eigenen Einstellungen – es folgt dem Farbmodus der gemeinsamen Anmeldung.
   const { farbmodus } = useBenutzer();
@@ -103,6 +107,7 @@ export function App({ onSperren }: { onSperren: () => void }) {
 
         <div className="content" ref={inhalt}>
           <div className="content-inner">
+            <RegisterSpeicherHinweis />
             {route.view === 'leistungsnachweise' ? (
               <LeistungsnachweiseControlling />
             ) : zustand !== 'ok' ? (
@@ -121,6 +126,42 @@ export function App({ onSperren }: { onSperren: () => void }) {
       {menuOffen ? (
         <div className="overlay" style={{ background: 'rgba(0,0,0,0.18)', zIndex: 80 }} onClick={() => setMenuOffen(false)} />
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Dauerhafter Hinweis, solange sich das Projektregister nicht speichern lässt
+ * (`useRegisterSpeicherZustand`, src/gemeinsam/register.ts): Was das
+ * Controlling an Projekten ändert, steht nur im Register und ginge beim
+ * Schließen der Seite verloren. „Erneut speichern“ versucht es noch einmal,
+ * etwa nachdem anderswo Platz frei geworden ist; das tut auch jeder weitere
+ * Aufruf von `registerAendern` (etwa der Abgleich eines Bereichs).
+ */
+function RegisterSpeicherHinweis() {
+  const gespeichert = useRegisterSpeicherZustand();
+  const toast = useToast();
+  if (gespeichert === 'ok') return null;
+  return (
+    <div className="ct-speicherhinweis" role="alert">
+      <Callout ton="error" icon="!">
+        <strong>Projektregister nicht gespeichert.</strong>{' '}
+        {gespeichert === 'voll'
+          ? 'Der Speicher des Browsers ist voll'
+          : 'Der Browser lässt das Speichern nicht zu (etwa durch Datenschutzeinstellungen)'}
+        ; Änderungen an den Projekten gehen beim Schließen der Seite verloren.
+        <div className="row wrap ct-speicherhinweis-knoepfe">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => {
+              if (registerErneutSpeichern() !== 'ok') toast('Das Projektregister lässt sich weiterhin nicht speichern.');
+            }}
+          >
+            Erneut speichern
+          </button>
+        </div>
+      </Callout>
     </div>
   );
 }
