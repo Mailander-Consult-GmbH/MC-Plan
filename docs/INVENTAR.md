@@ -350,8 +350,9 @@ Mitarbeiter geführt ist – fehlt die Person, legt der Bereich sie selbst an
 `darfLeistungAendern`, `darfPeriodentextBearbeiten`, `darfBestaetigen` in
 `src/bereiche/leistungsnachweise/domain/rechte.ts`, Abschnitt 10.4) – Leistungen
 anderer ändert niemand, auch das Controlling nicht, und im Bereich sieht niemand
-Stichpunkte, Stunden oder Leistungen der anderen –,
-und die Mitarbeiter verwaltet das Controlling (`src/bereiche/leistungsnachweise/pages/controlling/Mitarbeiter.tsx`). Der Bestand liegt ausschließlich im `localStorage` des
+Stichpunkte, Stunden oder Leistungen der anderen –;
+eine Seite zum Verwalten der Mitarbeiter gibt es nicht (sie entstehen über
+„Angemeldet als“ im Bereich und über den Sammel-Import des Controllings). Der Bestand liegt ausschließlich im `localStorage` des
 jeweiligen Browsers, wird also ohnehin nicht geteilt.
 
 Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
@@ -1320,7 +1321,8 @@ nicht; Gestaltung in `src/bereiche/controlling/controlling.css` (Präfix `ct-`).
 | --- | --- | --- |
 | `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich (gezählt wird nur der Zustand „Aktiv“, ohne vorgesehene Übernahmen – `zustandIm`); Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich; „Leistungsnachweise“ fest angehakt mit „(immer)“). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“ – in den Leistungsnachweisen (`JEDES_PROJEKT_IN`) ohne Übernehmen und Zurücknehmen, ohne Mitgliedschaft „Vorgesehen“ (Tooltip „Jedes Projekt gehört in die Leistungsnachweise – sie legen es beim nächsten Öffnen an“, bei archiviertem Projekt „Jedes Projekt gehört in die Leistungsnachweise – sie legen es an, sobald es aus dem Archiv geholt ist“). Die Beschreibung behält ihre Zeilenumbrüche (`.ct-beschreibung`, `white-space: pre-line`). |
 | `#/controlling/archiv` | Archiv (dieselbe Seite) | Die im Controlling archivierten Projekte mit „Bearbeiten“, „Aus dem Archiv holen“ und „Löschen“; der Stand je Bereich ohne Schaltflächen. |
-| `#/controlling/leistungsnachweise/<reiter>`, `…/projekt/<id>/<reiter>` bzw. `…/projekt/<id>/nachweis/<id>` | Controlling der Leistungsnachweise (`LeistungsnachweiseControlling` in `src/bereiche/leistungsnachweise/controlling.tsx`), Menüpunkt „Leistungsnachweise“ unter „Bereiche“ | Siehe 10.5. |
+| `#/controlling/leistungsnachweise/projekte`, `…/projekt/<id>/<reiter>` bzw. `…/projekt/<id>/nachweis/<id>` | Controlling der Leistungsnachweise (`LeistungsnachweiseControlling` in `src/bereiche/leistungsnachweise/controlling.tsx`), Menüpunkt „Leistungsnachweise“ unter „Bereiche“ (Kopfzeile „Leistungsnachweise“) | Die Projekte der Leistungsnachweise, ein Projekt bzw. eine Abrechnung – siehe 10.5. Jede andere Adresse unter `#/controlling/leistungsnachweise/…` führt ebenfalls hierher (auch frühere wie `…/nachweise` und `…/mitarbeiter`). |
+| `#/controlling/leistungsnachweise/auswertung` | Dieselbe Einbindung, Menüpunkt „Auswertung“ darunter (Symbol `diagramm` aus `src/shared/icons.tsx`; Kopfzeile „Auswertung“) | Die Auswertung der Leistungsnachweise – siehe 10.5. `hashToRoute` in `src/bereiche/controlling/lib/router.ts` unterscheidet beide Menüpunkte allein an der Wegmarke `auswertung`. |
 
 Lässt sich das Projektregister nicht speichern (`useRegisterSpeicherZustand`,
 9.1), steht über jeder Ansicht des Controllings „Projektregister nicht
@@ -1492,7 +1494,10 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   auch kein ausgeschiedener, und der Name hat Vor- und Nachnamen – aktiv, Kürzel
   `kuerzelFrei(kuerzelAus(…))`, Kennung aus dem Namen (`mitarbeiterKennung`, vor
   `mutate` gebildet; gleiche Namen ergeben dieselbe Kennung, sodass StrictMode
-  und zwei Fenster keine Doppel anlegen). Wechselt der Name, entfernt
+  und zwei Fenster keine Doppel anlegen). Gehört der Name einem als
+  ausgeschieden markierten Mitarbeiter (`anmeldeLage` `ausgeschieden`), setzt
+  `anmeldungAnwenden` ihn dort wieder aktiv – eine Pflege der Mitarbeiter, in
+  der jemand als ausgeschieden markiert würde, gibt es nicht mehr. Wechselt der Name, entfernt
   `anmeldungAnwenden` im Bereich die unter dem bisherigen Namen angelegte Person
   (Kennung `mitarbeiterKennung` des bisherigen Namens in
   `einstellungen.bearbeiter`), wenn sie aktiv ist, noch so ist, wie der Bereich
@@ -1502,13 +1507,15 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   keinem festgeschriebenen Stand steht (`stundenJeMitarbeiter`,
   `automatischAngelegtOhneLeistungen`) – ein
   Tippfehler hinterlässt so keinen Mitarbeiter. Eine vergebene Kennung führt
-  schon zur Lage `umbenannt`. Im Controlling wird niemand angelegt oder entfernt.
+  schon zur Lage `umbenannt`. Im Controlling wird niemand angelegt, entfernt
+  oder wieder aktiv gesetzt.
   Die übrigen Lagen (`AnmeldeLage`) nennt `anmeldeHinweis` als Leiste über dem
   Inhalt (`AnmeldeHinweis` in
   `src/bereiche/leistungsnachweise/components/Anmeldung.tsx`) und – über
   `useMitAnmeldung` – als Kurzmeldung, wenn eine Handlung eine Anmeldung
   braucht (Leistung erfassen, Excel-Import, Leistungstext, Bestätigen):
-  `ohneNachname`, `ausgeschieden`, `umbenannt` (das Controlling hat die unter
+  `ohneNachname`, `ausgeschieden` (nur ohne einwandfrei geladenen Stand bzw. im
+  Controlling, sonst setzt der Store die Person gleich wieder aktiv), `umbenannt` (das Controlling hat die unter
   diesem Namen angelegte Person – Kennung `mitarbeiterKennung` – umbenannt;
   angelegt wird dann niemand) und `nichtGefuehrt` (Stand nicht geladen bzw.
   Controlling). Wortlaute in 10.6.
@@ -1519,8 +1526,8 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
 | --- | --- | --- |
 | `#/leistungsnachweise` bzw. `#/leistungsnachweise/uebersicht` | Übersicht (`src/bereiche/leistungsnachweise/pages/Uebersicht.tsx`) | „Excel-Import“; Kacheln „Aktive Projekte“, „Meine Stunden …“ und „Meine Leistungen …“ (laufender Monat), „Meine Stunden …“ (laufendes Jahr); Kalender „Mein Kalender“ über alle eigenen Leistungen, auch in archivierten Projekten (siehe unten; die Einträge nennen die Projektnummer, beim Erfassen fragt der Dialog das Projekt ab – `projektAuswahl`, zur Wahl stehen nur nicht archivierte Projekte, vorgewählt das Projekt der zuletzt erfassten eigenen Leistung). Gibt es kein nicht archiviertes Projekt, steht der Kalender trotzdem da, darüber „Es gibt noch kein Projekt, in dem Sie Leistungen erfassen können. Projekte legt das Controlling an; Projekte der anderen Bereiche erscheinen hier von selbst, unbekannte legt auch der Excel-Import an.“ bzw. – sind alle archiviert – „Alle Projekte sind archiviert – hier in der Übersicht stehen sie deshalb nicht zur Wahl. Leistungen lassen sich weiterhin im archivierten Projekt erfassen (…); aus dem Archiv zurückholen kann sie das Controlling. Erfasste Leistungen bleiben im Kalender sichtbar.“ (in der Klammer fett „Projekte › Archiv“); ein Klick auf einen Tag meldet dann „Kein Projekt zum Erfassen – Projekte legt das Controlling an.“ bzw. „Kein Projekt zur Wahl – alle sind archiviert. Erfassen lässt sich im Projekt unter Projekte › Archiv.“; ohne Anmeldung nennt „Leistung erfassen“ den Anmeldehinweis als Kurzmeldung (10.1). Karte „Offene Bestätigungen“ (nur mit Anmeldung; `offeneBestaetigungen` in `src/bereiche/leistungsnachweise/domain/erfassung.ts`): je Projekt und Monat mit eigenen Leistungen im Status 'offen' oder 'geaendert' eine Zeile mit Projekt, Monat (der laufende mit „laufender Monat“), „Meine Stunden“, Status als Badge („Offen“ bzw. „Geändert seit Bestätigung“) samt „… ohne Leistungstext“ und „Leistungstexte“ – ein Klick öffnet `…/projekt/<id>/<JJJJ-MM>`; ohne offene „Alle Monate mit eigenen Leistungen sind bestätigt bzw. abgerechnet.“ (Gestaltung `src/bereiche/leistungsnachweise/components/erfassung.css`, Präfix `ln-ob-`). Karte „Zuletzt erfasst“ (die neuesten eigenen Leistungen, `LETZTE`; ein Klick öffnet die Leistungstexte ihres Monats; ohne Anmeldung „Nicht als Mitarbeiter angemeldet“); Karte „Projekte“ mit Leistungsbereich, eigenen Stunden im Monat, „Zuletzt erfasst“ und „Leistungstexte“. Angezeigt werden markierte Projekte – auch die in anderen Bereichen markierten (`istMarkiert`) –, ohne Markierung alle (`sichtbareProjekte`), archivierte in keinem Fall; „Kein Projekt markiert – es werden alle angezeigt.“ nach derselben Regel (9.3). |
 | `#/leistungsnachweise/projekte` | Projekte (`src/bereiche/leistungsnachweise/pages/Projekte.tsx`) | Kacheln mit Projektnummer, Projektname, Beschreibung (falls vorhanden), Status, ★ (in einem anderen Bereich markierte fest – `useMarkiertAnderswo`, Tooltip „In … markiert – deshalb auch hier markiert; aufheben lässt es sich nur dort“ – sonst umschaltbar) und „Auch in“; kein Anlegen („Projekte legt das Controlling an, unbekannte auch der Excel-Import.“); jedes Projekt des Registers steht von selbst hier (9.2); darunter „Archiv“ (9.3). Ein Klick öffnet die Leistungstexte des Projekts im Vorgabemonat. |
-| `#/leistungsnachweise/projekt/<id>` bzw. `…/projekt/<id>/<JJJJ-MM>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`), Ansicht „Leistungstexte“ (Vorgabe; `src/bereiche/leistungsnachweise/pages/projekt/MonatsErfassung.tsx`) | Projektnummer, Status, Leistungsbereich und der Umschalter „Leistungstexte“ / „Meine Leistungen“ (`Segmented`, mit `aria-pressed`); ggf. Archivhinweis (9.3); darunter die gemeinsamen Leistungstexte und die Monatsbestätigung eines Monats (10.3). Ohne Monat in der Adresse der Vorgabemonat (`vorgabeMonat`: der jüngste Monat mit eigenen Leistungen im Status 'offen' oder 'geaendert', sonst der jüngste mit eigenen Leistungen, sonst der laufende – einmal beim Öffnen bestimmt). Kopfzeile „Leistungstexte und Monatsbestätigung“. Bearbeiten, Einstellungen und Löschen gibt es nur im Controlling. Frühere Adressen `…/projekt/<id>/<reiter>` (etwa `…/nachweise`) zeigen die Leistungstexte im Vorgabemonat; `…/projekt/<id>/nachweis/<id>` führt in die Abrechnung des Controllings. |
-| `#/leistungsnachweise/projekt/<id>/leistungen` | Projekt, Ansicht „Meine Leistungen“ (`src/bereiche/leistungsnachweise/pages/projekt/Leistungen.tsx`) | Die eigenen Leistungen: Umschalter „Kalender“ – Vorgabe, Kalender „Meine Leistungen“ – und „Liste“, dazu „Leistung erfassen“ und „Excel-Import“; die Liste mit Filter nach Monat, Suche, Auswahl löschen; der Nachweis je Leistung steht ohne Verweis. Ohne Anmeldung „Nicht als Mitarbeiter angemeldet“. Kopfzeile „Meine Leistungen im Projekt“. „Leistungstexte“ im Umschalter führt in den zuletzt gezeigten Monat zurück. |
+| `#/leistungsnachweise/projekt/<id>` bzw. `…/projekt/<id>/<JJJJ-MM>` | Projekt (`src/bereiche/leistungsnachweise/pages/ProjektDetail.tsx`), Ansicht „Leistungstexte“ (Vorgabe; `src/bereiche/leistungsnachweise/pages/projekt/MonatsErfassung.tsx`) | Projektnummer, Status und Leistungsbereich; ggf. Archivhinweis (9.3); darunter die Reiter „Leistungstexte“ / „Meine Leistungen“ wie in den anderen Bereichen (`.tabs` aus `src/shared/global.css`, `role="tablist"` mit „Ansicht des Projekts“, je Reiter `role="tab"` und `aria-selected`; Tooltips „Gemeinsame Leistungstexte je Zeitraum und Bestätigung des Monats“ bzw. „Eigene Leistungen im Kalender bzw. als Liste“, `ANSICHTEN` in `ProjektDetail.tsx`); darunter die gemeinsamen Leistungstexte und die Monatsbestätigung eines Monats (10.3). Ohne Monat in der Adresse der Vorgabemonat (`vorgabeMonat`: der jüngste Monat mit eigenen Leistungen im Status 'offen' oder 'geaendert', sonst der jüngste mit eigenen Leistungen, sonst der laufende – einmal beim Öffnen bestimmt). Kopfzeile „Leistungstexte und Monatsbestätigung“. Bearbeiten, Einstellungen und Löschen gibt es nur im Controlling. Frühere Adressen `…/projekt/<id>/<reiter>` (etwa `…/nachweise`) zeigen die Leistungstexte im Vorgabemonat; `…/projekt/<id>/nachweis/<id>` führt in die Abrechnung des Controllings. |
+| `#/leistungsnachweise/projekt/<id>/leistungen` | Projekt, Ansicht „Meine Leistungen“ (`src/bereiche/leistungsnachweise/pages/projekt/Leistungen.tsx`) | Die eigenen Leistungen: Umschalter „Kalender“ – Vorgabe, Kalender „Meine Leistungen“ – und „Liste“, dazu „Leistung erfassen“ und „Excel-Import“; die Liste mit Filter nach Monat, Suche, Auswahl löschen; der Nachweis je Leistung steht ohne Verweis. Ohne Anmeldung „Nicht als Mitarbeiter angemeldet“. Kopfzeile „Meine Leistungen im Projekt“. Der Reiter „Leistungstexte“ führt in den zuletzt gezeigten Monat zurück. |
 
 Kalender (`LeistungsKalender` in
 `src/bereiche/leistungsnachweise/components/LeistungsKalender.tsx`, Gestaltung
@@ -1555,7 +1562,8 @@ Leistungen.“ mit dem Anmeldehinweis). Betrifft ein Import im Bereich genau ein
 Projekt, führt er danach zu dessen Leistungstexten im jüngsten Monat der
 übernommenen Leistungen (`importZiel`), sonst zur Übersicht. Adressen des
 Controllings – auch frühere unter `#/leistungsnachweise/controlling/…` und
-`#/leistungsnachweise/mitarbeiter` – lenkt `App.tsx` nach
+`#/leistungsnachweise/mitarbeiter` (die entfallene Seite „Mitarbeiter“, jetzt
+die Projekte im Controlling) – lenkt `App.tsx` nach
 `#/controlling/leistungsnachweise/…` um (`hashToRoute`, `routeToHash` in
 `src/bereiche/leistungsnachweise/lib/router.ts`). `hashToRoute` nimmt nur
 Adressen unter `#/leistungsnachweise/…` und `#/controlling/leistungsnachweise/…`
@@ -1563,7 +1571,7 @@ an; jede andere ergibt die Übersicht ohne Umlenkung. Eine neue Seite beginnt
 oben (`useNachObenBeiSeitenwechsel` aus `src/shared/scrollen.ts` in `App.tsx`
 und `controlling.tsx`) – im Bereich auch ein Wechsel zwischen „Leistungstexte“
 und „Meine Leistungen“ und ein anderer Monat der Leistungstexte; Reiterwechsel
-im Controlling und Blättern im Kalender scrollen nicht.
+in einem Projekt des Controllings und Blättern im Kalender scrollen nicht.
 
 ### 10.3 Gemeinsame Leistungstexte und Monatsbestätigung
 
@@ -1682,29 +1690,33 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   die gemerkten Leistungen; bleibt der Text gleich, bleiben Bearbeiter und
   Zeitpunkt), `monatBestaetigen` (`bestaetigenAnwenden`, nur wenn
   `bestaetigbar`; ersetzt eine frühere Bestätigung derselben Person) und
-  `bestaetigungZuruecknehmen`. „Löschen“ eines Projekts bzw. Mitarbeiters
-  räumt Texte bzw. Bestätigungen mit ab, ebenso `erfassungBereinigen` nach
-  jeder Änderung.
-* Seite „Leistungstexte“ (`MonatsErfassung`): Kopf „Leistungstexte“ mit
-  „Meine Stunden: …“, der Zahl der Leistungen und Zeiträume (ohne eigene „Keine
-  eigenen Leistungen in diesem Monat“), „Raster: …“ (`RASTER_LABEL`; liegen
-  abgerechnete Zeiträume in einem anderen Raster, dazu „(abgerechnete Zeiträume
-  im Raster ihres Abschlusses)“) und die Monatswahl „Vorheriger Monat“ /
-  „Nächster Monat“ (`monatVerschieben`, führt nach `…/projekt/<id>/<JJJJ-MM>`).
-  Statuszeile (`monatsStatusText`): „Noch nicht bestätigt“, „Bestätigt am …“,
-  „Seit der Bestätigung am … geändert – bitte erneut bestätigen.“ bzw.
-  „Abgerechnet“, im laufenden Monat bei 'offen'/'geaendert' mit „Der Monat läuft
-  noch – bestätigen Sie ihn, wenn er vollständig erfasst ist.“ Darunter „Je
-  Zeitraum gibt es einen gemeinsamen Leistungstext für alle, die darin
-  Leistungen haben – alle Beteiligten sehen und bearbeiten ihn. Ihre
-  Stichpunkte und Stunden dienen Ihnen zur Orientierung; die der anderen sind
-  hier nicht zu sehen. Ist jeder Zeitraum beschrieben, bestätigen Sie den
-  Monat.“ und – gibt es im Projekt weitere offene Monate – „Noch zu
-  bestätigen:“ mit Verweisen (geänderte mit „(geändert)“).
-* Je Zeitraum mit eigenen Leistungen ein Block: Überschrift wie „KW 44 ·
+  `bestaetigungZuruecknehmen`. „Löschen“ eines Projekts räumt seine Texte und
+  Bestätigungen mit ab; `erfassungBereinigen` entfernt nach jeder Änderung
+  Texte und Bestätigungen gelöschter Projekte bzw. Mitarbeiter.
+* Seite „Leistungstexte“ (`MonatsErfassung`) in zwei Blöcken. Der Block
+  „Leistungstexte“ (`section.card.ln-me-texte`) trägt im Kopf (`ln-me-kopf`) den
+  Titel „Leistungstexte“, „Meine Stunden: … Std.“ mit der Zahl der Zeiträume
+  (ohne eigene „Keine eigenen Leistungen in diesem Monat“), „Raster: …“
+  (`RASTER_LABEL`; liegen abgerechnete Zeiträume in einem anderen Raster, dazu
+  „(abgerechnete Zeiträume im Raster ihres Abschlusses)“), rechts den Stand als
+  Badge (`monatsStatusBadge`: „Bestätigt am …“ grün, „Offen“ orange, „Geändert
+  seit Bestätigung“ rot, „Abgerechnet“ blau; ohne eigene Leistungen keiner) und
+  die Monatswahl „Vorheriger Monat“ / „Nächster Monat“ (`monatVerschieben`,
+  führt nach `…/projekt/<id>/<JJJJ-MM>`). Darunter – mit eigenen Leistungen –
+  „Je Zeitraum ein gemeinsamer Text für alle, die darin Leistungen haben. Ihre
+  Stichpunkte dienen der Orientierung; die der anderen sind hier nicht zu
+  sehen.“, die nicht gespeicherten Eingaben (`ln-me-hinweise`, siehe unten) und
+  alle Zeiträume des Monats als Abschnitte desselben Blocks
+  (`section.ln-me-periode`, durch eine Linie getrennt) bzw. der leere Zustand.
+* Je Zeitraum mit eigenen Leistungen ein Abschnitt: Überschrift wie „KW 44 ·
   26.10.26 - 30.10.26“ (`periodeKurztext`), Badge „Abgerechnet“ bzw. „Text
   fehlt“, die eigenen Stunden („Meine Stunden in diesem Zeitraum“), „Meine
-  Stichpunkte“ (Wochentag, Datum, Stunden, Kurzname des Abschnitts, Text bzw.
+  Stichpunkte“ in festen Spalten mit der Kopfzeile „Datum“, „Std.“ und
+  „Stichpunkt“ (`ln-me-punkt-kopf`; Kopfzeile und Zeilen im selben Raster
+  `88px 44px minmax(0, 1fr)` in
+  `src/bereiche/leistungsnachweise/components/erfassung.css`, bündig über alle
+  Zeilen und Zeiträume, bis 640 px nur mit engerem Abstand, auch bei 400 px; je
+  Leistung Wochentag und Datum, Stunden, Kurzname des Abschnitts, Text bzw.
   „ohne Stichpunkt“, „nach dem Abschluss erfasst“ bzw. „nach dem Abschluss
   geändert“; ein Klick öffnet „Leistung bearbeiten“) und „Gemeinsamer
   Leistungstext“ (`Textfeld`, Platzhalter „Was wurde in diesem Zeitraum
@@ -1730,8 +1742,7 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   zieht sie mit ihren eigenen Änderungen (`texteDreiseitig`) in den Zeitraum um, der ihren Beginn jetzt enthält (mit dem Fokus,
   wenn ihr Feld ihn hatte); sonst – und wenn das Speichern scheitert – steht
   über den Zeiträumen „Nicht gespeichert (…):“ mit dem Grund, „Ihre Eingabe:“,
-  dem Text und „Verwerfen“ (beim Verlassen der Seite als Kurzmeldung). Darüber
-  `nachAbschlussHinweis` und `anderswoAbgerechnetHinweis`. Bei leerem Text
+  dem Text und „Verwerfen“ (beim Verlassen der Seite als Kurzmeldung). Bei leerem Text
   „Stichpunkte übernehmen“ (setzt `automatikText` der eigenen Leistungen ein,
   Tooltip „Übernimmt Ihre Stichpunkte: …“, Meldung „Stichpunkte übernommen.“);
   bei neuen eigenen Stichpunkten „Noch nicht im Text:“ mit „Neue Stichpunkte
@@ -1739,22 +1750,32 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   berücksichtigt markieren“ (Text bleibt, „Stichpunkte als berücksichtigt
   markiert.“). Fremde Stichpunkte, Stunden oder Leistungen zeigt die Seite
   nicht, auch nicht als Zahl. Gesperrt: der Text nur zu lesen bzw. „Für diesen
-  Zeitraum gibt es keinen gemeinsamen Leistungstext.“, dazu „Abgerechnet in „…“
-  – der Leistungstext lässt sich nicht mehr ändern.“ (`gesperrtHinweis`).
-* Karte „Monat bestätigen“: „Ich bestätige, dass meine Stunden und die
+  Zeitraum gibt es keinen gemeinsamen Leistungstext.“, darunter klein mit
+  Schloss (`ln-me-gesperrt-hinweis`) „Abgerechnet in „…“ – der Leistungstext
+  lässt sich nicht mehr ändern.“ (`gesperrtHinweis`).
+* Block „Monat bestätigen“ (`section.card.ln-me-bestaetigen`, fehlt nur, wenn
+  der Monat keine eigenen Leistungen hat und kein anderer Monat offen ist):
+  Statuszeile (`monatsStatusText`) „Noch nicht bestätigt“, „Seit der Bestätigung
+  am … geändert – bitte erneut bestätigen.“ bzw. „Abgerechnet“, im laufenden
+  Monat bei 'offen'/'geaendert' mit „Der Monat läuft noch – bestätigen Sie ihn,
+  wenn er vollständig erfasst ist.“; darunter `nachAbschlussHinweis` und
+  `anderswoAbgerechnetHinweis`. Dann „Ich bestätige, dass meine Stunden und die
   Leistungstexte für … vollständig erfasst sind.“ (`bestaetigungsSatz`); fehlen
   Texte, „Es fehlt noch der Leistungstext für diesen Zeitraum:“ bzw. „Es fehlen
   noch die Leistungstexte für … Zeiträume:“ mit Verweisen ins Feld, und der Knopf
-  „Monat bestätigen“ ist gesperrt. Nach dem Bestätigen („… bestätigt.“) „Bestätigt
-  am …“ mit „Bestätigung zurücknehmen“ („Bestätigung für … zurückgenommen.“);
+  „Monat bestätigen“ ist gesperrt. Nach dem Bestätigen („… bestätigt.“) steht
+  statt Statuszeile und Knopf „Bestätigt am …“ mit „Bestätigung zurücknehmen“
+  („Bestätigung für … zurückgenommen.“);
   der Fokus wandert jeweils zum Gegenstück, ein zweiter Klick binnen 800 ms
   bzw. ein Doppelklick zählt nicht. Bei 'abgerechnet' „Alle Ihre Leistungen in …
   sind bereits abgerechnet – eine Bestätigung ist nicht mehr nötig.“ bzw. – mit
   nach dem Abschluss erfassten bzw. geänderten – „Alle Zeiträume in … sind
   abgerechnet – eine Bestätigung ist nicht mehr nötig; über danach erfasste
-  bzw. geänderte Leistungen entscheidet das Controlling.“ Ohne eigene Leistungen im Monat „Keine eigenen Leistungen
-  in …“ mit „Meine Leistungen“ und „Excel-Import“; ohne Anmeldung „Nicht als
-  Mitarbeiter angemeldet“.
+  bzw. geänderte Leistungen entscheidet das Controlling.“ Am Ende – gibt es im
+  Projekt weitere offene Monate – „Noch zu bestätigen:“ mit Verweisen (geänderte
+  mit „(geändert)“). Ohne eigene Leistungen im Monat zeigt der Block
+  „Leistungstexte“ „Keine eigenen Leistungen in …“ mit „Meine Leistungen“ und
+  „Excel-Import“; ohne Anmeldung „Nicht als Mitarbeiter angemeldet“.
 * Demodaten (`src/bereiche/leistungsnachweise/domain/seed.ts`): Bei der Brücke
   steht für den Vormonat ein gemeinsamer Leistungstext von Anna Becker, den sie
   am Ersten des laufenden Monats bestätigt hat.
@@ -1767,8 +1788,8 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
 `projektVerwalten` (Projekt anlegen, ändern, Abschnitte), `sammelImport`,
 `projektLoeschen`, `nachweisVerwalten` (Nachweise anlegen und ändern,
 Leistungstexte, Bemerkung, „Nachweise anlegen“), `abschliessen`,
-`aufschlag`, `export`, `auswertung` und `mitarbeiterVerwalten` nur im
-Controlling. Im Bereich bleibt nur das Erfassen, Ändern und Importieren
+`aufschlag`, `export` und `auswertung` nur im Controlling (ein Recht zum
+Verwalten der Mitarbeiter gibt es nicht mehr). Im Bereich bleibt nur das Erfassen, Ändern und Importieren
 eigener Leistungen, das Mitschreiben am gemeinsamen Leistungstext der
 Zeiträume mit eigenen Leistungen (`darfPeriodentextBearbeiten`), das
 Bestätigen der eigenen Monate (`darfBestaetigen`) und die ★-Markierung; die
@@ -1799,26 +1820,50 @@ dem Stand, den sie ändert.
 
 ### 10.5 Controlling der Leistungsnachweise
 
-Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigenem
-`StoreProvider` im Zugang `controlling`:
+Im Controlling-Bereich unter den Menüpunkten „Leistungsnachweise“ und
+„Auswertung“ (Abschnitt 9.4), mit eigenem `StoreProvider` im Zugang
+`controlling`. Reiter gibt es auf dieser Ebene nicht
+(`src/bereiche/leistungsnachweise/controlling.tsx`):
 
-* Reiter (`src/bereiche/leistungsnachweise/pages/controlling/Controlling.tsx`)
-  „Auswertung“ (`Auswertung.tsx`), „Leistungsnachweise“ (`NachweisListe.tsx`,
-  mit „Neuer Leistungsnachweis“, siehe unten; die Filterleiste – Status,
-  Projekt, Zeitraum, Knöpfe – bricht um, das Statusfeld wird nie schmaler als
-  sein Umschalter, bis 640 px steht alles untereinander,
-  `src/bereiche/leistungsnachweise/pages/controlling/controlling.css`), „Projekte“ (`ProjektListe.tsx`: Projekte mit
-  Raster und Regel, „In Bearbeitung“, „Ohne Nachweis“, Stunden; Suche; „Neues
-  Projekt“ über `ProjektDialog` in
-  `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx`; archivierte am
-  Ende) und „Mitarbeiter“ (`Mitarbeiter.tsx`: die angemeldete Person trägt
-  „angemeldet“; ihr Löschen verweigert `mitarbeiterLoeschenPruefen`, solange
-  ihr Name unter „Angemeldet als“ steht – der Bereich legte sie gleich wieder
-  an; wer sie in `src/bereiche/leistungsnachweise/components/MitarbeiterDialog.tsx`
-  umbenennt, ändert nach dem Speichern auch „Angemeldet als“ –
-  `benutzerAendern`, Meldung „Mitarbeiter gespeichert – „Angemeldet als“
-  lautet jetzt „…“.“; Hinweis am Status „Ausgeschiedene behalten ihre
-  Leistungen, erfassen unter „Angemeldet als“ aber keine neuen.“).
+* Seiten: `ControllingTab` ist `'projekte'` (Vorgabe) oder `'auswertung'`
+  (`src/bereiche/leistungsnachweise/lib/router.ts`). „Leistungsnachweise“ zeigt
+  die Projekte (`#/controlling/leistungsnachweise/projekte`), „Auswertung“ die
+  Auswertung (`#/controlling/leistungsnachweise/auswertung`,
+  `AuswertungAnsicht` in
+  `src/bereiche/leistungsnachweise/pages/controlling/Auswertung.tsx`; ein Klick
+  auf ein Projekt – Tooltip „Leistungsnachweise des Projekts zeigen“ – öffnet
+  dessen Reiter „Leistungsnachweise“). Frühere Adressen führen weiter
+  (`controllingRoute`): `…/nachweise` (früher die Liste aller Nachweise),
+  `…/mitarbeiter` und die Adresse ohne Seite zu den Projekten, der frühere
+  Projektreiter `…/projekt/<id>/bestaetigungen` zu den Leistungsnachweisen des
+  Projekts. Eigene Seiten für alle Nachweise, für die Mitarbeiter und für die
+  Bestätigungen eines Projekts gibt es nicht; Mitarbeiter entstehen über
+  „Angemeldet als“ im Bereich (10.1) und über den Sammel-Import.
+* Projekte (`ProjektListe` in
+  `src/bereiche/leistungsnachweise/pages/controlling/ProjektListe.tsx`): Suche
+  („Projekt, Nummer …“), der Hinweis „Die Mitarbeiter erfassen ihre Leistungen
+  im Bereich Leistungsnachweise; hier werden die Nachweise erstellt, abgerechnet
+  und exportiert.“, „Excel-Import (alle Mitarbeiter)“ (siehe unten) und „Neues
+  Projekt“ (`ProjektDialog` in
+  `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx`). Karte
+  „Projekte“ mit der Tabelle `ln-co-projektliste`: „Projekt“ (Nummer, Name,
+  Status, ggf. „Archiviert“ – archivierte stehen am Ende), „Nachweis“ (Tooltip
+  „Gliederung der Leistungsnachweise und der Leistungstexte der Mitarbeiter“;
+  Auswahl „Tagesscharf“, „Wochenscharf“ oder „Monatsscharf“, `aria-label`
+  „Raster der Leistungsnachweise von …“ – ein Klick darauf öffnet nicht das
+  Projekt), „Stunden“ (alle Leistungen des Projekts) und „Leistungsnachweis
+  erstellen“ (Tooltip „Neuer Leistungsnachweis mit allen nicht abgerechneten
+  Leistungen des Projekts“; öffnet „Neuer Leistungsnachweis“, siehe unten, und
+  führt danach in die Abrechnung). Ein Klick auf die Zeile öffnet das Projekt.
+  Ein anderes Raster gilt sofort (`updateProjekt`) mit einer Kurzmeldung aus
+  Projekt und Raster – außer danach gelten gemeinsame Texte nicht mehr
+  (`periodentexteNachRasterwechsel` größer 0): Dann fragt „Raster ändern?“
+  (`Modal`, Untertitel mit altem und neuem Raster, `RasterwechselHinweis`,
+  „Abbrechen“ und „Raster ändern“). Ohne Treffer „Kein Projekt gefunden“ mit
+  „Projekte kommen aus dem Projektregister, aus dem Excel-Import oder über
+  „Neues Projekt“.“ Bis 640 px steht je Zeile das Projekt, darunter Raster und
+  Stunden, dann der Knopf in voller Breite
+  (`src/bereiche/leistungsnachweise/pages/controlling/controlling.css`).
 * Projekt (`ControllingProjekt` in
   `src/bereiche/leistungsnachweise/pages/controlling/Projekt.tsx`, Adresse
   `#/controlling/leistungsnachweise/projekt/<id>/<reiter>`): „Alle Projekte“,
@@ -1828,10 +1873,11 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   dort zur Übernahme vorgesehen ist (`vorgeseheneBereiche` in
   `src/gemeinsam/ProjektBereiche.tsx`; Hinweis „Für … zur Übernahme vorgesehen –
   löschen lässt sich das Projekt erst, wenn die Übernahme im Controlling unter
-  „Projekte“ zurückgenommen ist, oder dort für alle Bereiche.“); Reiter „Leistungsnachweise“
+  „Projekte“ zurückgenommen ist, oder dort für alle Bereiche.“); drei Reiter
+  (`TABS` in `Projekt.tsx`, `ProjektTab` in `lib/router.ts`): „Leistungsnachweise“
   (`ProjektNachweise.tsx`: Nachweise des Projekts, „Nachweise anlegen“ für
   Leistungen ohne Nachweis, „Neuer Leistungsnachweis“; ein Klick öffnet die
-  Abrechnung), „Bestätigungen“ (siehe unten), „Leistungen“ (`Leistungen.tsx` im Controlling: die Leistungen
+  Abrechnung), „Leistungen“ (`Leistungen.tsx` im Controlling: die Leistungen
   aller Mitarbeiter mit Filter nach Mitarbeiter, nur lesen, der Nachweis
   verweist auf die Abrechnung) und „Einstellungen“ (`ProjektEinstellungen.tsx`:
   Vorgaben mit „Neue Nachweise“, Abschnitte, Logos). Die Reiter tragen
@@ -1849,32 +1895,11 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   damit erlöschen: Offene Nachweise übernehmen die Texte nicht mehr, die
   Mitarbeiter verfassen sie im neuen Raster neu; sie bleiben gespeichert und
   gelten wieder, wenn das Raster zurückgestellt wird. Abgeschlossene Nachweise
-  behalten ihren Stand.
-* Reiter „Bestätigungen“ (`Bestaetigungen` in
-  `src/bereiche/leistungsnachweise/pages/controlling/Bestaetigungen.tsx`,
-  Adresse `#/controlling/leistungsnachweise/projekt/<id>/bestaetigungen`,
-  Tooltip „Je Monat, wer Leistungen im Projekt hat und ob er Stunden und
-  Leistungstexte bestätigt hat“): Einleitung „Die Mitarbeiter bestätigen im
-  Bereich Leistungsnachweise je Monat, dass ihre Stunden und die gemeinsamen
-  Leistungstexte vollständig erfasst sind. …“; Summe „Alle Mitarbeiter haben
-  ihre Monate bestätigt.“ bzw. „… Bestätigungen offen“ und „… Bestätigungen
-  erloschen“ mit „(geändert seit Bestätigung)“. Je Monat mit Leistungen (neueste
-  zuerst, `bestaetigungsUebersicht`) eine Karte: Monat, Zahl der Personen und
-  ihre Stunden, Badge „… von … bestätigt“ (grün, wenn alle bestätigt haben) bzw.
-  „Abgerechnet“; Tabelle „Mitarbeiter“ (Name, Kürzel, ggf. „ausgeschieden“),
-  „Stunden“, „Status“ (`monatsStatusBadge`: „Bestätigt am …“ grün, „Offen“
-  orange, „Geändert seit Bestätigung“ rot – dazu „zuletzt bestätigt am …“ –,
-  „Abgerechnet“ blau; dazu „… nach dem Abschluss erfasst“ bzw. „… nach dem
-  Abschluss geändert“) und „Ohne Text“
-  (Zeiträume ohne gemeinsamen Text von den nicht gesperrten, etwa „1 von 4“,
-  sonst „–“); darunter „Leistungsnachweis:“ bzw. „Leistungsnachweise:“ mit den
-  Nachweisen des Monats (`monateDesNachweises`, Klick öffnet die Abrechnung).
-  Monate, in denen alles abgerechnet und nichts nach dem Abschluss erfasst bzw.
-  geändert ist, stehen hinter „Abgerechnete Monate anzeigen (…)“. Ohne Leistungen „Noch
-  keine Leistungen“, ist alles abgerechnet „Alles abgerechnet“. Nur lesen.
-* Darüber „Excel-Import (alle Mitarbeiter)“: der Import als Sammel-Export, ohne
-  Anmeldung; nach dem Übernehmen geht es zu den Leistungsnachweisen des
-  Controllings (`importZiel`). Der Untertitel nennt hier keine Person, die
+  behalten ihren Stand. Dieselben Angaben macht die Rückfrage „Raster ändern?“
+  der Projekttabelle.
+* „Excel-Import (alle Mitarbeiter)“ in der Leiste der Projekte: der Import als
+  Sammel-Export, ohne Anmeldung; nach dem Übernehmen geht es zu den Projekten
+  (`importZiel`). Der Untertitel nennt hier keine Person, die
   Spalte Mitarbeiter erklärt „etwa „MM: Mustermann, Max“ – ordnet die Zeile
   ihrem Mitarbeiter zu; unbekannte werden angelegt“ (im Bereich „… –
   übernommen werden nur die eigenen Zeilen“). „Zeilen ohne Mitarbeiter
@@ -1886,8 +1911,9 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   nennt der Bereich eine abgerechnete als „nach dem Abschluss geändert“.
 * „Neuer Leistungsnachweis“ (`NeuerNachweisDialog` in
   `src/bereiche/leistungsnachweise/components/NachweisDialog.tsx`) fragt keinen
-  Zeitraum ab – nur das Projekt (in der Liste aller Nachweise), „Raster“ und
-  „Überschrift“: Er umfasst alle nicht abgerechneten Leistungen nach dem
+  Zeitraum ab – nur „Raster“ und „Überschrift“; das Projekt steht im
+  Untertitel (geöffnet über „Leistungsnachweis erstellen“ in der Projekttabelle
+  oder im Reiter „Leistungsnachweise“ des Projekts): Er umfasst alle nicht abgerechneten Leistungen nach dem
   letzten abgeschlossenen Nachweis (`nichtAbgerechnet` in
   `src/bereiche/leistungsnachweise/domain/nachweis.ts`; Zeitraum ab dem Tag
   danach, ohne abgeschlossenen ab der ersten Leistung, bis zum Monatsende bzw.
@@ -1988,9 +2014,10 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   der Periode abdeckt (Nachweis feiner gegliedert als das Projekt); ohne
   geltenden gemeinsamen Text `automatikText` der Zeile. Abgeschlossene
   Nachweise behalten ihren Stand.
-* Abrechnung eines Nachweises (`src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx`):
-  „Alle Nachweise“, „Zum Projekt“ (Tooltip „Leistungsnachweise, Bestätigungen,
-  Leistungen und Einstellungen des Projekts“), Ansichten „Abrechnung“ (je Zeile
+* Abrechnung eines Nachweises (`src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx`;
+  gibt es ihn nicht (mehr), „Nicht gefunden“ mit „Zu den Projekten“):
+  „Zum Projekt“ (Tooltip „Zurück zu den Leistungsnachweisen des Projekts“, führt
+  zum Reiter „Leistungsnachweise“ des Projekts), Ansichten „Abrechnung“ (je Zeile
   mit „Text der Mitarbeiter“, wenn der Text aus den gemeinsamen Texten stammt,
   bzw. „Text von Hand bearbeitet“), „Leistungstexte“
   (`src/bereiche/leistungsnachweise/pages/controlling/Leistungstexte.tsx`: Text
@@ -2013,7 +2040,8 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   „Löschen“ (mit dem Haken „Auch meine … in diesem Leistungsnachweis
   endgültig löschen“ – gemeint sind die eigenen Leistungen aus
   `leistungenDesNachweises`, samt nachgereichten; Meldung „Leistungsnachweis
-  und … gelöscht.“ bzw. „Leistungsnachweis gelöscht.“); Aufschläge je Zeile,
+  und … gelöscht.“ bzw. „Leistungsnachweis gelöscht.“, danach die
+  Leistungsnachweise des Projekts); Aufschläge je Zeile,
   „Aufschläge zurücksetzen“, „Bemerkung“.
   Kamen in von Hand bearbeiteten Zeilen seitdem Leistungen hinzu oder hat sich
   dort der Text der Mitarbeiter bzw. der automatische Text geändert
@@ -2026,11 +2054,12 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   geändert.“ – den automatischen nur in Zeilen ohne neue Leistungen).
 * Bestätigungen in der Abrechnung: Ein offener Nachweis zeigt unter den
   Kennzahlen „Bestätigungen der Mitarbeiter“ (`BestaetigungsStand` in
-  `src/bereiche/leistungsnachweise/pages/controlling/Bestaetigungen.tsx`) – je
-  Monat seiner Leistungen in zeitlicher Folge der Badge „… von … bestätigt“
-  bzw. „Abgerechnet“ und „Offen:“ bzw. „Geändert seit Bestätigung:“ mit Namen,
-  nur Personen mit Leistungen in diesem Nachweis
-  (`bestaetigungenDesNachweises`) –, dazu „Alle Bestätigungen des Projekts“.
+  `src/bereiche/leistungsnachweise/pages/controlling/BestaetigungsStand.tsx`) –
+  je Monat seiner Leistungen in zeitlicher Folge der Badge „… von …
+  bestätigt“ bzw. „Abgerechnet“, „Bestätigt:“ mit Namen und dem Tag der
+  Bestätigung sowie „Offen:“ bzw. „Geändert seit Bestätigung:“ mit Namen, nur
+  Personen mit Leistungen in diesem Nachweis (`bestaetigungenDesNachweises`).
+  Eine eigene Seite für die Bestätigungen gibt es nicht.
   Die Rückfrage „Leistungsnachweis abschließen?“ (`Modal` mit „Abbrechen“ und
   „Abschließen“) nennt mit `FehlendeBestaetigungen` je Monat, wer noch nicht
   bzw. nach einer Änderung nicht erneut bestätigt hat
@@ -2048,9 +2077,12 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
   (`NachweisStand.erfassungsRaster` ≠ Raster des Projekts) nennt in der
   Rückfrage die gemeinsamen Texte, die danach nicht mehr gelten
   (`periodentexteNachOeffnen`).
-* Die Kopfzeile nennt „Leistungsnachweise“ mit dem Untertitel aus
-  `leistungsnachweiseUntertitel` (für ein Projekt „Projekt – Leistungsnachweise,
-  Bestätigungen, Leistungen und Einstellungen“).
+* Die Kopfzeile nennt „Leistungsnachweise“ bzw. „Auswertung“ mit dem
+  Untertitel aus `leistungsnachweiseUntertitel` („Projekte – Raster,
+  Leistungsnachweise erstellen, abrechnen und exportieren“, „Leistungsnachweise
+  – Stunden je Mitarbeiter, Monat und Projekt“, für ein Projekt „Projekt –
+  Leistungsnachweise, Leistungen und Einstellungen“, für einen Nachweis
+  „Leistungsnachweis – Leistungstexte, Aufschläge, Abschluss und Export“).
 * Gemeinsame Leistungstexte und Bestätigungen liest das Controlling nur
   (`periodentextSetzen` meldet dort „Die gemeinsamen Leistungstexte verfassen
   die Mitarbeiter im Bereich Leistungsnachweise.“, `monatBestaetigen`
@@ -2063,16 +2095,13 @@ Im Controlling-Bereich unter „Leistungsnachweise“ (Abschnitt 9.4), mit eigen
 | --- | --- | --- |
 | „Leistungen erfasst nur, wer als Mitarbeiter geführt ist – bitte unten links unter „Angemeldet als“ Vor- und Nachnamen eintragen.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`NICHT_ANGEMELDET`) | Aktion im Bereich ohne Anmeldung, wenn kein genauerer Hinweis vorliegt. |
 | „„…“ ist kein vollständiger Name – bitte unten links unter „Angemeldet als“ Vor- und Nachnamen eintragen. Unter diesem Namen werden Ihre Leistungen geführt.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`anmeldeHinweis`, als Leiste `AnmeldeHinweis` bzw. Kurzmeldung `useMitAnmeldung` in `src/bereiche/leistungsnachweise/components/Anmeldung.tsx`) | Der Name unter „Angemeldet als“ hat nur ein Wort (`ohneNachname`). |
-| „… ist als ausgeschieden markiert – Leistungen erfasst nur, wer aktiv ist. Das Controlling kann die Person unter „Mitarbeiter“ wieder aktiv setzen.“ | ebenda | Der Name gehört einem ausgeschiedenen Mitarbeiter. |
+| „… ist als ausgeschieden markiert – wieder aktiv gesetzt wird die Person im Bereich Leistungsnachweise, sobald der gespeicherte Stand geladen ist.“ | ebenda | Der Name gehört einem ausgeschiedenen Mitarbeiter, und der Stand ist nicht einwandfrei geladen bzw. es ist das Controlling – sonst setzt `anmeldungAnwenden` die Person gleich wieder aktiv. |
 | „Unter „…“ ist kein Mitarbeiter mehr geführt – das Controlling hat die Person in „…“ umbenannt. Bitte unten links unter „Angemeldet als“ diesen Namen eintragen; dort stehen Ihre bisherigen Leistungen.“ | ebenda | Die unter diesem Namen angelegte Person (`mitarbeiterKennung`) heißt inzwischen anders (`umbenannt`). |
 | „Unter „…“ ist noch kein Mitarbeiter geführt – angelegt wird er, sobald der Bereich wieder speichern kann (siehe Hinweis oben).“ | ebenda | Im Bereich bei `ladeZustand` ≠ 'ok' – angelegt wird niemand. |
 | „„…“ wird gerade als Mitarbeiter angelegt – bitte noch einmal versuchen.“ | ebenda (nur als Kurzmeldung) | Handlung, bevor der Store die Person angelegt hat (`anlegen`). |
-| „„…“ ist unter „Angemeldet als“ angemeldet – solange der Name dort steht, legt der Bereich Leistungsnachweise die Person gleich wieder an. Zum Löschen zuerst unten links unter „Angemeldet als“ einen anderen Namen eintragen.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`mitarbeiterLoeschenPruefen`) | Das Controlling will die angemeldete Person löschen. |
 | „Das ist dem Controlling vorbehalten.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`NUR_CONTROLLING`) | Controlling-Aktion außerhalb des Controllings. |
 | „Bitte einen Projektnamen angeben.“ | `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx` | Projekt ohne Namen. |
 | „Die Projektnummer „…“ ist bereits vergeben.“ | `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx` | Projektnummer doppelt. |
-| „Bitte einen Nachnamen angeben.“ / „Das Kürzel „…“ ist bereits vergeben.“ | `src/bereiche/leistungsnachweise/components/MitarbeiterDialog.tsx` | Pflichtangabe fehlt bzw. Kürzel doppelt. |
-| „„…“ hat noch … und lässt sich deshalb nicht löschen – stattdessen als ausgeschieden markieren.“ | `src/bereiche/leistungsnachweise/domain/rechte.ts` (`mitarbeiterLoeschenPruefen`) | Mitarbeiter mit Leistungen löschen. |
 | „Die Datei enthält keine Zeile mit Datum, Stunden und Projektnummer.“ | `src/bereiche/leistungsnachweise/components/ImportDialog.tsx` | Excel-Import ohne verwertbare Zeile. |
 | „Die Datei ist keine Sicherung der Leistungsnachweise.“ | `src/bereiche/leistungsnachweise/store/storage.ts` | Einspielen einer fremden Datei. |
 | „Leistungsnachweis wieder geöffnet – er zeigt die aktuellen Leistungen.“ / „Aufschläge zurückgesetzt.“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` | Kein Fehler. |

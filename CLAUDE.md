@@ -90,7 +90,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `benutzerAendern`), `AngemeldetAls.tsx` (Knopf und Dialog in jeder Seitenleiste; eine eigene
   Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`.
 * `src/bereiche/controlling/` – ohne eigenen Bestand: Projekte und Archiv arbeiten auf dem
-  Register; der Menüpunkt „Leistungsnachweise“ (`#/controlling/leistungsnachweise/…`) bindet
+  Register; die Menüpunkte „Leistungsnachweise“ (`#/controlling/leistungsnachweise/projekte`,
+  dazu Projekt und Abrechnung) und „Auswertung“ (`#/controlling/leistungsnachweise/auswertung`,
+  `Route` `{ view: 'auswertung' }` in `lib/router.ts`, Symbol `diagramm`) binden beide
   `LeistungsnachweiseControlling` aus `src/bereiche/leistungsnachweise/controlling.tsx` ein. PIN in
   `domain/pin.ts` (`CONTROLLING_PIN`, Entsperrung je Sitzung im `sessionStorage`); Gestaltung in
   `controlling.css` (Präfix `ct-`). Lässt sich das Register nicht speichern, zeigt `App.tsx` über
@@ -105,8 +107,11 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   erfasst die angemeldete Person nur eigene Leistungen, schreibt am gemeinsamen Leistungstext der
   Zeiträume mit eigenen Leistungen mit und bestätigt ihre Monate (Übersicht mit „Mein Kalender“
   über alle Projekte und „Offene Bestätigungen“, Projektliste ohne Anlegen, Projekt =
-  Umschalter „Leistungstexte“ – Vorgabe, `pages/projekt/MonatsErfassung.tsx` – und „Meine
-  Leistungen“ – `pages/projekt/Leistungen.tsx` mit Kalender und Liste; Adressen
+  Reiter (`.tabs`, `role="tab"`/`aria-selected`, `pages/ProjektDetail.tsx`) „Leistungstexte“ –
+  Vorgabe, `pages/projekt/MonatsErfassung.tsx`: ein Block mit allen Zeiträumen des Monats (Kopf mit
+  Stand und Monatswahl, „Meine Stichpunkte“ in festen Spalten Datum | Std. | Stichpunkt,
+  `ln-me-punkt-kopf` in `components/erfassung.css`), darunter der Block „Monat bestätigen“ – und
+  „Meine Leistungen“ – `pages/projekt/Leistungen.tsx` mit Kalender und Liste; Adressen
   `#/leistungsnachweise/projekt/<id>` (Vorgabemonat, `vorgabeMonat`), `…/<JJJJ-MM>`,
   `…/leistungen`, frühere Reiter → Leistungstexte;
   Kalender: `components/LeistungsKalender.tsx` – kompakt per Container-Abfrage bis 730 px
@@ -115,20 +120,24 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `projektVerwalten`; Ausnahme: der Excel-Import legt auch im Bereich unbekannte Projekte und
   Abschnitte an, soweit die eigenen Leistungen sie brauchen, `planErlaubt` –,
   Leistungsnachweise samt Leistungstexten und Bemerkung, Abschluss, Aufschläge, Export,
-  Auswertung, Sammel-Import, Mitarbeiter) gibt es nur im Controlling: Reiter „Projekte“
-  (`pages/controlling/ProjektListe.tsx`, `Projekt.tsx` mit `ProjektNachweise`, `Bestaetigungen`
-  – `#/controlling/leistungsnachweise/projekt/<id>/bestaetigungen` –, `Leistungen`,
-  `ProjektEinstellungen`) und die Abrechnung mit der Ansicht „Leistungstexte“
-  (`pages/controlling/Leistungstexte.tsx`) und dem Stand der Bestätigungen (`BestaetigungsStand`,
-  `FehlendeBestaetigungen` beim Abschließen – abschließen bleibt möglich).
+  Auswertung, Sammel-Import) gibt es nur im Controlling – ohne Reiter, je Menüpunkt eine Seite
+  (`ControllingTab` = `'projekte'` | `'auswertung'` in `lib/router.ts`): die Projekte
+  (`pages/controlling/ProjektListe.tsx`: Raster als Auswahl in der Tabelle, „Leistungsnachweis
+  erstellen“, Sammel-Import, Neues Projekt; ein Projekt in `Projekt.tsx` mit den Reitern
+  `ProjektNachweise`, `Leistungen` und `ProjektEinstellungen`), die Abrechnung mit der Ansicht
+  „Leistungstexte“ (`pages/controlling/Leistungstexte.tsx`) und dem Stand der Bestätigungen
+  (`pages/controlling/BestaetigungsStand.tsx`: `BestaetigungsStand`, `FehlendeBestaetigungen` beim
+  Abschließen – abschließen bleibt möglich) und die Auswertung (`pages/controlling/Auswertung.tsx`).
+  Seiten für alle Nachweise, für Mitarbeiter und für die Bestätigungen eines Projekts gibt es
+  nicht; frühere Adressen lenkt `lib/router.ts` um.
   Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). **Eine eigene
   Anmeldung gibt es nicht:** Angemeldet ist der aktive Mitarbeiter, dessen Name dem gemeinsamen
   „Angemeldet als“ entspricht (`mitarbeiterZumNamen`); der Store zieht `einstellungen.mitarbeiterId`
   nach und legt im Bereich bei `ladeZustand` 'ok' eine fehlende Person selbst an
   (`anmeldungAnwenden`, `anmeldeLage`: Vor- und Nachname nötig, kein ausgeschiedener gleichen
-  Namens; Kennung aus dem Namen, `mitarbeiterKennung`, vor `mutate` gebildet – StrictMode und
-  zwei Fenster erzeugen keine Doppel; hat das Controlling die so angelegte Person umbenannt,
-  legt er keine neue an; ein Namenswechsel entfernt sie nur, solange sie keine Leistungen hat und
+  Namens – einen als ausgeschieden markierten setzt er dort wieder aktiv; Kennung aus dem Namen,
+  `mitarbeiterKennung`, vor `mutate` gebildet – StrictMode und zwei Fenster erzeugen keine Doppel;
+  hat das Controlling die so angelegte Person umbenannt, legt er keine neue an; ein Namenswechsel entfernt sie nur, solange sie keine Leistungen hat und
   noch so ist, wie der Bereich sie angelegt hat – Name und Kürzel unverändert,
   `automatischAngelegtOhneLeistungen`). Im Controlling wird niemand angelegt. Übrige Lagen nennt
   `components/Anmeldung.tsx` (`AnmeldeHinweis` als Leiste, `useMitAnmeldung` als Kurzmeldung
@@ -353,7 +362,7 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Demodaten gibt es nur, solange das Projektregister leer ist – nach dem Leeren des
   `localStorage` also zuerst `#/leistungsnachweise` öffnen, sonst beginnt der Bereich leer.
   Abrechnung, Abschluss und Aufschläge prüft man im Controlling
-  (`#/controlling/leistungsnachweise/nachweise`).
+  (`#/controlling/leistungsnachweise/projekte`).
 * Projektsteuerung: Wer „Lena Roth“ einträgt, sieht die Demo-Aufgaben als eigene To-Dos; mit
   einem anderen Namen zeigt die Übersicht keine.
 * „Angemeldet als“ liegt unter `kaplan-benutzer.v1` – wer es zurücksetzen will, löscht diesen
