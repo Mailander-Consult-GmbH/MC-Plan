@@ -37,13 +37,13 @@ import {
   type VorschauMitarbeiter,
   type VorschauProjekt,
 } from '../domain/import';
-import { angemeldet, darf, type Zugang } from '../domain/rechte';
+import { NICHT_ANGEMELDET, angemeldet, darf, type Zugang } from '../domain/rechte';
 import { mitarbeiterName, type Abschnitt, type LeistungsnachweisDaten } from '../domain/types';
 import { stundenVon } from '../domain/nachweis';
 import { kurzDatum, stundenText } from '../domain/zeitraum';
 import type { Route } from '../lib/router';
 import { newId, useStore } from '../store/store';
-import { useAnmeldung } from './AnmeldeDialog';
+import { useAnmeldeHinweis } from './Anmeldung';
 import { anzahl, mitarbeiterAuswahlText, nachNamen } from './common';
 import './leistungen.css';
 
@@ -260,7 +260,7 @@ function MitarbeiterArt({ m, wirdAngelegt }: { m: VorschauMitarbeiter; wirdAngel
 export function ImportDialog({ onClose, navigate }: { onClose: () => void; navigate: (r: Route) => void }) {
   const { data, importUebernehmen, zugang } = useStore();
   const toast = useToast();
-  const anmeldung = useAnmeldung();
+  const anmeldeHinweis = useAnmeldeHinweis();
   const ich = angemeldet(data);
   // Im Controlling braucht der Sammel-Import keine Anmeldung
   const bereit = zugang === 'controlling' || !!ich;
@@ -358,12 +358,7 @@ export function ImportDialog({ onClose, navigate }: { onClose: () => void; navig
       <div className="stack" style={{ gap: 14 }}>
         {!bereit ? (
           <Callout ton="warn" icon="!">
-            <div className="row-between wrap">
-              <span>Übernommen werden nur eigene Leistungen – bitte zuerst anmelden.</span>
-              <button type="button" className="btn btn-sm btn-primary" onClick={() => anmeldung()}>
-                Anmelden
-              </button>
-            </div>
+            Übernommen werden nur eigene Leistungen. {anmeldeHinweis ?? NICHT_ANGEMELDET}
           </Callout>
         ) : null}
 

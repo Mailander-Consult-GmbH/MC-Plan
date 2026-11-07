@@ -10,15 +10,16 @@
  * Hinweis über dem Kalender, woher Projekte kommen – bzw., wenn alle archiviert
  * sind, dass sich im archivierten Projekt selbst (Projekte › Archiv) weiterhin
  * erfassen lässt. Leistungsnachweise, Abschluss und Abrechnung
- * liegen im Controlling. Ohne Anmeldung steht darüber der Hinweis zum
- * Anmelden (App.tsx, `AnmeldeHinweis`).
+ * liegen im Controlling. Ist niemand angemeldet (Name ohne Nachnamen,
+ * ausgeschiedener Mitarbeiter), steht darüber der Hinweis dazu (App.tsx,
+ * `AnmeldeHinweis`); „Leistung erfassen“ nennt ihn als Kurzmeldung.
  */
 import { useState } from 'react';
 import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Callout, Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
-import { useAnmeldung, useMitAnmeldung } from '../components/AnmeldeDialog';
+import { useAnmeldeHinweis, useMitAnmeldung } from '../components/Anmeldung';
 import { LeistungDialog } from '../components/LeistungDialog';
 import { LeistungsKalender } from '../components/LeistungsKalender';
 import { stundenVon } from '../domain/nachweis';
@@ -47,7 +48,7 @@ export function sichtbareProjekte(projekte: Projekt[], archiviert: Set<string>, 
 
 export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => void; onImport: () => void }) {
   const { data } = useStore();
-  const anmeldung = useAnmeldung();
+  const anmeldeHinweis = useAnmeldeHinweis();
   const mitAnmeldung = useMitAnmeldung();
   const ich = angemeldet(data);
   const toast = useToast();
@@ -155,13 +156,8 @@ export function Uebersicht({ navigate, onImport }: { navigate: (r: Route) => voi
         {!ich ? (
           <EmptyState
             icon="person"
-            titel="Bitte anmelden"
-            text="Leistungen erfasst, wer als Mitarbeiter angemeldet ist."
-            action={
-              <button type="button" className="btn btn-primary" onClick={() => anmeldung()}>
-                Anmelden
-              </button>
-            }
+            titel="Nicht als Mitarbeiter angemeldet"
+            text={anmeldeHinweis ?? 'Leistungen erfasst, wer unter „Angemeldet als“ als Mitarbeiter geführt ist.'}
           />
         ) : letzte.length === 0 ? (
           <EmptyState

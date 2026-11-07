@@ -103,7 +103,7 @@ export function MitarbeiterDialog({
             maxLength={8}
           />
         </Field>
-        <Field label="Status" hint="Ausgeschiedene behalten ihre Leistungen, stehen bei der Anmeldung aber nicht mehr zur Wahl.">
+        <Field label="Status" hint="Ausgeschiedene behalten ihre Leistungen, erfassen unter „Angemeldet als“ aber keine neuen.">
           <label className="checkbox" style={{ paddingTop: 7 }}>
             <input type="checkbox" checked={form.aktiv} onChange={(e) => set('aktiv', e.target.checked)} />
             aktiv

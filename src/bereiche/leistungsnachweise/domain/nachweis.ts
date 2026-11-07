@@ -9,7 +9,10 @@
  * `nachweisDerLeistung`). Seine Zeilen – je Tag, Woche oder Monat mit Leistungen – werden
  * jedes Mal neu gerechnet (`nachweisZeilen`); nur von Hand bearbeitete Texte
  * (`texte`) und beim Abschluss der festgeschriebene Stand (`stand`) werden
- * gespeichert.
+ * gespeichert. Den Text einer Zeile ohne Bearbeitung von Hand liefern die
+ * gemeinsamen Leistungstexte der Mitarbeiter (`Periodentext`,
+ * `gemeinsamerZeilentext`), wo es keine gibt die Texte der Leistungen
+ * (`automatikText`).
  *
  * Nachweise eines Projekts überschneiden sich nie (`ueberschneidung`). Fehlt
  * für Leistungen ein Nachweis, legt `nachweiseErgaenzen` ihn nach der
@@ -46,6 +49,8 @@ import {
 } from './types';
 import {
   datumText,
+  erfassungsPeriode,
+  erfassungsPeriodeAusSchluessel,
   imZeitraum,
   istDatum,
   istWochenende,
@@ -254,6 +259,67 @@ export function textErgaenzen(text: string, neue: Leistung[]): string {
   return basis ? `${basis}, ${fehlend.join(', ')}` : fehlend.join(', ');
 }
 
+/**
+ * Texte mehrerer Zeiträume zu einem verbinden – in der angegebenen Folge, ohne
+ * Wiederholungen: Der erste steht unverändert vorn; von jedem weiteren kommen
+ * nur die Teile (an „,“ und „;“ zerlegt, `textTeile`) dazu, die noch nicht
+ * vorkommen – wie `textErgaenzen`. Kommt keiner seiner Teile schon vor, wird
+ * er unverändert angehängt (ein Fließtext behält so seine Zeichensetzung).
+ * Angehängt wird mit „, “, nach einem Satzzeichen am Ende mit einem
+ * Leerzeichen. Leere Texte zählen nicht.
+ */
+export function texteZusammenfuehren(texte: string[]): string {
+  let ergebnis = '';
+  for (const roh of texte) {
+    const text = roh.trim();
+    if (!text) continue;
+    if (!ergebnis) {
+      ergebnis = text;
+      continue;
+    }
+    const teile = textTeile(text);
+    const fehlend = teile.filter((teil) => !kommtVor(ergebnis, teil));
+    if (fehlend.length === 0) continue;
+    const anhang = fehlend.length === teile.length ? text : fehlend.join(', ');
+    ergebnis = `${ergebnis}${/[.!?;:]$/.test(ergebnis) ? ' ' : ', '}${anhang}`;
+  }
+  return ergebnis;
+}
+
+/**
+ * Gemeinsame Leistungstexte eines Projekts (`Periodentext`) je Schlüssel der
+ * Erfassungsperiode – nur nicht leere.
+ */
+export function periodentexteVon(daten: Pick<LeistungsnachweisDaten, 'periodentexte'>, projektId: ID): Map<string, string> {
+  const texte = new Map<string, string>();
+  for (const t of daten.periodentexte ?? []) {
+    if (t.projektId === projektId && t.text.trim() && !texte.has(t.schluessel)) texte.set(t.schluessel, t.text);
+  }
+  return texte;
+}
+
+/**
+ * Leistungstext einer Zeile aus den gemeinsamen Texten der Mitarbeiter: Die
+ * Leistungen der Zeile werden nach ihrer Erfassungsperiode (Raster des
+ * Projekts, je Monat, `erfassungsPeriode`) gruppiert; je Periode in zeitlicher
+ * Folge zählt der gemeinsame Text, wo keiner steht `automatikText` ihrer
+ * Leistungen – verbunden mit `texteZusammenfuehren`. null, wenn zu keiner
+ * Periode der Zeile ein gemeinsamer Text steht (dann gilt `automatikText`).
+ */
+export function gemeinsamerZeilentext(leistungen: Leistung[], texte: Map<string, string>, raster: Raster): string | null {
+  if (texte.size === 0 || leistungen.length === 0) return null;
+  const gruppen = new Map<string, { von: ISODate; leistungen: Leistung[] }>();
+  for (const l of leistungen) {
+    const p = erfassungsPeriode(l.datum, raster);
+    const g = gruppen.get(p.schluessel);
+    if (g) g.leistungen.push(l);
+    else gruppen.set(p.schluessel, { von: p.von, leistungen: [l] });
+  }
+  const folge = [...gruppen.entries()].sort(([, a], [, b]) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0));
+  if (!folge.some(([k]) => texte.has(k))) return null;
+  return texteZusammenfuehren(folge.map(([k, g]) => texte.get(k) ?? automatikText(g.leistungen)));
+}
+
 /* ------------------------------------------------------------------ */
 /* Zeilen                                                              */
 /* ------------------------------------------------------------------ */
@@ -460,11 +526,17 @@ export const NACHGEREICHT_PRAEFIX = 'N';
  * (`NACHGEREICHT_PRAEFIX` vor dem Periodenschlüssel, `nachgereicht`) – nie zusammen mit
  * laufenden derselben Woche bzw. desselben Monats –, auf die Tage vor dem Zeitraum gekürzt.
  * Bearbeiter: Namen in der Reihenfolge der ersten Leistung, unbekannte Mitarbeiter als „?“.
- * Text: `texte[schluessel].text`, sonst `automatikText`. Dazu Aufschlag und abgerechnete
- * Stunden aus `aufschlaege` (`abrechnen`).
+ * Text: der vom Controlling bearbeitete (`texte[schluessel].text`); sonst aus den gemeinsamen
+ * Leistungstexten der Mitarbeiter (`gemeinsamerZeilentext` – je Erfassungsperiode im Raster
+ * des Projekts der gemeinsame Text bzw. `automatikText`, ohne Wiederholungen; `textGemeinsam`),
+ * ohne solche `automatikText`. Dazu Aufschlag und abgerechnete Stunden aus `aufschlaege`
+ * (`abrechnen`).
  */
 export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachweis): NachweisZeile[] {
   const projekt = daten.projekte.find((p) => p.id === n.projektId);
+  // Gemeinsame Texte gliedert das Raster des Projekts – nicht das des Nachweises
+  const gemeinsameTexte = periodentexteVon(daten, n.projektId);
+  const erfassungsRaster = projekt?.raster ?? n.raster;
   const abschnittIds = new Set((projekt?.abschnitte ?? []).map((a) => a.id));
   const spalten = mitAbschnittsspalten(projekt?.abschnitte ?? []);
   const mitarbeiter = new Map(daten.mitarbeiter.map((m) => [m.id, m]));
@@ -499,6 +571,7 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
         addieren(stundenJeMitarbeiter, l.mitarbeiterId, l.stunden);
       }
       const bearbeitet = n.texte[schluessel];
+      const gemeinsam = bearbeitet ? null : gemeinsamerZeilentext(leistungen, gemeinsameTexte, erfassungsRaster);
       const jeAbschnitt = gerundet(stundenJeAbschnitt);
       const abrechnung = abrechnen(jeAbschnitt, aufschlaegeDerZeile(n.aufschlaege ?? {}, schluessel, abschnittIds, spalten));
       return {
@@ -507,8 +580,9 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
         bis,
         datumText: datumText({ schluessel, von, bis }, n.raster, leistungen.some((l) => istWochenende(l.datum))),
         bearbeiter,
-        text: bearbeitet ? bearbeitet.text : automatikText(leistungen),
+        text: bearbeitet ? bearbeitet.text : (gemeinsam ?? automatikText(leistungen)),
         textBearbeitet: !!bearbeitet,
+        ...(gemeinsam !== null ? { textGemeinsam: true } : {}),
         stunden: runden(stunden),
         stundenJeAbschnitt: jeAbschnitt,
         stundenJeMitarbeiter: gerundet(stundenJeMitarbeiter),
@@ -1093,7 +1167,8 @@ export function nachweisAbschliessenAnwenden(
 /**
  * Läuft nach jeder Änderung (`mutate` im Store): entfernt Nachweise ohne
  * Projekt und setzt `geaendert` an geänderten Nachweisen – auch an solchen in
- * Bearbeitung, in deren Zeitraum sich Leistungen geändert haben. Bearbeitete
+ * Bearbeitung, in deren Zeitraum sich Leistungen oder gemeinsame
+ * Leistungstexte (`periodentexte`) geändert haben. Bearbeitete
  * Texte bleiben stehen, auch wenn ihre Zeile gerade keine Leistungen hat oder
  * außerhalb des Zeitraums liegt: Kehrt sie zurück, erscheint der Text wieder.
  * Ohne `zeitstempel` (Einspielen, Zurücksetzen) bleiben die Zeitpunkte unberührt.
@@ -1109,7 +1184,8 @@ export function nachweiseBereinigen(
   if (!zeitstempel) return ohneProjekt ? { ...neu, nachweise: neu.nachweise.filter((n) => projektIds.has(n.projektId)) } : neu;
 
   // Tage mit geänderten, neuen oder entfernten Leistungen
-  const betroffen: { projektId: ID; datum: ISODate }[] = [];
+  const betroffen: { projektId: ID; von: ISODate; bis: ISODate }[] = [];
+  const tag = (l: Pick<Leistung, 'projektId' | 'datum'>) => ({ projektId: l.projektId, von: l.datum, bis: l.datum });
   if (alt.leistungen !== neu.leistungen) {
     const alteLeistungen = new Map(alt.leistungen.map((l) => [l.id, l]));
     const bleiben = new Set<ID>();
@@ -1117,10 +1193,24 @@ export function nachweiseBereinigen(
       const a = alteLeistungen.get(l.id);
       bleiben.add(l.id);
       if (a === l) continue;
-      betroffen.push(l);
-      if (a) betroffen.push(a);
+      betroffen.push(tag(l));
+      if (a) betroffen.push(tag(a));
     }
-    for (const a of alt.leistungen) if (!bleiben.has(a.id)) betroffen.push(a);
+    for (const a of alt.leistungen) if (!bleiben.has(a.id)) betroffen.push(tag(a));
+  }
+  // Geänderte gemeinsame Leistungstexte ändern die Zeilentexte der Nachweise ihres Zeitraums
+  if (alt.periodentexte !== neu.periodentexte) {
+    const schluessel = (t: { projektId: ID; schluessel: string }) => `${t.projektId}\u0000${t.schluessel}`;
+    const vorher = new Map((alt.periodentexte ?? []).map((t) => [schluessel(t), t]));
+    const nachher = new Map((neu.periodentexte ?? []).map((t) => [schluessel(t), t]));
+    for (const k of new Set([...vorher.keys(), ...nachher.keys()])) {
+      const a = vorher.get(k);
+      const b = nachher.get(k);
+      if (a && b && a.text === b.text) continue;
+      const t = (b ?? a)!;
+      const p = erfassungsPeriodeAusSchluessel(t.schluessel);
+      if (p) betroffen.push({ projektId: t.projektId, von: p.von, bis: p.bis });
+    }
   }
 
   const vorher = new Map(alt.nachweise.map((n) => [n.id, n]));
@@ -1133,7 +1223,7 @@ export function nachweiseBereinigen(
       // Selbst geändert, ohne dass die Aktion den Zeitpunkt gesetzt hat
       const selbst = a !== n && a.geaendert === n.geaendert;
       const inhalt =
-        n.status === 'entwurf' && betroffen.some((b) => b.projektId === n.projektId && imZeitraum(b.datum, n.von, n.bis));
+        n.status === 'entwurf' && betroffen.some((b) => b.projektId === n.projektId && b.von <= n.bis && n.von <= b.bis);
       if (!selbst && !inhalt) return n;
       geaendert = true;
       return { ...n, geaendert: jetzt };

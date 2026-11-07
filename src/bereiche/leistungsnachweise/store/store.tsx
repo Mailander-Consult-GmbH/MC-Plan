@@ -13,6 +13,20 @@
  * Vorrat (`idVorrat`), der beim doppelten Aufruf im StrictMode dieselben
  * Kennungen wieder ausgibt.
  *
+ * „Angemeldet als“ (src/gemeinsam/benutzer.ts) gilt auch hier – eine eigene
+ * Anmeldung gibt es nicht: Der Store zieht Name, Farbmodus und den
+ * Mitarbeiter dieses Namens nach jeder Änderung nach und legt im Bereich
+ * (nicht im Controlling) eine fehlende Person selbst an, sobald der Name Vor-
+ * und Nachnamen hat (`anmeldungAnwenden`, domain/rechte.ts) – mit einer aus
+ * dem Namen abgeleiteten Kennung (`mitarbeiterKennung`), damit StrictMode und
+ * zwei Fenster keine Doppel erzeugen. Nur bei `ladeZustand` 'ok'.
+ *
+ * Gemeinsame Leistungstexte je Zeitraum und Monatsbestätigungen
+ * (domain/erfassung.ts) ändern nur `periodentextSetzen`, `monatBestaetigen`
+ * und `bestaetigungZuruecknehmen`; nach jeder Änderung räumt
+ * `erfassungBereinigen` Texte und Bestätigungen gelöschter Projekte bzw.
+ * Mitarbeiter ab.
+ *
  * Die Rechte (domain/rechte.ts) werden hier durchgesetzt: Jede Änderung prüft
  * sie auf dem Stand, den sie ändert – ohne Recht ändert eine Methode nichts.
  * Der Zugang (`zugang`) kommt von außen: Der Bereich bindet den Store mit
@@ -36,8 +50,17 @@ import type { ReactNode } from 'react';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
 import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
 import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
-import type { Benutzer } from '../../../gemeinsam/benutzer';
-import { abschnitteAusElementen, importAnwenden, kuerzelFrei, type ImportPlan } from '../domain/import';
+import { abschnitteAusElementen, importAnwenden, type ImportPlan } from '../domain/import';
+import {
+  bestaetigenAnwenden,
+  bestaetigenMeldung,
+  bestaetigungZuruecknehmenAnwenden,
+  erfassungBereinigen,
+  erfassungsPeriodeZu,
+  gesperrtHinweis,
+  monatsStatus,
+  periodentextAnwenden,
+} from '../domain/erfassung';
 import {
   abgerechnetIn,
   aufschlagPruefen,
@@ -55,20 +78,22 @@ import {
   ueberschneidung,
 } from '../domain/nachweis';
 import {
+  NICHT_ANGEMELDET,
   NUR_CONTROLLING,
+  anmeldungAnwenden,
   angemeldet,
   darf,
+  darfBestaetigen,
   darfLeistungAendern,
+  darfPeriodentextBearbeiten,
   eigeneLeistungen,
+  mitarbeiterKennung,
   mitarbeiterLoeschenPruefen,
-  mitarbeiterZumNamen,
   type Zugang,
 } from '../domain/rechte';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { seedDaten } from '../domain/seed';
 import {
-  kuerzelAus,
-  mitarbeiterName,
   newId,
   type ID,
   type Leistung,
@@ -80,7 +105,7 @@ import {
   type Quelle,
   type Raster,
 } from '../domain/types';
-import { istDatum, runden } from '../domain/zeitraum';
+import { istDatum, istMonat, runden } from '../domain/zeitraum';
 import { SPEICHER_SCHLUESSEL, ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 
 export { newId };
@@ -98,13 +123,11 @@ interface StoreValue {
   /*
    * Anmeldung: Name und Farbmodus kommen aus der gemeinsamen Anmeldung aller
    * Bereiche (src/gemeinsam/benutzer.ts); der Store zieht sie samt dem
-   * passenden Mitarbeiter (`mitarbeiterZumNamen`) nach jeder Änderung nach.
+   * passenden Mitarbeiter (`mitarbeiterZumNamen`) nach jeder Änderung nach und
+   * legt ihn im Bereich bei Bedarf selbst an (`anmeldungAnwenden`). Wie die Lage
+   * gerade ist, sagt `anmeldeLage` (domain/rechte.ts; Oberfläche:
+   * components/Anmeldung.tsx).
    */
-  /**
-   * Legt die angemeldete Person selbst an (aktiv) und meldet sie an. Ein vergebenes Kürzel wird
-   * eindeutig gemacht (`kuerzelFrei`), ein leeres aus dem Namen gebildet. null ohne Nachnamen.
-   */
-  selbstAnlegen: (m: { vorname: string; nachname: string; kuerzel: string }) => ID | null;
   /* Mitarbeiter (nur Controlling) */
   /** Legt einen Mitarbeiter an; null ohne Recht. */
   addMitarbeiter: (m: Omit<Mitarbeiter, 'id'>) => ID | null;
@@ -141,6 +164,24 @@ interface StoreValue {
   deleteLeistung: (id: ID) => void;
   /** Nur eigene; fremde Kennungen bleiben unberührt. */
   deleteLeistungen: (ids: ID[]) => void;
+  /* Gemeinsame Leistungstexte und Monatsbestätigung (domain/erfassung.ts) – nur im Bereich, nur die angemeldete Person */
+  /**
+   * Setzt den gemeinsamen Text einer Erfassungsperiode (`schluessel` etwa „2026-10|W2026-44“) – nur,
+   * wer darin eigene Leistungen hat, und nur, solange sie nicht gesperrt ist
+   * (`darfPeriodentextBearbeiten`). Merkt sich die Leistungen der Periode, den Namen unter
+   * „Angemeldet als“ und den Zeitpunkt; ein leerer Text entfernt den Eintrag. Mit
+   * `neueStichpunkteOffenLassen` bleiben die bisher gemerkten Leistungen (beim bloßen
+   * Weiterschreiben, damit „Neue Stichpunkte“ nicht verschwindet). Liefert die Meldung oder null.
+   */
+  periodentextSetzen: (projektId: ID, schluessel: string, text: string, optionen?: { neueStichpunkteOffenLassen?: boolean }) => string | null;
+  /**
+   * Bestätigt den Monat (JJJJ-MM) der angemeldeten Person im Projekt – nur ohne Zeitraum ohne Text
+   * und nicht bei 'keine'/'abgerechnet' (`MonatsStatus.bestaetigbar`); ersetzt eine frühere
+   * Bestätigung. Liefert die Meldung oder null (auch, wenn er schon bestätigt ist).
+   */
+  monatBestaetigen: (projektId: ID, monat: string) => string | null;
+  /** Nimmt die eigene Bestätigung des Monats zurück (nur im Bereich). */
+  bestaetigungZuruecknehmen: (projektId: ID, monat: string) => void;
   /** Fehlende Nachweise für alle Leistungen ohne Nachweis des Projekts anlegen (nur Controlling); liefert { neu, erweitert } (Anzahl). */
   nachweiseFuerOffeneLeistungen: (projektId: ID) => { neu: number; erweitert: number };
   /* Nachweise */
@@ -294,29 +335,26 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
   /** Nur im Controlling. */
   const controllingNur = (fn: Aenderung): Aenderung => (d, jetzt) => (zugang === 'controlling' ? fn(d, jetzt) : d);
 
+  /** Prüft das Setzen eines gemeinsamen Texts auf dem Stand `d`; liefert die Meldung oder null. */
+  const periodentextPruefen = (d: LeistungsnachweisDaten, projektId: ID, schluessel: string): string | null => {
+    if (zugang !== 'bereich') return 'Die gemeinsamen Leistungstexte verfassen die Mitarbeiter im Bereich Leistungsnachweise.';
+    const ich = angemeldet(d);
+    if (!ich) return NICHT_ANGEMELDET;
+    const periode = erfassungsPeriodeZu(d, projektId, schluessel, ich.id);
+    if (!periode || periode.eigene.length === 0) return 'In diesem Zeitraum haben Sie keine eigenen Leistungen.';
+    if (periode.gesperrt) return gesperrtHinweis(periode);
+    return darfPeriodentextBearbeiten(d, periode, zugang) ? null : 'Diesen Leistungstext können Sie nicht bearbeiten.';
+  };
+  /** Prüft das Bestätigen auf dem Stand `d`; liefert die Meldung oder null. */
+  const bestaetigenPruefen = (d: LeistungsnachweisDaten, projektId: ID, monat: string): string | null => {
+    if (zugang !== 'bereich') return 'Bestätigen können die Mitarbeiter nur ihre eigenen Monate im Bereich Leistungsnachweise.';
+    const ich = angemeldet(d);
+    if (!ich || !darfBestaetigen(d, ich.id, zugang)) return NICHT_ANGEMELDET;
+    if (!istMonat(monat) || !d.projekte.some((p) => p.id === projektId)) return 'Diesen Monat bzw. dieses Projekt gibt es nicht.';
+    return bestaetigenMeldung(monatsStatus(d, projektId, ich.id, monat));
+  };
+
   return {
-    selbstAnlegen: (m) => {
-      const vorname = m.vorname.trim();
-      const nachname = m.nachname.trim();
-      if (!nachname) return null;
-      const id = newId('ma');
-      mutate((d) => {
-        if (d.mitarbeiter.some((x) => x.id === id)) return d;
-        const neu: Mitarbeiter = {
-          id,
-          kuerzel: kuerzelFrei(m.kuerzel.trim() || kuerzelAus(`${vorname} ${nachname}`), d.mitarbeiter),
-          vorname,
-          nachname,
-          aktiv: true,
-        };
-        return {
-          ...d,
-          mitarbeiter: [...d.mitarbeiter, neu],
-          einstellungen: { ...d.einstellungen, mitarbeiterId: id, bearbeiter: mitarbeiterName(neu) },
-        };
-      });
-      return id;
-    },
     addMitarbeiter: (m) => {
       if (!darf(zugang, 'mitarbeiterVerwalten')) return null;
       const id = newId('ma');
@@ -337,6 +375,7 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
           ? {
               ...d,
               mitarbeiter: d.mitarbeiter.filter((m) => m.id !== id),
+              bestaetigungen: d.bestaetigungen.filter((b) => b.mitarbeiterId !== id),
               einstellungen: d.einstellungen.mitarbeiterId === id ? { ...d.einstellungen, mitarbeiterId: null } : d.einstellungen,
             }
           : d,
@@ -372,6 +411,8 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
           projekte: d.projekte.filter((p) => p.id !== id),
           leistungen: d.leistungen.filter((l) => l.projektId !== id),
           nachweise: d.nachweise.filter((n) => n.projektId !== id),
+          periodentexte: d.periodentexte.filter((t) => t.projektId !== id),
+          bestaetigungen: d.bestaetigungen.filter((b) => b.projektId !== id),
         })),
       ),
     toggleMarkiert: (id) =>
@@ -443,6 +484,31 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
         return { ...d, leistungen: d.leistungen.filter((l) => !raus.has(l.id)) };
       });
     },
+    periodentextSetzen: (projektId, schluessel, text, optionen = {}) => {
+      const meldung = periodentextPruefen(data, projektId, schluessel);
+      if (meldung) return meldung;
+      mutate((d, jetzt) =>
+        periodentextPruefen(d, projektId, schluessel) === null
+          ? periodentextAnwenden(d, projektId, schluessel, text, d.einstellungen.bearbeiter, jetzt, optionen)
+          : d,
+      );
+      return null;
+    },
+    monatBestaetigen: (projektId, monat) => {
+      const meldung = bestaetigenPruefen(data, projektId, monat);
+      if (meldung) return meldung;
+      mutate((d, jetzt) => {
+        const ich = angemeldet(d);
+        return ich && bestaetigenPruefen(d, projektId, monat) === null ? bestaetigenAnwenden(d, projektId, ich.id, monat, jetzt) : d;
+      });
+      return null;
+    },
+    bestaetigungZuruecknehmen: (projektId, monat) =>
+      mutate((d) => {
+        const ich = angemeldet(d);
+        return ich && darfBestaetigen(d, ich.id, zugang) ? bestaetigungZuruecknehmenAnwenden(d, projektId, ich.id, monat) : d;
+      }),
+
     nachweiseFuerOffeneLeistungen: (projektId) => {
       if (!darf(zugang, 'nachweisVerwalten')) return { neu: 0, erweitert: 0 };
       const folge = idVorrat();
@@ -556,26 +622,20 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
   };
 }
 
-/** Wendet eine Änderung an und räumt danach auf (`nachweiseBereinigen`) – rein. */
+/**
+ * Wendet eine Änderung an und räumt danach auf (`nachweiseBereinigen`,
+ * `erfassungBereinigen`) – rein.
+ */
 export function aenderungAnwenden(
   alt: LeistungsnachweisDaten,
   fn: Aenderung,
   jetzt: string,
   optionen: { zeitstempel?: boolean } = {},
 ): LeistungsnachweisDaten {
-  return nachweiseBereinigen(alt, fn(alt, jetzt), jetzt, optionen.zeitstempel !== false);
+  return erfassungBereinigen(nachweiseBereinigen(alt, fn(alt, jetzt), jetzt, optionen.zeitstempel !== false));
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
-
-/** Weicht der Bestand von der gemeinsamen Anmeldung ab (Name, Farbmodus, zugeordneter Mitarbeiter)? */
-function anmeldungWeicht(d: LeistungsnachweisDaten, b: Benutzer): boolean {
-  return (
-    d.einstellungen.bearbeiter !== b.name ||
-    d.einstellungen.farbmodus !== b.farbmodus ||
-    d.einstellungen.mitarbeiterId !== (mitarbeiterZumNamen(d.mitarbeiter, b.name)?.id ?? null)
-  );
-}
 
 /**
  * Hält den Bestand des Bereichs und stellt ihn mit allen Schreibzugriffen
@@ -602,26 +662,17 @@ export function StoreProvider({ zugang = 'bereich', children }: { zugang?: Zugan
     setData((alt) => aenderungAnwenden(alt, fn, jetzt, optionen));
   }, []);
 
-  // „Angemeldet als“ aus der gemeinsamen Anmeldung: Name, Farbmodus und der Mitarbeiter dieses Namens
+  // „Angemeldet als“ aus der gemeinsamen Anmeldung: Name, Farbmodus und der Mitarbeiter dieses Namens –
+  // im Bereich bei einwandfrei geladenem Stand legt der Store eine fehlende Person selbst an
+  const automatisch = zugang === 'bereich' && ladeZustand === 'ok';
   useBenutzerAbgleich(
     data,
-    (d, b) => anmeldungWeicht(d, b),
-    (b) =>
-      mutate(
-        (d) =>
-          anmeldungWeicht(d, b)
-            ? {
-                ...d,
-                einstellungen: {
-                  ...d.einstellungen,
-                  bearbeiter: b.name,
-                  farbmodus: b.farbmodus,
-                  mitarbeiterId: mitarbeiterZumNamen(d.mitarbeiter, b.name)?.id ?? null,
-                },
-              }
-            : d,
-        { zeitstempel: false },
-      ),
+    (d, b) => anmeldungAnwenden(d, b, automatisch) !== d,
+    (b) => {
+      // Kennung vor `mutate` aus dem Namen – gleich in jedem Durchlauf und in jedem Fenster
+      const kennung = mitarbeiterKennung(b.name);
+      mutate((d) => anmeldungAnwenden(d, b, automatisch, kennung), { zeitstempel: false });
+    },
   );
 
   // Projekte mit dem Projektregister abgleichen – solange der gespeicherte Stand gelesen werden konnte.

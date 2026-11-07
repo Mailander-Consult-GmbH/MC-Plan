@@ -21,7 +21,7 @@ import { wochentag } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Callout, Card, CardHeader, ConfirmDialog, EmptyState, Search, Segmented, Select } from '../../../../shared/ui';
-import { useAnmeldung, useMitAnmeldung } from '../../components/AnmeldeDialog';
+import { useAnmeldeHinweis, useMitAnmeldung } from '../../components/Anmeldung';
 import { ImportDialog } from '../../components/ImportDialog';
 import { LeistungDialog, abgeschlossenHinweis, nachweisName } from '../../components/LeistungDialog';
 import { LeistungsKalender } from '../../components/LeistungsKalender';
@@ -51,7 +51,7 @@ function nachDatum(namen: Map<string, string>) {
 export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: (r: Route) => void }) {
   const { data, deleteLeistung, deleteLeistungen, zugang, controlling } = useStore();
   const toast = useToast();
-  const anmeldung = useAnmeldung();
+  const anmeldeHinweis = useAnmeldeHinweis();
   const mitAnmeldung = useMitAnmeldung();
   const [suche, setSuche] = useState('');
   const [monat, setMonat] = useState(ALLE);
@@ -145,12 +145,10 @@ export function Leistungen({ projekt, navigate }: { projekt: Projekt; navigate: 
       <Card>
         <EmptyState
           icon="person"
-          titel="Bitte anmelden"
-          text="Hier stehen die eigenen Leistungen in diesem Projekt – erfasst und importiert wird immer für die angemeldete Person."
-          action={
-            <button type="button" className="btn btn-primary" onClick={() => anmeldung()}>
-              Anmelden
-            </button>
+          titel="Nicht als Mitarbeiter angemeldet"
+          text={
+            anmeldeHinweis ??
+            'Hier stehen die eigenen Leistungen in diesem Projekt – erfasst und importiert wird immer für die Person unter „Angemeldet als“.'
           }
         />
       </Card>

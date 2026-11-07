@@ -115,6 +115,62 @@ export function perioden(von: ISODate, bis: ISODate, raster: Raster): Periode[] 
   return liste;
 }
 
+/* ------------------------------------------------------------------ */
+/* Erfassungsperioden (gemeinsame Leistungstexte)                      */
+/* ------------------------------------------------------------------ */
+
+/** Trenner zwischen Monat und Periode im Schlüssel einer Erfassungsperiode („2026-10|W2026-44“). */
+export const ERFASSUNG_TRENNER = '|';
+
+/** Ist der Text ein Monat JJJJ-MM? */
+export function istMonat(w: unknown): w is string {
+  return typeof w === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(w);
+}
+
+/**
+ * Erfassungsperiode eines Datums: die Periode im Raster des Projekts
+ * (`periodeVon`), auf den Kalendermonat gekürzt – eine Woche über ein
+ * Monatsende zählt so in jedem Monat für sich (26.–31.10. im Oktober, 1.11.
+ * im November). Schlüssel „<JJJJ-MM>|<Periode>“, etwa „2026-10|W2026-44“;
+ * so stehen die gemeinsamen Leistungstexte (`Periodentext`) im Bestand.
+ */
+export function erfassungsPeriode(datum: ISODate, raster: Raster): Periode {
+  const p = periodeKuerzen(periodeVon(datum, raster), monatsanfang(datum), monatsende(datum));
+  return { ...p, schluessel: `${datum.slice(0, 7)}${ERFASSUNG_TRENNER}${p.schluessel}` };
+}
+
+/** Montag der ISO-Kalenderwoche `woche` des ISO-Jahres `jahr` (der 4. Januar liegt stets in KW 1). */
+function wocheBeginn(jahr: number, woche: number): ISODate {
+  return addDays(wochenanfang(`${jahr}-01-04`), (woche - 1) * 7);
+}
+
+/**
+ * Erfassungsperiode zu einem Schlüssel („2026-10|W2026-44“) samt Monat und
+ * Raster – null, wenn der Schlüssel keiner ist.
+ */
+export function erfassungsPeriodeAusSchluessel(schluessel: string): (Periode & { monat: string; raster: Raster }) | null {
+  const [monat, roh, ...rest] = schluessel.split(ERFASSUNG_TRENNER);
+  if (!istMonat(monat) || !roh || rest.length > 0) return null;
+  const anfang = `${monat}-01`;
+  const ende = monatsende(anfang);
+  let p: Periode | null = null;
+  let raster: Raster;
+  if (roh[0] === 'T' && istDatum(roh.slice(1))) {
+    raster = 'tag';
+    p = periodeVon(roh.slice(1), 'tag');
+  } else if (/^W\d{4}-\d{2}$/.test(roh)) {
+    raster = 'woche';
+    const von = wocheBeginn(Number(roh.slice(1, 5)), Number(roh.slice(6, 8)));
+    p = periodeVon(von, 'woche');
+    if (p.schluessel !== roh) return null;
+  } else if (/^M\d{4}-\d{2}$/.test(roh) && istMonat(roh.slice(1))) {
+    raster = 'monat';
+    p = periodeVon(`${roh.slice(1)}-01`, 'monat');
+  } else return null;
+  if (p.bis < anfang || p.von > ende) return null;
+  return { ...periodeKuerzen(p, anfang, ende), schluessel, monat, raster };
+}
+
 /** Liegt das Datum in [von, bis]? */
 export function imZeitraum(datum: ISODate, von: ISODate, bis: ISODate): boolean {
   return datum >= von && datum <= bis;

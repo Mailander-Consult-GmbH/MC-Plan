@@ -4,21 +4,29 @@
  * Controllings im Controlling-Bereich unter #/controlling/leistungsnachweise
  * (controlling.tsx); die Wahl des Bereichs selbst trifft die Shell.
  *
- * Im Bereich gibt es nur Übersicht, Projekte und je Projekt die eigenen
- * Leistungen. Leistungsnachweise und Einstellungen der Projekte liegen im
- * Controlling.
+ * Im Bereich gibt es nur Übersicht, Projekte und je Projekt die
+ * „Leistungstexte“ (gemeinsame Texte und Monatsbestätigung, Vorgabe) und „Meine
+ * Leistungen“: #/leistungsnachweise/projekt/<id> (Leistungstexte im
+ * Vorgabemonat, `vorgabeMonat`), …/projekt/<id>/<JJJJ-MM> (Leistungstexte
+ * dieses Monats) und …/projekt/<id>/leistungen (Meine Leistungen).
+ * Leistungsnachweise und Einstellungen der Projekte liegen im Controlling.
  *
  * Frühere Adressen bleiben gültig: #/leistungsnachweise/controlling/… führt in
  * den Controlling-Bereich, ebenso die Seite „Mitarbeiter“
  * (#/leistungsnachweise/mitarbeiter) und ein Nachweis
  * (#/leistungsnachweise/projekt/<id>/nachweis/<id>, jetzt die Abrechnung im
- * Controlling); …/projekt/<id>/<reiter> zeigt die Leistungen des Projekts.
+ * Controlling); …/projekt/<id>/<sonstiger Reiter> zeigt die Leistungstexte des
+ * Projekts.
  */
 import { useEffect, useState } from 'react';
 import type { ID } from '../domain/types';
+import { istMonat } from '../domain/zeitraum';
 
 /** Reiter eines Projekts im Controlling. */
-export type ProjektTab = 'nachweise' | 'leistungen' | 'einstellungen';
+export type ProjektTab = 'nachweise' | 'bestaetigungen' | 'leistungen' | 'einstellungen';
+
+/** Ansicht eines Projekts im Bereich: gemeinsame Leistungstexte mit Monatsbestätigung (Vorgabe) oder die eigenen Leistungen. */
+export type ProjektAnsicht = 'texte' | 'leistungen';
 
 /** Reiter des Controllings. */
 export type ControllingTab = 'auswertung' | 'nachweise' | 'projekte' | 'mitarbeiter';
@@ -27,16 +35,19 @@ export type ControllingTab = 'auswertung' | 'nachweise' | 'projekte' | 'mitarbei
 export type Route =
   | { view: 'uebersicht' }
   | { view: 'projekte' }
-  /** Projekt im Bereich: die eigenen Leistungen. */
-  | { view: 'projekt'; projektId: ID }
+  /**
+   * Projekt im Bereich: „Leistungstexte“ (`ansicht` fehlt bzw. 'texte'; `monat` JJJJ-MM, ohne
+   * Angabe der Vorgabemonat) oder „Meine Leistungen“ (`ansicht` 'leistungen').
+   */
+  | { view: 'projekt'; projektId: ID; ansicht?: ProjektAnsicht; monat?: string }
   | { view: 'controlling'; tab: ControllingTab }
-  /** Projekt im Controlling: Leistungsnachweise, Leistungen aller, Einstellungen. */
+  /** Projekt im Controlling: Leistungsnachweise, Bestätigungen, Leistungen aller, Einstellungen. */
   | { view: 'controllingProjekt'; projektId: ID; tab: ProjektTab }
   /** Leistungsnachweis im Controlling (Leistungstexte, Aufschläge, Abschluss, Export). */
   | { view: 'abrechnung'; projektId: ID; nachweisId: ID };
 
 /** Reiter eines Projekts im Controlling in ihrer Reihenfolge. */
-export const TABS: ProjektTab[] = ['nachweise', 'leistungen', 'einstellungen'];
+export const TABS: ProjektTab[] = ['nachweise', 'bestaetigungen', 'leistungen', 'einstellungen'];
 
 /** Reiter des Controllings in ihrer Reihenfolge. */
 export const CONTROLLING_TABS: ControllingTab[] = ['auswertung', 'nachweise', 'projekte', 'mitarbeiter'];
@@ -53,14 +64,16 @@ export function istControllingRoute(r: Route): boolean {
 }
 
 /**
- * #/leistungsnachweise/projekt/<id>, sonst #/leistungsnachweise/<seite>; das
- * Controlling unter #/controlling/leistungsnachweise/<reiter>,
- * …/projekt/<id>/<reiter> bzw. …/projekt/<id>/nachweis/<id>.
+ * #/leistungsnachweise/projekt/<id> (dazu /<JJJJ-MM> bzw. /leistungen), sonst
+ * #/leistungsnachweise/<seite>; das Controlling unter
+ * #/controlling/leistungsnachweise/<reiter>, …/projekt/<id>/<reiter> bzw.
+ * …/projekt/<id>/nachweis/<id>.
  */
 export function routeToHash(r: Route): string {
   switch (r.view) {
     case 'projekt':
-      return `#/${PREFIX}/projekt/${r.projektId}`;
+      if (r.ansicht === 'leistungen') return `#/${PREFIX}/projekt/${r.projektId}/leistungen`;
+      return r.monat && istMonat(r.monat) ? `#/${PREFIX}/projekt/${r.projektId}/${r.monat}` : `#/${PREFIX}/projekt/${r.projektId}`;
     case 'controlling':
       return `#/${CONTROLLING_PREFIX}/${r.tab}`;
     case 'controllingProjekt':
@@ -92,6 +105,9 @@ export function hashToRoute(hash: string): Route {
   if (teile[0] === 'projekt' && teile[1]) {
     // Früher der gemeinsame Nachweis im Bereich – jetzt die Abrechnung im Controlling
     if (teile[2] === 'nachweis' && teile[3]) return { view: 'abrechnung', projektId: teile[1], nachweisId: teile[3] };
+    if (teile[2] === 'leistungen') return { view: 'projekt', projektId: teile[1], ansicht: 'leistungen' };
+    if (istMonat(teile[2])) return { view: 'projekt', projektId: teile[1], monat: teile[2] };
+    // Ohne bzw. mit einem früheren Reiter: die Leistungstexte im Vorgabemonat
     return { view: 'projekt', projektId: teile[1] };
   }
   if (teile[0] === 'projekte') return { view: 'projekte' };

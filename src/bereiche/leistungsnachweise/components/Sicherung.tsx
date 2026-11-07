@@ -126,7 +126,8 @@ export function SicherungEinspielenDialog({
   const einspielen = () => {
     if (neuereFassung) return;
     if (mitEinstellungen) benutzerAendern({ name: daten.einstellungen.bearbeiter, farbmodus: daten.einstellungen.farbmodus });
-    // Die Anmeldung bleibt nur, wenn die angemeldete Person auch in der Sicherung vorkommt
+    // Die Anmeldung bleibt nur, wenn die angemeldete Person auch in der Sicherung vorkommt – sonst ordnet
+    // der Store danach den Mitarbeiter des Namens zu bzw. legt ihn an (`anmeldungAnwenden`)
     const eigene = data.einstellungen;
     const einstellungen = mitEinstellungen
       ? daten.einstellungen

@@ -1,18 +1,20 @@
 /**
  * Rahmen der Leistungsnachweise: Seitenleiste, Kopfzeile, Hinweise (nach einem
- * Ladefehler, ohne Anmeldung) und Auswahl der Ansicht. Der Excel-Import ist
+ * Ladefehler, zur Anmeldung) und Auswahl der Ansicht. Der Excel-Import ist
  * projektübergreifend und öffnet sich aus der Seitenleiste und der Übersicht.
  *
  * Unten in der Seitenleiste „Angemeldet als“ – Name und Farbmodus gelten in
- * allen Bereichen (src/gemeinsam/AngemeldetAls.tsx). Die Anmeldung als
- * Mitarbeiter (components/AnmeldeDialog.tsx) wird hier bereitgestellt: Jede
- * Ansicht kann sie öffnen – „Leistung erfassen“ und „Excel-Import“ führen ohne
- * Anmeldung zuerst dorthin. Im Bereich werden nur Leistungen erfasst; alles
+ * allen Bereichen (src/gemeinsam/AngemeldetAls.tsx). Eine eigene Anmeldung
+ * gibt es nicht: Wer unter diesem Namen noch nicht als Mitarbeiter geführt
+ * ist, legt der Store selbst an. Nur ohne Nachnamen bzw. für ausgeschiedene
+ * Mitarbeiter steht ein Hinweis über dem Inhalt (components/Anmeldung.tsx),
+ * und „Excel-Import“ bzw. „Leistung erfassen“ zeigen ihn als Kurzmeldung. Im
+ * Bereich werden nur Leistungen erfasst; alles
  * Übrige – Leistungsnachweise, Projekteinstellungen, Auswertung, Abschluss,
  * Export, Mitarbeiter – liegt im Controlling-Bereich von KaPlan
  * (controlling.tsx); Adressen dorthin lenkt der Bereich um.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { useToast } from '../../shared/toast';
@@ -20,7 +22,7 @@ import { Callout, Card, ConfirmDialog, EmptyState } from '../../shared/ui';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import { useArchivierte, useMarkiertAnderswo } from '../../gemeinsam/ProjektBereiche';
-import { AnmeldeDialog, AnmeldeHinweis, AnmeldungBereitstellen, type AnmeldungOeffnen } from './components/AnmeldeDialog';
+import { AnmeldeHinweis, useMitAnmeldung } from './components/Anmeldung';
 import { ImportDialog } from './components/ImportDialog';
 import { SpeicherHinweis } from './components/SpeicherHinweis';
 import { SicherungEinspielenDialog, SicherungKnopf, SicherungWaehlen, type Sicherung } from './components/Sicherung';
@@ -40,7 +42,7 @@ export function App() {
   const toast = useToast();
   const [route, navigate] = useRoute();
   const [menuOffen, setMenuOffen] = useSeitenleiste();
-  const [anmeldung, setAnmeldung] = useState<{ danach?: () => void } | null>(null);
+  const mitAnmeldung = useMitAnmeldung();
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
   const [sicherung, setSicherung] = useState<Sicherung | null>(null);
   const [importOffen, setImportOffen] = useState(false);
@@ -66,17 +68,10 @@ export function App() {
     setMenuOffen(false);
   };
 
-  // Anmeldedialog – von jeder Ansicht aus (useAnmeldung), mit Fortsetzung nach der Anmeldung
-  const anmeldungOeffnen = useCallback<AnmeldungOeffnen>((danach) => {
-    setAnmeldung({ danach });
-    setMenuOffen(false);
-  }, []);
-
-  // Ohne Anmeldung führt der Import zuerst in die Anmeldung
+  // Ohne Anmeldung (Name ohne Nachnamen, ausgeschieden) nennt eine Kurzmeldung den Grund
   const importOeffnen = () => {
     setMenuOffen(false);
-    if (ich) setImportOffen(true);
-    else anmeldungOeffnen(() => setImportOffen(true));
+    mitAnmeldung(() => setImportOffen(true));
   };
 
   const farbmodus = data.einstellungen.farbmodus;
@@ -89,138 +84,123 @@ export function App() {
   const kopf = kopfzeile(route, projekt);
 
   return (
-    <AnmeldungBereitstellen value={anmeldungOeffnen}>
-      <div className="app ln-app">
-        <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
-          <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'uebersicht' })} title="Zur Übersicht">
-            <KaPlanLogo variante="Leistungsnachweise" width="100%" />
-          </button>
+    <div className="app ln-app">
+      <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
+        <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'uebersicht' })} title="Zur Übersicht">
+          <KaPlanLogo variante="Leistungsnachweise" width="100%" />
+        </button>
 
-          <NavItem icon="dashboard" label="Übersicht" aktiv={route.view === 'uebersicht'} onClick={() => gehe({ view: 'uebersicht' })} />
-          <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
+        <NavItem icon="dashboard" label="Übersicht" aktiv={route.view === 'uebersicht'} onClick={() => gehe({ view: 'uebersicht' })} />
+        <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
+        <NavItem
+          icon="importieren"
+          label="Excel-Import"
+          aktiv={false}
+          titel={
+            ich
+              ? 'Eigene Leistungen aus der Zeiterfassung (Excel) übernehmen'
+              : 'Leistungen aus der Zeiterfassung (Excel) übernehmen – dafür unter „Angemeldet als“ Vor- und Nachnamen eintragen'
+          }
+          onClick={importOeffnen}
+        />
+        <div className="nav-group-label">
+          Projekte
+          {markierte.length < aktiveAnzahl ? <span className="tertiary"> (markierte)</span> : null}
+        </div>
+        {markierte.map((p) => (
           <NavItem
-            icon="importieren"
-            label="Excel-Import"
-            aktiv={false}
-            titel={
-              ich
-                ? 'Eigene Leistungen aus der Zeiterfassung (Excel) übernehmen'
-                : 'Leistungen aus der Zeiterfassung (Excel) übernehmen – zuerst anmelden'
-            }
-            onClick={importOeffnen}
+            key={p.id}
+            icon="stunden"
+            label={projektTitel(p)}
+            aktiv={projekt?.id === p.id}
+            onClick={() => gehe({ view: 'projekt', projektId: p.id })}
           />
-          <div className="nav-group-label">
-            Projekte
-            {markierte.length < aktiveAnzahl ? <span className="tertiary"> (markierte)</span> : null}
-          </div>
-          {markierte.map((p) => (
-            <NavItem
-              key={p.id}
-              icon="stunden"
-              label={projektTitel(p)}
-              aktiv={projekt?.id === p.id}
-              onClick={() => gehe({ view: 'projekt', projektId: p.id })}
-            />
-          ))}
+        ))}
 
-          <div className="sidebar-footer">
-            <AngemeldetAls hinweis="Unter diesem Namen erfassen Sie Ihre Leistungen – er muss dem Namen eines Mitarbeiters entsprechen (Vor- und Nachname). Fehlt die Person, lässt sie sich im Bereich als Mitarbeiter anlegen." />
-            {ich ? null : (
-              <button type="button" className="link-btn ln-anmeldung-link" onClick={() => anmeldungOeffnen()}>
-                Nicht als Mitarbeiter angemeldet – anmelden
-              </button>
-            )}
-            <div className="sicherung-knoepfe">
-              <SicherungKnopf />
-              <SicherungWaehlen onGelesen={setSicherung} />
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                onClick={() => setZuruecksetzenDialog(true)}
-                disabled={ladeZustand === 'neuere_fassung'}
-                title={
-                  ladeZustand === 'neuere_fassung'
-                    ? 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt'
-                    : undefined
-                }
-              >
-                Zurücksetzen
-              </button>
-            </div>
-            Daten werden lokal im Browser gespeichert.
-            <BereichWechsel />
-          </div>
-        </aside>
-
-        <main className="main">
-          <header className="topbar">
-            <button type="button" className="btn-icon menu-toggle" onClick={() => setMenuOffen((o) => !o)} aria-label="Menü">
-              <Icon name="menu" size={18} />
+        <div className="sidebar-footer">
+          <AngemeldetAls hinweis="Unter diesem Namen (Vor- und Nachname) erfassen Sie Ihre Leistungen. Wer hier noch nicht als Mitarbeiter geführt ist, wird automatisch als Mitarbeiter angelegt – eine eigene Anmeldung gibt es nicht." />
+          <div className="sicherung-knoepfe">
+            <SicherungKnopf />
+            <SicherungWaehlen onGelesen={setSicherung} />
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setZuruecksetzenDialog(true)}
+              disabled={ladeZustand === 'neuere_fassung'}
+              title={
+                ladeZustand === 'neuere_fassung'
+                  ? 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt'
+                  : undefined
+              }
+            >
+              Zurücksetzen
             </button>
-            <div className="topbar-title">
-              <h1>{kopf.titel}</h1>
-              {kopf.sub ? <div className="sub">{kopf.sub}</div> : null}
-            </div>
-            <div className="topbar-logo">
-              <MailaenderLogo height={34} />
-            </div>
-          </header>
-
-          <div className="content" ref={inhalt}>
-            <div className="content-inner">
-              <LadeHinweis />
-              <SpeicherHinweis />
-              <AnmeldeHinweis daten={data} />
-              {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} onImport={importOeffnen} /> : null}
-              {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
-              {route.view === 'projekt' ? (
-                projekt ? (
-                  <ProjektDetail key={projekt.id} projekt={projekt} navigate={gehe} />
-                ) : (
-                  <NichtGefunden label="Zu den Projekten" onZurueck={() => gehe({ view: 'projekte' })} />
-                )
-              ) : null}
-            </div>
           </div>
-        </main>
+          Daten werden lokal im Browser gespeichert.
+          <BereichWechsel />
+        </div>
+      </aside>
 
-        {menuOffen ? (
-          <div className="overlay" style={{ background: 'rgba(0,0,0,0.18)', zIndex: 80 }} onClick={() => setMenuOffen(false)} />
-        ) : null}
+      <main className="main">
+        <header className="topbar">
+          <button type="button" className="btn-icon menu-toggle" onClick={() => setMenuOffen((o) => !o)} aria-label="Menü">
+            <Icon name="menu" size={18} />
+          </button>
+          <div className="topbar-title">
+            <h1>{kopf.titel}</h1>
+            {kopf.sub ? <div className="sub">{kopf.sub}</div> : null}
+          </div>
+          <div className="topbar-logo">
+            <MailaenderLogo height={34} />
+          </div>
+        </header>
 
-        {importOffen ? <ImportDialog onClose={() => setImportOffen(false)} navigate={gehe} /> : null}
+        <div className="content" ref={inhalt}>
+          <div className="content-inner">
+            <LadeHinweis />
+            <SpeicherHinweis />
+            <AnmeldeHinweis />
+            {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} onImport={importOeffnen} /> : null}
+            {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
+            {route.view === 'projekt' ? (
+              projekt ? (
+                <ProjektDetail key={projekt.id} projekt={projekt} navigate={gehe} />
+              ) : (
+                <NichtGefunden label="Zu den Projekten" onZurueck={() => gehe({ view: 'projekte' })} />
+              )
+            ) : null}
+          </div>
+        </div>
+      </main>
 
-        {sicherung ? (
-          <SicherungEinspielenDialog
-            sicherung={sicherung}
-            onClose={() => setSicherung(null)}
-            onEingespielt={() => gehe({ view: 'uebersicht' })}
-          />
-        ) : null}
+      {menuOffen ? (
+        <div className="overlay" style={{ background: 'rgba(0,0,0,0.18)', zIndex: 80 }} onClick={() => setMenuOffen(false)} />
+      ) : null}
 
-        {zuruecksetzenDialog ? (
-          <ConfirmDialog
-            titel="Daten zurücksetzen?"
-            text="Alle lokal gespeicherten Projekte, Mitarbeiter, Leistungen und Leistungsnachweise dieses Bereichs werden verworfen und der Demodatenbestand wird neu geladen. Die anderen Bereiche bleiben unberührt."
-            bestaetigenLabel="Zurücksetzen"
-            onConfirm={() => {
-              zuruecksetzen();
-              toast('Demodaten wiederhergestellt.');
-              gehe({ view: 'uebersicht' });
-            }}
-            onClose={() => setZuruecksetzenDialog(false)}
-          />
-        ) : null}
+      {importOffen ? <ImportDialog onClose={() => setImportOffen(false)} navigate={gehe} /> : null}
 
-        {/* Zuletzt, damit die Anmeldung über einem offenen Dialog liegt */}
-        {anmeldung ? (
-          <AnmeldeDialog
-            onClose={() => setAnmeldung(null)}
-            onAngemeldet={anmeldung.danach}
-          />
-        ) : null}
-      </div>
-    </AnmeldungBereitstellen>
+      {sicherung ? (
+        <SicherungEinspielenDialog
+          sicherung={sicherung}
+          onClose={() => setSicherung(null)}
+          onEingespielt={() => gehe({ view: 'uebersicht' })}
+        />
+      ) : null}
+
+      {zuruecksetzenDialog ? (
+        <ConfirmDialog
+          titel="Daten zurücksetzen?"
+          text="Alle lokal gespeicherten Projekte, Mitarbeiter, Leistungen und Leistungsnachweise dieses Bereichs werden verworfen und der Demodatenbestand wird neu geladen. Die anderen Bereiche bleiben unberührt."
+          bestaetigenLabel="Zurücksetzen"
+          onConfirm={() => {
+            zuruecksetzen();
+            toast('Demodaten wiederhergestellt.');
+            gehe({ view: 'uebersicht' });
+          }}
+          onClose={() => setZuruecksetzenDialog(false)}
+        />
+      ) : null}
+    </div>
   );
 }
 

@@ -12,11 +12,13 @@
  * eigenen Leistungen ein, der Nachweis rechnet die Zeilen daraus.
  *
  * Wer angemeldet ist (`Einstellungen.mitarbeiterId`), erfasst nur eigene
- * Leistungen – sonst nichts. Das Controlling (der Controlling-Bereich von
- * KaPlan nach der PIN) stellt die Projekte ein, bearbeitet die Nachweise,
- * schließt sie ab, schlägt Stunden je Zeile auf
- * (`Leistungsnachweis.aufschlaege`) und exportiert – die Rechte stehen zentral
- * in domain/rechte.ts.
+ * Leistungen, schreibt mit den Kolleginnen und Kollegen derselben Zeiträume
+ * am gemeinsamen Leistungstext (`Periodentext`) und bestätigt je Monat, dass
+ * Stunden und Texte vollständig sind (`Bestaetigung`, domain/erfassung.ts).
+ * Das Controlling (der Controlling-Bereich von KaPlan nach der PIN) stellt die
+ * Projekte ein, bearbeitet die Nachweise, schließt sie ab, schlägt Stunden je
+ * Zeile auf (`Leistungsnachweis.aufschlaege`) und exportiert – die Rechte
+ * stehen zentral in domain/rechte.ts.
  *
  * Projekte teilt der Bereich über das Projektregister (`src/gemeinsam/`) mit
  * den anderen Bereichen (domain/register.ts).
@@ -35,8 +37,10 @@ export type ISODate = string;
  * Fassung 5: nachgereichte Leistungen am Nachweis (`nachgereicht`, leer).
  * Fassung 6: von Hand festgelegtes Ende am Nachweis (`bisFest`, false);
  * nachgereichte Zeilen im festgeschriebenen Stand (`NachweisZeile.nachgereicht`).
+ * Fassung 7: gemeinsame Leistungstexte je Zeitraum (`periodentexte`) und
+ * Monatsbestätigungen der Mitarbeiter (`bestaetigungen`), beide leer.
  */
-export const DATEN_VERSION = 6;
+export const DATEN_VERSION = 7;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Mitarbeiter MIC';
@@ -52,9 +56,12 @@ export interface Einstellungen {
   /**
    * Angemeldete Person: der aktive Mitarbeiter, dessen Name dem unter
    * „Angemeldet als“ entspricht (`mitarbeiterZumNamen`, vom Store nachgezogen).
-   * Sie erfasst und importiert nur eigene Leistungen (domain/rechte.ts). null = nicht
-   * angemeldet – dann lässt sich nichts erfassen. Solange die Daten nur im
-   * Browser liegen, ist die Anmeldung eine Auswahl ohne Kennwort.
+   * Fehlt er, legt der Store ihn im Bereich selbst an (`anmeldungAnwenden` in
+   * domain/rechte.ts) – eine eigene Anmeldung gibt es nicht. Sie erfasst und
+   * importiert nur eigene Leistungen (domain/rechte.ts). null = nicht
+   * angemeldet (Name ohne Nachnamen, ausgeschiedener Mitarbeiter) – dann lässt
+   * sich nichts erfassen. Solange die Daten nur im Browser liegen, ist die
+   * Anmeldung eine Angabe ohne Kennwort.
    */
   mitarbeiterId: ID | null;
   farbmodus: Farbmodus;
@@ -268,6 +275,11 @@ export interface NachweisZeile {
   text: string;
   /** Der Text wurde von Hand bearbeitet. */
   textBearbeitet: boolean;
+  /**
+   * Der Text stammt (ganz oder teilweise) aus den gemeinsamen Leistungstexten
+   * der Mitarbeiter (`Periodentext`) – nur ohne Bearbeitung von Hand; fehlt sonst.
+   */
+  textGemeinsam?: boolean;
   stunden: number;
   /** Stunden je Abschnitt; Schlüssel ist die Abschnitts-ID, `OHNE_ABSCHNITT` für Leistungen ohne. */
   stundenJeAbschnitt: Record<string, number>;
@@ -359,6 +371,49 @@ export interface Leistungsnachweis {
 }
 
 /* ------------------------------------------------------------------ */
+/* Gemeinsame Leistungstexte und Monatsbestätigung                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Gemeinsamer Leistungstext eines Projekts für einen Zeitraum – alle mit
+ * Leistungen darin sehen und bearbeiten ihn (domain/erfassung.ts). Der
+ * Zeitraum ist eine Periode im Raster des Projekts, auf den Kalendermonat
+ * gekürzt (`erfassungsPeriode` in domain/zeitraum.ts): Eine Woche über ein
+ * Monatsende hat je Monat einen eigenen Text. Im Leistungsnachweis setzt sich
+ * der Text einer Zeile daraus zusammen (`nachweisZeilen`), solange das
+ * Controlling ihn nicht von Hand bearbeitet hat.
+ */
+export interface Periodentext {
+  projektId: ID;
+  /** Monat und Periode im Raster des Projekts, etwa „2026-10|W2026-44“ (Wochen am Monatsende geteilt). */
+  schluessel: string;
+  text: string;
+  /** Leistungen des Zeitraums beim letzten Bearbeiten – später hinzugekommene gelten als neue Stichpunkte. */
+  leistungIds: ID[];
+  /** Name unter „Angemeldet als“ beim letzten Bearbeiten. */
+  bearbeiter: string;
+  /** Zeitpunkt des letzten Bearbeitens (ISO). */
+  geaendert: string;
+}
+
+/**
+ * Bestätigung eines Mitarbeiters, dass seine Stunden und die Leistungstexte
+ * eines Monats in einem Projekt vollständig erfasst sind. Sie gilt, solange
+ * sich der bestätigte Stand nicht ändert (`kennung`, `bestaetigungsKennung` in
+ * domain/erfassung.ts) – sonst ist sie erloschen.
+ */
+export interface Bestaetigung {
+  projektId: ID;
+  mitarbeiterId: ID;
+  /** JJJJ-MM */
+  monat: string;
+  /** Zeitpunkt (ISO). */
+  am: string;
+  /** Kennung des bestätigten Stands (`bestaetigungsKennung`). */
+  kennung: string;
+}
+
+/* ------------------------------------------------------------------ */
 /* Gesamtbestand                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -369,6 +424,10 @@ export interface LeistungsnachweisDaten {
   projekte: Projekt[];
   leistungen: Leistung[];
   nachweise: Leistungsnachweis[];
+  /** Gemeinsame Leistungstexte je Projekt und Zeitraum (Fassung 7). */
+  periodentexte: Periodentext[];
+  /** Monatsbestätigungen der Mitarbeiter je Projekt (Fassung 7). */
+  bestaetigungen: Bestaetigung[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -377,6 +436,23 @@ export interface LeistungsnachweisDaten {
 
 export function newId(prefix = 'id'): ID {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Prüfsumme eines Texts: zweimal FNV-1a (32 Bit, verschiedene Startwerte),
+ * 16 Hexadezimalziffern. Gleicher Text → gleiche Prüfsumme – für Kennungen,
+ * die sich aus dem Inhalt ergeben (`bestaetigungsKennung`, `mitarbeiterKennung`).
+ */
+export function pruefsumme(text: string): string {
+  const fnv = (start: number) => {
+    let h = start >>> 0;
+    for (let i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+  };
+  return `${fnv(0x811c9dc5)}${fnv(0x2f4b6a1d)}`;
 }
 
 /**

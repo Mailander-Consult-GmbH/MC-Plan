@@ -8,8 +8,11 @@
  * Die Demodaten melden Anna Becker an; maßgeblich ist aber der Name unter
  * „Angemeldet als“ (gemeinsam für alle Bereiche) – wer dort „Anna Becker“
  * einträgt, erfasst als sie. Abschluss und Aufschläge zeigt das Controlling.
+ * Für den Vormonat gibt es bei der Brücke einen gemeinsamen Leistungstext,
+ * den Anna Becker bestätigt hat; der laufende Monat ist noch offen.
  */
 import { addDays, istArbeitstag, today } from '../../../shared/dates';
+import { bestaetigenAnwenden, periodentextAnwenden } from './erfassung';
 import {
   ergaenzungAnwenden,
   mitAufschlag,
@@ -31,7 +34,7 @@ import {
   type Projekt,
   type Quelle,
 } from './types';
-import { monatVersetzt } from './zeitraum';
+import { erfassungsPeriode, monatVersetzt } from './zeitraum';
 
 /**
  * Logos im Kopf des Leistungsnachweises, solange ein Projekt keine eigenen
@@ -105,7 +108,9 @@ function demoLeistungen(regeln: Regel[], von: string, bis: string): Leistung[] {
 /**
  * Demodatenbestand: vier Mitarbeiter (Anna Becker vorgemerkt), drei Projekte, Leistungen der letzten Monate, Nachweise –
  * der älteste der Brücke abgeschlossen mit einem Aufschlag von +1,5 Std., im
- * offenen Nachweis der Dammsanierung ein Aufschlag von −0,5 Std.
+ * offenen Nachweis der Dammsanierung ein Aufschlag von −0,5 Std. Bei der Brücke
+ * (monatsscharf) steht für den Vormonat ein gemeinsamer Leistungstext, den Anna
+ * Becker bestätigt hat.
  */
 export function seedDaten(): LeistungsnachweisDaten {
   const heute = today();
@@ -225,6 +230,8 @@ export function seedDaten(): LeistungsnachweisDaten {
     projekte: [bruecke, damm, halt],
     leistungen,
     nachweise: [],
+    periodentexte: [],
+    bestaetigungen: [],
   };
   const ergaenzen = (p: Projekt, tage: string[]) => {
     daten = ergaenzungAnwenden(daten, nachweiseErgaenzen(daten, p, tage, jetzt, () => newId('ln')), jetzt);
@@ -265,6 +272,23 @@ export function seedDaten(): LeistungsnachweisDaten {
   if (offen && woche) {
     const n = mitAufschlag(offen, damm, woche.schluessel, nord.id, -0.5);
     daten = { ...daten, nachweise: daten.nachweise.map((x) => (x.id === n.id ? n : x)) };
+  }
+
+  // Brücke, Vormonat: gemeinsamer Leistungstext von Anna Becker und Jonas Keller, bestätigt von Anna Becker
+  const vormonat = monatVersetzt(heute, -1);
+  if (leistungen.some((l) => l.projektId === bruecke.id && l.mitarbeiterId === ab.id && l.datum.startsWith(vormonat.slice(0, 7)))) {
+    // Geschrieben und bestätigt am Ersten des laufenden Monats
+    const monatsErster = monatVersetzt(heute, 0);
+    daten = periodentextAnwenden(
+      daten,
+      bruecke.id,
+      erfassungsPeriode(vormonat, bruecke.raster).schluessel,
+      'Abstimmungen mit der Projektleitung und der Bauüberwachung, Teilnahme an den Jours fixes einschl. Nachbereitung, ' +
+        'Fortschreibung des Terminplans, Prüfung der Planunterlagen, Vorbereitung der Baubesprechung, Kostenverfolgung',
+      mitarbeiterName(ab),
+      `${monatsErster}T07:15:00.000Z`,
+    );
+    daten = bestaetigenAnwenden(daten, bruecke.id, ab.id, vormonat.slice(0, 7), `${monatsErster}T07:20:00.000Z`);
   }
   return daten;
 }

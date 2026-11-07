@@ -28,6 +28,7 @@ import { ProjektNachweise } from './ProjektNachweise';
 
 const TABS: { id: ProjektTab; label: string; titel: string }[] = [
   { id: 'nachweise', label: 'Leistungsnachweise', titel: 'Leistungsnachweise des Projekts – Klick öffnet die Abrechnung' },
+  { id: 'bestaetigungen', label: 'Bestätigungen', titel: 'Wer Leistungen im Projekt hat und seine Monate bestätigt hat' },
   { id: 'leistungen', label: 'Leistungen', titel: 'Leistungen aller Mitarbeiter – nur lesen' },
   { id: 'einstellungen', label: 'Einstellungen', titel: 'Vorgaben für Leistungsnachweise, Abschnitte und Logos' },
 ];
@@ -149,6 +150,12 @@ export function ControllingProjekt({
       </div>
 
       {tab === 'nachweise' ? <ProjektNachweise projekt={projekt} navigate={navigate} /> : null}
+      {tab === 'bestaetigungen' ? (
+        // Platzhalter – die Übersicht der Bestätigungen (domain/erfassung.ts `bestaetigungsUebersicht`) folgt
+        <Card>
+          <EmptyState icon="stunden" titel="Bestätigungen" text="Hier steht je Monat, wer Leistungen im Projekt hat und seine Monate bestätigt hat." />
+        </Card>
+      ) : null}
       {tab === 'leistungen' ? <Leistungen projekt={projekt} navigate={navigate} /> : null}
       {tab === 'einstellungen' ? <ProjektEinstellungen projekt={projekt} /> : null}
 

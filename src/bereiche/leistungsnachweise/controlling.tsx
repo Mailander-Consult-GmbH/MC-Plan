@@ -4,10 +4,11 @@
  * (Leistungstexte, Aufschläge, Abschluss, Druck und Export), Projekte mit
  * ihren Einstellungen, Mitarbeiter und der Sammel-Import aus Excel. Sie arbeiten auf dem Bestand dieses Bereichs mit
  * dem Zugang 'controlling' (domain/rechte.ts) – eine Anmeldung als
- * Mitarbeiter ist nicht nötig; die PIN fragt der Controlling-Bereich ab. Ist
- * die Person unter „Angemeldet als“ Mitarbeiter, gilt sie auch hier als
- * angemeldet (eigene Leistungen beim Löschen eines Nachweises mitlöschen;
- * im Sammel-Import lassen sich ihr Zeilen ohne Mitarbeiter zuordnen).
+ * Mitarbeiter ist nicht nötig, und angelegt wird hier niemand; die PIN fragt
+ * der Controlling-Bereich ab. Ist die Person unter „Angemeldet als“
+ * Mitarbeiter, gilt sie auch hier als angemeldet (eigene Leistungen beim
+ * Löschen eines Nachweises mitlöschen; im Sammel-Import lassen sich ihr
+ * Zeilen ohne Mitarbeiter zuordnen).
  *
  * Der Controlling-Bereich bindet nur dieses Modul ein (die Bereiche greifen
  * sonst nicht aufeinander zu). Adressen: #/controlling/leistungsnachweise/<reiter>
@@ -16,7 +17,6 @@
 import { useState } from 'react';
 import { Icon } from '../../shared/icons';
 import { Callout } from '../../shared/ui';
-import { AnmeldungBereitstellen } from './components/AnmeldeDialog';
 import { ImportDialog } from './components/ImportDialog';
 import { SpeicherHinweis } from './components/SpeicherHinweis';
 import { CONTROLLING_PREFIX, hashToRoute, useRoute, type ControllingTab, type Route } from './lib/router';
@@ -62,47 +62,41 @@ function Rahmen() {
   const oben = useNachObenBeiSeitenwechsel<HTMLDivElement>(seite(route));
 
   return (
-    // Den Anmeldedialog gibt es nur im Bereich – hier öffnet die Anmeldung nichts. Wer unter
-    // „Angemeldet als“ als Mitarbeiter geführt ist, gilt aber auch hier als angemeldet (Store):
-    // Nur dessen Leistungen lassen sich beim Löschen eines Nachweises mitlöschen, und der
-    // Sammel-Import kann ihm Zeilen ohne Mitarbeiter zuordnen.
-    <AnmeldungBereitstellen value={() => {}}>
-      <div className="stack ln-app" ref={oben}>
-        {ladeZustand !== 'ok' ? (
-          <Callout ton="error" icon="!">
-            Der gespeicherte Stand der Leistungsnachweise ließ sich nicht laden bzw. stammt aus einer neueren Fassung.
-            Angezeigt werden Demodaten, gespeichert wird nichts – Hinweise dazu im Bereich Leistungsnachweise.
-          </Callout>
-        ) : null}
-        <SpeicherHinweis />
+    <div className="stack ln-app" ref={oben}>
+      {ladeZustand !== 'ok' ? (
+        <Callout ton="error" icon="!">
+          Der gespeicherte Stand der Leistungsnachweise ließ sich nicht laden bzw. stammt aus einer neueren Fassung.
+          Angezeigt werden Demodaten, gespeichert wird nichts – Hinweise dazu im Bereich Leistungsnachweise.
+        </Callout>
+      ) : null}
+      <SpeicherHinweis />
 
-        {route.view === 'abrechnung' ? (
-          <Abrechnung key={route.nachweisId} projektId={route.projektId} nachweisId={route.nachweisId} navigate={navigate} />
-        ) : route.view === 'controllingProjekt' ? (
-          <ControllingProjekt key={route.projektId} projektId={route.projektId} tab={route.tab} navigate={navigate} />
-        ) : (
-          <>
-            <div className="row-between wrap">
-              <p className="small muted" style={{ margin: 0, maxWidth: 640 }}>
-                Die Mitarbeiter erfassen ihre Leistungen im Bereich Leistungsnachweise; hier werden die Nachweise
-                abgerechnet, abgeschlossen und exportiert.
-              </p>
-              <button
-                type="button"
-                className="btn btn-outline"
-                title="Sammel-Export der Zeiterfassung: Leistungen aller Mitarbeiter der Datei übernehmen"
-                onClick={() => setImportOffen(true)}
-              >
-                <Icon name="importieren" size={14} /> Excel-Import (alle Mitarbeiter)
-              </button>
-            </div>
-            <Controlling tab={route.view === 'controlling' ? route.tab : 'auswertung'} navigate={navigate} />
-          </>
-        )}
+      {route.view === 'abrechnung' ? (
+        <Abrechnung key={route.nachweisId} projektId={route.projektId} nachweisId={route.nachweisId} navigate={navigate} />
+      ) : route.view === 'controllingProjekt' ? (
+        <ControllingProjekt key={route.projektId} projektId={route.projektId} tab={route.tab} navigate={navigate} />
+      ) : (
+        <>
+          <div className="row-between wrap">
+            <p className="small muted" style={{ margin: 0, maxWidth: 640 }}>
+              Die Mitarbeiter erfassen ihre Leistungen im Bereich Leistungsnachweise; hier werden die Nachweise
+              abgerechnet, abgeschlossen und exportiert.
+            </p>
+            <button
+              type="button"
+              className="btn btn-outline"
+              title="Sammel-Export der Zeiterfassung: Leistungen aller Mitarbeiter der Datei übernehmen"
+              onClick={() => setImportOffen(true)}
+            >
+              <Icon name="importieren" size={14} /> Excel-Import (alle Mitarbeiter)
+            </button>
+          </div>
+          <Controlling tab={route.view === 'controlling' ? route.tab : 'auswertung'} navigate={navigate} />
+        </>
+      )}
 
-        {importOffen ? <ImportDialog onClose={() => setImportOffen(false)} navigate={navigate} /> : null}
-      </div>
-    </AnmeldungBereitstellen>
+      {importOffen ? <ImportDialog onClose={() => setImportOffen(false)} navigate={navigate} /> : null}
+    </div>
   );
 }
 
