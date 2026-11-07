@@ -144,8 +144,10 @@ zeigt bis zum Neuladen weiter die alte Fassung. Deshalb trägt jeder Build eine 
 wieder in den Vordergrund kommt, und alle fünf Minuten (`useNeueFassung` in `src/shared/pwa.ts`).
 Weichen sie ab, erscheint unten rechts **„Neue Fassung von KaPlan verfügbar“** mit **Neu laden**
 und **Später** (`src/shell/NeueFassung.tsx`). Dialoge und die aufgeklappte Seitenleiste liegen
-darüber; Meldungen erscheinen oberhalb des Hinweises statt ihn zu verdecken (der Hinweis setzt seine
-Höhe als `--neue-fassung-hoehe`). Welche Fassung läuft, steht am Fuß des
+darüber; Meldungen erscheinen oberhalb des Hinweises statt ihn zu verdecken, und der Inhalt erhält
+unten zusätzlich die Höhe des Hinweises als Abstand, sodass sich auch die letzten Schaltflächen
+einer Seite über ihn hinaus scrollen lassen (der Hinweis setzt seine Höhe als `--neue-fassung-hoehe`, genutzt von
+`.content` und `.start` in `src/shared/global.css`). Welche Fassung läuft, steht am Fuß des
 Startbildschirms („Fassung vom …“, im Build des Workflows mit dem Commit).
 
 Technische Voraussetzung für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade).
@@ -170,9 +172,11 @@ bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (
 aus dem Netz geladen – ein unter gleichem Namen ausgetauschtes Logo erscheint also sofort. Der Service Worker ist nur im Produktionsbuild aktiv, in der Entwicklung
 stört er also nicht.
 
-Die Oberfläche ist durchgehend responsiv: Ab etwa 860 px klappt die Seitenleiste in ein Menü, auf
-Telefonbreite stehen die Kennzahlen zweispaltig, Tabellen scrollen quer bzw. werden – wie die
-Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar bleiben. Ab Tabletbreite
+Die Oberfläche ist durchgehend responsiv: Ab etwa 860 px klappt die Seitenleiste in ein Menü (☰),
+das bei jedem Seitenwechsel schließt – auch bei *Zurück* im Browser oder per Zurück-Geste
+(`useSeitenleiste` in `src/shared/seitenleiste.ts`); auf Telefonbreite stehen die Kennzahlen
+zweispaltig, Tabellen scrollen quer bzw. werden – wie die Fristenliste – zu gestapelten Karten,
+damit die Schaltflächen erreichbar bleiben. Ab Tabletbreite
 bleibt die Kopfzeile einer Tabelle beim Blättern stehen, solange die Tabelle in ihre Karte passt;
 ist sie breiter, scrollt sie quer (`tabellenBreiteBeobachten` in `src/shared/tabellen.ts`, Klasse
 `table-scroll-quer`), sodass keine Spalte und keine Schaltfläche abgeschnitten wird. Dialoge sind
@@ -186,13 +190,17 @@ Baustein (`AufklappMenue` in `src/shared/menue.tsx`): Das Menü öffnet bei Plat
 bleibt im Fenster und scrollt bei Bedarf selbst; lange Einträge brechen um. Der erste Eintrag
 erhält den Fokus, Pfeiltasten sowie Pos1/Ende wechseln den Eintrag; Escape schließt das Menü und
 gibt den Fokus an den Knopf zurück. Tab, ein Klick oder Tippen daneben, Scrollen, eine
-Größenänderung des Fensters und ein zweiter Klick auf den Knopf schließen es ebenfalls.
+Größenänderung des Fensters und ein zweiter Klick auf den Knopf schließen es ebenfalls. Nach einer
+Wahl kehrt der Fokus an den Knopf zurück, sofern es ihn noch gibt – öffnet die Wahl einen
+Dialog, steht er dort und kehrt erst nach dessen Schließen zurück.
 
 Dialoge sind ebenfalls ein gemeinsamer Baustein (`Modal` in `src/shared/ui.tsx`). Beim Öffnen
 behält ein Feld mit `autoFocus` den Fokus; sonst bekommt ihn das erste Eingabefeld (Text, Zahl,
 Datum, Auswahlliste), wenn es ohne Scrollen zu sehen ist, ansonsten der Dialog selbst. Kästchen und
-Knöpfe erhalten nie den Anfangsfokus, und gescrollt wird dabei nie; auf Touch-Geräten bekommt immer
-der Dialog selbst den Fokus, damit sich die Bildschirmtastatur nicht ungefragt öffnet. Tab und
+Knöpfe erhalten nie den Anfangsfokus, und gescrollt wird dabei nie; ohne Feld mit `autoFocus`
+bekommt auf Touch-Geräten immer der Dialog selbst den Fokus, damit sich die Bildschirmtastatur nicht
+ungefragt öffnet (ein Feld mit `autoFocus`, etwa in „Angemeldet als“ oder „Neue Funktion“, behält
+ihn auch dort). Tab und
 Umschalt+Tab bleiben im obersten Dialog, Escape und ein Klick daneben schließen nur ihn. Verschwindet
 das fokussierte Element, bleibt der Fokus im Dialog. Nach dem Schließen – auch per Klick daneben –
 geht er an das Element zurück, von dem der Dialog kam, bzw. an den Knopf des Aufklappmenüs, sofern es
@@ -758,9 +766,9 @@ sich nicht laden ließ, bleibt davon ebenfalls eine Kopie im Browser
 (`planlauf-management.data.v1.vor-einspielen-<Zeitpunkt>`); passt sie nicht mehr in den Speicher,
 ersetzt der Dialog nichts, sondern sagt das und bietet **Ohne Kopie ersetzen** an. Wird der Speicher
 knapp, räumt das Speichern solche Kopien einzeln, bis der Bestand passt – zuerst die vor einer
-Umstellung (die eigenen zuerst), dann die vor dem Einspielen (die älteste zuerst), nötigenfalls auch
-die anderer Bereiche (`nachRaeumenSpeichern` in `src/shared/speicher.ts`); reicht das nicht, kommen
-sie zurück.
+Umstellung (die eigenen vor denen anderer Bereiche und des Projektregisters), dann die vor dem
+Einspielen, gleich welchen Bereichs, die älteste zuerst (`nachRaeumenSpeichern` in
+`src/shared/speicher.ts`); reicht das nicht, kommen sie zurück.
 Speichert ein anderes Fenster (Tab oder installierte App) den Bestand, lädt die Anwendung dessen
 Stand nach, statt ihn mit dem eigenen älteren zu überschreiben (`useFremdeAenderung`).
 
@@ -1387,6 +1395,14 @@ Datenbestand – es arbeitet auf dem Projektregister:
 
 Die Bereiche vollziehen Übernahmen, Archivierung und Löschungen beim nächsten Öffnen.
 
+Lässt sich das Projektregister nicht speichern – meist, weil der Speicher des Browsers voll ist und
+auch das Räumen der Rohkopien nicht reicht –, zeigt das Controlling über allen Ansichten den
+dauerhaften Hinweis **„Projektregister nicht gespeichert.“** samt Grund; Änderungen gelten bis zum
+Schließen der Seite, gingen dann aber verloren. **Erneut speichern** versucht es noch einmal (etwa
+nachdem anderswo Platz frei geworden ist), ebenso jeder weitere Schreibzugriff auf das Register –
+auch einer ohne neuen Inhalt, etwa der Abgleich eines Bereichs (`useRegisterSpeicherZustand` und
+`registerErneutSpeichern` in `src/gemeinsam/register.ts`).
+
 ## Aufbau des Codes
 
 Hinweise für die Arbeit am Code – was nach jeder Änderung nachzuziehen ist, wie gebaut und
@@ -1424,6 +1440,8 @@ src/
     menue.tsx    Aufklappmenü an einem Knopf (AufklappMenue): Portal, bleibt im Fenster, Tastatur
     tabellen.ts  Breite Tabellen scrollen quer (tabellenBreiteBeobachten, Klasse table-scroll-quer)
     scrollen.ts  Eine neue Seite beginnt oben (useNachObenBeiSeitenwechsel)
+    seitenleiste.ts  Aufklappbare Seitenleiste der schmalen Ansicht, schließt bei jedem
+                 Seitenwechsel (useSeitenleiste)
     speicher.ts  Rohkopien im localStorage: anlegen vor dem Einspielen, bei vollem Speicher
                  einzeln räumen (nachRaeumenSpeichern)
     dates.ts     Fristen- und Datumsrechnung
@@ -1435,7 +1453,8 @@ src/
     pwa.ts       Registrierung des Service Workers; Fassung des Builds und Prüfung auf eine neuere
     global.css   Design-Tokens im hellen Apple-Erscheinungsbild
   gemeinsam/     Projektregister – der einzige Bestand, den sich die Bereiche teilen
-    register.ts  Datenmodell, Laden/Speichern, gemeinsamer Zustand (useRegister)
+    register.ts  Datenmodell, Laden/Speichern, gemeinsamer Zustand (useRegister, Ergebnis des
+                 Speicherns: useRegisterSpeicherZustand)
     abgleich.ts  Abgleich Bereich ↔ Register als reine Funktionen (uebertragen, abgleichen)
                  und die Aktionen des Controllings
     useRegisterAbgleich.ts  Bindet den Store eines Bereichs an das Register
@@ -1548,7 +1567,8 @@ src/
     controlling/ Bereich „Controlling“ (mit PIN, ohne eigenen Bestand)
       index.tsx  Einstiegspunkt: PIN-Abfrage, danach der Bereich
       PinEingabe.tsx  PIN-Abfrage
-      App.tsx    Seitenleiste, Kopfzeile, Projekte, Archiv bzw. Leistungsnachweise
+      App.tsx    Seitenleiste, Kopfzeile, Projekte, Archiv bzw. Leistungsnachweise; Hinweis, wenn
+                 sich das Projektregister nicht speichern lässt
       controlling.css  Gestaltung (Präfix ct-)
       domain/pin.ts    PIN und Entsperrung für die Sitzung
       lib/router.ts    #/controlling/projekte · #/controlling/archiv · #/controlling/leistungsnachweise/…

@@ -260,19 +260,25 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   bleibt im Fenster und scrollt selbst; der erste Eintrag erhält den Fokus, Pfeiltasten,
   Home und End wechseln den Eintrag, Escape schließt und gibt den Fokus an den Knopf zurück;
   Tab, ein Klick oder Tippen daneben, Scrollen und eine Größenänderung schließen es ebenfalls.
+  Nach einer Wahl setzt das Menü den Fokus im nächsten Bild (`requestAnimationFrame`) auf den
+  Knopf, wenn der Fokus auf `body` gefallen ist und der Knopf noch im Dokument steht; ein Dialog, den
+  die Wahl öffnet, behält ihn.
 * **Dialoge** (alle Bereiche; `Modal` in `src/shared/ui.tsx`, `role="dialog"` mit
   `aria-modal` und `aria-labelledby` auf den Titel): Beim Öffnen behält ein Feld mit
   `autoFocus` den Fokus; sonst setzt ihn `anfangsFokus` auf das erste Eingabefeld des Inhalts
   (`eingabeFeld`: Text-, Zahl- und Datumsfelder, Textbereiche, Auswahllisten – keine Kästchen,
   Optionsfelder oder Knöpfe), wenn es ohne Scrollen ganz zu sehen ist (`ganzSichtbar`), sonst
-  auf den Dialog selbst (`tabIndex={-1}`); auf Touch-Geräten (`(pointer: coarse)`) immer auf
-  den Dialog selbst. Fokussiert wird mit `preventScroll`. Tab und Umschalt+Tab bleiben im
+  auf den Dialog selbst (`tabIndex={-1}`); auf Touch-Geräten (`(pointer: coarse)`) setzt
+  `anfangsFokus` ihn immer auf den Dialog selbst – ein Feld mit `autoFocus` behält ihn auch
+  dort. Fokussiert wird mit `preventScroll`. Tab und Umschalt+Tab bleiben im
   obersten Dialog (`fokusHalten`; Optionsfelder einer Gruppe sind ein Tab-Halt), Escape schließt
   nur ihn (`obersterDialog`; ein Listener `dialogTaste` am `window`, solange ein Dialog offen
   ist – was ein Feld oder Menü selbst mit `preventDefault` behandelt, erreicht ihn nicht). Liegt
   ein eigener Dialog mit `role="dialog"` und `aria-modal="true"` darüber (der Workflow-Editor
   `src/bereiche/planlauf/components/WorkflowEditor.tsx`, „Sicherung abgleichen“ in
-  `src/bereiche/planlauf/components/Abgleich.tsx`), regelt er die Tasten selbst. Ein Klick neben
+  `src/bereiche/planlauf/components/Abgleich.tsx`), regelt er die Tasten selbst. Beide tragen
+  `tabIndex={-1}`: Löst „Sicherung abgleichen“ den Dialog „Sicherung einspielen“ ab, erhält es
+  selbst den Fokus, nicht sein Knopf „Schließen“. Ein Klick neben
   den Dialog (`mousedown` auf dem Overlay, mit `preventDefault`) schließt ihn ebenfalls.
   Verschwindet das fokussierte Element, bleibt der Fokus im Dialog (`MutationObserver`). Nach dem
   Schließen geht der Fokus an das Element zurück, das ihn vor dem Öffnen hatte
@@ -293,6 +299,11 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   Klasse `table-scroll-quer`, und sie scrollt quer. Eine neue Seite beginnt oben
   (`useNachObenBeiSeitenwechsel` in `src/shared/scrollen.ts`, am Inhaltsbereich jedes
   Bereichs; ein Reiterwechsel scrollt nicht). Dialoge sind auf `100dvh` begrenzt.
+* **Seitenleiste in der schmalen Ansicht** (alle Bereiche und das Controlling): Bis 860 px Breite klappt sie über die
+  Schaltfläche „Menü“ (`.menu-toggle`) auf (`.sidebar.open`). Sie schließt bei jedem
+  Seitenwechsel – auch bei einem, der nicht aus ihr kommt, etwa per Zurück im Browser
+  (`useSeitenleiste` in `src/shared/seitenleiste.ts`, hört auf `hashchange`) – und bei einem
+  Klick auf den abgedunkelten Hintergrund.
 * **E-Mail-Dialog** (`src/bereiche/planlauf/components/EmailDialog.tsx`): Vorlage wählen, Betreff
   und Text bearbeiten, „In Outlook öffnen“ (mailto), „Outlook im Web“ oder „Kopieren“
   (in die Zwischenablage). Bei mehreren Schritten einer Person eine Sammel-E-Mail
@@ -528,7 +539,7 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 | Ausnahme: „useStore muss innerhalb des StoreProvider verwendet werden.“ | Entwicklungsfehler: Eine Komponente nutzt `useStore` außerhalb von `StoreProvider` (`src/bereiche/planlauf/store/store.tsx`). |
 | Seite „Nicht gefunden – Der aufgerufene Eintrag existiert nicht (mehr).“ | Die Adresse nennt ein Projekt oder einen Planlauf, den es nicht (mehr) gibt (`src/bereiche/planlauf/App.tsx`). |
 | Ein alter Stand erscheint nach einer Aktualisierung | Meist ist das Fenster (Tab oder installierte App) noch vor der Veröffentlichung geöffnet worden – es behält seine Fassung bis zum Neuladen; GitHub Pages lässt die Startseite außerdem bis zu zehn Minuten im Browser-Cache. Seltener liegt unter `app/` noch ein älterer Build (siehe Abschnitt 5, Schritt 7), oder der Service Worker liefert aus seinem Cache, derzeit `mc-plan-v8` (`public/sw.js`). Abhilfe: Neuladen bzw. Strg+Umschalt+R; welche Fassung läuft, steht am Fuß des Startbildschirms. |
-| Hinweis „Neue Fassung von KaPlan verfügbar“ mit „Neu laden“ und „Später“ | Kein Fehler: Die veröffentlichte `fassung.json` nennt eine andere Kennung als das laufende Programm (`useNeueFassung` in `src/shared/pwa.ts`, geprüft beim Start, bei Rückkehr ins Fenster und alle fünf Minuten; `src/shell/NeueFassung.tsx`). „Später“ blendet den Hinweis für diese Fassung aus. Der Hinweis liegt mit `z-index: 80` unter der aufgeklappten mobilen Seitenleiste und unter Dialogen; seine Höhe setzt er als `--neue-fassung-hoehe`, damit Meldungen (`.toast-wrap` in `src/shared/global.css`) über ihm erscheinen. |
+| Hinweis „Neue Fassung von KaPlan verfügbar“ mit „Neu laden“ und „Später“ | Kein Fehler: Die veröffentlichte `fassung.json` nennt eine andere Kennung als das laufende Programm (`useNeueFassung` in `src/shared/pwa.ts`, geprüft beim Start, bei Rückkehr ins Fenster und alle fünf Minuten; `src/shell/NeueFassung.tsx`). „Später“ blendet den Hinweis für diese Fassung aus. Der Hinweis liegt mit `z-index: 80` unter der aufgeklappten mobilen Seitenleiste und unter Dialogen; seine Höhe setzt er als `--neue-fassung-hoehe`, damit Meldungen (`.toast-wrap` in `src/shared/global.css`) über ihm erscheinen und der Inhalt (`.content`, auf dem Startbildschirm `.start`) unten um diese Höhe mehr Abstand erhält – so lassen sich auch die letzten Bedienelemente einer Seite über ihn hinaus scrollen. |
 | Planliste: Haken „Pläne einzeln durch den Planlauf führen“ ist ausgegraut – „Es bestehen bereits Planläufe. Die Pläne lassen sich nur noch nachträglich einzeln weiterführen.“ bzw. „Die Pläne laufen bereits einzeln. Über „Pläne wieder bündeln …“ lassen sich ausgewählte Pläne zurückführen.“ | Kein Fehler: Sobald das Verzeichnis oder einer seiner Pläne einen Lauf hat, ist die Wahl gesperrt (`modusGesperrt` in `Plaene.tsx`). Weiter geht es über die Nachträge „Herauslösen …“, „Alle Pläne einzeln weiterführen …“ und „Pläne wieder bündeln …“ bzw. „Bündeln …“ – im Dialog der Planliste, in der Karte „Pläne dieses Verzeichnisses“ des Planlaufs und im Reiter „Planläufe“. |
 | Konsole der Wurzelseite: 404 für `/src/main.tsx` und die Symbole unter `icons/` | Kein Fehler: Die Wurzelseite ist der ausgelieferte Quellcode und springt nur nach `app/` weiter; dort gibt es diese Fehlanfragen nicht. |
 
@@ -1090,10 +1101,17 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   Register neu, wenn ein anderes es ändert (`storage`-Ereignis). Ist der Speicher
   voll, räumt `speichern` Rohkopien über `nachRaeumenSpeichern`
   (`src/shared/speicher.ts`) und meldet sonst in der Konsole „Projektregister konnte
-  nicht gespeichert werden: …“.
+  nicht gespeichert werden: …“. `speichern` liefert `RegisterSpeicherZustand`
+  (`'ok'`, `'voll'` oder `'gesperrt'`); der Stand des Fensters gilt auch
+  ungespeichert und merkt sich das Ergebnis (`gespeichert`). Solange es nicht
+  `'ok'` ist, schreibt jeder weitere Aufruf von `registerAendern` – auch einer
+  ohne Änderung, etwa der Abgleich eines Bereichs – den Stand erneut
+  (`registerErneutSpeichern`, ohne Konsolenmeldung); `useRegisterSpeicherZustand` liefert das Ergebnis
+  für den Hinweis im Controlling (9.4).
 * `registerAendern` ändert das Register über eine Funktion und benachrichtigt
-  nur bei einer tatsächlichen Änderung; `useRegister` liefert es für die
-  Oberfläche (`useSyncExternalStore`).
+  nur bei einer tatsächlichen Änderung (bzw. wenn sich das Ergebnis des
+  Speicherns ändert); `useRegister` liefert es für die Oberfläche
+  (`useSyncExternalStore`).
 * Funktionen gelten bereichsübergreifend als dieselben, wenn Bezeichnung und
   Gewerk übereinstimmen (`funktionsSchluessel`).
 * `JEDES_PROJEKT_IN` (`'leistungsnachweise'`): Bereich, in dem jedes Projekt
@@ -1259,6 +1277,13 @@ nicht; Gestaltung in `src/bereiche/controlling/controlling.css` (Präfix `ct-`).
 | `#/controlling/archiv` | Archiv (dieselbe Seite) | Die im Controlling archivierten Projekte mit „Bearbeiten“, „Aus dem Archiv holen“ und „Löschen“; der Stand je Bereich ohne Schaltflächen. |
 | `#/controlling/leistungsnachweise/<reiter>`, `…/projekt/<id>/<reiter>` bzw. `…/projekt/<id>/nachweis/<id>` | Controlling der Leistungsnachweise (`LeistungsnachweiseControlling` in `src/bereiche/leistungsnachweise/controlling.tsx`), Menüpunkt „Leistungsnachweise“ unter „Bereiche“ | Siehe 10.4. |
 
+Lässt sich das Projektregister nicht speichern (`useRegisterSpeicherZustand`,
+9.1), steht über jeder Ansicht des Controllings „Projektregister nicht
+gespeichert.“ mit dem Grund („Der Speicher des Browsers ist voll“ bzw. „Der
+Browser lässt das Speichern nicht zu (etwa durch Datenschutzeinstellungen)“) und
+„Erneut speichern“ (`registerErneutSpeichern`; `RegisterSpeicherHinweis` in
+`src/bereiche/controlling/App.tsx`, Gestaltung `.ct-speicherhinweis`).
+
 Router: `src/bereiche/controlling/lib/router.ts`; unbekannte Adressen führen auf
 die Projekte. Die Aktionen auf dem Register stehen als reine Funktionen in
 `src/gemeinsam/abgleich.ts` (`projektAnlegen`, `projektBearbeiten`,
@@ -1280,6 +1305,8 @@ beim nächsten Abgleich.
 | „Projekt gelöscht.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: Löschen nach der Rückfrage „Projekt löschen?“ („Endgültig löschen“). |
 | „„…“ übernommen – mit … Projektbeteiligten.“ bzw. „„…“ übernommen.“ | `src/gemeinsam/ProjektBereiche.tsx` | Kein Fehler: „Übernehmen in …“ in einem Bereich. |
 | „Das Projektregister ließ sich nicht lesen. …“ bzw. „Das Projektregister stammt aus einer neueren Fassung von KaPlan. …“ | `src/bereiche/controlling/App.tsx` | Gespeichertes Register unlesbar bzw. `version` größer als `REGISTER_VERSION`. |
+| „Projektregister nicht gespeichert. …; Änderungen an den Projekten gehen beim Schließen der Seite verloren.“ | `src/bereiche/controlling/App.tsx` | Das letzte Speichern des Registers ist gescheitert (`RegisterSpeicherZustand` `'voll'` bzw. `'gesperrt'`, 9.1) – auch nach dem Räumen der Rohkopien. Verschwindet, sobald ein erneuter Versuch gelingt oder ein anderes Fenster das Register speichert. |
+| „Das Projektregister lässt sich weiterhin nicht speichern.“ | `src/bereiche/controlling/App.tsx` | „Erneut speichern“ ist wieder gescheitert. |
 
 ## 10. Bereich Leistungsnachweise
 

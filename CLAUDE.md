@@ -65,7 +65,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   ★-Markierung der Bereiche steht als Spiegel in der Mitgliedschaft (`markiert`); in den
   Leistungsnachweisen gilt ein anderswo markiertes Projekt als markiert (`markiertAnderswo`).
   `register.ts` Modell, Laden/Speichern,
-  `registerAendern`/`useRegister`; `abgleich.ts` reine Funktionen: `uebertragen` (Änderungen
+  `registerAendern`/`useRegister` (ob das letzte Speichern gelang: `useRegisterSpeicherZustand`;
+  ein ungespeicherter Stand wird bei jedem weiteren `registerAendern` erneut geschrieben,
+  `registerErneutSpeichern`); `abgleich.ts` reine Funktionen: `uebertragen` (Änderungen
   des Bereichs → Register, alter gegen neuer Stand), `abgleichen` (Unbekanntes eintragen, `Plan`
   für den Bereich; Mitgliedschaften lösen und ★ aus dem Bestand übernehmen nur bei `vollstaendig`
   – erster Abgleich nach dem Laden bzw. nach `ersetzt()` – und die ★ eines eben übernommenen,
@@ -86,7 +88,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Register; der Menüpunkt „Leistungsnachweise“ (`#/controlling/leistungsnachweise/…`) bindet
   `LeistungsnachweiseControlling` aus `src/bereiche/leistungsnachweise/controlling.tsx` ein. PIN in
   `domain/pin.ts` (`CONTROLLING_PIN`, Entsperrung je Sitzung im `sessionStorage`); Gestaltung in
-  `controlling.css` (Präfix `ct-`).
+  `controlling.css` (Präfix `ct-`). Lässt sich das Register nicht speichern, zeigt `App.tsx` über
+  jeder Ansicht „Projektregister nicht gespeichert.“ mit „Erneut speichern“.
 * `src/bereiche/leistungsnachweise/` – Schlüssel `leistungsnachweise.data.v1`: `domain/types.ts`
   (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis), `domain/rechte.ts` – die
   Rechte an einer Stelle, je **Zugang** (`'bereich'` | `'controlling'`): Der `StoreProvider` erhält
@@ -135,7 +138,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   (`menue.tsx`: Portal, bleibt im Fenster, Tastatur; eigene Menüs werden von `.card`/`.table-scroll`
   abgeschnitten); `tabellen.ts` (`tabellenBreiteBeobachten`, in `main.tsx`) lässt überbreite
   Tabellen quer scrollen (`table-scroll-quer`); `scrollen.ts` (`useNachObenBeiSeitenwechsel`)
-  hängt am `.content` jedes Bereichs. Dialoge immer über `Modal` (`ui.tsx`: Fokus beim Öffnen,
+  hängt am `.content` jedes Bereichs; `seitenleiste.ts` (`useSeitenleiste`) hält in jeder
+  `App.tsx` die aufklappbare Seitenleiste und schließt sie bei jedem Seitenwechsel (`hashchange`). Dialoge immer über `Modal` (`ui.tsx`: Fokus beim Öffnen,
   Tab bleibt im Dialog, Escape schließt nur den obersten, Fokus zurück an den Öffner); Elemente,
   die nur auf Klicks hören (Ablageflächen `.drop-zone`), mit `alsKnopf` tastaturbedienbar machen.
   `speicher.ts` verwaltet Rohkopien im `localStorage` (`rohkopieVorEinspielen`,
@@ -249,12 +253,14 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 * Gespeichert wird – in allen vier Bereichen – nur bei `ladeZustand === 'ok'`, und nur dann gleicht
   der Store mit dem Register ab: Nach einem Ladefehler oder bei einem Stand aus einer neueren
   Fassung zeigt der Bereich Demodaten (mit Hinweisleiste) und lässt den gespeicherten Stand
-  unberührt. Vor jeder Umstellung legt `ladeDaten` eine Rohkopie `<Schlüssel>.vor-fassung-<n>` an,
-  vor dem Einspielen einer Sicherung über einen unlesbaren Stand `rohkopieVorEinspielen` eine
-  `<Schlüssel>.vor-einspielen-<Zeitpunkt>`; „Gespeicherten Stand herunterladen“ liefert dann den
-  Rohtext statt der Demodaten. `speichereDaten` liefert `SpeicherZustand` und räumt bei vollem
+  unberührt. Vor jeder Umstellung legt `ladeDaten` eine Rohkopie `<Schlüssel>.vor-fassung-<n>` an.
+  Im Planlaufmanagement, in der Baubetriebsplanung und in der Projektsteuerung (nicht in den
+  Leistungsnachweisen) entsteht vor dem Einspielen einer Sicherung über einen unlesbaren Stand mit
+  `rohkopieVorEinspielen` eine `<Schlüssel>.vor-einspielen-<Zeitpunkt>`, und „Gespeicherten Stand
+  herunterladen“ im Dialog liefert dann den Rohtext statt der Demodaten. `speichereDaten` liefert `SpeicherZustand` und räumt bei vollem
   Speicher über `nachRaeumenSpeichern` (`src/shared/speicher.ts`) nach Bedarf diese Kopien – auch
-  die anderer Bereiche; das Register räumt ebenso.
+  die anderer Bereiche; das Register räumt ebenso und meldet sein Ergebnis über
+  `useRegisterSpeicherZustand` (Hinweis im Controlling).
 * Der localStorage-Schlüssel `planlauf-management.data.v1` bleibt unverändert. Neue Felder am
   Datenmodell sind optional oder werden in `migriere()` (`store/storage.ts`) nachgetragen – dann
   **`DATEN_VERSION`** (`domain/types.ts`) erhöhen: `migriere()` läuft nur, wenn die gespeicherte
@@ -293,8 +299,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Mitarbeiterin; mit einem anderen Namen erscheint der Hinweis zum Anmelden als Mitarbeiter.
   Demodaten gibt es nur, solange das Projektregister leer ist – nach dem Leeren des
   `localStorage` also zuerst `#/leistungsnachweise` öffnen, sonst beginnt der Bereich leer.
+  Abrechnung, Abschluss und Aufschläge prüft man im Controlling
+  (`#/controlling/leistungsnachweise/nachweise`).
 * Projektsteuerung: Wer „Lena Roth“ einträgt, sieht die Demo-Aufgaben als eigene To-Dos; mit
   einem anderen Namen zeigt die Übersicht keine.
-  Abrechnung, Abschluss und Aufschläge prüft man im Controlling
-  (`#/controlling/leistungsnachweise/nachweise`). „Angemeldet als“ liegt unter
-  `kaplan-benutzer.v1` – wer es zurücksetzen will, löscht diesen Schlüssel.
+* „Angemeldet als“ liegt unter `kaplan-benutzer.v1` – wer es zurücksetzen will, löscht diesen
+  Schlüssel.
