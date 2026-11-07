@@ -523,9 +523,8 @@ function ZeitraumDialog({
           {festWirkt && !nachweis.bisFest ? (
             <label className="checkbox">
               <input type="checkbox" checked={festlegen} onChange={(e) => setFestlegenWahl(e.target.checked)} />
-              {laeuft
-                ? 'Ende festlegen – der Leistungsnachweis läuft nicht mehr bis zum Abschluss'
-                : 'Ende festlegen – der Leistungsnachweis läuft nicht bis zum Abschluss'}
+              {/* Ohne festgelegtes Ende läuft ein offener Nachweis stets bis zum Abschluss */}
+              Ende festlegen – der Leistungsnachweis läuft nicht mehr bis zum Abschluss
             </label>
           ) : null}
           {festWirkt && nachweis.bisFest ? (
