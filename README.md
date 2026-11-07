@@ -214,7 +214,8 @@ dorthin zurück, wo der erste herkam (etwa *Sicherung abgleichen* nach *Sicherun
 **Einspielen**). Die Ablageflächen der Importe von
 Plänen, Funktionen, Projektbeteiligten und Leistungen sind per Tab erreichbar; Enter oder Leertaste
 öffnen die Dateiauswahl. Kurzmeldungen am unteren Rand (`src/shared/toast.tsx`) lesen
-Bildschirmleser vor (`role="status"`).
+Bildschirmleser vor, jede neue für sich, auch wenn eine ältere noch steht (`role="status"`,
+`aria-atomic="false"`).
 
 ## Funktionsumfang
 
@@ -1413,9 +1414,19 @@ auf das Register – auch einer ohne neuen Inhalt, etwa der Abgleich eines Berei
 Speichert ein anderes Fenster das Register – etwa, weil dort ein Projekt gelöscht und so Platz
 geschaffen wurde –, übernimmt dieses Fenster dessen Stand, trägt seine noch nicht gespeicherten
 Änderungen darauf nach und speichert erneut (`eigeneAenderungenNachziehen`): je Projekt, Person und
-Feld; bei Widerspruch gilt die eigene Änderung, eine Löschung geht jeder Änderung vor. Gelingt das
-Speichern auf einem dieser Wege, verschwindet der Hinweis mit der Meldung **„Projektregister
-gespeichert.“**; stand der Fokus auf *Erneut speichern*, geht er an die Überschrift der Seite.
+Feld; bei Widerspruch gilt die eigene Änderung, eine Löschung geht jeder Änderung vor – hat die
+andere Seite ein gelöschtes Projekt bzw. eine gelöschte Person inzwischen in einen Bereich
+übernommen, löscht auch dieser es. Was ein Bereich in diesem Fenster neu eingetragen hat, trägt sein
+nächster Abgleich wieder ein und verknüpft es dabei mit einem Projekt gleicher Nummer bzw. einer
+Person gleicher E-Mail-Adresse, die das andere Fenster eingetragen hat – so entstehen keine Doppel.
+Halten zwei Fenster zugleich nicht Gespeichertes, ziehen beide nach; wessen Stand dabei
+überschrieben wird, zieht noch einmal nach. Gelingt das Speichern auf einem dieser Wege, verschwindet
+der Hinweis mit der Meldung **„Projektregister gespeichert.“**; stand der Fokus auf *Erneut
+speichern*, geht er an die Überschrift der Seite. Hat das andere Fenster einen Stand gespeichert,
+den dieses nicht lesen kann (unlesbar oder aus einer neueren Fassung von KaPlan), gilt jener, und
+die nicht gespeicherten Änderungen entfallen – dann meldet das Controlling **„Nicht gespeicherte
+Änderungen am Projektregister verworfen – …“**. Schreiben zwei Fenster sonst im selben Augenblick,
+gilt wie bisher der zuletzt geschriebene Stand.
 
 ## Aufbau des Codes
 
@@ -1450,7 +1461,7 @@ src/
                  Controls, alsKnopf …
     icons.tsx    Strichsymbole
     logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
-    toast.tsx    Kurzmeldungen (role="status")
+    toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
     menue.tsx    Aufklappmenü an einem Knopf (AufklappMenue): Portal, bleibt im Fenster, Tastatur
     tabellen.ts  Breite Tabellen scrollen quer (tabellenBreiteBeobachten, Klasse table-scroll-quer)
     scrollen.ts  Eine neue Seite beginnt oben (useNachObenBeiSeitenwechsel)

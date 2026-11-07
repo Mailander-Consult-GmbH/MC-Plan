@@ -294,7 +294,8 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   `minmax(0, 1fr)`, damit breiter Inhalt den Dialog auf schmalen Bildschirmen nicht
   verbreitert. `Callout` nimmt eine `role` („alert“ für Hinweise, die erst auf eine Handlung hin
   erscheinen). Kurzmeldungen (`ToastProvider` in `src/shared/toast.tsx`) stehen in `.toast-wrap`
-  mit `role="status"` – Bildschirmleser lesen sie vor, ohne dass der Fokus wandert. Die Ablagefläche `.drop-zone` der Import-Dialoge `PlaeneImport.tsx`,
+  mit `role="status"` und `aria-atomic="false"` – Bildschirmleser lesen jede neue Meldung für sich
+  vor, auch wenn eine ältere noch steht, ohne dass der Fokus wandert. Die Ablagefläche `.drop-zone` der Import-Dialoge `PlaeneImport.tsx`,
   `RollenImport.tsx` (`src/bereiche/planlauf/pages/projekt/`),
   `src/bereiche/projektsteuerung/components/BeteiligteImport.tsx` und
   `src/bereiche/leistungsnachweise/components/ImportDialog.tsx` ist über `alsKnopf`
@@ -1124,9 +1125,28 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   je Bereich und Feld –; bei Widerspruch gilt die eigene Änderung, eine
   Löschung geht jeder Änderung vor, Personen ohne Projekt entfallen;
   Löschvermerke: die fremden ohne die hier erledigten, dazu die hier neuen).
-  Lässt sich auch das nicht speichern, bleibt der Stand ungespeichert; stammt
-  der neue Stand aus einer neueren Fassung oder ist er unlesbar, gilt er, und
-  die nicht gespeicherten Änderungen entfallen.
+  Neu nachgezogen werden nur Projekte des Controllings (`herkunft`
+  `'controlling'`): Was ein Bereich neu eingetragen hat – Projekte seiner
+  Herkunft, Personen –, steht in seinem Bestand, und sein nächster Abgleich
+  trägt es wieder ein, verknüpft mit einem Projekt gleicher Nummer bzw. einer
+  Person gleicher E-Mail aus dem fremden Stand (was das Controlling in diesem
+  Fenster an einem solchen Projekt geändert hat, entfällt dabei). Hat eine Seite ein Projekt bzw.
+  eine Person gelöscht, die die andere seit `basis` in Bereiche übernommen hat,
+  ergänzt die Funktion deren Kennungen als Löschvermerk – bei Projekten auch
+  noch offene Mitgliedschaften, denn der Bereich legt das Projekt an, bevor
+  sein nächster Abgleich die Übernahme einträgt. Verglichen und gespeichert wird
+  der nachgezogene Stand in der Form von `aufbereiten`; geschrieben wird er mit
+  `nachgezogenAuf`, der Kennung des fremden Stands (`kennung`, FNV-1a über
+  dessen JSON; `aufbereiten` lässt das Feld beim Laden fallen). Bringt das
+  nächste `storage`-Ereignis – im Ereignis selbst oder im Speicher – einen Stand
+  mit derselben Kennung, hat ein zweites Fenster zugleich auf denselben Stand
+  nachgezogen und das Schreiben dieses Fensters überschrieben; dann zieht es
+  seine Änderungen gegenüber jenem Stand noch einmal nach (`nachgezogen` im
+  Stand des Fensters). Lässt sich auch das nicht speichern, bleibt der Stand
+  ungespeichert; stammt der neue Stand aus einer neueren Fassung oder ist er
+  unlesbar, gilt er, und die nicht gespeicherten Änderungen entfallen (Meldung
+  im Controlling, 9.4). Schreiben zwei Fenster sonst im selben Augenblick, gilt
+  der zuletzt geschriebene Stand.
 * `registerAendern` ändert das Register über eine Funktion und benachrichtigt
   nur bei einer tatsächlichen Änderung (bzw. wenn sich das Ergebnis des
   Speicherns ändert); `useRegister` liefert es für die Oberfläche
@@ -1307,7 +1327,11 @@ das Speichern – über den Knopf, einen weiteren Schreibzugriff oder nachdem ei
 anderes Fenster gespeichert hat (9.1) –, verschwindet der Hinweis mit der Meldung
 „Projektregister gespeichert.“; fiele der Fokus dabei auf `body`, setzt ihn
 `RegisterSpeicherHinweis` auf die Überschrift der Kopfzeile (`h1.ct-ueberschrift`,
-`tabIndex={-1}`, ohne Fokusrahmen).
+`tabIndex={-1}`, ohne Fokusrahmen). Hat das andere Fenster einen Stand gespeichert,
+den dieses nicht lesen kann (`useRegisterZustand` nicht `'ok'`), entfallen die
+Änderungen; statt der Erfolgsmeldung erscheint dann „Nicht gespeicherte Änderungen
+am Projektregister verworfen – ein anderes Fenster hat einen Stand gespeichert, den
+diese Seite nicht lesen kann.“
 
 Router: `src/bereiche/controlling/lib/router.ts`; unbekannte Adressen führen auf
 die Projekte. Die Aktionen auf dem Register stehen als reine Funktionen in
@@ -1330,9 +1354,10 @@ beim nächsten Abgleich.
 | „Projekt gelöscht.“ | `src/bereiche/controlling/pages/Projekte.tsx` | Kein Fehler: Löschen nach der Rückfrage „Projekt löschen?“ („Endgültig löschen“). |
 | „„…“ übernommen – mit … Projektbeteiligten.“ bzw. „„…“ übernommen.“ | `src/gemeinsam/ProjektBereiche.tsx` | Kein Fehler: „Übernehmen in …“ in einem Bereich. |
 | „Das Projektregister ließ sich nicht lesen. …“ bzw. „Das Projektregister stammt aus einer neueren Fassung von KaPlan. …“ | `src/bereiche/controlling/App.tsx` | Gespeichertes Register unlesbar bzw. `version` größer als `REGISTER_VERSION`. |
-| „Projektregister nicht gespeichert. …; Änderungen an den Projekten gehen beim Schließen der Seite verloren.“ | `src/bereiche/controlling/App.tsx` | Das letzte Speichern des Registers ist gescheitert (`RegisterSpeicherZustand` `'voll'` bzw. `'gesperrt'`, 9.1) – auch nach dem Räumen der Rohkopien. Verschwindet, sobald ein erneuter Versuch gelingt. Speichert ein anderes Fenster das Register, trägt das Fenster seine nicht gespeicherten Änderungen auf dessen Stand nach und versucht es erneut (`eigeneAenderungenNachziehen`); scheitert auch das, bleibt der Hinweis. |
+| „Projektregister nicht gespeichert. …; Änderungen an den Projekten gehen beim Schließen der Seite verloren.“ | `src/bereiche/controlling/App.tsx` | Das letzte Speichern des Registers ist gescheitert (`RegisterSpeicherZustand` `'voll'` bzw. `'gesperrt'`, 9.1) – auch nach dem Räumen der Rohkopien. Verschwindet, sobald ein erneuter Versuch gelingt. Speichert ein anderes Fenster das Register, trägt das Fenster seine nicht gespeicherten Änderungen auf dessen Stand nach und versucht es erneut (`eigeneAenderungenNachziehen`); scheitert auch das, bleibt der Hinweis. Ist dessen Stand unlesbar oder aus einer neueren Fassung, entfallen die Änderungen („Nicht gespeicherte Änderungen am Projektregister verworfen – …“). |
 | „Das Projektregister lässt sich weiterhin nicht speichern.“ | `src/bereiche/controlling/App.tsx` | „Erneut speichern“ ist wieder gescheitert. |
 | „Projektregister gespeichert.“ | `src/bereiche/controlling/App.tsx` | Kein Fehler: Nach dem Hinweis „Projektregister nicht gespeichert.“ ließ sich das Register wieder speichern. |
+| „Nicht gespeicherte Änderungen am Projektregister verworfen – ein anderes Fenster hat einen Stand gespeichert, den diese Seite nicht lesen kann.“ | `src/bereiche/controlling/App.tsx` | Während der Hinweis „Projektregister nicht gespeichert.“ stand, hat ein anderes Fenster das Register gespeichert – unlesbar oder aus einer neueren Fassung von KaPlan (`registerZustand`, 9.1). Dessen Stand gilt; neu laden. |
 
 ## 10. Bereich Leistungsnachweise
 

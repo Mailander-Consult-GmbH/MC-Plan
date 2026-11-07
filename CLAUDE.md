@@ -69,7 +69,10 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   ein ungespeicherter Stand wird bei jedem weiteren `registerAendern` erneut geschrieben,
   `registerErneutSpeichern`; speichert ein anderes Fenster, trägt der `storage`-Hörer ihn auf
   dessen Stand nach und speichert erneut, `eigeneAenderungenNachziehen` – neue Registerfelder
-  gehen dort ohne Weiteres mit, sie werden je Feld zusammengeführt); `abgleich.ts` reine Funktionen: `uebertragen` (Änderungen
+  gehen dort ohne Weiteres mit, sie werden je Feld zusammengeführt; neu nachgezogen werden nur
+  Projekte des Controllings, was ein Bereich eingetragen hat, trägt sein Abgleich wieder ein;
+  Löschvermerke ergänzt sie um Übernahmen der anderen Seite; zogen zwei Fenster zugleich nach,
+  erkennt das überschriebene es an `nachgezogenAuf` und zieht noch einmal nach); `abgleich.ts` reine Funktionen: `uebertragen` (Änderungen
   des Bereichs → Register, alter gegen neuer Stand), `abgleichen` (Unbekanntes eintragen, `Plan`
   für den Bereich; Mitgliedschaften lösen und ★ aus dem Bestand übernehmen nur bei `vollstaendig`
   – erster Abgleich nach dem Laden bzw. nach `ersetzt()` – und die ★ eines eben übernommenen,
@@ -92,7 +95,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `domain/pin.ts` (`CONTROLLING_PIN`, Entsperrung je Sitzung im `sessionStorage`); Gestaltung in
   `controlling.css` (Präfix `ct-`). Lässt sich das Register nicht speichern, zeigt `App.tsx` über
   jeder Ansicht „Projektregister nicht gespeichert.“ mit „Erneut speichern“ (gelingt es wieder:
-  „Projektregister gespeichert.“, ein verlorener Fokus geht an die Überschrift).
+  „Projektregister gespeichert.“, ein verlorener Fokus geht an die Überschrift; ist der Stand
+  eines anderen Fensters unlesbar, meldet es das Verwerfen).
 * `src/bereiche/leistungsnachweise/` – Schlüssel `leistungsnachweise.data.v1`: `domain/types.ts`
   (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis), `domain/rechte.ts` – die
   Rechte an einer Stelle, je **Zugang** (`'bereich'` | `'controlling'`): Der `StoreProvider` erhält
