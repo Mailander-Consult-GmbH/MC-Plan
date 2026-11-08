@@ -1,48 +1,52 @@
 /**
  * Ein Leistungsnachweis im Controlling – der Arbeitsbereich auf der Seite
- * eines Projekts (Projekt.tsx). Aufgabe des Controllings: aus den gebuchten
- * Leistungen und den Leistungstexten der Mitarbeiter den Leistungsnachweis
- * erstellen, wo nötig mit Aufschlag.
+ * eines Projekts (Projekt.tsx). Aufgabe des Controllings: prüfen, ob alle
+ * eingetragen und bestätigt haben, den Leistungsnachweis prüfen, wo nötig mit
+ * Aufschlag, und ihn abschließen – wie bisher die Excel je Projekt, die am
+ * Monatsende abgeschickt oder offen gelassen wird. Einen Rhythmus oder eine
+ * Entscheidung „weiterlaufen lassen“ gibt es nicht: Ohne Abschluss läuft der
+ * offene Nachweis einfach weiter.
  *
- * Oben die Leiste: Auswahl des Nachweises (alle des Projekts, der jüngste
- * zuerst), sein Stand („Fällig“, wenn er Leistungen aus einem schon
- * vergangenen Monat enthält, `nachweisFaellig`), „Vorschau“, „Drucken / PDF“,
- * „Excel“, das Menü „Mehr“ (Zeitraum ändern, Neuer Leistungsnachweis,
- * Aufschläge zurücksetzen, Wieder öffnen, Löschen) und „Leistungsnachweis
- * erstellen“ – das schließt ihn ab und schreibt seinen Stand fest. Einen
- * Rhythmus gibt es nicht: Die Rückfrage legt den Umfang fest, „Leistungen bis
- * einschließlich“ (Vorschlag `vorgabeEnde`: Ende des Vormonats, sonst der
- * letzte Tag mit Leistungen; dazu „Ende Vormonat“ und „Heute“); spätere
- * Leistungen bleiben offen und kommen in den nächsten Leistungsnachweis. Sie
- * nennt Umfang und Stunden, fehlende Bestätigungen – erstellen bleibt
- * möglich –, überholte Texte und Bestätigungen, die damit erlöschen
- * (`grenzFolgen`).
+ * Oben die Leiste: „Offener Leistungsnachweis“ bzw. die Überschrift des
+ * abgeschlossenen, sein Zeitraum (`nachweisZeitraumText`) und Raster,
+ * „Vorschau“, bei abgeschlossenen „Drucken / PDF“ und „Excel“, und das Menü
+ * „Mehr“ (offen: Drucken / PDF und Excel des offenen Stands, Zeitraum ändern;
+ * Neuer Leistungsnachweis, Aufschläge zurücksetzen, Wieder öffnen, Löschen).
  *
- * Darunter „Mitarbeiter und Bestätigungen“ (BestaetigungsStand.tsx) und eine
- * Tabelle: je Zeile (Tag, Woche oder Monat) Datum, Bearbeiter, der
- * Leistungstext – bearbeitbar, solange der Nachweis offen ist
- * (Leistungstexte.tsx, `ZeilenText`: aus den gemeinsamen Texten der
- * Mitarbeiter, Badge „Text der Mitarbeiter“; von Hand bearbeitet bleibt er
- * stehen, neue Leistungen bzw. ein geänderter Text der Mitarbeiter werden zum
- * Ergänzen angeboten) –, die erfassten Stunden, der Aufschlag in ± Stunden
- * und die abgerechneten Stunden; ab zwei Abschnitten je Abschnitt
- * (`mitAbschnittsspalten`). Wer „Abgerechnet“ eingibt, setzt den Aufschlag als
- * Differenz (`aufschlagFuerAbgerechnet`). Unter der Tabelle der Aufschlag auf
- * den ganzen Nachweis (`GesamtAufschlagFeld`, ± Std. oder ± %): Er wird
- * anteilig nach den abgerechneten Stunden auf die Zeilen verteilt, jede Zeile
- * nennt ihren Anteil („anteilig“); eine eigene Zeile im Druck gibt es nicht.
- * Erfasste Stunden bleiben, wie sie sind; Druck und Excel zeigen die
- * abgerechneten. Darunter die Bemerkung. Gibt es nicht erfasste Leistungen aus schon abgerechneten
- * Zeiträumen und ist dies der laufende Nachweis, teilt ein Hinweis das mit;
- * übernommen werden sie erst nach Bestätigung (`leistungenNachreichen`).
- * Abgeschlossene Nachweise zeigen ihren Stand und lassen sich nur lesen. Alle
+ * Ein offener Nachweis steht in drei Schritten (`SchrittKopf`):
+ * 1. „Haben alle eingetragen und bestätigt?“ – `MitarbeiterBestaetigungen`
+ *    (BestaetigungsStand.tsx), gezählt bis zum in Schritt 3 gewählten Ende.
+ * 2. „Prüfen – so geht der Leistungsnachweis raus“ – die Tabelle: je Zeile
+ *    (Tag, Woche oder Monat) Datum, Bearbeiter, der Leistungstext
+ *    (Leistungstexte.tsx, `ZeilenText`: zunächst zum Lesen, „✎ Korrigieren“
+ *    macht ihn bearbeitbar; aus den gemeinsamen Texten der Mitarbeiter, Badge
+ *    „Text der Mitarbeiter“; von Hand bearbeitet bleibt er stehen, neue
+ *    Leistungen bzw. ein geänderter Text der Mitarbeiter werden zum Ergänzen
+ *    angeboten) –, die erfassten Stunden, der Aufschlag in ± Stunden je Zeile
+ *    und die abgerechneten Stunden; ab zwei Abschnitten je Abschnitt
+ *    (`mitAbschnittsspalten`). Wer „Abgerechnet“ eingibt, setzt den Aufschlag
+ *    als Differenz (`aufschlagFuerAbgerechnet`). Unter der Tabelle der
+ *    Aufschlag auf den ganzen Nachweis (`GesamtAufschlagFeld`, ± Std. oder
+ *    ± %): anteilig nach den abgerechneten Stunden auf die Zeilen verteilt,
+ *    jede Zeile nennt ihren Anteil („anteilig“), eine eigene Zeile im Druck
+ *    gibt es nicht. Darunter die Bemerkung.
+ * 3. „Abschließen und PDF“ (`AbschliessenSchritt`): bis wann – jedes
+ *    Monatsende oder bis heute –, was abgerechnet wird, was im nächsten
+ *    weiterläuft, wer nicht bestätigt hat (dann nur mit „Trotzdem
+ *    abschließen“); danach öffnet sich der Druckdialog, und die Seite zeigt
+ *    den abgeschlossenen Nachweis.
+ *
+ * Gibt es nicht erfasste Leistungen aus schon abgerechneten Zeiträumen und
+ * ist dies der laufende Nachweis, teilt ein Hinweis das mit; übernommen
+ * werden sie erst nach Bestätigung (`leistungenNachreichen`). Abgeschlossene
+ * Nachweise zeigen ihren Stand ohne Schritte und lassen sich nur lesen. Alle
  * Änderungen laufen über den Store, der den Controlling-Zugang prüft.
  */
 import { useState, type ReactNode } from 'react';
 import { addDays, today, wochentag } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Field, Modal, Segmented, TextInput } from '../../../../shared/ui';
+import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Modal, Segmented } from '../../../../shared/ui';
 import { Druckblatt } from '../../components/Druckblatt';
 import { NachweisDialog, NichtErfasstHinweis } from '../../components/NachweisDialog';
 import { Textfeld } from '../../components/Textfeld';
@@ -58,6 +62,8 @@ import {
 import { nachweisExportieren } from '../../domain/export';
 import {
   abgerechnetEingebbar,
+  abschlussEnden,
+  abschlussVorschlag,
   abschlussZeitraum,
   anzahlAufschlaege,
   aufschlagEingabe,
@@ -68,10 +74,7 @@ import {
   leistungenDesNachweises,
   mitAbschnittsspalten,
   nachweisAbschliessenAnwenden,
-  nachweisFaellig,
   nachweisSummen,
-  nachweisTitel,
-  nachweiseVon,
   nachweisZeilen,
   nichtAbgerechnet,
   periodentexteVon,
@@ -82,13 +85,12 @@ import {
   ueberholtHinweis,
   ueberholtRueckfrage,
   ueberholteZeilen,
-  vorgabeEnde,
+  type AbschlussEnde,
   type GesamtAufschlagUebersicht,
   type UeberholteZeile,
 } from '../../domain/nachweis';
 import { darf, eigeneLeistungen, leistungenDerZeile } from '../../domain/rechte';
 import {
-  NACHWEIS_STATUS_LABEL,
   OHNE_ABSCHNITT,
   RASTER_KURZ,
   RASTER_LABEL,
@@ -102,11 +104,11 @@ import {
   type Projekt,
   type Raster,
 } from '../../domain/types';
-import { kurzDatum, langDatum, monatsanfang, runden, stundenText } from '../../domain/zeitraum';
+import { kurzDatum, langDatum, monatText, runden, stundenText, zeitraumText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { FehlendeBestaetigungen, MitarbeiterBestaetigungen } from './BestaetigungsStand';
-import { MehrMenue, StundenFeld, aufschlagFeld, aufschlagText, prozentFeld } from './hilfen';
+import { MehrMenue, SchrittKopf, StundenFeld, aufschlagFeld, aufschlagText, prozentFeld } from './hilfen';
 import { ZeilenText } from './Leistungstexte';
 import './controlling.css';
 
@@ -185,7 +187,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
     data,
     zugang,
     updateNachweis,
-    nachweisAbschliessen,
     nachweisOeffnen,
     deleteNachweis,
     aufschlagSetzen,
@@ -201,17 +202,22 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
   const [vorschau, setVorschau] = useState(false);
   const [zeitraumDialog, setZeitraumDialog] = useState(false);
   const [neuerNachweis, setNeuerNachweis] = useState(false);
-  const [abschliessen, setAbschliessen] = useState(false);
-  // „Leistungen bis einschließlich“ in der Rückfrage zum Erstellen
-  const [bisWahl, setBisWahl] = useState('');
   const [oeffnen, setOeffnen] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
   const [zuruecksetzen, setZuruecksetzen] = useState(false);
   const [nachreichen, setNachreichen] = useState(false);
   const [excelLaeuft, setExcelLaeuft] = useState(false);
+  // Ende des Abschlusses (Schritt 3) – auch Schritt 1 zählt die Bestätigungen bis dahin
+  const [endeWahl, setEndeWahl] = useState<string | null>(() => abschlussVorschlag(n, today()));
 
   const heute = today();
   const abgeschlossen = n.status === 'abgeschlossen';
+  // Die Wahl bleibt nur, solange sie wählbar ist (etwa nach „Zeitraum ändern“)
+  const ende = abgeschlossen
+    ? null
+    : abschlussEnden(n, heute).some((e) => e.bis === endeWahl)
+      ? endeWahl
+      : abschlussVorschlag(n, heute);
   const bearbeitbar = !abgeschlossen && darf(zugang, 'nachweisVerwalten');
   const fassung = nachweisFassung(data, n, projekt, 'abgerechnet');
   const { zeilen } = fassung;
@@ -219,7 +225,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
   const spalten = mitAbschnittsspalten(abschnitte);
   const summen = nachweisSummen(zeilen);
   const veraltet = standVeraltet(data, n);
-  const faellig = nachweisFaellig(data, n, heute);
   const imZeitraum = leistungenDesNachweises(data, n);
   // Nicht erfasste Leistungen – nur am laufenden Nachweis (nach dem letzten abgeschlossenen)
   const plan = abgeschlossen ? null : nichtAbgerechnet(data, projekt.id, heute);
@@ -233,8 +238,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
     const m = mitarbeiterVon.get(id);
     return m ? mitarbeiterName(m) || m.kuerzel : '?';
   };
-  // Alle Nachweise des Projekts für die Auswahl, der jüngste zuerst
-  const alle = [...nachweiseVon(data, projekt.id)].reverse();
 
   // Aufschläge, die gerade nicht wirken: ihre Zeile fehlt (etwa nach einem Rasterwechsel) oder ihr Abschnitt
   const zeilenSchluessel = new Set(zeilen.map((z) => z.schluessel));
@@ -294,38 +297,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
   };
 
   /* Rückfragen */
-  // Erstellen: Umfang bis zum gewählten Tag – gerechnet wie im Store, mit Stunden und Leistungen des Ergebnisses
-  const endeVormonat = addDays(monatsanfang(heute), -1);
-  const bisGueltig = /^\d{4}-\d{2}-\d{2}$/.test(bisWahl) && bisWahl >= n.von;
-  const abschluss = abschlussZeitraum(data, n, heute, abschliessen && bisGueltig ? bisWahl : undefined);
-  const nachErstellen = abschliessen && bisGueltig ? erstellenVorschau(data, n.id, bisWahl) : null;
-  const erstellt = nachErstellen?.nachweise.find((x) => x.id === n.id) ?? null;
-  const summenErstellt = nachErstellen && erstellt ? nachweisSummen(nachweisZeilen(nachErstellen, erstellt)) : summen;
-  const leistungenErstellt = nachErstellen && erstellt ? leistungenDesNachweises(nachErstellen, erstellt).length : imZeitraum.length;
-  // Endet der Nachweis mitten in einem Zeitraum der gemeinsamen Leistungstexte, bildet der Rest einen eigenen
-  const restAb = erfassungsPeriodeVon(data, n.projektId, abschluss.bis).bis > abschluss.bis ? addDays(abschluss.bis, 1) : null;
-  const abschliessenText = [
-    `Der Leistungsnachweis umfasst ${anzahl(leistungenErstellt, 'Leistung', 'Leistungen')} vom ${langDatum(n.von)} bis ${langDatum(
-      abschluss.bis,
-    )} mit ${stundenText(summenErstellt.abgerechnet)} abgerechneten Stunden${
-      summenErstellt.aufschlag ? ` (erfasst ${stundenText(summenErstellt.erfasst)}, Aufschlag ${aufschlagText(summenErstellt.aufschlag)})` : ''
-    }. Er wird abgeschlossen und sein Stand festgeschrieben; danach stehen Drucken / PDF und Excel bereit, „Wieder öffnen“ hebt den Abschluss auf.`,
-    abschluss.spaetere.length
-      ? `${anzahl(abschluss.spaetere.length, 'spätere Leistung', 'spätere Leistungen')} (${stundenText(stundenVon(abschluss.spaetere))} Std.) ${
-          abschluss.spaetere.length === 1 ? 'bleibt' : 'bleiben'
-        } offen und ${abschluss.spaetere.length === 1 ? 'kommt' : 'kommen'} in den nächsten Leistungsnachweis.`
-      : '',
-    restAb
-      ? `Er endet mitten in einem Zeitraum der gemeinsamen Leistungstexte – für die Tage ab ${langDatum(restAb)} verfassen die Mitarbeiter einen eigenen Text.`
-      : '',
-    ueberholtRueckfrage(ueberholt) ?? '',
-    // Bestätigungen, die mit geänderten Grenzen erlöschen – etwa mit dem neuen Teil (der Satz zum eigenen Text steht oben)
-    nachErstellen ? (erloschenHinweis(grenzFolgen(data, nachErstellen), data.mitarbeiter) ?? '') : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-  // Wer für die Monate des gewählten Umfangs noch nicht bzw. nicht erneut bestätigt hat
-  const fehlend = abschliessen ? fehlendeBestaetigungen(data, { ...n, bis: abschluss.bis }) : [];
   const vergleich = standVergleich(data, n);
   const oeffnenText = vergleich.veraltet
     ? `Seit dem Abschluss haben sich Leistungen geändert: festgeschrieben sind ${stundenText(vergleich.stand.erfasst)} Std. erfasst und ${stundenText(
@@ -369,44 +340,37 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
 
   return (
     <div className="stack">
-      {/* Leiste: welcher Nachweis, sein Stand und was sich damit tun lässt */}
+      {/* Leiste: der Nachweis, sein Stand und was sich damit tun lässt – Seltenes im Menü „Mehr“ */}
       <div className="ln-co-leiste">
-        <div className="row wrap ln-co-nachweiswahl">
-          <label htmlFor={wahlId} className="ln-co-wahl-label">
-            Leistungsnachweis
-          </label>
-          <select
-            id={wahlId}
-            className="select"
-            value={n.id}
-            onChange={(e) => navigate({ view: 'abrechnung', projektId: projekt.id, nachweisId: e.target.value })}
-          >
-            {alle.map((x) => (
-              <option key={x.id} value={x.id}>
-                {nachweisTitel(x)} · {NACHWEIS_STATUS_LABEL[x.status]}
-              </option>
-            ))}
-          </select>
-          {faellig ? (
-            <span title="Enthält Leistungen aus einem schon vergangenen Monat – der Leistungsnachweis kann erstellt werden">
-              <Badge ton="orange">Fällig</Badge>
-            </span>
-          ) : null}
+        <div className="ln-co-nachweiskopf">
+          <h3 className="ln-co-nachweistitel">{abgeschlossen ? fassung.titel : 'Offener Leistungsnachweis'}</h3>
+          <span className="small muted">{kopfSub}</span>
           {veraltet ? <Badge ton="orange">geändert</Badge> : null}
         </div>
         <div className="row wrap ln-co-aktionen">
+          {abgeschlossen ? (
+            <span className="ln-co-erstellt">
+              <Icon name="check" size={14} /> Abgeschlossen {zeitpunkt(n.abgeschlossen)}
+            </span>
+          ) : null}
           <button type="button" className="btn btn-outline" onClick={() => setVorschau(true)}>
             <Icon name="suche" size={14} /> Vorschau
           </button>
-          <button type="button" className="btn btn-outline" onClick={() => nachweisDrucken(data, n, projekt)}>
-            <Icon name="plan" size={14} /> Drucken / PDF
-          </button>
-          <button type="button" className="btn btn-outline" disabled={excelLaeuft} onClick={() => void excel()}>
-            <Icon name="export" size={14} /> {excelLaeuft ? 'Excel …' : 'Excel'}
-          </button>
+          {abgeschlossen ? (
+            <>
+              <button type="button" className="btn btn-primary" onClick={() => nachweisDrucken(data, n, projekt)}>
+                <Icon name="plan" size={14} /> Drucken / PDF
+              </button>
+              <button type="button" className="btn btn-outline" disabled={excelLaeuft} onClick={() => void excel()}>
+                <Icon name="export" size={14} /> {excelLaeuft ? 'Excel …' : 'Excel'}
+              </button>
+            </>
+          ) : null}
           <MehrMenue
             label="Weitere Aktionen zum Leistungsnachweis"
             eintraege={[
+              { key: 'drucken', label: 'Drucken / PDF (noch offen) …', zeigen: !abgeschlossen, onWaehle: () => nachweisDrucken(data, n, projekt) },
+              { key: 'excel', label: 'Excel (noch offen)', zeigen: !abgeschlossen, onWaehle: () => void excel() },
               { key: 'zeitraum', label: 'Zeitraum ändern …', zeigen: !abgeschlossen, onWaehle: () => setZeitraumDialog(true) },
               { key: 'neu', label: 'Neuer Leistungsnachweis …', onWaehle: () => setNeuerNachweis(true) },
               {
@@ -419,23 +383,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
               { key: 'loeschen', label: 'Leistungsnachweis löschen …', gefahr: true, onWaehle: () => setLoeschen(true) },
             ]}
           />
-          {abgeschlossen ? (
-            <span className="ln-co-erstellt">
-              <Icon name="check" size={14} /> Abgeschlossen {zeitpunkt(n.abgeschlossen)}
-            </span>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                // Ein von Hand festgelegtes Ende ist vorgeschlagen, sonst das Ende des Vormonats bzw. der letzte Tag mit Leistungen
-                setBisWahl(n.bisFest ? n.bis : vorgabeEnde(data, n, heute));
-                setAbschliessen(true);
-              }}
-            >
-              <Icon name="check" size={14} /> Leistungsnachweis erstellen
-            </button>
-          )}
         </div>
       </div>
 
@@ -474,21 +421,26 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
         </Callout>
       ) : null}
 
-      <MitarbeiterBestaetigungen nachweis={n} mitarbeiter={fassung.mitarbeiter} />
+      <MitarbeiterBestaetigungen nachweis={n} mitarbeiter={fassung.mitarbeiter} schritt={abgeschlossen ? undefined : 1} bis={ende} />
 
       <Card>
-        <CardHeader
-          titel={fassung.titel}
-          sub={kopfSub}
-          actions={
-            !abgeschlossen && spalten ? (
-              <label className="checkbox small" title="Je Zeile auch Abschnitte ohne Stunden und „ohne Abschnitt“ zeigen – für Aufschläge dort">
-                <input type="checkbox" checked={alleAbschnitte} onChange={(e) => setAlleAbschnitte(e.target.checked)} />
-                Alle Abschnitte
-              </label>
-            ) : undefined
-          }
-        />
+        {abgeschlossen ? (
+          <CardHeader titel={fassung.titel} sub={kopfSub} />
+        ) : (
+          <SchrittKopf
+            nr={2}
+            titel="Prüfen – so geht der Leistungsnachweis raus"
+            sub="Texte bei Bedarf korrigieren (✎), Aufschlag je Zeile oder auf den ganzen Nachweis."
+            actions={
+              spalten ? (
+                <label className="checkbox small" title="Je Zeile auch Abschnitte ohne Stunden und „ohne Abschnitt“ zeigen – für Aufschläge dort">
+                  <input type="checkbox" checked={alleAbschnitte} onChange={(e) => setAlleAbschnitte(e.target.checked)} />
+                  Alle Abschnitte
+                </label>
+              ) : undefined
+            }
+          />
+        )}
         {zeilen.length === 0 ? (
           <EmptyState
             icon="stunden"
@@ -606,6 +558,10 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
         </div>
       </Card>
 
+      {bearbeitbar ? (
+        <AbschliessenSchritt projekt={projekt} nachweis={n} bis={ende} onBis={setEndeWahl} ueberholt={ueberholt} navigate={navigate} />
+      ) : null}
+
       {vorschau ? (
         <Modal titel="Vorschau" sub={fassung.titel} wide onClose={() => setVorschau(false)}>
           <Druckblatt inhalt={nachweisHtml(data, n, projekt)} />
@@ -614,74 +570,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
 
       {zeitraumDialog ? <NachweisDialog projekt={projekt} nachweis={n} onClose={() => setZeitraumDialog(false)} /> : null}
       {neuerNachweis ? <NachweisDialog projekt={projekt} onClose={() => setNeuerNachweis(false)} navigate={navigate} /> : null}
-
-      {abschliessen ? (
-        // Wie ConfirmDialog, dazu die fehlenden Bestätigungen als Liste – erstellen bleibt möglich
-        <Modal
-          titel="Leistungsnachweis erstellen?"
-          sub={fassung.titel}
-          onClose={() => setAbschliessen(false)}
-          footer={
-            <>
-              <button type="button" className="btn" onClick={() => setAbschliessen(false)}>
-                Abbrechen
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!bisGueltig}
-                onClick={() => {
-                  nachweisAbschliessen(n.id, bisWahl);
-                  toast(
-                    `Leistungsnachweis erstellt und abgeschlossen – Leistungen bis ${langDatum(abschluss.bis)}${
-                      abschluss.spaetere.length
-                        ? `; ${anzahl(abschluss.spaetere.length, 'spätere Leistung bleibt', 'spätere Leistungen bleiben')} für den nächsten offen`
-                        : ''
-                    }.`,
-                  );
-                  setAbschliessen(false);
-                }}
-              >
-                Erstellen
-              </button>
-            </>
-          }
-        >
-          <div className="stack" style={{ gap: 12 }}>
-            <Field
-              label="Leistungen bis einschließlich"
-              hint={`Der Leistungsnachweis beginnt am ${langDatum(n.von)}${
-                n.bisFest ? `; sein Ende ist auf den ${langDatum(n.bis)} festgelegt, ein früherer Tag kürzt ihn` : ''
-              }. Spätere Leistungen bleiben offen und kommen in den nächsten.`}
-            >
-              <div className="row wrap ln-co-bis">
-                <TextInput
-                  type="date"
-                  value={bisWahl}
-                  onChange={setBisWahl}
-                  min={n.von}
-                  max={n.bis > heute ? n.bis : heute}
-                  aria-label="Leistungen bis einschließlich"
-                />
-                <button type="button" className="btn btn-sm btn-outline" disabled={endeVormonat < n.von} onClick={() => setBisWahl(endeVormonat)}>
-                  Ende Vormonat
-                </button>
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => setBisWahl(heute)}>
-                  Heute
-                </button>
-              </div>
-            </Field>
-            {bisGueltig ? (
-              <p className="muted">{abschliessenText}</p>
-            ) : (
-              <Callout ton="warn" icon="!">
-                Bitte einen Tag ab dem {langDatum(n.von)} wählen – dem Beginn des Leistungsnachweises.
-              </Callout>
-            )}
-            {bisGueltig ? <FehlendeBestaetigungen fehlende={fehlend} /> : null}
-          </div>
-        </Modal>
-      ) : null}
 
       {oeffnen ? (
         <ConfirmDialog
@@ -747,6 +635,153 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
         />
       ) : null}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Schritt 3: Abschließen                                              */
+/* ------------------------------------------------------------------ */
+
+/** Beschriftung eines wählbaren Endes (`abschlussEnden`). */
+function endeText(e: AbschlussEnde): string {
+  if (e.art === 'monatsende') return `bis Ende ${monatText(e.bis)}`;
+  if (e.art === 'heute') return `bis heute, ${langDatum(e.bis)}`;
+  return `bis ${langDatum(e.bis)} (Ende des Leistungsnachweises)`;
+}
+
+/**
+ * Schritt 3 auf der Seite eines offenen Leistungsnachweises: bis wann er
+ * reicht – jedes Monatsende oder bis heute (`abschlussEnden`, vorgeschlagen
+ * das letzte Monatsende, `abschlussVorschlag`), je mit Zeitraum, Leistungen
+ * und Stunden –, was abgerechnet wird (gerechnet wie im Store,
+ * `nachweisAbschliessenAnwenden`), dass spätere Leistungen im nächsten
+ * Nachweis weiterlaufen, und wer noch nicht bestätigt hat
+ * (`fehlendeBestaetigungen`) – dann nur mit „Trotzdem abschließen“.
+ * „Abschließen und PDF“ schließt ab, öffnet den Druckdialog („Als PDF
+ * sichern“) und zeigt den abgeschlossenen Nachweis. Ohne Entscheidung läuft
+ * der Nachweis einfach weiter.
+ */
+function AbschliessenSchritt({
+  projekt,
+  nachweis: n,
+  bis,
+  onBis,
+  ueberholt,
+  navigate,
+}: {
+  projekt: Projekt;
+  nachweis: Leistungsnachweis;
+  /** Gewähltes Ende (`abschlussEnden`); null, wenn keines wählbar ist. */
+  bis: string | null;
+  onBis: (bis: string) => void;
+  /** Von Hand bearbeitete Zeilen mit Neuem (`ueberholteZeilen`) – die Rückfrage nennt sie. */
+  ueberholt: UeberholteZeile[];
+  navigate: (r: Route) => void;
+}) {
+  const { data, nachweisAbschliessen } = useStore();
+  const toast = useToast();
+  const heute = today();
+  const enden = abschlussEnden(n, heute);
+  const [trotzdem, setTrotzdem] = useState(false);
+  const leistungen = leistungenDesNachweises(data, n);
+
+  if (!bis) {
+    return (
+      <Card>
+        <SchrittKopf nr={3} titel="Abschließen" sub={`Der Leistungsnachweis beginnt am ${langDatum(n.von)} – abschließen lässt er sich ab dann.`} />
+      </Card>
+    );
+  }
+
+  const abschluss = abschlussZeitraum(data, n, heute, bis);
+  const nachher = erstellenVorschau(data, n.id, bis);
+  const zu = nachher.nachweise.find((x) => x.id === n.id);
+  const summen = zu ? nachweisSummen(nachweisZeilen(nachher, zu)) : null;
+  const darin = leistungen.filter((l) => l.datum <= abschluss.bis);
+  const fehlend = fehlendeBestaetigungen(data, { ...n, bis: abschluss.bis });
+  const gesperrt = darin.length === 0 || (fehlend.length > 0 && !trotzdem);
+  // Endet der Nachweis mitten in einem Zeitraum der gemeinsamen Leistungstexte, bildet der Rest einen eigenen
+  const restAb = erfassungsPeriodeVon(data, n.projektId, abschluss.bis).bis > abschluss.bis ? addDays(abschluss.bis, 1) : null;
+  const hinweise = [
+    restAb
+      ? `Er endet mitten in einem Zeitraum der gemeinsamen Leistungstexte – für die Tage ab ${langDatum(restAb)} verfassen die Mitarbeiter einen eigenen Text.`
+      : '',
+    ueberholtRueckfrage(ueberholt) ?? '',
+    erloschenHinweis(grenzFolgen(data, nachher), data.mitarbeiter) ?? '',
+  ].filter(Boolean);
+
+  const abschliessen = () => {
+    // Das PDF zeigt den Stand, den der Store gleich festschreibt
+    const fertig = nachher.nachweise.find((x) => x.id === n.id);
+    nachweisAbschliessen(n.id, bis);
+    if (fertig?.status === 'abgeschlossen') nachweisDrucken(nachher, fertig, projekt);
+    toast(
+      `Leistungsnachweis abgeschlossen – Leistungen bis ${langDatum(abschluss.bis)}${
+        abschluss.spaetere.length
+          ? `; ${anzahl(abschluss.spaetere.length, 'spätere Leistung läuft', 'spätere Leistungen laufen')} im nächsten weiter`
+          : ''
+      }. Im Druckdialog „Als PDF sichern“ wählen.`,
+    );
+    navigate({ view: 'abrechnung', projektId: n.projektId, nachweisId: n.id });
+  };
+
+  return (
+    <Card>
+      <SchrittKopf
+        nr={3}
+        titel="Abschließen und PDF"
+        sub="Bis wann reicht der Leistungsnachweis? Was danach kommt, läuft im nächsten weiter – ohne Abschluss läuft dieser einfach weiter."
+      />
+      <div className="ln-co-abschluss">
+        <fieldset className="ln-co-enden">
+          <legend className="ln-co-wahl-label">Leistungen</legend>
+          {enden.map((e) => {
+            const bisDahin = leistungen.filter((l) => l.datum <= e.bis);
+            return (
+              <label key={e.bis} className="ln-co-ende">
+                <input type="radio" name={`ln-co-ende-${n.id}`} checked={bis === e.bis} onChange={() => onBis(e.bis)} />
+                <span className="ln-co-ende-text">
+                  <strong>{endeText(e)}</strong>
+                  <span className="small muted">
+                    {zeitraumText(n.von, e.bis)} · {anzahl(bisDahin.length, 'Leistung', 'Leistungen')} · {stundenText(stundenVon(bisDahin))} Std.
+                  </span>
+                </span>
+              </label>
+            );
+          })}
+        </fieldset>
+        <p className="muted" style={{ margin: 0 }}>
+          {darin.length === 0
+            ? 'Bis dahin gibt es keine Leistungen – es gibt nichts abzuschließen.'
+            : `Abgerechnet werden ${stundenText(summen?.abgerechnet ?? 0)} Std.${
+                summen?.aufschlag ? ` – erfasst ${stundenText(summen.erfasst)}, Aufschlag ${aufschlagText(summen.aufschlag)}.` : ''
+              }${
+                abschluss.spaetere.length
+                  ? ` ${anzahl(abschluss.spaetere.length, 'spätere Leistung', 'spätere Leistungen')} (${stundenText(stundenVon(abschluss.spaetere))} Std.) ${
+                      abschluss.spaetere.length === 1 ? 'läuft' : 'laufen'
+                    } im nächsten Leistungsnachweis weiter.`
+                  : ''
+              }`}
+        </p>
+        {darin.length > 0 ? <FehlendeBestaetigungen fehlende={fehlend} /> : null}
+        {darin.length > 0 && fehlend.length > 0 ? (
+          <label className="checkbox">
+            <input type="checkbox" checked={trotzdem} onChange={(e) => setTrotzdem(e.target.checked)} />
+            Trotzdem abschließen – auch ohne alle Bestätigungen
+          </label>
+        ) : null}
+        {hinweise.length ? <p className="small tertiary" style={{ margin: 0 }}>{hinweise.join(' ')}</p> : null}
+        <div className="ln-co-abschluss-knopf">
+          <button type="button" className="btn btn-primary" disabled={gesperrt} onClick={abschliessen}>
+            <Icon name="check" size={14} /> Abschließen und PDF
+          </button>
+          <span className="small tertiary">
+            Danach ist der Stand festgeschrieben, die gemeinsamen Leistungstexte der Zeiträume lassen sich nicht mehr ändern;
+            „Wieder öffnen“ (Menü „Mehr“) hebt den Abschluss auf.
+          </span>
+        </div>
+      </div>
+    </Card>
   );
 }
 

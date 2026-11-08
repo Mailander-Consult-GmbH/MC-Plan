@@ -5,8 +5,8 @@
  * Tag, die Nachweise entstehen wie im Betrieb über `nachweiseErgaenzen` und
  * laufen, bis das Controlling sie erstellt: Bei der Brücke hat es den ersten
  * nach dem ersten Monat erstellt (abgeschlossen), seitdem läuft ein neuer.
- * Alle offenen Nachweise haben Leistungen aus vergangenen Monaten – sie sind
- * fällig (`nachweisFaellig`).
+ * Alle offenen Nachweise haben Leistungen aus vergangenen Monaten – sie
+ * lassen sich bis zum Ende des Vormonats abschließen (`abschlussEnden`).
  * Die Demodaten melden Anna Becker an; maßgeblich ist aber der Name unter
  * „Angemeldet als“ (gemeinsam für alle Bereiche) – wer dort „Anna Becker“
  * einträgt, erfasst als sie. Abschluss und Aufschläge zeigt das Controlling.

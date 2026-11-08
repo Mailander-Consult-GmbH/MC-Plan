@@ -224,9 +224,9 @@ interface StoreValue {
    */
   zeilenTextSetzen: (nachweisId: ID, zeile: NachweisZeile, text: string | null, optionen?: { gesehen?: boolean }) => void;
   /**
-   * „Leistungsnachweis erstellen“ = abschließen (nur Controlling, nur offene): mit `bis` („Leistungen bis
-   * einschließlich …“, erlaubt ab dem Beginn bis heute, höchstens bis zum bisherigen Ende – `abschlussEndeBereich`;
-   * Vorschlag `vorgabeEnde`) endet der Nachweis dort, sonst (auch bei ungültigem `bis`) am letzten Tag mit
+   * „Abschließen und PDF“ (nur Controlling, nur offene): mit `bis` (ein Monatsende oder heute, `abschlussEnden`;
+   * erlaubt ab dem Beginn bis heute, höchstens bis zum bisherigen Ende – `abschlussEndeBereich`) endet der
+   * Nachweis dort, sonst (auch bei ungültigem `bis`) am letzten Tag mit
    * Leistungen (`abschlussZeitraum`). Der Stand wird mit Aufschlägen und Gesamtaufschlag festgeschrieben;
    * spätere Leistungen kommen in einen neuen offenen Nachweis (`nachweisAbschliessenAnwenden`).
    */

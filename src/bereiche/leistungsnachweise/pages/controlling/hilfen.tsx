@@ -3,10 +3,11 @@
  * Lesen einer Zahleneingabe („1,5“, „-0,5“, „10 %“), das Eingabefeld für
  * Aufschläge und abgerechnete Stunden, das beim Verlassen bzw. mit Enter
  * speichert, die
- * Auswahl der Filter, solange die Seite offen ist, und das Menü „Mehr“ (⋯) für
- * seltene Aktionen (`MehrMenue`, über `AufklappMenue`).
+ * Auswahl der Filter, solange die Seite offen ist, das Menü „Mehr“ (⋯) für
+ * seltene Aktionen (`MehrMenue`, über `AufklappMenue`) und der Kopf eines
+ * Schritts auf der Seite eines offenen Leistungsnachweises (`SchrittKopf`).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../../../../shared/icons';
 import { AufklappMenue } from '../../../../shared/menue';
 import { useToast } from '../../../../shared/toast';
@@ -201,5 +202,40 @@ export function MehrMenue({ label, eintraege }: { label: string; eintraege: Mehr
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Kopf eines Schritts auf der Seite eines offenen Leistungsnachweises
+ * (Abrechnung.tsx): Nummer – grün mit Haken, wenn erledigt –, Titel,
+ * Untertitel und rechts Aktionen.
+ */
+export function SchrittKopf({
+  nr,
+  titel,
+  sub,
+  erledigt = false,
+  actions,
+}: {
+  nr: number;
+  titel: string;
+  sub?: ReactNode;
+  erledigt?: boolean;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="ln-co-schritt-kopf">
+      <span className={`ln-co-schritt-nr ${erledigt ? 'ln-co-schritt-erledigt' : ''}`} aria-hidden="true">
+        {erledigt ? <Icon name="check" size={14} strokeWidth={2.6} /> : nr}
+      </span>
+      <div className="ln-co-schritt-titel">
+        <h3>
+          <span className="ln-co-vorlesen">Schritt {nr}{erledigt ? ' (erledigt)' : ''}: </span>
+          {titel}
+        </h3>
+        {sub ? <p className="small muted">{sub}</p> : null}
+      </div>
+      {actions ? <div className="ln-co-schritt-aktionen">{actions}</div> : null}
+    </div>
   );
 }

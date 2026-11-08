@@ -3,7 +3,11 @@
  * eine eigene Seite dafür gibt es nicht.
  *
  * `MitarbeiterBestaetigungen` ist der Block „Mitarbeiter und Bestätigungen“
- * auf der Seite eines Projekts (Projekt.tsx, Abrechnung.tsx): je Person mit
+ * auf der Seite eines Projekts (Projekt.tsx, Abrechnung.tsx) – beim offenen
+ * Leistungsnachweis als Schritt 1 „Haben alle eingetragen und bestätigt?“
+ * (`SchrittKopf`, erledigt, wenn alle bestätigt haben; gezählt werden die
+ * Monate bis zum Ende, das Schritt 3 gewählt hat – spätere zeigen „läuft
+ * weiter“): je Person mit
  * Leistungen im gezeigten Leistungsnachweis die erfassten Stunden und je Monat
  * seines Zeitraums der Stand ihrer Bestätigung (bestätigt mit Tag, offen,
  * geändert seit Bestätigung, abgerechnet) – nur Personen und Monate dieses
@@ -11,9 +15,9 @@
  * bestätigt hat, wessen Monate alle bestätigt bzw. abgerechnet sind
  * (`bestaetigungsZahl`, auch für die Übersicht der Projekte). Abgeschlossene
  * Nachweise zeigen nur die Stunden ihres festgeschriebenen Stands.
- * `FehlendeBestaetigungen` nennt die Fehlenden in der Rückfrage
- * „Leistungsnachweis erstellen?“ (`fehlendeBestaetigungen`) – erstellen
- * bleibt möglich.
+ * `FehlendeBestaetigungen` nennt die Fehlenden im Schritt „Abschließen“
+ * (`fehlendeBestaetigungen`) – abschließen lässt er sich dann nur mit
+ * „Trotzdem abschließen“.
  *
  * Bestätigen können nur die Mitarbeiter selbst, im Bereich Leistungsnachweise
  * (domain/rechte.ts, `darfBestaetigen`) – hier wird nur gelesen.
@@ -24,7 +28,8 @@ import { anzahl } from '../../components/common';
 import type { FassungMitarbeiter } from '../../domain/druck';
 import { bestaetigungenDesNachweises, monatName, type MonatsStatus, type MonatsStatusArt } from '../../domain/erfassung';
 import { tagVon } from '../../domain/nachweis';
-import { MONATSNAMEN, kurzDatum, stundenText } from '../../domain/zeitraum';
+import { SchrittKopf } from './hilfen';
+import { MONATSNAMEN, kurzDatum, langDatum, stundenText } from '../../domain/zeitraum';
 import { mitarbeiterName, type ID, type Leistungsnachweis, type LeistungsnachweisDaten, type Mitarbeiter } from '../../domain/types';
 import { useStore } from '../../store/store';
 import './controlling.css';
@@ -69,9 +74,17 @@ export function BestaetigtBadge({ zahl }: { zahl: { bestaetigt: number; gesamt: 
   );
 }
 
-/** Kennzeichen eines Monats: „Okt 26 ✓ 01.11.26“, „Nov 26 offen“ … */
-function MonatsKennzeichen({ status: s }: { status: MonatsStatus }) {
+/** Kennzeichen eines Monats: „Okt 26 ✓ 01.11.26“, „Nov 26 offen“ … – nach dem gewählten Ende (`spaeter`) „läuft weiter“. */
+function MonatsKennzeichen({ status: s, spaeter = false }: { status: MonatsStatus; spaeter?: boolean }) {
   const tag = s.bestaetigung ? kurzDatum(tagVon(s.bestaetigung.am)) : '';
+  if (spaeter && s.status !== 'bestaetigt') {
+    return (
+      <span className="ln-co-bst-chip ln-co-bst-chip-spaeter" title={`${monatName(s.monat)}: gehört nicht in diesen Abschluss – läuft im nächsten Leistungsnachweis weiter`}>
+        <span className="ln-co-bst-chip-monat">{monatKurz(s.monat)}</span>
+        <span>läuft weiter</span>
+      </span>
+    );
+  }
   const text =
     s.status === 'bestaetigt'
       ? `bestätigt ${tag}`
@@ -94,27 +107,49 @@ function MonatsKennzeichen({ status: s }: { status: MonatsStatus }) {
   );
 }
 
-export function MitarbeiterBestaetigungen({ nachweis: n, mitarbeiter }: { nachweis: Leistungsnachweis; mitarbeiter: FassungMitarbeiter[] }) {
+export function MitarbeiterBestaetigungen({
+  nachweis: n,
+  mitarbeiter,
+  schritt,
+  bis,
+}: {
+  nachweis: Leistungsnachweis;
+  mitarbeiter: FassungMitarbeiter[];
+  /** Nummer des Schritts auf der Seite des offenen Nachweises; ohne: Kopf „Mitarbeiter und Bestätigungen“. */
+  schritt?: number;
+  /** Gewähltes Ende des Abschlusses (Schritt 3): gezählt werden die Monate bis dahin. */
+  bis?: string | null;
+}) {
   const { data } = useStore();
   const offen = n.status !== 'abgeschlossen';
   // Je Person ihr Stand in den Monaten des Nachweises, aufsteigend
   const monate = offen ? [...bestaetigungenDesNachweises(data, n)].reverse() : [];
   const jePerson = new Map<ID, MonatsStatus[]>();
   for (const m of monate) for (const p of m.personen) jePerson.set(p.mitarbeiterId, [...(jePerson.get(p.mitarbeiterId) ?? []), p]);
-  const zahl = bestaetigungsZahl(data, n);
+  const zahl = bestaetigungsZahl(data, bis ? { ...n, bis } : n);
   const summe = mitarbeiter.reduce((s, m) => s + m.stunden, 0);
 
   return (
     <Card>
-      <CardHeader
-        titel="Mitarbeiter und Bestätigungen"
-        sub={
-          offen
-            ? 'Wer im Zeitraum Stunden gebucht hat und ob er seine Monate (Stunden und Leistungstexte) bestätigt hat'
-            : 'Stunden des festgeschriebenen Stands'
-        }
-        actions={offen ? <BestaetigtBadge zahl={zahl} /> : undefined}
-      />
+      {schritt ? (
+        <SchrittKopf
+          nr={schritt}
+          titel="Haben alle eingetragen und bestätigt?"
+          sub={`${bis ? `Monate bis ${langDatum(bis)} – ` : ''}Stunden aus dem Import bzw. der Erfassung; Leistungstext und Bestätigung je Monat geben die Mitarbeiter selbst ab.`}
+          erledigt={!!zahl && zahl.gesamt > 0 && zahl.bestaetigt === zahl.gesamt}
+          actions={<BestaetigtBadge zahl={zahl} />}
+        />
+      ) : (
+        <CardHeader
+          titel="Mitarbeiter und Bestätigungen"
+          sub={
+            offen
+              ? 'Wer im Zeitraum Stunden gebucht hat und ob er seine Monate (Stunden und Leistungstexte) bestätigt hat'
+              : 'Stunden des festgeschriebenen Stands'
+          }
+          actions={offen ? <BestaetigtBadge zahl={zahl} /> : undefined}
+        />
+      )}
       {mitarbeiter.length === 0 ? (
         <p className="small tertiary ln-co-bst-leer">Noch keine Stunden im Zeitraum.</p>
       ) : (
@@ -141,7 +176,7 @@ export function MitarbeiterBestaetigungen({ nachweis: n, mitarbeiter }: { nachwe
                     <td data-label="Bestätigung">
                       <span className="ln-co-bst-chips">
                         {(jePerson.get(m.id) ?? []).map((s) => (
-                          <MonatsKennzeichen key={s.monat} status={s} />
+                          <MonatsKennzeichen key={s.monat} status={s} spaeter={!!bis && s.monat > bis.slice(0, 7)} />
                         ))}
                       </span>
                     </td>
@@ -164,9 +199,9 @@ export function MitarbeiterBestaetigungen({ nachweis: n, mitarbeiter }: { nachwe
 }
 
 /**
- * Hinweis in der Rückfrage beim Erstellen: wer für welchen Monat noch nicht
- * bzw. nach einer Änderung nicht erneut bestätigt hat (`fehlendeBestaetigungen`,
- * aufsteigend nach Monat) – je Monat eine Zeile. Erstellen bleibt möglich.
+ * Hinweis im Schritt „Abschließen“: wer für welchen Monat noch nicht bzw.
+ * nach einer Änderung nicht erneut bestätigt hat (`fehlendeBestaetigungen`,
+ * aufsteigend nach Monat) – je Monat eine Zeile.
  */
 export function FehlendeBestaetigungen({ fehlende }: { fehlende: MonatsStatus[] }) {
   const { data } = useStore();
@@ -197,10 +232,6 @@ export function FehlendeBestaetigungen({ fehlende }: { fehlende: MonatsStatus[] 
             </li>
           ))}
         </ul>
-        <span>
-          Erstellen ist trotzdem möglich – danach lassen sich die gemeinsamen Leistungstexte der abgerechneten Zeiträume
-          nicht mehr ändern.
-        </span>
       </div>
     </Callout>
   );

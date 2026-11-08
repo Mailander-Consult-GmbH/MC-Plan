@@ -2,7 +2,7 @@
  * Projekt anlegen bzw. bearbeiten – nur im Controlling (domain/rechte.ts,
  * `projektVerwalten`): Projektnummer, Status, Name, Bezeichnung im Nachweis,
  * Leistungsbereich, Raster neuer Nachweise, Beschreibung. Einen Rhythmus gibt
- * es nicht – den Umfang eines Nachweises legt das Erstellen fest.
+ * es nicht – den Umfang eines Nachweises legt das Abschließen fest.
  * Das Raster gliedert auch die gemeinsamen Leistungstexte der Mitarbeiter;
  * ein Wechsel nennt Texte, die danach nicht mehr gelten (`RasterwechselHinweis`).
  * Die Projektnummer („K9101“) ist der Schlüssel, über den der Excel-Import
