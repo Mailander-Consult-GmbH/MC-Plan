@@ -1856,15 +1856,6 @@ export function offeneNachweise(daten: LeistungsnachweisDaten, projektId: ID): L
   return nachweiseVon(daten, projektId).filter((n) => n.status === 'entwurf');
 }
 
-/**
- * Nachweis, der für das Projekt gerade ansteht: der früheste offene, sonst der
- * jüngste abgeschlossene (mit dem spätesten Zeitraum), sonst null.
- */
-export function aktuellerNachweis(daten: LeistungsnachweisDaten, projektId: ID): Leistungsnachweis | null {
-  const alle = nachweiseVon(daten, projektId);
-  return alle.find((n) => n.status === 'entwurf') ?? alle.filter((n) => n.status === 'abgeschlossen').at(-1) ?? null;
-}
-
 /* ------------------------------------------------------------------ */
 /* Abschließen                                                         */
 /* ------------------------------------------------------------------ */
