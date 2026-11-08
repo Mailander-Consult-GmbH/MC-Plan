@@ -5,7 +5,7 @@
  * * **Neuer Leistungsnachweis** (`NeuerNachweisDialog`) fragt keinen Zeitraum
  *   ab: Er umfasst alle nicht abgerechneten Leistungen des Projekts
  *   (`nichtAbgerechnet`); offene Nachweise gehen darin auf. Bis zu welchem Tag
- *   er reicht, legt erst das Erstellen fest („Leistungen bis einschließlich“). Liegt schon alles in einem offenen Nachweis,
+ *   er reicht, legt erst das Abschließen fest (Schritt „Abschließen und PDF“). Liegt schon alles in einem offenen Nachweis,
  *   bietet der Dialog „Öffnen“ an. Nicht erfasste Leistungen aus schon abgerechneten
  *   Zeiträumen nennt der Dialog (`NichtErfasstHinweis`); übernommen werden sie
  *   erst nach Bestätigung – als nachgereichte.
@@ -16,7 +16,7 @@
  *   aus seinem Zeitraum – dazu die nachgereichten, ohne die schon in einem
  *   anderen abgeschlossenen Nachweis abgerechneten (`leistungenDesNachweises`). Ein
  *   geändertes Ende steht danach fest (`bisFest`): Der Nachweis läuft nicht
- *   mehr bis zum Abschluss und wird nicht verlängert; beim Erstellen ist dieses
+ *   mehr bis zum Abschluss und wird nicht verlängert; beim Abschließen ist dieses
  *   Ende vorgeschlagen (ein früheres lässt sich dort wählen). Liefe er mit dem neuen Ende bis zum Abschluss, legt „Ende
  *   festlegen“ das Ende auch ohne Änderung fest (etwa den vorausgewählten
  *   Monat); „Wieder bis zum Abschluss laufen lassen“ hebt ein festgelegtes Ende
@@ -198,13 +198,13 @@ function NeuerNachweisDialog({
         {vorhanden ? (
           <Callout icon="i">
             {umfang} – {plan.leistungen.length === 1 ? 'sie liegt' : 'sie liegen'} bereits im offenen Leistungsnachweis „
-            {nachweisTitel(vorhanden)}“. Er bleibt offen, bis er erstellt wird; dabei wird festgelegt, bis zu welchem Tag er reicht.
+            {nachweisTitel(vorhanden)}“. Er läuft weiter, bis das Controlling ihn abschließt; dabei wird festgelegt, bis wann er reicht.
           </Callout>
         ) : (
           <>
             <Callout icon="i">
               Der Leistungsnachweis umfasst ohne Zeitraumwahl alle nicht abgerechneten Leistungen: {umfang}. Später
-              erfasste kommen hinzu; bis zu welchem Tag er reicht, wird beim Erstellen festgelegt.
+              erfasste kommen hinzu; bis wann er reicht, wird beim Abschließen festgelegt.
               {plan.offene.length
                 ? ` ${
                     plan.offene.length === 1 ? 'Der offene Leistungsnachweis' : 'Die offenen Leistungsnachweise'
@@ -398,8 +398,8 @@ function ZeitraumDialog({
   const festHinweis =
     gueltig && !laeuftDanach && (laeuft || (festWirkt && endeGeaendert))
       ? laeuft
-        ? `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht mehr bis zum Abschluss; beim Erstellen ist dieses Ende vorgeschlagen. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
-        : `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht bis zum Abschluss; beim Erstellen ist dieses Ende vorgeschlagen. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
+        ? `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht mehr bis zum Abschluss; beim Abschließen ist dieses Ende wählbar. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
+        : `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht bis zum Abschluss; beim Abschließen ist dieses Ende wählbar. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
       : null;
 
   // Neue Grenzen: Gemeinsame Texte von Teilen eines Zeitraums ziehen um bzw. gehen zusammen, ein neuer Beginn bzw. ein

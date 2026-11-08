@@ -60,12 +60,12 @@ export function zeitpunkt(iso: string | null): string {
 
 /**
  * Zeitraum eines Nachweises in Listen und Köpfen: „01.09.2026 – 30.11.2026“ –
- * läuft ein offener noch bis zum Erstellen (`laeuftBisAbschluss`: das
- * Controlling hat sein Ende nicht festgelegt), „ab 01.09.2026 · offen bis zum
- * Erstellen“, denn seinen Umfang legt erst das Erstellen fest.
+ * läuft ein offener noch, bis er abgeschlossen wird (`laeuftBisAbschluss`:
+ * das Controlling hat sein Ende nicht festgelegt), „seit 01.09.2026 · läuft
+ * bis zum Abschließen“, denn seinen Umfang legt erst das Abschließen fest.
  */
 export function nachweisZeitraumText(n: Leistungsnachweis): string {
   return laeuftBisAbschluss(n)
-    ? `ab ${langDatum(n.von)} · offen bis zum Erstellen`
+    ? `seit ${langDatum(n.von)} · läuft bis zum Abschließen`
     : `${langDatum(n.von)} – ${langDatum(n.bis)}`;
 }

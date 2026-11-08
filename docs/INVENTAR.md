@@ -1323,7 +1323,7 @@ nicht; Gestaltung in `src/bereiche/controlling/controlling.css` (Präfix `ct-`).
 | --- | --- | --- |
 | `#/controlling` bzw. `#/controlling/projekte` | Projekte (`src/bereiche/controlling/pages/Projekte.tsx`) | Kacheln „Projekte“ und „aktiv in …“ je Bereich (gezählt wird nur der Zustand „Aktiv“, ohne vorgesehene Übernahmen – `zustandIm`); Suche; „Neues Projekt“ (Projektnummer – eindeutig –, Bezeichnung, Beschreibung, „Übernehmen in“ mit einem Haken je Bereich; „Leistungsnachweise“ fest angehakt mit „(immer)“). Je nicht archiviertem Projekt eine Karte mit Nummer, Bezeichnung, Beschreibung, „Bearbeiten“, Archivieren („In allen Bereichen archivieren“) und „Löschen“; je Bereich der Stand „Aktiv“, „Archiviert“, „Vorgesehen“ oder „nicht geführt“ mit „Übernehmen“, „Zurücknehmen“, „Archivieren“ bzw. „Zurückholen“ – in den Leistungsnachweisen (`JEDES_PROJEKT_IN`) ohne Übernehmen und Zurücknehmen, ohne Mitgliedschaft „Vorgesehen“ (Tooltip „Jedes Projekt gehört in die Leistungsnachweise – sie legen es beim nächsten Öffnen an“, bei archiviertem Projekt „Jedes Projekt gehört in die Leistungsnachweise – sie legen es an, sobald es aus dem Archiv geholt ist“). Die Beschreibung behält ihre Zeilenumbrüche (`.ct-beschreibung`, `white-space: pre-line`). |
 | `#/controlling/archiv` | Archiv (dieselbe Seite) | Die im Controlling archivierten Projekte mit „Bearbeiten“, „Aus dem Archiv holen“ und „Löschen“; der Stand je Bereich ohne Schaltflächen. |
-| `#/controlling/leistungsnachweise/projekte`, `…/projekt/<id>` bzw. `…/projekt/<id>/nachweis/<id>` | Controlling der Leistungsnachweise (`LeistungsnachweiseControlling` in `src/bereiche/leistungsnachweise/controlling.tsx`), Menüpunkt „Leistungsnachweise“ unter „Bereiche“ (Kopfzeile „Leistungsnachweise“) | Die Übersicht der Projekte bzw. die Seite eines Projekts mit seinem aktuellen oder dem gewählten Leistungsnachweis – siehe 10.5. Jede andere Adresse unter `#/controlling/leistungsnachweise/…` führt ebenfalls hierher (auch frühere wie `…/nachweise`, `…/mitarbeiter` und `…/projekt/<id>/<reiter>`). |
+| `#/controlling/leistungsnachweise/projekte`, `…/projekt/<id>` bzw. `…/projekt/<id>/nachweis/<id>` | Controlling der Leistungsnachweise (`LeistungsnachweiseControlling` in `src/bereiche/leistungsnachweise/controlling.tsx`), Menüpunkt „Leistungsnachweise“ unter „Bereiche“ (Kopfzeile „Leistungsnachweise“) | Die Übersicht der Projekte bzw. die Seite eines Projekts mit seinem offenen oder dem gewählten Leistungsnachweis – siehe 10.5. Jede andere Adresse unter `#/controlling/leistungsnachweise/…` führt ebenfalls hierher (auch frühere wie `…/nachweise`, `…/mitarbeiter` und `…/projekt/<id>/<reiter>`). |
 | `#/controlling/leistungsnachweise/auswertung` | Dieselbe Einbindung, Menüpunkt „Auswertung“ darunter (Symbol `diagramm` aus `src/shared/icons.tsx`; Kopfzeile „Auswertung“) | Die Auswertung der Leistungsnachweise – siehe 10.5. `hashToRoute` in `src/bereiche/controlling/lib/router.ts` unterscheidet beide Menüpunkte allein an der Wegmarke `auswertung`. |
 
 Lässt sich das Projektregister nicht speichern (`useRegisterSpeicherZustand`,
@@ -1391,7 +1391,7 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   Vorgaben neuer Projekte `IMPORT_PROJEKT_VORGABEN` in
   `src/bereiche/leistungsnachweise/domain/import.ts`: Leistungsbereich und
   Raster. Einen Abrechnungsrhythmus hat ein Projekt seit Fassung 9 nicht mehr –
-  den Umfang eines Nachweises legt sein Erstellen fest, 10.5), `Leistung` (Projekt,
+  den Umfang eines Nachweises legt sein Abschließen fest, 10.5), `Leistung` (Projekt,
   Mitarbeiter, Datum, Text, Stunden, Abschnitt, `projektelement`, `quelle`
   `manuell` oder `import`, `erfasst`, seit Fassung 7 `geaendert` – Zeitpunkt
   der letzten Änderung von Datum, Stunden, Text oder Abschnitt, gesetzt von
@@ -1805,7 +1805,8 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
   steht für den Vormonat ein gemeinsamer Leistungstext von Anna Becker, den sie
   am Ersten des laufenden Monats bestätigt hat. Die Nachweise entstehen über
   `nachweiseErgaenzen`; alle offenen enthalten Leistungen aus vergangenen
-  Monaten und sind deshalb fällig (`nachweisFaellig`, 10.5).
+  Monaten und lassen sich deshalb bis zum Ende des Vormonats abschließen
+  (`abschlussEnden`, 10.5).
 
 ### 10.4 Rechte
 
@@ -1873,26 +1874,26 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
 * Laufende Nachweise (`src/bereiche/leistungsnachweise/domain/nachweis.ts`,
   rein): Einen Abrechnungsrhythmus gibt es seit Fassung 9 nicht mehr.
   `laeuftBisAbschluss(n)` – offen und ohne `bisFest` – sagt, ob ein Nachweis
-  mit neuen Leistungen mitwächst und sein Umfang erst beim Erstellen feststeht.
+  mit neuen Leistungen mitwächst und sein Umfang erst beim Abschließen feststeht.
   `nachweiseErgaenzen` (beim Erfassen, Ändern und Importieren): Liegt vor dem
   Tag der zeitlich letzte Nachweis des Projekts und läuft er bis zum Abschluss,
   verlängert es sein Ende bis zum Monatsende des Tags (gekürzt vor dem
   nächsten Nachweis); sonst legt es einen neuen ab dem Monatsanfang (frühestens
   am Tag nach dem vorigen) bis zum Monatsende (vor dem nächsten) an.
-  `offeneNachweise` (die offenen, nach Beginn), `aktuellerNachweis` (der
-  früheste offene, sonst der jüngste abgeschlossene), `offenSeit` (das früheste
-  Datum der Leistungen eines offenen Nachweises in seinem Zeitraum, ohne
-  nachgereichte; null ohne Leistungen und bei abgeschlossenen) und
-  `nachweisFaellig` (`offenSeit` liegt vor dem ersten Tag des laufenden Monats –
-  ein Nachweis ohne Leistungen ist nie fällig) dienen der Übersicht und der
-  Seite des Projekts.
-* Erstellen mit Enddatum (ebenda): `abschlussEndeBereich` – erlaubt ist ein
-  Tag ab dem Beginn des Nachweises bis heute, höchstens bis zu seinem
-  bisherigen Ende (null, wenn er nach heute beginnt) –, `abschlussEndeGueltig`
-  und `vorgabeEnde` (Vorschlag: das Ende des Vormonats, wenn der Nachweis
-  Leistungen vor dem laufenden Monat hat – ohne nachgereichte –, sonst der
-  letzte Tag mit Leistungen bis heute; stets im erlaubten Bereich, ist er leer,
-  das bisherige Ende). `abschlussZeitraum(daten, n, heute, bis?)`: Mit einem
+  `offeneNachweise` liefert die offenen, nach Beginn; den frühesten zeigen die
+  Übersicht und die Seite des Projekts. Wird am Monatsende keiner
+  abgeschlossen, läuft der offene einfach weiter – eine Fälligkeit gibt es
+  nicht.
+* Abschließen bis zu einem gewählten Ende (ebenda): `abschlussEndeBereich` –
+  erlaubt ist ein Tag ab dem Beginn des Nachweises bis heute, höchstens bis zu
+  seinem bisherigen Ende (null, wenn er nach heute beginnt) –,
+  `abschlussEndeGueltig`, `abschlussEnden` (statt eines freien Datums die
+  wählbaren Enden, aufsteigend: jedes Monatsende im erlaubten Bereich, `art`
+  `monatsende`, dazu dessen letzter Tag, wenn er kein Monatsende ist – `heute`
+  bzw. `nachweisende`, das bisherige Ende vor heute, etwa bei `bisFest`; leer,
+  wenn der Bereich leer ist) und `abschlussVorschlag` (das letzte Monatsende,
+  meist das Ende des Vormonats, sonst das einzige wählbare Ende; null ohne
+  wählbares). `abschlussZeitraum(daten, n, heute, bis?)`: Mit einem
   gültigen `bis` endet der Nachweis dort – auch mit `bisFest`; sonst endet er,
   wenn er bis zum Abschluss läuft, am letzten Tag mit Leistungen, spätestens
   heute, und behält andernfalls sein Ende; dazu die späteren Leistungen
@@ -1928,40 +1929,37 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   „Sammel-Export der Zeiterfassung: Leistungen aller Mitarbeiter der Datei
   übernehmen“, siehe unten) und „Neues Projekt“ (`ProjektDialog` in
   `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx`; danach die
-  Seite des neuen Projekts). Karte „Projekte“ mit dem Untertitel „… · Erfasste
-  Leistungen sammeln sich im offenen Leistungsnachweis, bis das Controlling ihn
-  erstellt; das Raster gliedert ihn“ und rechts zwei Badges (`ln-co-summen`): „… Nachweise fällig“
-  (Einzahl „… Nachweis fällig“; orange, sobald einer fällig ist) und „…
-  Bestätigungen offen“ (Einzahl „… Bestätigung offen“; orange) bzw. „Alle
-  bestätigt“ (grün) – gezählt über die aktuellen Nachweise aller Projekte.
-  Tabelle `ln-co-projektliste`: „Projekt“ (Nummer, Name, Status, ggf.
-  „Archiviert“ – archivierte stehen am Ende), „Raster“ (Tooltip „Zeilen je Tag,
-  Woche oder Monat – gliedert auch die Leistungstexte der Mitarbeiter“; Auswahl
-  „Tagesscharf“, „Wochenscharf“ oder „Monatsscharf“, `aria-label` „Raster der
-  Leistungsnachweise von …“) – ein Klick auf die Auswahl öffnet nicht das
-  Projekt –, „Aktueller Leistungsnachweis“ (`aktuellerNachweis`: Überschrift,
-  `nachweisTitel`, und Stand – „Abgeschlossen“ grün, „Fällig“ orange
-  (`nachweisFaellig`) mit „Leistungen seit … offen“ (Monat aus `offenSeit`,
-  `monatText`), sonst blau „Offen“; weitere offene
-  Nachweise (`offeneNachweise`) als „+ … weitere offen“, Einzahl „weiterer
-  offen“; ohne Nachweis „Noch keiner“), „Stunden“ (die erfassten Stunden des
-  aktuellen Nachweises, `leistungenDesNachweises`), „Bestätigt“
-  (`BestaetigtBadge` aus
-  `src/bereiche/leistungsnachweise/pages/controlling/BestaetigungsStand.tsx`:
-  „… von … bestätigt“, grün, wenn alle bestätigt haben, sonst orange;
-  `bestaetigungsZahl` zählt die Personen mit Leistungen im offenen Nachweis und
-  davon die, deren Monate darin alle bestätigt bzw. abgerechnet sind – bei
-  abgeschlossenen Nachweisen bzw. ohne Personen „–“) und „Öffnen“ (bei einem
-  fälligen Nachweis hervorgehoben). Ein Klick auf die Zeile bzw. „Öffnen“ führt
-  auf die Seite des Projekts. Ein anderes Raster gilt sofort (`updateProjekt`)
-  mit einer Kurzmeldung aus Projekt und Raster – außer danach gelten gemeinsame
-  Texte nicht mehr (`periodentexteNachRasterwechsel` größer 0): Dann fragt
-  „Raster ändern?“ (`Modal`, Untertitel mit altem und neuem Raster,
-  `RasterwechselHinweis`, „Abbrechen“ und „Raster ändern“); eine andere
-  Rückfrage gibt es dort nicht. Ohne Treffer „Kein Projekt gefunden“ mit „Projekte kommen aus
-  dem Projektregister, aus dem Excel-Import oder über „Neues Projekt“.“ Bis
-  640 px steht je Zeile das Projekt, darunter je zwei Angaben nebeneinander
-  (mit ihrer Spaltenbezeichnung), dann „Öffnen“
+  Seite des neuen Projekts). Karte „Offene Leistungsnachweise“ mit dem
+  Untertitel „Je Projekt läuft ein Leistungsnachweis weiter, bis Sie ihn
+  abschließen – bereit ist er, wenn alle bis zum Monatsende bestätigt haben“
+  und rechts zwei Badges (`ln-co-summen`): „… bereit“ (grün, sobald ein Projekt
+  bereit ist) und „… warten auf Bestätigungen“ (orange, sobald eines wartet).
+  Je Projekt zählt sein frühester offener Nachweis (`offeneNachweise`) bis zum
+  letzten Monatsende, das sich beim Abschließen wählen ließe (`abschlussEnden`,
+  `art` `monatsende` – meist das Ende des Vormonats); danach steht das Projekt
+  in einer von drei Gruppen, je ein `tbody` mit einer Kopfzeile
+  (`ln-co-gruppe`; leere Gruppen entfallen): „Bereit zum Abschließen – alle
+  haben bestätigt“ (Leistungen bis dahin, und `fehlendeBestaetigungen` aus
+  `src/bereiche/leistungsnachweise/domain/erfassung.ts` ist für den bis dahin
+  gekürzten Nachweis leer), „Bestätigungen fehlen“ und „Noch nichts
+  abzuschließen“ (kein offener Nachweis, kein Monatsende wählbar oder bis dahin
+  keine Leistungen). Tabelle `ln-co-projektliste`: „Projekt“ (Nummer, Name,
+  Status, ggf. „Archiviert“ – archivierte stehen in ihrer Gruppe am Ende),
+  „Offener Leistungsnachweis“ („seit …“ mit seinem Beginn, darunter „… Std.
+  erfasst“ – alle Stunden des Nachweises, `leistungenDesNachweises`; ohne
+  offenen „keiner“), „Bis Monatsende“ (die Stunden bis dahin, darunter „bis
+  Ende …“; sonst „–“), „Bestätigt“ (Badge „… von … bestätigt“ – die Personen mit
+  Leistungen bis dahin und davon die ohne fehlende Bestätigung –, grün bzw.
+  orange; fehlen welche, darunter „fehlt: …“ mit Namen und Monaten je Person;
+  in „Noch nichts abzuschließen“ „–“) und der Knopf „Prüfen und abschließen“
+  (bereit, hervorgehoben) bzw. „Öffnen“. Ein Klick auf die Zeile bzw. den Knopf
+  führt auf die Seite des Projekts. Eine Auswahl des Rasters gibt es in der
+  Übersicht nicht – das Raster stellen „Projekt einstellen“ und „Projekt
+  bearbeiten“ ein (siehe unten). Ohne Treffer „Kein Projekt gefunden“ mit
+  „Projekte kommen aus dem Projektregister, aus dem Excel-Import oder über
+  „Neues Projekt“.“ Bis 640 px steht je Zeile das Projekt, darunter je zwei
+  Angaben nebeneinander (mit ihrer Spaltenbezeichnung), dann der Knopf über die
+  ganze Breite; die Gruppenköpfe stehen als eigene Zeile
   (`src/bereiche/leistungsnachweise/pages/controlling/controlling.css`).
 * Seite eines Projekts (`ControllingProjekt` in
   `src/bereiche/leistungsnachweise/pages/controlling/Projekt.tsx`): Kopf
@@ -1996,8 +1994,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   damit erlöschen: Offene Nachweise übernehmen die Texte nicht mehr, die
   Mitarbeiter verfassen sie im neuen Raster neu; sie bleiben gespeichert und
   gelten wieder, wenn das Raster zurückgestellt wird. Abgeschlossene Nachweise
-  behalten ihren Stand. Dieselben Angaben macht die Rückfrage „Raster ändern?“
-  der Übersicht.
+  behalten ihren Stand.
   Liegen Leistungen des Projekts in keinem Nachweis (`leistungenOhneNachweis`,
   etwa nach dem Löschen eines Nachweises), nennt ein Hinweis ihre Zahl und
   Stunden („… in keinem Leistungsnachweis.“) mit „Einem Leistungsnachweis
@@ -2005,58 +2002,90 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   – der offene Nachweis wächst mit bzw. ein neuer entsteht; Meldung
   mit der Zahl angelegter bzw. erweiterter Leistungsnachweise, sonst „Keine
   Änderung.“). Darunter der Leistungsnachweis (`NachweisBearbeitung`, siehe
-  unten): ohne Nachweis in der Adresse der aktuelle (`aktuellerNachweis`), sonst
-  der gewählte. Gehört der gewählte nicht (mehr) zum Projekt, „Leistungsnachweis
-  nicht gefunden“ mit „Zum aktuellen Leistungsnachweis“; hat das Projekt keinen,
-  „Noch kein Leistungsnachweis“ mit „Sobald Mitarbeiter Leistungen erfassen,
-  entsteht ein offener Leistungsnachweis; er sammelt alle Leistungen, bis das
-  Controlling ihn erstellt.“ und –
-  hat es Leistungen – „Neuer Leistungsnachweis“. Gibt es das Projekt nicht
-  (mehr), „Nicht gefunden“ mit „Zu den Projekten“.
+  unten): ohne Nachweis in der Adresse der offene – der früheste aus
+  `offeneNachweise` –, sonst der gewählte; ist das ein anderer als der offene,
+  steht darüber „Zum offenen Leistungsnachweis“. Gehört der gewählte nicht
+  (mehr) zum Projekt, „Leistungsnachweis nicht gefunden“ mit „Der
+  Leistungsnachweis existiert nicht (mehr) – etwa weil er gelöscht wurde.“ und
+  „Zum offenen Leistungsnachweis“; gibt es keinen offenen, „Kein offener
+  Leistungsnachweis“ mit „Sobald Mitarbeiter Leistungen erfassen, entsteht ein
+  offener Leistungsnachweis; er sammelt alle Leistungen, bis das Controlling
+  ihn abschließt.“ und – hat das Projekt Leistungen – „Neuer
+  Leistungsnachweis“. Ganz unten die Karte „Frühere Leistungsnachweise“
+  (`FruehereNachweise`, Untertitel „Abgeschlossene nur zum Lesen – PDF
+  jederzeit erneut“): alle übrigen Nachweise des Projekts (`nachweiseVon`), der
+  jüngste zuerst, in der Tabelle `ln-co-frueher` mit „Leistungsnachweis“
+  (Überschrift, `nachweisTitel`), „Stand“ („Abgeschlossen …“ mit dem Zeitpunkt
+  bzw. Badge „Offen“), „Abgerechnet“ (Summe aus `nachweisZeilen`), bei
+  abgeschlossenen „PDF“ (`nachweisDrucken`, der festgeschriebene Stand) und
+  „Ansehen“ (führt nach `…/projekt/<id>/nachweis/<id>`); bis 640 px mit der
+  Spaltenbezeichnung über jeder Angabe. Gibt es das Projekt nicht (mehr),
+  „Nicht gefunden“ mit „Zu den Projekten“.
 * Leistungsnachweis (`NachweisBearbeitung` in
   `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx`): Leiste
-  (`ln-co-leiste`) mit der Auswahl „Leistungsnachweis“ (alle Nachweise des
-  Projekts, der jüngste zuerst, je mit Überschrift und „In Bearbeitung“ bzw.
-  „Abgeschlossen“, `NACHWEIS_STATUS_LABEL`; die Wahl führt nach
-  `…/projekt/<id>/nachweis/<id>`), Badge „Fällig“ (Tooltip „Enthält Leistungen
-  aus einem schon vergangenen Monat – der Leistungsnachweis kann erstellt
-  werden“, `nachweisFaellig`) und
-  „geändert“ (`standVeraltet`), „Vorschau“ (`Modal` „Vorschau“ mit dem
-  Druckblatt, `nachweisHtml`), „Drucken / PDF“, „Excel“ (während der Erzeugung
-  „Excel …“), dem Menü „Mehr“ (Tooltip „Weitere Aktionen zum
-  Leistungsnachweis“: „Zeitraum ändern …“ nur offen, „Neuer Leistungsnachweis
-  …“, „Aufschläge zurücksetzen …“ nur offen und mit Aufschlägen – auch nur mit
-  einem Gesamtaufschlag, `anzahlAufschlaege` –, „Wieder öffnen
-  …“ nur abgeschlossen, „Leistungsnachweis löschen …“) und „Leistungsnachweis
-  erstellen“ – abgeschlossen statt dessen „Abgeschlossen …“ mit dem Zeitpunkt
-  (`zeitpunkt`). Bis 640 px füllen Auswahl und Knöpfe die Breite,
-  „Leistungsnachweis erstellen“ steht in eigener Zeile, das Menü „Mehr“ bleibt
-  schmal. Darunter die Hinweise: Leistungen seit dem Abschluss geändert („Seit
+  (`ln-co-leiste`) mit „Offener Leistungsnachweis“ bzw. – abgeschlossen – seiner
+  Überschrift, daneben Zeitraum (`nachweisZeitraumText`) und Raster, Badge
+  „geändert“ (`standVeraltet`); rechts abgeschlossen „Abgeschlossen …“ mit dem
+  Zeitpunkt (`zeitpunkt`), „Vorschau“ (`Modal` „Vorschau“ mit dem Druckblatt,
+  `nachweisHtml`), abgeschlossen „Drucken / PDF“ und „Excel“ (während der
+  Erzeugung „Excel …“) und das Menü „Mehr“ (Tooltip „Weitere Aktionen zum
+  Leistungsnachweis“: „Drucken / PDF (noch offen) …“ und „Excel (noch offen)“
+  – der Stand des offenen Nachweises – sowie „Zeitraum ändern …“ nur offen,
+  „Neuer Leistungsnachweis …“, „Aufschläge zurücksetzen …“ nur offen und mit
+  Aufschlägen – auch nur mit einem Gesamtaufschlag, `anzahlAufschlaege` –,
+  „Wieder öffnen …“ nur abgeschlossen, „Leistungsnachweis löschen …“). Eine
+  Auswahl unter den Nachweisen gibt es dort nicht (frühere: „Frühere
+  Leistungsnachweise“, oben). Bis 640 px füllen die Knöpfe die Breite,
+  „Drucken / PDF“ steht in eigener Zeile, das Menü „Mehr“ bleibt schmal.
+  Darunter die Hinweise: Leistungen seit dem Abschluss geändert („Seit
   dem Abschluss haben sich Leistungen im Zeitraum geändert – „Wieder öffnen“
   (Menü „Mehr“) übernimmt sie.“), nicht erfasste Leistungen (siehe unten),
   überholte bearbeitete Zeilen (siehe unten), Zeilen feiner gegliedert als das
   Raster des Projekts (ein Text, der nur zum Teil in einer Zeile liegt, gilt
   dort nicht) und Aufschläge, die im aktuellen Raster nicht wirken (mit dem
-  Verweis auf „Aufschläge zurücksetzen“ im Menü „Mehr“).
-* Block „Mitarbeiter und Bestätigungen“ (`MitarbeiterBestaetigungen` in
+  Verweis auf „Aufschläge zurücksetzen“ im Menü „Mehr“). Dann steht ein offener
+  Nachweis in drei Schritten, je mit `SchrittKopf` aus
+  `src/bereiche/leistungsnachweise/pages/controlling/hilfen.tsx` (Nummer in
+  einem Kreis – erledigt grün mit Haken –, Titel, Untertitel, rechts Aktionen;
+  für Bildschirmleser „Schritt …“ vor dem Titel, erledigt mit „(erledigt)“; im
+  Farbmodus `kontrast` ist die Nummer umrandet): 1 „Haben alle eingetragen und
+  bestätigt?“, 2 „Prüfen – so geht der Leistungsnachweis raus“ und 3
+  „Abschließen und PDF“ (siehe unten); abgeschlossene zeigen ihren Stand ohne
+  Schritte.
+* Schritt 1 bzw. Block „Mitarbeiter und Bestätigungen“
+  (`MitarbeiterBestaetigungen` in
   `src/bereiche/leistungsnachweise/pages/controlling/BestaetigungsStand.tsx`):
-  Untertitel „Wer im Zeitraum Stunden gebucht hat und ob er seine Monate
-  (Stunden und Leistungstexte) bestätigt hat“, rechts `BestaetigtBadge`;
-  Tabelle `ln-co-bst-tabelle` mit „Mitarbeiter“ (Name, Kürzel), „Stunden“ und
+  beim offenen Nachweis als Schritt 1 „Haben alle eingetragen und bestätigt?“
+  mit dem Untertitel „Stunden aus dem Import bzw. der Erfassung; Leistungstext
+  und Bestätigung je Monat geben die Mitarbeiter selbst ab.“ (davor „Monate bis
+  … –“ mit dem in Schritt 3 gewählten Ende) und rechts `BestaetigtBadge`
+  („… von … bestätigt“, grün, wenn alle bestätigt haben, sonst orange; ohne
+  Personen „–“); `bestaetigungsZahl` zählt die Personen mit Leistungen im bis zu
+  diesem Ende gekürzten Nachweis und davon die, deren Monate darin alle
+  bestätigt bzw. abgerechnet sind; erledigt (grün mit Haken) ist der Schritt,
+  wenn alle bestätigt haben. Abgeschlossene Nachweise zeigen stattdessen den
+  Kopf „Mitarbeiter und Bestätigungen“ mit „Stunden des festgeschriebenen
+  Stands“ und nur die Stunden. Tabelle `ln-co-bst-tabelle` mit „Mitarbeiter“
+  (Name, Kürzel), „Stunden“ und
   „Bestätigung je Monat“ – je Monat des Nachweises ein Kennzeichen
   (`ln-co-bst-chip`, der Monat kurz wie „Okt 26“): „bestätigt …“ mit dem Tag der
   Bestätigung und einem Haken, „offen“, „geändert seit Bestätigung“ bzw.
   „abgerechnet“, im Tooltip Monat, Stand und die Zahl der Zeiträume ohne
-  Leistungstext; nur Personen und Monate dieses Nachweises
+  Leistungstext; ein nicht bestätigter Monat nach dem gewählten Ende zeigt
+  grau „läuft weiter“ (`ln-co-bst-chip-spaeter`, Tooltip „…: gehört nicht in
+  diesen Abschluss – läuft im nächsten Leistungsnachweis weiter“); nur Personen
+  und Monate dieses Nachweises
   (`bestaetigungenDesNachweises`) – und eine Zeile „Summe“. Ohne Stunden „Noch
-  keine Stunden im Zeitraum.“; abgeschlossene Nachweise zeigen nur die „Stunden
-  des festgeschriebenen Stands“. Bis 640 px stehen die Kennzeichen unter Name
+  keine Stunden im Zeitraum.“ Bis 640 px stehen die Kennzeichen unter Name
   und Stunden; im Farbmodus `kontrast` sind sie umrandet. Eine eigene Seite für
   die Bestätigungen gibt es nicht.
-* Tabelle des Leistungsnachweises (Karte mit seiner Überschrift, Untertitel
-  Zeitraum – `nachweisZeitraumText` – und Raster; bei
-  Abschnittsspalten im offenen Nachweis der Haken „Alle Abschnitte“, der je
-  Zeile auch Abschnitte ohne Stunden und „ohne“ zeigt): „Datum“ (bei
+* Schritt 2 bzw. Tabelle des Leistungsnachweises (offen als Schritt 2 „Prüfen –
+  so geht der Leistungsnachweis raus“ mit dem Untertitel „Texte bei Bedarf
+  korrigieren (✎), Aufschlag je Zeile oder auf den ganzen Nachweis.“;
+  abgeschlossen eine Karte mit seiner Überschrift, Untertitel Zeitraum –
+  `nachweisZeitraumText` – und Raster; bei Abschnittsspalten im offenen
+  Nachweis rechts der Haken „Alle Abschnitte“, der je Zeile auch Abschnitte ohne
+  Stunden und „ohne“ zeigt): „Datum“ (bei
   nachgereichten darunter „nachgereicht“), „Bearbeiter“, „Leistungstext“, ab
   zwei Abschnitten (`mitAbschnittsspalten`) „Abschnitt“ – je Abschnitt eine
   Zeile, „ohne“ (Tooltip „Ohne Abschnitt – ein Aufschlag hier gilt der ganzen
@@ -2089,8 +2118,12 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   Zeitraum“. Abgeschlossene Nachweise zeigen ihren Stand nur zum Lesen.
 * Leistungstext je Zeile (`ZeilenText` in
   `src/bereiche/leistungsnachweise/pages/controlling/Leistungstexte.tsx`): offen
-  ein `Textfeld` (`aria-label` „Leistungstext …“); darunter „Von Hand
-  bearbeitet ·“ mit „Text der Mitarbeiter wiederherstellen“ (wenn es ohne die
+  steht der Text zunächst zum Lesen da, wie er im PDF erscheint (lang gekürzt
+  wie abgeschlossen, siehe unten), daneben „✎ Korrigieren“ (`aria-label`
+  „Leistungstext … korrigieren“); das öffnet ein `Textfeld` (`aria-label`
+  „Leistungstext …“, mit dem Fokus darin; gespeichert wird bei jeder Eingabe)
+  mit „Fertig“ – „Fertig“ oder Escape zeigt den Text wieder zum Lesen; darunter
+  „Von Hand bearbeitet ·“ mit „Text der Mitarbeiter wiederherstellen“ (wenn es ohne die
   Bearbeitung einen Text der Mitarbeiter gäbe) bzw. „Automatischen Text
   wiederherstellen“ – Meldung „Leistungstext der Mitarbeiter wiederhergestellt.“
   bzw. „Automatischer Leistungstext wiederhergestellt.“ –, sonst Badge „Text der
@@ -2120,40 +2153,47 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   hat sich der automatische Text seit der Bearbeitung des Leistungstexts
   geändert.“ – den automatischen nur in Zeilen ohne neue Leistungen) mit „Die
   Zeilen sind in der Tabelle markiert.“
-* Erstellen, Wieder öffnen, Löschen: „Leistungsnachweis erstellen“ schließt
-  nach der Rückfrage „Leistungsnachweis erstellen?“ (`Modal` mit der
-  Überschrift im Untertitel, „Abbrechen“ und „Erstellen“) ab
-  (`nachweisAbschliessen(id, bis)`). Die Rückfrage fragt „Leistungen bis
-  einschließlich“ ab (Datumsfeld ab dem Beginn des Nachweises; vorgewählt bei
-  `bisFest` das festgelegte Ende, sonst `vorgabeEnde`; dazu „Ende Vormonat“ –
-  gesperrt, wenn der Vormonat vor dem Beginn endet – und „Heute“) mit dem
-  Hinweis „Der Leistungsnachweis beginnt am …. Spätere Leistungen bleiben offen
-  und kommen in den nächsten.“ (bei `bisFest` vor dem Punkt „; sein Ende ist auf
-  den … festgelegt, ein früherer Tag kürzt ihn“). Fehlt der Tag oder liegt er
-  vor dem Beginn, steht dort „Bitte einen Tag ab dem … wählen – dem Beginn des
-  Leistungsnachweises.“, und „Erstellen“ ist gesperrt. Sonst nennt sie –
-  gerechnet wie der Store (`abschlussZeitraum`, `nachweisAbschliessenAnwenden`) –
-  „Der Leistungsnachweis umfasst … vom … bis … mit … abgerechneten Stunden …“
-  (mit Aufschlägen auch erfasste Stunden und Aufschlag) und „Er wird
-  abgeschlossen und sein Stand festgeschrieben; danach stehen Drucken / PDF und
-  Excel bereit, „Wieder öffnen“ hebt den Abschluss auf.“, die späteren
-  Leistungen mit ihren Stunden, die offen bleiben und in den nächsten
-  Leistungsnachweis kommen, ein Ende mitten in einem Zeitraum der gemeinsamen
-  Texte (siehe unten), überholte bearbeitete Zeilen
+* Schritt 3, Wieder öffnen, Löschen: Beim offenen Nachweis folgt (mit dem
+  Recht `nachweisVerwalten`) Schritt 3 „Abschließen und PDF“
+  (`AbschliessenSchritt` in `Abrechnung.tsx`, Untertitel „Bis wann reicht der
+  Leistungsnachweis? Was danach kommt, läuft im nächsten weiter – ohne
+  Abschluss läuft dieser einfach weiter.“). Unter „Leistungen“ steht statt
+  eines Datumsfelds je wählbarem Ende (`abschlussEnden`) ein Optionsfeld
+  (`ln-co-ende`): „bis Ende …“ (Monatsende), „bis heute, …“ bzw. „bis … (Ende
+  des Leistungsnachweises)“, je mit Zeitraum, Zahl der Leistungen und Stunden
+  bis dahin. Vorgewählt ist `abschlussVorschlag`; die Wahl gilt auch für
+  Schritt 1 und bleibt, solange sie wählbar ist – sonst (etwa nach „Zeitraum
+  ändern“) gilt wieder der Vorschlag. Darunter – gerechnet wie der Store
+  (`abschlussZeitraum`, `nachweisAbschliessenAnwenden`) – „Abgerechnet werden …
+  Std.“ (mit Aufschlägen dazu „– erfasst …, Aufschlag …“) und die späteren
+  Leistungen mit ihren Stunden, die „im nächsten Leistungsnachweis weiter“
+  laufen; ohne Leistungen bis dahin „Bis dahin gibt es keine Leistungen – es
+  gibt nichts abzuschließen.“ Fehlen für das gewählte Ende Bestätigungen
+  (`fehlendeBestaetigungen`), nennt `FehlendeBestaetigungen` je Monat, wer noch
+  nicht bzw. nach einer Änderung nicht erneut bestätigt hat („Eine Person hat
+  ihre Leistungen noch nicht bestätigt:“ bzw. „… Personen haben ihre
+  Leistungen noch nicht bestätigt:“, Namen mit „(geändert seit Bestätigung)“),
+  und abschließen lässt er sich erst mit dem Haken „Trotzdem abschließen – auch
+  ohne alle Bestätigungen“. Klein darunter: ein Ende mitten in einem Zeitraum
+  der gemeinsamen Texte (siehe unten), überholte bearbeitete Zeilen
   (`ueberholtRueckfrage`: „Achtung: In … fehlen neue Leistungen noch im
   bearbeiteten Text.“, „Achtung: In … hat sich der Text der Mitarbeiter seit der
   Bearbeitung geändert – abgeschlossen wird der von Hand bearbeitete Text.“,
   für den automatischen Text entsprechend) und die Bestätigungen, die mit
-  geänderten Grenzen erlöschen (`grenzFolgen`). Darunter nennt
-  `FehlendeBestaetigungen` je Monat, wer noch nicht bzw. nach einer Änderung
-  nicht erneut bestätigt hat (`fehlendeBestaetigungen`, für den gewählten
-  Umfang): „Eine Person hat ihre Leistungen noch nicht
-  bestätigt:“ bzw. „… Personen haben ihre Leistungen noch nicht bestätigt:“,
-  Namen mit „(geändert seit Bestätigung)“ und „Erstellen ist trotzdem möglich –
-  danach lassen sich die gemeinsamen Leistungstexte der abgerechneten Zeiträume
-  nicht mehr ändern.“ Meldung danach „Leistungsnachweis erstellt und
-  abgeschlossen – Leistungen bis …“, mit späteren Leistungen ergänzt um „; …
-  für den nächsten offen“. „Wieder öffnen …“ fragt „Leistungsnachweis wieder
+  geänderten Grenzen erlöschen (`grenzFolgen`). Der Knopf „Abschließen und
+  PDF“ (gesperrt ohne Leistungen bis dahin bzw. bei fehlenden Bestätigungen
+  ohne den Haken; daneben „Danach ist der Stand festgeschrieben, die
+  gemeinsamen Leistungstexte der Zeiträume lassen sich nicht mehr ändern;
+  „Wieder öffnen“ (Menü „Mehr“) hebt den Abschluss auf.“) schließt ab
+  (`nachweisAbschliessen(id, bis)`), öffnet den Druckdialog mit dem Stand, den
+  der Store festschreibt (`nachweisDrucken`), und führt nach
+  `…/projekt/<id>/nachweis/<id>` des abgeschlossenen Nachweises; Meldung
+  „Leistungsnachweis abgeschlossen – Leistungen bis …“, mit späteren
+  Leistungen ergänzt um „; … im nächsten weiter“, dann „Im Druckdialog „Als PDF
+  sichern“ wählen.“ Ist kein Ende wählbar (der Nachweis beginnt nach heute),
+  heißt der Schritt nur „Abschließen“ mit „Der Leistungsnachweis beginnt am … –
+  abschließen lässt er sich ab dann.“ Eine Rückfrage zum Abschließen gibt es
+  nicht. „Wieder öffnen …“ fragt „Leistungsnachweis wieder
   öffnen?“ („Wieder öffnen“) und nennt Abweichungen vom festgeschriebenen Stand,
   die erlöschenden Bestätigungen und – bei einem im früheren Raster
   abgeschlossenen Nachweis (`NachweisStand.erfassungsRaster` ≠ Raster des
@@ -2165,7 +2205,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   bleiben, und die Folgen für gemeinsame Texte und Bestätigungen; „Abbrechen“
   und „Löschen“); Meldung „Leistungsnachweis und … gelöscht.“ bzw.
   „Leistungsnachweis gelöscht.“, danach die Seite des Projekts mit seinem
-  aktuellen Nachweis. „Aufschläge zurücksetzen …“ fragt „Aufschläge
+  offenen Nachweis. „Aufschläge zurücksetzen …“ fragt „Aufschläge
   zurücksetzen?“ („Zurücksetzen“) und entfernt die Aufschläge der Zeilen und
   den Gesamtaufschlag (`aufschlaegeZuruecksetzen`).
 * „Excel-Import (alle Mitarbeiter)“ in der Leiste der Übersicht: der Import als
@@ -2204,11 +2244,11 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   zurück, wenn das Raster wieder umgestellt wird.“; der Satz über die offenen
   Nachweise endet dann mit „bleiben gespeichert“ statt „bleiben erhalten“.
   Liegt schon alles in genau einem offenen Nachweis, heißt der Knopf „Öffnen“,
-  und der Dialog sagt „… bereits im offenen Leistungsnachweis „…“. Er bleibt
-  offen, bis er erstellt wird; dabei wird festgelegt, bis zu welchem Tag er
+  und der Dialog sagt „… bereits im offenen Leistungsnachweis „…“. Er läuft
+  weiter, bis das Controlling ihn abschließt; dabei wird festgelegt, bis wann er
   reicht.“; sonst „Der Leistungsnachweis umfasst ohne Zeitraumwahl alle nicht
-  abgerechneten Leistungen: …. Später erfasste kommen hinzu; bis zu welchem Tag
-  er reicht, wird beim Erstellen festgelegt.“
+  abgerechneten Leistungen: …. Später erfasste kommen hinzu; bis wann er
+  reicht, wird beim Abschließen festgelegt.“
   So lassen sich auch Leistungen mehrerer Monate (etwa Oktober bis Dezember) in
   einem Nachweis sammeln. Ändern sich mit dem neuen Nachweis Grenzen der
   Zeiträume, nennt der Dialog die Folgen (`grenzFolgen`, `grenzFolgenHinweis`
@@ -2225,8 +2265,8 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   verfassen die Mitarbeiter einen eigenen Text.“), und die Bestätigungen, die
   damit erlöschen (mit Namen und Monat) – mit neuem Teil oder erlöschenden
   Bestätigungen als Warnung. Ebenso „Zeitraum ändern“ und „Leistungsnachweis
-  löschen?“; „Leistungsnachweis wieder öffnen?“ und „Leistungsnachweis
-  erstellen?“ nennen die erlöschenden Bestätigungen.
+  löschen?“; „Leistungsnachweis wieder öffnen?“ und Schritt 3 „Abschließen und
+  PDF“ nennen die erlöschenden Bestätigungen.
   Vorhandene Nachweise korrigiert „Zeitraum ändern“ (`ZeitraumDialog`, im Menü
   „Mehr“ des Leistungsnachweises, nur offen). Ein
   festgelegtes Ende (`bisFest`) wirkt an jedem offenen Nachweis – ohne es läuft
@@ -2238,7 +2278,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   aufhebt. Läuft der Nachweis danach nicht bis zum Abschluss, obwohl er es
   bisher tat, sagt der Hinweis „Das Ende steht damit fest: Der
   Leistungsnachweis endet am …, läuft nicht mehr bis zum Abschluss; beim
-  Erstellen ist dieses Ende vorgeschlagen. Spätere Leistungen kommen in einen
+  Abschließen ist dieses Ende wählbar. Spätere Leistungen kommen in einen
   neuen Leistungsnachweis.“ – wird ein schon festgelegtes Ende geändert, heißt
   es „… läuft nicht bis zum Abschluss; …“. Der Dialog übergibt `bisFest` stets
   ausdrücklich an `updateNachweis`.
@@ -2268,16 +2308,15 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   „Bleibt im abgeschlossenen Leistungsnachweis „…“ abgerechnet – mit dem neuen
   Datum erscheint sie erst, wenn das Controlling ihn wieder öffnet.“
   (`src/bereiche/leistungsnachweise/components/LeistungDialog.tsx`).
-* Der Umfang steht erst beim Erstellen fest – mit dem gewählten Tag
-  („Leistungen bis einschließlich“, siehe oben): Läuft ein Nachweis bis zum
-  Abschluss (`laeuftBisAbschluss` – offen, ohne `bisFest`), zeigt der
-  Untertitel seiner Tabelle „ab … · offen bis zum Erstellen“
-  (`nachweisZeitraumText` in
+* Der Umfang steht erst beim Abschließen fest – mit dem gewählten Ende
+  (Schritt 3, siehe oben): Läuft ein Nachweis bis zum Abschluss
+  (`laeuftBisAbschluss` – offen, ohne `bisFest`), nennt die Leiste als Zeitraum
+  „seit … · läuft bis zum Abschließen“ (`nachweisZeitraumText` in
   `src/bereiche/leistungsnachweise/components/common.tsx`), sonst Beginn und
-  Ende. Endet er beim Erstellen mitten in einem Zeitraum der gemeinsamen Texte,
-  fügt die Rückfrage „Er endet mitten in einem Zeitraum der gemeinsamen
-  Leistungstexte – für die Tage ab … verfassen die Mitarbeiter einen eigenen
-  Text.“ an.
+  Ende. Endet er beim Abschließen mitten in einem Zeitraum der gemeinsamen Texte
+  (etwa bis heute), fügt Schritt 3 „Er endet mitten in einem Zeitraum der
+  gemeinsamen Leistungstexte – für die Tage ab … verfassen die Mitarbeiter
+  einen eigenen Text.“ an.
 * Text einer Zeile (`nachweisZeilen`): der vom Controlling bearbeitete
   (`texte`); sonst aus den gemeinsamen Leistungstexten (`gemeinsamerZeilentext`
   in `src/bereiche/leistungsnachweise/domain/nachweis.ts`): die Leistungen der
@@ -2290,11 +2329,11 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   geltenden gemeinsamen Text `automatikText` der Zeile. Abgeschlossene
   Nachweise behalten ihren Stand.
 * Die Kopfzeile nennt „Leistungsnachweise“ bzw. „Auswertung“ mit dem
-  Untertitel aus `leistungsnachweiseUntertitel` („Projekte – Raster, Stand der
+  Untertitel aus `leistungsnachweiseUntertitel` („Projekte – offene
   Leistungsnachweise und Bestätigungen“, „Leistungsnachweise – Stunden
   je Mitarbeiter, Monat und Projekt“, für die Seite eines Projekts – mit oder
-  ohne gewählten Nachweis – „Projekt – Leistungsnachweis mit Texten,
-  Aufschlägen und Bestätigungen erstellen“).
+  ohne gewählten Nachweis – „Projekt – Bestätigungen, Leistungsnachweis prüfen
+  und abschließen“).
 * Gemeinsame Leistungstexte und Bestätigungen liest das Controlling nur
   (`periodentextSetzen` meldet dort „Die gemeinsamen Leistungstexte verfassen
   die Mitarbeiter im Bereich Leistungsnachweise.“, `monatBestaetigen`
@@ -2316,7 +2355,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
 | „Die Projektnummer „…“ ist bereits vergeben.“ | `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx` | Projektnummer doppelt. |
 | „Die Datei enthält keine Zeile mit Datum, Stunden und Projektnummer.“ | `src/bereiche/leistungsnachweise/components/ImportDialog.tsx` | Excel-Import ohne verwertbare Zeile. |
 | „Die Datei ist keine Sicherung der Leistungsnachweise.“ | `src/bereiche/leistungsnachweise/store/storage.ts` | Einspielen einer fremden Datei. |
-| „Leistungsnachweis erstellt und abgeschlossen – Leistungen bis …“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` | Kein Fehler: „Erstellen“ in der Rückfrage „Leistungsnachweis erstellen?“ mit dem letzten Tag des Umfangs („Leistungen bis einschließlich“); mit späteren Leistungen ergänzt um „; … für den nächsten offen“ – sie liegen danach in einem neuen offenen Leistungsnachweis. |
+| „Leistungsnachweis abgeschlossen – Leistungen bis …. Im Druckdialog „Als PDF sichern“ wählen.“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` (`AbschliessenSchritt`) | Kein Fehler: „Abschließen und PDF“ in Schritt 3 mit dem gewählten Ende (ein Monatsende bzw. heute); mit späteren Leistungen vor dem Punkt ergänzt um „; … im nächsten weiter“ – sie liegen danach in einem neuen offenen Leistungsnachweis. Zugleich öffnet sich der Druckdialog. |
 | „Leistungsnachweis wieder geöffnet – er zeigt die aktuellen Leistungen.“ / „Aufschläge zurückgesetzt.“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` | Kein Fehler. |
 | „Bitte eine Zahl angeben, z. B. 1,5 oder -0,5.“ / „Abgerechnet kann nicht unter 0 Std. liegen.“ | `src/bereiche/leistungsnachweise/domain/nachweis.ts` (`AUFSCHLAG_KEINE_ZAHL`, `AUFSCHLAG_UNTER_NULL`; am Feld und als Kurzmeldung über `StundenFeld` in `src/bereiche/leistungsnachweise/pages/controlling/hilfen.tsx`) | Aufschlag einer Zeile bzw. auf den ganzen Nachweis (`aufschlagSetzen`, `gesamtAufschlagSetzen` mit `gesamtAufschlagPruefen`) ist keine Zahl bzw. ließe die abgerechneten Stunden unter 0 fallen. |
 | „Ohne abgerechnete Stunden lässt sich kein Gesamtaufschlag verteilen.“ | `src/bereiche/leistungsnachweise/domain/nachweis.ts` (`GESAMTAUFSCHLAG_OHNE_STUNDEN`, `gesamtAufschlagPruefen`) | Gesamtaufschlag auf einen Nachweis ohne abgerechnete Stunden. |

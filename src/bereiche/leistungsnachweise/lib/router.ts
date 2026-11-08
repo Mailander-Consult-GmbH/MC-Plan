@@ -42,7 +42,7 @@ export type Route =
    */
   | { view: 'projekt'; projektId: ID; ansicht?: ProjektAnsicht; monat?: string }
   | { view: 'controlling'; tab: ControllingTab }
-  /** Projekt im Controlling: Seite mit seinem aktuellen Leistungsnachweis (`aktuellerNachweis`). */
+  /** Projekt im Controlling: Seite mit seinem offenen Leistungsnachweis (dem frühesten, `offeneNachweise`). */
   | { view: 'controllingProjekt'; projektId: ID }
   /** Projekt im Controlling mit einem bestimmten Leistungsnachweis (Texte, Aufschläge, Erstellen, Export). */
   | { view: 'abrechnung'; projektId: ID; nachweisId: ID };

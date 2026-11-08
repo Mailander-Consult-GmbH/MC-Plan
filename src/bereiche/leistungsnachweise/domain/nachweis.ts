@@ -18,14 +18,13 @@
  * Abrechnungsrhythmus gibt es nicht (mehr, Fassung 9): Fehlt für Leistungen
  * ein Nachweis, verlängert `nachweiseErgaenzen` den laufenden (offenen) bis
  * zum Monatsende oder legt einen neuen an – der offene Nachweis wächst mit,
- * bis das Controlling ihn erstellt. Den Umfang gibt erst das Erstellen
- * (Abschließen) vor: mit dem Enddatum, das das Controlling wählt
- * („Leistungen bis einschließlich …“, `vorgabeEnde`), sonst bis zum letzten
+ * bis das Controlling ihn abschließt. Den Umfang gibt erst das Abschließen
+ * vor: bis zu dem Ende, das das Controlling wählt – ein Monatsende oder heute
+ * (`abschlussEnden`, Vorschlag `abschlussVorschlag`) –, sonst bis zum letzten
  * Tag mit Leistungen (`abschlussZeitraum`, `nachweisAbschliessenAnwenden`);
  * spätere Leistungen kommen in einen neuen offenen Nachweis. Wird am
- * Monatsende keiner erstellt, bleiben die Leistungen offen – fällig ist ein
- * Nachweis mit Leistungen aus einem vergangenen Monat (`nachweisFaellig`,
- * `offenSeit`). „Neuer Leistungsnachweis“ im Controlling fragt keinen
+ * Monatsende keiner abgeschlossen, läuft der offene einfach weiter.
+ * „Neuer Leistungsnachweis“ im Controlling fragt keinen
  * Zeitraum ab: Er umfasst alle nicht abgerechneten Leistungen
  * (`nichtAbgerechnet`, `nachweisFuerNichtAbgerechnete`). Abgeschlossene
  * Nachweise wachsen nie.
@@ -1197,7 +1196,7 @@ export function ueberholtHinweis(liste: UeberholteZeile[]): string | null {
   return saetze.length ? saetze.join(' ') : null;
 }
 
-/** Satz in der Rückfrage „Leistungsnachweis erstellen?“ zu `ueberholteZeilen`; null ohne solche Zeilen. */
+/** Satz im Schritt „Abschließen und PDF“ zu `ueberholteZeilen`; null ohne solche Zeilen. */
 export function ueberholtRueckfrage(liste: UeberholteZeile[]): string | null {
   const z = ueberholtZahlen(liste);
   const saetze: string[] = [];
@@ -1857,43 +1856,6 @@ export function offeneNachweise(daten: LeistungsnachweisDaten, projektId: ID): L
   return nachweiseVon(daten, projektId).filter((n) => n.status === 'entwurf');
 }
 
-/**
- * Nachweis, der für das Projekt gerade ansteht: der früheste offene, sonst der
- * jüngste abgeschlossene (mit dem spätesten Zeitraum), sonst null.
- */
-export function aktuellerNachweis(daten: LeistungsnachweisDaten, projektId: ID): Leistungsnachweis | null {
-  const alle = nachweiseVon(daten, projektId);
-  return alle.find((n) => n.status === 'entwurf') ?? alle.filter((n) => n.status === 'abgeschlossen').at(-1) ?? null;
-}
-
-/** Leistungen im Zeitraum des Nachweises, nach Datum – ohne nachgereichte (sie liegen davor). */
-const laufendeLeistungen = (daten: LeistungsnachweisDaten, n: Leistungsnachweis): Leistung[] =>
-  leistungenDesNachweises(daten, n).filter((l) => imZeitraum(l.datum, n.von, n.bis));
-
-/**
- * Seit wann ein offener Nachweis Leistungen hat: das früheste Datum seiner
- * Leistungen – ohne nachgereichte (sie stammen aus schon abgerechneten
- * Zeiträumen), etwa für einen Hinweis „offen seit Oktober 2026“. null ohne
- * Leistungen und bei abgeschlossenen Nachweisen.
- */
-export function offenSeit(daten: LeistungsnachweisDaten, n: Leistungsnachweis): ISODate | null {
-  if (n.status !== 'entwurf') return null;
-  return laufendeLeistungen(daten, n)[0]?.datum ?? null;
-}
-
-/**
- * Ist der Nachweis fällig – offen und mit Leistungen aus einem vergangenen
- * Monat (vor dem ersten Tag des laufenden Monats, ohne nachgereichte;
- * `offenSeit`)? Dann ist ein Monat vorbei, ohne dass ein Nachweis erstellt
- * wurde: Seine Leistungen bleiben offen und kommen in den nächsten Nachweis,
- * den das Controlling erstellt (`vorgabeEnde` schlägt das Ende des Vormonats
- * vor). Ein Nachweis ohne Leistungen ist nie fällig.
- */
-export function nachweisFaellig(daten: LeistungsnachweisDaten, n: Leistungsnachweis, heute: ISODate): boolean {
-  const seit = offenSeit(daten, n);
-  return seit !== null && seit < monatsanfang(heute);
-}
-
 /* ------------------------------------------------------------------ */
 /* Abschließen                                                         */
 /* ------------------------------------------------------------------ */
@@ -1921,30 +1883,51 @@ export function abschlussEndeGueltig(n: Pick<Leistungsnachweis, 'von' | 'bis'>, 
   return !!bereich && istDatum(bis) && bis >= bereich.von && bis <= bereich.bis;
 }
 
-/**
- * Vorschlag für das Enddatum beim Erstellen: das Ende des Vormonats, wenn der
- * Nachweis Leistungen vor dem laufenden Monat hat (ohne nachgereichte) – so
- * kommen die Leistungen des laufenden Monats in den nächsten –, sonst der
- * letzte Tag mit Leistungen bis heute, ohne solche heute. Stets im erlaubten
- * Bereich (`abschlussEndeBereich`, also höchstens das bisherige Ende); ist er
- * leer, das bisherige Ende.
- */
-export function vorgabeEnde(daten: LeistungsnachweisDaten, n: Leistungsnachweis, heute: ISODate): ISODate {
-  const bereich = abschlussEndeBereich(n, heute);
-  if (!bereich) return n.bis;
-  const leistungen = laufendeLeistungen(daten, n);
-  const monatsbeginn = monatsanfang(heute);
-  const vormonatsende = addDays(monatsbeginn, -1);
-  if (leistungen.some((l) => l.datum < monatsbeginn) && vormonatsende >= bereich.von) {
-    return vormonatsende < bereich.bis ? vormonatsende : bereich.bis;
-  }
-  return leistungen.filter((l) => l.datum <= bereich.bis).at(-1)?.datum ?? bereich.bis;
+/** Ein wählbares Ende beim Abschließen (`abschlussEnden`). */
+export interface AbschlussEnde {
+  bis: ISODate;
+  /** `monatsende` – Ende eines Kalendermonats; `heute`; `nachweisende` – das bisherige Ende des Nachweises vor heute (etwa von Hand festgelegt, `bisFest`). */
+  art: 'monatsende' | 'heute' | 'nachweisende';
 }
 
 /**
- * Ende eines Nachweises beim Erstellen (Abschließen) – erst hier steht sein
- * Zeitraum fest:
- * * Mit `bis` („Leistungen bis einschließlich …“) im erlaubten Bereich
+ * Was beim Abschließen als Ende zur Wahl steht – statt eines freien Datums:
+ * jedes Monatsende im erlaubten Bereich (`abschlussEndeBereich`: ab dem
+ * Beginn bis heute, höchstens bis zum bisherigen Ende), dazu dessen letzter
+ * Tag, wenn er kein Monatsende ist – heute bzw. das bisherige Ende des
+ * Nachweises. Aufsteigend; leer, wenn der Bereich leer ist. So schließt das
+ * Controlling „bis Ende Oktober“ ab, und der Rest läuft im nächsten
+ * Nachweis weiter.
+ */
+export function abschlussEnden(n: Pick<Leistungsnachweis, 'von' | 'bis' | 'bisFest'>, heute: ISODate): AbschlussEnde[] {
+  const bereich = abschlussEndeBereich(n, heute);
+  if (!bereich) return [];
+  const enden: AbschlussEnde[] = [];
+  for (let monat = monatsanfang(bereich.von); monatsende(monat) <= bereich.bis; monat = addDays(monatsende(monat), 1)) {
+    enden.push({ bis: monatsende(monat), art: 'monatsende' });
+  }
+  if (enden.at(-1)?.bis !== bereich.bis) enden.push({ bis: bereich.bis, art: bereich.bis === heute ? 'heute' : 'nachweisende' });
+  return enden;
+}
+
+/**
+ * Vorgeschlagenes Ende beim Abschließen (`abschlussEnden`): das letzte
+ * Monatsende – meist das Ende des Vormonats –, sonst das einzige wählbare
+ * Ende; null, wenn keines wählbar ist.
+ */
+export function abschlussVorschlag(n: Pick<Leistungsnachweis, 'von' | 'bis' | 'bisFest'>, heute: ISODate): ISODate | null {
+  const enden = abschlussEnden(n, heute);
+  return [...enden].reverse().find((e) => e.art === 'monatsende')?.bis ?? enden.at(-1)?.bis ?? null;
+}
+
+/** Leistungen im Zeitraum des Nachweises, nach Datum – ohne nachgereichte (sie liegen davor). */
+const laufendeLeistungen = (daten: LeistungsnachweisDaten, n: Leistungsnachweis): Leistung[] =>
+  leistungenDesNachweises(daten, n).filter((l) => imZeitraum(l.datum, n.von, n.bis));
+
+/**
+ * Ende eines Nachweises beim Abschließen – erst hier steht sein Zeitraum
+ * fest:
+ * * Mit `bis` (ein Monatsende oder heute, `abschlussEnden`) im erlaubten Bereich
  *   (`abschlussEndeGueltig`: ab dem Beginn bis heute, höchstens bis zum
  *   bisherigen Ende) endet er dort – auch mit von Hand festgelegtem Ende.
  * * Ohne `bis` (oder mit einem ungültigen): Läuft er bis zum Abschluss

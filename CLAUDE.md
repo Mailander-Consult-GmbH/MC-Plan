@@ -119,27 +119,34 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `LeistungDialog` über `projektAuswahl`), alles Übrige (Projekte anlegen und einstellen –
   `projektVerwalten`; Ausnahme: der Excel-Import legt auch im Bereich unbekannte Projekte und
   Abschnitte an, soweit die eigenen Leistungen sie brauchen, `planErlaubt` –,
-  Leistungsnachweise samt Leistungstexten und Bemerkung, Erstellen (Abschluss), Aufschläge, Export,
+  Leistungsnachweise samt Leistungstexten und Bemerkung, Abschließen, Aufschläge, Export,
   Auswertung, Sammel-Import) gibt es nur im Controlling – ohne Reiter (`ControllingTab` =
-  `'projekte'` | `'auswertung'` in `lib/router.ts`): die Übersicht der Projekte
-  (`pages/controlling/ProjektListe.tsx`: je Projekt das Raster als Auswahl in der Tabelle –
-  Rückfrage „Raster ändern?“ mit `RasterwechselHinweis` –, der aktuelle Nachweis mit Stand,
-  `aktuellerNachweis`/`nachweisFaellig` – „Fällig“ mit dem Monat aus `offenSeit`, sonst „Offen“ –,
-  Stunden und „x von y bestätigt“, `bestaetigungsZahl`; Sammel-Import, Neues Projekt), je Projekt
+  `'projekte'` | `'auswertung'` in `lib/router.ts`): die Übersicht „Offene Leistungsnachweise“
+  (`pages/controlling/ProjektListe.tsx`: je Projekt der früheste offene Nachweis, gruppiert nach dem
+  Stand bis zum letzten Monatsende aus `abschlussEnden` – „Bereit zum Abschließen – alle haben
+  bestätigt“, „Bestätigungen fehlen“ mit Namen und Monaten aus `fehlendeBestaetigungen`, „Noch
+  nichts abzuschließen“ –, Stunden gesamt und bis Monatsende, „x von y bestätigt“; das Raster steht
+  nur in „Projekt einstellen“ bzw. „Projekt bearbeiten“; Sammel-Import, Neues Projekt), je Projekt
   eine Seite (`Projekt.tsx`, Route `controllingProjekt`; `abrechnung` ist dieselbe Seite mit gewähltem
   Nachweis: Kopf mit Menü „Mehr“ – `MehrMenue` in `pages/controlling/hilfen.tsx` – für „Projekt
   einstellen“ (`ProjektEinstellungen` im `Modal`), Bearbeiten und Löschen; darunter
-  `NachweisBearbeitung` aus `Abrechnung.tsx`: Auswahl unter allen Nachweisen des Projekts, Vorschau,
-  PDF, Excel, Menü „Mehr“, „Leistungsnachweis erstellen“ = abschließen, mit „Leistungen bis
-  einschließlich“ in der Rückfrage; der Block „Mitarbeiter und
-  Bestätigungen“, `MitarbeiterBestaetigungen` in `pages/controlling/BestaetigungsStand.tsx`,
-  `FehlendeBestaetigungen` in der Rückfrage – erstellen bleibt möglich; eine Tabelle mit
-  bearbeitbarem Leistungstext, `ZeilenText` in `pages/controlling/Leistungstexte.tsx`, Erfasst,
-  Aufschlag und Abgerechnet, darunter der Aufschlag auf den ganzen Nachweis – `GesamtAufschlagFeld`,
-  ± Std. oder ± %, `StundenFeld` mit `prozent` in `hilfen.tsx` – und die Bemerkung) und die Auswertung
-  (`pages/controlling/Auswertung.tsx`). Seiten für alle Nachweise, für Mitarbeiter, für die
-  Leistungen aller Mitarbeiter und für die Bestätigungen eines Projekts gibt es nicht; frühere
-  Adressen lenkt `lib/router.ts` um (`…/projekt/<id>/<reiter>` auf die Seite des Projekts).
+  `NachweisBearbeitung` aus `Abrechnung.tsx` – ohne Nachweis in der Adresse der früheste offene,
+  sonst der gewählte, dann mit „Zum offenen Leistungsnachweis“; Leiste mit Vorschau, abgeschlossen
+  PDF und Excel, Menü „Mehr“ (offen auch PDF und Excel des offenen Stands) –, ein offener in drei
+  Schritten, `SchrittKopf` in `hilfen.tsx`: 1 „Haben alle eingetragen und bestätigt?“ –
+  `MitarbeiterBestaetigungen` in `pages/controlling/BestaetigungsStand.tsx`, gezählt bis zum in
+  Schritt 3 gewählten Ende –, 2 „Prüfen – so geht der Leistungsnachweis raus“ – eine Tabelle mit
+  Leistungstext (`ZeilenText` in `pages/controlling/Leistungstexte.tsx`: zuerst zum Lesen,
+  „✎ Korrigieren“/„Fertig“), Erfasst, Aufschlag und Abgerechnet, darunter der Aufschlag auf den
+  ganzen Nachweis – `GesamtAufschlagFeld`, ± Std. oder ± %, `StundenFeld` mit `prozent` in
+  `hilfen.tsx` – und die Bemerkung –, 3 „Abschließen und PDF“ – `AbschliessenSchritt`: Wahl unter
+  `abschlussEnden`, fehlen Bestätigungen (`FehlendeBestaetigungen`), nur mit „Trotzdem
+  abschließen“, danach Druckdialog und Seite des abgeschlossenen; eine Rückfrage gibt es nicht;
+  ganz unten „Frühere Leistungsnachweise“, `FruehereNachweise` in `Projekt.tsx`, mit „PDF“ und
+  „Ansehen“) und die Auswertung (`pages/controlling/Auswertung.tsx`). Seiten für alle Nachweise,
+  für Mitarbeiter, für die Leistungen aller Mitarbeiter und für die Bestätigungen eines Projekts
+  gibt es nicht; frühere Adressen lenkt `lib/router.ts` um (`…/projekt/<id>/<reiter>` auf die
+  Seite des Projekts).
   Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). **Eine eigene
   Anmeldung gibt es nicht:** Angemeldet ist der aktive Mitarbeiter, dessen Name dem gemeinsamen
   „Angemeldet als“ entspricht (`mitarbeiterZumNamen`); der Store zieht `einstellungen.mitarbeiterId`
@@ -187,13 +194,14 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   es nicht (mehr, Fassung 9): ein offener Nachweis ohne festgelegtes Ende (`laeuftBisAbschluss(n)`;
   `bisFest` setzt „Zeitraum ändern“) wächst in `nachweiseErgaenzen` bis zum Monatsende neuer
   Leistungen mit, sonst entsteht ein neuer ab dem Monatsanfang; den Umfang legt erst das
-  **Erstellen** fest – „Leistungen bis einschließlich“, Vorschlag `vorgabeEnde` (Ende des Vormonats,
-  sonst letzter Tag mit Leistungen; bei `bisFest` das festgelegte Ende), erlaubt ab dem Beginn bis
-  heute, höchstens bis zum bisherigen Ende (`abschlussEndeBereich`/`abschlussEndeGueltig`),
-  `abschlussZeitraum(…, bis?)`, `nachweisAbschliessenAnwenden(…, bis?)`, Store
-  `nachweisAbschliessen(id, bis?)`; spätere Leistungen kommen in einen neuen offenen Nachweis;
-  fällig ist ein offener mit (nicht nachgereichten) Leistungen vor dem laufenden Monat
-  (`offenSeit`, `nachweisFaellig`); **Gesamtaufschlag** `Leistungsnachweis.gesamtAufschlag`
+  **Abschließen** fest – statt eines freien Datums jedes Monatsende, dazu heute bzw. das bisherige
+  Ende vor heute (`abschlussEnden`, Vorschlag `abschlussVorschlag`: das letzte Monatsende), erlaubt
+  ab dem Beginn bis heute, höchstens bis zum bisherigen Ende
+  (`abschlussEndeBereich`/`abschlussEndeGueltig`), `abschlussZeitraum(…, bis?)`,
+  `nachweisAbschliessenAnwenden(…, bis?)`, Store `nachweisAbschliessen(id, bis?)`; spätere
+  Leistungen kommen in einen neuen offenen Nachweis; ohne Abschluss läuft der offene einfach
+  weiter – eine Fälligkeit gibt es nicht (mehr; `vorgabeEnde`, `nachweisFaellig`, `offenSeit`
+  entfallen); **Gesamtaufschlag** `Leistungsnachweis.gesamtAufschlag`
   (`GesamtAufschlag`, `art` `'stunden'` | `'prozent'`), in `nachweisZeilen` nach den Aufschlägen der
   Zeilen von `gesamtAufschlagVerteilen` anteilig nach den abgerechneten Stunden auf Zeilen und
   Abschnitte verteilt (Summe exakt, nie unter 0; `NachweisZeile.anteilGesamt`/
@@ -387,12 +395,14 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   prüft (gemeinsamer Text, erlöschende Bestätigung), wechselt den Namen unter „Angemeldet als“.
   Demodaten gibt es nur, solange das Projektregister leer ist – nach dem Leeren des
   `localStorage` also zuerst `#/leistungsnachweise` öffnen, sonst beginnt der Bereich leer.
-  Leistungsnachweise erstellen (Abschluss), Aufschläge und Raster prüft man im Controlling
-  (`#/controlling/leistungsnachweise/projekte`). Die offenen Demo-Nachweise sind sofort „Fällig“,
-  weil sie Leistungen aus vergangenen Monaten enthalten. „Leistungsnachweis erstellen“ fragt
-  „Leistungen bis einschließlich“ ab (Vorschlag Ende des Vormonats; spätere Leistungen bleiben in
-  einem neuen offenen Nachweis); den Aufschlag auf den ganzen Nachweis (± Std. oder ± %) prüft man
-  auf der Seite eines Projekts im Controlling unter der Tabelle.
+  Leistungsnachweise abschließen, Aufschläge und Raster prüft man im Controlling
+  (`#/controlling/leistungsnachweise/projekte`). Die offenen Demo-Nachweise enthalten Leistungen
+  aus vergangenen Monaten; die Brücke (K9101) steht unter „Bestätigungen fehlen“ und wird „bereit“,
+  wenn zusätzlich „Jonas Keller“ (unter „Angemeldet als“) im Bereich seinen Vormonat bestätigt.
+  Abgeschlossen wird auf der Seite eines Projekts in Schritt 3 „Abschließen und PDF“ mit einem
+  Monatsende bzw. „bis heute“ (Vorschlag Ende des Vormonats; spätere Leistungen laufen in einem
+  neuen offenen Nachweis weiter; danach öffnet sich der Druckdialog); den Aufschlag auf den ganzen
+  Nachweis (± Std. oder ± %) prüft man in Schritt 2 unter der Tabelle.
 * Projektsteuerung: Wer „Lena Roth“ einträgt, sieht die Demo-Aufgaben als eigene To-Dos; mit
   einem anderen Namen zeigt die Übersicht keine.
 * „Angemeldet als“ liegt unter `kaplan-benutzer.v1` – wer es zurücksetzen will, löscht diesen

@@ -5,10 +5,10 @@
  * Ein Projekt sammelt die erfassten Leistungen seiner Mitarbeiter (je Tag,
  * Person und Tätigkeit eine `Leistung` mit Stunden). Ein Leistungsnachweis
  * ist ein Zeitraum eines Projekts: Der laufende wächst mit neuen Leistungen
- * mit, bis das Controlling ihn erstellt (abschließt) – mit dem Enddatum, das
- * es dabei wählt („Leistungen bis einschließlich …“); was danach liegt, kommt
- * in den nächsten. Einen Abrechnungsrhythmus gibt es nicht (mehr, Fassung 9):
- * Wird am Monatsende kein Nachweis erstellt, bleiben die Leistungen offen. Der
+ * mit, bis das Controlling ihn abschließt – bis zu dem Ende, das es dabei
+ * wählt (ein Monatsende oder heute); was danach liegt, kommt in den nächsten.
+ * Einen Abrechnungsrhythmus gibt es nicht (mehr, Fassung 9): Wird am
+ * Monatsende keiner abgeschlossen, läuft der offene einfach weiter. Der
  * Nachweis fasst die Leistungen je Tag, Woche oder Monat zu Zeilen zusammen
  * (`Raster`). Mehrere Mitarbeiter schreiben so an einem gemeinsamen
  * Nachweis, ohne einander zu überschreiben: Jede Person bringt nur ihre

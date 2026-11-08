@@ -11,8 +11,12 @@
  * das und bietet „Ergänzen“, „Text der Mitarbeiter übernehmen“ bzw. „Text so
  * lassen“ an – überschrieben wird nie still. Bearbeiten darf nur das
  * Controlling, solange der Nachweis offen ist; abgeschlossene zeigen den
- * festgeschriebenen Stand, nur zum Lesen.
+ * festgeschriebenen Stand, nur zum Lesen. Auch offen steht der Text zunächst
+ * so da, wie er im PDF erscheint; „Korrigieren“ macht ihn bearbeitbar,
+ * „Fertig“ (oder Escape) zeigt ihn wieder zum Lesen – gespeichert wird bei
+ * jeder Eingabe.
  */
+import { useState } from 'react';
 import { Badge, Callout } from '../../../../shared/ui';
 import { Textfeld } from '../../components/Textfeld';
 import { anzahl } from '../../components/common';
@@ -56,24 +60,63 @@ export function ZeilenText({
   onMehr: () => void;
 }) {
   const datum = z.datumText.replace('\n', ' ');
+  // Offen: erst lesen wie im PDF, „Korrigieren“ öffnet das Feld
+  const [aendern, setAendern] = useState(false);
+  const lang = z.text.length > KURZ_AB || z.text.split('\n').length > 3;
+  const text = (
+    <div className={`ln-co-lesetext ${lang && !textOffen ? 'ln-co-gekuerzt' : ''}`}>
+      {z.text || <span className="tertiary">ohne Leistungstext</span>}
+    </div>
+  );
+  const mehr = lang ? (
+    <button type="button" className="ln-co-link" aria-expanded={textOffen} onClick={onMehr}>
+      {textOffen ? 'weniger' : 'mehr'}
+    </button>
+  ) : null;
   if (!bearbeitbar) {
-    const lang = z.text.length > KURZ_AB || z.text.split('\n').length > 3;
     return (
       <>
-        <div className={`ln-co-lesetext ${lang && !textOffen ? 'ln-co-gekuerzt' : ''}`}>
-          {z.text || <span className="tertiary">ohne Leistungstext</span>}
-        </div>
-        {lang ? (
-          <button type="button" className="ln-co-link" aria-expanded={textOffen} onClick={onMehr}>
-            {textOffen ? 'weniger' : 'mehr'}
-          </button>
-        ) : null}
+        {text}
+        {mehr}
       </>
     );
   }
   return (
     <>
-      <Textfeld value={z.text} onChange={onText} aria-label={`Leistungstext ${datum}`} />
+      {aendern ? (
+        <>
+          <Textfeld
+            value={z.text}
+            onChange={onText}
+            aria-label={`Leistungstext ${datum}`}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.stopPropagation();
+                setAendern(false);
+              }
+            }}
+          />
+          <button type="button" className="ln-co-link ln-co-fertig" onClick={() => setAendern(false)}>
+            Fertig
+          </button>
+        </>
+      ) : (
+        <>
+          {text}
+          <div className="ln-co-text-links">
+            {mehr}
+            <button
+              type="button"
+              className="ln-co-link ln-co-korrigieren"
+              aria-label={`Leistungstext ${datum} korrigieren`}
+              onClick={() => setAendern(true)}
+            >
+              ✎ Korrigieren
+            </button>
+          </div>
+        </>
+      )}
       <div className="ln-zeile-hinweis">
         {z.textBearbeitet ? (
           <>
