@@ -31,7 +31,7 @@ Browser, eigene Einstellungen, eigener Router. **Projekte und Projektbeteiligte 
 über das Projektregister: Ein Projekt kann in mehreren Bereichen geführt werden, Kontaktdaten und
 Funktionen seiner Beteiligten gelten dann überall (siehe
 [**Gemeinsame Projekte und Controlling**](#gemeinsame-projekte-und-controlling)). Der
-Startbildschirm zeigt die Bereiche als Kacheln; in einem Bereich führt **Bereich wechseln** unten
+Startbildschirm zeigt die Bereiche als Kacheln mit Titel und Untertitel; in einem Bereich führt **Bereich wechseln** unten
 in der Seitenleiste zurück. Der Abschnitt **Funktionsumfang** beschreibt das Planlaufmanagement,
 die Abschnitte [**Baubetriebsplanung**](#baubetriebsplanung),
 [**Projektsteuerung**](#projektsteuerung) und [**Leistungsnachweise**](#leistungsnachweise) die
@@ -1351,8 +1351,8 @@ die Übersicht der Projekte und die Seite eines Projekts.
 * **Seite eines Projekts** (`#/controlling/leistungsnachweise/projekt/<id>`, mit einem gewählten
   Nachweis `…/projekt/<id>/nachweis/<id>`) – oben **Alle Projekte**, Projektnummer und -name,
   Status und Raster und rechts drei Knöpfe – beschriftet und mit Symbol wie in den anderen
-  Bereichen: **Einstellungen** und, zum gezeigten Leistungsnachweis, **Vorschau** und rot
-  **Nachweis löschen** (siehe unten). **Einstellungen** fasst alle Angaben des Projekts an einer
+  Bereichen: zum gezeigten Leistungsnachweis **Vorschau**, dann **Einstellungen** und, wieder zum
+  gezeigten Leistungsnachweis, rot **Nachweis löschen** (siehe unten). **Einstellungen** fasst alle Angaben des Projekts an einer
   Stelle zusammen: die Karte *Projekt* mit Projektnummer (eindeutig, daran erkennt der Excel-Import
   das Projekt), Status, Projektname, Bezeichnung im Nachweis, Leistungsbereich, Raster und
   Beschreibung (**Verwerfen**/**Speichern**), darunter die Abschnitte und die Logos im Druckkopf.
@@ -1883,7 +1883,7 @@ src/
                      controlling/ ohne Reiter: ProjektListe.tsx (Leistungsnachweise je Projekt:
                      letzter abgeschlossener, offene Stunden und Bestätigung, gruppiert nach den
                      Bestätigungen bis zum letzten Monatsende), Projekt.tsx (Seite je Projekt mit
-                     den Knöpfen Einstellungen, Vorschau, Nachweis löschen und den früheren
+                     den Knöpfen Vorschau, Einstellungen, Nachweis löschen und den früheren
                      Leistungsnachweisen), Abrechnung.tsx (der Leistungsnachweis mit seinem
                      Kopf, offen in drei Schritten: Bestätigungen aus BestaetigungsStand.tsx;
                      Prüfen – eine Tabelle mit Leistungstext aus Leistungstexte.tsx, Aufschlag
