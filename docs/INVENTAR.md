@@ -1958,7 +1958,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   darunter „bis Ende …“; sonst „–“), „Bestätigung“ (Badge „… von …
   bestätigt“ – die Personen mit Leistungen bis dahin und davon die ohne
   fehlende Bestätigung –, grün bzw.
-  orange; fehlen welche, darunter „fehlt: …“ mit Namen und Monaten je Person;
+  orange – Namen und Monate der Fehlenden nennt erst die Seite des Projekts;
   in „Noch nichts abzuschließen“ „–“) und der Knopf „Prüfen und abschließen“
   (bereit, hervorgehoben) bzw. „Öffnen“. Ein Klick auf die Zeile bzw. den Knopf
   führt auf die Seite des Projekts. Eine Auswahl des Rasters gibt es in der
@@ -2035,7 +2035,9 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   Überschrift, daneben Zeitraum (`nachweisZeitraumText`) und Raster, Badge
   „geändert“ (`standVeraltet`); rechts abgeschlossen „Abgeschlossen …“ mit dem
   Zeitpunkt (`zeitpunkt`), „Vorschau“ (`Modal` „Vorschau“ mit dem Druckblatt,
-  `nachweisHtml`), abgeschlossen „Drucken / PDF“ und „Excel“ (während der
+  `nachweisHtml`; die graue Zeile unter dessen Überschrift, `nachweisMeta` in
+  `src/bereiche/leistungsnachweise/domain/druck.ts`, nennt nur Überschrift bzw.
+  Zeitraum und Leistungsbereich – kein Raster, keinen Stand), abgeschlossen „Drucken / PDF“ und „Excel“ (während der
   Erzeugung „Excel …“) und das Menü „Mehr“ (Tooltip „Weitere Aktionen zum
   Leistungsnachweis“: „Drucken / PDF (noch offen) …“ und „Excel (noch offen)“
   – der Stand des offenen Nachweises – sowie „Zeitraum ändern …“ nur offen,

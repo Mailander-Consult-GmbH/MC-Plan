@@ -3,7 +3,7 @@
  * PDF-Kurzfassung des Planlaufmanagements (`EXPORT_STIL`, `exportHtml` in
  * src/bereiche/planlauf/domain/export.ts und `druckeHtml` in
  * src/shared/print.ts): oben der Kopf mit „<Nummer> · <Projekt>“, darunter
- * eine graue Meta-Zeile mit Zeitraum, Leistungsbereich, Raster und Stand,
+ * eine graue Meta-Zeile mit Überschrift bzw. Zeitraum und Leistungsbereich,
  * rechts die Logos; darunter die Tabelle mit grauen Großbuchstaben-Köpfen und
  * feinen Trennlinien statt Gitter – Datum, Bearbeiter, Leistungstext und
  * Stunden, ab zwei Abschnitten statt „Stunden“ die Gruppe „Aufwand (Std)“ mit
@@ -20,11 +20,10 @@
  */
 import { formatDate, today } from '../../../shared/dates';
 import { druckeHtml } from '../../../shared/print';
-import { bearbeiterVon, mitAbschnittsspalten, nachweisSummen, nachweisTitel, tagVon, zeilenFuerAnzeige } from './nachweis';
+import { bearbeiterVon, mitAbschnittsspalten, nachweisSummen, nachweisTitel, zeilenFuerAnzeige } from './nachweis';
 import { logosVon } from './seed';
 import {
   OHNE_ABSCHNITT,
-  RASTER_LABEL,
   kuerzelAus,
   mitarbeiterName,
   projektKurzname,
@@ -35,7 +34,6 @@ import {
   type Logo,
   type NachweisZeile,
   type Projekt,
-  type Raster,
 } from './types';
 import { langDatum, monatsanfang, monatsende, runden, stundenText } from './zeitraum';
 
@@ -107,9 +105,6 @@ export interface NachweisFassung {
   leistungsbereich: string;
   von: ISODate;
   bis: ISODate;
-  raster: Raster;
-  /** Datum des Stands: der Tag des Abschlusses, sonst heute. */
-  standDatum: ISODate;
   zeilen: NachweisZeile[];
   /** Spalten der Stunden: je Abschnitt, „ohne“ (falls nötig) und „Gesamt“; leer unter zwei Abschnitten (`mitAbschnittsspalten`). */
   spalten: StundenSpalte[];
@@ -197,8 +192,6 @@ export function nachweisFassung(
     leistungsbereich: kopf.leistungsbereich,
     von: n.von,
     bis: n.bis,
-    raster: n.raster,
-    standDatum: stand && n.abgeschlossen ? tagVon(n.abgeschlossen) : today(),
     zeilen,
     spalten,
     summen,
@@ -286,15 +279,9 @@ function logosHtml(logos: Logo[]): string {
     .join('')}</div>`;
 }
 
-/** Meta-Zeile unter der Überschrift: „Leistungsnachweis Oktober 2026 · Projektsteuerung · Monatsscharf · Stand 06.11.2026“. */
-export function nachweisMeta(f: Pick<NachweisFassung, 'titel' | 'titelEigen' | 'von' | 'bis' | 'leistungsbereich' | 'raster' | 'standDatum'>): string {
-  return [
-    f.titel,
-    f.titelEigen ? `${langDatum(f.von)} – ${langDatum(f.bis)}` : '',
-    f.leistungsbereich,
-    RASTER_LABEL[f.raster],
-    `Stand ${formatDate(f.standDatum)}`,
-  ]
+/** Meta-Zeile unter der Überschrift: „Leistungsnachweis Oktober 2026 · Projektsteuerung“ – ohne Raster und Stand. */
+export function nachweisMeta(f: Pick<NachweisFassung, 'titel' | 'titelEigen' | 'von' | 'bis' | 'leistungsbereich'>): string {
+  return [f.titel, f.titelEigen ? `${langDatum(f.von)} – ${langDatum(f.bis)}` : '', f.leistungsbereich]
     .filter(Boolean)
     .join(' · ');
 }
