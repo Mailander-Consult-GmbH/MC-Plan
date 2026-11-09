@@ -12,9 +12,10 @@
  *   (`fehlendeBestaetigungen`),
  * * „Noch nichts abzuschließen“ – kein offener Nachweis oder bis zum letzten
  *   Monatsende keine Leistungen (etwa nur im laufenden Monat).
- * Je Zeile: Projekt (Nummer, Name, Status, ggf. „Archiviert“), der offene
- * Leistungsnachweis („seit …“ mit allen erfassten Stunden), die Stunden bis
- * zum Monatsende und die Bestätigungen; „Prüfen und abschließen“ bzw.
+ * Je Zeile: Projekt (Nummer, Name, Status, ggf. „Archiviert“), der letzte
+ * abgeschlossene Leistungsnachweis (Monat/Jahr bzw. Zeitraum, mit dem Tag
+ * des Abschlusses), die offenen Stunden bis zum Monatsende und die
+ * Bestätigung (x von y, wer fehlt); „Prüfen und abschließen“ bzw.
  * „Öffnen“ – wie ein Klick auf die Zeile – führt auf die Seite des Projekts
  * (Projekt.tsx). Darüber die Zahl der bereiten und der wartenden Projekte.
  * Das Raster stellt das Controlling in „Projekt einstellen“ ein.
@@ -32,9 +33,9 @@ import { ImportDialog } from '../../components/ImportDialog';
 import { ProjektDialog } from '../../components/ProjektDialog';
 import { STATUS_TON } from '../../components/common';
 import { fehlendeBestaetigungen, monatName, type MonatsStatus } from '../../domain/erfassung';
-import { abschlussEnden, leistungenDesNachweises, offeneNachweise, stundenVon } from '../../domain/nachweis';
+import { abschlussEnden, leistungenDesNachweises, nachweiseVon, offeneNachweise, stundenVon, tagVon } from '../../domain/nachweis';
 import { PROJEKT_STATUS_LABEL, mitarbeiterName, type ID, type Leistungsnachweis, type Mitarbeiter, type Projekt } from '../../domain/types';
-import { langDatum, monatText, stundenText } from '../../domain/zeitraum';
+import { langDatum, monatText, stundenText, zeitraumText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 
@@ -50,10 +51,8 @@ const GRUPPEN: { id: Gruppe; titel: string }[] = [
 /** Stand eines Projekts in der Übersicht. */
 interface Stand {
   projekt: Projekt;
-  /** Der offene Leistungsnachweis (der früheste), sonst null. */
-  offen: Leistungsnachweis | null;
-  /** Erfasste Stunden im offenen Nachweis. */
-  stunden: number;
+  /** Der zuletzt abgeschlossene Leistungsnachweis (mit dem spätesten Zeitraum), sonst null. */
+  letzter: Leistungsnachweis | null;
   /** Letztes Monatsende, bis zu dem er sich abschließen ließe. */
   ende: string | null;
   /** Stunden bis dahin. */
@@ -84,6 +83,7 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
     )
     .map((p) => {
       const offen = offeneNachweise(data, p.id)[0] ?? null;
+      const letzter = nachweiseVon(data, p.id).filter((n) => n.status === 'abgeschlossen').at(-1) ?? null;
       const leistungen = offen ? leistungenDesNachweises(data, offen) : [];
       // Bis zum letzten Monatsende, das sich wählen ließe – der laufende Monat ist noch nicht bestätigt
       const ende = offen ? ([...abschlussEnden(offen, heute)].reverse().find((e) => e.art === 'monatsende')?.bis ?? null) : null;
@@ -92,8 +92,7 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
       const gruppe: Gruppe = bisEnde.length === 0 ? 'nichts' : fehlend.length ? 'fehlt' : 'bereit';
       return {
         projekt: p,
-        offen,
-        stunden: stundenVon(leistungen),
+        letzter,
         ende,
         stundenBisEnde: stundenVon(bisEnde),
         fehlend,
@@ -127,7 +126,7 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
 
       <Card>
         <CardHeader
-          titel="Offene Leistungsnachweise"
+          titel="Leistungsnachweise je Projekt"
           sub="Je Projekt läuft ein Leistungsnachweis weiter, bis Sie ihn abschließen – bereit ist er, wenn alle bis zum Monatsende bestätigt haben"
           actions={
             <span className="row wrap ln-co-summen">
@@ -148,9 +147,9 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
               <thead>
                 <tr>
                   <th>Projekt</th>
-                  <th>Offener Leistungsnachweis</th>
-                  <th className="ln-stunden">Bis Monatsende</th>
-                  <th>Bestätigt</th>
+                  <th>Letzter Leistungsnachweis</th>
+                  <th className="ln-stunden">Offene Stunden</th>
+                  <th>Bestätigung</th>
                   <th className="actions" />
                 </tr>
               </thead>
@@ -197,17 +196,19 @@ function Zeile({ stand: s, archiviert, onOeffnen }: { stand: Stand; archiviert: 
           {archiviert ? <Badge>Archiviert</Badge> : null}
         </span>
       </td>
-      <td data-label="Offener Leistungsnachweis">
-        {s.offen ? (
+      <td data-label="Letzter Leistungsnachweis">
+        {s.letzter ? (
           <span className="ln-co-nachweisstand">
-            <span>seit {langDatum(s.offen.von)}</span>
-            <span className="small tertiary">{stundenText(s.stunden)} Std. erfasst</span>
+            <span>{zeitraumText(s.letzter.von, s.letzter.bis)}</span>
+            {s.letzter.abgeschlossen ? (
+              <span className="small tertiary">abgeschlossen am {langDatum(tagVon(s.letzter.abgeschlossen))}</span>
+            ) : null}
           </span>
         ) : (
-          <span className="tertiary">keiner</span>
+          <span className="tertiary">noch keiner</span>
         )}
       </td>
-      <td className="ln-stunden" data-label="Bis Monatsende">
+      <td className="ln-stunden" data-label="Offene Stunden">
         {s.ende && s.stundenBisEnde ? (
           <span className="ln-co-nachweisstand">
             <span>{stundenText(s.stundenBisEnde)}</span>
@@ -217,7 +218,7 @@ function Zeile({ stand: s, archiviert, onOeffnen }: { stand: Stand; archiviert: 
           '–'
         )}
       </td>
-      <td data-label="Bestätigt">
+      <td data-label="Bestätigung">
         {s.gruppe === 'nichts' ? (
           <span className="tertiary">–</span>
         ) : (

@@ -284,18 +284,6 @@
 .ln-co-erstellt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--gruen-text); }
 .ln-co-tabellenhinweis { margin: 0; padding: 10px 20px 0; }
 .ln-co-bemerkung { display: flex; flex-direction: column; gap: 6px; padding: 14px 20px 18px; border-top: 1px solid var(--separator); margin-top: 12px; }
-/* Aufschlag auf den ganzen Nachweis (`GesamtAufschlagFeld`) – unter der Tabelle, anteilig auf die Zeilen verteilt */
-.ln-co-gesamtaufschlag { display: flex; flex-direction: column; gap: 6px; padding: 14px 20px 0; margin: 0; }
-.ln-co-gesamt-eingabe { gap: 8px 12px; align-items: center; }
-.ln-co-gesamt-eingabe .ln-co-feld { align-items: flex-start; width: auto; }
-.ln-co-gesamt-eingabe .input.ln-co-zahl { width: 110px; }
-/* Anteil einer Zeile daran */
-.ln-co-anteil { color: var(--accent); }
-.ln-co-gesamt-gekappt { color: var(--orange-text); }
-/* Rückfrage beim Erstellen: „Leistungen bis einschließlich“ mit Schnellwahl */
-.ln-co-bis { gap: 8px; align-items: center; }
-.ln-co-bis .input { width: auto; flex: 0 1 180px; min-width: 0; }
-
 /* Schritte auf der Seite eines offenen Leistungsnachweises (`SchrittKopf` in hilfen.tsx) */
 .ln-co-schritt-kopf { display: flex; gap: 12px; align-items: flex-start; padding: 16px 20px 12px; flex-wrap: wrap; }
 .ln-co-schritt-nr {
@@ -360,7 +348,6 @@
   .ln-co-schritt-kopf { padding: 14px 16px 10px; }
   .ln-co-abschluss { padding: 0 16px 16px; }
   .ln-co-abschluss-knopf > .btn { flex: 1 1 100%; justify-content: center; }
-  .ln-co-gesamtaufschlag { padding: 12px 16px 0; }
   .ln-co-bst-leer { padding: 12px 16px; }
   .ln-co-nachweiswahl, .ln-co-aktionen { width: 100%; }
   .ln-co-nachweiswahl .select { flex: 1 1 100%; }
@@ -368,6 +355,7 @@
   .table-stack.ln-co-bst-tabelle tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
   .table-stack.ln-co-bst-tabelle td { width: auto; padding: 1px 0; }
   .table-stack.ln-co-bst-tabelle td:nth-child(3) { grid-column: 1 / -1; }
+  .table-stack.ln-co-bst-tabelle.ln-co-bst-ohne-stunden td:nth-child(2) { grid-column: 1 / -1; }
   .table-stack.ln-co-bst-tabelle td.ln-stunden::after { content: none; }
   .table-stack.ln-co-bst-tabelle td[data-label]::before { content: none; }
 }
