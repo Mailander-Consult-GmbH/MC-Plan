@@ -1,7 +1,7 @@
 /**
  * Seite eines Projekts im Controlling der Leistungsnachweise – ohne Reiter.
- * Oben „Alle Projekte“, Projektnummer und -name, Status, Raster und eine Reihe
- * beschrifteter Knöpfe rechts wie in den anderen Bereichen: zum gezeigten
+ * Oben „Alle Projekte“, Projektnummer und -name, Status (das Raster nennt der
+ * Kopf des Nachweises darunter) und eine Reihe beschrifteter Knöpfe rechts wie in den anderen Bereichen: zum gezeigten
  * Nachweis „Vorschau“ (mit „Drucken / PDF“, Abrechnung.tsx), dann
  * „Einstellungen“ (alle Angaben des Projekts samt Raster, Abschnitten und
  * Logos an einer Stelle – ProjektEinstellungen.tsx) und zum gezeigten Nachweis
@@ -38,7 +38,7 @@ import {
   offeneNachweise,
   stundenVon,
 } from '../../domain/nachweis';
-import { PROJEKT_STATUS_LABEL, RASTER_LABEL, projektTitel, type ID, type Leistungsnachweis, type Projekt } from '../../domain/types';
+import { PROJEKT_STATUS_LABEL, projektTitel, type ID, type Leistungsnachweis, type Projekt } from '../../domain/types';
 import { stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
@@ -99,7 +99,6 @@ export function ControllingProjekt({
           </button>
           <h2 className="ln-co-projekttitel truncate">{projektTitel(projekt)}</h2>
           <Badge ton={STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
-          <span className="small muted">{RASTER_LABEL[projekt.raster]}</span>
         </div>
         {/* Alle Knöpfe rechts in der Kopfzeile, beschriftet wie in den anderen Bereichen: Projekt und gezeigter Nachweis */}
         <div className="row wrap ln-co-aktionen">
@@ -208,7 +207,7 @@ function FruehereNachweise({
   const { data } = useStore();
   return (
     <Card>
-      <CardHeader titel="Frühere Leistungsnachweise" sub="Abgeschlossene nur zum Lesen – PDF jederzeit erneut" />
+      <CardHeader titel="Frühere Leistungsnachweise" />
       <div className="table-scroll">
         <table className="table table-stack ln-co-frueher">
           <thead>

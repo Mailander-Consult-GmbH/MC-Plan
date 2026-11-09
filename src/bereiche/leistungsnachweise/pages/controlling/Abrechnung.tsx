@@ -32,10 +32,13 @@
  *    ganzen Nachweis gibt es nicht (mehr, Fassung 10) – aufgeschlagen wird je
  *    Zeile. Unter der Tabelle die Bemerkung.
  * 3. „Abschließen und PDF“ (`AbschliessenSchritt`): bis wann – jedes
- *    Monatsende oder bis heute –, was abgerechnet wird, was im nächsten
- *    weiterläuft, wer nicht bestätigt hat (dann nur mit „Trotzdem
- *    abschließen“); danach öffnet sich der Druckdialog, und die Seite zeigt
- *    den abgeschlossenen Nachweis.
+ *    Monatsende oder bis heute, je mit Zahl und Stunden der Leistungen –
+ *    und wer nicht bestätigt hat (dann nur mit „Trotzdem abschließen“);
+ *    danach öffnet sich der Druckdialog, und die Seite zeigt den
+ *    abgeschlossenen Nachweis.
+ *
+ * Erläuternde Untertitel unter den Schritten und Hinweise zur Bedienung gibt
+ * es nicht (mehr) – die Seite zeigt nur Angaben und Meldungen zum Stand.
  *
  * Gibt es nicht erfasste Leistungen aus schon abgerechneten Zeiträumen und
  * ist dies der laufende Nachweis, teilt ein Hinweis das mit; übernommen
@@ -357,7 +360,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
           <SchrittKopf
             nr={2}
             titel="Prüfen – so geht der Leistungsnachweis raus"
-            sub="Texte bei Bedarf korrigieren (✎), Aufschlag je Zeile."
             actions={
               spalten ? (
                 <label className="checkbox small" title="Je Zeile auch Abschnitte ohne Stunden und „ohne Abschnitt“ zeigen – für Aufschläge dort">
@@ -453,12 +455,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
             </table>
           </div>
         )}
-        {!abgeschlossen ? (
-          <p className="small tertiary ln-co-tabellenhinweis">
-            Aufschlag in ± Std. je Zeile{spalten ? ' und Abschnitt' : ''}, z. B. 1,5 oder -0,5 – gespeichert beim Verlassen
-            des Felds oder mit Enter; „Abgerechnet“ setzt den Aufschlag als Differenz.
-          </p>
-        ) : null}
         <div className="ln-co-bemerkung">
           <label className="ln-co-wahl-label" htmlFor={`${wahlId}-bemerkung`}>
             Bemerkung <span className="tertiary">(steht im Druck unter der Tabelle)</span>
@@ -569,8 +565,6 @@ function AbschliessenSchritt({
 
   const abschluss = abschlussZeitraum(data, n, heute, bis);
   const nachher = erstellenVorschau(data, n.id, bis);
-  const zu = nachher.nachweise.find((x) => x.id === n.id);
-  const summen = zu ? nachweisSummen(nachweisZeilen(nachher, zu)) : null;
   const darin = leistungen.filter((l) => l.datum <= abschluss.bis);
   const fehlend = fehlendeBestaetigungen(data, { ...n, bis: abschluss.bis });
   const gesperrt = darin.length === 0 || (fehlend.length > 0 && !trotzdem);
@@ -601,11 +595,7 @@ function AbschliessenSchritt({
 
   return (
     <Card>
-      <SchrittKopf
-        nr={3}
-        titel="Abschließen und PDF"
-        sub="Bis wann reicht der Leistungsnachweis? Was danach kommt, läuft im nächsten weiter – ohne Abschluss läuft dieser einfach weiter."
-      />
+      <SchrittKopf nr={3} titel="Abschließen und PDF" />
       <div className="ln-co-abschluss">
         <fieldset className="ln-co-enden">
           <legend className="ln-co-wahl-label">Leistungen</legend>
@@ -624,19 +614,11 @@ function AbschliessenSchritt({
             );
           })}
         </fieldset>
-        <p className="muted" style={{ margin: 0 }}>
-          {darin.length === 0
-            ? 'Bis dahin gibt es keine Leistungen – es gibt nichts abzuschließen.'
-            : `Abgerechnet werden ${stundenText(summen?.abgerechnet ?? 0)} Std.${
-                summen?.aufschlag ? ` – erfasst ${stundenText(summen.erfasst)}, Aufschlag ${aufschlagText(summen.aufschlag)}.` : ''
-              }${
-                abschluss.spaetere.length
-                  ? ` ${anzahl(abschluss.spaetere.length, 'spätere Leistung', 'spätere Leistungen')} (${stundenText(stundenVon(abschluss.spaetere))} Std.) ${
-                      abschluss.spaetere.length === 1 ? 'läuft' : 'laufen'
-                    } im nächsten Leistungsnachweis weiter.`
-                  : ''
-              }`}
-        </p>
+        {darin.length === 0 ? (
+          <p className="muted" style={{ margin: 0 }}>
+            Bis dahin gibt es keine Leistungen – es gibt nichts abzuschließen.
+          </p>
+        ) : null}
         {darin.length > 0 ? <FehlendeBestaetigungen fehlende={fehlend} /> : null}
         {darin.length > 0 && fehlend.length > 0 ? (
           <label className="checkbox">
@@ -649,10 +631,6 @@ function AbschliessenSchritt({
           <button type="button" className="btn btn-primary" disabled={gesperrt} onClick={abschliessen}>
             <Icon name="check" size={14} /> Abschließen und PDF
           </button>
-          <span className="small tertiary">
-            Danach ist der Stand festgeschrieben, die gemeinsamen Leistungstexte der Zeiträume lassen sich nicht mehr ändern;
-            „Wieder öffnen“ (im Kopf des abgeschlossenen) hebt den Abschluss auf.
-          </span>
         </div>
       </div>
     </Card>

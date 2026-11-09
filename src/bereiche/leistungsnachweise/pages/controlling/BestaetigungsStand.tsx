@@ -30,7 +30,7 @@ import type { FassungMitarbeiter } from '../../domain/druck';
 import { bestaetigungenDesNachweises, monatName, type MonatsStatus, type MonatsStatusArt } from '../../domain/erfassung';
 import { tagVon } from '../../domain/nachweis';
 import { SchrittKopf } from './hilfen';
-import { MONATSNAMEN, kurzDatum, langDatum, stundenText } from '../../domain/zeitraum';
+import { MONATSNAMEN, kurzDatum, stundenText } from '../../domain/zeitraum';
 import { mitarbeiterName, type ID, type Leistungsnachweis, type LeistungsnachweisDaten, type Mitarbeiter } from '../../domain/types';
 import { useStore } from '../../store/store';
 import './controlling.css';
@@ -138,18 +138,12 @@ export function MitarbeiterBestaetigungen({
         <SchrittKopf
           nr={schritt}
           titel="Haben alle eingetragen und bestätigt?"
-          sub={`${bis ? `Monate bis ${langDatum(bis)} – ` : ''}Leistungstext und Bestätigung je Monat geben die Mitarbeiter selbst ab.`}
           erledigt={!!zahl && zahl.gesamt > 0 && zahl.bestaetigt === zahl.gesamt}
           actions={<BestaetigtBadge zahl={zahl} />}
         />
       ) : (
         <CardHeader
           titel="Mitarbeiter und Bestätigungen"
-          sub={
-            offen
-              ? 'Wer im Zeitraum Stunden gebucht hat und ob er seine Monate (Stunden und Leistungstexte) bestätigt hat'
-              : 'Stunden des festgeschriebenen Stands'
-          }
           actions={offen ? <BestaetigtBadge zahl={zahl} /> : undefined}
         />
       )}
