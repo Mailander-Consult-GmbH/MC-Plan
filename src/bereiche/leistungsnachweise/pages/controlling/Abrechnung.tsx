@@ -9,9 +9,12 @@
  *
  * Oben die Leiste: „Offener Leistungsnachweis“ bzw. die Überschrift des
  * abgeschlossenen, sein Zeitraum (`nachweisZeitraumText`) und Raster,
- * „Vorschau“, bei abgeschlossenen „Drucken / PDF“ und „Excel“, und das Menü
- * „Mehr“ (offen: Drucken / PDF und Excel des offenen Stands, Zeitraum ändern;
- * Neuer Leistungsnachweis, Aufschläge zurücksetzen, Wieder öffnen, Löschen).
+ * und rechts die Aktionen als beschriftete Knöpfe wie in den anderen
+ * Bereichen: „Vorschau“, „Drucken / PDF“ (abgeschlossen hervorgehoben, offen
+ * der Stand des offenen), „Excel“, offen „Zeitraum ändern“ und – nur mit
+ * Aufschlägen – „Aufschläge zurücksetzen“, abgeschlossen „Wieder öffnen“,
+ * „Neuer Leistungsnachweis“ nur, wo es etwas zusammenzufassen gibt (mehrere
+ * offene Nachweise oder Leistungen ohne Nachweis), und rot „Nachweis löschen“.
  *
  * Ein offener Nachweis steht in drei Schritten (`SchrittKopf`):
  * 1. „Haben alle eingetragen und bestätigt?“ – `MitarbeiterBestaetigungen`
@@ -66,11 +69,13 @@ import {
   aufschlagEingabe,
   aufschlagFuerAbgerechnet,
   leistungenDesNachweises,
+  leistungenOhneNachweis,
   mitAbschnittsspalten,
   nachweisAbschliessenAnwenden,
   nachweisSummen,
   nachweisZeilen,
   nichtAbgerechnet,
+  offeneNachweise,
   periodentexteVon,
   standVeraltet,
   standVergleich,
@@ -100,7 +105,7 @@ import { kurzDatum, langDatum, monatText, runden, stundenText, zeitraumText } fr
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { FehlendeBestaetigungen, MitarbeiterBestaetigungen } from './BestaetigungsStand';
-import { MehrMenue, SchrittKopf, StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
+import { SchrittKopf, StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
 import { ZeilenText } from './Leistungstexte';
 import './controlling.css';
 
@@ -318,12 +323,14 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
     : null;
 
   const kopfSub = `${nachweisZeitraumText(n)} · ${RASTER_LABEL[n.raster]}`;
+  // „Neuer Leistungsnachweis“ fasst offene Nachweise und Leistungen ohne Nachweis zusammen – nur, wo es etwas zusammenzufassen gibt
+  const neuSinnvoll = offeneNachweise(data, projekt.id).length > 1 || leistungenOhneNachweis(data, projekt.id).length > 0;
   const spaltenzahl = spalten ? 7 : 6;
   const wahlId = `ln-co-nachweiswahl-${projekt.id}`;
 
   return (
     <div className="stack">
-      {/* Leiste: der Nachweis, sein Stand und was sich damit tun lässt – Seltenes im Menü „Mehr“ */}
+      {/* Leiste: der Nachweis, sein Stand und was sich damit tun lässt */}
       <div className="ln-co-leiste">
         <div className="ln-co-nachweiskopf">
           <h3 className="ln-co-nachweistitel">{abgeschlossen ? fassung.titel : 'Offener Leistungsnachweis'}</h3>
@@ -339,39 +346,52 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
           <button type="button" className="btn btn-outline" onClick={() => setVorschau(true)}>
             <Icon name="suche" size={14} /> Vorschau
           </button>
-          {abgeschlossen ? (
-            <>
-              <button type="button" className="btn btn-primary" onClick={() => nachweisDrucken(data, n, projekt)}>
-                <Icon name="plan" size={14} /> Drucken / PDF
-              </button>
-              <button type="button" className="btn btn-outline" disabled={excelLaeuft} onClick={() => void excel()}>
-                <Icon name="export" size={14} /> {excelLaeuft ? 'Excel …' : 'Excel'}
-              </button>
-            </>
+          <button
+            type="button"
+            className={`btn ${abgeschlossen ? 'btn-primary' : 'btn-outline'}`}
+            title={abgeschlossen ? undefined : 'Stand des offenen Leistungsnachweises drucken'}
+            onClick={() => nachweisDrucken(data, n, projekt)}
+          >
+            <Icon name="plan" size={14} /> Drucken / PDF
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            title={abgeschlossen ? undefined : 'Stand des offenen Leistungsnachweises als Excel-Datei'}
+            disabled={excelLaeuft}
+            onClick={() => void excel()}
+          >
+            <Icon name="export" size={14} /> {excelLaeuft ? 'Excel …' : 'Excel'}
+          </button>
+          {!abgeschlossen ? (
+            <button type="button" className="btn btn-outline" onClick={() => setZeitraumDialog(true)}>
+              <Icon name="kalender" size={14} /> Zeitraum ändern
+            </button>
           ) : null}
-          <MehrMenue
-            label="Weitere Aktionen zum Leistungsnachweis"
-            eintraege={[
-              { key: 'drucken', label: 'Drucken / PDF (noch offen) …', zeigen: !abgeschlossen, onWaehle: () => nachweisDrucken(data, n, projekt) },
-              { key: 'excel', label: 'Excel (noch offen)', zeigen: !abgeschlossen, onWaehle: () => void excel() },
-              { key: 'zeitraum', label: 'Zeitraum ändern …', zeigen: !abgeschlossen, onWaehle: () => setZeitraumDialog(true) },
-              { key: 'neu', label: 'Neuer Leistungsnachweis …', onWaehle: () => setNeuerNachweis(true) },
-              {
-                key: 'aufschlaege',
-                label: 'Aufschläge zurücksetzen …',
-                zeigen: !abgeschlossen && aufschlaege > 0,
-                onWaehle: () => setZuruecksetzen(true),
-              },
-              { key: 'oeffnen', label: 'Wieder öffnen …', zeigen: abgeschlossen, onWaehle: () => setOeffnen(true) },
-              { key: 'loeschen', label: 'Leistungsnachweis löschen …', gefahr: true, onWaehle: () => setLoeschen(true) },
-            ]}
-          />
+          {!abgeschlossen && aufschlaege > 0 ? (
+            <button type="button" className="btn btn-outline" onClick={() => setZuruecksetzen(true)}>
+              <Icon name="rueckgaengig" size={14} /> Aufschläge zurücksetzen
+            </button>
+          ) : null}
+          {neuSinnvoll ? (
+            <button type="button" className="btn btn-outline" onClick={() => setNeuerNachweis(true)}>
+              <Icon name="plus" size={14} /> Neuer Leistungsnachweis
+            </button>
+          ) : null}
+          {abgeschlossen ? (
+            <button type="button" className="btn btn-outline" onClick={() => setOeffnen(true)}>
+              <Icon name="schloss" size={14} /> Wieder öffnen
+            </button>
+          ) : null}
+          <button type="button" className="btn btn-danger" onClick={() => setLoeschen(true)}>
+            <Icon name="loeschen" size={14} /> Nachweis löschen
+          </button>
         </div>
       </div>
 
       {veraltet ? (
         <Callout ton="warn" icon="!">
-          Seit dem Abschluss haben sich Leistungen im Zeitraum geändert – „Wieder öffnen“ (Menü „Mehr“) übernimmt sie.
+          Seit dem Abschluss haben sich Leistungen im Zeitraum geändert – „Wieder öffnen“ übernimmt sie.
         </Callout>
       ) : null}
       {nichtErfasst.length > 0 ? (
@@ -400,7 +420,7 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
           {unwirksam === 1
             ? '1 Aufschlag gehört zu einer Zeile, die es im aktuellen Raster nicht gibt, und wirkt deshalb nicht – er kehrt zurück, wenn die Zeile wieder entsteht.'
             : `${unwirksam} Aufschläge gehören zu Zeilen, die es im aktuellen Raster nicht gibt, und wirken deshalb nicht – sie kehren zurück, wenn die Zeilen wieder entstehen.`}{' '}
-          „Aufschläge zurücksetzen“ (Menü „Mehr“) entfernt sie.
+          „Aufschläge zurücksetzen“ entfernt sie.
         </Callout>
       ) : null}
 
@@ -748,7 +768,7 @@ function AbschliessenSchritt({
           </button>
           <span className="small tertiary">
             Danach ist der Stand festgeschrieben, die gemeinsamen Leistungstexte der Zeiträume lassen sich nicht mehr ändern;
-            „Wieder öffnen“ (Menü „Mehr“) hebt den Abschluss auf.
+            „Wieder öffnen“ hebt den Abschluss auf.
           </span>
         </div>
       </div>

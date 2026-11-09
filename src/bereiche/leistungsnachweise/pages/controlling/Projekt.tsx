@@ -1,9 +1,9 @@
 /**
  * Seite eines Projekts im Controlling der Leistungsnachweise – ohne Reiter.
- * Oben „Alle Projekte“, Projektnummer und -name, Status, Raster und das Menü
- * „Mehr“ zum Projekt (Projekt einstellen – Leistungsbereich, Bezeichnung im
- * Nachweis, Raster, Abschnitte, Logos (ProjektEinstellungen.tsx) –, Projekt
- * bearbeiten, Projekt löschen). Einen Rhythmus gibt es nicht: Erfasste
+ * Oben „Alle Projekte“, Projektnummer und -name, Status, Raster und rechts die
+ * Knöpfe zum Projekt wie in den anderen Bereichen: „Einstellen“
+ * (Leistungsbereich, Bezeichnung im Nachweis, Raster, Abschnitte, Logos –
+ * ProjektEinstellungen.tsx), „Bearbeiten“ und rot „Löschen“. Einen Rhythmus gibt es nicht: Erfasste
  * Leistungen sammeln sich im offenen Leistungsnachweis – wie in einer Excel je
  * Projekt –, bis das Controlling ihn abschließt und dabei festlegt, bis wann
  * er reicht; bis dahin läuft er einfach weiter.
@@ -48,7 +48,6 @@ import { stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { NachweisBearbeitung } from './Abrechnung';
-import { MehrMenue } from './hilfen';
 import { ProjektEinstellungen } from './ProjektEinstellungen';
 
 export function ControllingProjekt({
@@ -115,26 +114,31 @@ export function ControllingProjekt({
           <Badge ton={STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
           <span className="small muted">{RASTER_LABEL[projekt.raster]}</span>
         </div>
-        <MehrMenue
-          label="Weitere Aktionen zum Projekt"
-          eintraege={[
-            { key: 'einstellen', label: 'Projekt einstellen …', onWaehle: () => setEinstellen(true) },
-            { key: 'bearbeiten', label: 'Projekt bearbeiten …', onWaehle: () => setBearbeiten(true) },
-            {
-              key: 'loeschen',
-              label: gesperrt ? 'Projekt löschen (nur im Controlling unter „Projekte“)' : 'Projekt löschen …',
-              gefahr: !gesperrt,
-              onWaehle: () =>
-                gesperrt
-                  ? toast(
-                      geteilt
-                        ? `Wird auch in ${geteilt} geführt – jedes Projekt gehört in die Leistungsnachweise. Für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`
-                        : `Ist für ${vorgesehen} zur Übernahme vorgesehen – die Übernahme zurücknehmen bzw. für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`,
-                    )
-                  : setLoeschen(true),
-            },
-          ]}
-        />
+        {/* Aktionen zum Projekt als beschriftete Knöpfe – wie in den anderen Bereichen */}
+        <div className="row wrap ln-co-aktionen">
+          <button type="button" className="btn btn-outline" onClick={() => setEinstellen(true)}>
+            <Icon name="einstellungen" size={14} /> Einstellen
+          </button>
+          <button type="button" className="btn btn-outline" onClick={() => setBearbeiten(true)}>
+            <Icon name="bearbeiten" size={14} /> Bearbeiten
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            title={gesperrt ? 'Löschen für alle Bereiche nur im Controlling unter „Projekte“' : undefined}
+            onClick={() =>
+              gesperrt
+                ? toast(
+                    geteilt
+                      ? `Wird auch in ${geteilt} geführt – jedes Projekt gehört in die Leistungsnachweise. Für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`
+                      : `Ist für ${vorgesehen} zur Übernahme vorgesehen – die Übernahme zurücknehmen bzw. für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`,
+                  )
+                : setLoeschen(true)
+            }
+          >
+            <Icon name="loeschen" size={14} /> Löschen
+          </button>
+        </div>
       </div>
 
       {ohneNachweis.length > 0 ? (
