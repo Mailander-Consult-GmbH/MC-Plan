@@ -1975,8 +1975,8 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   (`src/bereiche/leistungsnachweise/pages/controlling/controlling.css`).
 * Seite eines Projekts (`ControllingProjekt` in
   `src/bereiche/leistungsnachweise/pages/controlling/Projekt.tsx`): Kopf
-  (`ln-co-leiste`) mit „Alle Projekte“, Projektnummer und -name, Status,
-  Raster (`RASTER_LABEL`) und rechts drei beschrifteten Knöpfen mit Symbol
+  (`ln-co-leiste`) mit „Alle Projekte“, Projektnummer und -name, Status (das
+  Raster nennt der Kopf des Nachweises darunter) und rechts drei beschrifteten Knöpfen mit Symbol
   (`ln-co-aktionen`, wie in den anderen Bereichen), in dieser Reihenfolge:
   „Vorschau“ (`NachweisVorschau`), „Einstellungen“ und rot „Nachweis löschen“
   (`NachweisLoeschenDialog`) – „Vorschau“ und „Nachweis löschen“ nur, wenn die
@@ -2032,8 +2032,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   offener Leistungsnachweis; er sammelt alle Leistungen, bis das Controlling
   ihn abschließt.“ und – hat das Projekt Leistungen – „Neuer
   Leistungsnachweis“. Ganz unten die Karte „Frühere Leistungsnachweise“
-  (`FruehereNachweise`, Untertitel „Abgeschlossene nur zum Lesen – PDF
-  jederzeit erneut“): alle übrigen Nachweise des Projekts (`nachweiseVon`), der
+  (`FruehereNachweise`, ohne Untertitel): alle übrigen Nachweise des Projekts (`nachweiseVon`), der
   jüngste zuerst, in der Tabelle `ln-co-frueher` mit „Leistungsnachweis“
   (Überschrift, `nachweisTitel`), „Stand“ („Abgeschlossen …“ mit dem Zeitpunkt
   bzw. Badge „Offen“), „Abgerechnet“ (Summe aus `nachweisZeilen`), bei
@@ -2081,16 +2080,14 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   (`MitarbeiterBestaetigungen` in
   `src/bereiche/leistungsnachweise/pages/controlling/BestaetigungsStand.tsx`):
   beim offenen Nachweis als Schritt 1 „Haben alle eingetragen und bestätigt?“
-  (Eigenschaft `schritt`) mit dem Untertitel „Leistungstext und Bestätigung je
-  Monat geben die Mitarbeiter selbst ab.“ (davor „Monate bis … –“ mit dem in
-  Schritt 3 gewählten Ende) und rechts `BestaetigtBadge`
+  (Eigenschaft `schritt`) ohne Untertitel, rechts `BestaetigtBadge`
   („… von … bestätigt“, grün, wenn alle bestätigt haben, sonst orange; ohne
   Personen „–“); `bestaetigungsZahl` zählt die Personen mit Leistungen im bis zu
   diesem Ende gekürzten Nachweis und davon die, deren Monate darin alle
   bestätigt bzw. abgerechnet sind; erledigt (grün mit Haken) ist der Schritt,
   wenn alle bestätigt haben. Abgeschlossene Nachweise zeigen stattdessen den
-  Kopf „Mitarbeiter und Bestätigungen“ mit „Stunden des festgeschriebenen
-  Stands“ und nur die Stunden. Tabelle `ln-co-bst-tabelle`: als Schritt 1 nur
+  Kopf „Mitarbeiter und Bestätigungen“ (ohne Untertitel) und nur die Stunden
+  ihres festgeschriebenen Stands. Tabelle `ln-co-bst-tabelle`: als Schritt 1 nur
   „Mitarbeiter“ (Name, Kürzel) und „Bestätigung je Monat“
   (`ln-co-bst-ohne-stunden`; eine Spalte „Stunden“ und eine Zeile „Summe“
   gibt es dort nicht, die Stunden stehen in Schritt 2) – je Monat des
@@ -2108,8 +2105,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   Farbmodus `kontrast` sind sie umrandet. Eine eigene Seite für die
   Bestätigungen gibt es nicht.
 * Schritt 2 bzw. Tabelle des Leistungsnachweises (offen als Schritt 2 „Prüfen –
-  so geht der Leistungsnachweis raus“ mit dem Untertitel „Texte bei Bedarf
-  korrigieren (✎), Aufschlag je Zeile.“;
+  so geht der Leistungsnachweis raus“ ohne Untertitel;
   abgeschlossen eine Karte mit seiner Überschrift, Untertitel Zeitraum –
   `nachweisZeitraumText` – und Raster; bei Abschnittsspalten im offenen
   Nachweis rechts der Haken „Alle Abschnitte“, der je Zeile auch Abschnitte ohne
@@ -2123,9 +2119,8 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   `src/bereiche/leistungsnachweise/pages/controlling/hilfen.tsx`: gespeichert
   beim Verlassen oder mit Enter, Escape verwirft; wirkt ein Aufschlag nur zum
   Teil, steht „wirkt …“ daneben); „Abgerechnet“ setzt den Aufschlag als
-  Differenz (`aufschlagFuerAbgerechnet`). Darunter (offen) „Aufschlag in ±
-  Std. je Zeile …“ mit „„Abgerechnet“ setzt den Aufschlag als Differenz.“; ein
-  Feld für einen Aufschlag auf den ganzen Nachweis gibt es nicht (mehr,
+  Differenz (`aufschlagFuerAbgerechnet`); ein Hinweis dazu unter der Tabelle
+  steht nicht (mehr) da. Ein Feld für einen Aufschlag auf den ganzen Nachweis gibt es nicht (mehr,
   Fassung 10, 10.1). Dann „Bemerkung“ („(steht im Druck unter der Tabelle)“,
   Platzhalter „z. B. Abrechnung nach Aufwand gemäß Vertrag“; abgeschlossen nur
   zu lesen, leer „Keine Bemerkung“). Ohne Zeilen „Keine Leistungen im
@@ -2169,20 +2164,17 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   Zeilen sind in der Tabelle markiert.“
 * Schritt 3, Wieder öffnen, Löschen: Beim offenen Nachweis folgt (mit dem
   Recht `nachweisVerwalten`) Schritt 3 „Abschließen und PDF“
-  (`AbschliessenSchritt` in `Abrechnung.tsx`, Untertitel „Bis wann reicht der
-  Leistungsnachweis? Was danach kommt, läuft im nächsten weiter – ohne
-  Abschluss läuft dieser einfach weiter.“). Unter „Leistungen“ steht statt
+  (`AbschliessenSchritt` in `Abrechnung.tsx`, ohne Untertitel). Unter „Leistungen“ steht statt
   eines Datumsfelds je wählbarem Ende (`abschlussEnden`) ein Optionsfeld
   (`ln-co-ende`): „bis Ende …“ (Monatsende), „bis heute, …“ bzw. „bis … (Ende
   des Leistungsnachweises)“, je mit Zeitraum, Zahl der Leistungen und Stunden
   bis dahin. Vorgewählt ist `abschlussVorschlag`; die Wahl gilt auch für
   Schritt 1 und bleibt, solange sie wählbar ist – sonst (etwa nach neuen
-  Leistungen) gilt wieder der Vorschlag. Darunter – gerechnet wie der Store
-  (`abschlussZeitraum`, `nachweisAbschliessenAnwenden`) – „Abgerechnet werden …
-  Std.“ (mit Aufschlägen dazu „– erfasst …, Aufschlag …“) und die späteren
-  Leistungen mit ihren Stunden, die „im nächsten Leistungsnachweis weiter“
-  laufen; ohne Leistungen bis dahin „Bis dahin gibt es keine Leistungen – es
-  gibt nichts abzuschließen.“ Fehlen für das gewählte Ende Bestätigungen
+  Leistungen) gilt wieder der Vorschlag. Darunter steht nur ohne Leistungen
+  bis dahin „Bis dahin gibt es keine Leistungen – es gibt nichts
+  abzuschließen.“; die abgerechneten Stunden und die späteren Leistungen nennt
+  der Schritt nicht (mehr) – die Stunden stehen in Schritt 2, die späteren
+  Leistungen nennt die Meldung nach dem Abschließen. Fehlen für das gewählte Ende Bestätigungen
   (`fehlendeBestaetigungen`), nennt `FehlendeBestaetigungen` je Monat, wer noch
   nicht bzw. nach einer Änderung nicht erneut bestätigt hat („Eine Person hat
   ihre Leistungen noch nicht bestätigt:“ bzw. „… Personen haben ihre
@@ -2196,9 +2188,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   für den automatischen Text entsprechend) und die Bestätigungen, die mit
   geänderten Grenzen erlöschen (`grenzFolgen`). Der Knopf „Abschließen und
   PDF“ (gesperrt ohne Leistungen bis dahin bzw. bei fehlenden Bestätigungen
-  ohne den Haken; daneben „Danach ist der Stand festgeschrieben, die
-  gemeinsamen Leistungstexte der Zeiträume lassen sich nicht mehr ändern;
-  „Wieder öffnen“ (im Kopf des abgeschlossenen) hebt den Abschluss auf.“)
+  ohne den Haken; ein Hinweis daneben steht nicht (mehr) da)
   schließt ab (`nachweisAbschliessen(id, bis)`), öffnet den Druckdialog mit dem Stand, den
   der Store festschreibt (`nachweisDrucken`), und führt nach
   `…/projekt/<id>/nachweis/<id>` des abgeschlossenen Nachweises; Meldung
