@@ -1350,7 +1350,7 @@ die Übersicht der Projekte und die Seite eines Projekts.
   Breite steht in jeder Zeile das Projekt, darunter je zwei Angaben nebeneinander, dann der Knopf.
 * **Seite eines Projekts** (`#/controlling/leistungsnachweise/projekt/<id>`, mit einem gewählten
   Nachweis `…/projekt/<id>/nachweis/<id>`) – oben **Alle Projekte**, Projektnummer und -name,
-  Status und Raster und rechts drei Knöpfe – beschriftet und mit Symbol wie in den anderen
+  Status (das Raster nennt der Kopf des Nachweises) und rechts drei Knöpfe – beschriftet und mit Symbol wie in den anderen
   Bereichen: zum gezeigten Leistungsnachweis **Vorschau**, dann **Einstellungen** und, wieder zum
   gezeigten Leistungsnachweis, rot **Nachweis löschen** (siehe unten). **Einstellungen** fasst alle Angaben des Projekts an einer
   Stelle zusammen: die Karte *Projekt* mit Projektnummer (eindeutig, daran erkennt der Excel-Import
@@ -1404,10 +1404,8 @@ die Übersicht der Projekte und die Seite eines Projekts.
      **Fertig** oder Escape zeigt ihn wieder zum Lesen.
   3. **Abschließen und PDF** – bis wann der Nachweis reicht: jedes Monatsende bzw. **bis heute**
      (siehe [Leistungsnachweise](#leistungsnachweise)), je mit Zeitraum, Zahl der Leistungen und
-     Stunden; vorgewählt ist das letzte Monatsende. Darunter die abgerechneten Stunden (mit
-     Aufschlag auch erfasste Stunden und Aufschlag), die späteren Leistungen, die im nächsten
-     Leistungsnachweis weiterlaufen, und je Monat, wer noch nicht bzw. nach einer Änderung nicht
-     erneut bestätigt hat – dann lässt er sich nur mit dem Haken **Trotzdem abschließen – auch ohne
+     Stunden; vorgewählt ist das letzte Monatsende. Darunter je Monat, wer noch nicht bzw. nach
+     einer Änderung nicht erneut bestätigt hat – dann lässt er sich nur mit dem Haken **Trotzdem abschließen – auch ohne
      alle Bestätigungen** abschließen; ohne Leistungen bis dahin gibt es nichts abzuschließen. Endet
      der Nachweis mitten in einem Zeitraum, sagt der Schritt, dass die Mitarbeiter für die Tage
      danach einen eigenen Text verfassen; von Hand bearbeitete Zeilen, in denen seitdem Leistungen
@@ -1417,6 +1415,9 @@ die Übersicht der Projekte und die Seite eines Projekts.
      danach die Seite des abgeschlossenen Nachweises; die Kurzmeldung nennt den letzten Tag
      („Leistungen bis …“) und die Zahl der späteren Leistungen, die im nächsten weiterlaufen. Ohne
      Abschluss läuft der Nachweis einfach weiter.
+
+  Erläuternde Untertitel unter den Schritten und Bedienhinweise (etwa zum Aufschlag oder zum
+  Festschreiben) zeigt die Seite nicht – nur Angaben und Meldungen zum Stand.
 
   Abgeschlossene Nachweise zeigen ohne Schritte den Block **Mitarbeiter und Bestätigungen** (nur
   die Stunden ihres festgeschriebenen Stands mit Summe) und die Tabelle, nur zum Lesen.

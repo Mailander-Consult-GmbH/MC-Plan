@@ -279,7 +279,6 @@
 .ln-co-wahl-label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
 .ln-co-aktionen { gap: 8px; }
 .ln-co-erstellt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--gruen-text); }
-.ln-co-tabellenhinweis { margin: 0; padding: 10px 20px 0; }
 .ln-co-bemerkung { display: flex; flex-direction: column; gap: 6px; padding: 14px 20px 18px; border-top: 1px solid var(--separator); margin-top: 12px; }
 /* Schritte auf der Seite eines offenen Leistungsnachweises (`SchrittKopf` in hilfen.tsx) */
 .ln-co-schritt-kopf { display: flex; gap: 12px; align-items: flex-start; padding: 16px 20px 12px; flex-wrap: wrap; }
@@ -340,7 +339,6 @@
 .ln-co-bst-fehlende { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
 
 @media (max-width: 640px) {
-  .ln-co-tabellenhinweis { padding: 10px 16px 0; }
   .ln-co-bemerkung { padding: 12px 16px 16px; }
   .ln-co-schritt-kopf { padding: 14px 16px 10px; }
   .ln-co-abschluss { padding: 0 16px 16px; }

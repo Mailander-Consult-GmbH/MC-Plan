@@ -147,7 +147,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   „Wieder öffnen …“; eine Excel-Fassung des Nachweises, „Zeitraum ändern“ und „Aufschläge
   zurücksetzen“ gibt es nicht (mehr), „Neuer Leistungsnachweis“ nur auf der Seite ohne offenen
   Nachweis –, ein offener in drei
-  Schritten, `SchrittKopf` in `hilfen.tsx`: 1 „Haben alle eingetragen und bestätigt?“ –
+  Schritten, `SchrittKopf` in `hilfen.tsx` (ohne erläuternde Untertitel und Bedienhinweise – nur
+  Angaben und Meldungen zum Stand; das Raster steht im Kopf des Nachweises, nicht im Projektkopf): 1 „Haben alle eingetragen und bestätigt?“ –
   `MitarbeiterBestaetigungen` in `pages/controlling/BestaetigungsStand.tsx` mit `schritt`: nur
   Mitarbeiter und „Bestätigung je Monat“, ohne Stunden und Summe, gezählt bis zum in
   Schritt 3 gewählten Ende –, 2 „Prüfen – so geht der Leistungsnachweis raus“ – eine Tabelle mit
