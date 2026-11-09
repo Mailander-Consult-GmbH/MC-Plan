@@ -348,7 +348,6 @@
   .ln-co-bst-leer { padding: 12px 16px; }
   .ln-co-nachweiswahl, .ln-co-aktionen { width: 100%; }
   .ln-co-nachweiswahl .select { flex: 1 1 100%; }
-  .ln-co-aktionen > .btn-primary { flex: 1 1 100%; justify-content: center; }
   .table-stack.ln-co-bst-tabelle tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
   .table-stack.ln-co-bst-tabelle td { width: auto; padding: 1px 0; }
   .table-stack.ln-co-bst-tabelle td:nth-child(3) { grid-column: 1 / -1; }

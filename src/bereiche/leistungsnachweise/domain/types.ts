@@ -284,7 +284,7 @@ export interface ZeilenText {
  * Zeile eines Nachweises: ein Tag, eine Woche oder ein Monat mit Leistungen.
  * `stunden` sind die erfassten Stunden, `abgerechnet` die nach den Aufschlägen
  * des Controllings (`Leistungsnachweis.aufschlaege`; `abgerechnet = stunden +
- * aufschlag`, nie unter 0) – so stehen sie in Druck und Excel.
+ * aufschlag`, nie unter 0) – so stehen sie im Druck.
  */
 export interface NachweisZeile {
   /**
@@ -388,7 +388,7 @@ export interface Leistungsnachweis {
   von: ISODate;
   bis: ISODate;
   /**
-   * Das Ende hat das Controlling von Hand festgelegt („Zeitraum ändern“): Der
+   * Das Ende hat das Controlling von Hand festgelegt (früher über „Zeitraum ändern“; den Dialog gibt es nicht mehr, ältere Stände behalten es): Der
    * Nachweis läuft dann nicht bis zum Abschluss (`laeuftBisAbschluss`), wird
    * nicht verlängert (`nachweiseErgaenzen`) und beim Erstellen ohne Enddatum
    * nicht gekürzt (`abschlussZeitraum`). „Neuer Leistungsnachweis“ hebt es

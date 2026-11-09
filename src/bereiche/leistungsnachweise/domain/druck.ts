@@ -11,10 +11,10 @@
  * Gesamtstunden, Bemerkung, „geprüft und freigegeben“ mit Linien für Datum
  * und Unterschrift und der Fuß „Erzeugt mit KaPlan am …“.
  *
- * Druck und Excel zeigen die abgerechneten Stunden (erfasst plus Aufschlag
- * des Controllings je Zeile); der Aufschlag selbst erscheint nicht. Abgeschlossene
- * Nachweise zeigen ihren festgeschriebenen Stand (`nachweisFassung`); die
- * Excel-Ausgabe (domain/export.ts) nutzt dieselbe Fassung. Lange Nachweise
+ * Der Druck zeigt die abgerechneten Stunden (erfasst plus Aufschlag des
+ * Controllings je Zeile); der Aufschlag selbst erscheint nicht. Abgeschlossene
+ * Nachweise zeigen ihren festgeschriebenen Stand (`nachweisFassung`). Eine
+ * Excel-Fassung des Nachweises gibt es nicht (mehr). Lange Nachweise
  * laufen über mehrere Seiten, der Tabellenkopf wiederholt sich, Zeilen
  * brechen nicht.
  */
@@ -56,13 +56,13 @@ export function logoQuelle(src: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Fassung für Druck und Excel                                         */
+/* Fassung für den Druck                                               */
 /* ------------------------------------------------------------------ */
 
 /**
  * Welche Stunden eine Fassung zeigt: die erfassten (so sehen alle den
  * gemeinsamen Nachweis) oder die abgerechneten – erfasst plus Aufschlag; so
- * stehen sie in Druck und Excel.
+ * stehen sie im Druck.
  */
 export type FassungWerte = 'erfasst' | 'abgerechnet';
 
@@ -88,7 +88,7 @@ export interface FassungMitarbeiter {
   stunden: number;
 }
 
-/** Was Druck und Excel-Datei zeigen. */
+/** Was der Druck zeigt. */
 export interface NachweisFassung {
   /** Erfasste oder abgerechnete Stunden in `spaltenStunden`, `summen` und `summe`. */
   werte: FassungWerte;
@@ -132,11 +132,11 @@ export function spaltenStunden(z: NachweisZeile, schluessel: string, werte: Fass
 }
 
 /**
- * Druck- und Excel-Fassung eines Nachweises: bei abgeschlossenen Nachweisen
+ * Druckfassung eines Nachweises: bei abgeschlossenen Nachweisen
  * aus dem festgeschriebenen Stand (Zeilen, Abschnitte, Projektangaben,
  * Überschrift), sonst aus den aktuellen Leistungen. `werte` wählt erfasste
  * (Vorgabe – so sehen alle den gemeinsamen Nachweis) oder abgerechnete
- * Stunden (Druck und Excel). Abschnittsspalten erst ab zwei Abschnitten; die
+ * Stunden (Druck). Abschnittsspalten erst ab zwei Abschnitten; die
  * Spalte „ohne“ nur, wenn sie Stunden hat – auch solche, die allein ein
  * Aufschlag füllt.
  */

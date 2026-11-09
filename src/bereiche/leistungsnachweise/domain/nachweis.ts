@@ -450,7 +450,7 @@ const gliederungen = new WeakMap<Leistungsnachweis[], Map<ID, ErfassungsGliederu
  * den Grenzen **aller** Nachweise (Beginn und Tag nach dem Ende), so liegt
  * jede Erfassungsperiode in höchstens einem Nachweis: Ihr Text gehört genau
  * einer Zeile, kein anderer Nachweis übernimmt ihn. Endet ein Nachweis mitten
- * in einem Zeitraum (etwa beim Abschluss oder nach „Zeitraum ändern“), bekommt
+ * in einem Zeitraum (etwa beim Abschluss bis zu einem Monatsende), bekommt
  * der Rest einen eigenen Text; abgeschlossen ist so nur der abgerechnete Teil
  * gesperrt. „Wieder öffnen“ ändert die Grenzen nicht – die Texte bleiben bei
  * ihren Teilen. Fallen Grenzen weg oder kommen hinzu, ziehen
@@ -1210,7 +1210,7 @@ export function rasterwechselVerdecktAlle(
 }
 
 /**
- * Warnung in den Dialogen „Zeitraum ändern“ und „Neuer Leistungsnachweis“ bei einem Rasterwechsel, etwa
+ * Warnung bei einem Rasterwechsel („Neuer Leistungsnachweis“, „Einstellungen“ des Projekts für den offenen Nachweis), etwa
  * „2 bearbeitete Texte und 1 Aufschlag gehören zu einem anderen Raster und
  * werden nicht mehr angezeigt – sie kehren zurück, wenn das Raster wieder
  * umgestellt wird.“; null, wenn nichts verdeckt wird.

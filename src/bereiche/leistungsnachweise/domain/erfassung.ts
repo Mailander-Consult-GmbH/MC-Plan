@@ -975,7 +975,7 @@ const textZiel = (ziele: Map<string, string | null>, t: Pick<Periodentext, 'schl
 /**
  * Läuft nach jeder Änderung (`aenderungAnwenden` im Store, nicht beim
  * Einspielen): Ändern sich die Grenzen der Nachweise eines Projekts
- * (`erfassungsGliederung` – etwa „Zeitraum ändern“, Löschen, Zusammenfassen
+ * (`erfassungsGliederung` – etwa Löschen, Zusammenfassen
  * offener Nachweise, ein Abschluss, der das Ende vorzieht), ziehen die
  * gemeinsamen Texte mit ihren Leistungen um, statt zu verwaisen:
  * * Fällt eine Grenze weg, geht der Text eines Teils im Text des ganzen
@@ -1177,8 +1177,8 @@ export interface GrenzFolgen {
 }
 
 /**
- * Folgen einer Änderung von `alt` nach `neu` (etwa „Zeitraum ändern“,
- * „Neuer Leistungsnachweis“, Löschen, „Wieder öffnen“) – gerechnet wie
+ * Folgen einer Änderung von `alt` nach `neu` (etwa „Neuer
+ * Leistungsnachweis“, Abschließen, Löschen, „Wieder öffnen“) – gerechnet wie
  * `aenderungAnwenden` im Store: mit `periodentexteNachziehen` und
  * `bestaetigungenNachziehen`. Für die Rückfragen im Controlling
  * (`grenzFolgenHinweis`).
