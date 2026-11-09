@@ -124,7 +124,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `'projekte'` | `'auswertung'` in `lib/router.ts`): die Übersicht „Leistungsnachweise je Projekt“
   (`pages/controlling/ProjektListe.tsx`: je Projekt der früheste offene Nachweis, gruppiert nach dem
   Stand bis zum letzten Monatsende aus `abschlussEnden` – „Bereit zum Abschließen – alle haben
-  bestätigt“, „Bestätigungen fehlen“ mit Namen und Monaten aus `fehlendeBestaetigungen`, „Noch
+  bestätigt“, „Bestätigungen fehlen“ (`fehlendeBestaetigungen`; Namen und Monate erst auf der Seite
+  des Projekts), „Noch
   nichts abzuschließen“ –; Spalten Projekt, „Letzter Leistungsnachweis“ – der zuletzt
   abgeschlossene, `zeitraumText`, „abgeschlossen am …“ bzw. „noch keiner“ –, „Offene Stunden“ bis
   Monatsende und „Bestätigung“ mit „x von y bestätigt“; das Raster steht

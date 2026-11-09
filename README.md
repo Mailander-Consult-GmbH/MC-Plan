@@ -1340,8 +1340,8 @@ die Übersicht der Projekte und die Seite eines Projekts.
   (Nummer, Name, Status, ggf. *Archiviert*), *Letzter Leistungsnachweis* (der Zeitraum des zuletzt
   abgeschlossenen – ein Monat etwa als „Oktober 2026“ –, darunter „abgeschlossen am …“; ohne einen
   „noch keiner“), *Offene Stunden* (die Stunden des offenen Nachweises bis zum letzten Monatsende,
-  darunter „bis Ende …“), *Bestätigung* („1 von 2 bestätigt“, grün, wenn alle bestätigt haben;
-  fehlen Bestätigungen, darunter „fehlt:“ mit Namen und Monaten) und **Prüfen und abschließen** (bei
+  darunter „bis Ende …“), *Bestätigung* (nur „1 von 2 bestätigt“, grün, wenn alle bestätigt haben;
+  wer für welchen Monat fehlt, zeigt erst die Seite des Projekts) und **Prüfen und abschließen** (bei
   bereiten, hervorgehoben) bzw. **Öffnen**; auch ein
   Klick auf die Zeile öffnet die Seite des Projekts. Oben rechts zählt die Karte, wie viele Projekte
   bereit sind und wie viele auf Bestätigungen warten. Mit Suche; archivierte Projekte stehen in
@@ -1428,7 +1428,9 @@ die Übersicht der Projekte und die Seite eines Projekts.
   … hat sich der Text der Mitarbeiter seit der Bearbeitung des Leistungstexts geändert.“), und
   Schritt 3 warnt ebenso; sind die Zeilen feiner gegliedert als das Raster des
   Projekts, erklärt ein Hinweis, warum dort die Texte der Leistungen stehen. Druck und Excel zeigen
-  die abgerechneten Stunden; der Aufschlag selbst erscheint nicht. Den Stand eines offenen Nachweises
+  die abgerechneten Stunden; der Aufschlag selbst erscheint nicht. Unter der Überschrift des
+  Drucks stehen nur Überschrift bzw. Zeitraum und Leistungsbereich – kein Raster und kein Stand
+  (`nachweisMeta`); der Excel-Kopf nennt beides ebenfalls nicht. Den Stand eines offenen Nachweises
   drucken bzw. exportieren *Drucken / PDF (noch offen)* und *Excel (noch offen)* im Menü *Mehr*.
   **Leistungsnachweis
   löschen** nimmt auf Wunsch die eigenen Leistungen des Nachweises mit (einschließlich der
