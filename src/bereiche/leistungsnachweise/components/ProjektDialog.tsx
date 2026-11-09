@@ -1,10 +1,11 @@
 /**
- * Projekt anlegen bzw. bearbeiten – nur im Controlling (domain/rechte.ts,
- * `projektVerwalten`): Projektnummer, Status, Name, Bezeichnung im Nachweis,
- * Leistungsbereich, Raster neuer Nachweise, Beschreibung. Einen Rhythmus gibt
- * es nicht – den Umfang eines Nachweises legt das Abschließen fest.
- * Das Raster gliedert auch die gemeinsamen Leistungstexte der Mitarbeiter;
- * ein Wechsel nennt Texte, die danach nicht mehr gelten (`RasterwechselHinweis`).
+ * „Neues Projekt“ – nur im Controlling (domain/rechte.ts, `projektVerwalten`):
+ * Projektnummer, Status, Name, Bezeichnung im Nachweis, Leistungsbereich,
+ * Raster, Beschreibung. Ändern lässt sich ein Projekt danach auf seiner Seite
+ * unter „Einstellungen“ (pages/controlling/ProjektEinstellungen.tsx). Einen
+ * Rhythmus gibt es nicht – den Umfang eines Nachweises legt das Abschließen
+ * fest; das Raster gliedert auch die gemeinsamen Leistungstexte der
+ * Mitarbeiter.
  * Die Projektnummer („K9101“) ist der Schlüssel, über den der Excel-Import
  * die Leistungen einem Projekt zuordnet; sie ist deshalb eindeutig.
  */
@@ -17,40 +18,30 @@ import { NUR_CONTROLLING } from '../domain/rechte';
 import {
   LEISTUNGSBEREICH_VORSCHLAEGE,
   PROJEKT_STATUS_LABEL,
-  type Projekt,
   type ProjektStatus,
   type Raster,
 } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { RASTER_OPTIONEN } from './common';
-import { RasterwechselHinweis } from './RasterwechselHinweis';
 
 const STATUS_OPTIONEN = (Object.keys(PROJEKT_STATUS_LABEL) as ProjektStatus[]).map((s) => ({
   value: s,
   label: PROJEKT_STATUS_LABEL[s],
 }));
 
-export function ProjektDialog({
-  projekt,
-  onClose,
-  navigate,
-}: {
-  projekt?: Projekt;
-  onClose: () => void;
-  navigate?: (r: Route) => void;
-}) {
-  const { data, addProjekt, updateProjekt, controlling } = useStore();
+export function ProjektDialog({ onClose, navigate }: { onClose: () => void; navigate?: (r: Route) => void }) {
+  const { data, addProjekt, controlling } = useStore();
   const toast = useToast();
   const liste = useId();
   const [form, setForm] = useState({
-    nummer: projekt?.nummer ?? '',
-    name: projekt?.name ?? '',
-    kurzname: projekt?.kurzname ?? '',
-    status: projekt?.status ?? ('aktiv' as ProjektStatus),
-    leistungsbereich: projekt?.leistungsbereich ?? IMPORT_PROJEKT_VORGABEN.leistungsbereich,
-    raster: projekt?.raster ?? IMPORT_PROJEKT_VORGABEN.raster,
-    beschreibung: projekt?.beschreibung ?? '',
+    nummer: '',
+    name: '',
+    kurzname: '',
+    status: 'aktiv' as ProjektStatus,
+    leistungsbereich: IMPORT_PROJEKT_VORGABEN.leistungsbereich,
+    raster: IMPORT_PROJEKT_VORGABEN.raster,
+    beschreibung: '',
   });
 
   const set = <K extends keyof typeof form>(key: K, wert: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: wert }));
@@ -62,7 +53,7 @@ export function ProjektDialog({
       return;
     }
     const nummer = form.nummer.trim();
-    if (nummer && data.projekte.some((p) => p.id !== projekt?.id && nummerNormal(p.nummer) === nummerNormal(nummer))) {
+    if (nummer && data.projekte.some((p) => nummerNormal(p.nummer) === nummerNormal(nummer))) {
       toast(`Die Projektnummer „${nummer}“ ist bereits vergeben.`);
       return;
     }
@@ -77,12 +68,6 @@ export function ProjektDialog({
       toast(NUR_CONTROLLING);
       return;
     }
-    if (projekt) {
-      updateProjekt(projekt.id, werte);
-      toast('Projekt aktualisiert.');
-      onClose();
-      return;
-    }
     const id = addProjekt({ ...werte, markiert: true, abschnitte: [], logos: null });
     if (!id) {
       toast(NUR_CONTROLLING);
@@ -95,8 +80,8 @@ export function ProjektDialog({
 
   return (
     <Modal
-      titel={projekt ? 'Projekt bearbeiten' : 'Neues Projekt'}
-      sub={projekt ? projekt.nummer : 'Grunddaten erfassen – Abschnitte und Logos folgen in den Einstellungen des Projekts'}
+      titel="Neues Projekt"
+      sub="Grunddaten erfassen – Abschnitte und Logos folgen in den Einstellungen des Projekts"
       onClose={onClose}
       footer={
         <>
@@ -104,14 +89,14 @@ export function ProjektDialog({
             Abbrechen
           </button>
           <button type="button" className="btn btn-primary" onClick={speichern}>
-            {projekt ? 'Speichern' : 'Projekt anlegen'}
+            Projekt anlegen
           </button>
         </>
       }
     >
       <div className="form-grid ln-zweispaltig">
         <Field label="Projektnummer" hint="Daran erkennt der Excel-Import das Projekt.">
-          <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="K1234" autoFocus={!projekt} />
+          <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="K1234" autoFocus />
         </Field>
         <Field label="Status">
           <Select value={form.status} onChange={(v) => set('status', v as ProjektStatus)} options={STATUS_OPTIONEN} />
@@ -149,8 +134,7 @@ export function ProjektDialog({
           <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={3} />
         </Field>
       </div>
-      {projekt ? <RasterwechselHinweis projekt={projekt} raster={form.raster} /> : null}
-      {projekt ? null : <VerknuepfungsHinweis bereich="leistungsnachweise" nummer={form.nummer} />}
+      <VerknuepfungsHinweis bereich="leistungsnachweise" nummer={form.nummer} />
     </Modal>
   );
 }

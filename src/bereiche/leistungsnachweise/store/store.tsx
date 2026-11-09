@@ -140,8 +140,9 @@ interface StoreValue {
   addProjekt: (p: Omit<Projekt, 'id'>) => ID | null;
   /**
    * Ändern (nur Controlling); entfallene Abschnitte verlieren ihre Leistungen (diese stehen dann ohne Abschnitt –
-   * abgerechnete auch im Stand ihres Nachweises, `standAbschnitteNachziehen`). Einen Abrechnungsrhythmus gibt es
-   * nicht (mehr, Fassung 9).
+   * abgerechnete auch im Stand ihres Nachweises, `standAbschnitteNachziehen`). Ein neues Raster gilt auch für die
+   * offenen Nachweise des Projekts (abgeschlossene behalten ihres); Texte und Aufschläge des alten Rasters bleiben
+   * gespeichert und kehren mit ihm zurück. Einen Abrechnungsrhythmus gibt es nicht (mehr, Fassung 9).
    */
   updateProjekt: (id: ID, patch: Partial<Omit<Projekt, 'id'>>) => void;
   /** Mit allen Leistungen und Nachweisen – nur Controlling. */
@@ -379,6 +380,14 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       mutate(
         controllingNur((d) => {
           const projekte = aendern(d.projekte, id, (p) => ({ ...p, ...patch }));
+          // Ein neues Raster gilt auch für die offenen Nachweise – einen eigenen Dialog dafür gibt es nicht
+          const raster = patch.raster;
+          if (raster && d.nachweise.some((n) => n.projektId === id && n.status === 'entwurf' && n.raster !== raster)) {
+            d = {
+              ...d,
+              nachweise: d.nachweise.map((n) => (n.projektId === id && n.status === 'entwurf' && n.raster !== raster ? { ...n, raster } : n)),
+            };
+          }
           const gueltig = patch.abschnitte ? new Set(patch.abschnitte.map((a) => a.id)) : null;
           // Leistungen eines entfernten Abschnitts sind ohne Abschnitt – auch im Stand abgeschlossener Nachweise
           return gueltig

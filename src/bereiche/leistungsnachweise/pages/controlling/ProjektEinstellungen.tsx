@@ -1,31 +1,39 @@
 /**
- * „Projekt einstellen“ im Controlling (Modal auf der Seite eines Projekts,
- * Knopf „Einstellen“, Projekt.tsx): Vorgaben für den Kopf und die Zeilen neuer
- * Leistungsnachweise – das Raster gliedert auch die
- * gemeinsamen Leistungstexte der Mitarbeiter; ein Wechsel nennt Texte, die im
- * neuen Raster nicht mehr gelten (components/RasterwechselHinweis.tsx) –, die
- * Abschnitte (ab zwei Abschnitten eigene Stundenspalten unter „Aufwand (Std)“,
- * `mitAbschnittsspalten`) und die Logos im Druckkopf. Der Excel-Import ordnet
- * Leistungen über die Kennung des Projektelements (Spalte J) einem Abschnitt
- * zu und legt fehlende selbst an. Abgeschlossene Nachweise behalten ihren
- * festgeschriebenen Stand samt Abschnitten. Ändern darf nur das Controlling
- * (domain/rechte.ts, `projektVerwalten`); andernorts ist alles gesperrt.
+ * „Einstellungen“ eines Projekts im Controlling (Modal auf der Seite eines
+ * Projekts, Knopf „Einstellungen“, Projekt.tsx) – alles an einer Stelle:
+ * * „Projekt“: Projektnummer (Schlüssel für den Excel-Import, eindeutig),
+ *   Status, Projektname, Bezeichnung im Nachweis, Leistungsbereich, Raster
+ *   („Nachweis“: Zeilen je Tag, Woche oder Monat – gilt für den offenen und
+ *   alle neuen Leistungsnachweise und gliedert die gemeinsamen Leistungstexte
+ *   der Mitarbeiter; ein Wechsel nennt Texte, die im neuen Raster nicht mehr
+ *   gelten, components/RasterwechselHinweis.tsx, und von Hand bearbeitete
+ *   Zeilen des offenen Nachweises, die verdeckt würden) und Beschreibung,
+ * * die Abschnitte (ab zwei Abschnitten eigene Stundenspalten unter „Aufwand
+ *   (Std)“, `mitAbschnittsspalten`) – der Excel-Import ordnet Leistungen über
+ *   die Kennung des Projektelements (Spalte J) einem Abschnitt zu und legt
+ *   fehlende selbst an –,
+ * * die Logos im Druckkopf.
+ * Abgeschlossene Nachweise behalten ihren festgeschriebenen Stand samt Raster
+ * und Abschnitten. Ändern darf nur das Controlling (domain/rechte.ts,
+ * `projektVerwalten`); andernorts ist alles gesperrt.
  */
 import { useId, useState } from 'react';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Callout, Card, CardHeader, ConfirmDialog, Field, Modal, Segmented, TextInput } from '../../../../shared/ui';
+import { Callout, Card, CardHeader, ConfirmDialog, Field, Modal, Segmented, Select, TextArea, TextInput } from '../../../../shared/ui';
 import { LogoVerwaltung } from '../../components/Logos';
 import { RasterwechselHinweis } from '../../components/RasterwechselHinweis';
 import { RASTER_OPTIONEN, anzahl } from '../../components/common';
-import { abschnitteAusElementen, kennungNormal, projektelementTeilen } from '../../domain/import';
-import { mitAbschnittsspalten } from '../../domain/nachweis';
+import { abschnitteAusElementen, kennungNormal, nummerNormal, projektelementTeilen } from '../../domain/import';
+import { mitAbschnittsspalten, offeneNachweise, rasterwechselHinweis, rasterwechselVerdecktAlle } from '../../domain/nachweis';
 import { darf } from '../../domain/rechte';
 import {
   LEISTUNGSBEREICH_VORSCHLAEGE,
+  PROJEKT_STATUS_LABEL,
   newId,
   type Abschnitt,
   type Projekt,
+  type ProjektStatus,
   type Raster,
 } from '../../domain/types';
 import { useStore } from '../../store/store';
@@ -36,12 +44,20 @@ export function ProjektEinstellungen({ projekt }: { projekt: Projekt }) {
   const { zugang } = useStore();
   // Ohne Recht nur ansehen – der Store ändert dann ohnehin nichts
   const gesperrt = !darf(zugang, 'projektVerwalten');
-  // Ändert sich das Projekt von anderer Stelle (Dialog „Bearbeiten“), beginnt das Formular neu
-  const stand = [projekt.leistungsbereich, projekt.kurzname, projekt.raster].join('\u0000');
+  // Ändert sich das Projekt von anderer Stelle (anderes Fenster, Projektregister), beginnt das Formular neu
+  const stand = [
+    projekt.nummer,
+    projekt.status,
+    projekt.name,
+    projekt.kurzname,
+    projekt.leistungsbereich,
+    projekt.raster,
+    projekt.beschreibung,
+  ].join('\u0000');
   return (
     <div className="stack">
       {gesperrt ? <Callout icon="i">Die Einstellungen des Projekts ändert nur das Controlling.</Callout> : null}
-      <NachweisVorgaben key={stand} projekt={projekt} gesperrt={gesperrt} />
+      <ProjektDaten key={stand} projekt={projekt} gesperrt={gesperrt} />
       <Abschnitte projekt={projekt} gesperrt={gesperrt} />
       <LogoVerwaltung projekt={projekt} gesperrt={gesperrt} />
     </div>
@@ -49,39 +65,75 @@ export function ProjektEinstellungen({ projekt }: { projekt: Projekt }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Vorgaben für Leistungsnachweise                                     */
+/* Projekt: Stammdaten und Vorgaben für Leistungsnachweise              */
 /* ------------------------------------------------------------------ */
 
-function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: boolean }) {
-  const { updateProjekt } = useStore();
+const STATUS_OPTIONEN = (Object.keys(PROJEKT_STATUS_LABEL) as ProjektStatus[]).map((s) => ({
+  value: s,
+  label: PROJEKT_STATUS_LABEL[s],
+}));
+
+/** Die Felder des Formulars aus dem Projekt. */
+const formVon = (p: Projekt) => ({
+  nummer: p.nummer,
+  status: p.status,
+  name: p.name,
+  kurzname: p.kurzname,
+  leistungsbereich: p.leistungsbereich,
+  raster: p.raster,
+  beschreibung: p.beschreibung,
+});
+
+function ProjektDaten({ projekt, gesperrt }: { projekt: Projekt; gesperrt: boolean }) {
+  const { data, updateProjekt } = useStore();
   const toast = useToast();
   const liste = useId();
-  const [form, setForm] = useState({
-    leistungsbereich: projekt.leistungsbereich,
-    kurzname: projekt.kurzname,
-    raster: projekt.raster,
-  });
+  const [form, setForm] = useState(() => formVon(projekt));
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const geaendert =
-    form.leistungsbereich !== projekt.leistungsbereich ||
-    form.kurzname !== projekt.kurzname ||
-    form.raster !== projekt.raster;
+  const urspruenglich = formVon(projekt);
+  const geaendert = (Object.keys(form) as (keyof typeof form)[]).some((k) => form[k] !== urspruenglich[k]);
+  // Ein neues Raster gilt auch für die offenen Nachweise: Was dort von Hand im alten Raster steht, wird verdeckt
+  const verdeckt = rasterwechselHinweis(rasterwechselVerdecktAlle(offeneNachweise(data, projekt.id), form.raster));
 
   const speichern = () => {
+    const name = form.name.trim();
+    if (!name) {
+      toast('Bitte einen Projektnamen angeben.');
+      return;
+    }
+    const nummer = form.nummer.trim();
+    if (nummer && data.projekte.some((p) => p.id !== projekt.id && nummerNormal(p.nummer) === nummerNormal(nummer))) {
+      toast(`Die Projektnummer „${nummer}“ ist bereits vergeben.`);
+      return;
+    }
     updateProjekt(projekt.id, {
       ...form,
-      leistungsbereich: form.leistungsbereich.trim(),
+      nummer,
+      name,
       kurzname: form.kurzname.trim(),
+      leistungsbereich: form.leistungsbereich.trim(),
     });
-    toast('Vorgaben gespeichert.');
+    toast('Einstellungen gespeichert.');
   };
 
   return (
     <Card>
-      <CardHeader titel="Leistungsnachweis" sub="Kopf und Vorgaben für neue Leistungsnachweise dieses Projekts" />
+      <CardHeader titel="Projekt" sub="Stammdaten und Kopf der Leistungsnachweise" />
       <fieldset className="ln-fieldset card-pad" disabled={gesperrt}>
         <div className="form-grid ln-zweispaltig">
+          <Field label="Projektnummer" hint="Daran erkennt der Excel-Import das Projekt.">
+            <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="K1234" />
+          </Field>
+          <Field label="Status">
+            <Select value={form.status} onChange={(v) => set('status', v as ProjektStatus)} options={STATUS_OPTIONEN} />
+          </Field>
+          <Field label="Projektname" full>
+            <TextInput value={form.name} onChange={(v) => set('name', v)} placeholder="z. B. PS / PLM, Neubau Hp Musterstadt" />
+          </Field>
+          <Field label="Bezeichnung im Nachweis" hint={`Kopf des Leistungsnachweises; leer = Projektname „${form.name.trim() || projekt.name}“.`}>
+            <TextInput value={form.kurzname} onChange={(v) => set('kurzname', v)} placeholder={form.name.trim() || 'z. B. Hp Musterstadt'} />
+          </Field>
           <Field label="Leistungsbereich" hint="Steht im Kopf des Leistungsnachweises, etwa „Projektsteuerung“.">
             <TextInput
               value={form.leistungsbereich}
@@ -95,30 +147,24 @@ function NachweisVorgaben({ projekt, gesperrt }: { projekt: Projekt; gesperrt: b
               ))}
             </datalist>
           </Field>
-          <Field label="Bezeichnung im Nachweis" hint={`Kopf des Leistungsnachweises; leer = Projektname „${projekt.name}“.`}>
-            <TextInput value={form.kurzname} onChange={(v) => set('kurzname', v)} placeholder={projekt.name || 'z. B. Hp Musterstadt'} />
-          </Field>
           <Field
             label="Nachweis"
-            hint="Zeilen je Tag, Woche oder Monat – Vorgabe für neue Leistungsnachweise. Vorhandene behalten ihr Raster; das Controlling stellt es dort unter „Zeitraum ändern“ um. Das Raster gliedert auch die Leistungstexte, die die Mitarbeiter je Zeitraum gemeinsam verfassen (Wochen am Monatsende und an den Grenzen der Leistungsnachweise geteilt)."
+            hint="Zeilen je Tag, Woche oder Monat – gilt für den offenen und alle neuen Leistungsnachweise; abgeschlossene behalten ihr Raster. Das Raster gliedert auch die Leistungstexte, die die Mitarbeiter je Zeitraum gemeinsam verfassen (Wochen am Monatsende und an den Grenzen der Leistungsnachweise geteilt)."
           >
             <Segmented<Raster> value={form.raster} onChange={(v) => set('raster', v)} options={RASTER_OPTIONEN} />
           </Field>
+          <Field label="Beschreibung" full>
+            <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={3} />
+          </Field>
         </div>
         <RasterwechselHinweis projekt={projekt} raster={form.raster} />
+        {verdeckt ? (
+          <Callout ton="warn" icon="!">
+            Im offenen Leistungsnachweis: {verdeckt}
+          </Callout>
+        ) : null}
         <div className="ln-einst-knoepfe">
-          <button
-            type="button"
-            className="btn"
-            disabled={!geaendert}
-            onClick={() =>
-              setForm({
-                leistungsbereich: projekt.leistungsbereich,
-                kurzname: projekt.kurzname,
-                raster: projekt.raster,
-              })
-            }
-          >
+          <button type="button" className="btn" disabled={!geaendert} onClick={() => setForm(formVon(projekt))}>
             Verwerfen
           </button>
           <button type="button" className="btn btn-primary" disabled={!geaendert} onClick={speichern}>

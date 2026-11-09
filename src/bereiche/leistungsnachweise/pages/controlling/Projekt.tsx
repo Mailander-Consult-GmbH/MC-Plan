@@ -1,9 +1,9 @@
 /**
  * Seite eines Projekts im Controlling der Leistungsnachweise – ohne Reiter.
  * Oben „Alle Projekte“, Projektnummer und -name, Status, Raster und eine Reihe
- * beschrifteter Knöpfe wie in den anderen Bereichen: „Einstellen“
- * (Leistungsbereich, Bezeichnung im Nachweis, Raster, Abschnitte, Logos –
- * ProjektEinstellungen.tsx), „Bearbeiten“ und zum gezeigten Nachweis
+ * beschrifteter Knöpfe rechts wie in den anderen Bereichen: „Einstellungen“
+ * (alle Angaben des Projekts samt Raster, Abschnitten und Logos an einer
+ * Stelle – ProjektEinstellungen.tsx) und zum gezeigten Nachweis
  * „Vorschau“ (mit „Drucken / PDF“) und rot „Nachweis löschen“
  * (Abrechnung.tsx). Ein Projekt löscht man nur im Controlling unter
  * „Projekte“ (für alle Bereiche). Einen Rhythmus gibt es nicht: Erfasste
@@ -27,7 +27,6 @@ import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Callout, Card, CardHeader, EmptyState, Modal } from '../../../../shared/ui';
 import { NachweisDialog } from '../../components/NachweisDialog';
-import { ProjektDialog } from '../../components/ProjektDialog';
 import { STATUS_TON, anzahl, nachweiseAngelegtText, zeitpunkt } from '../../components/common';
 import { nachweisDrucken } from '../../domain/druck';
 import {
@@ -59,7 +58,6 @@ export function ControllingProjekt({
   const { data, nachweiseFuerOffeneLeistungen } = useStore();
   const toast = useToast();
   const [einstellen, setEinstellen] = useState(false);
-  const [bearbeiten, setBearbeiten] = useState(false);
   const [vorschau, setVorschau] = useState(false);
   const [nachweisLoeschen, setNachweisLoeschen] = useState(false);
   const [neuerNachweis, setNeuerNachweis] = useState(false);
@@ -103,13 +101,10 @@ export function ControllingProjekt({
           <Badge ton={STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
           <span className="small muted">{RASTER_LABEL[projekt.raster]}</span>
         </div>
-        {/* Alle Knöpfe in einer Reihe, beschriftet wie in den anderen Bereichen: Projekt und gezeigter Nachweis */}
+        {/* Alle Knöpfe rechts in der Kopfzeile, beschriftet wie in den anderen Bereichen: Projekt und gezeigter Nachweis */}
         <div className="row wrap ln-co-aktionen">
           <button type="button" className="btn btn-outline" onClick={() => setEinstellen(true)}>
-            <Icon name="einstellungen" size={14} /> Einstellen
-          </button>
-          <button type="button" className="btn btn-outline" onClick={() => setBearbeiten(true)}>
-            <Icon name="bearbeiten" size={14} /> Bearbeiten
+            <Icon name="einstellungen" size={14} /> Einstellungen
           </button>
           {nachweis ? (
             <>
@@ -182,11 +177,10 @@ export function ControllingProjekt({
       {uebrige.length > 0 ? <FruehereNachweise projekt={projekt} nachweise={uebrige} navigate={navigate} /> : null}
 
       {einstellen ? (
-        <Modal titel="Projekt einstellen" sub={projektTitel(projekt)} wide onClose={() => setEinstellen(false)}>
+        <Modal titel="Einstellungen" sub={projektTitel(projekt)} wide onClose={() => setEinstellen(false)}>
           <ProjektEinstellungen projekt={projekt} />
         </Modal>
       ) : null}
-      {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
       {neuerNachweis ? <NachweisDialog projekt={projekt} onClose={() => setNeuerNachweis(false)} navigate={navigate} /> : null}
 
       {vorschau && nachweis ? <NachweisVorschau projekt={projekt} nachweis={nachweis} onClose={() => setVorschau(false)} /> : null}

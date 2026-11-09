@@ -1,7 +1,7 @@
 /**
- * Hinweis beim Wechsel des Rasters eines Projekts – in den Einstellungen des
- * Projekts und im Dialog „Projekt bearbeiten“ (nur Controlling). Das Raster
- * des Projekts gibt nicht nur die Zeilen neuer Leistungsnachweise vor, es
+ * Hinweis beim Wechsel des Rasters eines Projekts – in den „Einstellungen“
+ * des Projekts (nur Controlling). Das Raster des Projekts gibt nicht nur die
+ * Zeilen des offenen und neuer Leistungsnachweise vor, es
  * gliedert auch die gemeinsamen Leistungstexte der Mitarbeiter
  * (domain/erfassung.ts): Texte des bisherigen Rasters in Zeiträumen, die noch
  * nicht abgerechnet sind, gelten danach nicht mehr
