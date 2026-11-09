@@ -1401,16 +1401,15 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   Raster, Status `entwurf` oder `abgeschlossen`, bearbeitete `texte` –
   `ZeilenText` mit `text`, `leistungIds` und seit Fassung 7 `ausgang`, dem Text
   der Zeile ohne die Bearbeitung beim Beginn der Bearbeitung –,
-  `aufschlaege` je Zeile und Abschnitt, seit Fassung 9 `gesamtAufschlag` – der
-  Aufschlag auf den ganzen Nachweis (`GesamtAufschlag`: `art` `stunden` oder
-  `prozent`, `wert` auf zwei Nachkommastellen, nie 0; null = keiner) –,
+  `aufschlaege` je Zeile und Abschnitt – einen Aufschlag auf den ganzen
+  Nachweis gibt es seit Fassung 10 nicht mehr (Fassung 9 führte ihn als
+  `gesamtAufschlag`, siehe unten) –,
   `bemerkung`, `nachgereicht` –
   Kennungen übernommener Leistungen aus früheren Zeiträumen –, `bisFest` – das
   Ende hat das Controlling von Hand festgelegt –, festgeschriebener `stand`;
   dessen Zeilen tragen `nachgereicht` für die Zeile nachgereichter Leistungen
-  und seit Fassung 9 ihren Anteil am Gesamtaufschlag
-  (`NachweisZeile.anteilGesamt`, je Abschnitt `anteilGesamtJeAbschnitt`; schon
-  in `aufschlag` und `abgerechnet` enthalten),
+  (in Ständen, die mit Fassung 9 abgeschlossen wurden, steckt der Anteil der
+  Zeile am damaligen Gesamtaufschlag schon in `aufschlag` und `abgerechnet`),
   er selbst seit Fassung 7 `erfassungsRaster` – das Raster des Projekts beim
   Abschluss – und optional `inhalte` – je abgerechneter Leistung der Inhalt beim
   Abschluss, `standInhalt` in
@@ -1440,7 +1439,7 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   eigene Zeile: Schlüssel mit `NACHGEREICHT_PRAEFIX` (`N`) vor dem
   Periodenschlüssel, etwa `NW2026-45`, die Periode gekürzt auf die Tage vor `von`. `einstellungen.mitarbeiterId` ist die angemeldete Person.
 * Schlüssel `leistungsnachweise.data.v1` im `localStorage`
-  (`src/bereiche/leistungsnachweise/store/storage.ts`), `DATEN_VERSION = 9`.
+  (`src/bereiche/leistungsnachweise/store/storage.ts`), `DATEN_VERSION = 10`.
   Fassung 3 kennt die Rolle Controlling an Mitarbeitern nicht mehr;
   `aufbereiten()` übernimmt sie nicht. Fassung 4 stellte alle Projekte auf die
   damalige `zeitraumregel` `fortlaufend` (vorhandene Nachweise blieben); diesen
@@ -1467,19 +1466,35 @@ anderen Bereiche zu; seine Projekte teilt er über das Projektregister
   Schlüssel bleibt der erste Eintrag. Fassung 8 brachte die Regeln `zweiMonate`
   und `quartal` und `Projekt.rhythmusAb`; `migriere()` rechnete dafür nichts um.
   Fassung 9 entfernt den Abrechnungsrhythmus: `aufbereiten()` übernimmt
-  `zeitraumregel` und `rhythmusAb` nicht mehr, ergänzt `gesamtAufschlag` mit
-  null (ohne gültige Art oder mit 0 entfällt er) und übernimmt in den Zeilen des
-  Stands `anteilGesamt` (nur ≠ 0) und `anteilGesamtJeAbschnitt`. Danach – nach
+  `zeitraumregel` und `rhythmusAb` nicht mehr. Danach – nach
   `nachgereichteZeilenUmstellen`, das die Zeilen der bisherigen Nachweise
   braucht – führt `vonFassung8` je Projekt aufeinanderfolgende offene Nachweise
   ohne `bisFest` zusammen (`laufendeZusammenfuehren` in
   `src/bereiche/leistungsnachweise/domain/nachweis.ts`: der erste reicht bis zum
-  Ende des letzten und nimmt Leistungstexte, Aufschläge, Gesamtaufschläge,
+  Ende des letzten und nimmt Leistungstexte, Aufschläge,
   Bemerkungen und nachgereichte Leistungen der übrigen auf, `offeneVereinen`;
   Raster und Überschrift bleiben die des ersten, `geaendert` wird der jüngste;
   abgeschlossene Nachweise und solche mit `bisFest` bleiben und trennen) und
   zieht die gemeinsamen Texte und Bestätigungen nach
-  (`periodentexteNachziehen`, `bestaetigungenNachziehen`). Gespeichert wird nur bei
+  (`periodentexteNachziehen`, `bestaetigungenNachziehen`). Dazu brachte
+  Fassung 9 den Aufschlag auf den ganzen Nachweis (`gesamtAufschlag`, ± Stunden
+  oder ± Prozent, anteilig auf die Zeilen verteilt; in den Zeilen des Stands
+  `anteilGesamt`/`anteilGesamtJeAbschnitt`). Fassung 10 rechnet ihn in
+  Aufschläge je Zeile um und entfernt ihn: `gesamtAufschlaegeLesen`
+  (`src/bereiche/leistungsnachweise/store/storage.ts`) liest ihn vor
+  `aufbereiten()`, das `gesamtAufschlag` und `anteilGesamt…` nicht mehr
+  übernimmt – je Nachweis Art und Wert, bei abgeschlossenen mit Stand die
+  Anteile der Zeilen; ein Nachweis mit Gesamtaufschlag ohne Kennung erhält
+  dabei eine. Zuletzt, auf den fertigen Zeilen, schlägt
+  `gesamtAufschlaegeUmrechnen`
+  (`src/bereiche/leistungsnachweise/domain/migrationGesamtaufschlag.ts`, rein)
+  die Anteile auf `aufschlaege` auf: offene Nachweise (und abgeschlossene ohne
+  Stand) verteilen ihn wie Fassung 9 über ihre heutigen Zeilen
+  (`anteileVerteilen`), abgeschlossene übernehmen die Anteile aus ihrem Stand;
+  mit Abschnittsspalten je Spalte, sonst auf die ganze Zeile
+  (`anteileAufschlagen`). Jede Zeile – mit Abschnittsspalten jede Spalte –
+  behält ihre abgerechneten Stunden; der Stand selbst und `geaendert` bleiben
+  unverändert. Gespeichert wird nur bei
   `ladeZustand` 'ok'; vor einer Umstellung legt `ladeDaten` eine Rohkopie
   `leistungsnachweise.data.v1.vor-fassung-<n>` an. Ohne gespeicherten Bestand
   gibt es die Demodaten nur, solange das Projektregister leer ist; sonst beginnt
@@ -1816,7 +1831,7 @@ React), Rechte in `src/bereiche/leistungsnachweise/domain/rechte.ts`, Seite
 `projektVerwalten` (Projekt anlegen, ändern, Abschnitte), `sammelImport`,
 `projektLoeschen`, `nachweisVerwalten` (Nachweise anlegen und ändern,
 Leistungstexte, Bemerkung, „Einem Leistungsnachweis zuordnen“), `abschliessen`,
-`aufschlag` (je Zeile und auf den ganzen Nachweis), `export` und `auswertung`
+`aufschlag` (je Zeile und Abschnitt), `export` und `auswertung`
 nur im Controlling (ein Recht zum
 Verwalten der Mitarbeiter gibt es nicht mehr). Im Bereich bleibt nur das Erfassen, Ändern und Importieren
 eigener Leistungen, das Mitschreiben am gemeinsamen Leistungstext der
@@ -1898,38 +1913,26 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   wenn er bis zum Abschluss läuft, am letzten Tag mit Leistungen, spätestens
   heute, und behält andernfalls sein Ende; dazu die späteren Leistungen
   (`spaetere`). `nachweisAbschliessenAnwenden(daten, id, jetzt, neueId, bis?)`
-  schreibt den Stand samt Aufschlägen und Gesamtaufschlag fest; spätere
+  schreibt den Stand samt Aufschlägen fest; spätere
   Leistungen erhalten über `nachweiseSichern` einen neuen offenen Nachweis
   (im Store `nachweisAbschliessen(id, bis?)`, Kennungen über `idVorrat`).
-* Gesamtaufschlag (ebenda, rein): `nachweisZeilen` rechnet zuerst die
-  Aufschläge der Zeilen (`abrechnen`), dann verteilt
-  `gesamtAufschlagVerteilen` den Gesamtaufschlag – ± Stunden bzw. ± Prozent der
-  abgerechneten Stunden vor ihm (`gesamtAufschlagSoll`) – im Verhältnis der
-  abgerechneten Stunden auf die Zeilen und darin auf die Abschnitte, in
-  Hundertsteln mit den Resten nach dem größten Rest, sodass die Summe genau
-  stimmt; ein Abzug wirkt höchstens bis 0, ohne abgerechnete Stunden gar nicht.
-  Die Zeile trägt ihren Anteil in `anteilGesamt` bzw. `anteilGesamtJeAbschnitt`
-  und schon in `aufschlag`, `aufschlagJeAbschnitt`, `abgerechnet` und
-  `abgerechnetJeAbschnitt` – so zeigen Druck, Excel und Auswertung ihn ohne
-  eigene Zeile. `gesamtAufschlagUebersicht` liefert Basis, Soll, Wirkung und ob
-  er gekappt ist, `gesamtAufschlagHinweis` dann „Der Gesamtaufschlag wirkt nur
-  mit … Std. – abgerechnet wird nie weniger als 0 Std.“ bzw. „Ohne
-  abgerechnete Stunden wirkt der Gesamtaufschlag nicht.“, `gesamtAufschlagText`
-  den Wert wie „+10 %“ oder „+2,50 Std.“. `gesamtAufschlagPruefen` prüft vor
-  dem Setzen (Meldungen in 10.6), `abgerechnetEingebbar` sagt, ob sich
-  „Abgerechnet“ je Zeile eingeben lässt (nur ohne Gesamtaufschlag).
-  `anzahlAufschlaege` zählt ihn mit; `aufschlaegeZuruecksetzen` im Store
-  entfernt ihn mit. Gehen offene Nachweise in einem auf (`offeneVereinen`),
-  vereint `gesamtAufschlaegeVereinen` ihre Gesamtaufschläge: einer bleibt,
-  gleiche Prozent bleiben, Stunden werden summiert, sonst gelten die bisher
-  wirksamen Stunden als Stunden.
+* Aufschläge (ebenda, rein): nur je Zeile und Abschnitt (`aufschlaege`, ±
+  Stunden); einen Aufschlag auf den ganzen Nachweis gibt es seit Fassung 10
+  nicht mehr (10.1). `nachweisZeilen` rechnet sie mit `abrechnen` in
+  `aufschlag`, `aufschlagJeAbschnitt`, `abgerechnet` und
+  `abgerechnetJeAbschnitt` um (abgerechnet nie unter 0); `mitAufschlag` setzt
+  einen Wert (im Store `aufschlagSetzen`), `aufschlagPruefen` prüft vor dem
+  Setzen (Meldungen in 10.6), `aufschlagFuerAbgerechnet` liefert den Aufschlag
+  zu einer Eingabe „Abgerechnet“, `anzahlAufschlaege` zählt die Einträge ≠ 0;
+  `aufschlaegeZuruecksetzen` im Store entfernt alle. Gehen offene Nachweise in
+  einem auf (`offeneVereinen`), werden ihre Aufschläge summiert.
 * Übersicht (`ProjektListe` in
   `src/bereiche/leistungsnachweise/pages/controlling/ProjektListe.tsx`): Suche
   („Projekt, Nummer …“), „Excel-Import (alle Mitarbeiter)“ (Tooltip
   „Sammel-Export der Zeiterfassung: Leistungen aller Mitarbeiter der Datei
   übernehmen“, siehe unten) und „Neues Projekt“ (`ProjektDialog` in
   `src/bereiche/leistungsnachweise/components/ProjektDialog.tsx`; danach die
-  Seite des neuen Projekts). Karte „Offene Leistungsnachweise“ mit dem
+  Seite des neuen Projekts). Karte „Leistungsnachweise je Projekt“ mit dem
   Untertitel „Je Projekt läuft ein Leistungsnachweis weiter, bis Sie ihn
   abschließen – bereit ist er, wenn alle bis zum Monatsende bestätigt haben“
   und rechts zwei Badges (`ln-co-summen`): „… bereit“ (grün, sobald ein Projekt
@@ -1945,11 +1948,16 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   abzuschließen“ (kein offener Nachweis, kein Monatsende wählbar oder bis dahin
   keine Leistungen). Tabelle `ln-co-projektliste`: „Projekt“ (Nummer, Name,
   Status, ggf. „Archiviert“ – archivierte stehen in ihrer Gruppe am Ende),
-  „Offener Leistungsnachweis“ („seit …“ mit seinem Beginn, darunter „… Std.
-  erfasst“ – alle Stunden des Nachweises, `leistungenDesNachweises`; ohne
-  offenen „keiner“), „Bis Monatsende“ (die Stunden bis dahin, darunter „bis
-  Ende …“; sonst „–“), „Bestätigt“ (Badge „… von … bestätigt“ – die Personen mit
-  Leistungen bis dahin und davon die ohne fehlende Bestätigung –, grün bzw.
+  „Letzter Leistungsnachweis“ (der zuletzt abgeschlossene – unter den
+  abgeschlossenen aus `nachweiseVon` der mit dem spätesten Beginn –, sein
+  Zeitraum über `zeitraumText` aus
+  `src/bereiche/leistungsnachweise/domain/zeitraum.ts` – volle Monate als
+  Monat und Jahr –, darunter „abgeschlossen am …“ mit dem Tag des Abschlusses;
+  ohne abgeschlossenen „noch keiner“), „Offene Stunden“ (die Stunden des
+  offenen Nachweises bis zum letzten Monatsende, `leistungenDesNachweises`,
+  darunter „bis Ende …“; sonst „–“), „Bestätigung“ (Badge „… von …
+  bestätigt“ – die Personen mit Leistungen bis dahin und davon die ohne
+  fehlende Bestätigung –, grün bzw.
   orange; fehlen welche, darunter „fehlt: …“ mit Namen und Monaten je Person;
   in „Noch nichts abzuschließen“ „–“) und der Knopf „Prüfen und abschließen“
   (bereit, hervorgehoben) bzw. „Öffnen“. Ein Klick auf die Zeile bzw. den Knopf
@@ -2032,7 +2040,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   Leistungsnachweis“: „Drucken / PDF (noch offen) …“ und „Excel (noch offen)“
   – der Stand des offenen Nachweises – sowie „Zeitraum ändern …“ nur offen,
   „Neuer Leistungsnachweis …“, „Aufschläge zurücksetzen …“ nur offen und mit
-  Aufschlägen – auch nur mit einem Gesamtaufschlag, `anzahlAufschlaege` –,
+  Aufschlägen (`anzahlAufschlaege`),
   „Wieder öffnen …“ nur abgeschlossen, „Leistungsnachweis löschen …“). Eine
   Auswahl unter den Nachweisen gibt es dort nicht (frühere: „Frühere
   Leistungsnachweise“, oben). Bis 640 px füllen die Knöpfe die Breite,
@@ -2056,18 +2064,20 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   (`MitarbeiterBestaetigungen` in
   `src/bereiche/leistungsnachweise/pages/controlling/BestaetigungsStand.tsx`):
   beim offenen Nachweis als Schritt 1 „Haben alle eingetragen und bestätigt?“
-  mit dem Untertitel „Stunden aus dem Import bzw. der Erfassung; Leistungstext
-  und Bestätigung je Monat geben die Mitarbeiter selbst ab.“ (davor „Monate bis
-  … –“ mit dem in Schritt 3 gewählten Ende) und rechts `BestaetigtBadge`
+  (Eigenschaft `schritt`) mit dem Untertitel „Leistungstext und Bestätigung je
+  Monat geben die Mitarbeiter selbst ab.“ (davor „Monate bis … –“ mit dem in
+  Schritt 3 gewählten Ende) und rechts `BestaetigtBadge`
   („… von … bestätigt“, grün, wenn alle bestätigt haben, sonst orange; ohne
   Personen „–“); `bestaetigungsZahl` zählt die Personen mit Leistungen im bis zu
   diesem Ende gekürzten Nachweis und davon die, deren Monate darin alle
   bestätigt bzw. abgerechnet sind; erledigt (grün mit Haken) ist der Schritt,
   wenn alle bestätigt haben. Abgeschlossene Nachweise zeigen stattdessen den
   Kopf „Mitarbeiter und Bestätigungen“ mit „Stunden des festgeschriebenen
-  Stands“ und nur die Stunden. Tabelle `ln-co-bst-tabelle` mit „Mitarbeiter“
-  (Name, Kürzel), „Stunden“ und
-  „Bestätigung je Monat“ – je Monat des Nachweises ein Kennzeichen
+  Stands“ und nur die Stunden. Tabelle `ln-co-bst-tabelle`: als Schritt 1 nur
+  „Mitarbeiter“ (Name, Kürzel) und „Bestätigung je Monat“
+  (`ln-co-bst-ohne-stunden`; eine Spalte „Stunden“ und eine Zeile „Summe“
+  gibt es dort nicht, die Stunden stehen in Schritt 2) – je Monat des
+  Nachweises ein Kennzeichen
   (`ln-co-bst-chip`, der Monat kurz wie „Okt 26“): „bestätigt …“ mit dem Tag der
   Bestätigung und einem Haken, „offen“, „geändert seit Bestätigung“ bzw.
   „abgerechnet“, im Tooltip Monat, Stand und die Zahl der Zeiträume ohne
@@ -2075,13 +2085,14 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   grau „läuft weiter“ (`ln-co-bst-chip-spaeter`, Tooltip „…: gehört nicht in
   diesen Abschluss – läuft im nächsten Leistungsnachweis weiter“); nur Personen
   und Monate dieses Nachweises
-  (`bestaetigungenDesNachweises`) – und eine Zeile „Summe“. Ohne Stunden „Noch
-  keine Stunden im Zeitraum.“ Bis 640 px stehen die Kennzeichen unter Name
-  und Stunden; im Farbmodus `kontrast` sind sie umrandet. Eine eigene Seite für
-  die Bestätigungen gibt es nicht.
+  (`bestaetigungenDesNachweises`). Abgeschlossen „Mitarbeiter“ und „Stunden“
+  mit einer Zeile „Summe“. Ohne Stunden „Noch keine Stunden im Zeitraum.“ Bis
+  640 px stehen die Kennzeichen über die ganze Breite unter dem Namen; im
+  Farbmodus `kontrast` sind sie umrandet. Eine eigene Seite für die
+  Bestätigungen gibt es nicht.
 * Schritt 2 bzw. Tabelle des Leistungsnachweises (offen als Schritt 2 „Prüfen –
   so geht der Leistungsnachweis raus“ mit dem Untertitel „Texte bei Bedarf
-  korrigieren (✎), Aufschlag je Zeile oder auf den ganzen Nachweis.“;
+  korrigieren (✎), Aufschlag je Zeile.“;
   abgeschlossen eine Karte mit seiner Überschrift, Untertitel Zeitraum –
   `nachweisZeitraumText` – und Raster; bei Abschnittsspalten im offenen
   Nachweis rechts der Haken „Alle Abschnitte“, der je Zeile auch Abschnitte ohne
@@ -2095,24 +2106,10 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   `src/bereiche/leistungsnachweise/pages/controlling/hilfen.tsx`: gespeichert
   beim Verlassen oder mit Enter, Escape verwirft; wirkt ein Aufschlag nur zum
   Teil, steht „wirkt …“ daneben); „Abgerechnet“ setzt den Aufschlag als
-  Differenz (`aufschlagFuerAbgerechnet`) – eingeben lässt es sich nur ohne
-  Gesamtaufschlag (`abgerechnetEingebbar`), sonst steht es nur da. Den Anteil
-  einer Zeile am Gesamtaufschlag nennt die Spalte „Aufschlag“ als „… anteilig“
-  (Tooltip „Anteil am Aufschlag auf den ganzen Nachweis“), abgeschlossen als
-  „davon … anteilig“. Darunter (offen) „Aufschlag in ± Std. je Zeile …“ mit
-  „„Abgerechnet“ setzt den Aufschlag als Differenz.“ bzw. „„Abgerechnet“ ist mit
-  einem Aufschlag auf den ganzen Nachweis nicht eingebbar.“, dann – mit Zeilen
-  oder vorhandenem Gesamtaufschlag – „Aufschlag auf den ganzen Nachweis“
-  (`GesamtAufschlagFeld`, `ln-co-gesamtaufschlag`): Umschalter „± Std.“ / „± %“
-  (ein Wechsel behält die Zahl und setzt sie in der neuen Art) und ein
-  `StundenFeld` (mit `prozent`; `prozentFeld`, `zahlLesen` mit „%“; Platzhalter
-  „±0 %“ bzw. „±0“, `aria-label` „Aufschlag auf den ganzen Nachweis in …“;
-  leer oder 0 entfernt ihn, `gesamtAufschlagSetzen` im Store), daneben
-  „anteilig nach den Stunden auf die Zeilen verteilt“, bei Prozent „= … Std.,
-  anteilig auf die Zeilen verteilt“, wirkt er nicht ganz, der Satz von
-  `gesamtAufschlagHinweis`; abgeschlossen bzw. ohne Recht nur mit
-  Gesamtaufschlag „Aufschlag auf den ganzen Nachweis: … – anteilig auf die
-  Zeilen verteilt.“ (bei Prozent mit „= … Std.“). Dann „Bemerkung“ („(steht im Druck unter der Tabelle)“,
+  Differenz (`aufschlagFuerAbgerechnet`). Darunter (offen) „Aufschlag in ±
+  Std. je Zeile …“ mit „„Abgerechnet“ setzt den Aufschlag als Differenz.“; ein
+  Feld für einen Aufschlag auf den ganzen Nachweis gibt es nicht (mehr,
+  Fassung 10, 10.1). Dann „Bemerkung“ („(steht im Druck unter der Tabelle)“,
   Platzhalter „z. B. Abrechnung nach Aufwand gemäß Vertrag“; abgeschlossen nur
   zu lesen, leer „Keine Bemerkung“). Ohne Zeilen „Keine Leistungen im
   Zeitraum“. Abgeschlossene Nachweise zeigen ihren Stand nur zum Lesen.
@@ -2206,8 +2203,8 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   und „Löschen“); Meldung „Leistungsnachweis und … gelöscht.“ bzw.
   „Leistungsnachweis gelöscht.“, danach die Seite des Projekts mit seinem
   offenen Nachweis. „Aufschläge zurücksetzen …“ fragt „Aufschläge
-  zurücksetzen?“ („Zurücksetzen“) und entfernt die Aufschläge der Zeilen und
-  den Gesamtaufschlag (`aufschlaegeZuruecksetzen`).
+  zurücksetzen?“ („Zurücksetzen“) und entfernt die Aufschläge der Zeilen
+  (`aufschlaegeZuruecksetzen`).
 * „Excel-Import (alle Mitarbeiter)“ in der Leiste der Übersicht: der Import als
   Sammel-Export, ohne Anmeldung; nach dem Übernehmen geht es zu den Projekten
   (`importZiel`). Der Untertitel nennt hier keine Person, die
@@ -2233,8 +2230,7 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   laufenden Monats, mindestens bis zur letzten Leistung bzw. zum Ende der
   offenen Nachweise). Offene Nachweise in diesem
   Bereich gehen darin auf – der erste wird erweitert, Leistungstexte (gleiche
-  Zeilen verbunden, `texteVerbinden`), Aufschläge (summiert),
-  Gesamtaufschläge (`gesamtAufschlaegeVereinen`), Bemerkungen und
+  Zeilen verbunden, `texteVerbinden`), Aufschläge (summiert), Bemerkungen und
   nachgereichte Leistungen der übrigen gehen auf ihn über (`offeneVereinen`),
   ein festgelegtes Ende (`bisFest`) entfällt
   (`nachweisFuerNichtAbgerechneteAnwenden`, im Store
@@ -2357,10 +2353,8 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
 | „Die Datei ist keine Sicherung der Leistungsnachweise.“ | `src/bereiche/leistungsnachweise/store/storage.ts` | Einspielen einer fremden Datei. |
 | „Leistungsnachweis abgeschlossen – Leistungen bis …. Im Druckdialog „Als PDF sichern“ wählen.“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` (`AbschliessenSchritt`) | Kein Fehler: „Abschließen und PDF“ in Schritt 3 mit dem gewählten Ende (ein Monatsende bzw. heute); mit späteren Leistungen vor dem Punkt ergänzt um „; … im nächsten weiter“ – sie liegen danach in einem neuen offenen Leistungsnachweis. Zugleich öffnet sich der Druckdialog. |
 | „Leistungsnachweis wieder geöffnet – er zeigt die aktuellen Leistungen.“ / „Aufschläge zurückgesetzt.“ | `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx` | Kein Fehler. |
-| „Bitte eine Zahl angeben, z. B. 1,5 oder -0,5.“ / „Abgerechnet kann nicht unter 0 Std. liegen.“ | `src/bereiche/leistungsnachweise/domain/nachweis.ts` (`AUFSCHLAG_KEINE_ZAHL`, `AUFSCHLAG_UNTER_NULL`; am Feld und als Kurzmeldung über `StundenFeld` in `src/bereiche/leistungsnachweise/pages/controlling/hilfen.tsx`) | Aufschlag einer Zeile bzw. auf den ganzen Nachweis (`aufschlagSetzen`, `gesamtAufschlagSetzen` mit `gesamtAufschlagPruefen`) ist keine Zahl bzw. ließe die abgerechneten Stunden unter 0 fallen. |
-| „Ohne abgerechnete Stunden lässt sich kein Gesamtaufschlag verteilen.“ | `src/bereiche/leistungsnachweise/domain/nachweis.ts` (`GESAMTAUFSCHLAG_OHNE_STUNDEN`, `gesamtAufschlagPruefen`) | Gesamtaufschlag auf einen Nachweis ohne abgerechnete Stunden. |
-| „Diesen Leistungsnachweis gibt es nicht (mehr).“ / „Der Leistungsnachweis ist abgeschlossen – Aufschläge erst nach „Wieder öffnen“.“ | `src/bereiche/leistungsnachweise/store/store.tsx` (`aufschlagSetzen`, `gesamtAufschlagSetzen`) | Aufschlag auf einen unbekannten bzw. abgeschlossenen Nachweis. |
-| „Der Gesamtaufschlag wirkt nur mit … Std. – abgerechnet wird nie weniger als 0 Std.“ / „Ohne abgerechnete Stunden wirkt der Gesamtaufschlag nicht.“ | `src/bereiche/leistungsnachweise/domain/nachweis.ts` (`gesamtAufschlagHinweis`, angezeigt von `GesamtAufschlagFeld` in `src/bereiche/leistungsnachweise/pages/controlling/Abrechnung.tsx`) | Kein Fehler: Der Gesamtaufschlag wirkt nicht ganz – ein Abzug über die abgerechneten Stunden hinaus bzw. keine abgerechneten Stunden (etwa nach Änderungen an den Zeilen). |
+| „Bitte eine Zahl angeben, z. B. 1,5 oder -0,5.“ / „Abgerechnet kann nicht unter 0 Std. liegen.“ | `src/bereiche/leistungsnachweise/domain/nachweis.ts` (`AUFSCHLAG_KEINE_ZAHL`, `AUFSCHLAG_UNTER_NULL`; am Feld und als Kurzmeldung über `StundenFeld` in `src/bereiche/leistungsnachweise/pages/controlling/hilfen.tsx`) | Aufschlag einer Zeile (`aufschlagSetzen` mit `aufschlagPruefen`) ist keine Zahl bzw. ließe die abgerechneten Stunden unter 0 fallen. |
+| „Diesen Leistungsnachweis gibt es nicht (mehr).“ / „Der Leistungsnachweis ist abgeschlossen – Aufschläge erst nach „Wieder öffnen“.“ | `src/bereiche/leistungsnachweise/store/store.tsx` (`aufschlagSetzen`) | Aufschlag auf einen unbekannten bzw. abgeschlossenen Nachweis. |
 | „Wird auch in … geführt – jedes Projekt gehört in die Leistungsnachweise. …“ / „Ist für … zur Übernahme vorgesehen – …“ | `src/bereiche/leistungsnachweise/pages/controlling/Projekt.tsx` | „Projekt löschen (nur im Controlling unter „Projekte“)“ im Menü „Mehr“: Ein anderer Bereich führt das Projekt bzw. es ist dort zur Übernahme vorgesehen (`JEDES_PROJEKT_IN`). |
 | „Keine Änderung.“ | `src/bereiche/leistungsnachweise/pages/controlling/Projekt.tsx` | Kein Fehler: „Einem Leistungsnachweis zuordnen“ hat keinen Leistungsnachweis angelegt oder erweitert. |
 | „Der gespeicherte Stand der Leistungsnachweise ließ sich nicht laden bzw. stammt aus einer neueren Fassung. …“ | `src/bereiche/leistungsnachweise/controlling.tsx` | Controlling bei `ladeZustand` ≠ 'ok'. |
