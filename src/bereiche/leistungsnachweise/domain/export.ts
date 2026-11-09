@@ -1,40 +1,28 @@
 /**
  * Excel-Ausgaben des Bereichs – alle dem Controlling vorbehalten
  * (domain/rechte.ts, `darf(zugang, 'export')`):
- * * der Leistungsnachweis im Aufbau der Excel-Vorlagen (Kopf mit Logo,
- *   Tabelle mit Rahmen und grauem Tabellenkopf, Summe, Gesamtstunden,
- *   „geprüft und freigegeben“; Druckbereich A4 hoch auf Seitenbreite) mit den
- *   abgerechneten Stunden,
  * * die Auswertung des Controllings (ein Blatt je Tabelle),
  * * Listen von Leistungen (eines Projekts bzw. aller Projekte im Zeitraum),
  * * eine Vorlage für den Import im Aufbau der Zeiterfassung.
+ * Den Leistungsnachweis selbst gibt es nur als Druck/PDF (domain/druck.ts) –
+ * eine Excel-Fassung gibt es nicht (mehr).
  *
- * Wie in der Vorlage stehen rechts neben dem Druckbereich die erfassten
- * Stunden je Mitarbeiter („Wiko LR“ …) und der Aufschlag der Zeile – zusammen
- * ergeben sie die abgerechnete Summe; zur Kontrolle, nicht im Druck.
- *
- * Die Blätter entstehen rein (`nachweisBlatt`, `auswertungBlaetter`,
- * `leistungenBlatt`, `importVorlageBlatt`); erst die Funktionen
- * `…Exportieren`/`…Laden` laden die Datei herunter. Das Logo des Nachweises
- * wird dafür geladen (`logosLaden`) – misslingt das, entsteht die Datei ohne Logo.
+ * Die Blätter entstehen rein (`auswertungBlaetter`, `leistungenBlatt`,
+ * `importVorlageBlatt`); erst die Funktionen `…Exportieren`/`…Laden` laden die
+ * Datei herunter.
  */
 import { formatDate, today } from '../../../shared/dates';
 import {
-  bildArt,
-  bildGroesse,
   dateiLaden,
   spalte,
-  spaltePixel,
   xlsxErzeugen,
-  type Bild,
   type Blatt,
   type Stil,
   type Zelle,
 } from '../../../shared/xlsx';
 import { auswertung, zeitraumBezeichnung, type AuswertungFilter, type MitarbeiterTabelle } from './auswertung';
-import { GESAMT, dateiname, logoQuelle, nachweisDateiname, nachweisFassung, spaltenStunden, type StundenSpalte } from './druck';
+import { dateiname } from './druck';
 import { nachweisDerLeistung, nachweisTitel, stundenVon } from './nachweis';
-import { logosVon } from './seed';
 import {
   QUELLE_LABEL,
   mitarbeiterName,
@@ -42,321 +30,10 @@ import {
   projektTitel,
   type ID,
   type Leistung,
-  type Leistungsnachweis,
   type LeistungsnachweisDaten,
-  type Logo,
   type Projekt,
 } from './types';
 import { monatText, monatsanfang, monatsende, stundenText } from './zeitraum';
-
-/* ------------------------------------------------------------------ */
-/* Logos                                                               */
-/* ------------------------------------------------------------------ */
-
-/** Logo als Bilddaten (PNG oder JPEG) mit seiner Größe in Bildpunkten – für die Excel-Datei. */
-export interface LogoBild {
-  name: string;
-  daten: Uint8Array;
-  breite: number;
-  hoehe: number;
-}
-
-/**
- * Andere Bildformate (SVG, GIF, WebP …) über eine Zeichenfläche in PNG
- * umwandeln – nur im Browser; sonst null.
- */
-async function alsPng(daten: Uint8Array, typ: string): Promise<Uint8Array | null> {
-  if (typeof document === 'undefined' || typeof Image === 'undefined') return null;
-  const url = URL.createObjectURL(new Blob([daten as BlobPart], { type: typ }));
-  try {
-    const bild = new Image();
-    bild.src = url;
-    await bild.decode();
-    if (!bild.naturalWidth || !bild.naturalHeight) return null;
-    // Doppelte Auflösung, damit das Logo im Druck scharf bleibt
-    const faktor = Math.min(2, 1600 / bild.naturalWidth);
-    const flaeche = document.createElement('canvas');
-    flaeche.width = Math.round(bild.naturalWidth * faktor);
-    flaeche.height = Math.round(bild.naturalHeight * faktor);
-    const ctx = flaeche.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(bild, 0, 0, flaeche.width, flaeche.height);
-    const png = await new Promise<Blob | null>((fertig) => flaeche.toBlob(fertig, 'image/png'));
-    return png ? new Uint8Array(await png.arrayBuffer()) : null;
-  } catch {
-    return null;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/**
- * Lädt ein Logo (Pfad unter `public/`, Adresse oder data:-URL) als Bilddaten.
- * PNG und JPEG bleiben, wie sie sind; andere Formate werden im Browser in PNG
- * umgewandelt. Jeder Fehler liefert null – die Datei entsteht dann ohne Logo.
- */
-export async function logoBildLaden(logo: Logo): Promise<LogoBild | null> {
-  try {
-    const antwort = await fetch(logoQuelle(logo.src));
-    if (!antwort.ok) return null;
-    let daten: Uint8Array | null = new Uint8Array(await antwort.arrayBuffer());
-    if (!bildArt(daten)) daten = await alsPng(daten, antwort.headers.get('content-type') ?? '');
-    const groesse = daten ? bildGroesse(daten) : null;
-    if (!daten || !groesse || !groesse.breite || !groesse.hoehe) return null;
-    return { name: logo.name, daten, ...groesse };
-  } catch {
-    return null;
-  }
-}
-
-/** Lädt alle Logos; was sich nicht laden lässt, entfällt. */
-export async function logosLaden(logos: Logo[]): Promise<LogoBild[]> {
-  const geladen = await Promise.all(logos.map(logoBildLaden));
-  return geladen.filter((l): l is LogoBild => !!l);
-}
-
-/* ------------------------------------------------------------------ */
-/* Leistungsnachweis                                                   */
-/* ------------------------------------------------------------------ */
-
-/** Schrift der Vorlage. */
-const SCHRIFT = 'Arial';
-const arial = (stil: Stil): Stil => ({ schriftart: SCHRIFT, groesse: 10, ...stil });
-
-const KOPF = arial({ fett: true, groesse: 11, oben: true });
-/** Zeitraum und Projekt im Kopf dürfen umbrechen („September – November 2026“ ist breiter als die Spalte). */
-const KOPF_UMBRUCH = { ...KOPF, umbruch: true };
-const KOPF_NUMMER = arial({ oben: true });
-const TABELLENKOPF = arial({ fett: true, fuellung: 'C0C0C0', rahmen: true, zentriert: true, umbruch: true });
-const ABSCHNITTSKOPF = arial({ fuellung: 'D9D9D9', rahmen: true, zentriert: true, umbruch: true });
-const TEXT = arial({ rahmen: true, oben: true, umbruch: true });
-const BEARBEITER = { ...TEXT, fett: true };
-const STUNDEN = arial({ rahmen: true, oben: true, zentriert: true, zahlenformat: '0.00' });
-const SUMME = arial({ rahmen: true, oben: true, rechts: true });
-const FETT = arial({ fett: true, oben: true });
-const GESAMTSTUNDEN = arial({ fett: true, oben: true, zentriert: true, zahlenformat: '0.00' });
-const BEMERKUNG = arial({ oben: true, umbruch: true });
-const FREIGABE = arial({ fett: true, rechts: true });
-/* Kontrolle neben dem Druckbereich – rot auf Gelb wie die Wiko-Spalten der Vorlage */
-const KONTROLLE_KOPF = arial({ fett: true, farbe: 'FF0000', fuellung: 'FFFF00', zentriert: true, oben: true, umbruch: true });
-const KONTROLLE = arial({ farbe: 'FF0000', fuellung: 'FFFF00', zentriert: true, oben: true, zahlenformat: '0.00' });
-const KONTROLLE_SUMME = { ...KONTROLLE, fuellung: 'FFFF99', fett: true };
-
-/** Spaltenbreiten der Vorlage (Zeichen). */
-const BREITE = { datum: 21.44, bearbeiter: 23.55, text: 93.44, textMitAbschnitten: 80, stunden: 12.55, luecke: 3, kontrolle: 11 };
-const FREIGABE_TEXT = 'geprüft und freigegeben  ______________________';
-
-/** Logo im Kopf: so hoch wie in der Vorlage Monat.xlsx, höchstens so breit. */
-const LOGO = { hoehe: 44, breite: 200, abstand: 12, oben: 4, rechts: 6 };
-
-/** Ein einzelnes „&“ in Kopf- und Fußzeilen schreibt Excel als „&&“. */
-const fussText = (text: string) => text.replace(/&/g, '&&');
-
-/**
- * Logos rechtsbündig über dem rechten Rand des Druckbereichs in Zeile 1 – wie
- * das Logo der Vorlage Monat.xlsx. `breiten`: Spaltenbreiten des Druckbereichs.
- */
-function logoBilder(logos: LogoBild[], breiten: number[]): Bild[] {
-  const masse = logos.map((l) => {
-    const faktor = Math.min(LOGO.hoehe / l.hoehe, LOGO.breite / l.breite);
-    return { logo: l, breite: Math.round(l.breite * faktor), hoehe: Math.round(l.hoehe * faktor) };
-  });
-  const rand = breiten.reduce((s, b) => s + spaltePixel(b), 0) - LOGO.rechts;
-  let x = rand - masse.reduce((s, m) => s + m.breite, 0) - LOGO.abstand * Math.max(0, masse.length - 1);
-  return masse.map((m) => {
-    const bild: Bild = { daten: m.logo.daten, x: Math.max(0, x), y: LOGO.oben, breite: m.breite, hoehe: m.hoehe, name: m.logo.name };
-    x += m.breite + LOGO.abstand;
-    return bild;
-  });
-}
-
-/**
- * Der Leistungsnachweis als Tabellenblatt – Aufbau wie die Excel-Vorlagen:
- * Zeilen 1–3 Kopf (rechts die Logos), ab Zeile 5 die Tabelle mit den
- * abgerechneten Stunden (ab zwei Abschnitten zweizeiliger Kopf mit „Aufwand
- * (Std)“ über den Abschnittsspalten), Summe mit Formeln, Gesamtstunden,
- * Bemerkung und „geprüft und freigegeben“. Rechts daneben die Kontrolle:
- * erfasste Stunden je Person und der Aufschlag.
- */
-export function nachweisBlatt(daten: LeistungsnachweisDaten, n: Leistungsnachweis, projekt: Projekt, logos: LogoBild[] = []): Blatt {
-  const f = nachweisFassung(daten, n, projekt, 'abgerechnet');
-  const mitAbschnitten = f.spalten.length > 0;
-  const stundenSpalten: StundenSpalte[] = mitAbschnitten ? f.spalten : [{ schluessel: GESAMT, kurz: 'Stunden', name: '' }];
-  const ersteStunden = 3;
-  const letzteStunden = ersteStunden + stundenSpalten.length - 1;
-  const kontrollStart = letzteStunden + 2;
-  const mitKontrolle = f.mitarbeiter.length > 0;
-  const kopfzeilen = mitAbschnitten ? 2 : 1;
-  /** Excel-Zeile der ersten Tabellenzeile. */
-  const ersteZeile = 5 + kopfzeilen;
-  const letzteZeile = ersteZeile + f.zeilen.length - 1;
-  const summenZeile = letzteZeile + 1;
-
-  const zeilen: Zelle[][] = [];
-  const zusammenfassen: string[] = [];
-  const zeilenhoehen: (number | null)[] = [];
-  const zeile = (zellen: Zelle[], hoehe: number | null = null) => {
-    zeilen.push(zellen);
-    zeilenhoehen.push(hoehe);
-  };
-  /** Zellen der Stundenspalten und der Kontrolle an ihre Plätze setzen. */
-  const mit = (links: Zelle[], stunden: Zelle[], kontrolle: Zelle[] = []): Zelle[] => {
-    const z: Zelle[] = [...links];
-    while (z.length < ersteStunden) z.push(null);
-    z.push(...stunden);
-    if (kontrolle.length) {
-      while (z.length < kontrollStart) z.push(null);
-      z.push(...kontrolle);
-    }
-    return z;
-  };
-
-  // Kopf: „Leistungsnachweis“ | Zeitraum | Projekt, darunter Leistungsbereich und Projektnummer
-  zeile(
-    f.titelRechts
-      ? [{ wert: f.titelLinks, stil: KOPF }, { wert: f.titelRechts, stil: KOPF_UMBRUCH }, { wert: f.projektName, stil: KOPF_UMBRUCH }]
-      : [{ wert: f.titelLinks, stil: KOPF }, null, { wert: f.projektName, stil: KOPF_UMBRUCH }],
-  );
-  if (!f.titelRechts) zusammenfassen.push('A1:B1');
-  zeile([{ wert: 'Leistungsbereich', stil: KOPF }, null, { wert: f.leistungsbereich, stil: KOPF_UMBRUCH }]);
-  zeile([null, null, f.projektNummer ? { wert: f.projektNummer, stil: KOPF_NUMMER } : null]);
-  zeile([]);
-
-  // Tabellenkopf; daneben die Kontrolle: erfasst je Person und der Aufschlag
-  const kontrollKopf: Zelle[] = mitKontrolle
-    ? [...f.mitarbeiter.map((m): Zelle => ({ wert: `Wiko ${m.kuerzel}`, stil: KONTROLLE_KOPF })), { wert: 'Aufschlag', stil: KONTROLLE_KOPF }]
-    : [];
-  const kopfZelle = (wert: string): Zelle => ({ wert, stil: TABELLENKOPF });
-  if (mitAbschnitten) {
-    zeile(
-      mit(
-        [kopfZelle('Datum'), kopfZelle('Bearbeiter'), kopfZelle('Leistungstext')],
-        stundenSpalten.map((_, i) => kopfZelle(i === 0 ? 'Aufwand (Std)' : '')),
-      ),
-      24,
-    );
-    zeile(
-      mit(
-        [kopfZelle(''), kopfZelle(''), kopfZelle('')],
-        stundenSpalten.map((s): Zelle => ({ wert: s.kurz, stil: s.schluessel === GESAMT ? { ...ABSCHNITTSKOPF, fett: true } : ABSCHNITTSKOPF })),
-        kontrollKopf,
-      ),
-      24,
-    );
-    zusammenfassen.push('A5:A6', 'B5:B6', 'C5:C6', `${spalte(ersteStunden)}5:${spalte(letzteStunden)}5`);
-  } else {
-    zeile(mit([kopfZelle('Datum'), kopfZelle('Bearbeiter'), kopfZelle('Leistungstext')], [kopfZelle('Stunden')], kontrollKopf), 27);
-  }
-
-  // Je Tag, Woche oder Monat eine Zeile – mit den abgerechneten Stunden
-  const ersteAbschnitt = spalte(ersteStunden);
-  const letzteAbschnitt = spalte(letzteStunden - 1);
-  f.zeilen.forEach((z, i) => {
-    const r = ersteZeile + i;
-    const stunden = stundenSpalten.map((s): Zelle => {
-      const wert = spaltenStunden(z, s.schluessel, f.werte);
-      if (mitAbschnitten && s.schluessel === GESAMT) {
-        return { wert, formel: `SUM(${ersteAbschnitt}${r}:${letzteAbschnitt}${r})`, stil: { ...STUNDEN, fett: true } };
-      }
-      return { wert: wert || null, stil: STUNDEN };
-    });
-    const kontrolle: Zelle[] = mitKontrolle
-      ? [
-          ...f.mitarbeiter.map((m): Zelle => ({ wert: z.stundenJeMitarbeiter[m.id] || null, stil: KONTROLLE })),
-          { wert: z.aufschlag || null, stil: KONTROLLE },
-        ]
-      : [];
-    zeile(
-      mit(
-        [
-          { wert: z.datumText, stil: TEXT },
-          { wert: z.bearbeiter.join('\n'), stil: BEARBEITER },
-          { wert: z.text, stil: TEXT },
-        ],
-        stunden,
-        kontrolle,
-      ),
-    );
-  });
-
-  // Summe – mit Formeln, damit Änderungen in Excel mitrechnen
-  const summeVon = (c: number, wert: number, stil: Stil): Zelle =>
-    f.zeilen.length
-      ? { wert, formel: `SUM(${spalte(c)}${ersteZeile}:${spalte(c)}${letzteZeile})`, stil }
-      : { wert: 0, stil };
-  zeile(
-    mit(
-      [{ wert: null, stil: TEXT }, { wert: null, stil: TEXT }, { wert: 'Summe', stil: SUMME }],
-      stundenSpalten.map((s, i) =>
-        summeVon(ersteStunden + i, mitAbschnitten ? (f.summen[s.schluessel] ?? 0) : f.summe, s.schluessel === GESAMT && mitAbschnitten ? { ...STUNDEN, fett: true } : STUNDEN),
-      ),
-      mitKontrolle
-        ? [
-            ...f.mitarbeiter.map((m, i) => summeVon(kontrollStart + i, m.stunden, KONTROLLE_SUMME)),
-            summeVon(kontrollStart + f.mitarbeiter.length, f.aufschlag, KONTROLLE_SUMME),
-          ]
-        : [],
-    ),
-    19.5,
-  );
-  zeile([]);
-  zeile([]);
-  const gesamtSpalte = spalte(letzteStunden);
-  zeile(
-    mit(
-      [null, null, { wert: 'Gesamtstunden', stil: FETT }],
-      stundenSpalten.map((_, i): Zelle =>
-        i === stundenSpalten.length - 1 ? { wert: f.summe, formel: `${gesamtSpalte}${summenZeile}`, stil: GESAMTSTUNDEN } : null,
-      ),
-    ),
-  );
-  if (f.bemerkung.trim()) {
-    zeile([]);
-    zeile([{ wert: 'Bemerkung', stil: FETT }, null, { wert: f.bemerkung.trim(), stil: BEMERKUNG }]);
-  }
-  for (let i = 0; i < 4; i++) zeile([]);
-  zeile([null, null, { wert: FREIGABE_TEXT, stil: FREIGABE }]);
-  zeile([]);
-
-  const druckBreiten = [
-    BREITE.datum,
-    BREITE.bearbeiter,
-    mitAbschnitten ? BREITE.textMitAbschnitten : BREITE.text,
-    ...stundenSpalten.map((s) =>
-      mitAbschnitten ? (s.schluessel === GESAMT ? 10 : Math.max(9, Math.min(16, s.kurz.length + 3))) : BREITE.stunden,
-    ),
-  ];
-  const spaltenbreiten = [
-    ...druckBreiten,
-    ...(mitKontrolle ? [BREITE.luecke, ...f.mitarbeiter.map(() => BREITE.kontrolle), BREITE.kontrolle] : []),
-  ];
-
-  return {
-    name: 'Leistungsnachweis',
-    kopfzeileFett: false,
-    zeilen,
-    zeilenhoehen,
-    spaltenbreiten,
-    zusammenfassen,
-    druckbereich: `A1:${gesamtSpalte}${zeilen.length}`,
-    wiederholteZeilen: 4 + kopfzeilen,
-    hochformat: true,
-    fusszeile: {
-      links: fussText([f.projektName, f.titel].filter(Boolean).join(' – ')),
-      mitte: 'Seite &P von &N',
-    },
-    ...(logos.length ? { bilder: logoBilder(logos, druckBreiten) } : {}),
-  };
-}
-
-/**
- * Leistungsnachweis als Excel-Datei, etwa „Leistungsnachweis_K9101_2026-10.xlsx“ –
- * mit den Logos des Projekts im Kopf; lassen sie sich nicht laden, ohne.
- */
-export async function nachweisExportieren(daten: LeistungsnachweisDaten, n: Leistungsnachweis, projekt: Projekt): Promise<void> {
-  const logos = await logosLaden(logosVon(projekt));
-  dateiLaden(xlsxErzeugen([nachweisBlatt(daten, n, projekt, logos)]), `${nachweisDateiname(n, projekt)}.xlsx`);
-}
 
 /* ------------------------------------------------------------------ */
 /* Listen von Leistungen                                               */

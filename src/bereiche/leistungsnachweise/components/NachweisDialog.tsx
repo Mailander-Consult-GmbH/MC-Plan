@@ -1,5 +1,5 @@
 /**
- * Leistungsnachweise anlegen und ändern – dem Controlling vorbehalten
+ * Leistungsnachweise anlegen – dem Controlling vorbehalten
  * (domain/rechte.ts).
  *
  * * **Neuer Leistungsnachweis** (`NeuerNachweisDialog`) fragt keinen Zeitraum
@@ -9,29 +9,15 @@
  *   bietet der Dialog „Öffnen“ an. Nicht erfasste Leistungen aus schon abgerechneten
  *   Zeiträumen nennt der Dialog (`NichtErfasstHinweis`); übernommen werden sie
  *   erst nach Bestätigung – als nachgereichte.
- * * **Zeitraum ändern** (`ZeitraumDialog`) korrigiert Zeitraum, Raster und
- *   Überschrift eines vorhandenen: ein Kalendermonat (Schnellwahl) oder frei
- *   mit Beginn und Ende – auch über mehrere Monate. Nachweise eines Projekts
- *   überschneiden sich nie; welche Leistungen ein Nachweis zeigt, ergibt sich
- *   aus seinem Zeitraum – dazu die nachgereichten, ohne die schon in einem
- *   anderen abgeschlossenen Nachweis abgerechneten (`leistungenDesNachweises`). Ein
- *   geändertes Ende steht danach fest (`bisFest`): Der Nachweis läuft nicht
- *   mehr bis zum Abschluss und wird nicht verlängert; beim Abschließen ist dieses
- *   Ende vorgeschlagen (ein früheres lässt sich dort wählen). Liefe er mit dem neuen Ende bis zum Abschluss, legt „Ende
- *   festlegen“ das Ende auch ohne Änderung fest (etwa den vorausgewählten
- *   Monat); „Wieder bis zum Abschluss laufen lassen“ hebt ein festgelegtes Ende
- *   auf. Beide Kästchen gibt es an jedem offenen Nachweis – einen Rhythmus,
- *   unter dem ein festgelegtes Ende nichts bewirkte, gibt es nicht mehr; an
- *   einem abgeschlossenen setzt nur ein geändertes Ende `bisFest`, ein
- *   gesetztes bleibt. Kästchen und Hinweis sagen
- *   „läuft nicht mehr bis zum Abschluss“ nur, wenn er es bisher tat. Der Dialog
- *   übergibt `bisFest` stets ausdrücklich an `updateNachweis`.
+ * Einen Dialog „Zeitraum ändern“ gibt es nicht (mehr): bis wann ein Nachweis
+ * reicht, legt das Abschließen fest; ein von Hand festgelegtes Ende (`bisFest`)
+ * älterer Stände bleibt, wie es ist.
  *
- * Wechselt das Raster – auch für offene Nachweise, die in einem neuen
- * aufgehen –, warnen beide Dialoge, wenn dadurch von Hand bearbeitete Texte
+ * Wechselt das Raster – für offene Nachweise, die im neuen aufgehen –, warnt
+ * der Dialog, wenn dadurch von Hand bearbeitete Texte
  * oder Aufschläge nicht mehr angezeigt werden (`rasterwechselHinweis`) – sie
  * bleiben gespeichert und kehren mit dem alten Raster zurück. Ändern sich die
- * Grenzen der Nachweise, sagen beide Dialoge, was das für die gemeinsamen
+ * Grenzen der Nachweise, sagt der Dialog, was das für die gemeinsamen
  * Leistungstexte und Bestätigungen der Mitarbeiter bedeutet (`grenzFolgen`,
  * `grenzFolgenHinweis`): Texte von Teilen eines Zeitraums gehen im Text des
  * ganzen auf (`periodentexteNachziehen`, die Bestätigungen ziehen mit); teilt
@@ -45,66 +31,39 @@ import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Segmented, TextInput } from '../../../shared/ui';
 import { grenzFolgen, grenzFolgenHinweis, type GrenzFolgen } from '../domain/erfassung';
 import {
-  leistungenIm,
   nachweisDerLeistung,
   nachweisFuerNichtAbgerechneteAnwenden,
   nachweisTitel,
   nichtAbgerechnet,
-  laeuftBisAbschluss,
   rasterwechselHinweis,
-  rasterwechselVerdeckt,
   rasterwechselVerdecktAlle,
   stundenVon,
-  ueberschneidung,
 } from '../domain/nachweis';
 import {
   RASTER_LABEL,
   mitarbeiterName,
   projektTitel,
   type Leistung,
-  type Leistungsnachweis,
   type LeistungsnachweisDaten,
   type Projekt,
   type Raster,
 } from '../domain/types';
-import { imZeitraum, istDatum, kurzDatum, langDatum, monatsanfang, monatsende, stundenText, zeitraumText } from '../domain/zeitraum';
+import { kurzDatum, langDatum, stundenText } from '../domain/zeitraum';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { RASTER_OPTIONEN, anzahl } from './common';
 import './nachweis.css';
 
-type Art = 'monat' | 'frei';
-
-/** Ist [von, bis] genau ein Kalendermonat? */
-const istMonat = (von: string, bis: string) => istDatum(von) && von === monatsanfang(von) && bis === monatsende(von);
-
-/** „2026-10“ aus dem Monatsfeld; Browser ohne Monatsauswahl liefern Text – „10.2026“ und „10/2026“ gelten auch. */
-function monatLesen(wert: string): string | null {
-  const t = wert.trim();
-  const iso = /^(\d{4})-(\d{1,2})$/.exec(t);
-  const de = /^(\d{1,2})[./](\d{4})$/.exec(t);
-  const [jahr, monat] = iso ? [iso[1], iso[2]] : de ? [de[2], de[1]] : [null, null];
-  if (!jahr || !monat || Number(monat) < 1 || Number(monat) > 12) return null;
-  return `${jahr}-${monat.padStart(2, '0')}`;
-}
-
 export function NachweisDialog({
   projekt,
-  nachweis,
   onClose,
   navigate,
 }: {
   projekt: Projekt;
-  /** Vorhandener Nachweis: Zeitraum ändern; ohne: neuer Nachweis. */
-  nachweis?: Leistungsnachweis;
   onClose: () => void;
   navigate?: (r: Route) => void;
 }) {
-  return nachweis ? (
-    <ZeitraumDialog projekt={projekt} nachweis={nachweis} onClose={onClose} />
-  ) : (
-    <NeuerNachweisDialog projekt={projekt} onClose={onClose} navigate={navigate} />
-  );
+  return <NeuerNachweisDialog projekt={projekt} onClose={onClose} navigate={navigate} />;
 }
 
 /** „Neuer Leistungsnachweis“: ohne Zeitraum – alle nicht abgerechneten Leistungen des Projekts. */
@@ -324,235 +283,5 @@ export function NichtErfasstHinweis({
         {children}
       </div>
     </Callout>
-  );
-}
-
-/** „Zeitraum ändern“: Zeitraum, Raster und Überschrift eines vorhandenen Nachweises. */
-function ZeitraumDialog({
-  projekt,
-  nachweis,
-  onClose,
-}: {
-  projekt: Projekt;
-  nachweis: Leistungsnachweis;
-  onClose: () => void;
-}) {
-  const { data, updateNachweis } = useStore();
-  const toast = useToast();
-  const abgeschlossen = nachweis.status === 'abgeschlossen';
-
-  const [art, setArt] = useState<Art>(() => (istMonat(nachweis.von, nachweis.bis) ? 'monat' : 'frei'));
-  const [monat, setMonat] = useState(() => nachweis.von.slice(0, 7));
-  const [von, setVon] = useState(nachweis.von);
-  const [bis, setBis] = useState(nachweis.bis);
-  const [raster, setRaster] = useState<Raster>(nachweis.raster);
-  const [titel, setTitel] = useState(nachweis.titel);
-  // Ein festgelegtes Ende lässt sich wieder aufheben: Der Nachweis läuft dann wieder bis zum Abschluss
-  const [wiederLaufen, setWiederLaufen] = useState(false);
-  const laeuft = laeuftBisAbschluss(nachweis);
-  // Liefe er bis zum Abschluss, lässt sich das Ende ausdrücklich festlegen – auch unverändert (etwa den
-  // vorausgewählten Monat abrechnen). Ohne eigene Wahl legt ein geändertes Ende es fest.
-  const [festlegenWahl, setFestlegenWahl] = useState<boolean | null>(null);
-
-  // Rasterwechsel: Was von Hand bearbeitet wurde, verschwindet aus der Anzeige (bleibt aber gespeichert)
-  const rasterHinweis = rasterwechselHinweis(rasterwechselVerdeckt(nachweis, raster));
-
-  const gewaehlt = monatLesen(monat);
-  const zeitraum =
-    art === 'monat'
-      ? gewaehlt
-        ? { von: `${gewaehlt}-01`, bis: monatsende(`${gewaehlt}-01`) }
-        : { von: '', bis: '' }
-      : { von, bis };
-  const gueltig = istDatum(zeitraum.von) && istDatum(zeitraum.bis) && zeitraum.von <= zeitraum.bis;
-  const andere = gueltig ? ueberschneidung(data, projekt.id, zeitraum.von, zeitraum.bis, nachweis.id) : undefined;
-  const automatisch = gueltig ? nachweisTitel({ titel: '', ...zeitraum }) : 'Leistungsnachweis';
-
-  // Was im neuen Zeitraum liegt – und was beim Verkleinern aus jedem Nachweis fiele
-  const darin = gueltig ? leistungenIm(data, projekt.id, zeitraum.von, zeitraum.bis) : [];
-  const stunden = stundenVon(darin);
-  const herausfallend =
-    gueltig
-      ? data.leistungen.filter(
-          (l) =>
-            l.projektId === projekt.id &&
-            imZeitraum(l.datum, nachweis.von, nachweis.bis) &&
-            !imZeitraum(l.datum, zeitraum.von, zeitraum.bis),
-        ).length
-      : 0;
-
-  // Ein festgelegtes Ende (`bisFest`) wirkt an jedem offenen Nachweis – sonst liefe er bis zum Abschluss
-  // (`laeuftBisAbschluss`); dort bietet der Dialog die Kästchen an. Festgelegt ist es danach, wenn ausdrücklich
-  // gewählt oder, ohne Wahl, weil das Ende geändert wurde. An einem abgeschlossenen hält ein geändertes Ende es
-  // fest, ein gesetztes bleibt.
-  const endeGeaendert = gueltig && zeitraum.bis !== nachweis.bis;
-  const festWirkt = gueltig && !abgeschlossen;
-  const festlegen = !festWirkt
-    ? nachweis.bisFest || endeGeaendert
-    : nachweis.bisFest
-      ? !wiederLaufen
-      : (festlegenWahl ?? endeGeaendert);
-  // Hinweis, wenn der Nachweis danach nicht bis zum Abschluss läuft, obwohl er es bisher tat oder mit dem neuen
-  // Ende täte – „nicht mehr“ nur, wenn er es bisher tat
-  const laeuftDanach = festWirkt && !festlegen;
-  const festHinweis =
-    gueltig && !laeuftDanach && (laeuft || (festWirkt && endeGeaendert))
-      ? laeuft
-        ? `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht mehr bis zum Abschluss; beim Abschließen ist dieses Ende wählbar. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
-        : `Das Ende steht damit fest: Der Leistungsnachweis endet am ${langDatum(zeitraum.bis)}, läuft nicht bis zum Abschluss; beim Abschließen ist dieses Ende wählbar. Spätere Leistungen kommen in einen neuen Leistungsnachweis.`
-      : null;
-
-  // Neue Grenzen: Gemeinsame Texte von Teilen eines Zeitraums ziehen um bzw. gehen zusammen, ein neuer Beginn bzw. ein
-  // neues Ende mitten in einem Zeitraum verlangt für den Rest einen eigenen Text – und wessen Bestätigungen erlöschen
-  const grenzeNeu = gueltig && !andere && !abgeschlossen && (zeitraum.von !== nachweis.von || zeitraum.bis !== nachweis.bis);
-  const folgen = useMemo(
-    () =>
-      grenzeNeu
-        ? grenzFolgen(data, {
-            ...data,
-            nachweise: data.nachweise.map((x) => (x.id === nachweis.id ? { ...x, von: zeitraum.von, bis: zeitraum.bis } : x)),
-          })
-        : null,
-    [grenzeNeu, data, nachweis.id, zeitraum.von, zeitraum.bis],
-  );
-
-  const inhaltText = [
-    `Im Zeitraum liegen ${anzahl(darin.length, 'Leistung', 'Leistungen')}${darin.length ? ` mit ${stundenText(stunden)} Stunden` : ''}.`,
-    herausfallend ? `${anzahl(herausfallend, 'Leistung liegt', 'Leistungen liegen')} danach außerhalb dieses Leistungsnachweises.` : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const artWechseln = (neu: Art) => {
-    // Beim Wechsel zu „frei“ beginnt der Zeitraum mit dem gewählten Monat
-    if (neu === 'frei' && !von && !bis && gewaehlt) {
-      setVon(`${gewaehlt}-01`);
-      setBis(monatsende(`${gewaehlt}-01`));
-    }
-    if (neu === 'monat' && istDatum(von)) setMonat(von.slice(0, 7));
-    setArt(neu);
-  };
-
-  const speichern = () => {
-    const { von: beginn, bis: ende } = zeitraum;
-    if (!istDatum(beginn) || !istDatum(ende)) {
-      toast('Bitte Beginn und Ende angeben.');
-      return;
-    }
-    if (ende < beginn) {
-      toast('Das Ende liegt vor dem Beginn.');
-      return;
-    }
-    if (andere) {
-      toast(`Der Zeitraum überschneidet sich mit „${nachweisTitel(andere)}“.`);
-      return;
-    }
-    updateNachweis(nachweis.id, {
-      von: beginn,
-      bis: ende,
-      raster,
-      titel: titel.trim(),
-      bisFest: festlegen,
-    });
-    toast('Leistungsnachweis gespeichert.');
-    onClose();
-  };
-
-  return (
-    <Modal
-      titel="Zeitraum ändern"
-      sub={projektTitel(projekt)}
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onClose}>
-            {abgeschlossen ? 'Schließen' : 'Abbrechen'}
-          </button>
-          {abgeschlossen ? null : (
-            <button type="button" className="btn btn-primary" onClick={speichern}>
-              Speichern
-            </button>
-          )}
-        </>
-      }
-    >
-      {abgeschlossen ? (
-        <Callout>
-          Der Leistungsnachweis ist abgeschlossen. Zeitraum, Raster und Überschrift lassen sich erst nach „Wieder öffnen“
-          ändern.
-        </Callout>
-      ) : (
-        <div className="stack ln-nachweisdialog">
-          <div className="form-grid">
-            <Field label="Zeitraum" full>
-              <Segmented<Art>
-                value={art}
-                onChange={artWechseln}
-                options={[
-                  { value: 'monat', label: 'Monat' },
-                  { value: 'frei', label: 'Von – bis' },
-                ]}
-              />
-            </Field>
-            {art === 'monat' ? (
-              <Field label="Monat" full hint={gewaehlt ? zeitraumText(zeitraum.von, zeitraum.bis) : undefined}>
-                <TextInput type="month" value={monat} onChange={setMonat} placeholder="JJJJ-MM" autoFocus />
-              </Field>
-            ) : (
-              <>
-                <Field label="Von">
-                  <TextInput type="date" value={von} onChange={setVon} autoFocus />
-                </Field>
-                <Field label="Bis" hint="Auch über mehrere Monate">
-                  <TextInput type="date" value={bis} onChange={setBis} min={von || undefined} />
-                </Field>
-              </>
-            )}
-            <Field label="Raster" full hint={`Vorgabe des Projekts: ${RASTER_LABEL[projekt.raster]}`}>
-              <Segmented<Raster>
-                value={raster}
-                onChange={setRaster}
-                options={RASTER_OPTIONEN}
-              />
-            </Field>
-            <Field label="Überschrift" full hint="Optional – leer lassen für die automatische Überschrift.">
-              <TextInput value={titel} onChange={setTitel} placeholder={automatisch} />
-            </Field>
-          </div>
-
-          {festWirkt && !nachweis.bisFest ? (
-            <label className="checkbox">
-              <input type="checkbox" checked={festlegen} onChange={(e) => setFestlegenWahl(e.target.checked)} />
-              {/* Ohne festgelegtes Ende läuft ein offener Nachweis stets bis zum Abschluss */}
-              Ende festlegen – der Leistungsnachweis läuft nicht mehr bis zum Abschluss
-            </label>
-          ) : null}
-          {festWirkt && nachweis.bisFest ? (
-            <label className="checkbox">
-              <input type="checkbox" checked={wiederLaufen} onChange={(e) => setWiederLaufen(e.target.checked)} />
-              Wieder bis zum Abschluss laufen lassen (das Ende ist von Hand festgelegt)
-            </label>
-          ) : null}
-          {festHinweis ? (
-            <Callout ton="warn" icon="!">
-              {festHinweis}
-            </Callout>
-          ) : null}
-          {rasterHinweis ? (
-            <Callout ton="warn" icon="!">
-              {rasterHinweis}
-            </Callout>
-          ) : null}
-          {andere ? (
-            <Callout ton="warn" icon="!">
-              Der Zeitraum überschneidet sich mit „{nachweisTitel(andere)}“.
-            </Callout>
-          ) : gueltig ? (
-            <p className="small muted">{inhaltText}</p>
-          ) : null}
-          <FolgenHinweis folgen={folgen} daten={data} />
-        </div>
-      )}
-    </Modal>
   );
 }
