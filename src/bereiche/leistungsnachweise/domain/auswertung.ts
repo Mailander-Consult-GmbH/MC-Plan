@@ -6,8 +6,7 @@
  * domain/rechte.ts (`darf(zugang, 'auswertung')`).
  *
  * Erfasst sind die Stunden der Leistungen im Zeitraum. Aufschläge gehören zu
- * Nachweiszeilen – auch der Gesamtaufschlag eines Nachweises, anteilig auf
- * seine Zeilen verteilt – und zählen für den Zeitraum, in dem ihre Zeile beginnt
+ * Nachweiszeilen und zählen für den Zeitraum, in dem ihre Zeile beginnt
  * (bei abgeschlossenen Nachweisen aus dem festgeschriebenen Stand). Einer
  * Person lassen sie sich nicht zurechnen – mit Mitarbeiterfilter bleiben sie
  * außen vor (`mitAufschlag` false). Abgerechnet = erfasst + Aufschlag.

@@ -22,9 +22,8 @@
  * unter „Angemeldet als“, legt der Bereich ihn selbst an (domain/rechte.ts).
  * Das Controlling (der Controlling-Bereich von KaPlan nach der PIN) stellt die
  * Projekte ein, bearbeitet die Nachweise, schließt sie ab, schlägt Stunden je
- * Zeile (`Leistungsnachweis.aufschlaege`) oder auf den ganzen Nachweis auf
- * (`Leistungsnachweis.gesamtAufschlag`) und exportiert – die Rechte stehen
- * zentral in domain/rechte.ts.
+ * Zeile auf (`Leistungsnachweis.aufschlaege`) und exportiert – die Rechte
+ * stehen zentral in domain/rechte.ts.
  *
  * Projekte teilt der Bereich über das Projektregister (`src/gemeinsam/`) mit
  * den anderen Bereichen (domain/register.ts).
@@ -53,8 +52,13 @@ export type ISODate = string;
  * erstellt; mehrere aufeinanderfolgende offene Nachweise ohne festgelegtes
  * Ende sind zu einem zusammengeführt (`laufendeZusammenfuehren` in
  * domain/nachweis.ts). Gesamtaufschlag am Nachweis (`gesamtAufschlag`, null).
+ * Fassung 10: ohne Gesamtaufschlag – `Leistungsnachweis.gesamtAufschlag` und
+ * die Anteile der Zeilen daran (`anteilGesamt`, `anteilGesamtJeAbschnitt`)
+ * entfallen; ein Gesamtaufschlag steht seitdem als Aufschläge je Zeile (und
+ * Abschnitt) in `aufschlaege`, mit denselben abgerechneten Stunden
+ * (`gesamtAufschlaegeUmrechnen` in domain/migrationGesamtaufschlag.ts).
  */
-export const DATEN_VERSION = 9;
+export const DATEN_VERSION = 10;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Mitarbeiter MIC';
@@ -279,10 +283,8 @@ export interface ZeilenText {
 /**
  * Zeile eines Nachweises: ein Tag, eine Woche oder ein Monat mit Leistungen.
  * `stunden` sind die erfassten Stunden, `abgerechnet` die nach den Aufschlägen
- * des Controllings (`abgerechnet = stunden + aufschlag`, nie unter 0) – so
- * stehen sie in Druck und Excel. Der Aufschlag umfasst den der Zeile
- * (`Leistungsnachweis.aufschlaege`) und ihren Anteil am Gesamtaufschlag
- * (`anteilGesamt`, `Leistungsnachweis.gesamtAufschlag`).
+ * des Controllings (`Leistungsnachweis.aufschlaege`; `abgerechnet = stunden +
+ * aufschlag`, nie unter 0) – so stehen sie in Druck und Excel.
  */
 export interface NachweisZeile {
   /**
@@ -316,24 +318,16 @@ export interface NachweisZeile {
    */
   nachgereicht?: boolean;
   /**
-   * Wirksamer Aufschlag der Zeile (± Stunden) = `abgerechnet - stunden` – der der Zeile samt ihrem
-   * Anteil am Gesamtaufschlag (`anteilGesamt`).
+   * Wirksamer Aufschlag der Zeile (± Stunden) = `abgerechnet - stunden`. In Ständen, die mit
+   * Fassung 9 abgeschlossen wurden, samt dem Anteil der Zeile am damaligen Gesamtaufschlag.
    */
   aufschlag: number;
-  /** Wirksamer Aufschlag je Abschnitt (Schlüssel wie `stundenJeAbschnitt`, mit dem Anteil am Gesamtaufschlag); nur Einträge ≠ 0. */
+  /** Wirksamer Aufschlag je Abschnitt (Schlüssel wie `stundenJeAbschnitt`); nur Einträge ≠ 0. */
   aufschlagJeAbschnitt: Record<string, number>;
-  /** Abgerechnete Stunden der Zeile – erfasst plus Aufschlag (samt Anteil am Gesamtaufschlag), nie unter 0. */
+  /** Abgerechnete Stunden der Zeile – erfasst plus Aufschlag, nie unter 0. */
   abgerechnet: number;
   /** Abgerechnete Stunden je Abschnitt (Schlüssel wie `stundenJeAbschnitt`, dazu Abschnitte, die nur ein Aufschlag füllt). */
   abgerechnetJeAbschnitt: Record<string, number>;
-  /**
-   * Anteil der Zeile am Gesamtaufschlag des Nachweises (± Stunden, `Leistungsnachweis.gesamtAufschlag`) –
-   * schon in `aufschlag` und `abgerechnet` enthalten; verteilt nach den abgerechneten Stunden vor dem
-   * Gesamtaufschlag (`gesamtAufschlagVerteilen` in domain/nachweis.ts). Fehlt ohne Anteil (und in Ständen vor Fassung 9).
-   */
-  anteilGesamt?: number;
-  /** Derselbe Anteil je Abschnitt (Schlüssel wie `stundenJeAbschnitt`, nur Einträge ≠ 0); fehlt ohne Anteil. */
-  anteilGesamtJeAbschnitt?: Record<string, number>;
 }
 
 /** Schlüssel in `stundenJeAbschnitt` für Leistungen ohne Abschnitt. */
@@ -382,21 +376,8 @@ export interface NachweisStand {
   titel: string;
   /** Erfasste Stunden. */
   stunden: number;
-  /** Abgerechnete Stunden (mit den Aufschlägen beim Abschluss, auch dem Gesamtaufschlag). */
+  /** Abgerechnete Stunden (mit den Aufschlägen beim Abschluss). */
   abgerechnet: number;
-}
-
-/**
- * Gesamtaufschlag auf einen Leistungsnachweis: ± Stunden oder ± Prozent der
- * abgerechneten Stunden (nach den Aufschlägen der Zeilen). Er erscheint nicht
- * als eigene Zeile, sondern wird anteilig auf die Zeilen verteilt
- * (`NachweisZeile.anteilGesamt`, `gesamtAufschlagVerteilen` in
- * domain/nachweis.ts); abgerechnet wird dabei nie weniger als 0.
- */
-export interface GesamtAufschlag {
-  art: 'stunden' | 'prozent';
-  /** Stunden bzw. Prozent, auf zwei Nachkommastellen gerundet, nie 0 (ohne Aufschlag steht null). */
-  wert: number;
 }
 
 export interface Leistungsnachweis {
@@ -426,12 +407,6 @@ export interface Leistungsnachweis {
    * Zeile gerade nicht gibt (etwa nach einem Rasterwechsel), und wirkt dann nicht.
    */
   aufschlaege: Record<string, number>;
-  /**
-   * Gesamtaufschlag des Controllings auf den ganzen Nachweis (± Stunden oder
-   * ± Prozent), anteilig auf die Zeilen verteilt (`nachweisZeilen`); null =
-   * keiner. Seit Fassung 9.
-   */
-  gesamtAufschlag: GesamtAufschlag | null;
   /** Hinweis unter der Tabelle (Freitext). */
   bemerkung: string;
   /**

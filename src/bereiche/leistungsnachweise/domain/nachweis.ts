@@ -30,10 +30,9 @@
  * Nachweise wachsen nie.
  *
  * Aufschläge des Controllings ändern die erfassten Stunden nicht: je Zeile
- * und Abschnitt (`aufschlaege`, ± Stunden, `abrechnen`) und auf den ganzen
- * Nachweis (`gesamtAufschlag`, ± Stunden oder ± Prozent), den
- * `gesamtAufschlagVerteilen` anteilig auf die Zeilen verteilt. Jede Zeile
- * weist erfasst, Aufschlag und abgerechnet aus.
+ * und Abschnitt (`aufschlaege`, ± Stunden, `abrechnen`); einen Aufschlag auf
+ * den ganzen Nachweis gibt es nicht (mehr, Fassung 10). Jede Zeile weist
+ * erfasst, Aufschlag und abgerechnet aus.
  *
  * Alle Funktionen sind rein; Kennungen liefert der Aufrufer.
  */
@@ -44,7 +43,6 @@ import {
   mitarbeiterName,
   pruefsumme,
   type Abschnitt,
-  type GesamtAufschlag,
   type ID,
   type ISODate,
   type Leistung,
@@ -68,7 +66,6 @@ import {
   periodeKuerzen,
   periodeVon,
   runden,
-  stundenText,
   zeitraumText,
   type Periode,
 } from './zeitraum';
@@ -702,9 +699,6 @@ export function aufschlagEingabe(n: Pick<Leistungsnachweis, 'aufschlaege'>, zeil
  * Aufschlag, der zu einer Eingabe „abgerechnet“ führt: mit Abschnittsspalten
  * die Differenz zu den erfassten Stunden der Spalte (Abschnitt bzw. „ohne“ für
  * null), sonst zu denen der ganzen Zeile. `spalten` = `mitAbschnittsspalten`.
- * Stimmt nur ohne Gesamtaufschlag – mit ihm hinge der Anteil der Zeile wieder
- * vom Aufschlag ab; dann lässt sich „abgerechnet“ nicht eingeben
- * (`abgerechnetEingebbar`).
  */
 export function aufschlagFuerAbgerechnet(
   zeile: Pick<NachweisZeile, 'stunden' | 'stundenJeAbschnitt'>,
@@ -769,229 +763,9 @@ export function aufschlagPruefen(
   return null;
 }
 
-/** Anzahl der Aufschläge eines Nachweises: die der Zeilen (Einträge ≠ 0) und der Gesamtaufschlag. */
-export function anzahlAufschlaege(n: Pick<Leistungsnachweis, 'aufschlaege' | 'gesamtAufschlag'>): number {
-  return Object.values(n.aufschlaege).filter((v) => v !== 0).length + (n.gesamtAufschlag ? 1 : 0);
-}
-
-/* ------------------------------------------------------------------ */
-/* Gesamtaufschlag                                                     */
-/* ------------------------------------------------------------------ */
-
-/** Meldung, wenn sich ein Gesamtaufschlag auf keine abgerechneten Stunden verteilen ließe (wörtlich). */
-export const GESAMTAUFSCHLAG_OHNE_STUNDEN = 'Ohne abgerechnete Stunden lässt sich kein Gesamtaufschlag verteilen.';
-
-/** Stunden in Hundertstel als ganze Zahl – zum Verteilen ohne Rundungsfehler. */
-const hundertstel = (stunden: number) => Math.round(runden(stunden) * 100);
-
-/**
- * Verteilt `betrag` Hundertstel anteilig nach `basen` (Hundertstel, ≥ 0): je
- * Basis der abgerundete Anteil, die übrigen Hundertstel nach dem größten Rest
- * (bei gleichem Rest zuerst die größere Basis, dann die frühere) – die Summe
- * stimmt genau. Übersteigt der Betrag die Summe der Basen nicht, ist kein
- * Anteil dem Betrag nach größer als seine Basis. Ohne Basis (Summe 0) alles 0.
- */
-function anteiligVerteilen(betrag: number, basen: number[]): number[] {
-  const werte = basen.map((b) => (b > 0 ? b : 0));
-  const summe = werte.reduce((s, b) => s + b, 0);
-  if (summe <= 0 || betrag === 0) return werte.map(() => 0);
-  const ziel = Math.abs(betrag);
-  // Ganzzahlig: Produkt, Rest und Quotient sind exakt
-  const teile = werte.map((b, i) => {
-    const produkt = b * ziel;
-    const rest = produkt % summe;
-    return { i, b, anteil: (produkt - rest) / summe, rest };
-  });
-  let offen = ziel - teile.reduce((s, t) => s + t.anteil, 0);
-  for (const t of [...teile].sort((x, y) => y.rest - x.rest || y.b - x.b || x.i - y.i)) {
-    if (offen <= 0) break;
-    t.anteil += 1;
-    offen -= 1;
-  }
-  return teile.map((t) => (t.anteil === 0 ? 0 : betrag < 0 ? -t.anteil : t.anteil));
-}
-
-/** Gültiger Gesamtaufschlag: Art „stunden“ oder „prozent“, Wert auf zwei Nachkommastellen; 0 bzw. ungültig → null. */
-export function gesamtAufschlagNormal(ga: GesamtAufschlag | null | undefined): GesamtAufschlag | null {
-  if (!ga || (ga.art !== 'stunden' && ga.art !== 'prozent') || typeof ga.wert !== 'number' || !Number.isFinite(ga.wert)) return null;
-  const wert = runden(ga.wert);
-  return wert === 0 ? null : { art: ga.art, wert };
-}
-
-/**
- * Stunden, die ein Gesamtaufschlag ausmachen soll: bei Prozent der Anteil an
- * `basis` – den abgerechneten Stunden vor ihm (nach den Aufschlägen der
- * Zeilen) –, sonst sein Wert; auf zwei Nachkommastellen.
- */
-export function gesamtAufschlagSoll(basis: number, ga: GesamtAufschlag): number {
-  return runden(ga.art === 'prozent' ? (basis * ga.wert) / 100 : ga.wert);
-}
-
-/**
- * Verteilt den Gesamtaufschlag `ga` auf Zeilen, deren Aufschläge schon
- * gerechnet sind (`abrechnen`) – so arbeitet `nachweisZeilen`. Basis je Zeile
- * sind ihre abgerechneten Stunden vor dem Gesamtaufschlag; der Betrag
- * (`gesamtAufschlagSoll`: ± Stunden bzw. ± Prozent der Summe der Basen) geht
- * im Verhältnis der Basen an die Zeilen, auf 0,01 Std. gerundet, die Reste
- * nach dem größten Rest – die Summe stimmt genau (`anteiligVerteilen`).
- * Innerhalb der Zeile ebenso je Abschnitt im Verhältnis von
- * `abgerechnetJeAbschnitt`. Abgerechnet wird nie weniger als 0: Ein Abzug
- * über die Summe der Basen hinaus wirkt nur bis dahin
- * (`gesamtAufschlagUebersicht` nennt, wie viel wirkt); ohne Basis wirkt er
- * nicht. Die Zeile trägt ihren Anteil in `anteilGesamt` bzw.
- * `anteilGesamtJeAbschnitt` und schon in `aufschlag`, `aufschlagJeAbschnitt`,
- * `abgerechnet` und `abgerechnetJeAbschnitt` – so zeigen Druck, Excel,
- * Auswertung und `nachweisSummen` ihn ohne Weiteres. Ohne Gesamtaufschlag
- * dieselben Zeilen.
- */
-export function gesamtAufschlagVerteilen(zeilen: NachweisZeile[], ga: GesamtAufschlag | null): NachweisZeile[] {
-  const g = gesamtAufschlagNormal(ga);
-  if (!g || zeilen.length === 0) return zeilen;
-  const basen = zeilen.map((z) => hundertstel(z.abgerechnet));
-  const summe = basen.reduce((s, b) => s + (b > 0 ? b : 0), 0);
-  if (summe <= 0) return zeilen;
-  // Nie unter 0: höchstens die Summe der Basen abziehen
-  const betrag = Math.max(hundertstel(gesamtAufschlagSoll(summe / 100, g)), -summe);
-  const anteile = anteiligVerteilen(betrag, basen);
-  return zeilen.map((z, i) => {
-    const anteil = anteile[i];
-    if (anteil === 0) return z;
-    const spalten = Object.keys(z.abgerechnetJeAbschnitt);
-    const jeSpalte = anteiligVerteilen(
-      anteil,
-      spalten.map((k) => hundertstel(z.abgerechnetJeAbschnitt[k])),
-    );
-    const anteilGesamtJeAbschnitt: Record<string, number> = {};
-    const abgerechnetJeAbschnitt = { ...z.abgerechnetJeAbschnitt };
-    const aufschlagJeAbschnitt = { ...z.aufschlagJeAbschnitt };
-    spalten.forEach((k, j) => {
-      if (jeSpalte[j] === 0) return;
-      const a = jeSpalte[j] / 100;
-      anteilGesamtJeAbschnitt[k] = runden(a);
-      abgerechnetJeAbschnitt[k] = runden(abgerechnetJeAbschnitt[k] + a);
-      const auf = runden((aufschlagJeAbschnitt[k] ?? 0) + a);
-      if (auf === 0) delete aufschlagJeAbschnitt[k];
-      else aufschlagJeAbschnitt[k] = auf;
-    });
-    const stunden = anteil / 100;
-    return {
-      ...z,
-      aufschlag: runden(z.aufschlag + stunden),
-      aufschlagJeAbschnitt,
-      abgerechnet: runden(z.abgerechnet + stunden),
-      abgerechnetJeAbschnitt,
-      anteilGesamt: runden(stunden),
-      anteilGesamtJeAbschnitt,
-    };
-  });
-}
-
-/** Wirksame Stunden des Gesamtaufschlags über Zeilen (`nachweisZeilen`): Summe ihrer Anteile (`anteilGesamt`). */
-export function gesamtAufschlagWirkung(zeilen: Pick<NachweisZeile, 'anteilGesamt'>[]): number {
-  return runden(zeilen.reduce((s, z) => s + (z.anteilGesamt ?? 0), 0));
-}
-
-/** Was ein Gesamtaufschlag bewirkt (`gesamtAufschlagUebersicht`). */
-export interface GesamtAufschlagUebersicht {
-  /** Abgerechnete Stunden vor dem Gesamtaufschlag (nach den Aufschlägen der Zeilen). */
-  basis: number;
-  /** Stunden laut Eingabe (`gesamtAufschlagSoll`). */
-  soll: number;
-  /** Stunden, die wirken – auf die Zeilen verteilt (`gesamtAufschlagWirkung`). */
-  wirksam: number;
-  /** Er wirkt nicht ganz: ein Abzug über die Basis hinaus bzw. keine Basis. */
-  gekappt: boolean;
-}
-
-/**
- * Basis, Soll und Wirkung des Gesamtaufschlags `ga` über die Zeilen eines
- * Nachweises (`nachweisZeilen` bzw. der festgeschriebene Stand); null ohne
- * Gesamtaufschlag.
- */
-export function gesamtAufschlagUebersicht(
-  zeilen: Pick<NachweisZeile, 'abgerechnet' | 'anteilGesamt'>[],
-  ga: GesamtAufschlag | null,
-): GesamtAufschlagUebersicht | null {
-  const g = gesamtAufschlagNormal(ga);
-  if (!g) return null;
-  const wirksam = gesamtAufschlagWirkung(zeilen);
-  const basis = runden(zeilen.reduce((s, z) => s + z.abgerechnet, 0) - wirksam);
-  const soll = gesamtAufschlagSoll(basis, g);
-  return { basis, soll, wirksam, gekappt: wirksam !== soll };
-}
-
-/** ± mit Vorzeichen (−, wie `stundenText`, als „-“). */
-const mitVorzeichen = (wert: number, text: string) => `${wert > 0 ? '+' : ''}${text}`;
-
-/** Gesamtaufschlag als Text, etwa „+10 %“, „-2,5 %“ oder „+2,50 Std.“. */
-export function gesamtAufschlagText(ga: GesamtAufschlag): string {
-  const wert = runden(ga.wert);
-  return ga.art === 'prozent'
-    ? `${mitVorzeichen(wert, String(wert).replace('.', ','))} %`
-    : `${mitVorzeichen(wert, stundenText(wert))} Std.`;
-}
-
-/**
- * Hinweis, wenn der Gesamtaufschlag nicht ganz wirkt (`gesamtAufschlagUebersicht`), etwa „Der
- * Gesamtaufschlag wirkt nur mit -12,00 Std. – abgerechnet wird nie weniger als 0 Std.“; null, wenn er
- * ganz wirkt.
- */
-export function gesamtAufschlagHinweis(u: GesamtAufschlagUebersicht | null): string | null {
-  if (!u || !u.gekappt) return null;
-  if (u.basis <= 0) return 'Ohne abgerechnete Stunden wirkt der Gesamtaufschlag nicht.';
-  return `Der Gesamtaufschlag wirkt nur mit ${mitVorzeichen(u.wirksam, stundenText(u.wirksam))} Std. – abgerechnet wird nie weniger als 0 Std.`;
-}
-
-/**
- * Liest die Eingabe eines Gesamtaufschlags: eine Zahl mit Komma oder Punkt,
- * Vorzeichen erlaubt, dahinter wahlweise „%“ (Prozent) bzw. „Std.“ oder „h“
- * (Stunden) – sonst gilt `art`. Leer oder 0 → null (kein Gesamtaufschlag);
- * keine Zahl → undefined.
- */
-export function gesamtAufschlagLesen(text: string, art: GesamtAufschlag['art']): GesamtAufschlag | null | undefined {
-  let t = text.replace(/\s+/g, '').replace(/[−–]/g, '-');
-  if (!t) return null;
-  let gewaehlt = art;
-  const einheit = /(%|std\.?|h)$/i.exec(t);
-  if (einheit) {
-    gewaehlt = einheit[0] === '%' ? 'prozent' : 'stunden';
-    t = t.slice(0, -einheit[0].length);
-  }
-  if (!/^[+-]?(\d+([.,]\d*)?|[.,]\d+)$/.test(t)) return undefined;
-  const wert = runden(Number(t.replace(',', '.')));
-  return wert === 0 ? null : { art: gewaehlt, wert };
-}
-
-/**
- * Prüft einen Gesamtaufschlag vor dem Setzen (`gesamtAufschlagSetzen` im
- * Store): Art und Zahl gültig, der Nachweis hat abgerechnete Stunden, auf die
- * er sich verteilen lässt, und abgerechnet fiele nicht unter 0. Entfernen
- * (null/0) geht immer. Liefert die Meldung (`AUFSCHLAG_KEINE_ZAHL`,
- * `GESAMTAUFSCHLAG_OHNE_STUNDEN`, `AUFSCHLAG_UNTER_NULL`) oder null.
- */
-export function gesamtAufschlagPruefen(daten: LeistungsnachweisDaten, n: Leistungsnachweis, ga: GesamtAufschlag | null): string | null {
-  if (ga === null) return null;
-  if ((ga.art !== 'stunden' && ga.art !== 'prozent') || typeof ga.wert !== 'number' || !Number.isFinite(ga.wert)) return AUFSCHLAG_KEINE_ZAHL;
-  const g = gesamtAufschlagNormal(ga);
-  if (!g) return null;
-  const basis = summeAbgerechnet(nachweisZeilen(daten, { ...n, gesamtAufschlag: null }));
-  if (basis <= 0) return GESAMTAUFSCHLAG_OHNE_STUNDEN;
-  return runden(basis + gesamtAufschlagSoll(basis, g)) < 0 ? AUFSCHLAG_UNTER_NULL : null;
-}
-
-/** Nachweis mit dem Gesamtaufschlag `ga` (`gesamtAufschlagNormal`; null/0 entfernt ihn) – rein; so arbeitet `gesamtAufschlagSetzen` im Store. */
-export function mitGesamtAufschlag(n: Leistungsnachweis, ga: GesamtAufschlag | null): Leistungsnachweis {
-  return { ...n, gesamtAufschlag: gesamtAufschlagNormal(ga) };
-}
-
-/**
- * Lässt sich „abgerechnet“ je Zeile eingeben (`aufschlagFuerAbgerechnet`)? Nur
- * ohne Gesamtaufschlag: Mit ihm hängt der Anteil der Zeile vom Aufschlag der
- * Zeile ab, die Eingabe ergäbe nicht genau den eingegebenen Wert – dann bleibt
- * der Aufschlag der Zeile einzugeben.
- */
-export function abgerechnetEingebbar(n: Pick<Leistungsnachweis, 'gesamtAufschlag'>): boolean {
-  return !n.gesamtAufschlag;
+/** Anzahl der Aufschläge eines Nachweises: Einträge ≠ 0 in `aufschlaege`. */
+export function anzahlAufschlaege(n: Pick<Leistungsnachweis, 'aufschlaege'>): number {
+  return Object.values(n.aufschlaege).filter((v) => v !== 0).length;
 }
 
 /** Präfix des Schlüssels einer Zeile aus nachgereichten Leistungen („NW2026-44“). */
@@ -1010,8 +784,7 @@ export const NACHGEREICHT_PRAEFIX = 'N';
  * ohne solche `automatikText`. Ein abgeschlossener Nachweis gliedert die gemeinsamen Texte im
  * Raster des Projekts bei seinem Abschluss (`NachweisStand.erfassungsRaster`,
  * `erfassungsGliederung`) – ein späterer Rasterwechsel des Projekts ändert ihn nicht. Dazu
- * Aufschlag und abgerechnete Stunden aus `aufschlaege` (`abrechnen`) und danach der anteilig
- * verteilte Gesamtaufschlag (`gesamtAufschlag`, `gesamtAufschlagVerteilen`).
+ * Aufschlag und abgerechnete Stunden aus `aufschlaege` (`abrechnen`).
  */
 export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachweis): NachweisZeile[] {
   const projekt = daten.projekte.find((p) => p.id === n.projektId);
@@ -1036,7 +809,7 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
       if (p.bis > gruppe.bis) gruppe.bis = p.bis;
     } else gruppen.set(p.schluessel, { von: p.von, bis: p.bis, nachgereicht, leistungen: [l] });
   }
-  const zeilen = [...gruppen.entries()]
+  return [...gruppen.entries()]
     .sort(([, a], [, b]) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0))
     .map(([schluessel, { von, bis, nachgereicht, leistungen }]): NachweisZeile => {
       const bearbeiter: string[] = [];
@@ -1077,8 +850,6 @@ export function nachweisZeilen(daten: LeistungsnachweisDaten, n: Leistungsnachwe
         abgerechnetJeAbschnitt: abrechnung.abgerechnetJeAbschnitt,
       };
     });
-  // Der Gesamtaufschlag kommt nach den Aufschlägen der Zeilen – anteilig nach deren abgerechneten Stunden
-  return gesamtAufschlagVerteilen(zeilen, n.gesamtAufschlag ?? null);
 }
 
 /** Abgeschlossen mit Stand → `stand.zeilen`, sonst `nachweisZeilen`. */
@@ -1472,7 +1243,6 @@ export function neuerNachweis(id: ID, projekt: Projekt, von: ISODate, bis: ISODa
     status: 'entwurf',
     texte: {},
     aufschlaege: {},
-    gesamtAufschlag: null,
     bemerkung: '',
     nachgereicht: [],
     erstellt: jetzt,
@@ -1686,37 +1456,16 @@ export function texteVerbinden(frueher: ZeilenText, spaeter: ZeilenText): Zeilen
 const mitNachgereichten = (n: Leistungsnachweis, ids: ID[]): ID[] => [...new Set([...n.nachgereicht, ...ids])];
 
 /**
- * Gesamtaufschläge offener Nachweise, die in einem aufgehen: keiner bzw. nur
- * einer – der; alle mit denselben Prozent – diese; alle in Stunden – die
- * Summe; sonst (verschiedene Prozent bzw. gemischt) die Stunden, die sie
- * bisher wirkten (`gesamtAufschlagWirkung`), als Stunden zusammen.
- */
-function gesamtAufschlaegeVereinen(daten: LeistungsnachweisDaten, nachweise: Leistungsnachweis[]): GesamtAufschlag | null {
-  const mit = nachweise.flatMap((n) => {
-    const g = gesamtAufschlagNormal(n.gesamtAufschlag);
-    return g ? [{ n, g }] : [];
-  });
-  if (mit.length <= 1) return mit[0]?.g ?? null;
-  const erster = mit[0].g;
-  if (mit.every(({ g }) => g.art === 'prozent' && g.wert === erster.wert && erster.art === 'prozent')) return erster;
-  const stunden = mit.every(({ g }) => g.art === 'stunden')
-    ? mit.reduce((s, { g }) => s + g.wert, 0)
-    : mit.reduce((s, { n }) => s + gesamtAufschlagWirkung(nachweisZeilen(daten, n)), 0);
-  return gesamtAufschlagNormal({ art: 'stunden', wert: stunden });
-}
-
-/**
  * Inhalte offener Nachweise, die in `basis` aufgehen (`weitere` in zeitlicher
  * Reihenfolge): bearbeitete Texte derselben Zeile verbunden (`texteVerbinden`),
- * Aufschläge summiert, Gesamtaufschläge vereint (`gesamtAufschlaegeVereinen`),
- * Bemerkungen ohne doppelte, nachgereichte Leistungen aller samt `dazu`.
+ * Aufschläge summiert, Bemerkungen ohne doppelte, nachgereichte Leistungen
+ * aller samt `dazu`.
  */
 function offeneVereinen(
-  daten: LeistungsnachweisDaten,
   basis: Leistungsnachweis,
   weitere: Leistungsnachweis[],
   dazu: ID[] = [],
-): Pick<Leistungsnachweis, 'texte' | 'aufschlaege' | 'gesamtAufschlag' | 'bemerkung' | 'nachgereicht'> {
+): Pick<Leistungsnachweis, 'texte' | 'aufschlaege' | 'bemerkung' | 'nachgereicht'> {
   const texte = { ...basis.texte };
   const aufschlaege = { ...basis.aufschlaege };
   for (const w of weitere) {
@@ -1727,10 +1476,9 @@ function offeneVereinen(
       else aufschlaege[k] = summe;
     }
   }
-  const gesamtAufschlag = gesamtAufschlaegeVereinen(daten, [basis, ...weitere]);
   const bemerkung = [...new Set([basis, ...weitere].map((n) => n.bemerkung.trim()).filter(Boolean))].join('\n');
   const nachgereicht = mitNachgereichten(basis, [...weitere.flatMap((w) => w.nachgereicht), ...dazu]);
-  return { texte, aufschlaege, gesamtAufschlag, bemerkung, nachgereicht };
+  return { texte, aufschlaege, bemerkung, nachgereicht };
 }
 
 /**
@@ -1738,8 +1486,7 @@ function offeneVereinen(
  * Leistungsnachweis an (`nichtAbgerechnet`) – rein; so arbeitet
  * `nachweisFuerNichtAbgerechnete` im Store. Gibt es offene Nachweise, wird der
  * erste erweitert und nimmt Leistungstexte, Aufschläge (summiert),
- * Gesamtaufschläge (`gesamtAufschlaegeVereinen`), Bemerkungen und
- * nachgereichte Leistungen der übrigen auf, die entfallen –
+ * Bemerkungen und nachgereichte Leistungen der übrigen auf, die entfallen –
  * bearbeitete Texte derselben Zeile werden in zeitlicher Reihenfolge verbunden
  * (`texteVerbinden`); sonst entsteht ein neuer mit der Kennung `id`. Er läuft
  * bis zum Abschluss (ein festgelegtes Ende, `bisFest`, entfällt). Raster und – wenn angegeben –
@@ -1767,7 +1514,7 @@ export function nachweisFuerNichtAbgerechneteAnwenden(
     bisFest: false,
     raster: vorgaben.raster,
     titel: vorgaben.titel.trim() || basis.titel,
-    ...offeneVereinen(daten, basis, weitere, vorgaben.nachreichen ? plan.nichtErfasst.map((l) => l.id) : []),
+    ...offeneVereinen(basis, weitere, vorgaben.nachreichen ? plan.nichtErfasst.map((l) => l.id) : []),
     geaendert: jetzt,
   };
   const weg = new Set(weitere.map((w) => w.id));
@@ -1811,9 +1558,9 @@ export function laeuftBisAbschluss(n: Pick<Leistungsnachweis, 'status' | 'bisFes
  * Folgen offene Nachweise ohne festgelegtes Ende (`laeuftBisAbschluss`)
  * unmittelbar aufeinander – kein anderer Nachweis dazwischen, etwa nach dem
  * Rhythmus „Monatlich“ einer je Monat –, gehen sie im ersten auf: Er reicht
- * bis zum Ende des letzten und nimmt Leistungstexte, Aufschläge,
- * Gesamtaufschläge, Bemerkungen und nachgereichte Leistungen der übrigen auf
- * (`offeneVereinen`, wie „Neuer Leistungsnachweis“); Raster und Überschrift
+ * bis zum Ende des letzten und nimmt Leistungstexte, Aufschläge, Bemerkungen
+ * und nachgereichte Leistungen der übrigen auf (`offeneVereinen`, wie „Neuer
+ * Leistungsnachweis“); Raster und Überschrift
  * bleiben die des ersten, `geaendert` wird der jüngste der beteiligten.
  * Abgeschlossene Nachweise und solche mit festgelegtem Ende (`bisFest`)
  * bleiben, wie sie sind, und trennen. Die gemeinsamen Texte und Bestätigungen
@@ -1837,7 +1584,7 @@ export function laufendeZusammenfuehren(daten: LeistungsnachweisDaten): Leistung
         const [basis, ...weitere] = eigene.slice(i, j);
         const bis = weitere.reduce((m, w) => (w.bis > m ? w.bis : m), basis.bis);
         const geaendert = weitere.reduce((m, w) => (w.geaendert > m ? w.geaendert : m), basis.geaendert);
-        ersetzt.set(basis.id, { ...basis, bis, ...offeneVereinen(daten, basis, weitere), geaendert });
+        ersetzt.set(basis.id, { ...basis, bis, ...offeneVereinen(basis, weitere), geaendert });
         for (const w of weitere) weg.add(w.id);
       }
       i = j;
@@ -1960,7 +1707,7 @@ export function abschlussZeitraum(
  * Erstellt (schließt) einen Nachweis ab – rein; so arbeitet
  * `nachweisAbschliessen` im Store: Zeitraum nach `abschlussZeitraum` (mit dem
  * gewählten Ende `bis`, sonst bis zum letzten Tag mit Leistungen), Stand
- * festschreiben (mit Aufschlägen und Gesamtaufschlag), Status abgeschlossen.
+ * festschreiben (mit Aufschlägen), Status abgeschlossen.
  * Leistungen nach einem gekürzten Ende erhalten gleich einen neuen offenen
  * Nachweis (`nachweiseSichern`, Kennungen über `neueId`) – dort landen auch
  * später erfasste Leistungen dieser Tage. Ein abgeschlossener Nachweis bleibt
