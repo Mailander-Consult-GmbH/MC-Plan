@@ -59,12 +59,28 @@ Die Logos von KaPlan liegen unter `public/logos/`:
 | `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
 | `Logo_Leistungsnachweise.png` | Kopf der Menüleiste in den Leistungsnachweisen |
 | `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
-| `Logo.png` | Symbol; daraus sind Favicons und App-Symbole unter `public/icons/` erzeugt |
+| `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug); nach ihm sind die App-Symbole unter `public/icons/` gezeichnet |
 
 Zum Austauschen genügt es, die Datei unter gleichem Namen zu ersetzen; die Logos werden nur über
-die Breite bzw. Höhe skaliert. Nach einem neuen Symbol müssen die Dateien in `public/icons/`
-(`favicon-32/64`, `icon-192/512`, `icon-maskable-512`, `apple-touch-icon`) neu erzeugt und der
-Cache-Name in `public/sw.js` hochgezählt werden.
+die Breite bzw. Höhe skaliert.
+
+Die App-Symbole in `public/icons/` (Browser-Tab, Taskleiste, Startbildschirm am Handy) zeigen die
+Marke aus `Logo.png` in der Logofarbe `#21426d` auf einer **hellgrauen Kachel** im Farbschema der
+Anwendung (`#f2f2f7` wie die Bildfläche der Kacheln auf dem Startbildschirm, mit feiner Randlinie) –
+die dünnen Striche allein waren in einer dunklen Taskleiste und auf dunklen Startbildschirmen kaum zu
+sehen. Die Marke ist dafür vektoriell nachgezeichnet und je Größe gerastert; bis 64 px ist sie
+größer und kräftiger gezeichnet:
+
+| Datei | Verwendung |
+| --- | --- |
+| `kaplan-32.png`, `kaplan-64.png` | Browser-Tab (`index.html`) |
+| `kaplan-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Desktop, Android-Browser ohne maskierbare Symbole) |
+| `kaplan-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
+| `kaplan-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
+
+Ein neues Symbol bekommt **neue Dateinamen** (Verweise in `index.html`, `public/manifest.webmanifest`
+und `SHELL` in `public/sw.js` anpassen), und der Cache-Name in `public/sw.js` wird hochgezählt –
+Browser, Taskleiste und Handy halten Symbole sonst unter dem alten Namen fest.
 
 Die Wortmarke Mailänder Consult in der Kopfzeile stammt aus der Datei `public/mailaender-consult.svg`. Die derzeit
 hinterlegte Fassung ist mit der Systemschrift nachgezeichnet. Um das Original zu verwenden, genügt
@@ -169,8 +185,16 @@ ohne Netzverbindung – die Daten liegen ohnehin lokal im Browser.
 * **Android (Chrome):** Menü → *App installieren*
 * **Desktop (Chrome/Edge):** Installationssymbol in der Adressleiste
 
-Enthalten sind `manifest.webmanifest`, App-Symbole aus `public/logos/Logo.png` (192/512 px, maskable und Apple-Touch-Icon)
-sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
+Ein neues App-Symbol übernimmt eine schon installierte App nicht sofort: Chrome und Edge (Android,
+Desktop) prüfen das Manifest beim Öffnen und tauschen das Symbol meist innerhalb eines Tages aus,
+teils mit Rückfrage. Auf dem iPhone ändert es sich nur, wenn die App neu zum Home-Bildschirm
+hinzugefügt wird – die neue App kann dort mit eigenem, leerem Speicher beginnen. **Vor dem
+Entfernen einer installierten App deshalb in jedem genutzten Bereich eine Sicherung
+herunterladen**; Android und Desktop fragen beim Entfernen, ob auch die Daten gelöscht werden
+sollen.
+
+Enthalten sind `manifest.webmanifest`, App-Symbole auf heller Kachel (`public/icons/`, siehe
+[Logos](#logos): 48–512 px, maskierbar für Android und Apple-Touch-Icon für iOS) sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
 gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (gehashte Namen unter
 `assets/`) kommen direkt aus dem Zwischenspeicher. Logos und Symbole werden wie Seitenaufrufe zuerst
