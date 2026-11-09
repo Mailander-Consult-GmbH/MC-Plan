@@ -13,7 +13,6 @@ export interface Bereich {
   id: BereichId;
   titel: string;
   untertitel?: string;
-  beschreibung: string;
   icon: IconName;
   /** Kennzeichen auf der Kachel, etwa für einen Bereich im Entwurfsstand. */
   marke?: string;
@@ -24,16 +23,12 @@ export const BEREICHE: Bereich[] = [
     id: 'planlauf',
     titel: 'Planlaufmanagement',
     untertitel: 'Projekte, Planläufe und Fristen',
-    beschreibung:
-      'Planverzeichnisse und Planpakete verwalten, Planläufe nach Workflow abarbeiten und Fristen im Blick behalten.',
     icon: 'plan',
   },
   {
     id: 'baubetrieb',
     titel: 'Baubetriebsplanung',
     untertitel: 'Anmeldungen für Sperrpausen',
-    beschreibung:
-      'Baubetriebliche Anmeldungen je Projekt durch anpassbare Workflows – SKM, MKM, KM und KKM – verfolgen, mit Terminfristen und Nachhak-Terminen.',
     icon: 'kalender',
     marke: 'Erster Entwurf',
   },
@@ -41,8 +36,6 @@ export const BEREICHE: Bereich[] = [
     id: 'projektsteuerung',
     titel: 'Projektsteuerung',
     untertitel: 'Beteiligte und Protokolle',
-    beschreibung:
-      'Projektbeteiligte mit projektübergreifenden Funktionen führen, Besprechungen mit Folgeprotokollen festhalten und eigene Aufgaben verfolgen.',
     icon: 'protokoll',
     marke: 'Erster Entwurf',
   },
@@ -50,8 +43,6 @@ export const BEREICHE: Bereich[] = [
     id: 'leistungsnachweise',
     titel: 'Leistungsnachweise',
     untertitel: 'Stunden und Leistungen je Projekt',
-    beschreibung:
-      'Eigene Leistungen je Projekt von Hand, im Kalender oder per Excel-Import erfassen – daraus entstehen gemeinsame tages-, wochen- oder monatsscharfe Leistungsnachweise, die das Controlling abrechnet und als PDF und Excel ausgibt.',
     icon: 'stunden',
     marke: 'Erster Entwurf',
   },
@@ -59,8 +50,6 @@ export const BEREICHE: Bereich[] = [
     id: 'controlling',
     titel: 'Controlling',
     untertitel: 'Projekte aller Bereiche',
-    beschreibung:
-      'Projekte für alle Bereiche anlegen, in Bereiche übernehmen, je Bereich oder ganz archivieren und löschen; dazu Leistungsnachweise abrechnen, abschließen und ausgeben.',
     icon: 'schloss',
     marke: 'Mit PIN',
   },

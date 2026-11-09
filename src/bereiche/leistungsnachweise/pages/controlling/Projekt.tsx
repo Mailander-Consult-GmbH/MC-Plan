@@ -1,11 +1,11 @@
 /**
  * Seite eines Projekts im Controlling der Leistungsnachweise – ohne Reiter.
  * Oben „Alle Projekte“, Projektnummer und -name, Status, Raster und eine Reihe
- * beschrifteter Knöpfe rechts wie in den anderen Bereichen: „Einstellungen“
- * (alle Angaben des Projekts samt Raster, Abschnitten und Logos an einer
- * Stelle – ProjektEinstellungen.tsx) und zum gezeigten Nachweis
- * „Vorschau“ (mit „Drucken / PDF“) und rot „Nachweis löschen“
- * (Abrechnung.tsx). Ein Projekt löscht man nur im Controlling unter
+ * beschrifteter Knöpfe rechts wie in den anderen Bereichen: zum gezeigten
+ * Nachweis „Vorschau“ (mit „Drucken / PDF“, Abrechnung.tsx), dann
+ * „Einstellungen“ (alle Angaben des Projekts samt Raster, Abschnitten und
+ * Logos an einer Stelle – ProjektEinstellungen.tsx) und zum gezeigten Nachweis
+ * rot „Nachweis löschen“ (Abrechnung.tsx). Ein Projekt löscht man nur im Controlling unter
  * „Projekte“ (für alle Bereiche). Einen Rhythmus gibt es nicht: Erfasste
  * Leistungen sammeln sich im offenen Leistungsnachweis – wie in einer Excel je
  * Projekt –, bis das Controlling ihn abschließt und dabei festlegt, bis wann
@@ -103,18 +103,18 @@ export function ControllingProjekt({
         </div>
         {/* Alle Knöpfe rechts in der Kopfzeile, beschriftet wie in den anderen Bereichen: Projekt und gezeigter Nachweis */}
         <div className="row wrap ln-co-aktionen">
+          {nachweis ? (
+            <button type="button" className="btn btn-outline" onClick={() => setVorschau(true)}>
+              <Icon name="suche" size={14} /> Vorschau
+            </button>
+          ) : null}
           <button type="button" className="btn btn-outline" onClick={() => setEinstellen(true)}>
             <Icon name="einstellungen" size={14} /> Einstellungen
           </button>
           {nachweis ? (
-            <>
-              <button type="button" className="btn btn-outline" onClick={() => setVorschau(true)}>
-                <Icon name="suche" size={14} /> Vorschau
-              </button>
-              <button type="button" className="btn btn-danger" onClick={() => setNachweisLoeschen(true)}>
-                <Icon name="loeschen" size={14} /> Nachweis löschen
-              </button>
-            </>
+            <button type="button" className="btn btn-danger" onClick={() => setNachweisLoeschen(true)}>
+              <Icon name="loeschen" size={14} /> Nachweis löschen
+            </button>
           ) : null}
         </div>
       </div>

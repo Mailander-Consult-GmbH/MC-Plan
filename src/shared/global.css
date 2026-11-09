@@ -1022,7 +1022,6 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.05em;
   color: var(--accent);
 }
-.bereich-kachel-text { margin-top: 10px; font-size: 13px; color: var(--text-secondary); }
 .bereich-kachel-pfeil {
   margin-top: auto;
   padding-top: 14px;
