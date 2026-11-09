@@ -46,7 +46,8 @@ Die Anwendung besteht aus vier getrennten Bereichen und dem Controlling. Die
 erste Wegmarke der Adresse benennt den Bereich; die Shell (`src/shell/router.ts`)
 wählt danach aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
 (`src/shell/Start.tsx`: fünf hochkante Kacheln – Planlaufmanagement,
-Baubetriebsplanung, Projektsteuerung, Leistungsnachweise und Controlling, die
+Baubetriebsplanung, Projektsteuerung, Leistungsnachweise und Controlling, je mit
+Symbol, Titel und Untertitel (`titel`, `untertitel`), ohne Beschreibungstext; die
 mittleren drei mit dem Kennzeichen „Erster Entwurf“, das Controlling mit „Mit
 PIN“ aus `marke` in `src/shell/bereiche.ts`; unter 1240 px drei, unter 900 px
 zwei, unter 720 px eine je Zeile; am Fuß „Fassung vom …“ mit Bauzeit und – im
@@ -1976,10 +1977,11 @@ Projekt (`src/bereiche/leistungsnachweise/controlling.tsx`):
   `src/bereiche/leistungsnachweise/pages/controlling/Projekt.tsx`): Kopf
   (`ln-co-leiste`) mit „Alle Projekte“, Projektnummer und -name, Status,
   Raster (`RASTER_LABEL`) und rechts drei beschrifteten Knöpfen mit Symbol
-  (`ln-co-aktionen`, wie in den anderen Bereichen): „Einstellungen“ und – nur,
-  wenn die Seite einen Leistungsnachweis zeigt – zu diesem „Vorschau“
-  (`NachweisVorschau`) und rot „Nachweis löschen“ (`NachweisLoeschenDialog`),
-  beide aus `Abrechnung.tsx` (siehe unten). Bis 640 px füllen die Knöpfe die
+  (`ln-co-aktionen`, wie in den anderen Bereichen), in dieser Reihenfolge:
+  „Vorschau“ (`NachweisVorschau`), „Einstellungen“ und rot „Nachweis löschen“
+  (`NachweisLoeschenDialog`) – „Vorschau“ und „Nachweis löschen“ nur, wenn die
+  Seite einen Leistungsnachweis zeigt, und zu diesem, beide aus
+  `Abrechnung.tsx` (siehe unten). Bis 640 px füllen die Knöpfe die
   Breite. Ein Löschen des Projekts gibt es hier nicht – Projekte löscht das
   Controlling unter „Projekte“ für alle Bereiche (9.4); ein eigenes „Projekt
   bearbeiten“ auch nicht. „Einstellungen“ öffnet das `Modal` „Einstellungen“

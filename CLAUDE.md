@@ -132,12 +132,13 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   nur in den „Einstellungen“ des Projekts; Sammel-Import, Neues Projekt – `ProjektDialog` dient nur
   dem Anlegen), je Projekt
   eine Seite (`Projekt.tsx`, Route `controllingProjekt`; `abrechnung` ist dieselbe Seite mit gewähltem
-  Nachweis: Kopf mit rechts drei beschrifteten Knöpfen wie in den anderen Bereichen –
+  Nachweis: Kopf mit rechts drei beschrifteten Knöpfen wie in den anderen Bereichen – zum
+  gezeigten Nachweis „Vorschau“ (`NachweisVorschau`: Druckblatt mit „Drucken / PDF“), dann
   „Einstellungen“ (`Modal` „Einstellungen“ mit `ProjektEinstellungen`: Karte „Projekt“ =
   `ProjektDaten` mit allen Angaben samt Raster, darunter Abschnitte und Logos; ein neues Raster
   setzt `updateProjekt` auch an den offenen Nachweisen, abgeschlossene behalten ihres) und zum
-  gezeigten Nachweis „Vorschau“ (`NachweisVorschau`: Druckblatt mit „Drucken / PDF“) und rot
-  „Nachweis löschen“ (`NachweisLoeschenDialog`, beide aus `Abrechnung.tsx`); ein Menü „⋯“,
+  gezeigten Nachweis rot „Nachweis löschen“ (`NachweisLoeschenDialog`, beide aus
+  `Abrechnung.tsx`); ein Menü „⋯“,
   „Projekt bearbeiten“ und ein Löschen des Projekts gibt es nicht (mehr) – Projekte löscht das
   Controlling unter „Projekte“; darunter
   `NachweisBearbeitung` aus `Abrechnung.tsx` – ohne Nachweis in der Adresse der früheste offene,
