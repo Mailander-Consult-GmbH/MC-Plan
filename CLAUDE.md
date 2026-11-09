@@ -131,11 +131,15 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Monatsende und „Bestätigung“ mit „x von y bestätigt“; das Raster steht
   nur in „Projekt einstellen“ bzw. „Projekt bearbeiten“; Sammel-Import, Neues Projekt), je Projekt
   eine Seite (`Projekt.tsx`, Route `controllingProjekt`; `abrechnung` ist dieselbe Seite mit gewähltem
-  Nachweis: Kopf mit Menü „Mehr“ – `MehrMenue` in `pages/controlling/hilfen.tsx` – für „Projekt
-  einstellen“ (`ProjektEinstellungen` im `Modal`), Bearbeiten und Löschen; darunter
+  Nachweis: Kopf mit beschrifteten Knöpfen wie in den anderen Bereichen – „Einstellen“
+  (`ProjektEinstellungen` im `Modal` „Projekt einstellen“), „Bearbeiten“ und rot „Löschen“; ein
+  Menü „⋯“ gibt es nicht (mehr); darunter
   `NachweisBearbeitung` aus `Abrechnung.tsx` – ohne Nachweis in der Adresse der früheste offene,
-  sonst der gewählte, dann mit „Zum offenen Leistungsnachweis“; Leiste mit Vorschau, abgeschlossen
-  PDF und Excel, Menü „Mehr“ (offen auch PDF und Excel des offenen Stands) –, ein offener in drei
+  sonst der gewählte, dann mit „Zum offenen Leistungsnachweis“; Leiste mit Knöpfen „Vorschau“,
+  „Drucken / PDF“ und „Excel“ (offen der Stand des offenen), offen „Zeitraum ändern“ und – mit
+  Aufschlägen – „Aufschläge zurücksetzen“, abgeschlossen „Wieder öffnen“, „Neuer
+  Leistungsnachweis“ nur bei mehreren offenen Nachweisen oder Leistungen ohne Nachweis
+  (`neuSinnvoll`), rot „Nachweis löschen“ –, ein offener in drei
   Schritten, `SchrittKopf` in `hilfen.tsx`: 1 „Haben alle eingetragen und bestätigt?“ –
   `MitarbeiterBestaetigungen` in `pages/controlling/BestaetigungsStand.tsx` mit `schritt`: nur
   Mitarbeiter und „Bestätigung je Monat“, ohne Stunden und Summe, gezählt bis zum in
