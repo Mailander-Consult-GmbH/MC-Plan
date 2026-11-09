@@ -8,14 +8,15 @@
  * abschließen ließe (`abschlussEnden`, meist das Ende des Vormonats):
  * * „Bereit zum Abschließen“ – Leistungen bis dahin, und alle Mitarbeiter mit
  *   Leistungen haben ihre Monate bestätigt,
- * * „Bestätigungen fehlen“ – mit den Namen und Monaten der Fehlenden
- *   (`fehlendeBestaetigungen`),
+ * * „Bestätigungen fehlen“ – jemand hat bis dahin nicht (erneut) bestätigt
+ *   (`fehlendeBestaetigungen`; wer und welcher Monat, zeigt erst die Seite
+ *   des Projekts),
  * * „Noch nichts abzuschließen“ – kein offener Nachweis oder bis zum letzten
  *   Monatsende keine Leistungen (etwa nur im laufenden Monat).
  * Je Zeile: Projekt (Nummer, Name, Status, ggf. „Archiviert“), der letzte
  * abgeschlossene Leistungsnachweis (Monat/Jahr bzw. Zeitraum, mit dem Tag
  * des Abschlusses), die offenen Stunden bis zum Monatsende und die
- * Bestätigung (x von y, wer fehlt); „Prüfen und abschließen“ bzw.
+ * Bestätigung („x von y bestätigt“); „Prüfen und abschließen“ bzw.
  * „Öffnen“ – wie ein Klick auf die Zeile – führt auf die Seite des Projekts
  * (Projekt.tsx). Darüber die Zahl der bereiten und der wartenden Projekte.
  * Das Raster stellt das Controlling in „Projekt einstellen“ ein.
@@ -32,9 +33,9 @@ import { Badge, Card, CardHeader, EmptyState, Search } from '../../../../shared/
 import { ImportDialog } from '../../components/ImportDialog';
 import { ProjektDialog } from '../../components/ProjektDialog';
 import { STATUS_TON } from '../../components/common';
-import { fehlendeBestaetigungen, monatName, type MonatsStatus } from '../../domain/erfassung';
+import { fehlendeBestaetigungen, type MonatsStatus } from '../../domain/erfassung';
 import { abschlussEnden, leistungenDesNachweises, nachweiseVon, offeneNachweise, stundenVon, tagVon } from '../../domain/nachweis';
-import { PROJEKT_STATUS_LABEL, mitarbeiterName, type ID, type Leistungsnachweis, type Mitarbeiter, type Projekt } from '../../domain/types';
+import { PROJEKT_STATUS_LABEL, type Leistungsnachweis, type Projekt } from '../../domain/types';
 import { langDatum, monatText, stundenText, zeitraumText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
@@ -182,7 +183,6 @@ export function ProjektListe({ navigate }: { navigate: (r: Route) => void }) {
 
 /** Eine Zeile der Übersicht. */
 function Zeile({ stand: s, archiviert, onOeffnen }: { stand: Stand; archiviert: boolean; onOeffnen: () => void }) {
-  const { data } = useStore();
   const p = s.projekt;
   return (
     <tr className={`clickable ${archiviert ? 'ln-co-archiviert' : ''}`} onClick={onOeffnen}>
@@ -222,12 +222,9 @@ function Zeile({ stand: s, archiviert, onOeffnen }: { stand: Stand; archiviert: 
         {s.gruppe === 'nichts' ? (
           <span className="tertiary">–</span>
         ) : (
-          <span className="ln-co-nachweisstand">
-            <Badge ton={s.fehlend.length ? 'orange' : 'green'}>
-              {`${s.personen - new Set(s.fehlend.map((f) => f.mitarbeiterId)).size} von ${s.personen} bestätigt`}
-            </Badge>
-            {s.fehlend.length ? <span className="small muted">fehlt: {fehlendText(s.fehlend, data.mitarbeiter)}</span> : null}
-          </span>
+          <Badge ton={s.fehlend.length ? 'orange' : 'green'}>
+            {`${s.personen - new Set(s.fehlend.map((f) => f.mitarbeiterId)).size} von ${s.personen} bestätigt`}
+          </Badge>
         )}
       </td>
       <td className="actions">
@@ -244,21 +241,4 @@ function Zeile({ stand: s, archiviert, onOeffnen }: { stand: Stand; archiviert: 
       </td>
     </tr>
   );
-}
-
-/** Monate kurz: „September, Oktober 2026“ – das Jahr nur einmal, wenn alle im selben liegen. */
-function monateText(monate: string[]): string {
-  const jahre = new Set(monate.map((m) => m.slice(0, 4)));
-  if (jahre.size !== 1) return monate.map(monatName).join(', ');
-  return `${monate.map((m) => monatName(m).replace(/ \d{4}$/, '')).join(', ')} ${[...jahre][0]}`;
-}
-
-/** „Tobias Brandt (Oktober 2026), Miriam Vogt (September, Oktober 2026)“ – wer für welche Monate fehlt. */
-function fehlendText(fehlend: MonatsStatus[], mitarbeiter: Mitarbeiter[]): string {
-  const namen = new Map(mitarbeiter.map((m) => [m.id, mitarbeiterName(m) || m.kuerzel || '?']));
-  const jePerson = new Map<ID, string[]>();
-  for (const f of fehlend) jePerson.set(f.mitarbeiterId, [...(jePerson.get(f.mitarbeiterId) ?? []), f.monat]);
-  return [...jePerson.entries()]
-    .map(([id, monate]) => `${namen.get(id) ?? '?'} (${monateText(monate)})`)
-    .join(', ');
 }
