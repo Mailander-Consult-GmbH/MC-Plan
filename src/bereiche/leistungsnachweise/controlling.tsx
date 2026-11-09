@@ -2,11 +2,12 @@
  * Einstieg für den Controlling-Bereich von KaPlan: die Controlling-Ansichten
  * der Leistungsnachweise – zwei Seiten, je Menüpunkt des Controlling-Bereichs:
  * „Leistungsnachweise“ zeigt die Übersicht der Projekte
- * (pages/controlling/ProjektListe.tsx: je Projekt der offene
- * Leistungsnachweis, gruppiert nach dem Stand der Bestätigungen bis zum
- * letzten Monatsende; Sammel-Import aus Excel, Neues Projekt), ein Projekt seine Seite (pages/controlling/Projekt.tsx)
+ * (pages/controlling/ProjektListe.tsx: je Projekt der letzte abgeschlossene
+ * Leistungsnachweis, die offenen Stunden bis zum Monatsende und die
+ * Bestätigung, gruppiert nach dem Stand der Bestätigungen; Sammel-Import aus
+ * Excel, Neues Projekt), ein Projekt seine Seite (pages/controlling/Projekt.tsx)
  * mit dem Leistungsnachweis (Abrechnung.tsx: Mitarbeiter und Bestätigungen,
- * Texte, Aufschläge je Zeile und auf den ganzen Nachweis, Leistungsnachweis
+ * Texte, Aufschläge je Zeile, Leistungsnachweis
  * abschließen in drei Schritten – Bestätigungen, Prüfen, „Abschließen und
  * PDF“ –, Druck und Export);
  * „Auswertung“ die Stunden je Mitarbeiter, Monat und Projekt

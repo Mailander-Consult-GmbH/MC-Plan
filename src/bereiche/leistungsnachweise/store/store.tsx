@@ -70,11 +70,9 @@ import {
 import {
   abgerechnetIn,
   aufschlagPruefen,
-  gesamtAufschlagPruefen,
   leistungenDesNachweises,
   leistungenOhneNachweis,
   mitAufschlag,
-  mitGesamtAufschlag,
   mitZeilenText,
   nachweisAbschliessenAnwenden,
   nachweisFuerNichtAbgerechneteAnwenden,
@@ -104,7 +102,6 @@ import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { seedDaten } from '../domain/seed';
 import {
   newId,
-  type GesamtAufschlag,
   type ID,
   type ISODate,
   type Leistung,
@@ -227,7 +224,7 @@ interface StoreValue {
    * „Abschließen und PDF“ (nur Controlling, nur offene): mit `bis` (ein Monatsende oder heute, `abschlussEnden`;
    * erlaubt ab dem Beginn bis heute, höchstens bis zum bisherigen Ende – `abschlussEndeBereich`) endet der
    * Nachweis dort, sonst (auch bei ungültigem `bis`) am letzten Tag mit
-   * Leistungen (`abschlussZeitraum`). Der Stand wird mit Aufschlägen und Gesamtaufschlag festgeschrieben;
+   * Leistungen (`abschlussZeitraum`). Der Stand wird mit den Aufschlägen festgeschrieben;
    * spätere Leistungen kommen in einen neuen offenen Nachweis (`nachweisAbschliessenAnwenden`).
    */
   nachweisAbschliessen: (id: ID, bis?: ISODate) => void;
@@ -239,13 +236,7 @@ interface StoreValue {
    * (`AUFSCHLAG_KEINE_ZAHL`, `AUFSCHLAG_UNTER_NULL` …) oder null.
    */
   aufschlagSetzen: (nachweisId: ID, zeilenSchluessel: string, abschnittId: ID | null, stunden: number | null) => string | null;
-  /**
-   * Gesamtaufschlag auf den ganzen Nachweis (± Stunden oder ± Prozent; null bzw. 0 entfernt) – nur Controlling,
-   * nur offene Nachweise. Er wird anteilig auf die Zeilen verteilt (`gesamtAufschlagVerteilen`). Liefert die
-   * Meldung (`AUFSCHLAG_KEINE_ZAHL`, `GESAMTAUFSCHLAG_OHNE_STUNDEN`, `AUFSCHLAG_UNTER_NULL` …) oder null.
-   */
-  gesamtAufschlagSetzen: (nachweisId: ID, ga: GesamtAufschlag | null) => string | null;
-  /** Alle Aufschläge des Nachweises entfernen – die der Zeilen und den Gesamtaufschlag; nur Controlling, nur offen. */
+  /** Alle Aufschläge des Nachweises entfernen; nur Controlling, nur offen. */
   aufschlaegeZuruecksetzen: (nachweisId: ID) => void;
   /* Import */
   /**
@@ -630,28 +621,11 @@ export function storeAktionen(data: LeistungsnachweisDaten, mutate: Mutate, zuga
       );
       return null;
     },
-    gesamtAufschlagSetzen: (nachweisId, ga) => {
-      const pruefen = (d: LeistungsnachweisDaten): string | null => {
-        if (!darf(zugang, 'aufschlag')) return NUR_CONTROLLING;
-        const n = d.nachweise.find((x) => x.id === nachweisId);
-        if (!n) return 'Diesen Leistungsnachweis gibt es nicht (mehr).';
-        if (n.status !== 'entwurf') return 'Der Leistungsnachweis ist abgeschlossen – Aufschläge erst nach „Wieder öffnen“.';
-        return gesamtAufschlagPruefen(d, n, ga);
-      };
-      const meldung = pruefen(data);
-      if (meldung) return meldung;
-      nachweisAendern(
-        nachweisId,
-        (_n, d) => pruefen(d) === null,
-        (n) => mitGesamtAufschlag(n, ga),
-      );
-      return null;
-    },
     aufschlaegeZuruecksetzen: (nachweisId) =>
       nachweisAendern(
         nachweisId,
-        (n) => darf(zugang, 'aufschlag') && n.status === 'entwurf' && (Object.keys(n.aufschlaege).length > 0 || !!n.gesamtAufschlag),
-        (n) => ({ ...n, aufschlaege: {}, gesamtAufschlag: null }),
+        (n) => darf(zugang, 'aufschlag') && n.status === 'entwurf' && Object.keys(n.aufschlaege).length > 0,
+        (n) => ({ ...n, aufschlaege: {} }),
       ),
 
     importUebernehmen: (plan) =>

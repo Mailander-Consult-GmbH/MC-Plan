@@ -21,10 +21,10 @@ Startbildschirm wählt:
   abschließt –, als PDF und Excel ausgegeben im Controlling.
 * **Controlling** (mit PIN) – Projekte für alle Bereiche anlegen, in Bereiche übernehmen, je
   Bereich oder ganz archivieren und löschen; dazu das Controlling der Leistungsnachweise (eine
-  Übersicht der offenen Leistungsnachweise, geordnet nach dem Stand der Monatsbestätigungen; je
-  Projekt eine Seite mit dem offenen Leistungsnachweis in drei Schritten – Bestätigungen, Prüfen
-  mit Leistungstexten und Aufschlägen je Zeile und auf den ganzen Nachweis, Abschließen und PDF –
-  und den früheren Leistungsnachweisen; dazu die Auswertung).
+  Übersicht je Projekt mit dem letzten abgeschlossenen Leistungsnachweis, den offenen Stunden und
+  dem Stand der Monatsbestätigungen, danach geordnet; je Projekt eine Seite mit dem offenen
+  Leistungsnachweis in drei Schritten – Bestätigungen, Prüfen mit Leistungstexten und Aufschlägen
+  je Zeile, Abschließen und PDF – und den früheren Leistungsnachweisen; dazu die Auswertung).
 
 Die Bereiche arbeiten unabhängig voneinander: eigener Datenbestand, eigener Speicherort im
 Browser, eigene Einstellungen, eigener Router. **Projekte und Projektbeteiligte teilen sie sich**
@@ -1330,17 +1330,19 @@ Im Controlling-Bereich (PIN) gibt es dafür unter *Bereiche* zwei Menüpunkte:
 (`#/controlling/leistungsnachweise/auswertung`). *Leistungsnachweise* hat zwei Seiten ohne Reiter:
 die Übersicht der Projekte und die Seite eines Projekts.
 
-* **Übersicht** – die Karte **Offene Leistungsnachweise**: Je Projekt läuft ein Leistungsnachweis
-  weiter, bis das Controlling ihn abschließt. Je Projekt eine Zeile, geordnet danach, ob sich sein
-  offener Nachweis (der früheste) bis zum letzten Monatsende abschließen ließe – meist das Ende des
-  Vormonats –, in drei Gruppen: **Bereit zum Abschließen – alle haben bestätigt** (es gibt
-  Leistungen bis dahin, und alle Personen mit solchen Leistungen haben ihre Monate bestätigt),
-  **Bestätigungen fehlen** und **Noch nichts abzuschließen** (kein offener Nachweis oder bis zum
-  letzten Monatsende keine Leistungen, etwa nur im laufenden Monat). Spalten: *Projekt* (Nummer,
-  Name, Status, ggf. *Archiviert*), *Offener Leistungsnachweis* (seit wann, mit allen erfassten
-  Stunden), *Bis Monatsende* (die Stunden bis zum letzten Monatsende), *Bestätigt* („1 von 2
-  bestätigt“, grün, wenn alle bestätigt haben; fehlen Bestätigungen, darunter „fehlt:“ mit Namen und
-  Monaten) und **Prüfen und abschließen** (bei bereiten, hervorgehoben) bzw. **Öffnen**; auch ein
+* **Übersicht** – die Karte **Leistungsnachweise je Projekt**: Je Projekt läuft ein
+  Leistungsnachweis weiter, bis das Controlling ihn abschließt. Je Projekt eine Zeile, geordnet
+  danach, ob sich sein offener Nachweis (der früheste) bis zum letzten Monatsende abschließen ließe –
+  meist das Ende des Vormonats –, in drei Gruppen: **Bereit zum Abschließen – alle haben bestätigt**
+  (es gibt Leistungen bis dahin, und alle Personen mit solchen Leistungen haben ihre Monate
+  bestätigt), **Bestätigungen fehlen** und **Noch nichts abzuschließen** (kein offener Nachweis oder
+  bis zum letzten Monatsende keine Leistungen, etwa nur im laufenden Monat). Spalten: *Projekt*
+  (Nummer, Name, Status, ggf. *Archiviert*), *Letzter Leistungsnachweis* (der Zeitraum des zuletzt
+  abgeschlossenen – ein Monat etwa als „Oktober 2026“ –, darunter „abgeschlossen am …“; ohne einen
+  „noch keiner“), *Offene Stunden* (die Stunden des offenen Nachweises bis zum letzten Monatsende,
+  darunter „bis Ende …“), *Bestätigung* („1 von 2 bestätigt“, grün, wenn alle bestätigt haben;
+  fehlen Bestätigungen, darunter „fehlt:“ mit Namen und Monaten) und **Prüfen und abschließen** (bei
+  bereiten, hervorgehoben) bzw. **Öffnen**; auch ein
   Klick auf die Zeile öffnet die Seite des Projekts. Oben rechts zählt die Karte, wie viele Projekte
   bereit sind und wie viele auf Bestätigungen warten. Mit Suche; archivierte Projekte stehen in
   ihrer Gruppe am Ende. Eine Fälligkeit und eine Auswahl des Rasters gibt es in der Übersicht
@@ -1382,16 +1384,18 @@ die Übersicht der Projekte und die Seite eines Projekts.
   zurücksetzen*, *Wieder öffnen*, *Leistungsnachweis löschen*). Eine Auswahl unter den Nachweisen
   gibt es dort nicht – frühere öffnet die Liste unten. Ein offener Nachweis steht in **drei
   Schritten**, jeder mit seiner Nummer (grün mit Haken, wenn erledigt):
-  1. **Haben alle eingetragen und bestätigt?** – je Person mit Stunden im Nachweis ihre Stunden und
-     je Monat seines Zeitraums ein Kennzeichen – *bestätigt* mit dem Tag, *offen*, *geändert seit
-     Bestätigung* oder *abgerechnet*; nicht bestätigte Monate nach dem in Schritt 3 gewählten Ende
-     *läuft weiter* –, im Kopf „x von y bestätigt“, gezählt bis zu diesem Ende; erledigt, wenn alle
-     bestätigt haben. Eine eigene Seite für die Bestätigungen gibt es nicht.
+  1. **Haben alle eingetragen und bestätigt?** – nur die Bestätigungen: je Person mit Stunden im
+     Nachweis je Monat seines Zeitraums ein Kennzeichen – *bestätigt* mit dem Tag, *offen*,
+     *geändert seit Bestätigung* oder *abgerechnet*; nicht bestätigte Monate nach dem in Schritt 3
+     gewählten Ende *läuft weiter* –, im Kopf „x von y bestätigt“, gezählt bis zu diesem Ende;
+     erledigt, wenn alle bestätigt haben. Die Stunden stehen in Schritt 2. Eine eigene Seite für die
+     Bestätigungen gibt es nicht.
   2. **Prüfen – so geht der Leistungsnachweis raus** – **eine Tabelle**: je Zeile Datum, Bearbeiter,
      der Leistungstext, *Erfasst*, *Aufschlag* in ± Stunden und *Abgerechnet* (wer *Abgerechnet*
-     eingibt, setzt den Aufschlag als Differenz – nicht bei einem Aufschlag auf den ganzen
-     Nachweis), unten die Summe, darunter der **Aufschlag auf den ganzen Nachweis** und die
-     **Bemerkung** (steht im Druck unter der Tabelle). Der Leistungstext steht zunächst so da, wie er
+     eingibt, setzt den Aufschlag als Differenz), unten die Summe, darunter die **Bemerkung** (steht
+     im Druck unter der Tabelle). Aufgeschlagen wird je Zeile (mit Abschnittsspalten je Abschnitt);
+     einen Aufschlag auf den ganzen Nachweis gibt es nicht (mehr, Fassung 10, siehe unten *Daten*). Der
+     Leistungstext steht zunächst so da, wie er
      im PDF erscheint; **✎ Korrigieren** macht ihn bearbeitbar (gespeichert bei jeder Eingabe),
      **Fertig** oder Escape zeigt ihn wieder zum Lesen.
   3. **Abschließen und PDF** – bis wann der Nachweis reicht: jedes Monatsende bzw. **bis heute**
@@ -1411,14 +1415,7 @@ die Übersicht der Projekte und die Seite eines Projekts.
      Abschluss läuft der Nachweis einfach weiter.
 
   Abgeschlossene Nachweise zeigen ohne Schritte den Block **Mitarbeiter und Bestätigungen** (nur
-  die Stunden ihres festgeschriebenen Stands) und die Tabelle, nur zum Lesen.
-  Der **Aufschlag auf den ganzen Nachweis** gilt in **± Std.** oder in **± %**
-  der abgerechneten Stunden (nach den Aufschlägen der Zeilen; ein Wechsel der Art behält die Zahl);
-  er erscheint nicht als eigene Zeile, sondern wird anteilig nach den abgerechneten Stunden auf die
-  Zeilen verteilt – auf 0,01 Std. gerundet, die Summe stimmt genau, abgerechnet wird nie weniger als
-  0. Jede Zeile nennt ihren Anteil („… anteilig“, abgeschlossen „davon … anteilig“), bei Prozent
-  steht daneben, wie viele Stunden das sind; wirkt ein Abzug nicht ganz, sagt ein Hinweis das. Ohne
-  abgerechnete Stunden lässt er sich nicht setzen; **Aufschläge zurücksetzen** entfernt ihn mit.
+  die Stunden ihres festgeschriebenen Stands mit Summe) und die Tabelle, nur zum Lesen.
   Den Leistungstext bearbeitet das Controlling direkt in der Zeile, solange der
   Nachweis offen ist – ein bearbeiteter Text wird nie still überschrieben, neue Leistungen bietet
   die Zeile zum **Ergänzen** an; die Leistungen aller Mitarbeiter lassen sich je Zeile aufklappen
@@ -1431,8 +1428,7 @@ die Übersicht der Projekte und die Seite eines Projekts.
   … hat sich der Text der Mitarbeiter seit der Bearbeitung des Leistungstexts geändert.“), und
   Schritt 3 warnt ebenso; sind die Zeilen feiner gegliedert als das Raster des
   Projekts, erklärt ein Hinweis, warum dort die Texte der Leistungen stehen. Druck und Excel zeigen
-  die abgerechneten Stunden; der Aufschlag selbst erscheint nicht – auch der auf den ganzen Nachweis
-  nicht als eigene Zeile, sein Anteil steckt in den Zeilen. Den Stand eines offenen Nachweises
+  die abgerechneten Stunden; der Aufschlag selbst erscheint nicht. Den Stand eines offenen Nachweises
   drucken bzw. exportieren *Drucken / PDF (noch offen)* und *Excel (noch offen)* im Menü *Mehr*.
   **Leistungsnachweis
   löschen** nimmt auf Wunsch die eigenen Leistungen des Nachweises mit (einschließlich der
@@ -1444,8 +1440,7 @@ die Übersicht der Projekte und die Seite eines Projekts.
   umfasst automatisch alle nicht abgerechneten Leistungen des Projekts (nach dem letzten
   abgeschlossenen Nachweis); offene Nachweise gehen darin auf, ihre Leistungstexte, Aufschläge und
   Bemerkungen bleiben erhalten – Texte derselben Zeile aus mehreren Nachweisen werden verbunden,
-  Aufschläge auf den ganzen Nachweis vereint (gleiche Prozent bleiben, Stunden werden summiert,
-  sonst gelten die bisher wirksamen Stunden), ein von Hand festgelegtes Ende entfällt. Er reicht bis
+  Aufschläge derselben Zeile summiert, ein von Hand festgelegtes Ende entfällt. Er reicht bis
   zum Ende des laufenden Monats, mindestens bis zur letzten Leistung. Wechselt dabei das Raster, warnt
   der Dialog, wenn von Hand bearbeitete Texte oder Aufschläge nicht mehr angezeigt werden (sie
   bleiben gespeichert und kehren mit dem alten Raster zurück). Später erfasste Leistungen kommen
@@ -1474,8 +1469,7 @@ die Übersicht der Projekte und die Seite eines Projekts.
   auf die Tage vor dem Zeitraum), gekennzeichnet „nachgereicht“. Der abgeschlossene Nachweis bleibt
   unverändert.
 * **Auswertung** – Stunden je Mitarbeiter, je Mitarbeiter und Monat und je Projekt (erfasst,
-  Aufschlag – auch der Anteil der Zeilen am Aufschlag auf den ganzen Nachweis –, abgerechnet, ohne
-  Nachweis) für Monat, Quartal, Jahr oder einen freien Zeitraum, mit
+  Aufschlag, abgerechnet, ohne Nachweis) für Monat, Quartal, Jahr oder einen freien Zeitraum, mit
   Excel; ein Klick auf ein Projekt öffnet dessen Seite mit dem offenen Leistungsnachweis.
 * **Excel-Import (alle Mitarbeiter)** – Sammel-Export der Zeiterfassung, legt unbekannte Mitarbeiter
   an; danach geht es zu den Projekten. Eine Anmeldung als Mitarbeiter braucht das Controlling nicht.
@@ -1525,8 +1519,12 @@ Aufeinanderfolgende offene Leistungsnachweise eines Projekts ohne festgelegtes E
 Monat nach dem früheren Rhythmus *Monatlich* – gehen im ersten auf, mit Leistungstexten,
 Aufschlägen, Bemerkungen und nachgereichten Leistungen (`laufendeZusammenfuehren`); abgeschlossene
 Nachweise und solche mit festgelegtem Ende bleiben, wie sie sind, und trennen. Gemeinsame Texte und
-Bestätigungen ziehen dabei mit wie nach jeder Änderung. Dazu kommt der Aufschlag auf den ganzen
-Nachweis (`gesamtAufschlag`, zunächst keiner). Gemeinsame Texte und Bestätigungen gelöschter Projekte bzw. Mitarbeiter räumt der Store mit ab.
+Bestätigungen ziehen dabei mit wie nach jeder Änderung. Dazu brachte Fassung 9 den Aufschlag auf
+den ganzen Nachweis (`gesamtAufschlag`, ± Std. oder ± %, zunächst keiner). Fassung 10 rechnet ihn
+in Aufschläge je Zeile um und entfernt ihn (`gesamtAufschlaegeUmrechnen` in
+`domain/migrationGesamtaufschlag.ts`): Jede Zeile – mit Abschnittsspalten jede Spalte – behält die
+abgerechneten Stunden, die sie mit ihm hatte; abgeschlossene Nachweise übernehmen die Anteile aus
+ihrem festgeschriebenen Stand, der selbst unverändert bleibt. Gemeinsame Texte und Bestätigungen gelöschter Projekte bzw. Mitarbeiter räumt der Store mit ab.
 Demodaten gibt es nur, solange weder ein Bestand noch Projekte im
 Projektregister vorhanden sind; wer zuvor einen anderen Bereich geöffnet hat, beginnt mit leeren
 Leistungsnachweisen und den Projekten des Registers. Gespeichert wird nur bei einwandfrei geladenem
@@ -1861,11 +1859,13 @@ src/
                      Sperre abgerechneter Zeiträume, Nachziehen der Texte bei neuen Grenzen
         nachweis.ts  Zeilen (Text aus den gemeinsamen Leistungstexten, überholte bearbeitete
                      Zeilen), Texte zusammenführen (auch dreiseitig), Zeiträume, Ergänzen (der
-                     offene Nachweis wächst mit), offene Nachweise, Aufschläge je Zeile und auf
-                     den ganzen Nachweis (anteilig verteilt), neuer Nachweis für alle nicht
+                     offene Nachweis wächst mit), offene Nachweise, Aufschläge je Zeile,
+                     neuer Nachweis für alle nicht
                      abgerechneten Leistungen, Abschließen bis zu einem Monatsende oder heute
                      (abschlussEnden, abschlussVorschlag; Stand samt Inhalt der abgerechneten
                      Leistungen), Zusammenführen laufender Nachweise (Fassung 9)
+        migrationGesamtaufschlag.ts  Fassung 9 → 10: Gesamtaufschlag in Aufschläge je Zeile
+                     umrechnen (gesamtAufschlaegeUmrechnen)
         zeitraum.ts  Tage, Kalenderwochen, Monate, Erfassungsperioden und Stundenformat
         import.ts    Excel-Import der Zeiterfassung (Lesen, Planen, Anwenden)
         auswertung.ts  Stunden je Mitarbeiter, Monat und Projekt
@@ -1879,14 +1879,14 @@ src/
       pages/         Übersicht (mit offenen Bestätigungen), Projekte, Projekt mit den Reitern
                      Leistungstexte (projekt/MonatsErfassung.tsx: Leistungstexte und
                      Monatsbestätigung) und Meine Leistungen (projekt/Leistungen.tsx);
-                     controlling/ ohne Reiter: ProjektListe.tsx (Übersicht der offenen
-                     Leistungsnachweise, gruppiert nach den Bestätigungen bis zum letzten
-                     Monatsende), Projekt.tsx (Seite je Projekt mit Menü „Mehr“, hilfen.tsx, und
-                     den früheren Leistungsnachweisen), Abrechnung.tsx (der Leistungsnachweis in
-                     drei Schritten, SchrittKopf aus hilfen.tsx: Mitarbeiter und Bestätigungen
-                     aus BestaetigungsStand.tsx; Prüfen – eine Tabelle mit Leistungstext aus
-                     Leistungstexte.tsx, Aufschlag je Zeile und auf den ganzen Nachweis,
-                     Bemerkung; Abschließen und PDF), ProjektEinstellungen.tsx, Auswertung
+                     controlling/ ohne Reiter: ProjektListe.tsx (Leistungsnachweise je Projekt:
+                     letzter abgeschlossener, offene Stunden und Bestätigung, gruppiert nach den
+                     Bestätigungen bis zum letzten Monatsende), Projekt.tsx (Seite je Projekt mit
+                     Menü „Mehr“, hilfen.tsx, und den früheren Leistungsnachweisen),
+                     Abrechnung.tsx (der Leistungsnachweis in drei Schritten, SchrittKopf aus
+                     hilfen.tsx: Bestätigungen aus BestaetigungsStand.tsx; Prüfen – eine Tabelle
+                     mit Leistungstext aus Leistungstexte.tsx, Aufschlag je Zeile, Bemerkung;
+                     Abschließen und PDF), ProjektEinstellungen.tsx, Auswertung
       components/    Anmeldehinweise (Anmeldung.tsx), Dialoge (Leistung, Nachweis, Projekt),
                      Kalender zum Erfassen (mit Tagesliste), Excel-Import, Hinweis zum
                      Rasterwechsel, Logos, Sicherung, Druckblatt, SpeicherHinweis

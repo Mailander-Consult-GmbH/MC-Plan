@@ -1,6 +1,6 @@
 /**
- * Kleine Bausteine des Controllings: Stunden und Prozent mit Vorzeichen,
- * Lesen einer Zahleneingabe („1,5“, „-0,5“, „10 %“), das Eingabefeld für
+ * Kleine Bausteine des Controllings: Stunden mit Vorzeichen, Lesen einer
+ * Zahleneingabe („1,5“, „-0,5“), das Eingabefeld für
  * Aufschläge und abgerechnete Stunden, das beim Verlassen bzw. mit Enter
  * speichert, die
  * Auswahl der Filter, solange die Seite offen ist, das Menü „Mehr“ (⋯) für
@@ -26,21 +26,15 @@ export function aufschlagFeld(stunden: number): string {
   return stunden ? `${stunden > 0 ? '+' : ''}${stundenText(stunden)}` : '';
 }
 
-/** Prozent mit Vorzeichen: „+10 %“, „-2,5 %“; 0 bleibt leer. */
-export function prozentFeld(prozent: number): string {
-  return prozent ? `${prozent > 0 ? '+' : ''}${prozent.toLocaleString('de-DE', { maximumFractionDigits: 2 })} %` : '';
-}
-
 /**
  * Liest eine Stundenangabe: Komma oder Punkt, Vorzeichen erlaubt, „Std.“ bzw.
- * „h“ am Ende darf stehen – mit `prozent` stattdessen „%“. Leer → null;
- * keine Zahl → undefined.
+ * „h“ am Ende darf stehen. Leer → null; keine Zahl → undefined.
  */
-export function zahlLesen(text: string, prozent = false): number | null | undefined {
+export function zahlLesen(text: string): number | null | undefined {
   const t = text
     .replace(/\s+/g, '')
     .replace(/[−–]/g, '-')
-    .replace(prozent ? /%$/ : /(std\.?|h)$/i, '');
+    .replace(/(std\.?|h)$/i, '');
   if (!t) return null;
   if (!/^[+-]?(\d+([.,]\d*)?|[.,]\d+)$/.test(t)) return undefined;
   const wert = Number(t.replace(',', '.'));
@@ -60,7 +54,6 @@ export function StundenFeld({
   label,
   platzhalter,
   klasse = '',
-  prozent = false,
 }: {
   wert: number;
   /** Text des Felds zum Wert. */
@@ -70,8 +63,6 @@ export function StundenFeld({
   label: string;
   platzhalter?: string;
   klasse?: string;
-  /** Eingabe in Prozent („10 %“) statt in Stunden. */
-  prozent?: boolean;
 }) {
   const toast = useToast();
   const [text, setText] = useState(() => anzeige(wert));
@@ -87,7 +78,7 @@ export function StundenFeld({
   }, [wert]);
 
   const uebernehmen = () => {
-    const zahl = zahlLesen(text, prozent);
+    const zahl = zahlLesen(text);
     // Unverändert (auch „1,5“ statt „+1,50“, etwa nach Enter und Verlassen): nur die Schreibweise angleichen
     if (text.trim() === anzeige(wert).trim() || (typeof zahl === 'number' && runden(zahl) === runden(wert))) {
       setText(anzeige(wert));

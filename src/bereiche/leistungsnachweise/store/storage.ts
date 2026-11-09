@@ -28,7 +28,9 @@
  * Blöcke zählen (`Projekt.rhythmusAb`, optional); 9 – ohne
  * Abrechnungsrhythmus (`zeitraumregel` und `rhythmusAb` entfallen, je Projekt
  * ein laufender Nachweis – `laufendeZusammenfuehren`) und mit Gesamtaufschlag
- * am Nachweis (`gesamtAufschlag`).
+ * am Nachweis (`gesamtAufschlag`); 10 – ohne Gesamtaufschlag: Er steht als
+ * Aufschläge je Zeile in `aufschlaege` (`gesamtAufschlaegeLesen`,
+ * `gesamtAufschlaegeUmrechnen` in domain/migrationGesamtaufschlag.ts).
  *
  * Speichern meldet, ob es gelungen ist (`SpeicherZustand`) – ist der Speicher
  * des Browsers voll, zeigt der Bereich einen dauerhaften Hinweis
@@ -46,7 +48,7 @@ import {
   STANDARD_BEARBEITER,
   type Abschnitt,
   type Bestaetigung,
-  type GesamtAufschlag,
+  type ID,
   type Leistung,
   type Leistungsnachweis,
   type LeistungsnachweisDaten,
@@ -59,7 +61,8 @@ import {
   type Raster,
   type ZeilenText,
 } from '../domain/types';
-import { gesamtAufschlagNormal, laufendeZusammenfuehren, nachgereichteZeilenUmstellen } from '../domain/nachweis';
+import { gesamtAufschlaegeUmrechnen, type AlterGesamtaufschlag } from '../domain/migrationGesamtaufschlag';
+import { laufendeZusammenfuehren, nachgereichteZeilenUmstellen } from '../domain/nachweis';
 import { erfassungsPeriodeAusSchluessel, istDatum, istMonat, runden } from '../domain/zeitraum';
 
 export { DATEN_VERSION };
@@ -130,13 +133,6 @@ function eindeutig<T extends { id: string }>(eintraege: T[]): T[] {
 
 const RASTER = ['tag', 'woche', 'monat'] as const;
 
-/** Gesamtaufschlag eines Nachweises: Art „stunden“ oder „prozent“ und eine Zahl (auch als Text) ≠ 0 – sonst null. */
-function gesamtAufschlagAufbereiten(w: unknown): GesamtAufschlag | null {
-  const g = objekt(w);
-  if (!g || (g.art !== 'stunden' && g.art !== 'prozent')) return null;
-  return gesamtAufschlagNormal({ art: g.art, wert: stunden(g.wert) });
-}
-
 function abschnittAufbereiten(a: Roh): Abschnitt {
   return { id: text(a.id) || zufallsId('ab'), kennung: text(a.kennung), kurz: text(a.kurz), name: text(a.name) };
 }
@@ -164,9 +160,7 @@ function zeileAufbereiten(z: Roh): NachweisZeile {
     aufschlagJeAbschnitt: ohneNull(zahlen(z.aufschlagJeAbschnitt)),
     abgerechnet: typeof z.abgerechnet === 'number' || typeof z.abgerechnet === 'string' ? stunden(z.abgerechnet) : erfasst,
     abgerechnetJeAbschnitt: objekt(z.abgerechnetJeAbschnitt) ? zahlen(z.abgerechnetJeAbschnitt) : { ...jeAbschnitt },
-    // Anteil am Gesamtaufschlag (Fassung 9) – nur ≠ 0
-    ...(runden(stunden(z.anteilGesamt)) !== 0 ? { anteilGesamt: runden(stunden(z.anteilGesamt)) } : {}),
-    ...(objekt(z.anteilGesamtJeAbschnitt) ? { anteilGesamtJeAbschnitt: ohneNull(zahlen(z.anteilGesamtJeAbschnitt)) } : {}),
+    // `anteilGesamt…` (Fassung 9) entfällt – der Anteil steckt schon in Aufschlag und abgerechnet
   };
 }
 
@@ -224,10 +218,11 @@ function texteAufbereiten(w: unknown): Record<string, ZeilenText> {
  * unbekannter Abschnitt wird zu „ohne Abschnitt“. Gemeinsame Texte ohne
  * bekanntes Projekt, mit ungültigem Schlüssel oder leerem Text fallen weg,
  * ebenso Bestätigungen ohne bekanntes Projekt bzw. bekannten Mitarbeiter oder
- * ohne gültigen Monat; je Schlüssel bleibt der erste Eintrag. Ein
- * Gesamtaufschlag ohne gültige Art oder mit 0 entfällt (null); den
- * Abrechnungsrhythmus früherer Fassungen (`zeitraumregel`, `rhythmusAb`)
- * übernimmt es nicht. Für Prüfungen exportiert.
+ * ohne gültigen Monat; je Schlüssel bleibt der erste Eintrag. Den
+ * Abrechnungsrhythmus früherer Fassungen (`zeitraumregel`, `rhythmusAb`) und
+ * den Gesamtaufschlag der Fassung 9 (`gesamtAufschlag`, in den Zeilen des
+ * Stands `anteilGesamt…`) übernimmt es nicht – den rechnet `migriere` vorher
+ * um. Für Prüfungen exportiert.
  */
 export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   const e = objekt(roh.einstellungen) ?? {};
@@ -310,7 +305,6 @@ export function aufbereiten(roh: Partial<LeistungsnachweisDaten>): Leistungsnach
           status,
           texte: texteAufbereiten(n.texte),
           aufschlaege: ohneNull(zahlen(n.aufschlaege)),
-          gesamtAufschlag: gesamtAufschlagAufbereiten(n.gesamtAufschlag),
           bemerkung: text(n.bemerkung),
           nachgereicht: [...new Set(ids(n.nachgereicht))],
           erstellt: text(n.erstellt) || geaendert,
@@ -421,12 +415,60 @@ function vonFassung6(roh: Roh): Roh {
  * Texte und die Bestätigungen mit wie nach jeder Änderung im Store
  * (`periodentexteNachziehen`, `bestaetigungenNachziehen`). Läuft nach
  * `aufbereiten` – auf einem vollständigen Bestand (Projekte ohne
- * `zeitraumregel` und `rhythmusAb`, Nachweise mit `gesamtAufschlag` null).
+ * `zeitraumregel` und `rhythmusAb`); einen Gesamtaufschlag gab es vor Fassung
+ * 9 nicht.
  */
 function vonFassung8(daten: LeistungsnachweisDaten): LeistungsnachweisDaten {
   const zusammen = laufendeZusammenfuehren(daten);
   if (zusammen === daten) return daten;
   return bestaetigungenNachziehen(daten, zusammen, periodentexteNachziehen(daten, zusammen));
+}
+
+/**
+ * Fassung 9 → 10, erster Teil – auf dem rohen Stand, vor `aufbereiten`, das
+ * den Gesamtaufschlag nicht mehr übernimmt: liest je Nachweis den
+ * Gesamtaufschlag (`gesamtAufschlag`: Art „stunden“ oder „prozent“ und eine
+ * Zahl, auch als Text, ≠ 0 – wie Fassung 9 ihn las) und bei abgeschlossenen
+ * mit festgeschriebenem Stand die Anteile der Zeilen daran (`anteilGesamt`,
+ * `anteilGesamtJeAbschnitt`). Je Kennung zählt wie in `aufbereiten` der erste
+ * Nachweis mit bekanntem Projekt und gültigem Zeitraum. Ein Nachweis mit
+ * Gesamtaufschlag, dem die Kennung fehlt, erhält hier eine – sonst vergäbe
+ * `aufbereiten` eine andere, und der zweite Teil (`gesamtAufschlaegeUmrechnen`
+ * in domain/migrationGesamtaufschlag.ts) fände ihn nicht.
+ */
+function gesamtAufschlaegeLesen(roh: Roh): { roh: Roh; aufschlaege: Map<ID, AlterGesamtaufschlag> } {
+  const projektIds = new Set(liste(roh.projekte).map((p) => text(p.id)).filter(Boolean));
+  const gesehen = new Set<ID>();
+  const aufschlaege = new Map<ID, AlterGesamtaufschlag>();
+  let ergaenzt = false;
+  const nachweise = liste(roh.nachweise).map((n) => {
+    if (!projektIds.has(text(n.projektId)) || !istDatum(n.von) || !istDatum(n.bis)) return n;
+    const g = objekt(n.gesamtAufschlag);
+    const art = g && (g.art === 'stunden' || g.art === 'prozent') ? g.art : null;
+    const wert = g ? runden(stunden(g.wert)) : 0;
+    // Ohne Kennung vergibt `aufbereiten` eine eigene – nur ein Nachweis mit Gesamtaufschlag braucht sie hier
+    const id = text(n.id) || (art && wert !== 0 ? zufallsId('ln') : '');
+    if (!id || gesehen.has(id)) return n;
+    gesehen.add(id);
+    if (!art || wert === 0) return n;
+    const s = n.status === 'abgeschlossen' ? objekt(n.stand) : null;
+    aufschlaege.set(id, {
+      art,
+      wert,
+      stand:
+        s && Array.isArray(s.zeilen)
+          ? liste(s.zeilen).map((z) => ({
+              schluessel: text(z.schluessel),
+              anteil: runden(stunden(z.anteilGesamt)),
+              jeAbschnitt: ohneNull(zahlen(z.anteilGesamtJeAbschnitt)),
+            }))
+          : null,
+    });
+    if (id === text(n.id)) return n;
+    ergaenzt = true;
+    return { ...n, id };
+  });
+  return { roh: ergaenzt ? { ...roh, nachweise } : roh, aufschlaege };
 }
 
 /**
@@ -444,18 +486,24 @@ function vonFassung8(daten: LeistungsnachweisDaten): LeistungsnachweisDaten {
  * nach `aufbereiten`); 6 → 7: leere Listen `periodentexte` und
  * `bestaetigungen` (`vonFassung6`); 7 → 8: nichts umzurechnen; 8 → 9:
  * `zeitraumregel` und `rhythmusAb` übernimmt `aufbereiten` nicht mehr,
- * `gesamtAufschlag` ergänzt es mit null, laufende Nachweise führt
- * `vonFassung8` zusammen (nach `nachgereichteZeilenUmstellen`, das die
- * Zeilen der bisherigen Nachweise braucht).
+ * laufende Nachweise führt `vonFassung8` zusammen (nach
+ * `nachgereichteZeilenUmstellen`, das die Zeilen der bisherigen Nachweise
+ * braucht); 9 → 10: den Gesamtaufschlag liest `gesamtAufschlaegeLesen` vor
+ * `aufbereiten` (das ihn nicht mehr übernimmt), `gesamtAufschlaegeUmrechnen`
+ * rechnet ihn danach in Aufschläge je Zeile um – zuletzt, auf den fertigen
+ * Zeilen. Stände vor Fassung 9 hatten keinen; für sie ändert der Schritt nichts.
  */
 function migriere(roh: Partial<LeistungsnachweisDaten>): LeistungsnachweisDaten {
   let stand = roh as unknown as Roh;
   const fassung = typeof stand.version === 'number' ? stand.version : 0;
   if (fassung < 2) stand = vonFassung1(stand);
   if (fassung < 7) stand = vonFassung6(stand);
+  const gesamt = fassung < 10 ? gesamtAufschlaegeLesen(stand) : null;
+  if (gesamt) stand = gesamt.roh;
   let daten = aufbereiten(stand as Partial<LeistungsnachweisDaten>);
   if (fassung < 6) daten = nachgereichteZeilenUmstellen(daten);
   if (fassung < 9) daten = vonFassung8(daten);
+  if (gesamt) daten = gesamtAufschlaegeUmrechnen(daten, gesamt.aufschlaege);
   return daten;
 }
 

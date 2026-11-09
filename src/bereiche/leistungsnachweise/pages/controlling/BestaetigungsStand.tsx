@@ -7,7 +7,8 @@
  * Leistungsnachweis als Schritt 1 „Haben alle eingetragen und bestätigt?“
  * (`SchrittKopf`, erledigt, wenn alle bestätigt haben; gezählt werden die
  * Monate bis zum Ende, das Schritt 3 gewählt hat – spätere zeigen „läuft
- * weiter“): je Person mit
+ * weiter“; als Schritt nur die Bestätigungen, die Stunden stehen in Schritt
+ * 2): je Person mit
  * Leistungen im gezeigten Leistungsnachweis die erfassten Stunden und je Monat
  * seines Zeitraums der Stand ihrer Bestätigung (bestätigt mit Tag, offen,
  * geändert seit Bestätigung, abgerechnet) – nur Personen und Monate dieses
@@ -128,6 +129,8 @@ export function MitarbeiterBestaetigungen({
   for (const m of monate) for (const p of m.personen) jePerson.set(p.mitarbeiterId, [...(jePerson.get(p.mitarbeiterId) ?? []), p]);
   const zahl = bestaetigungsZahl(data, bis ? { ...n, bis } : n);
   const summe = mitarbeiter.reduce((s, m) => s + m.stunden, 0);
+  // Als Schritt 1 genügt die Bestätigung – die Stunden stehen in Schritt 2
+  const mitStunden = !schritt;
 
   return (
     <Card>
@@ -135,7 +138,7 @@ export function MitarbeiterBestaetigungen({
         <SchrittKopf
           nr={schritt}
           titel="Haben alle eingetragen und bestätigt?"
-          sub={`${bis ? `Monate bis ${langDatum(bis)} – ` : ''}Stunden aus dem Import bzw. der Erfassung; Leistungstext und Bestätigung je Monat geben die Mitarbeiter selbst ab.`}
+          sub={`${bis ? `Monate bis ${langDatum(bis)} – ` : ''}Leistungstext und Bestätigung je Monat geben die Mitarbeiter selbst ab.`}
           erledigt={!!zahl && zahl.gesamt > 0 && zahl.bestaetigt === zahl.gesamt}
           actions={<BestaetigtBadge zahl={zahl} />}
         />
@@ -154,11 +157,11 @@ export function MitarbeiterBestaetigungen({
         <p className="small tertiary ln-co-bst-leer">Noch keine Stunden im Zeitraum.</p>
       ) : (
         <div className="table-scroll">
-          <table className="table table-stack ln-co-bst-tabelle">
+          <table className={`table table-stack ln-co-bst-tabelle ${mitStunden ? '' : 'ln-co-bst-ohne-stunden'}`}>
             <thead>
               <tr>
                 <th>Mitarbeiter</th>
-                <th className="ln-stunden">Stunden</th>
+                {mitStunden ? <th className="ln-stunden">Stunden</th> : null}
                 {offen ? <th>Bestätigung je Monat</th> : null}
               </tr>
             </thead>
@@ -169,9 +172,11 @@ export function MitarbeiterBestaetigungen({
                     <span className="ln-co-bst-person">{m.name || m.kuerzel}</span>
                     {m.kuerzel ? <span className="num tertiary"> {m.kuerzel}</span> : null}
                   </td>
-                  <td className="ln-stunden" data-label="Stunden">
-                    {stundenText(m.stunden)}
-                  </td>
+                  {mitStunden ? (
+                    <td className="ln-stunden" data-label="Stunden">
+                      {stundenText(m.stunden)}
+                    </td>
+                  ) : null}
                   {offen ? (
                     <td data-label="Bestätigung">
                       <span className="ln-co-bst-chips">
@@ -183,13 +188,15 @@ export function MitarbeiterBestaetigungen({
                   ) : null}
                 </tr>
               ))}
-              <tr className="ln-co-summe">
-                <td>Summe</td>
-                <td className="ln-stunden" data-label="Stunden">
-                  {stundenText(summe)}
-                </td>
-                {offen ? <td /> : null}
-              </tr>
+              {mitStunden ? (
+                <tr className="ln-co-summe">
+                  <td>Summe</td>
+                  <td className="ln-stunden" data-label="Stunden">
+                    {stundenText(summe)}
+                  </td>
+                  {offen ? <td /> : null}
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
