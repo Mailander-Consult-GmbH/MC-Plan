@@ -129,13 +129,23 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   nichts abzuschließen“ –; Spalten Projekt, „Letzter Leistungsnachweis“ – der zuletzt
   abgeschlossene, `zeitraumText`, „abgeschlossen am …“ bzw. „noch keiner“ –, „Offene Stunden“ bis
   Monatsende und „Bestätigung“ mit „x von y bestätigt“; das Raster steht
-  nur in „Projekt einstellen“ bzw. „Projekt bearbeiten“; Sammel-Import, Neues Projekt), je Projekt
+  nur in den „Einstellungen“ des Projekts; Sammel-Import, Neues Projekt – `ProjektDialog` dient nur
+  dem Anlegen), je Projekt
   eine Seite (`Projekt.tsx`, Route `controllingProjekt`; `abrechnung` ist dieselbe Seite mit gewähltem
-  Nachweis: Kopf mit Menü „Mehr“ – `MehrMenue` in `pages/controlling/hilfen.tsx` – für „Projekt
-  einstellen“ (`ProjektEinstellungen` im `Modal`), Bearbeiten und Löschen; darunter
+  Nachweis: Kopf mit rechts drei beschrifteten Knöpfen wie in den anderen Bereichen –
+  „Einstellungen“ (`Modal` „Einstellungen“ mit `ProjektEinstellungen`: Karte „Projekt“ =
+  `ProjektDaten` mit allen Angaben samt Raster, darunter Abschnitte und Logos; ein neues Raster
+  setzt `updateProjekt` auch an den offenen Nachweisen, abgeschlossene behalten ihres) und zum
+  gezeigten Nachweis „Vorschau“ (`NachweisVorschau`: Druckblatt mit „Drucken / PDF“) und rot
+  „Nachweis löschen“ (`NachweisLoeschenDialog`, beide aus `Abrechnung.tsx`); ein Menü „⋯“,
+  „Projekt bearbeiten“ und ein Löschen des Projekts gibt es nicht (mehr) – Projekte löscht das
+  Controlling unter „Projekte“; darunter
   `NachweisBearbeitung` aus `Abrechnung.tsx` – ohne Nachweis in der Adresse der früheste offene,
-  sonst der gewählte, dann mit „Zum offenen Leistungsnachweis“; Leiste mit Vorschau, abgeschlossen
-  PDF und Excel, Menü „Mehr“ (offen auch PDF und Excel des offenen Stands) –, ein offener in drei
+  sonst der gewählte, dann mit „Zum offenen Leistungsnachweis“; sein Kopf (`ln-co-nachweiskopf`)
+  ohne Knöpfe: Überschrift, Zeitraum, Raster, abgeschlossen „Abgeschlossen am …“ mit dem Link
+  „Wieder öffnen …“; eine Excel-Fassung des Nachweises, „Zeitraum ändern“ und „Aufschläge
+  zurücksetzen“ gibt es nicht (mehr), „Neuer Leistungsnachweis“ nur auf der Seite ohne offenen
+  Nachweis –, ein offener in drei
   Schritten, `SchrittKopf` in `hilfen.tsx`: 1 „Haben alle eingetragen und bestätigt?“ –
   `MitarbeiterBestaetigungen` in `pages/controlling/BestaetigungsStand.tsx` mit `schritt`: nur
   Mitarbeiter und „Bestätigung je Monat“, ohne Stunden und Summe, gezählt bis zum in
@@ -195,7 +205,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Stelle ändern; abgerechnet
   ist, was im Stand abgeschlossener Nachweise steht, `abgerechneteLeistungen`; einen Rhythmus gibt
   es nicht (mehr, Fassung 9): ein offener Nachweis ohne festgelegtes Ende (`laeuftBisAbschluss(n)`;
-  `bisFest` setzt „Zeitraum ändern“) wächst in `nachweiseErgaenzen` bis zum Monatsende neuer
+  `bisFest` setzte früher „Zeitraum ändern“ – den Dialog gibt es nicht mehr, ältere Stände behalten
+  es) wächst in `nachweiseErgaenzen` bis zum Monatsende neuer
   Leistungen mit, sonst entsteht ein neuer ab dem Monatsanfang; den Umfang legt erst das
   **Abschließen** fest – statt eines freien Datums jedes Monatsende, dazu heute bzw. das bisherige
   Ende vor heute (`abschlussEnden`, Vorschlag `abschlussVorschlag`: das letzte Monatsende), erlaubt
@@ -211,7 +222,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   fasst alle nicht abgerechneten Leistungen und offenen Nachweise zusammen,
   `nichtAbgerechnet`/`nachweisFuerNichtAbgerechneteAnwenden`),
   `domain/import.ts`
-  Excel-Import, `domain/druck.ts`/`domain/export.ts` PDF und Excel, `lib/router.ts` baut auch die
+  Excel-Import, `domain/druck.ts` PDF des Nachweises, `domain/export.ts` Excel nur für Auswertung,
+  Leistungslisten und Importvorlage, `lib/router.ts` baut auch die
   Adressen des Controllings (`CONTROLLING_PREFIX`) und nimmt nur Adressen dieser beiden Präfixe an;
   frühere Adressen `#/leistungsnachweise/controlling/…` lenkt `App.tsx` um. Ohne eigenen Bestand
   gibt es Demodaten nur bei leerem Projektregister (`ladeDaten`), sonst beginnt der Bereich leer. Kennungen, die erst in einer Änderung

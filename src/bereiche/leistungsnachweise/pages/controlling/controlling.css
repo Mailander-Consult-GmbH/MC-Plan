@@ -274,9 +274,6 @@
 /* ------------------------------------------------------------------ */
 .ln-co-projektkopf { gap: 8px 12px; min-width: 0; }
 .ln-co-projekttitel { font-size: 16px; margin: 0; min-width: 0; }
-.ln-co-mehr { padding-left: 10px; padding-right: 10px; }
-/* Das Menü „Mehr“ bleibt schmal – auch, wo die Knöpfe der Leiste die Breite füllen */
-.ln-co-leiste .btn.ln-co-mehr { flex: none; }
 .ln-co-nachweiswahl { gap: 8px 10px; min-width: 0; }
 .ln-co-nachweiswahl .select { width: auto; max-width: 100%; min-width: 0; }
 .ln-co-wahl-label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
@@ -351,7 +348,6 @@
   .ln-co-bst-leer { padding: 12px 16px; }
   .ln-co-nachweiswahl, .ln-co-aktionen { width: 100%; }
   .ln-co-nachweiswahl .select { flex: 1 1 100%; }
-  .ln-co-aktionen > .btn-primary { flex: 1 1 100%; justify-content: center; }
   .table-stack.ln-co-bst-tabelle tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
   .table-stack.ln-co-bst-tabelle td { width: auto; padding: 1px 0; }
   .table-stack.ln-co-bst-tabelle td:nth-child(3) { grid-column: 1 / -1; }

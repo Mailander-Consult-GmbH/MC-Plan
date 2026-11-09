@@ -7,11 +7,14 @@
  * Entscheidung „weiterlaufen lassen“ gibt es nicht: Ohne Abschluss läuft der
  * offene Nachweis einfach weiter.
  *
- * Oben die Leiste: „Offener Leistungsnachweis“ bzw. die Überschrift des
+ * Oben der Kopf: „Offener Leistungsnachweis“ bzw. die Überschrift des
  * abgeschlossenen, sein Zeitraum (`nachweisZeitraumText`) und Raster,
- * „Vorschau“, bei abgeschlossenen „Drucken / PDF“ und „Excel“, und das Menü
- * „Mehr“ (offen: Drucken / PDF und Excel des offenen Stands, Zeitraum ändern;
- * Neuer Leistungsnachweis, Aufschläge zurücksetzen, Wieder öffnen, Löschen).
+ * abgeschlossen „Abgeschlossen am …“ mit dem Link „Wieder öffnen …“. Die
+ * Knöpfe „Vorschau“ (`NachweisVorschau`: Druckblatt mit „Drucken / PDF“) und
+ * „Nachweis löschen“ (`NachweisLoeschenDialog`) stehen in der Reihe des
+ * Projekts (Projekt.tsx). Eine Excel-Fassung, „Zeitraum ändern“ und
+ * „Aufschläge zurücksetzen“ gibt es nicht (mehr) – Aufschläge leert man je
+ * Zeile.
  *
  * Ein offener Nachweis steht in drei Schritten (`SchrittKopf`):
  * 1. „Haben alle eingetragen und bestätigt?“ – `MitarbeiterBestaetigungen`
@@ -46,7 +49,7 @@ import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Modal } from '../../../../shared/ui';
 import { Druckblatt } from '../../components/Druckblatt';
-import { NachweisDialog, NichtErfasstHinweis } from '../../components/NachweisDialog';
+import { NichtErfasstHinweis } from '../../components/NachweisDialog';
 import { Textfeld } from '../../components/Textfeld';
 import { anzahl, nachweisZeitraumText, zeitpunkt } from '../../components/common';
 import { nachweisDrucken, nachweisFassung, nachweisHtml } from '../../domain/druck';
@@ -57,18 +60,17 @@ import {
   grenzFolgenHinweis,
   periodentexteNachOeffnen,
 } from '../../domain/erfassung';
-import { nachweisExportieren } from '../../domain/export';
 import {
   abschlussEnden,
   abschlussVorschlag,
   abschlussZeitraum,
-  anzahlAufschlaege,
   aufschlagEingabe,
   aufschlagFuerAbgerechnet,
   leistungenDesNachweises,
   mitAbschnittsspalten,
   nachweisAbschliessenAnwenden,
   nachweisSummen,
+  nachweisTitel,
   nachweisZeilen,
   nichtAbgerechnet,
   periodentexteVon,
@@ -100,7 +102,7 @@ import { kurzDatum, langDatum, monatText, runden, stundenText, zeitraumText } fr
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { FehlendeBestaetigungen, MitarbeiterBestaetigungen } from './BestaetigungsStand';
-import { MehrMenue, SchrittKopf, StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
+import { SchrittKopf, StundenFeld, aufschlagFeld, aufschlagText } from './hilfen';
 import { ZeilenText } from './Leistungstexte';
 import './controlling.css';
 
@@ -175,9 +177,7 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
     zugang,
     updateNachweis,
     nachweisOeffnen,
-    deleteNachweis,
     aufschlagSetzen,
-    aufschlaegeZuruecksetzen,
     leistungenNachreichen,
     zeilenTextSetzen,
   } = useStore();
@@ -185,20 +185,14 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
   const [offeneTexte, setOffeneTexte] = useState<Set<string>>(new Set());
   const [offeneLeistungen, setOffeneLeistungen] = useState<Set<string>>(new Set());
   const [alleAbschnitte, setAlleAbschnitte] = useState(false);
-  const [vorschau, setVorschau] = useState(false);
-  const [zeitraumDialog, setZeitraumDialog] = useState(false);
-  const [neuerNachweis, setNeuerNachweis] = useState(false);
-  const [oeffnen, setOeffnen] = useState(false);
-  const [loeschen, setLoeschen] = useState(false);
-  const [zuruecksetzen, setZuruecksetzen] = useState(false);
   const [nachreichen, setNachreichen] = useState(false);
-  const [excelLaeuft, setExcelLaeuft] = useState(false);
+  const [oeffnen, setOeffnen] = useState(false);
   // Ende des Abschlusses (Schritt 3) – auch Schritt 1 zählt die Bestätigungen bis dahin
   const [endeWahl, setEndeWahl] = useState<string | null>(() => abschlussVorschlag(n, today()));
 
   const heute = today();
   const abgeschlossen = n.status === 'abgeschlossen';
-  // Die Wahl bleibt nur, solange sie wählbar ist (etwa nach „Zeitraum ändern“)
+  // Die Wahl bleibt nur, solange sie wählbar ist (etwa nach neuen Leistungen)
   const ende = abgeschlossen
     ? null
     : abschlussEnden(n, heute).some((e) => e.bis === endeWahl)
@@ -211,13 +205,9 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
   const spalten = mitAbschnittsspalten(abschnitte);
   const summen = nachweisSummen(zeilen);
   const veraltet = standVeraltet(data, n);
-  const imZeitraum = leistungenDesNachweises(data, n);
   // Nicht erfasste Leistungen – nur am laufenden Nachweis (nach dem letzten abgeschlossenen)
   const plan = abgeschlossen ? null : nichtAbgerechnet(data, projekt.id, heute);
   const nichtErfasst = plan && plan.offene.some((o) => o.id === n.id) ? plan.nichtErfasst : [];
-  // Löschen darf auch das Controlling nur eigene Leistungen (domain/rechte.ts) – dieselben, die `deleteNachweis` löscht
-  const eigeneImZeitraum = eigeneLeistungen(data, imZeitraum).length;
-  const aufschlaege = anzahlAufschlaege(n);
   const mitarbeiterVon = new Map(data.mitarbeiter.map((m) => [m.id, m]));
   const abschnittVon = new Map(projekt.abschnitte.map((a) => [a.id, a]));
   const personName = (id: ID) => {
@@ -271,18 +261,7 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
     toast(gemeinsam ? 'Leistungstext der Mitarbeiter wiederhergestellt.' : 'Automatischer Leistungstext wiederhergestellt.');
   };
 
-  const excel = async () => {
-    setExcelLaeuft(true);
-    try {
-      await nachweisExportieren(data, n, projekt);
-    } catch {
-      toast('Die Excel-Datei ließ sich nicht erzeugen.');
-    } finally {
-      setExcelLaeuft(false);
-    }
-  };
-
-  /* Rückfragen */
+  /* Wieder öffnen (nur abgeschlossene, als Link im Kopf) */
   const vergleich = standVergleich(data, n);
   const oeffnenText = vergleich.veraltet
     ? `Seit dem Abschluss haben sich Leistungen geändert: festgeschrieben sind ${stundenText(vergleich.stand.erfasst)} Std. erfasst und ${stundenText(
@@ -311,11 +290,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
         data.mitarbeiter,
       )
     : null;
-  // Fallen mit dem Nachweis Grenzen der Zeiträume weg, gehen Texte von Teilen im Text des ganzen Zeitraums auf;
-  // dazu, wessen Bestätigungen erlöschen (`grenzFolgen`)
-  const loeschenTexte = loeschen
-    ? grenzFolgenHinweis(grenzFolgen(data, { ...data, nachweise: data.nachweise.filter((x) => x.id !== n.id) }), data.mitarbeiter)
-    : null;
 
   const kopfSub = `${nachweisZeitraumText(n)} · ${RASTER_LABEL[n.raster]}`;
   const spaltenzahl = spalten ? 7 : 6;
@@ -323,55 +297,26 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
 
   return (
     <div className="stack">
-      {/* Leiste: der Nachweis, sein Stand und was sich damit tun lässt – Seltenes im Menü „Mehr“ */}
-      <div className="ln-co-leiste">
-        <div className="ln-co-nachweiskopf">
-          <h3 className="ln-co-nachweistitel">{abgeschlossen ? fassung.titel : 'Offener Leistungsnachweis'}</h3>
-          <span className="small muted">{kopfSub}</span>
-          {veraltet ? <Badge ton="orange">geändert</Badge> : null}
-        </div>
-        <div className="row wrap ln-co-aktionen">
-          {abgeschlossen ? (
-            <span className="ln-co-erstellt">
-              <Icon name="check" size={14} /> Abgeschlossen {zeitpunkt(n.abgeschlossen)}
-            </span>
-          ) : null}
-          <button type="button" className="btn btn-outline" onClick={() => setVorschau(true)}>
-            <Icon name="suche" size={14} /> Vorschau
+      {/* Kopf des Nachweises – die Knöpfe (Vorschau, Nachweis löschen) stehen oben in der Reihe des Projekts */}
+      <div className="ln-co-nachweiskopf">
+        <h3 className="ln-co-nachweistitel">{abgeschlossen ? fassung.titel : 'Offener Leistungsnachweis'}</h3>
+        <span className="small muted">{kopfSub}</span>
+        {abgeschlossen ? (
+          <span className="ln-co-erstellt">
+            <Icon name="check" size={14} /> Abgeschlossen {zeitpunkt(n.abgeschlossen)}
+          </span>
+        ) : null}
+        {abgeschlossen && darf(zugang, 'nachweisVerwalten') ? (
+          <button type="button" className="ln-co-link" onClick={() => setOeffnen(true)}>
+            Wieder öffnen …
           </button>
-          {abgeschlossen ? (
-            <>
-              <button type="button" className="btn btn-primary" onClick={() => nachweisDrucken(data, n, projekt)}>
-                <Icon name="plan" size={14} /> Drucken / PDF
-              </button>
-              <button type="button" className="btn btn-outline" disabled={excelLaeuft} onClick={() => void excel()}>
-                <Icon name="export" size={14} /> {excelLaeuft ? 'Excel …' : 'Excel'}
-              </button>
-            </>
-          ) : null}
-          <MehrMenue
-            label="Weitere Aktionen zum Leistungsnachweis"
-            eintraege={[
-              { key: 'drucken', label: 'Drucken / PDF (noch offen) …', zeigen: !abgeschlossen, onWaehle: () => nachweisDrucken(data, n, projekt) },
-              { key: 'excel', label: 'Excel (noch offen)', zeigen: !abgeschlossen, onWaehle: () => void excel() },
-              { key: 'zeitraum', label: 'Zeitraum ändern …', zeigen: !abgeschlossen, onWaehle: () => setZeitraumDialog(true) },
-              { key: 'neu', label: 'Neuer Leistungsnachweis …', onWaehle: () => setNeuerNachweis(true) },
-              {
-                key: 'aufschlaege',
-                label: 'Aufschläge zurücksetzen …',
-                zeigen: !abgeschlossen && aufschlaege > 0,
-                onWaehle: () => setZuruecksetzen(true),
-              },
-              { key: 'oeffnen', label: 'Wieder öffnen …', zeigen: abgeschlossen, onWaehle: () => setOeffnen(true) },
-              { key: 'loeschen', label: 'Leistungsnachweis löschen …', gefahr: true, onWaehle: () => setLoeschen(true) },
-            ]}
-          />
-        </div>
+        ) : null}
+        {veraltet ? <Badge ton="orange">geändert</Badge> : null}
       </div>
 
       {veraltet ? (
         <Callout ton="warn" icon="!">
-          Seit dem Abschluss haben sich Leistungen im Zeitraum geändert – „Wieder öffnen“ (Menü „Mehr“) übernimmt sie.
+          Seit dem Abschluss haben sich Leistungen im Zeitraum geändert – „Wieder öffnen“ (oben neben „Abgeschlossen“) übernimmt sie.
         </Callout>
       ) : null}
       {nichtErfasst.length > 0 ? (
@@ -399,8 +344,7 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
         <Callout icon="i">
           {unwirksam === 1
             ? '1 Aufschlag gehört zu einer Zeile, die es im aktuellen Raster nicht gibt, und wirkt deshalb nicht – er kehrt zurück, wenn die Zeile wieder entsteht.'
-            : `${unwirksam} Aufschläge gehören zu Zeilen, die es im aktuellen Raster nicht gibt, und wirken deshalb nicht – sie kehren zurück, wenn die Zeilen wieder entstehen.`}{' '}
-          „Aufschläge zurücksetzen“ (Menü „Mehr“) entfernt sie.
+            : `${unwirksam} Aufschläge gehören zu Zeilen, die es im aktuellen Raster nicht gibt, und wirken deshalb nicht – sie kehren zurück, wenn die Zeilen wieder entstehen.`}
         </Callout>
       ) : null}
 
@@ -533,15 +477,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
         <AbschliessenSchritt projekt={projekt} nachweis={n} bis={ende} onBis={setEndeWahl} ueberholt={ueberholt} navigate={navigate} />
       ) : null}
 
-      {vorschau ? (
-        <Modal titel="Vorschau" sub={fassung.titel} wide onClose={() => setVorschau(false)}>
-          <Druckblatt inhalt={nachweisHtml(data, n, projekt)} />
-        </Modal>
-      ) : null}
-
-      {zeitraumDialog ? <NachweisDialog projekt={projekt} nachweis={n} onClose={() => setZeitraumDialog(false)} /> : null}
-      {neuerNachweis ? <NachweisDialog projekt={projekt} onClose={() => setNeuerNachweis(false)} navigate={navigate} /> : null}
-
       {oeffnen ? (
         <ConfirmDialog
           titel="Leistungsnachweis wieder öffnen?"
@@ -555,6 +490,7 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
           onClose={() => setOeffnen(false)}
         />
       ) : null}
+
 
       {nachreichen && nichtErfasst.length > 0 ? (
         <ConfirmDialog
@@ -572,39 +508,6 @@ export function NachweisBearbeitung({ projekt, nachweis: n, navigate }: { projek
         />
       ) : null}
 
-      {zuruecksetzen ? (
-        <ConfirmDialog
-          titel="Aufschläge zurücksetzen?"
-          text={`${
-            aufschlaege === 1 ? 'Der Aufschlag' : `Alle ${aufschlaege} Aufschläge`
-          } dieses Leistungsnachweises ${aufschlaege === 1 ? 'wird' : 'werden'} entfernt – abgerechnet wird dann, was erfasst ist.`}
-          bestaetigenLabel="Zurücksetzen"
-          onConfirm={() => {
-            aufschlaegeZuruecksetzen(n.id);
-            toast('Aufschläge zurückgesetzt.');
-          }}
-          onClose={() => setZuruecksetzen(false)}
-        />
-      ) : null}
-
-      {loeschen ? (
-        <NachweisLoeschen
-          titel={fassung.titel}
-          eigene={eigeneImZeitraum}
-          andere={imZeitraum.length - eigeneImZeitraum}
-          texteHinweis={loeschenTexte}
-          onClose={() => setLoeschen(false)}
-          onLoeschen={(mitLeistungen) => {
-            deleteNachweis(n.id, mitLeistungen);
-            toast(
-              mitLeistungen && eigeneImZeitraum
-                ? `Leistungsnachweis und ${anzahl(eigeneImZeitraum, 'eigene Leistung', 'eigene Leistungen')} gelöscht.`
-                : 'Leistungsnachweis gelöscht.',
-            );
-            navigate({ view: 'controllingProjekt', projektId: n.projektId });
-          }}
-        />
-      ) : null}
     </div>
   );
 }
@@ -748,7 +651,7 @@ function AbschliessenSchritt({
           </button>
           <span className="small tertiary">
             Danach ist der Stand festgeschrieben, die gemeinsamen Leistungstexte der Zeiträume lassen sich nicht mehr ändern;
-            „Wieder öffnen“ (Menü „Mehr“) hebt den Abschluss auf.
+            „Wieder öffnen“ (im Kopf des abgeschlossenen) hebt den Abschluss auf.
           </span>
         </div>
       </div>
@@ -940,6 +843,82 @@ function ZeileAbrechnung({
 /* ------------------------------------------------------------------ */
 /* Löschen                                                             */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Vorschau eines Leistungsnachweises im `Modal` – das Druckblatt
+ * (`nachweisHtml`) mit „Drucken / PDF“ (`nachweisDrucken`, Druckdialog des
+ * Browsers, „Als PDF sichern“). Geöffnet über „Vorschau“ oben auf der Seite
+ * eines Projekts (Projekt.tsx).
+ */
+export function NachweisVorschau({ projekt, nachweis: n, onClose }: { projekt: Projekt; nachweis: Leistungsnachweis; onClose: () => void }) {
+  const { data } = useStore();
+  return (
+    <Modal
+      titel="Vorschau"
+      sub={nachweisFassung(data, n, projekt, 'abgerechnet').titel}
+      wide
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Schließen
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => nachweisDrucken(data, n, projekt)}>
+            <Icon name="plan" size={14} /> Drucken / PDF
+          </button>
+        </>
+      }
+    >
+      <Druckblatt inhalt={nachweisHtml(data, n, projekt)} />
+    </Modal>
+  );
+}
+
+/**
+ * „Nachweis löschen“ oben auf der Seite eines Projekts (Projekt.tsx): die
+ * Rückfrage `NachweisLoeschen` mit den eigenen Leistungen des Nachweises (nur
+ * sie lassen sich mitlöschen, domain/rechte.ts – dieselben, die
+ * `deleteNachweis` löscht) und den Folgen für die gemeinsamen Texte und
+ * Bestätigungen (`grenzFolgen`); danach zeigt die Seite den offenen Nachweis.
+ */
+export function NachweisLoeschenDialog({
+  nachweis: n,
+  navigate,
+  onClose,
+}: {
+  nachweis: Leistungsnachweis;
+  navigate: (r: Route) => void;
+  onClose: () => void;
+}) {
+  const { data, deleteNachweis } = useStore();
+  const toast = useToast();
+  const imZeitraum = leistungenDesNachweises(data, n);
+  const eigene = eigeneLeistungen(data, imZeitraum).length;
+  // Fallen mit dem Nachweis Grenzen der Zeiträume weg, gehen Texte von Teilen im Text des ganzen Zeitraums auf;
+  // dazu, wessen Bestätigungen erlöschen (`grenzFolgen`)
+  const texteHinweis = grenzFolgenHinweis(
+    grenzFolgen(data, { ...data, nachweise: data.nachweise.filter((x) => x.id !== n.id) }),
+    data.mitarbeiter,
+  );
+  return (
+    <NachweisLoeschen
+      titel={nachweisTitel(n)}
+      eigene={eigene}
+      andere={imZeitraum.length - eigene}
+      texteHinweis={texteHinweis}
+      onClose={onClose}
+      onLoeschen={(mitLeistungen) => {
+        deleteNachweis(n.id, mitLeistungen);
+        toast(
+          mitLeistungen && eigene
+            ? `Leistungsnachweis und ${anzahl(eigene, 'eigene Leistung', 'eigene Leistungen')} gelöscht.`
+            : 'Leistungsnachweis gelöscht.',
+        );
+        navigate({ view: 'controllingProjekt', projektId: n.projektId });
+      }}
+    />
+  );
+}
 
 function NachweisLoeschen({
   titel,

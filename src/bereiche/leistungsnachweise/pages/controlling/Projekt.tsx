@@ -1,9 +1,12 @@
 /**
  * Seite eines Projekts im Controlling der Leistungsnachweise – ohne Reiter.
- * Oben „Alle Projekte“, Projektnummer und -name, Status, Raster und das Menü
- * „Mehr“ zum Projekt (Projekt einstellen – Leistungsbereich, Bezeichnung im
- * Nachweis, Raster, Abschnitte, Logos (ProjektEinstellungen.tsx) –, Projekt
- * bearbeiten, Projekt löschen). Einen Rhythmus gibt es nicht: Erfasste
+ * Oben „Alle Projekte“, Projektnummer und -name, Status, Raster und eine Reihe
+ * beschrifteter Knöpfe rechts wie in den anderen Bereichen: „Einstellungen“
+ * (alle Angaben des Projekts samt Raster, Abschnitten und Logos an einer
+ * Stelle – ProjektEinstellungen.tsx) und zum gezeigten Nachweis
+ * „Vorschau“ (mit „Drucken / PDF“) und rot „Nachweis löschen“
+ * (Abrechnung.tsx). Ein Projekt löscht man nur im Controlling unter
+ * „Projekte“ (für alle Bereiche). Einen Rhythmus gibt es nicht: Erfasste
  * Leistungen sammeln sich im offenen Leistungsnachweis – wie in einer Excel je
  * Projekt –, bis das Controlling ihn abschließt und dabei festlegt, bis wann
  * er reicht; bis dahin läuft er einfach weiter.
@@ -18,20 +21,12 @@
  * entsteht, und bietet „Neuer Leistungsnachweis“ an. Ganz unten „Frühere
  * Leistungsnachweise“: alle übrigen Nachweise des Projekts, der jüngste
  * zuerst, mit Stand, Stunden, „Ansehen“ und – abgeschlossen – „PDF“.
- *
- * Jedes Projekt gehört in die Leistungsnachweise (`JEDES_PROJEKT_IN`): Führt
- * ein anderer Bereich das Projekt oder ist es dort zur Übernahme vorgesehen,
- * lässt es sich hier nicht löschen – nur im Controlling unter „Projekte“ für
- * alle Bereiche (dort lässt sich auch eine vorgesehene Übernahme zurücknehmen).
  */
 import { useState } from 'react';
-import { andereBereiche, vorgeseheneBereiche } from '../../../../gemeinsam/ProjektBereiche';
-import { useRegister } from '../../../../gemeinsam/register';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
-import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Modal } from '../../../../shared/ui';
+import { Badge, Callout, Card, CardHeader, EmptyState, Modal } from '../../../../shared/ui';
 import { NachweisDialog } from '../../components/NachweisDialog';
-import { ProjektDialog } from '../../components/ProjektDialog';
 import { STATUS_TON, anzahl, nachweiseAngelegtText, zeitpunkt } from '../../components/common';
 import { nachweisDrucken } from '../../domain/druck';
 import {
@@ -47,8 +42,7 @@ import { PROJEKT_STATUS_LABEL, RASTER_LABEL, projektTitel, type ID, type Leistun
 import { stundenText } from '../../domain/zeitraum';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
-import { NachweisBearbeitung } from './Abrechnung';
-import { MehrMenue } from './hilfen';
+import { NachweisBearbeitung, NachweisLoeschenDialog, NachweisVorschau } from './Abrechnung';
 import { ProjektEinstellungen } from './ProjektEinstellungen';
 
 export function ControllingProjekt({
@@ -61,12 +55,11 @@ export function ControllingProjekt({
   nachweisId?: ID;
   navigate: (r: Route) => void;
 }) {
-  const { data, deleteProjekt, nachweiseFuerOffeneLeistungen } = useStore();
-  const register = useRegister();
+  const { data, nachweiseFuerOffeneLeistungen } = useStore();
   const toast = useToast();
   const [einstellen, setEinstellen] = useState(false);
-  const [bearbeiten, setBearbeiten] = useState(false);
-  const [loeschen, setLoeschen] = useState(false);
+  const [vorschau, setVorschau] = useState(false);
+  const [nachweisLoeschen, setNachweisLoeschen] = useState(false);
   const [neuerNachweis, setNeuerNachweis] = useState(false);
   const projekt = data.projekte.find((p) => p.id === projektId);
   const zuDenProjekten = () => navigate({ view: 'controlling', tab: 'projekte' });
@@ -93,14 +86,7 @@ export function ControllingProjekt({
   const nachweis = nachweisId ? data.nachweise.find((n) => n.id === nachweisId && n.projektId === projekt.id) : offener;
   // Alle übrigen Nachweise des Projekts, der jüngste zuerst
   const uebrige = [...nachweiseVon(data, projekt.id)].reverse().filter((x) => x.id !== nachweis?.id);
-  const umfang = {
-    nachweise: data.nachweise.filter((n) => n.projektId === projekt.id).length,
-    leistungen: data.leistungen.filter((l) => l.projektId === projekt.id).length,
-  };
-  // Führt ein anderer Bereich das Projekt oder ist es dort vorgesehen, nähme der Abgleich es gleich wieder auf
-  const geteilt = andereBereiche(register, 'leistungsnachweise', projekt.id);
-  const vorgesehen = vorgeseheneBereiche(register, 'leistungsnachweise', projekt.id);
-  const gesperrt = !!geteilt || !!vorgesehen;
+  const leistungenImProjekt = data.leistungen.filter((l) => l.projektId === projekt.id).length;
   // Leistungen ohne Leistungsnachweis (etwa nach dem Löschen eines Nachweises) – sie kommen in den offenen
   const ohneNachweis = leistungenOhneNachweis(data, projekt.id);
 
@@ -115,26 +101,22 @@ export function ControllingProjekt({
           <Badge ton={STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
           <span className="small muted">{RASTER_LABEL[projekt.raster]}</span>
         </div>
-        <MehrMenue
-          label="Weitere Aktionen zum Projekt"
-          eintraege={[
-            { key: 'einstellen', label: 'Projekt einstellen …', onWaehle: () => setEinstellen(true) },
-            { key: 'bearbeiten', label: 'Projekt bearbeiten …', onWaehle: () => setBearbeiten(true) },
-            {
-              key: 'loeschen',
-              label: gesperrt ? 'Projekt löschen (nur im Controlling unter „Projekte“)' : 'Projekt löschen …',
-              gefahr: !gesperrt,
-              onWaehle: () =>
-                gesperrt
-                  ? toast(
-                      geteilt
-                        ? `Wird auch in ${geteilt} geführt – jedes Projekt gehört in die Leistungsnachweise. Für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`
-                        : `Ist für ${vorgesehen} zur Übernahme vorgesehen – die Übernahme zurücknehmen bzw. für alle Bereiche löschen lässt es sich im Controlling unter „Projekte“.`,
-                    )
-                  : setLoeschen(true),
-            },
-          ]}
-        />
+        {/* Alle Knöpfe rechts in der Kopfzeile, beschriftet wie in den anderen Bereichen: Projekt und gezeigter Nachweis */}
+        <div className="row wrap ln-co-aktionen">
+          <button type="button" className="btn btn-outline" onClick={() => setEinstellen(true)}>
+            <Icon name="einstellungen" size={14} /> Einstellungen
+          </button>
+          {nachweis ? (
+            <>
+              <button type="button" className="btn btn-outline" onClick={() => setVorschau(true)}>
+                <Icon name="suche" size={14} /> Vorschau
+              </button>
+              <button type="button" className="btn btn-danger" onClick={() => setNachweisLoeschen(true)}>
+                <Icon name="loeschen" size={14} /> Nachweis löschen
+              </button>
+            </>
+          ) : null}
+        </div>
       </div>
 
       {ohneNachweis.length > 0 ? (
@@ -182,7 +164,7 @@ export function ControllingProjekt({
                 <button type="button" className="btn btn-primary" onClick={() => navigate({ view: 'controllingProjekt', projektId: projekt.id })}>
                   Zum offenen Leistungsnachweis
                 </button>
-              ) : umfang.leistungen > 0 ? (
+              ) : leistungenImProjekt > 0 ? (
                 <button type="button" className="btn btn-primary" onClick={() => setNeuerNachweis(true)}>
                   <Icon name="plus" size={14} /> Neuer Leistungsnachweis
                 </button>
@@ -195,28 +177,15 @@ export function ControllingProjekt({
       {uebrige.length > 0 ? <FruehereNachweise projekt={projekt} nachweise={uebrige} navigate={navigate} /> : null}
 
       {einstellen ? (
-        <Modal titel="Projekt einstellen" sub={projektTitel(projekt)} wide onClose={() => setEinstellen(false)}>
+        <Modal titel="Einstellungen" sub={projektTitel(projekt)} wide onClose={() => setEinstellen(false)}>
           <ProjektEinstellungen projekt={projekt} />
         </Modal>
       ) : null}
-      {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
       {neuerNachweis ? <NachweisDialog projekt={projekt} onClose={() => setNeuerNachweis(false)} navigate={navigate} /> : null}
 
-      {loeschen && !gesperrt ? (
-        <ConfirmDialog
-          titel="Projekt löschen?"
-          text={`„${projekt.name}“ wird mit ${anzahl(umfang.nachweise, 'Leistungsnachweis', 'Leistungsnachweisen')} und ${anzahl(
-            umfang.leistungen,
-            'Leistung',
-            'Leistungen',
-          )} gelöscht.`}
-          onConfirm={() => {
-            deleteProjekt(projekt.id);
-            toast('Projekt gelöscht.');
-            zuDenProjekten();
-          }}
-          onClose={() => setLoeschen(false)}
-        />
+      {vorschau && nachweis ? <NachweisVorschau projekt={projekt} nachweis={nachweis} onClose={() => setVorschau(false)} /> : null}
+      {nachweisLoeschen && nachweis ? (
+        <NachweisLoeschenDialog nachweis={nachweis} navigate={navigate} onClose={() => setNachweisLoeschen(false)} />
       ) : null}
     </div>
   );
