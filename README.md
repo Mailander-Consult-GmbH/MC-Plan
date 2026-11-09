@@ -18,7 +18,7 @@ Startbildschirm wählt:
   am gemeinsamen Leistungstext und bestätigt je Monat, dass Stunden und Texte vollständig sind;
   daraus entstehen gemeinsame tages-, wochen- oder monatsscharfe Leistungsnachweise – je Projekt
   läuft ein offener weiter, bis das Controlling ihn bis zu einem Monatsende oder bis heute
-  abschließt –, als PDF und Excel ausgegeben im Controlling.
+  abschließt –, als PDF ausgegeben im Controlling.
 * **Controlling** (mit PIN) – Projekte für alle Bereiche anlegen, in Bereiche übernehmen, je
   Bereich oder ganz archivieren und löschen; dazu das Controlling der Leistungsnachweise (eine
   Übersicht je Projekt mit dem letzten abgeschlossenen Leistungsnachweis, den offenen Stunden und
@@ -1204,7 +1204,7 @@ monatsscharf), gekürzt auf den Kalendermonat: Eine Woche über ein Monatsende g
 in jeden Monat für sich (26.–31.10. im Oktober, 1.11. im November); im Leistungsnachweis über beide
 Monate bleibt sie eine Zeile, deren Text sich aus beiden zusammensetzt. Geteilt wird zudem an den
 Grenzen der Leistungsnachweise (an jedem Beginn und am Tag nach jedem Ende) – jeder Zeitraum liegt
-in höchstens einem Nachweis. Ändern sich diese Grenzen (etwa durch *Zeitraum ändern*, Löschen,
+in höchstens einem Nachweis. Ändern sich diese Grenzen (etwa durch Löschen eines Nachweises,
 Zusammenfassen, ein Abschließen bis heute mitten in einem Zeitraum oder einen Nachweis, der
 mit einer späteren Leistung bis zum Monatsende wächst), ziehen die Texte mit: Der Text eines weggefallenen Teils geht im
 Text des ganzen Zeitraums auf – waren alle Teile so bestätigt, gilt die Bestätigung für den ganzen
@@ -1306,10 +1306,10 @@ bisherige Ende, wenn es vor heute liegt und kein Monatsende ist (`abschlussEnden
 ist das letzte Monatsende, meist das Ende des Vormonats (`abschlussVorschlag`). Der Nachweis endet
 dort, und **spätere Leistungen laufen im nächsten weiter** – sie kommen in einen neuen offenen
 Nachweis. Wird am Monatsende keiner abgeschlossen, läuft der offene einfach weiter; eine
-Fälligkeit oder eine Entscheidung „weiterlaufen lassen“ gibt es nicht. Hat das Controlling das Ende
-mit **Zeitraum ändern** festgelegt, wächst der Nachweis nicht mehr mit, spätere Leistungen kommen
-in einen neuen; beim Abschließen ist dieses Ende wählbar, ebenso jedes frühere Monatsende.
-Abgeschlossene Nachweise bleiben stets unverändert.
+Fälligkeit oder eine Entscheidung „weiterlaufen lassen“ gibt es nicht. Einen Dialog *Zeitraum
+ändern* gibt es nicht (mehr); ein früher von Hand festgelegtes Ende älterer Stände bleibt: Der
+Nachweis wächst dann nicht mehr mit, spätere Leistungen kommen in einen neuen, und beim Abschließen
+reicht die Wahl höchstens bis zu diesem Ende. Abgeschlossene Nachweise bleiben stets unverändert.
 
 Je Tag, Woche oder Monat mit Leistungen eine Zeile mit Datum, Bearbeitern,
 Leistungstext und Stunden. **Den Leistungstext einer Zeile liefern die gemeinsamen Leistungstexte der
@@ -1320,8 +1320,7 @@ Nicht übernommen wird ein gemeinsamer Text in nachgereichte Zeilen, in Zeiträu
 abgeschlossener Nachweis sperrt, und in Zeilen, die nur einen Teil seines Zeitraums abdecken (Nachweis
 feiner gegliedert als das Projekt, etwa Wochenzeilen bei Monatstexten). So lassen sich auch Leistungen
 mehrerer Monate (etwa Oktober bis Dezember) in einem Nachweis sammeln – der offene wächst mit, bis er
-abgeschlossen wird; dazu gibt es *Neuer Leistungsnachweis* bzw. *Zeitraum ändern* –, und jede Zeile
-übernimmt die Texte ihrer Zeiträume.
+abgeschlossen wird –, und jede Zeile übernimmt die Texte ihrer Zeiträume.
 
 ### Controlling der Leistungsnachweise
 Im Controlling-Bereich (PIN) gibt es dafür unter *Bereiche* zwei Menüpunkte:
@@ -1345,25 +1344,27 @@ die Übersicht der Projekte und die Seite eines Projekts.
   Klick auf die Zeile öffnet die Seite des Projekts. Oben rechts zählt die Karte, wie viele Projekte
   bereit sind und wie viele auf Bestätigungen warten. Mit Suche; archivierte Projekte stehen in
   ihrer Gruppe am Ende. Eine Fälligkeit und eine Auswahl des Rasters gibt es in der Übersicht
-  nicht – das Raster stellt *Projekt einstellen* ein (siehe unten). In der Leiste darüber stehen
+  nicht – das Raster stellen die *Einstellungen* des Projekts ein (siehe unten). In der Leiste darüber stehen
   **Excel-Import (alle Mitarbeiter)** und **Neues Projekt** – es legt ein Projekt nur hier an (für
   alle Bereiche gibt es die Projekte des Controllings) und öffnet danach dessen Seite. Bis 640 px
   Breite steht in jeder Zeile das Projekt, darunter je zwei Angaben nebeneinander, dann der Knopf.
 * **Seite eines Projekts** (`#/controlling/leistungsnachweise/projekt/<id>`, mit einem gewählten
   Nachweis `…/projekt/<id>/nachweis/<id>`) – oben **Alle Projekte**, Projektnummer und -name,
-  Status und Raster und rechts die Knöpfe zum Projekt – beschriftet und mit Symbol wie in den
-  anderen Bereichen: **Einstellen** (*Projekt einstellen*: Leistungsbereich, Bezeichnung im
-  Nachweis, Raster, Abschnitte, Logos im Druckkopf), **Bearbeiten** (*Projekt bearbeiten*:
-  Projektnummer – eindeutig, daran erkennt der Excel-Import das Projekt –, Status, Name,
-  Bezeichnung im Nachweis, Leistungsbereich, Raster und Beschreibung) und rot **Löschen**
-  (gesperrt, solange ein anderer Bereich das Projekt führt oder es dort zur Übernahme vorgesehen
-  ist – dann nennt eine Kurzmeldung den Grund; für alle Bereiche löscht das Controlling unter
-  *Projekte*). Hat ein Projekt mindestens zwei Abschnitte (etwa Streckenabschnitte), weist der
-  Nachweis die Stunden je Abschnitt in eigenen Spalten aus. Das **Raster** (in *Projekt
-  bearbeiten* und *Projekt einstellen*) gliedert auch die Leistungstexte der Mitarbeiter;
-  ein Wechsel nennt die gemeinsamen Texte noch nicht abgerechneter Zeiträume, die im neuen Raster
-  nicht mehr gelten, und die Bestätigungen, die damit erlöschen – die Texte bleiben gespeichert und
-  gelten wieder, wenn das Raster zurückgestellt wird. Liegen Leistungen in keinem
+  Status und Raster und rechts drei Knöpfe – beschriftet und mit Symbol wie in den anderen
+  Bereichen: **Einstellungen** und, zum gezeigten Leistungsnachweis, **Vorschau** und rot
+  **Nachweis löschen** (siehe unten). **Einstellungen** fasst alle Angaben des Projekts an einer
+  Stelle zusammen: die Karte *Projekt* mit Projektnummer (eindeutig, daran erkennt der Excel-Import
+  das Projekt), Status, Projektname, Bezeichnung im Nachweis, Leistungsbereich, Raster und
+  Beschreibung (**Verwerfen**/**Speichern**), darunter die Abschnitte und die Logos im Druckkopf.
+  Ein eigenes *Projekt bearbeiten* gibt es nicht (mehr), der Projektdialog dient nur *Neues
+  Projekt*. Ein Projekt löscht man hier nicht – das Controlling löscht Projekte unter *Projekte*
+  (für alle Bereiche). Hat ein Projekt mindestens zwei Abschnitte (etwa Streckenabschnitte), weist
+  der Nachweis die Stunden je Abschnitt in eigenen Spalten aus. Das **Raster** gilt für den offenen
+  und alle neuen Leistungsnachweise – abgeschlossene behalten ihres – und gliedert auch die
+  Leistungstexte der Mitarbeiter; ein Wechsel nennt die gemeinsamen Texte noch nicht abgerechneter
+  Zeiträume, die im neuen Raster nicht mehr gelten, und die Bestätigungen, die damit erlöschen, dazu
+  was im offenen Leistungsnachweis von Hand im alten Raster steht (bearbeitete Texte, Aufschläge) –
+  all das bleibt gespeichert und gilt wieder, wenn das Raster zurückgestellt wird. Liegen Leistungen in keinem
   Leistungsnachweis (etwa nach dem Löschen eines Nachweises), nennt ein Hinweis ihre Zahl und
   Stunden mit **Einem Leistungsnachweis zuordnen** (der offene wächst mit bzw. ein neuer entsteht).
   Darunter steht der offene Leistungsnachweis – der früheste offene – in drei Schritten (siehe
@@ -1376,17 +1377,16 @@ die Übersicht der Projekte und die Seite eines Projekts.
   (*Abgeschlossen* mit Datum und Uhrzeit bzw. *Offen*), abgerechneten Stunden, **Ansehen** und –
   abgeschlossen – **PDF** (der Druckdialog mit dem festgeschriebenen Stand); abgeschlossene sind nur
   zu lesen.
-* **Leistungsnachweis** (auf der Seite des Projekts) – eine Leiste mit **Offener
+* **Leistungsnachweis** (auf der Seite des Projekts) – ein Kopf mit **Offener
   Leistungsnachweis** bzw. der Überschrift des abgeschlossenen, seinem Zeitraum („seit … · läuft bis
-  zum Abschließen“ bzw. Beginn und Ende) und Raster, dem Kennzeichen *geändert* (Leistungen haben
-  sich seit dem Abschluss geändert), bei abgeschlossenen *Abgeschlossen* mit Datum und Uhrzeit, und
-  den Aktionen als beschriftete Knöpfe mit Symbol: **Vorschau**, **Drucken / PDF** und **Excel**
-  (abgeschlossen der festgeschriebene Stand, *Drucken / PDF* dann hervorgehoben; offen der Stand des
-  offenen Nachweises), offen **Zeitraum ändern** und – nur mit Aufschlägen – **Aufschläge
-  zurücksetzen**, abgeschlossen **Wieder öffnen**, **Neuer Leistungsnachweis** nur, wo es etwas
-  zusammenzufassen gibt (mehrere offene Nachweise oder Leistungen ohne Nachweis), und rot
-  **Nachweis löschen**. Eine Auswahl unter den Nachweisen
-  gibt es dort nicht – frühere öffnet die Liste unten. Ein offener Nachweis steht in **drei
+  zum Abschließen“ bzw. Beginn und Ende) und Raster, bei abgeschlossenen *Abgeschlossen am …* mit
+  Datum und Uhrzeit und dem Link **Wieder öffnen …**, dazu das Kennzeichen *geändert* (Leistungen
+  haben sich seit dem Abschluss geändert). Knöpfe stehen dort nicht: **Vorschau** und **Nachweis
+  löschen** stehen oben in der Reihe des Projekts. **Vorschau** zeigt das Druckblatt in einem
+  Fenster mit **Schließen** und **Drucken / PDF** (abgeschlossen der festgeschriebene Stand, offen
+  der Stand des offenen Nachweises). Eine Excel-Fassung des Leistungsnachweises, *Zeitraum ändern*
+  und *Aufschläge zurücksetzen* gibt es nicht (mehr) – Aufschläge leert man je Zeile. Eine Auswahl
+  unter den Nachweisen gibt es dort nicht – frühere öffnet die Liste unten. Ein offener Nachweis steht in **drei
   Schritten**, jeder mit seiner Nummer (grün mit Haken, wenn erledigt):
   1. **Haben alle eingetragen und bestätigt?** – nur die Bestätigungen: je Person mit Stunden im
      Nachweis je Monat seines Zeitraums ein Kennzeichen – *bestätigt* mit dem Tag, *offen*,
@@ -1431,17 +1431,18 @@ die Übersicht der Projekte und die Seite eines Projekts.
   Tabelle eine Warnung („In … kamen nach der Bearbeitung des Leistungstexts Leistungen hinzu.“, „In
   … hat sich der Text der Mitarbeiter seit der Bearbeitung des Leistungstexts geändert.“), und
   Schritt 3 warnt ebenso; sind die Zeilen feiner gegliedert als das Raster des
-  Projekts, erklärt ein Hinweis, warum dort die Texte der Leistungen stehen. Druck und Excel zeigen
-  die abgerechneten Stunden; der Aufschlag selbst erscheint nicht. Unter der Überschrift des
-  Drucks stehen nur Überschrift bzw. Zeitraum und Leistungsbereich – kein Raster und kein Stand
-  (`nachweisMeta`); der Excel-Kopf nennt beides ebenfalls nicht. Den Stand eines offenen Nachweises
-  drucken bzw. exportieren dieselben Knöpfe **Drucken / PDF** und **Excel**.
+  Projekts, erklärt ein Hinweis, warum dort die Texte der Leistungen stehen. Der Druck zeigt die
+  abgerechneten Stunden; der Aufschlag selbst erscheint nicht. Unter der Überschrift des Drucks
+  stehen nur Überschrift bzw. Zeitraum und Leistungsbereich – kein Raster und kein Stand
+  (`nachweisMeta`). Den Stand eines offenen Nachweises druckt **Drucken / PDF** in der
+  **Vorschau**.
   **Nachweis löschen** nimmt auf Wunsch die eigenen Leistungen des Nachweises mit (einschließlich der
   nachgereichten); danach zeigt die Seite den offenen Nachweis des Projekts. Wurde ein Nachweis in
   einem anderen Raster abgeschlossen, als das Projekt heute hat, nennt *Wieder öffnen* die
   gemeinsamen Texte, die danach nicht mehr gelten.
-* **Neuer Leistungsnachweis** (in der Leiste des Leistungsnachweises, wo es etwas zusammenzufassen
-  gibt, oder auf der Seite eines Projekts ohne Nachweis) fragt **keinen Zeitraum** ab, nur Raster
+* **Neuer Leistungsnachweis** (auf der Seite eines Projekts ohne offenen Nachweis, wenn es
+  Leistungen gibt – neben einem Nachweis gibt es den Knopf nicht mehr) fragt **keinen Zeitraum**
+  ab, nur Raster
   und optional die Überschrift: Er umfasst automatisch alle nicht abgerechneten Leistungen des
   Projekts (nach dem letzten abgeschlossenen Nachweis); offene Nachweise gehen darin auf, ihre
   Leistungstexte, Aufschläge und Bemerkungen bleiben erhalten – Texte derselben Zeile aus mehreren
@@ -1453,18 +1454,14 @@ die Übersicht der Projekte und die Seite eines Projekts.
   hinzu; bis wann er reicht, legt das Abschließen fest. So entsteht auch ein Nachweis über
   mehrere Monate, etwa Oktober bis Dezember.
   Liegt schon alles in einem offenen Nachweis, bietet der Dialog **Öffnen** an; danach zeigt die
-  Seite des Projekts den Nachweis. Ändern sich mit dem neuen Nachweis – wie mit *Zeitraum ändern*
-  und *Nachweis löschen* – Grenzen der Zeiträume, sagen Dialog und Rückfragen, was das für
+  Seite des Projekts den Nachweis. Ändern sich mit dem neuen Nachweis – wie mit *Nachweis
+  löschen* – Grenzen der Zeiträume, sagen Dialog und Rückfragen, was das für
   die gemeinsamen Leistungstexte bedeutet: wie viele Texte von Teilen eines Zeitraums im Text des
   neuen Zeitraums aufgehen, ab welchem Tag ein neuer Beginn bzw. ein neues Ende mitten in einem
   Zeitraum einen eigenen Text verlangt und wessen Bestätigungen damit erlöschen (mit Namen und
   Monat, dann als Warnung); *Wieder öffnen* und der Schritt *Abschließen und PDF* nennen die
-  erlöschenden Bestätigungen ebenso. Für Korrekturen gibt es am offenen Nachweis weiter **Zeitraum
-  ändern**: Ein geändertes Ende steht danach fest – der Nachweis wächst nicht mehr mit, und beim
-  Abschließen ist dieses Ende wählbar. Der Haken **Ende festlegen** legt das Ende auch ohne
-  Änderung fest (er ist bei geändertem Ende vorgewählt, lässt sich aber abwählen), bei festgelegtem
-  Ende hebt **Wieder bis zum Abschluss laufen lassen** es auf; beide Haken gibt es an jedem offenen
-  Nachweis.
+  erlöschenden Bestätigungen ebenso. Einen Dialog *Zeitraum ändern* gibt es nicht (mehr): Bis wann
+  ein Nachweis reicht, legt das Abschließen fest.
   **Nicht erfasste Leistungen:** Abgerechnet ist, was im festgeschriebenen Stand eines
   abgeschlossenen Nachweises steht. Leistungen aus schon abgerechneten Zeiträumen, die dort fehlen
   (etwa nach dem Abschluss nachgetragen), meldet der Dialog – und der laufende Nachweis auf der
@@ -1647,10 +1644,8 @@ ihre Projekte – ihre Mitarbeiter sind keine Projektbeteiligten.
   „Projekte aus anderen Bereichen“). Die Löschdialoge nennen nur, was in diesem Bereich entfällt –
   in der Projektsteuerung „Die Protokolle lassen sich nicht wiederherstellen.“, in der
   Baubetriebsplanung „Die Anmeldungen lassen sich nicht wiederherstellen.“. Im Bereich
-  Leistungsnachweise gibt es kein Löschen im Projekt; im Controlling der Leistungsnachweise lässt
-  sich nur ein Projekt löschen, das kein anderer Bereich führt oder zur Übernahme vorgesehen hat –
-  es entfällt dann auch im Register. Projekte mehrerer Bereiche löscht das Controlling unter
-  **Projekte**.
+  Leistungsnachweise und im Controlling der Leistungsnachweise gibt es kein Löschen im Projekt;
+  Projekte löscht das Controlling unter **Projekte** (für alle Bereiche).
 * Wer ein Projekt mit einer **Projektnummer** anlegt, die es in einem anderen Bereich schon gibt,
   erhält einen Hinweis: Beim Anlegen wird es mit dem vorhandenen verknüpft; Bezeichnung und
   Beteiligte kommen von dort. Ebenso verknüpft der erste Abgleich nach dem Umstieg Projekte gleicher
@@ -1876,7 +1871,7 @@ src/
         import.ts    Excel-Import der Zeiterfassung (Lesen, Planen, Anwenden)
         auswertung.ts  Stunden je Mitarbeiter, Monat und Projekt
         druck.ts     Druckfassung (PDF)
-        export.ts    Excel: Nachweis, Auswertung, Leistungen, Importvorlage
+        export.ts    Excel: Auswertung, Leistungen, Importvorlage (den Nachweis gibt es nur als PDF)
         register.ts  Sicht für das Projektregister und Übernahme von dort
         seed.ts      Standardlogos und Demodaten
       store/         storage.ts (Laden, Migration, Sicherung) und store.tsx (alle Schreibzugriffe, Rechte)
@@ -1888,14 +1883,15 @@ src/
                      controlling/ ohne Reiter: ProjektListe.tsx (Leistungsnachweise je Projekt:
                      letzter abgeschlossener, offene Stunden und Bestätigung, gruppiert nach den
                      Bestätigungen bis zum letzten Monatsende), Projekt.tsx (Seite je Projekt mit
-                     den Knöpfen Einstellen, Bearbeiten, Löschen und den früheren
-                     Leistungsnachweisen), Abrechnung.tsx (der Leistungsnachweis mit seinen
-                     Knöpfen, offen in drei Schritten: Bestätigungen aus BestaetigungsStand.tsx;
+                     den Knöpfen Einstellungen, Vorschau, Nachweis löschen und den früheren
+                     Leistungsnachweisen), Abrechnung.tsx (der Leistungsnachweis mit seinem
+                     Kopf, offen in drei Schritten: Bestätigungen aus BestaetigungsStand.tsx;
                      Prüfen – eine Tabelle mit Leistungstext aus Leistungstexte.tsx, Aufschlag
-                     je Zeile, Bemerkung; Abschließen und PDF), hilfen.tsx (Eingabe von Stunden
-                     und Aufschlägen, Auswahl der Filter, SchrittKopf),
-                     ProjektEinstellungen.tsx, Auswertung
-      components/    Anmeldehinweise (Anmeldung.tsx), Dialoge (Leistung, Nachweis, Projekt),
+                     je Zeile, Bemerkung; Abschließen und PDF; dazu Vorschau und Löschen des
+                     Nachweises), hilfen.tsx (Eingabe von Stunden und Aufschlägen, Auswahl der
+                     Filter, SchrittKopf), ProjektEinstellungen.tsx (Einstellungen: Projekt,
+                     Abschnitte, Logos), Auswertung
+      components/    Anmeldehinweise (Anmeldung.tsx), Dialoge (Leistung, Nachweis, Neues Projekt),
                      Kalender zum Erfassen (mit Tagesliste), Excel-Import, Hinweis zum
                      Rasterwechsel, Logos, Sicherung, Druckblatt, SpeicherHinweis
     controlling/ Bereich „Controlling“ (mit PIN, ohne eigenen Bestand)
