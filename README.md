@@ -823,13 +823,15 @@ Was in die Vorschau fällt (Vorgabe 180 Tage), steht unter „Anmeldebedarf aus 
 Je Anmeldung eine Zeile im Projekt: Anmelde-ID (in Workflows mit ganzem Fahrplanjahr Begriff bzw.
 tVE-Nr, weil es in SKM und MKM noch keine Anmeldungen gibt; im **SKM** führt der
 **Vorhabenname**, die tVE-Nr steht darunter – bei älteren SKM-Einträgen übernimmt
-„als Vorhabenname übernehmen“ im Dialog den bisherigen Begriff), **Zuständiger BBK**, **Anmelder**
-(wer die Anmeldung eingereicht hat – die Angabe soll aus dem Import der Anmeldungen kommen; bis es
-ihn gibt, wird sie von Hand gepflegt), Maßnahmenart (SKM und MKM für die
+„als Vorhabenname übernehmen“ im Dialog den bisherigen Begriff), **Titel** (Ort und Tätigkeit in
+Stichworten, in BBPNeo „Titel“), **Mitwirkender BBK** (auch mehrere Namen, durch Komma getrennt),
+**Anmelder** (wer die Anmeldung eingereicht hat), **Projektnummer (BBPNeo)** (DB-G-Nummer laut
+Anmeldung), in Workflows mit Ril_KM die **KM-Runde** (N-2 = 2. KP, N-1 = 3. KP; leer – Ril_KM wählt
+selbst), Maßnahmenart (SKM und MKM für die
 Sammeleinträge dieser Phasen, sonst A, B(0), B(S), B, C, Container – dieselbe Art kann in mehreren
 Phasen vorkommen, getrennt wird nach Workflow), Workflow und Status, Sperrzeitraum (ganzes
-Fahrplanjahr oder tagesscharf – je nach Workflow), Terminfrist, Bf/Strecke, Gewerk/Tätigkeit,
-Bemerkungen. ÄAbst-Nr und AnnexVII-Kennzeichen sind nur in Status der Art „Änderungsabstimmung“
+Fahrplanjahr oder tagesscharf – je nach Workflow), Terminfrist, Bemerkungen. Bf/Strecke und
+Gewerk/Tätigkeit gibt es nicht mehr (Fassung 10; sie stehen seitdem im Titel). ÄAbst-Nr und AnnexVII-Kennzeichen sind nur in Status der Art „Änderungsabstimmung“
 aktiv; endet sie, werden beide im Statusverlauf festgehalten und in der Anmeldung geleert.
 
 Im Projekt stehen die Anmeldungen **je Workflow in einer eigenen Tabelle** (SKM, MKM, KM (n-2 &
@@ -842,9 +844,9 @@ möglichen Nachfolger, wählt der Haken ihn direkt; bei mehreren öffnet er ein 
 folgt?“ (wie bei parallelen Schritten im Planlauf; zu Menüs siehe „Als App installieren“). In
 den Anmeldungstabellen bleibt der Haken rechts stehen, wenn eine Tabelle quer scrollt. Bestätigt wird der Wechsel im Dialog des
 Statuswechsels. „Zuständig“ nennt die Rolle des aktuellen Status samt Namen:
-BBK mit dem zuständigen BBK der Anmeldung, MIC mit dem Hauptbearbeiter, Projektleitung DB mit dem
-Projektleiter des Projekts. Die Maßnahmenart steht in der zweiten Zeile, wo der Workflow mehrere
-führt (KKM). Jede Anmeldung belegt höchstens zwei Textzeilen; Längeres
+BBK mit den mitwirkenden BBK der Anmeldung, MIC mit dem Hauptbearbeiter, Projektleitung DB mit dem
+Projektleiter des Projekts. In der zweiten Zeile stehen die Maßnahmenart (wo der Workflow mehrere
+führt, KKM), die KM-Runde und der Titel. Jede Anmeldung belegt höchstens zwei Textzeilen; Längeres
 wird gekürzt und steht vollständig im Tooltip. Der Status steht hier ohne den Workflow davor, weil
 die Tabelle ihn nennt. Workflows ohne Anmeldung zeigen nur ihre Kopfzeile.
 
@@ -856,6 +858,39 @@ Statusverlauf. Oben rechts stehen **Bearbeiten**, **Duplizieren** und **Löschen
 direkt hinter dem Original eine Kopie mit aktuellem Stand und Statusverlauf an (Vermerk „Dupliziert
 aus …“, die führende Bezeichnung erhält „(Kopie)“, ohne Nummer wird „(Kopie)“ die Nummer) und
 öffnet sie.
+
+### Import aus BBPNeo
+**Import aus BBPNeo** auf der Seite *Projekte* legt Anmeldungen aus dem Excel-Export von BBPNeo an
+bzw. aktualisiert sie – **nur KM und KKM**. Die Spalten erkennt der Import an ihren Überschriften,
+weil die Exporte von BBPNeo sie verschieden anordnen; im Export „Anmeldung (OS)“ sind es A
+`Anmeldung::ID` (Anmelde-ID), F `Anmeldung::Anmelder`, G `Anmeldung::Fachstatus-ID` (Status im
+Workflow), L `Anmeldung::Angemeldete Maßnahmenkategorie`, P/Q `Anmeldung::Bauzeitraum: Beginn`/`Ende`,
+AC `Anmeldung::Mitwirkende BBK`, AG `Anmeldung::Projektnummern`, AH `Anmeldung::Prozessphase` und AJ
+`Anmeldung::Titel`. Enthält die Datei mehrere solche Blätter, wählt man eines.
+
+* **Je Anmelde-ID eine Anmeldung:** Der Export führt eine Anmeldung in mehreren Zeilen, die sich
+  meist nur im Bauzeitraum unterscheiden. KaPlan nimmt den **frühesten Beginn** und das **späteste
+  Ende** (ohne Uhrzeit); „Anmeldung-131437“ und „131437“ gelten als dieselbe ID.
+* **Übersprungen** werden der Status **„Vorlage“**, andere Prozessphasen als „2. KP“ (KM N-2),
+  „3. KP“ (KM N-1) und „KKM“ sowie Zeilen ohne Anmelde-ID.
+* **Status zuordnen:** Je Phase (KM, KKM) und Status aus BBPNeo wählt man den Status in KaPlan –
+  vorgegeben sind „Anmeldung in Bearbeitung“ → Angemeldet (fristgerecht), „Anmeldung bearbeitet“ →
+  Genehmigt, „Anmeldung abgewiesen“ → Abgelehnt, jeweils im Standard-Workflow KM bzw. KKM. Andere
+  Status stehen auf „– nicht importieren –“, bis man sie zuordnet. Die Zuordnung merkt sich KaPlan
+  für den nächsten Import.
+* **Projekte:** Neue Anmeldungen kommen in das Projekt, dessen **DB-G-Nummer** zur Projektnummer
+  aus BBPNeo passt (z. B. G.016010101). Ohne Treffer schlägt der Dialog ein neues Projekt mit dieser
+  DB-G-Nummer vor (Bezeichnung aus dem Anfang des Titels, änderbar); Anmeldungen ohne Projektnummer
+  werden erst importiert, wenn man ihnen ein Projekt wählt.
+* **Vorhandene Anmeldungen** derselben Anmelde-ID bleiben in ihrem Projekt und übernehmen alle
+  Angaben aus BBPNeo (Maßnahmenart, Sperrzeitraum, Titel, Mitwirkender BBK, Anmelder,
+  Projektnummer, KM-Runde); leere Angaben der Datei überschreiben nichts. Ein anderer Status wird
+  als Statuswechsel mit dem Tag des Imports und dem Vermerk „Import BBPNeo (Status in BBPNeo: …)“
+  gesetzt – auch wenn er kein Nachfolger des bisherigen ist – und lässt sich wie jeder Wechsel
+  zurücknehmen. Neue Anmeldungen beginnen im zugeordneten Status („Aus BBPNeo importiert“).
+* Die **Vorschau** zählt, was neu angelegt, aktualisiert (davon mit neuem Status), unverändert
+  gelassen und übersprungen wird, und nennt je Anmeldung Phase, Sperrzeitraum, Status in BBPNeo und
+  KaPlan sowie das Ergebnis.
 
 ### Workflows
 Wie im Planlaufmanagement sind die Workflows **anpassbar**. Mitgeliefert wird je Phase ein
@@ -890,12 +925,12 @@ oder „KKM · Entwurf“.
 * **Neu angelegt** wird immer im ersten Status eines Workflows. Ein Auswahlfeld, nach Phase
   gegliedert, legt Phase und Maßnahmenart zugleich fest (z. B. „KKM · B(S)“); vorbelegt ist
   „KKM · A“.
-* **Übernahme in eine neue Phase:** Maßnahmenart, Anmelde-ID und Sperrzeitraum werden neu
+* **Übernahme in eine neue Phase:** Maßnahmenart, Anmelde-ID, Titel und Sperrzeitraum werden neu
   erfasst. Der Eintrag lässt sich dabei auf mehrere Anmeldungen **aufteilen** – die weiteren
-  verweisen auf ihn als Herkunft.
+  übernehmen die übrigen Angaben und verweisen auf ihn als Herkunft.
 * **Statusverlauf:** Jeder Wechsel mit Datum (frei wählbar), Bearbeitung und Bemerkung; der Text
   des Status wird zum Zeitpunkt des Wechsels festgehalten. Der letzte Wechsel lässt sich
-  **zurücknehmen** (der vorherige Stand samt Art, ID und Sperrzeitraum kehrt zurück), solange es
+  **zurücknehmen** (der vorherige Stand samt Art, ID, Titel und Sperrzeitraum kehrt zurück), solange es
   den früheren Status noch gibt.
 
 ### Terminfristen und Nachhaken
@@ -907,9 +942,10 @@ einstellbar) oder **keine**; im Workflow-Editor ist die Auswahl nach Phase gegli
 Richtlinienfristen werden unter **Einstellungen › Fristen** gepflegt, nach Phase gegliedert – je Frist als
 Stichtag TT.MM. im Jahr N − k des Fahrplanjahres oder als Wochen vor Sperrbeginn. **Die
 vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis sie geändert oder als
-„Geprüft“ bestätigt werden. **Ril_KM** nimmt die N-2-Frist, solange sie am Tag des
-Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt,
-sonst die N-1-Frist; der Rechenweg nennt den Grund. **Ril_KKM** richtet sich nach der Maßnahmenart
+„Geprüft“ bestätigt werden. **Ril_KM** nimmt die Frist der **KM-Runde**, wenn die Anmeldung sie
+kennt (Prozessphase aus BBPNeo oder im Dialog gewählt: 2. KP = N-2, 3. KP = N-1); sonst die
+N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor dem ersten
+Anmeldetermin des Projekts liegt, danach die N-1-Frist; der Rechenweg nennt den Grund. **Ril_KKM** richtet sich nach der Maßnahmenart
 (Einträge der Art SKM oder MKM rechnen dabei wie A); ihr Stichtag ist ein Mittwoch – die Frist
 fällt auf den Mittwoch an oder vor „Sperrbeginn minus Vorlauf“.
 Das Fahrplanjahr N reicht vom Sonntag nach dem zweiten Samstag im Dezember N−1 bis zum zweiten
@@ -923,7 +959,7 @@ Termin fest, **Termin festlegen …** setzt die Frist im aktuellen Status von Ha
 **Übersicht** (Kennzahlen, anstehende Terminfristen samt ausstehender Erstanmeldungen,
 Anmeldebedarf, Projekte mit ihren Anmeldungen je Workflow), **Termine & Nachhaken** (alle Fristen
 nach Projekten, je Projekt zuerst eine ausstehende Erstanmeldung, Filter
-Überfällig/Fällig/Im Plan/Zum Nachhaken), **Projekte** und – wie im Planlaufmanagement unter der
+Überfällig/Fällig/Im Plan/Zum Nachhaken), **Projekte** (mit **Import aus BBPNeo**) und – wie im Planlaufmanagement unter der
 aufklappbaren Gruppe **Einstellungen** – **Workflows** und **Fristen** (Fristen laut Richtlinie,
 Ampel und Nachhaken; früher die Seite „Einstellungen“, deren Adresse weiter gilt).
 **Excel** im Projekt lädt Anmeldungen und Projekt als Arbeitsmappe herunter.
@@ -942,7 +978,9 @@ Projekts werden seine betroffenen Fahrplanjahre. Die Status der Standard-Workflo
 vorgegebene Zuständigkeit (Fassung 8). Fassung 9 ergänzt an den Anmeldungen den Anmelder und den
 Tag der letzten Änderung der Merkmale (beide leer; gesetzt wird er nur bei einer tatsächlichen
 Änderung – „Speichern“ ohne Änderung schließt den Dialog nur, ohne „Anmeldung gespeichert.“, und
-lässt den Sachstand stehen). Name unter „Angemeldet als“ und
+lässt den Sachstand stehen). Fassung 10 ersetzt Bf/Strecke und Gewerk/Tätigkeit durch den Titel
+(beim Umstellen „Bf/Strecke – Gewerk“), ergänzt Projektnummer (BBPNeo) und KM-Runde (leer) und die
+Statuszuordnung des BBPNeo-Imports (Vorgabe). Name unter „Angemeldet als“ und
 Farbmodus gelten in allen Bereichen; der Name steht im Statusverlauf und ist Hauptbearbeiter neuer
 Projekte.
 
@@ -1815,7 +1853,8 @@ src/
         workflow.ts  Standard-Workflows je Phase, Nachschlagen von Status und Nachfolgern
         workflowPflege.ts  Workflows speichern, duplizieren, löschen – mit Prüfung belegter Status
         fristen.ts   Fahrplanjahr, Terminfrist je Status, Ampel, Anmeldebedarf
-        ablauf.ts    Statuswechsel, Übernahme mit Aufteilung, Rücknahme, Sachstand
+        ablauf.ts    Statuswechsel, Übernahme mit Aufteilung, Status aus dem Import, Rücknahme, Sachstand
+        bbpImport.ts Import aus BBPNeo: Lesen (je Anmelde-ID), Vorschau, Anwenden
         export.ts    Excel-Ausgabe des Monitors
         seed.ts      Platzhalter der Richtlinienfristen und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
@@ -1824,7 +1863,7 @@ src/
       lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
       pages/         Übersicht, Termine, Projekte, Projekt, Anmeldung, Workflows (mit Editor), Fristen
       components/    Status- und Fristanzeigen, „Status ändern“ als Haken mit Auswahl (AufklappMenue),
-                     Dialoge (Anmeldung, Statuswechsel, Nachhaken), Sicherung, Hinweisleisten
+                     Dialoge (Anmeldung, Statuswechsel, Nachhaken, Import aus BBPNeo), Sicherung, Hinweisleisten
                      (Ladefehler, neuere Fassung, Speicher voll); baubetrieb.css (Präfix bb-)
     projektsteuerung/  Bereich „Projektsteuerung“ (erster Entwurf)
       index.tsx  Einstiegspunkt samt Datenbestand und Stylesheet des Bereichs
