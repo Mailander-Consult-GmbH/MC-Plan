@@ -10,8 +10,9 @@
  * sich auf alle gleichen Schritte übertragen. Ein Ist vor dem Eingang ist nur
  * nach ausdrücklicher Bestätigung möglich. Die Vorschau rechnet den Abschluss
  * auf dem aktuellen Stand durch („führt zurück zu …“, „schließt Planlauf ab“);
- * danach meldet der Dialog das Ergebnis mit Zahlen und bietet für die neu
- * anstehenden Schritte den Dialog „E-Mail senden“ an.
+ * danach meldet der Dialog das Ergebnis mit Zahlen und bietet den Dialog
+ * „E-Mail senden“ an, wenn die E-Mail-Regeln der Workflows dafür E-Mails
+ * vorsehen (domain/mailRegeln.ts).
  */
 import { useMemo, useState } from 'react';
 import { formatDate, today, type ISODate } from '../../../shared/dates';
@@ -22,7 +23,8 @@ import { NACHWEIS_LABEL, type ID, type PlanDocument, type PlanRun, type RunStep 
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Segmented, Select, TextInput } from '../../../shared/ui';
-import { NeuZustaendig, type NeuZustaendigEintrag } from './NeuZustaendig';
+import { mailVorschlaege, type MailEreignis } from '../domain/mailRegeln';
+import { NeuZustaendig } from './NeuZustaendig';
 import './auswahl.css';
 
 type Art = 'erledigt' | 'uebersprungen';
@@ -43,8 +45,8 @@ interface Zahlen {
   abgeschlossen: number;
   ausgelassen: number;
   neuAnstehend: number;
-  /** Neu anstehende Schritte je Lauf – für den Dialog „E-Mail senden“. */
-  neu: NeuZustaendigEintrag[];
+  /** Die Abschlüsse samt neu anstehenden Schritten – für den Dialog „E-Mail senden“. */
+  ereignisse: MailEreignis[];
   art: Art;
 }
 
@@ -194,8 +196,8 @@ export function SammelErledigen({
   const ausfuehren = () => {
     if (sperre) return;
     const ergebnisse = schritteAbschliessen(eintraege);
-    const zahlen: Zahlen = { erledigt: 0, ruecksprung: 0, abgeschlossen: 0, ausgelassen: 0, neuAnstehend: 0, neu: [], art };
-    for (const { runId, ergebnis: e } of ergebnisse) {
+    const zahlen: Zahlen = { erledigt: 0, ruecksprung: 0, abgeschlossen: 0, ausgelassen: 0, neuAnstehend: 0, ereignisse: [], art };
+    for (const { runId, stepId, ergebnis: e } of ergebnisse) {
       if (!e || e.art !== 'aenderung') {
         zahlen.ausgelassen += 1;
         continue;
@@ -204,12 +206,13 @@ export function SammelErledigen({
       if (e.ruecksprung) zahlen.ruecksprung += 1;
       if (e.abgeschlossen) zahlen.abgeschlossen += 1;
       zahlen.neuAnstehend += e.naechste.length;
-      if (e.naechste.length > 0) {
-        const eintrag = zahlen.neu.find((n) => n.runId === runId);
-        const ids = e.naechste.map((s) => s.id);
-        if (eintrag) eintrag.stepIds = [...new Set([...eintrag.stepIds, ...ids])];
-        else zahlen.neu.push({ runId, stepIds: ids });
-      }
+      zahlen.ereignisse.push({
+        runId,
+        stepId,
+        status: art,
+        antwortId: eintraege.find((x) => x.runId === runId && x.stepId === stepId)?.antwortId ?? null,
+        neu: e.naechste.map((s) => s.id),
+      });
     }
     setErgebnis(zahlen);
     toast(
@@ -220,10 +223,12 @@ export function SammelErledigen({
   };
 
   if (ergebnis && neuOffen) {
-    return <NeuZustaendig eintraege={ergebnis.neu} onClose={() => setNeuOffen(false)} />;
+    return <NeuZustaendig ereignisse={ergebnis.ereignisse} onClose={() => setNeuOffen(false)} />;
   }
 
   if (ergebnis) {
+    // E-Mails, die die Workflows nach diesen Abschlüssen vorsehen (frisch aus dem Bestand)
+    const vorgesehen = mailVorschlaege(data, ergebnis.ereignisse).length;
     const kachel = (wert: number, text: string) => (
       <div className="pll-zahl">
         <b>{wert}</b>
@@ -237,7 +242,7 @@ export function SammelErledigen({
         onClose={onClose}
         footer={
           <>
-            {ergebnis.neu.length > 0 ? (
+            {vorgesehen > 0 ? (
               <button type="button" className="btn btn-outline" onClick={() => setNeuOffen(true)}>
                 E-Mail senden …
               </button>
@@ -257,8 +262,13 @@ export function SammelErledigen({
           </div>
           {ergebnis.neuAnstehend > 0 ? (
             <p className="small muted">
-              {ergebnis.neuAnstehend === 1 ? 'Ein Schritt steht' : `${ergebnis.neuAnstehend} Schritte stehen`} jetzt neu an. Unter
-              „E-Mail senden …“ lassen sich die Zuständigen je Person per E-Mail informieren.
+              {ergebnis.neuAnstehend === 1 ? 'Ein Schritt steht' : `${ergebnis.neuAnstehend} Schritte stehen`} jetzt neu an.
+            </p>
+          ) : null}
+          {vorgesehen > 0 ? (
+            <p className="small muted">
+              {vorgesehen === 1 ? 'Der Workflow sieht dazu eine E-Mail vor' : `Die Workflows sehen dazu ${vorgesehen} E-Mails vor`} –
+              vorzubereiten unter „E-Mail senden …“.
             </p>
           ) : null}
           {ergebnis.ausgelassen > 0 ? (

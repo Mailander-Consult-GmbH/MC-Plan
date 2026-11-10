@@ -31,6 +31,7 @@ import {
   type Block,
   type Struktur,
 } from './ablauf';
+import { regelnBereinigen } from './mailRegeln';
 import { verlaufDerKette } from './engine';
 import { STANDARD_ANTWORTEN, istPrueferRolle, type Antwort, type ID, type ProcessTemplateStep, type StepType } from './types';
 
@@ -56,7 +57,7 @@ export const ANSCHLUSS_HINWEIS =
 
 /** „Ja“ und „Nein“; jede Antwort außer der ersten führt in Nacharbeit. */
 export function standardAntworten(neueId: NeueId): Antwort[] {
-  return STANDARD_ANTWORTEN.map((text, i) => ({ id: neueId('ant'), text, ziel: null, nacharbeit: i > 0 }));
+  return STANDARD_ANTWORTEN.map((text, i) => ({ id: neueId('ant'), text, ziel: null, nacharbeit: i > 0, mails: [] }));
 }
 
 /** Leerer Schritt – Entscheidungen mit den Antworten „Ja“ und „Nein“. */
@@ -71,8 +72,8 @@ export function neuerSchritt(typ: StepType, neueId: NeueId): ProcessTemplateStep
     antworten: typ === 'entscheidung' ? standardAntworten(neueId) : [],
     naechster: null,
     nachweis: 'keine',
-    mailFrage: false,
-    mailVorlageId: null,
+    // Ohne Regel wird zu einem neuen Schritt keine E-Mail vorgeschlagen
+    mails: [],
     versandAnliegen: null,
     parallel: null,
   };
@@ -1066,11 +1067,13 @@ export function pruefen(steps: ProcessTemplateStep[]): Hinweis[] {
 /**
  * Antworten ohne Text erhalten beim Speichern „Ja“, „Nein“ bzw. „Antwort n“;
  * Namen von Blöcken und Zweigen werden gekürzt; parallele Blöcke werden
- * geordnet (siehe `bloeckeOrdnen` in ablauf.ts).
+ * geordnet (siehe `bloeckeOrdnen` in ablauf.ts); E-Mail-Regeln stehen in fester
+ * Form (`regelnBereinigen` in mailRegeln.ts) – die der Antworten einer
+ * Entscheidung, die zur Aufgabe wurde, entfallen mit den Antworten.
  */
 export function bereinigen(steps: ProcessTemplateStep[]): ProcessTemplateStep[] {
   return geordnet(
-    steps.map((s) => ({
+    steps.map(regelnBereinigen).map((s) => ({
       ...s,
       name: s.name.trim(),
       roleName: s.roleName.trim(),

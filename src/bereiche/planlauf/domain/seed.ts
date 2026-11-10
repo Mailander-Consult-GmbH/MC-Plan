@@ -11,6 +11,7 @@ import { aktuelleSchritte, kontaktFuerRolleUndGewerk, kontaktName, planlaufName,
 import { aenderungenAufLauf, braucheNachweis, schrittStatusSetzen } from './abschluss';
 import { basisplanFestlegen } from './simulation';
 import { laufAenderungenProtokollieren } from './protokoll';
+import { uebergabeRegeln } from './mailRegeln';
 import {
   DATEN_VERSION,
   EIGENE_ROLLE,
@@ -139,10 +140,10 @@ function kette(id: string, name: string, beschreibung: string, roh: RohSchritt[]
     const antworten: Antwort[] =
       r.typ === 'entscheidung'
         ? [
-            { id: `${id}-${r.code}-ja`, text: 'Ja', ziel: sid(r.ja), nacharbeit: false },
-            { id: `${id}-${r.code}-nein`, text: 'Nein', ziel: sid(r.nein), nacharbeit: true },
+            { id: `${id}-${r.code}-ja`, text: 'Ja', ziel: sid(r.ja), nacharbeit: false, mails: [] },
+            { id: `${id}-${r.code}-nein`, text: 'Nein', ziel: sid(r.nein), nacharbeit: true, mails: [] },
             ...(r.nachreichung !== undefined
-              ? [{ id: `${id}-${r.code}-nachreichung`, text: 'Nachreichung', ziel: sid(r.nachreichung), nacharbeit: true }]
+              ? [{ id: `${id}-${r.code}-nachreichung`, text: 'Nachreichung', ziel: sid(r.nachreichung), nacharbeit: true, mails: [] }]
               : []),
           ]
         : [];
@@ -156,9 +157,8 @@ function kette(id: string, name: string, beschreibung: string, roh: RohSchritt[]
       antworten,
       naechster: r.typ === 'entscheidung' ? null : sid(r.next),
       nachweis: r.nachweis ?? 'keine',
-      // Nachfrage nach einer E-Mail wird je Schritt im Workflow gesetzt
-      mailFrage: false,
-      mailVorlageId: null,
+      // E-Mail-Regeln: unten für den ganzen Workflow vorbelegt
+      mails: [],
       // Versandschritte bitten die nächste Person um Freigabe, Prüfung …
       versandAnliegen: versandAnliegenNachName(r.name),
       parallel:
@@ -173,7 +173,9 @@ function kette(id: string, name: string, beschreibung: string, roh: RohSchritt[]
     };
   });
 
-  return { id, projectId: null, name, beschreibung, herkunft: 'standard', steps };
+  // E-Mail an die danach Zuständigen überall, wo die Arbeit an eine andere
+  // Funktion übergeht – bei Entscheidungen je Antwort (siehe uebergabeRegeln)
+  return { id, projectId: null, name, beschreibung, herkunft: 'standard', steps: uebergabeRegeln(steps) };
 }
 
 /** Fristen als Erfahrungswerte – in der Aufstellung nicht vorgegeben. */
@@ -325,7 +327,9 @@ function streuwert(text: string): string {
  * Stammdaten-Fassung 4); mit `mitBloecken` zählen zusätzlich je Schritt der
  * Block (als Position seines ersten Schritts), Zweig und Namen sowie die
  * Nacharbeit-Kennung der Antworten (Fassung 5). Das Anliegen der Versandmail
- * zählt nicht – es kam erst mit Fassung 6.
+ * zählt nicht – es kam erst mit Fassung 6. Die E-Mail-Einstellungen sind die
+ * früheren Felder „Nach einer E-Mail fragen“ und Vorlage; seit Daten-Fassung 15
+ * (E-Mail-Regeln) gibt es sie nicht mehr, sie zählen dann wie „keine“.
  */
 export function workflowFingerabdruck(
   t: Pick<ProcessTemplate, 'name' | 'beschreibung' | 'steps'>,
@@ -339,15 +343,16 @@ export function workflowFingerabdruck(
     if (z === null || z === undefined) return i + 1 < steps.length ? String(i + 1) : 'E';
     return index.has(z) ? String(index.get(z)) : 'E';
   };
-  const zeilen = steps.map((s, i) =>
-    [
+  const zeilen = steps.map((s, i) => {
+    const frueher = s as { mailFrage?: boolean; mailVorlageId?: ID | null };
+    return [
       (s.name ?? '').trim(),
       s.typ,
       (s.roleName ?? '').trim(),
       s.fristTage,
       s.nachweis ?? 'keine',
-      s.mailFrage ? 1 : 0,
-      s.mailVorlageId ?? '',
+      frueher.mailFrage ? 1 : 0,
+      frueher.mailVorlageId ?? '',
       (s.beschreibung ?? '').trim(),
       s.typ === 'entscheidung' && (s.antworten ?? []).length > 0
         ? s.antworten.map((a) => `${(a.text ?? '').trim()}>${ziel(i, a.ziel)}`).join(',')
@@ -360,8 +365,8 @@ export function workflowFingerabdruck(
             (s.antworten ?? []).map((a) => (a.nacharbeit ? 1 : 0)).join(''),
           ]
         : []),
-    ].join('|'),
-  );
+    ].join('|');
+  });
   return streuwert([(t.name ?? '').trim(), (t.beschreibung ?? '').trim(), ...zeilen].join('\n'));
 }
 

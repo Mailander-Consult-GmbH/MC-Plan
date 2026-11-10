@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 14;
+export const DATEN_VERSION = 15;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -37,8 +37,8 @@ export type Farbmodus = 'standard' | 'kontrast';
 export interface Bearbeiter {
   name: string;
   /**
-   * Nach dem Erledigen eines eigenen Schritts fragen, ob die für den
-   * nächsten Schritt zuständige Person per E-Mail informiert werden soll.
+   * Nach dem Erledigen eines Schritts die E-Mails anbieten, die der Workflow
+   * dafür vorsieht (Dialog „E-Mail senden“).
    */
   mailNachfrage: boolean;
   /**
@@ -393,9 +393,49 @@ export interface Antwort {
    * die erste Antwort nicht, alle weiteren schon.
    */
   nacharbeit: boolean;
+  /**
+   * E-Mails, die nach dem Erledigen mit dieser Antwort vorgeschlagen werden –
+   * so gehören zu „Ja“ und „Nein“ verschiedene E-Mails (siehe MailRegel).
+   */
+  mails: MailRegel[];
 }
 
 export const STANDARD_ANTWORTEN = ['Ja', 'Nein'];
+
+/* ------------------------------------------------------------------ */
+/* E-Mail-Regeln                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wann eine E-Mail vorgeschlagen wird: sobald der Schritt ansteht (an der
+ * Reihe ist) oder nach seinem Erledigen. Regeln an einer Antwort gelten stets
+ * nach dem Erledigen mit dieser Antwort.
+ */
+export type MailWann = 'anstehen' | 'abschluss';
+
+/**
+ * An wen die E-Mail geht: an die für den Schritt zuständige Person, an die
+ * Zuständigen der Schritte danach oder an die Person, die im Projekt eine
+ * bestimmte Funktion ausfüllt.
+ */
+export type MailEmpfaenger = 'zustaendig' | 'naechste' | 'funktion';
+
+/**
+ * E-Mail-Regel eines Workflow-Schritts: ob (es gibt sie), wann, an wen und mit
+ * welcher Vorlage KaPlan eine E-Mail vorschlägt. Regeln stehen am Schritt
+ * (`mails`) bzw. an einer Antwort (`Antwort.mails`); ausgewertet werden sie in
+ * domain/mailRegeln.ts. Verschickt wird nie selbsttätig – der Dialog
+ * „E-Mail senden“ bietet die vorgesehenen E-Mails an.
+ */
+export interface MailRegel {
+  id: ID;
+  wann: MailWann;
+  an: MailEmpfaenger;
+  /** Bei `an: 'funktion'` die Bezeichnung der Funktion (wie `roleName` am Schritt), sonst ''. */
+  roleName: string;
+  /** E-Mail-Vorlage; null = die zur Lage passende (siehe `vorlageFuerVorschlag`). */
+  vorlageId: ID | null;
+}
 
 /**
  * Nachweis, der bei erfolgreichem Abschluss eines Schritts zu erfassen ist.
@@ -505,12 +545,11 @@ export interface ProcessTemplateStep {
   /** Bei erfolgreichem Abschluss zu erfassender Nachweis. */
   nachweis: Nachweis;
   /**
-   * Nach dem Erledigen fragen, ob die für den nächsten Schritt zuständige
-   * Person per E-Mail informiert werden soll.
+   * E-Mail-Regeln des Schritts: wann welche E-Mail an wen vorgeschlagen wird.
+   * Leer = zu diesem Schritt keine E-Mail. Bei Entscheidungen stehen die
+   * E-Mails je Antwort an der Antwort (`Antwort.mails`).
    */
-  mailFrage: boolean;
-  /** Vorzuschlagende E-Mail-Vorlage; null = die zum Anlass passende. */
-  mailVorlageId: ID | null;
+  mails: MailRegel[];
   /**
    * Versandschritt: Anliegen, um das die Versandmail an die danach zuständige
    * Person bittet ({{anliegen}}); null = kein Versandschritt.
@@ -667,10 +706,8 @@ export interface RunStep {
   nachweis: Nachweis;
   /** Erfasste Freigabe- bzw. Prüfbericht-Nummer. */
   nachweisNummer: string | null;
-  /** Nach dem Erledigen nach einer E-Mail an den nächsten Schritt fragen. */
-  mailFrage: boolean;
-  /** Vorzuschlagende E-Mail-Vorlage. */
-  mailVorlageId: ID | null;
+  /** E-Mail-Regeln (siehe ProcessTemplateStep); beim Start aus dem Workflow übernommen. */
+  mails: MailRegel[];
   /** Anliegen der Versandmail (siehe ProcessTemplateStep). */
   versandAnliegen: VersandAnliegen | null;
 }

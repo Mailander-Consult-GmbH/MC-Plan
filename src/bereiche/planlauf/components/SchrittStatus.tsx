@@ -2,8 +2,9 @@
  * Gemeinsame Schrittaktionen für Planlauf und Übersichtslisten.
  *
  * `useSchrittStatus` kapselt den Statuswechsel samt Erfassung der Freigabe-
- * bzw. Prüfbericht-Nummer und bietet nach jedem Abschluss den Dialog
- * „E-Mail senden“ an (alle neu anstehenden Schritte, je Person eine Zeile).
+ * bzw. Prüfbericht-Nummer und bietet nach einem Abschluss den Dialog
+ * „E-Mail senden“ an – wenn die E-Mail-Regeln des Workflows dafür E-Mails
+ * vorsehen (domain/mailRegeln.ts) und die Nachfrage nicht abgeschaltet ist.
  * Geschrieben wird ausschließlich über den Store (schritteAbschliessen,
  * wiederOeffnen, aenderungenAnwenden). Die zurückgegebenen Dialoge müssen in
  * der jeweiligen Seite gerendert werden; `ErledigtButton` ist der kleine Haken,
@@ -11,9 +12,10 @@
  * lässt – bei mehreren anstehenden Schritten (parallele Zweige) mit Auswahl.
  */
 import { useRef, useState } from 'react';
-import { schrittStatusSetzen, type Abschluss } from '../domain/abschluss';
-import { istErledigt } from '../domain/ablauf';
+import { aenderungenAufLauf, schrittStatusSetzen, type Abschluss } from '../domain/abschluss';
+import { istErledigt, massgeblicheAntwort } from '../domain/ablauf';
 import { kontextFuer } from '../domain/bestand';
+import { mailVorschlaege, type MailEreignis } from '../domain/mailRegeln';
 import { NACHWEIS_LABEL, type ID, type PlanRun, type RunStep, type StepStatus } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -27,7 +29,7 @@ export function useSchrittStatus() {
   const { data, aenderungenAnwenden, schritteAbschliessen, wiederOeffnen } = useStore();
   const toast = useToast();
   const [nachweisFuer, setNachweisFuer] = useState<{ runId: ID; stepId: ID; status: StepStatus } | null>(null);
-  const [neu, setNeu] = useState<{ runId: ID; stepIds: ID[]; vorlageId: ID | null } | null>(null);
+  const [neu, setNeu] = useState<MailEreignis[] | null>(null);
 
   /** Setzt den Status eines Schritts (gelesen frisch aus dem Bestand); Ergebnis wie schrittStatusSetzen. */
   const ausfuehren = (runId: ID, stepId: ID, status: StepStatus, nachweisNummer?: string): Abschluss | null => {
@@ -55,13 +57,20 @@ export function useSchrittStatus() {
     }
     toast(ergebnis.meldung);
 
-    // Nach jedem Abschluss: alle neu anstehenden Schritte mit ihren Zuständigen anbieten
-    if (abschluss && (data.bearbeiter?.mailNachfrage ?? true) && ergebnis.naechste.length > 0) {
-      setNeu({
+    // Nach einem Abschluss: die E-Mails anbieten, die der Workflow dafür vorsieht
+    if (abschluss && (data.bearbeiter?.mailNachfrage ?? true)) {
+      const ereignis: MailEreignis = {
         runId,
-        stepIds: ergebnis.naechste.map((s) => s.id),
-        vorlageId: step.mailFrage ? step.mailVorlageId : null,
-      });
+        stepId,
+        status: status === 'uebersprungen' ? 'uebersprungen' : 'erledigt',
+        // Die Antwort von vor dem Abschluss – führt sie zurück, ist der Schritt danach schon zurückgesetzt
+        antwortId: step.typ === 'entscheidung' ? (massgeblicheAntwort(step)?.id ?? null) : null,
+        neu: ergebnis.naechste.map((s) => s.id),
+      };
+      // Stand nach dem Abschluss (die Termine rechnet der Store): Ist überhaupt eine E-Mail vorgesehen?
+      const aenderungen = ergebnis.aenderungen;
+      const danach = { ...data, runs: data.runs.map((r) => (r.id === runId ? aenderungenAufLauf(r, aenderungen) : r)) };
+      if (mailVorschlaege(danach, [ereignis]).length > 0) setNeu([ereignis]);
     }
     return ergebnis;
   };
@@ -88,14 +97,7 @@ export function useSchrittStatus() {
         />
       ) : null}
 
-      {neu ? (
-        <NeuZustaendig
-          runId={neu.runId}
-          stepIds={neu.stepIds}
-          vorlageId={neu.vorlageId}
-          onClose={() => setNeu(null)}
-        />
-      ) : null}
+      {neu ? <NeuZustaendig ereignisse={neu} onClose={() => setNeu(null)} /> : null}
     </>
   );
 

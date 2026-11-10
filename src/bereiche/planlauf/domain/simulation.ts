@@ -313,8 +313,7 @@ export function laufSchritteFuerSimulation(steps: ProcessTemplateStep[]): RunSte
     antworten: s.antworten.map((a, i) => ({ ...a, nacharbeit: a.nacharbeit ?? i > 0 })),
     naechster: s.naechster,
     nachweis: s.nachweis,
-    mailFrage: s.mailFrage,
-    mailVorlageId: s.mailVorlageId,
+    mails: s.mails ?? [],
     versandAnliegen: s.versandAnliegen ?? null,
     parallel: s.parallel ?? null,
   }));
