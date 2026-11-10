@@ -1,0 +1,71 @@
+/*
+ * Baustein-Editor (bausteinEditor.tsx): Eingabefeld mit farbigen,
+ * nicht teilbaren Bausteinen und Knöpfe zum Einfügen. Klassen mit Präfix
+ * bst-, nur Design-Tokens aus global.css.
+ */
+
+.bst-feld {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--separator-strong);
+  background: var(--bg-elev);
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.bst-feld:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.bst-feld.bst-einzeilig { min-height: calc(1.55em + 20px); }
+.bst-feld:empty::before { content: attr(data-leer); color: var(--text-tertiary); pointer-events: none; }
+
+/* Ein Baustein: Pille mit Beschriftung, als Ganzes markiert und gelöscht */
+.bst-baustein {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.92em;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: baseline;
+  cursor: default;
+}
+.bst-ton-blau { background: var(--accent-soft); color: var(--accent); }
+.bst-ton-gruen { background: var(--green-soft); color: var(--gruen-text); }
+.bst-ton-orange { background: var(--orange-soft); color: var(--orange-text); }
+.bst-ton-lila { background: var(--purple-soft); color: var(--purple); }
+.bst-ton-grau { background: var(--gray-soft); color: var(--text-secondary); }
+.bst-ton-unbekannt {
+  background: none;
+  color: var(--text-tertiary);
+  border: 1px dashed var(--separator-strong);
+  font-weight: 500;
+}
+
+/* Knopf zum Einfügen eines Bausteins */
+.bst-knopf {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12.5px; font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 0.12s ease, transform 0.08s ease;
+}
+.bst-knopf::before { content: '+'; font-weight: 700; opacity: 0.7; }
+.bst-knopf:hover { box-shadow: inset 0 0 0 1px currentColor; }
+.bst-knopf:active { transform: scale(0.97); }
+.bst-knopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Kontrast: Bausteine und Knöpfe zusätzlich mit Rahmen */
+:root[data-farbmodus='kontrast'] .bst-baustein:not(.bst-ton-unbekannt),
+:root[data-farbmodus='kontrast'] .bst-knopf { border-color: currentColor; }

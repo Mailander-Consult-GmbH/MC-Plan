@@ -1,0 +1,84 @@
+/*
+ * Vorlagen (pages/Vorlagen.tsx): Liste der E-Mail-Vorlagen und der
+ * Vorlagen-Editor mit Platzhalter-Bausteinen und Vorschau. Klassen mit
+ * Präfix vl-, nur Design-Tokens. Bausteine und Knöpfe: shared/bausteinEditor.css.
+ */
+
+/* Anriss in der Liste: eine Zeile, Bausteine bleiben ganz */
+.vl-anriss { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+.vl-anriss .bst-baustein { font-size: 0.9em; padding: 0 6px; }
+
+.modal.vl-dialog { width: min(1180px, 100%); }
+
+.vl-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.vl-umschalter { display: none; }
+.vl-bearbeiten { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.vl-gruppe {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+}
+.vl-gruppe-titel {
+  font-size: 11.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+.vl-gruppe .field label { cursor: default; }
+
+/* Knöpfe zum Einfügen, je Gruppe eine Zeile */
+.vl-palette {
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+}
+.vl-palette-zeile { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 8px; align-items: start; }
+.vl-palette-kat { font-size: 12px; color: var(--text-secondary); padding-top: 5px; }
+
+/* Vorschau: wie eine E-Mail */
+.vl-vorschau {
+  display: flex; flex-direction: column; gap: 10px;
+  position: sticky; top: 0;
+  min-width: 0;
+}
+.vl-mail {
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.vl-mail-kopf {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px;
+  margin: 0;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--separator);
+  background: var(--bg-subtle);
+  font-size: 13px;
+}
+.vl-mail-kopf dt { color: var(--text-tertiary); }
+.vl-mail-kopf dd { margin: 0; overflow-wrap: anywhere; }
+.vl-mail-text { padding: 14px 16px; color: var(--text); overflow-wrap: anywhere; }
+.vl-mail-text ul { padding-left: 22px; }
+
+@media (max-width: 900px) {
+  .vl-editor { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .vl-umschalter { display: flex; }
+  .vl-vorschau { position: static; }
+  .vl-editor[data-ansicht='bearbeiten'] .vl-vorschau,
+  .vl-editor[data-ansicht='vorschau'] .vl-bearbeiten { display: none; }
+}
+@media (max-width: 520px) {
+  .vl-gruppe { padding: 12px; }
+  .vl-palette-zeile { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .vl-palette-kat { padding-top: 0; }
+}
