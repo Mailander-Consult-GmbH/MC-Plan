@@ -644,11 +644,12 @@ export function stepsAusTemplate(
       text: a.text,
       ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
       nacharbeit: a.nacharbeit ?? i > 0,
+      mails: a.mails ?? [],
     })),
     naechster: s.naechster === 'ende' || s.naechster === null ? s.naechster : (idMap.get(s.naechster) ?? null),
     nachweis: s.nachweis,
-    mailFrage: s.mailFrage,
-    mailVorlageId: s.mailVorlageId,
+    // E-Mail-Regeln des Workflows gelten im Lauf weiter (siehe domain/mailRegeln.ts)
+    mails: s.mails ?? [],
     versandAnliegen: s.versandAnliegen ?? null,
     parallel: s.parallel ?? null,
   })));

@@ -1,21 +1,23 @@
 /**
  * „E-Mail senden“: Nach einem Abschluss (auch nach dem Sammel-Erledigen)
- * stehen ein oder mehrere Schritte neu an – etwa alle Zweige eines parallelen
- * Blocks. Der Dialog zeigt je Person eine Zeile mit ihren neu anstehenden
- * Schritten, einer Vorlage und einer E-Mail (bei mehreren Schritten als
- * Sammel-E-Mail); ein Haken zeigt, für wen die E-Mail schon vorbereitet ist.
- * Steht ein Schritt nach einem Versandschritt an (Anliegen am Schritt), ist
- * die Vorlage „Versand“ vorgewählt.
+ * bietet der Dialog die E-Mails an, die die E-Mail-Regeln des Workflows jetzt
+ * vorsehen (`mailVorschlaege` in domain/mailRegeln.ts) – nach dem Erledigen
+ * des Schritts bzw. mit der gewählten Antwort und für jeden Schritt, der
+ * dadurch neu ansteht. Je Empfänger und Vorlage eine Zeile mit dem Anlass, den
+ * betroffenen Schritten, der Vorlage und einer E-Mail (bei mehreren Schritten
+ * als Sammel-E-Mail); ein Haken zeigt, welche E-Mail schon vorbereitet ist.
+ * Nennt die Regel keine Vorlage, ist die zur Lage passende vorgewählt – nach
+ * einem Versandschritt (Anliegen am Schritt) die Vorlage „Versand“.
  *
- * Übergeben werden nur IDs; Läufe und Schritte werden frisch aus dem Bestand
- * gelesen (Termine sind erst nach dem Neuberechnen im Store aktuell).
+ * Übergeben werden nur die Abschlüsse (IDs); Läufe und Schritte werden frisch
+ * aus dem Bestand gelesen (Termine sind erst nach dem Neuberechnen im Store
+ * aktuell).
  */
 import { useState } from 'react';
-import { istErledigt } from '../domain/ablauf';
 import { kontaktName } from '../domain/engine';
-import { versandSchrittVor, vorlageVorschlagen } from '../domain/email';
+import { versandSchrittVor } from '../domain/email';
+import { mailVorschlaege, vorlageFuerVorschlag, type MailEreignis, type MailVorschlag } from '../domain/mailRegeln';
 import { VERSAND_ANLIEGEN_LABEL } from '../domain/types';
-import type { ID, PlanRun, RunStep } from '../domain/types';
 import { useStore } from '../store/store';
 import { formatDate } from '../../../shared/dates';
 import { Modal, Select } from '../../../shared/ui';
@@ -23,32 +25,12 @@ import { Icon } from '../../../shared/icons';
 import { EmailDialog } from './EmailDialog';
 import './planlauf.css';
 
-/** Neu anstehende Schritte eines Laufs. */
-export interface NeuZustaendigEintrag {
-  runId: ID;
-  stepIds: ID[];
-}
-
-interface Gruppe {
-  schluessel: string;
-  contactId: ID | null;
-  posten: { run: PlanRun; step: RunStep }[];
-}
-
 export function NeuZustaendig({
-  runId,
-  stepIds,
-  eintraege,
-  vorlageId,
+  ereignisse,
   onClose,
 }: {
-  /** Ein Lauf: seine neu anstehenden Schritte … */
-  runId?: ID;
-  stepIds?: ID[];
-  /** … oder mehrere Läufe (Sammel-Erledigen). */
-  eintraege?: NeuZustaendigEintrag[];
-  /** Im Workflow hinterlegte Vorlage (Vorauswahl). */
-  vorlageId?: ID | null;
+  /** Die Abschlüsse, nach denen der Workflow E-Mails vorsehen kann. */
+  ereignisse: MailEreignis[];
   onClose: () => void;
 }) {
   const { data } = useStore();
@@ -56,51 +38,33 @@ export function NeuZustaendig({
   const [vermerkt, setVermerkt] = useState<string[]>([]);
   const [mailFuer, setMailFuer] = useState<string | null>(null);
 
-  const liste: NeuZustaendigEintrag[] = eintraege ?? (runId ? [{ runId, stepIds: stepIds ?? [] }] : []);
-  // Frisch aus dem Bestand: nur Schritte, die noch offen sind, in laufenden Läufen
-  const gruppen: Gruppe[] = [];
-  for (const { runId: r, stepIds: ids } of liste) {
-    const run = data.runs.find((x) => x.id === r);
-    if (!run || run.status !== 'laufend') continue;
-    for (const id of ids) {
-      const step = run.steps.find((s) => s.id === id);
-      if (!step || istErledigt(step)) continue;
-      const schluessel = step.contactId ?? `ohne:${step.roleName}`;
-      let gruppe = gruppen.find((g) => g.schluessel === schluessel);
-      if (!gruppe) {
-        gruppe = { schluessel, contactId: step.contactId, posten: [] };
-        gruppen.push(gruppe);
-      }
-      if (!gruppe.posten.some((p) => p.run.id === run.id && p.step.id === step.id)) gruppe.posten.push({ run, step });
-    }
-  }
-
+  // Frisch aus dem Bestand: was die Regeln nach diesen Abschlüssen vorsehen
+  const vorschlaege = mailVorschlaege(data, ereignisse);
   const vorlagen = data.emailVorlagen;
-  /** Anliegen, wenn der Schritt nach einem Versandschritt ansteht (z. B. „Freigabe“). */
-  const anliegenVon = (g: Gruppe) => {
-    const versand = g.posten.map((p) => versandSchrittVor(p.run, p.step.id)).find(Boolean);
-    return versand?.versandAnliegen ?? null;
-  };
-  /**
-   * Vorauswahl: hinterlegte Vorlage; nach einem Versandschritt die Vorlage
-   * „Versand“ (Platzhalter {{versandliste}}); bei mehreren Schritten die
-   * Sammelerinnerung, sonst „Übergabe“.
-   */
-  const vorgabe = (g: Gruppe): string => {
-    const hinterlegt = vorlageId ? vorlagen.find((v) => v.id === vorlageId) : undefined;
-    const versand = anliegenVon(g) ? vorlagen.find((v) => /\{\{\s*versandliste\s*\}\}/.test(v.text)) : undefined;
-    const sammel = g.posten.length > 1 ? vorlagen.find((v) => /\{\{\s*liste\s*\}\}/.test(v.text)) : undefined;
-    const uebergabe = vorlagen.find((v) => v.anlass === 'uebergabe');
-    return (hinterlegt ?? versand ?? sammel ?? uebergabe ?? vorlageVorschlagen(vorlagen, false))?.id ?? '';
-  };
-  const vorlageVon = (g: Gruppe) => gewaehlt[g.schluessel] ?? vorgabe(g);
+  const schritte = (v: MailVorschlag) =>
+    v.posten.flatMap((p) => {
+      const run = data.runs.find((r) => r.id === p.runId);
+      const step = run?.steps.find((s) => s.id === p.stepId);
+      return run && step ? [{ run, step }] : [];
+    });
+  /** Anliegen, wenn die Person nach einem Versandschritt an der Reihe ist (z. B. „Freigabe“). */
+  const anliegenVon = (v: MailVorschlag) =>
+    v.art === 'schritt'
+      ? (schritte(v)
+          .map((p) => versandSchrittVor(p.run, p.step.id))
+          .find(Boolean)?.versandAnliegen ?? null)
+      : null;
+  /** Vorauswahl: die Vorlage der Regel, sonst die zur Lage passende (siehe vorlageFuerVorschlag). */
+  const vorlageVon = (v: MailVorschlag) => gewaehlt[v.schluessel] ?? vorlageFuerVorschlag(data, v)?.id ?? '';
 
-  const offen = mailFuer ? gruppen.find((g) => g.schluessel === mailFuer) : undefined;
+  const offen = mailFuer ? vorschlaege.find((v) => v.schluessel === mailFuer) : undefined;
   if (offen) {
     return (
       <EmailDialog
-        posten={offen.posten.map((p) => ({ runId: p.run.id, stepId: p.step.id }))}
+        posten={offen.posten}
         vorlageId={vorlageVon(offen) || null}
+        empfaengerId={offen.contactId}
+        vermerk={offen.vermerk}
         onVermerkt={() => setVermerkt((v) => (v.includes(offen.schluessel) ? v : [...v, offen.schluessel]))}
         onClose={() => setMailFuer(null)}
       />
@@ -111,9 +75,9 @@ export function NeuZustaendig({
     <Modal
       titel="E-Mail senden"
       sub={
-        gruppen.length === 0
-          ? 'Keine neu anstehenden Schritte'
-          : 'Diese Schritte sind jetzt an der Reihe – auf Wunsch die Zuständigen per E-Mail informieren'
+        vorschlaege.length === 0
+          ? 'Keine E-Mail vorgesehen'
+          : 'Diese E-Mails sieht der Workflow jetzt vor – auf Wunsch vorbereiten'
       }
       wide
       onClose={onClose}
@@ -123,16 +87,16 @@ export function NeuZustaendig({
         </button>
       }
     >
-      {gruppen.length === 0 ? (
-        <p className="small muted">Die neu anstehenden Schritte sind bereits erledigt.</p>
+      {vorschlaege.length === 0 ? (
+        <p className="small muted">Der Workflow sieht hierzu keine E-Mail (mehr) vor.</p>
       ) : (
         <div>
-          {gruppen.map((g) => {
-            const kontakt = data.contacts.find((c) => c.id === g.contactId);
-            const fertig = vermerkt.includes(g.schluessel);
-            const anliegen = anliegenVon(g);
+          {vorschlaege.map((v) => {
+            const kontakt = data.contacts.find((c) => c.id === v.contactId);
+            const fertig = vermerkt.includes(v.schluessel);
+            const anliegen = anliegenVon(v);
             return (
-              <div className="pl-zustaendig" key={g.schluessel}>
+              <div className="pl-zustaendig" key={v.schluessel}>
                 <span
                   className={`pl-zustaendig-haken ${fertig ? '' : 'offen'}`}
                   title={fertig ? 'E-Mail vorbereitet' : 'Noch keine E-Mail vorbereitet'}
@@ -148,25 +112,32 @@ export function NeuZustaendig({
                       {kontakt && !kontakt.sharepointEingang?.trim() ? ' · SharePoint-Link Eingang fehlt' : ''}
                     </span>
                   ) : null}
-                  {!kontakt ? (
-                    <span>Funktion „{g.posten[0]?.step.roleName || '–'}“ ist im Projekt nicht besetzt.</span>
-                  ) : null}
-                  {g.posten.map(({ run, step }) => (
+                  {!kontakt ? <span>Funktion „{v.roleName || '–'}“ ist im Projekt nicht besetzt.</span> : null}
+                  <span>Anlass: {v.anlaesse.join(' · ')}</span>
+                  {schritte(v).map(({ run, step }) => (
                     <span key={`${run.id}/${step.id}`}>
-                      {step.name}
-                      {step.roleName ? ` (${step.roleName})` : ''} · {run.name} · Soll {formatDate(step.sollDatum)}
+                      {v.art === 'schritt' ? (
+                        <>
+                          {step.name}
+                          {step.roleName ? ` (${step.roleName})` : ''} · {run.name} · Soll {formatDate(step.sollDatum)}
+                        </>
+                      ) : (
+                        <>
+                          Zur Kenntnis{v.roleName ? ` (${v.roleName})` : ''} · {run.name}
+                        </>
+                      )}
                     </span>
                   ))}
                 </div>
                 <Select
-                  value={vorlageVon(g)}
-                  onChange={(v) => setGewaehlt((alt) => ({ ...alt, [g.schluessel]: v }))}
-                  options={vorlagen.map((v) => ({ value: v.id, label: v.name }))}
+                  value={vorlageVon(v)}
+                  onChange={(id) => setGewaehlt((alt) => ({ ...alt, [v.schluessel]: id }))}
+                  options={vorlagen.map((x) => ({ value: x.id, label: x.name }))}
                 />
                 <button
                   type="button"
                   className={`btn btn-sm ${fertig ? 'btn-outline' : 'btn-primary'}`}
-                  onClick={() => setMailFuer(g.schluessel)}
+                  onClick={() => setMailFuer(v.schluessel)}
                   disabled={vorlagen.length === 0}
                 >
                   <Icon name="mail" size={13} /> {fertig ? 'Erneut …' : 'E-Mail …'}

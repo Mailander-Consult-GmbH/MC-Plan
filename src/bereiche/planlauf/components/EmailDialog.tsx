@@ -6,6 +6,11 @@
  *
  * Lauf und Schritt werden über ihre IDs frisch aus dem Bestand gelesen; die
  * übergebenen Objekte dienen nur als Rückfall.
+ *
+ * Empfänger ist die für den (ersten) Schritt zuständige Person – sieht eine
+ * E-Mail-Regel des Workflows jemand anderen vor (`empfaengerId`, etwa eine
+ * Funktion), geht die E-Mail an diese Person; vermerkt wird dann an den mit
+ * `vermerk` genannten Schritten.
  */
 import { useState } from 'react';
 import { EMAIL_ANLASS_LABEL, type ID, type PlanRun, type Project, type RunStep } from '../domain/types';
@@ -22,14 +27,12 @@ import { useToast } from '../../../shared/toast';
 import { Callout, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
 import { formatDate } from '../../../shared/dates';
+import type { MailPosten } from '../domain/mailRegeln';
 import { erinnerungText } from './common';
 import './planlauf.css';
 
 /** Ein Schritt, zu dem die E-Mail vorbereitet wird. */
-export interface MailPosten {
-  runId: ID;
-  stepId: ID;
-}
+export type { MailPosten };
 
 export function EmailDialog({
   project: projectVorgabe,
@@ -39,6 +42,8 @@ export function EmailDialog({
   stepId,
   posten,
   vorlageId,
+  empfaengerId,
+  vermerk,
   onClose,
   onVermerkt,
 }: {
@@ -52,6 +57,10 @@ export function EmailDialog({
   posten?: MailPosten[];
   /** Im Workflow hinterlegte bzw. vorgewählte Vorlage (etwa „Versand“); ohne Angabe wird nach Anlass gewählt. */
   vorlageId?: string | null;
+  /** Empfänger laut E-Mail-Regel (null = niemand hinterlegt); ohne Angabe die für den Schritt zuständige Person. */
+  empfaengerId?: ID | null;
+  /** Schritte, an denen die E-Mail vermerkt wird; ohne Angabe die Schritte der E-Mail. */
+  vermerk?: MailPosten[];
   onClose: () => void;
   /** Nach dem Vermerken der vorbereiteten E-Mail. */
   onVermerkt?: () => void;
@@ -70,7 +79,7 @@ export function EmailDialog({
   const erster = eintraege[0];
   const sammel = eintraege.length > 1;
   const project = projectVorgabe ?? data.projects.find((p) => p.id === erster?.run.projectId);
-  const kontakt = data.contacts.find((c) => c.id === erster?.step.contactId) ?? null;
+  const kontakt = data.contacts.find((c) => c.id === (empfaengerId !== undefined ? empfaengerId : erster?.step.contactId)) ?? null;
   const vorlauf = project?.settings.erinnerungVorlaufTage ?? 0;
   const ueberfaellig = eintraege.some(
     ({ run, step }) =>
@@ -115,9 +124,9 @@ export function EmailDialog({
   /** Vermerkt die vorbereitete E-Mail an allen Schritten (Erinnerungen, Protokoll). */
   const merkeVersand = (weg: 'outlook' | 'web' | 'kopie') => {
     erinnerungenVermerken(
-      eintraege.map(({ run, step }) => ({
-        runId: run.id,
-        stepId: step.id,
+      (vermerk ?? eintraege.map(({ run, step }) => ({ runId: run.id, stepId: step.id }))).map(({ runId: r, stepId: s }) => ({
+        runId: r,
+        stepId: s,
         erinnerung: {
           contactId: kontakt?.id ?? null,
           kontaktName: kontaktName(kontakt ?? undefined),
@@ -203,7 +212,7 @@ export function EmailDialog({
       <div className="stack" style={{ gap: 14 }}>
         {!kontakt ? (
           <Callout ton="warn" icon="!">
-            Für den Schritt ist keine Person unter „Funktion“ hinterlegt – bitte Empfänger von Hand
+            Für diese E-Mail ist keine Person unter „Funktion“ hinterlegt – bitte Empfänger von Hand
             eintragen.
           </Callout>
         ) : null}

@@ -3,11 +3,14 @@
  * Workflows und eigene) und – nur im Reiter „Workflows“ eines Projekts – dessen
  * Projektvarianten. Jede Karte zeigt den
  * Standardverlauf als Punktkette; „Öffnen“ führt in den grafischen
- * Workflow-Editor (components/WorkflowEditor.tsx).
+ * Workflow-Editor (components/WorkflowEditor.tsx). Ändert das Speichern die
+ * E-Mail-Regeln eines Workflows, aus dem Planläufe laufen, fragt die Seite, ob
+ * diese die neuen Regeln übernehmen (`mailRegelnInLaeufeUebernehmen`).
  */
 import { useState } from 'react';
 import { vorlagenSchritte } from '../domain/engine';
 import { neuerSchritt } from '../domain/workflowGraph';
+import { laeufeMitAnderenRegeln, regelnGeaendert } from '../domain/mailRegeln';
 import { EIGENE_ROLLE, type ProcessTemplate, type ProcessTemplateStep } from '../domain/types';
 import { newId, useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -17,10 +20,12 @@ import { AblaufVorschau, ablaufZahlen } from '../components/AblaufVorschau';
 import { WorkflowEditor } from '../components/WorkflowEditor';
 
 export function Workflows({ projectId }: { projectId?: string }) {
-  const { data, addTemplate, updateTemplate, deleteTemplate } = useStore();
+  const { data, addTemplate, updateTemplate, deleteTemplate, mailRegelnInLaeufeUebernehmen } = useStore();
   const toast = useToast();
   const [editor, setEditor] = useState<{ template?: ProcessTemplate; steps: ProcessTemplateStep[] } | null>(null);
   const [loeschen, setLoeschen] = useState<ProcessTemplate | null>(null);
+  /** Nach dem Speichern geänderter E-Mail-Regeln: Rückfrage, ob laufende Planläufe sie übernehmen. */
+  const [regelnFuer, setRegelnFuer] = useState<{ id: string; name: string; laeufe: number } | null>(null);
 
   // Projektvarianten erscheinen nur im eigenen Projekt, nicht im übergreifenden Menü
   const vorlagen = data.templates.filter((t) => t.projectId === null || (projectId !== undefined && t.projectId === projectId));
@@ -177,7 +182,7 @@ export function Workflows({ projectId }: { projectId?: string }) {
           }
           hinweis={
             offen && offen.projectId === null
-              ? `Projektübergreifender Workflow: Änderungen gelten für alle künftigen Planläufe aller Projekte; laufende Planläufe bleiben unverändert.${
+              ? `Projektübergreifender Workflow: Änderungen gelten für alle künftigen Planläufe aller Projekte; laufende Planläufe bleiben unverändert – nur geänderte E-Mail-Regeln lassen sich nach dem Speichern übernehmen.${
                   offen.herkunft === 'standard'
                     ? ' Mitgelieferte Standard-Workflows ersetzt eine neue Fassung von KaPlan samt Änderungen – eigene Anpassungen daher besser als Kopie („Duplizieren“).'
                     : ''
@@ -193,6 +198,9 @@ export function Workflows({ projectId }: { projectId?: string }) {
             if (offen) {
               updateTemplate(offen.id, { name, beschreibung, steps });
               toast('Workflow gespeichert.');
+              // Geänderte E-Mail-Regeln: laufende Planläufe aus diesem Workflow arbeiten noch mit den bisherigen
+              const laeufe = regelnGeaendert(offen.steps, steps) ? laeufeMitAnderenRegeln(data.runs, { id: offen.id, steps }).length : 0;
+              if (laeufe > 0) setRegelnFuer({ id: offen.id, name, laeufe });
             } else {
               addTemplate({ projectId: projectId ?? null, name, beschreibung, herkunft: 'manuell', steps });
               toast('Workflow angelegt.');
@@ -200,6 +208,20 @@ export function Workflows({ projectId }: { projectId?: string }) {
             setEditor(null);
           }}
           onClose={() => setEditor(null)}
+        />
+      ) : null}
+      {regelnFuer ? (
+        <ConfirmDialog
+          titel="E-Mail-Regeln in laufende Planläufe übernehmen?"
+          text={`${regelnFuer.laeufe === 1 ? 'Ein laufender Planlauf arbeitet' : `${regelnFuer.laeufe} laufende Planläufe arbeiten`} nach „${regelnFuer.name}“ und noch mit den bisherigen E-Mail-Regeln. Übernommen werden nur die E-Mail-Regeln – für Schritte gleicher Bezeichnung, Art und Funktion; Schritte, Fristen und Termine der Planläufe bleiben unverändert.`}
+          bestaetigenLabel="Übernehmen"
+          abbrechenLabel="Nicht übernehmen"
+          ton="blau"
+          onConfirm={() => {
+            const zahl = mailRegelnInLaeufeUebernehmen(regelnFuer.id);
+            toast(`E-Mail-Regeln in ${zahl === 1 ? 'einen Planlauf' : `${zahl} Planläufe`} übernommen.`);
+          }}
+          onClose={() => setRegelnFuer(null)}
         />
       ) : null}
       {loeschen ? (

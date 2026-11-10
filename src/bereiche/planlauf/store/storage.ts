@@ -15,6 +15,7 @@ import {
   type EmailTemplate,
   type Erinnerung,
   type ID,
+  type MailRegel,
   type PlanRun,
   type ProcessTemplate,
   type ProcessTemplateStep,
@@ -39,6 +40,7 @@ import { eigeneKontakteSichern, recalcRun, zustaendigkeitenNachziehen } from '..
 import { anstehendeSchritte, istErledigt, statusAbgleichen, verfolgen } from '../domain/ablauf';
 import { basisplanFestlegen } from '../domain/simulation';
 import { gliedern } from '../domain/workflowGraph';
+import { regelAnNaechste, uebergabeRegeln } from '../domain/mailRegeln';
 import { formatDate, today } from '../../../shared/dates';
 import { nachRaeumenSpeichern, rohkopieVorEinspielen as rohkopieAnlegen, speicherVoll, type RohkopieErgebnis } from '../../../shared/speicher';
 
@@ -373,6 +375,34 @@ function mitSeite<T extends { name: string; seite?: StandardRolle['seite'] }>(ro
   return { ...rolle, seite: rolle.seite !== undefined ? rolle.seite : seiteAusFunktion(rolle.name) };
 }
 
+/**
+ * E-Mail-Regeln ab Fassung 15 (`mails` an Schritten und Antworten, siehe
+ * domain/mailRegeln.ts) statt „Nach einer E-Mail fragen“ mit Vorlage. Bisher
+ * bot „E-Mail senden“ nach jedem Abschluss die danach Zuständigen an; daraus
+ * wird je Schritt bzw. Antwort eine Regel „nach dem Erledigen an die
+ * Zuständigen der nächsten Schritte“ – dort, wo die Arbeit an eine andere
+ * Funktion als das Planlaufmanagement übergeht (`uebergabeRegeln`). War an
+ * einem Schritt „Nach einer E-Mail fragen“ gesetzt, erhält er die Regel in
+ * jedem Fall, mit der hinterlegten Vorlage. Die Kennungen entstehen aus denen
+ * der Schritte und Antworten: Bestand und Sicherung desselben Stands ergeben
+ * dieselben Regeln.
+ */
+function mailRegelnFassung15<T extends ProcessTemplateStep | RunStep>(steps: T[]): T[] {
+  type Frueher = { mailFrage?: boolean; mailVorlageId?: ID | null; mails?: MailRegel[] };
+  const vorbelegt = uebergabeRegeln(steps);
+  return steps.map((roh, i) => {
+    const { mailFrage, mailVorlageId, ...s } = roh as T & Frueher;
+    const ohne = (antworten: T['antworten']) => antworten.map((a) => ({ ...a, mails: a.mails ?? [] }));
+    // Schon mit Regeln (nur zur Sicherheit): bleiben, wie sie sind
+    if (Array.isArray(s.mails)) return { ...s, antworten: ohne(s.antworten) } as unknown as T;
+    if (mailFrage) {
+      const regel: MailRegel = { ...regelAnNaechste(`${s.id}-mail`), vorlageId: mailVorlageId ?? null };
+      return { ...s, mails: [regel], antworten: s.antworten.map((a) => ({ ...a, mails: [] })) } as unknown as T;
+    }
+    return { ...s, mails: vorbelegt[i].mails, antworten: vorbelegt[i].antworten } as unknown as T;
+  });
+}
+
 /** Antworten ab Fassung 13: jede Antwort außer der ersten führt (ohne Angabe) in Nacharbeit. */
 function mitNacharbeit(antworten: { nacharbeit?: boolean }[]): never {
   return antworten.map((a, i) => ({ ...a, nacharbeit: a.nacharbeit ?? i > 0 })) as never;
@@ -460,7 +490,8 @@ function vorlagenFassung13(vorlagen: EmailTemplate[]): EmailTemplate[] {
  * laufender Rücksprünge (siehe wiedereingangSchaetzen) und ein Basisplan für
  * jeden Lauf. Ab Fassung 14: SharePoint-Links an Kontakten (leer) und das
  * Anliegen der Versandmail an Workflow- und Laufschritten – nach dem
- * Schrittnamen der mitgelieferten Versandschritte, sonst keins.
+ * Schrittnamen der mitgelieferten Versandschritte, sonst keins. Ab Fassung 15:
+ * E-Mail-Regeln an Schritten und Antworten (siehe mailRegelnFassung15).
  */
 function migriere(daten: AppData): AppData {
   if (daten.version === DATEN_VERSION) return daten;
@@ -582,7 +613,7 @@ function migriere(daten: AppData): AppData {
     templates: (daten.templates ?? []).map((t) => ({
       ...t,
       herkunft: t.herkunft === 'standard' ? 'standard' : 'manuell',
-      steps: rueckmeldungVerbinden(zieleBereinigen(
+      steps: mailRegelnFassung15(rueckmeldungVerbinden(zieleBereinigen(
         (t.steps ?? []).map((s) => {
         const typ = migriereTyp(s.typ as unknown as string);
         return {
@@ -592,13 +623,11 @@ function migriere(daten: AppData): AppData {
           antworten: mitNacharbeit(alsAntworten(typ, s.antworten)),
           naechster: s.naechster ?? null,
           nachweis: s.nachweis ?? 'keine',
-          mailFrage: s.mailFrage ?? false,
-          mailVorlageId: s.mailVorlageId ?? null,
           // Fassung 14: Anliegen der Versandmail nach dem Schrittnamen
           versandAnliegen: s.versandAnliegen !== undefined ? s.versandAnliegen : versandAnliegenNachName(s.name),
           parallel: s.parallel ?? null,
         };
-      }))),
+      })))),
     })),
     runs: (daten.runs ?? []).map((r) => ({
       ...r,
@@ -610,7 +639,7 @@ function migriere(daten: AppData): AppData {
       abbruchNeuerIndex: r.abbruchNeuerIndex ?? null,
       protokoll: r.protokoll ?? [],
       basis: r.basis ?? null,
-      steps: laufVerbinden(r.status, zieleBereinigen((r.steps ?? []).map((s) => {
+      steps: mailRegelnFassung15(laufVerbinden(r.status, zieleBereinigen((r.steps ?? []).map((s) => {
         const typ = migriereTyp(s.typ as unknown as string);
         return {
           ...s,
@@ -634,11 +663,9 @@ function migriere(daten: AppData): AppData {
           nachweisNummer: s.nachweisNummer ?? null,
           // Bisher fest vergebene Zuständigkeiten folgen künftig der Besetzung
           contactManuell: s.contactManuell ?? false,
-          mailFrage: s.mailFrage ?? false,
-          mailVorlageId: s.mailVorlageId ?? null,
           versandAnliegen: s.versandAnliegen !== undefined ? s.versandAnliegen : versandAnliegenNachName(s.name),
         };
-      }))),
+      })))),
     })),
     geloescht: daten.geloescht ?? [],
   });

@@ -27,16 +27,19 @@
  * `datenAbgleichen` (ohne Vergleichsprotokoll).
  */
 import { kontaktName } from './engine';
+import { regelnVon } from './mailRegeln';
 import {
   DOCUMENT_KIND_LABEL,
   funktionsName,
   hatEigenenPlanlauf,
+  type Antwort,
   type AppData,
   type Contact,
   type EmailTemplate,
   type ID,
   type ISODate,
   type Loeschvermerk,
+  type MailRegel,
   type PlanDocument,
   type PlanRun,
   type ProcessTemplate,
@@ -177,6 +180,10 @@ export type VerweisZiel = 'projekt' | 'funktion' | 'kontakt' | 'eintrag' | 'work
  */
 export type VerweisRegel = 'pflicht' | 'mitnehmen' | 'leeren';
 
+/** Vorlagen, die die E-Mail-Regeln eines Schritts nennen – am Schritt und an seinen Antworten. */
+const mailVorlagen = (s: { mails: MailRegel[]; antworten: Antwort[] }): (ID | null)[] =>
+  regelnVon(s).map((o) => o.regel.vorlageId);
+
 export interface Verweisfeld<T> {
   feld: string;
   ziel: VerweisZiel;
@@ -204,7 +211,7 @@ export const VERWEISFELDER = {
   ] as Verweisfeld<Contact>[],
   workflow: [
     { feld: 'projectId', ziel: 'projekt', regel: 'pflicht', werte: (t) => [t.projectId] },
-    { feld: 'steps.mailVorlageId', ziel: 'emailVorlage', regel: 'leeren', werte: (t) => t.steps.map((s) => s.mailVorlageId) },
+    { feld: 'steps.mails.vorlageId', ziel: 'emailVorlage', regel: 'leeren', werte: (t) => t.steps.flatMap(mailVorlagen) },
   ] as Verweisfeld<ProcessTemplate>[],
   eintrag: [
     { feld: 'projectId', ziel: 'projekt', regel: 'pflicht', werte: (d) => [d.projectId] },
@@ -227,7 +234,7 @@ export const VERWEISFELDER = {
       regel: 'pflicht',
       werte: (r) => r.steps.flatMap((s) => s.erinnerungen.map((e) => e.contactId)),
     },
-    { feld: 'steps.mailVorlageId', ziel: 'emailVorlage', regel: 'leeren', werte: (r) => r.steps.map((s) => s.mailVorlageId) },
+    { feld: 'steps.mails.vorlageId', ziel: 'emailVorlage', regel: 'leeren', werte: (r) => r.steps.flatMap(mailVorlagen) },
   ] as Verweisfeld<PlanRun>[],
 };
 
@@ -1166,12 +1173,19 @@ function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>): AppDa
   const docs = new Set(d.documents.map((x) => x.id));
   const kontakte = new Set(d.contacts.map((x) => x.id));
   const rollen = new Set(d.roles.map((x) => x.id));
-  const mail = <T extends { mailVorlageId: ID | null }>(s: T): T =>
-    s.mailVorlageId && !vorlagen.has(s.mailVorlageId) ? { ...s, mailVorlageId: null } : s;
+  // E-Mail-Regeln ohne ihre Vorlage: fortan mit der zur Lage passenden Vorlage
+  const ohneZiel = (regeln: MailRegel[]) => regeln.some((r) => r.vorlageId && !vorlagen.has(r.vorlageId));
+  const regelnLeeren = (regeln: MailRegel[]) =>
+    ohneZiel(regeln) ? regeln.map((r) => (r.vorlageId && !vorlagen.has(r.vorlageId) ? { ...r, vorlageId: null } : r)) : regeln;
+  const mail = <T extends { mails: MailRegel[]; antworten: Antwort[] }>(s: T): T =>
+    ohneZiel(regelnVon(s).map((o) => o.regel))
+      ? { ...s, mails: regelnLeeren(s.mails), antworten: s.antworten.map((a) => (ohneZiel(a.mails) ? { ...a, mails: regelnLeeren(a.mails) } : a)) }
+      : s;
 
-  const templates = d.templates.map((t) =>
-    t.steps.some((s) => s.mailVorlageId && !vorlagen.has(s.mailVorlageId)) ? { ...t, steps: t.steps.map(mail) } : t,
-  );
+  const templates = d.templates.map((t) => {
+    const steps = t.steps.map(mail);
+    return steps.some((s, i) => s !== t.steps[i]) ? { ...t, steps } : t;
+  });
   const runs = d.runs.map((r) => {
     if (!beruehrteLaeufe.has(r.id)) return r;
     const offen = (s: PlanRun['steps'][number]) => s.status === 'offen' || s.status === 'laufend';

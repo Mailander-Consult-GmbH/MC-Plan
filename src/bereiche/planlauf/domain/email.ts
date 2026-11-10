@@ -4,7 +4,7 @@
  */
 import { formatDate, relativeLabel, today } from '../../../shared/dates';
 import { tageText, verzugBisHeute, zeitrahmen } from './nachweis';
-import { aktuelleSchritte, verfolgen } from './ablauf';
+import { aktuelleSchritte, istErledigt, massgeblicheAntwort, verfolgen } from './ablauf';
 import { mitlaufendePlaene, paketVon } from './uebersicht';
 import {
   VERSAND_ANLIEGEN_LABEL,
@@ -63,6 +63,7 @@ export const PLATZHALTER: Platzhalter[] = [
   P('plan.phase', 'Planungsphase', 'plan', 'Planungsphase', 'Ausführungsplanung'),
   P('planlauf', 'Planlauf', 'plan', 'Bezeichnung des Planlaufs', 'Planlauf NK-KIB-PV-001'),
   P('schritt', 'Schritt', 'plan', 'Name des Prozessschritts', 'Fachprüfung'),
+  P('antwort', 'Antwort', 'plan', 'Entscheidung: die gewählte Antwort, z.B. „Nein“ (sonst leer)', 'Ja'),
   P('soll', 'Soll-Termin', 'termine', 'Soll-Termin, z.B. 14.03.2026', '30.09.2026'),
   P('frist', 'Frist', 'termine', 'Relative Frist, z.B. „in 3 Tagen“', 'in 5 Tagen'),
   P('verzug', 'Verzug', 'termine', 'Verzug mit Einheit, z.B. „5 Arbeitstage“ (0 falls im Plan)', '0'),
@@ -115,6 +116,7 @@ export function werteFuerKontext(ctx: MailKontext): Record<string, string> {
     'plan.phase': doc?.planungsphase ?? '',
     planlauf: run.name,
     schritt: step.name,
+    antwort: antwortText(step),
     soll: formatDate(step.sollDatum),
     frist: relativeLabel(step.sollDatum),
     verzug: tageText(verzug, rahmen.arbeitstage),
@@ -128,6 +130,18 @@ export function werteFuerKontext(ctx: MailKontext): Record<string, string> {
     heute: formatDate(today()),
     absender: project.settings.absenderName,
   };
+}
+
+/**
+ * Gewählte Antwort einer Entscheidung ({{antwort}}): die des erledigten
+ * Schritts; ist er nach einem Rücksprung schon wieder offen, die des letzten
+ * früheren Durchlaufs. Sonst leer.
+ */
+function antwortText(step: RunStep): string {
+  if (step.typ !== 'entscheidung') return '';
+  if (istErledigt(step)) return massgeblicheAntwort(step)?.text ?? '';
+  const frueher = step.historie ?? [];
+  return frueher[frueher.length - 1]?.antwort ?? '';
 }
 
 /** Bildet die Anredezeile aus der bei der Person hinterlegten Anrede. */

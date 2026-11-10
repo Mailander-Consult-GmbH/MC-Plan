@@ -1667,8 +1667,8 @@ function SchrittDialog({
       antworten: [],
       naechster: null,
       nachweis: form.nachweis,
-      mailFrage: false,
-      mailVorlageId: null,
+      // E-Mail-Regeln legt der Workflow fest – ein eingefügter Schritt hat keine
+      mails: [],
       versandAnliegen: form.versandAnliegen,
       parallel: null,
     };
@@ -1783,7 +1783,7 @@ function SchrittDialog({
             options={Object.entries(NACHWEIS_LABEL).map(([value, label]) => ({ value, label }))}
           />
         </Field>
-        <Field label="Anliegen in der Versandmail" hint="nach dem Erledigen schlägt „E-Mail senden“ die Vorlage „Versand“ vor">
+        <Field label="Anliegen in der Versandmail" hint="steht als {{anliegen}} in der Versandmail an die danach zuständige Person">
           <Select
             value={form.versandAnliegen ?? ''}
             onChange={(v) => set('versandAnliegen', (v || null) as VersandAnliegen | null)}

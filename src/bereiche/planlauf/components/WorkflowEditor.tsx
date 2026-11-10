@@ -12,7 +12,10 @@
  * Zweige tragen ihren Namen im Kopf (bearbeitet im Abschnitt „Parallel“ der
  * Schrittdetails; ein Klick auf den Kopf der Containerkarte führt dorthin).
  * Rechts stehen die Schrittdetails des gewählten Schritts,
- * ohne Auswahl die Übersicht über den Workflow. Auf schmalen Bildschirmen
+ * ohne Auswahl die Übersicht über den Workflow. Im Abschnitt „E-Mails“ der
+ * Schrittdetails stehen die E-Mail-Regeln des Schritts – wann, an wen, mit
+ * welcher Vorlage, bei Entscheidungen je Antwort (domain/mailRegeln.ts); die
+ * Übersicht listet die E-Mails des ganzen Workflows. Auf schmalen Bildschirmen
  * stehen die Abweichungen unter dem Standardverlauf und die Details öffnen
  * sich als Blatt von unten.
  *
@@ -30,7 +33,9 @@ import {
   STANDARD_ANTWORTEN,
   STEP_TYPE_LABEL,
   ANLIEGEN_OPTIONEN,
+  type EmailTemplate,
   type ID,
+  type MailEmpfaenger,
   type Nachweis,
   type ProcessTemplateStep,
   type StepType,
@@ -70,6 +75,17 @@ import {
   type ZweigGliederung,
 } from '../domain/workflowGraph';
 import { blockTitel, nachfolger, strukturVon, zweigTitel } from '../domain/ablauf';
+import {
+  regelAendern,
+  regelAnNaechste,
+  regelEntfernen,
+  regelHinzufuegen,
+  regelSatz,
+  regelZeitpunktSetzen,
+  regelnVon,
+  zeitpunktAusWert,
+  zeitpunktWert,
+} from '../domain/mailRegeln';
 import { newId, useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { ConfirmDialog } from '../../../shared/ui';
@@ -442,6 +458,7 @@ export function WorkflowEditor({
         dauer={dauer}
         bloecke={bloecke}
         arbeitstage={arbeitstage}
+        vorlagen={data.emailVorlagen}
         onAuswahl={setAuswahl}
         onSchliessen={schmal || mittel ? () => setAuswahl(null) : undefined}
       />
@@ -1150,6 +1167,8 @@ function KarteAnzeige({
   onHover: (id: ID | null) => void;
 }) {
   const entscheidung = step.typ === 'entscheidung';
+  /** Zahl der E-Mails, die der Schritt vorsieht (am Schritt und an seinen Antworten). */
+  const mails = regelnVon(step).length;
   // Karten im Zweig: wie im Standardverlauf bzw. wie Abweichungen, im Zweig gestrichelt
   const ortKlasse = ort === 'zweig' ? 'haupt wf-parallel-karte' : ort === 'zweigabw' ? 'abweichung wf-parallel-gestrichelt' : ort;
   return (
@@ -1186,12 +1205,12 @@ function KarteAnzeige({
           {tage(step.fristTage)}
         </span>
       </span>
-      {step.nachweis !== 'keine' || step.mailFrage ? (
+      {step.nachweis !== 'keine' || mails > 0 ? (
         <span className="wf-merkmale">
           {step.nachweis !== 'keine' ? <span className="wf-merkmal">{NACHWEIS_LABEL[step.nachweis]}</span> : null}
-          {step.mailFrage ? (
+          {mails > 0 ? (
             <span className="wf-merkmal">
-              <Icon name="mail" size={11} /> E-Mail
+              <Icon name="mail" size={11} /> {mails === 1 ? 'E-Mail' : `${mails} E-Mails`}
             </span>
           ) : null}
         </span>
@@ -1445,6 +1464,21 @@ function SchrittDetails({
         ? 'nicht erreichbar'
         : 'Abweichung';
   const entscheidung = step.typ === 'entscheidung';
+  /**
+   * E-Mail-Regeln des Schritts in der Reihenfolge der Anzeige: wie beim Öffnen
+   * (erst die am Schritt, dann die der Antworten), neue am Ende. Eine Regel
+   * behält ihren Platz, auch wenn „Wann“ sie zu einer Antwort verschiebt.
+   */
+  const alleRegeln = regelnVon(step);
+  const [mailFolge, setMailFolge] = useState<ID[]>(() => alleRegeln.map((o) => o.regel.id));
+  const mailIds = [
+    ...mailFolge.filter((id) => alleRegeln.some((o) => o.regel.id === id)),
+    ...alleRegeln.map((o) => o.regel.id).filter((id) => !mailFolge.includes(id)),
+  ];
+  if (mailIds.length !== mailFolge.length || mailIds.some((id, k) => id !== mailFolge[k])) setMailFolge(mailIds);
+  const mailRegeln = mailIds.flatMap((id) => alleRegeln.filter((o) => o.regel.id === id).slice(0, 1));
+  /** Funktionen als Empfänger – ohne die eigene (Planlaufmanagement). */
+  const mailFunktionen = rollenListe.filter((r) => r.toLowerCase() !== EIGENE_ROLLE.toLowerCase());
   const bewegbar = verschiebbar(gliederung, step.id);
   const aendern = (patch: Partial<ProcessTemplateStep>, feld: string | null = null) =>
     onSchrittAendern(step.id, (s) => ({ ...s, ...patch }), feld);
@@ -1746,7 +1780,7 @@ function SchrittDetails({
               className="btn btn-sm btn-outline"
               onClick={() => {
                 // Jede weitere Antwort führt zunächst in Nacharbeit
-                const antwort = { id: newId('ant'), text: '', ziel: null, nacharbeit: step.antworten.length > 0 };
+                const antwort = { id: newId('ant'), text: '', ziel: null, nacharbeit: step.antworten.length > 0, mails: [] };
                 onSchrittAendern(step.id, (s) => ({ ...s, antworten: [...s.antworten, antwort] }));
               }}
             >
@@ -1839,30 +1873,114 @@ function SchrittDetails({
 
       <section className="wf-abschnitt">
         <h4>
-          <Icon name="mail" size={14} /> E-Mail nach Abschluss
+          <Icon name="mail" size={14} /> E-Mails
         </h4>
-        <label className="checkbox">
-          <input type="checkbox" checked={step.mailFrage} onChange={(e) => aendern({ mailFrage: e.target.checked })} />
-          Nach einer E-Mail fragen
-        </label>
         <p className="wf-hilfe">
-          Fragt nach dem Erledigen, ob die für den nächsten Schritt zuständige Person informiert werden soll.
+          Legt fest, wann KaPlan welche E-Mail an wen vorschlägt{entscheidung ? ' – je Antwort eine eigene' : ''}. Ohne Eintrag
+          wird zu diesem Schritt keine E-Mail vorgeschlagen. „Nächste Zuständige“ sind die Personen, deren Schritte als
+          Nächstes anstehen.
         </p>
-        {step.mailFrage ? (
-          <select
-            className="select"
-            value={step.mailVorlageId ?? ''}
-            onChange={(e) => aendern({ mailVorlageId: e.target.value || null })}
-            aria-label="E-Mail-Vorlage"
-          >
-            <option value="">Vorlage automatisch wählen</option>
-            {data.emailVorlagen.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
+        {mailRegeln.length > 0 ? (
+          <div className="wf-mails">
+            {mailRegeln.map((ort, n) => {
+              const { regel } = ort;
+              const anWert = regel.an === 'funktion' ? `funktion:${regel.roleName}` : regel.an;
+              const funktionen = [...new Set([...mailFunktionen, ...(regel.an === 'funktion' && regel.roleName ? [regel.roleName] : [])])];
+              return (
+                <div key={regel.id} className="wf-mail">
+                  <div className="wf-mail-kopf">
+                    <span>E-Mail {n + 1}</span>
+                    <button
+                      type="button"
+                      className="btn-icon"
+                      aria-label={`E-Mail ${n + 1} entfernen`}
+                      title="E-Mail entfernen"
+                      onClick={() => onSchrittAendern(step.id, (s) => regelEntfernen(s, regel.id))}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <label className="wf-feld">
+                    <span>Wann</span>
+                    <select
+                      className="select"
+                      value={zeitpunktWert(ort)}
+                      onChange={(e) => {
+                        const zeitpunkt = zeitpunktAusWert(e.target.value);
+                        onSchrittAendern(step.id, (s) => regelZeitpunktSetzen(s, regel.id, zeitpunkt));
+                      }}
+                    >
+                      <option value="anstehen">Sobald der Schritt ansteht</option>
+                      <option value="abschluss">{entscheidung ? 'Nach jeder Antwort' : 'Nach dem Erledigen'}</option>
+                      {entscheidung
+                        ? step.antworten.map((a, k) => (
+                            <option key={a.id} value={`antwort:${a.id}`}>
+                              Bei Antwort „{a.text.trim() || STANDARD_ANTWORTEN[k] || `Antwort ${k + 1}`}“
+                            </option>
+                          ))
+                        : null}
+                    </select>
+                  </label>
+                  <label className="wf-feld">
+                    <span>An</span>
+                    <select
+                      className="select"
+                      value={anWert}
+                      onChange={(e) => {
+                        const wert = e.target.value;
+                        const patch = wert.startsWith('funktion:')
+                          ? { an: 'funktion' as MailEmpfaenger, roleName: wert.slice('funktion:'.length) }
+                          : { an: wert as MailEmpfaenger, roleName: '' };
+                        onSchrittAendern(step.id, (s) => regelAendern(s, regel.id, patch));
+                      }}
+                    >
+                      <option value="naechste">Nächste Zuständige</option>
+                      <option value="zustaendig">Zuständige dieses Schritts</option>
+                      <optgroup label="Funktion im Projekt">
+                        {funktionen.map((r) => (
+                          <option key={r} value={`funktion:${r}`}>
+                            {r}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </label>
+                  <label className="wf-feld">
+                    <span>Vorlage</span>
+                    <select
+                      className="select"
+                      value={data.emailVorlagen.some((v) => v.id === regel.vorlageId) ? (regel.vorlageId ?? '') : ''}
+                      onChange={(e) => {
+                        const vorlageId = e.target.value || null;
+                        onSchrittAendern(step.id, (s) => regelAendern(s, regel.id, { vorlageId }));
+                      }}
+                    >
+                      <option value="">Vorlage automatisch wählen</option>
+                      {data.emailVorlagen.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
         ) : null}
+        <div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => {
+              // Die Kennung entsteht vor der Änderung (StrictMode)
+              const regel = regelAnNaechste(newId('mr'));
+              onSchrittAendern(step.id, (s) => regelHinzufuegen(s, regel));
+            }}
+          >
+            <Icon name="plus" size={13} /> E-Mail
+          </button>
+        </div>
         <label className="wf-feld">
           <span>Anliegen in der Versandmail</span>
           <select
@@ -1878,8 +1996,8 @@ function SchrittDetails({
           </select>
         </label>
         <p className="wf-hilfe">
-          Versandschritt: Nach dem Erledigen schlägt KaPlan der danach zuständigen Person die Vorlage „Versand“ mit
-          diesem Anliegen und ihren SharePoint-Links vor.
+          Versandschritt: Eine E-Mail an die danach Zuständigen nutzt bei automatischer Vorlage „Versand“ – mit diesem
+          Anliegen und ihren SharePoint-Links.
         </p>
       </section>
 
@@ -1943,6 +2061,7 @@ function Uebersicht({
   dauer,
   bloecke,
   arbeitstage,
+  vorlagen,
   onAuswahl,
   onSchliessen,
 }: {
@@ -1956,10 +2075,16 @@ function Uebersicht({
   /** Zahl der parallelen Blöcke. */
   bloecke: number;
   arbeitstage: boolean;
+  /** E-Mail-Vorlagen – für die Liste der E-Mails des Workflows. */
+  vorlagen: EmailTemplate[];
   onAuswahl: (id: ID | 'uebersicht' | null) => void;
   onSchliessen?: () => void;
 }) {
   const entscheidungen = steps.filter((s) => s.typ === 'entscheidung').length;
+  /** Alle E-Mail-Regeln des Workflows, je Regel ein Satz. */
+  const mails = steps.flatMap((s, i) =>
+    regelnVon(s).map((ort) => ({ id: ort.regel.id, stepId: s.id, schritt: `${nr(i)} ${s.name || 'ohne Bezeichnung'}`, satz: regelSatz(ort, s, vorlagen) })),
+  );
   return (
     <div className="wf-details">
       <div className="wf-panel-kopf">
@@ -2032,6 +2157,26 @@ function Uebersicht({
           </div>
         </section>
       ) : null}
+
+      <section className="wf-abschnitt">
+        <h4>
+          <Icon name="mail" size={14} /> E-Mails
+        </h4>
+        {mails.length === 0 ? (
+          <p className="wf-hilfe">
+            Dieser Workflow sieht keine E-Mails vor. Festgelegt werden sie je Schritt in den Schrittdetails unter „E-Mails“.
+          </p>
+        ) : (
+          <div className="wf-mail-liste">
+            {mails.map((m) => (
+              <button key={`${m.stepId}/${m.id}`} type="button" className="wf-mail-zeile" onClick={() => onAuswahl(m.stepId)}>
+                <b>{m.schritt}</b>
+                <span>{m.satz}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="wf-abschnitt">
         <h4>So lesen Sie das Bild</h4>

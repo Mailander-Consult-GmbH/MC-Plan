@@ -508,6 +508,44 @@
 }
 .wf-kacheln b { font-size: 20px; letter-spacing: -0.02em; }
 .wf-kacheln span { font-size: 11.5px; color: var(--text-secondary); line-height: 1.3; }
+/* E-Mail-Regeln eines Schritts und ihre Liste in der Übersicht */
+.wf-mails { display: flex; flex-direction: column; gap: 8px; }
+.wf-mail {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--separator);
+  background: var(--bg-elev);
+}
+.wf-mail-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.wf-mail .wf-feld { display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 8px; }
+.wf-mail-liste { display: flex; flex-direction: column; gap: 5px; }
+.wf-mail-zeile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  font-size: 12px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  background: var(--bg-elev);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.wf-mail-zeile b { color: var(--text); font-weight: 600; }
+.wf-mail-zeile:hover { border-color: var(--separator-strong); }
+
 .wf-hinweise { display: flex; flex-direction: column; gap: 5px; }
 .wf-hinweis {
   text-align: left;

@@ -47,6 +47,7 @@ import {
   type Vorgang,
 } from '../domain/bestand';
 import { basisplanFestlegen } from '../domain/simulation';
+import { laeufeMitAnderenRegeln, mailRegelnUebernehmen } from '../domain/mailRegeln';
 import { seedData } from '../domain/seed';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
@@ -143,6 +144,11 @@ interface StoreValue {
   addTemplate: (t: Omit<ProcessTemplate, 'id'> & { id?: ID }) => ID;
   updateTemplate: (id: ID, patch: Partial<ProcessTemplate>) => void;
   deleteTemplate: (id: ID) => void;
+  /**
+   * Trägt die E-Mail-Regeln eines Workflows in seine laufenden Planläufe nach
+   * (Schritte gleicher Bezeichnung, Art und Funktion); liefert deren Zahl.
+   */
+  mailRegelnInLaeufeUebernehmen: (templateId: ID) => number;
   /* Planläufe */
   /** Legt einen Lauf an; ohne Basisplan wird er beim Start festgelegt. */
   addRun: (r: Omit<PlanRun, 'id'>) => ID;
@@ -523,6 +529,17 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
           ...d,
           templates: d.templates.filter((t) => t.id !== id),
           geloescht: [...(d.geloescht ?? []), loeschvermerk('workflow', id, vorlage.projectId, vorlage.name, v)],
+        };
+      }),
+
+    mailRegelnInLaeufeUebernehmen: (templateId) =>
+      mitErgebnis((d) => {
+        const vorlage = d.templates.find((t) => t.id === templateId);
+        const betroffen = new Set(vorlage ? laeufeMitAnderenRegeln(d.runs, vorlage).map((r) => r.id) : []);
+        if (!vorlage || betroffen.size === 0) return { daten: d, ergebnis: 0 };
+        return {
+          daten: { ...d, runs: d.runs.map((r) => (betroffen.has(r.id) ? mailRegelnUebernehmen(r, vorlage) : r)) },
+          ergebnis: betroffen.size,
         };
       }),
 
