@@ -474,8 +474,9 @@ daneben unter *Abweichungen* die Schritte, die nur über eine andere Antwort err
 farbigen Linien und Antwortbeschriftungen; Rücksprünge sind eigens gekennzeichnet. Jede Karte zeigt
 Art, Nummer, Bezeichnung, Funktion und Frist. Ein Klick öffnet rechts die *Schrittdetails*
 (Bezeichnung, Art, verantwortliche Funktion, Frist, Nachweis, „Weiter mit“ bzw. die Antworten mit
-*Als Standardverlauf*, *E-Mail nach Abschluss*, *Anliegen in der Versandmail*, Verschieben im Standardverlauf, Duplizieren,
-Entfernen). „+“ zwischen zwei Karten fügt dort eine Aufgabe ein, *Schritt hinzufügen* hängt einen
+*Als Standardverlauf*, *E-Mails* (siehe *E-Mail-Regeln*), *Anliegen in der Versandmail*, Verschieben im Standardverlauf, Duplizieren,
+Entfernen). Karten mit E-Mail-Regeln tragen das Kennzeichen „E-Mail“ bzw. „… E-Mails“; ohne gewählten
+Schritt listet die *Übersicht* alle E-Mails des Workflows, ein Klick führt zum Schritt. „+“ zwischen zwei Karten fügt dort eine Aufgabe ein, *Schritt hinzufügen* hängt einen
 Schritt an. Ein paralleler Block erscheint als Containerkarte „Parallel · … Zweige“ mit den
 Zweigen nebeneinander (bei Platzmangel untereinander), Gabel- und Zusammenführungsbalken, „+“ je
 Zweig, Abweichungen im Zweig gestrichelt darunter und Ausstiegen als Text; angelegt wird er über
@@ -510,6 +511,33 @@ Nachreichung und Prüfung der Nachreichung); sie lassen sich je Kette und je Pla
 Freigabe, „PLM an BVB zur Freigabe zur fachtechnischen Prüfung“ → Vorprüfung, „PLM an Fachprüfer
 und Prüfstatiker“ und „PLM an Planprüfer“ → Prüfung, „PLM an PL zur Genehmigung“ → Genehmigung;
 alle übrigen Schritte keins.
+
+**E-Mail-Regeln.** Der Workflow legt je Schritt fest, **ob, wann und mit welcher Vorlage** KaPlan
+eine E-Mail **an wen** vorschlägt – im Abschnitt *E-Mails* der Schrittdetails, je E-Mail eine Regel:
+
+* **Wann:** *Sobald der Schritt ansteht* oder *Nach dem Erledigen*. Bei Entscheidungen zusätzlich
+  je Antwort (*Bei Antwort „Ja“*, *Bei Antwort „Nein“* …) – so gehören zu den Ausgängen einer
+  Entscheidung verschiedene E-Mails; *Nach jeder Antwort* gilt unabhängig vom Ausgang.
+* **An:** *Nächste Zuständige* (die Personen, deren Schritte als Nächstes anstehen), *Zuständige
+  dieses Schritts* oder eine **Funktion im Projekt** (etwa der Fachplaner, der vom Ergebnis einer
+  Freigabe erfährt) – gemeint ist die Person, die die Funktion für das Gewerk des Plans ausfüllt.
+* **Vorlage:** eine der E-Mail-Vorlagen oder *Vorlage automatisch wählen* – dann nach der Lage:
+  nach einem Versandschritt **Versand**, bei mehreren Schritten die **Sammelerinnerung**, sonst
+  die erste Vorlage mit Anlass *Übergabe* (für E-Mails an eine Funktion bzw. an die Person des
+  erledigten Schritts: *Allgemein*).
+
+Ein Schritt ohne Regel schlägt keine E-Mail vor. Verschickt wird nie selbsttätig: Nach dem
+Abschluss eines Schritts bietet **E-Mail senden** die vorgesehenen E-Mails an (siehe *Planlauf*).
+Die mitgelieferten Workflows sehen eine E-Mail an die nächsten Zuständigen überall dort vor, wo
+die Arbeit an eine andere Funktion als das Planlaufmanagement übergeht – bei Entscheidungen je
+Antwort („BVB-Freigabe“: nur bei „Nachreichung“, denn nach „Ja“ und „Nein“ ist das
+Planlaufmanagement an der Reihe). An die eigene Person geht nie eine E-Mail. Der Platzhalter
+`{{antwort}}` nennt in der E-Mail die gewählte Antwort einer Entscheidung.
+
+Planläufe übernehmen die Regeln beim Start mit ihren Schritten. Ändert das Speichern eines
+Workflows seine E-Mail-Regeln, fragt KaPlan, ob laufende Planläufe aus diesem Workflow sie
+übernehmen sollen – für Schritte gleicher Bezeichnung, Art und Funktion; Schritte, Fristen und
+Termine der Planläufe bleiben dabei unverändert.
 
 Diese Ketten kamen mit Stammdatenfassung 5, das Anliegen mit Fassung 6. Ein vorhandener Bestand
 übernimmt sie beim Laden; wer einen mitgelieferten Workflow der Fassung 4 bzw. 5 selbst geändert
@@ -575,10 +603,14 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   vor dem Eingang wird angezeigt und verlangt beim gesammelten Erledigen eine Bestätigung. Mit dem
   Abschluss hält der Schritt die zuständige Person fest. Die folgenden Schritte werden automatisch
   aktiv, der Lauf schließt sich, wenn alle Schritte des Verlaufs erledigt sind.
-* Nach jedem Erledigen oder Überspringen zeigt **E-Mail senden** die nun anstehenden Schritte je
-  Person mit Vorlage und E-Mail-Schaltfläche – sofern unter *Angemeldet als* die Nachfrage
-  zugelassen ist. War der erledigte Schritt ein Versandschritt, ist die Vorlage **Versand** für die
-  neu zuständige Person vorgewählt („Versand zur Freigabe“ usw.).
+* Nach dem Erledigen oder Überspringen zeigt **E-Mail senden** die E-Mails, die die
+  *E-Mail-Regeln* des Workflows jetzt vorsehen – je Empfänger und Vorlage eine Zeile mit Anlass
+  („„BVB-Freigabe“: Nein“), betroffenen Schritten, Vorlage und E-Mail-Schaltfläche –, sofern unter
+  *Angemeldet als* die Nachfrage zugelassen ist. Sieht der Workflow nichts vor, erscheint der
+  Dialog nicht. Nach dem Überspringen gelten nur die E-Mails an die nächsten Zuständigen. Steht
+  die Person nach einem Versandschritt an, ist die Vorlage **Versand** vorgewählt („Versand zur
+  Freigabe“ usw.). Eine E-Mail an eine Funktion („Zur Kenntnis“) wird am erledigten Schritt
+  vermerkt.
 * Bei **Entscheidungen** wird die Antwort im Lauf gewählt. Der angezeigte Verlauf folgt dieser
   Antwort; ohne Auswahl der ersten Möglichkeit. Schritte, die nur bei anderer Antwort durchlaufen
   werden, sind unterhalb der Liste aufgeführt.
@@ -687,8 +719,10 @@ Paket steht mit seinem Namen für sich, mehrere unter „Ohne Planpaket:“. Feh
 „[SharePoint-Link Eingang fehlt]“ bzw. „[SharePoint-Link Ausgang fehlt]“ im Text und der Dialog
 weist darauf hin. „ORDNERNAME EINFÜGEN“ wird vor dem Absenden von Hand ersetzt.
 
-Ausgelöst wird die Versandmail auf zwei Wegen: nach dem Erledigen eines Versandschritts in **Neu
-zuständig** (siehe oben) und gesammelt über **Versandmail …** in der Planlaufliste. Dort gilt je
+Ausgelöst wird die Versandmail auf zwei Wegen: nach dem Erledigen eines Versandschritts in
+**E-Mail senden** – wenn der Workflow dort eine E-Mail an die nächsten Zuständigen vorsieht (siehe
+*E-Mail-Regeln*; in den mitgelieferten Workflows ist das so) – und gesammelt über **Versandmail …**
+in der Planlaufliste. Dort gilt je
 gewähltem Planlauf: Steht ein Versandschritt an (etwa „PLM an BVB zur Freigabe“), ist Empfänger
 die Person des Schritts danach (bei einem parallelen Block jedes Zweigs); steht der Schritt direkt
 nach einem erledigten Versandschritt an, dessen Person. Je Empfänger und Anliegen entsteht **eine**
@@ -1848,6 +1882,8 @@ src/
         workflowGraph.ts  Gliederung und Bearbeitung eines Workflows für den Editor (blockbewusst)
         abschluss.ts Statuswechsel, Wieder öffnen, Einfügen eines Schritts samt Nachweis
         email.ts     Platzhalter und Aufbereitung der Vorlagen, Sammel-E-Mail, Versandmail
+        mailRegeln.ts  E-Mail-Regeln der Workflows: Vorbelegung, Auswertung nach einem Abschluss,
+                     Bearbeiten im Editor, Übernahme in laufende Planläufe
         uebersicht.ts  Gliederung und Zeilenwerte der Planlaufliste – auch für den Export
         export.ts    Kurz- und Langfassung für Excel und PDF
         importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen
@@ -1861,7 +1897,7 @@ src/
                      Terminrechner, Projektreiter)
       components/    Fachliche Bausteine (common.tsx, WorkflowEditor, AblaufVorschau, EmailDialog,
                      PlanlaufListe, PaketDialog, BuendelnDialog, SicherungEinspielen, Abgleich,
-                     Hinweisleisten, Terminnachweis, Protokoll, NeuZustaendig, SammelErledigen,
+                     Hinweisleisten, Terminnachweis, Protokoll, NeuZustaendig („E-Mail senden“), SammelErledigen,
                      SammelErinnern, PlanlisteAktionen, SeiteAuswahl …)
     baubetrieb/  Bereich „Baubetriebsplanung“ (erster Entwurf)
       index.tsx  Einstiegspunkt samt Datenbestand des Bereichs

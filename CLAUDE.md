@@ -274,6 +274,16 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   * `domain/abgleich.ts` selektiver Abgleich mit einer Sicherung; Verweise zwischen Objekten
     stehen zentral in `VERWEISFELDER`,
   * `domain/terminrechner.ts` Terminrechner über `simulieren`/`rueckwaerts`,
+  * `domain/mailRegeln.ts` E-Mail-Regeln der Workflows (`MailRegel` in `types.ts`): Regeln stehen
+    am Schritt (`mails`, „anstehen“ bzw. „abschluss“) und – für verschiedene E-Mails je Ausgang
+    einer Entscheidung – an der Antwort (`Antwort.mails`), nicht als Verweis auf eine Antwort-ID
+    (Antwort-IDs werden beim Kopieren von Schritten neu vergeben). `mailVorschlaege` wertet sie
+    nach einem Abschluss aus (Dialog „E-Mail senden“, `components/NeuZustaendig.tsx`; die gewählte
+    Antwort steht im `MailEreignis`, weil ein Rücksprung den Schritt sofort zurücksetzt);
+    `uebergabeRegeln` ist die Vorbelegung der mitgelieferten Workflows und der Umstellung auf
+    Fassung 15 – mit Kennungen aus denen der Schritte, damit Bestand und Sicherung gleich
+    ausfallen; `mailRegelnUebernehmen` trägt geänderte Regeln in laufende Planläufe nach. Ohne
+    Regel wird keine E-Mail vorgeschlagen,
   * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten
     (Läufe über die Engine, zufällige IDs),
   * `store/store.tsx` alle Schreibzugriffe, `store/storage.ts` Laden, Speichern, Migration,
