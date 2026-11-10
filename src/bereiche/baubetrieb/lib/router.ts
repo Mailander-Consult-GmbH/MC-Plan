@@ -7,6 +7,7 @@
  *   #/baubetrieb/projekte                         Projekte
  *   #/baubetrieb/projekt/<id>                     Projekt mit seinen Anmeldungen
  *   #/baubetrieb/projekt/<id>/anmeldung/<id>      Anmeldung mit Statusverlauf
+ *   #/baubetrieb/import                           Import aus BBPNeo
  *   #/baubetrieb/workflows                        Workflows (früher #/baubetrieb/workflow)
  *   #/baubetrieb/fristen                          Fristen laut Richtlinie, Ampel und Nachhaken
  *                                                 (früher #/baubetrieb/einstellungen)
@@ -23,6 +24,7 @@ export type Route =
   | { view: 'uebersicht' }
   | { view: 'termine' }
   | { view: 'projekte' }
+  | { view: 'import' }
   | { view: 'workflows' }
   | { view: 'fristen' }
   | { view: 'projekt'; projektId: ID }
@@ -53,6 +55,7 @@ export function hashToRoute(hash: string): Route {
   }
   if (teile[0] === 'termine') return { view: 'termine' };
   if (teile[0] === 'projekte') return { view: 'projekte' };
+  if (teile[0] === 'import') return { view: 'import' };
   // Die frühere Adresse „workflow“ führt auf dieselbe Seite.
   if (teile[0] === 'workflows' || teile[0] === 'workflow') return { view: 'workflows' };
   // Die frühere Seite „Einstellungen“ heißt jetzt „Fristen“.

@@ -1,6 +1,7 @@
 /**
  * Rahmen der Baubetriebsplanung: Seitenleiste, Kopfzeile und Auswahl der
- * Ansicht. Workflows und Fristen stehen – wie im Planlaufmanagement – unter
+ * Ansicht. Zwischen „Projekte“ und „Einstellungen“ steht der Import aus
+ * BBPNeo; Workflows und Fristen stehen – wie im Planlaufmanagement – unter
  * der aufklappbaren Gruppe „Einstellungen“.
  */
 import { useEffect, useState } from 'react';
@@ -17,6 +18,7 @@ import { ausstehendeErstanmeldungen, offeneTermine } from './domain/fristen';
 import { anmeldungBezeichnung } from './domain/workflow';
 import { useRoute, type Route } from './lib/router';
 import { AnmeldungDetail } from './pages/AnmeldungDetail';
+import { BbpImport } from './pages/BbpImport';
 import { Fristen } from './pages/Fristen';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
@@ -96,6 +98,12 @@ export function App() {
           onClick={() => gehe({ view: 'termine' })}
         />
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
+        <NavItem
+          icon="importieren"
+          label="Import aus BBPNeo"
+          aktiv={route.view === 'import'}
+          onClick={() => gehe({ view: 'import' })}
+        />
         {/* Workflows und Fristen gebündelt unter „Einstellungen“ */}
         <NavItem
           icon="einstellungen"
@@ -193,6 +201,7 @@ export function App() {
             {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
             {route.view === 'termine' ? <Termine navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
+            {route.view === 'import' ? <BbpImport navigate={gehe} /> : null}
             {route.view === 'workflows' ? <Workflows navigate={gehe} /> : null}
             {route.view === 'fristen' ? <Fristen /> : null}
             {route.view === 'projekt' ? (
@@ -311,6 +320,8 @@ function kopfzeile(route: Route, projektName?: string, anmeldungName?: string): 
       return { titel: 'Termine & Nachhaken', sub: 'Terminfristen aller Anmeldungen und Anmeldebedarf' };
     case 'projekte':
       return { titel: 'Projekte', sub: 'Je Baumaßnahme ein Projekt mit seinen Anmeldungen' };
+    case 'import':
+      return { titel: 'Import aus BBPNeo', sub: 'Anmeldungen im KM und KKM aus dem Excel-Export von BBPNeo' };
     case 'workflows':
       return { titel: 'Workflows', sub: 'Status, Terminfristen und Nachfolger je Phase – anpassbar' };
     case 'fristen':

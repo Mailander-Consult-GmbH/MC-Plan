@@ -1,16 +1,17 @@
 /**
- * Dialog „Import aus BBPNeo“ (Seite „Projekte“): Excel-Export der Anmeldungen
- * aus BBPNeo wählen, Status aus BBPNeo den Status in KaPlan zuordnen (die
- * Zuordnung merkt sich KaPlan für den nächsten Import), Projekte nach
- * DB-G-Nummer zuordnen oder anlegen und die Vorschau prüfen. Jede Änderung
- * plant neu (`bbpPlanen`); „Importieren“ wendet den Plan in einem `mutate()`
- * an (`bbpImportieren` im Store, domain/bbpImport.ts).
+ * Seite „Import aus BBPNeo“ (eigener Punkt in der Seitenleiste, #/baubetrieb/import):
+ * Excel-Export der Anmeldungen aus BBPNeo wählen, Status aus BBPNeo den Status
+ * in KaPlan zuordnen (die Zuordnung merkt sich KaPlan für den nächsten
+ * Import), Projekte nach DB-G-Nummer zuordnen oder anlegen und die Vorschau
+ * prüfen. Jede Änderung plant neu (`bbpPlanen`); „Importieren“ wendet den Plan
+ * in einem `mutate()` an (`bbpImportieren` im Store, domain/bbpImport.ts) und
+ * leert die Seite für die nächste Datei.
  */
 import { useMemo, useRef, useState } from 'react';
 import { formatDate } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Badge, Callout, Field, Modal, Select, TextInput, alsKnopf } from '../../../shared/ui';
+import { Badge, Callout, Card, CardHeader, Field, Select, TextInput, alsKnopf } from '../../../shared/ui';
 import { tabelleLesen, type GeleseneTabelle } from '../../../shared/xlsxLesen';
 import {
   BBP_PHASE_LABEL,
@@ -27,6 +28,7 @@ import {
 } from '../domain/bbpImport';
 import type { BbpPhase, BbpStatusZuordnung, ID, Workflow } from '../domain/types';
 import { startbareWorkflows, zielText } from '../domain/workflow';
+import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 
 const ERGEBNIS: Record<BbpErgebnis, { label: string; ton: '' | 'green' | 'blue' | 'orange' }> = {
@@ -71,7 +73,7 @@ function StatusWahl({
   );
 }
 
-export function BbpImportDialog({ onClose }: { onClose: () => void }) {
+export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
   const { data, bbpImportieren } = useStore();
   const toast = useToast();
   const eingabe = useRef<HTMLInputElement>(null);
@@ -86,8 +88,21 @@ export function BbpImportDialog({ onClose }: { onClose: () => void }) {
   }));
   const [projektWahl, setProjektWahl] = useState<Record<string, string>>({});
   const [projektNamen, setProjektNamen] = useState<Record<string, string>>({});
+  /** Ergebnis des letzten Imports auf dieser Seite. */
+  const [ergebnis, setErgebnis] = useState<string | null>(null);
+
+  /** Leert die Seite für die nächste Datei. */
+  const verwerfen = () => {
+    setDatei(null);
+    setFehler(null);
+    setBlaetter([]);
+    setBlattIndex(0);
+    setProjektWahl({});
+    setProjektNamen({});
+  };
 
   const lies = async (f: File) => {
+    setErgebnis(null);
     setDatei(f.name);
     setFehler(null);
     setBlaetter([]);
@@ -146,20 +161,20 @@ export function BbpImportDialog({ onClose }: { onClose: () => void }) {
     if (!gelesen || !plan || !moeglich) return;
     bbpImportieren(gelesen, optionen);
     const s = plan.summe;
-    toast(
-      `Import aus BBPNeo: ${[
-        s.neu ? `${s.neu} neu` : '',
-        s.aktualisiert
-          ? `${s.aktualisiert} aktualisiert${s.statusWechsel ? ` (${s.statusWechsel} mit neuem Status)` : ''}`
-          : '',
-        s.unveraendert ? `${s.unveraendert} unverändert` : '',
-        s.uebersprungen ? `${s.uebersprungen} übersprungen` : '',
-        s.neueProjekte ? anzahl(s.neueProjekte, 'neues Projekt', 'neue Projekte') : '',
-      ]
-        .filter(Boolean)
-        .join(', ')}.`,
-    );
-    onClose();
+    const text = `Import aus BBPNeo: ${[
+      s.neu ? `${s.neu} neu` : '',
+      s.aktualisiert
+        ? `${s.aktualisiert} aktualisiert${s.statusWechsel ? ` (${s.statusWechsel} mit neuem Status)` : ''}`
+        : '',
+      s.unveraendert ? `${s.unveraendert} unverändert` : '',
+      s.uebersprungen ? `${s.uebersprungen} übersprungen` : '',
+      s.neueProjekte ? anzahl(s.neueProjekte, 'neues Projekt', 'neue Projekte') : '',
+    ]
+      .filter(Boolean)
+      .join(', ')}.`;
+    toast(text);
+    setErgebnis(text);
+    verwerfen();
   };
 
   /** Zweite Zeile eines Postens: was passiert und warum. */
@@ -177,100 +192,119 @@ export function BbpImportDialog({ onClose }: { onClose: () => void }) {
     return [...teile, ...p.hinweise].join(' · ');
   };
 
-  return (
-    <Modal
-      titel="Import aus BBPNeo"
-      sub="Anmeldungen im KM und KKM aus dem Excel-Export von BBPNeo"
-      wide
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onClose}>
-            Abbrechen
-          </button>
-          <button type="button" className="btn btn-primary" onClick={importieren} disabled={!moeglich}>
-            Importieren
-          </button>
-        </>
-      }
-    >
-      <div className="stack" style={{ gap: 14 }}>
-        <p className="small muted" style={{ margin: 0 }}>
-          Übernommen werden Anmeldungen im KM (Prozessphase 2. KP = N-2, 3. KP = N-1) und im KKM; „Vorlage“ wird
-          übersprungen. Je Anmelde-ID entsteht eine Anmeldung mit dem frühesten Beginn und dem spätesten Ende des
-          Sperrzeitraums. Vorhandene Anmeldungen derselben ID übernehmen die Angaben aus BBPNeo, ein anderer Status
-          steht als „Import BBPNeo“ im Verlauf.
-        </p>
+  const importKnopf = (
+    <button type="button" className="btn btn-primary" onClick={importieren} disabled={!moeglich}>
+      <Icon name="importieren" size={14} /> Importieren
+    </button>
+  );
 
-        <div
-          className={`drop-zone ${ueber ? 'over' : ''} ${datei ? 'bb-imp-klein' : ''}`}
-          {...alsKnopf(() => eingabe.current?.click())}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setUeber(true);
-          }}
-          onDragLeave={() => setUeber(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setUeber(false);
-            const f = e.dataTransfer.files[0];
-            if (f) void lies(f);
-          }}
-        >
-          {datei ? (
-            <>
-              <Icon name="importieren" size={18} strokeWidth={1.5} />
-              <strong>{datei}</strong>
-              {blatt ? <span className="small">Blatt „{blatt.name}“</span> : null}
-              <span className="small">· Andere Datei wählen</span>
-            </>
-          ) : (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-                <Icon name="importieren" size={26} strokeWidth={1.4} />
-              </div>
-              <strong>Excel-Export aus BBPNeo hierher ziehen</strong>
-              <div className="small">oder klicken, um eine Datei auszuwählen</div>
-            </>
-          )}
-          <input
-            ref={eingabe}
-            type="file"
-            accept=".xlsx,.csv,.txt"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = '';
+  return (
+    <div className="stack">
+      {ergebnis ? (
+        <Callout ton="" icon="✓" role="status">
+          <div className="row-between wrap">
+            <span>{ergebnis}</span>
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate({ view: 'projekte' })}>
+              Zu den Projekten
+            </button>
+          </div>
+        </Callout>
+      ) : null}
+
+      <Card>
+        <CardHeader titel="Datei" sub="Excel-Export der Anmeldungen aus BBPNeo (.xlsx)" />
+        <div className="card-pad stack" style={{ gap: 14 }}>
+          <p className="small muted" style={{ margin: 0 }}>
+            Übernommen werden Anmeldungen im KM (Prozessphase 2. KP = N-2, 3. KP = N-1) und im KKM; „Vorlage“ wird
+            übersprungen. Je Anmelde-ID entsteht eine Anmeldung mit dem frühesten Beginn und dem spätesten Ende des
+            Sperrzeitraums. Vorhandene Anmeldungen derselben ID übernehmen die Angaben aus BBPNeo, ein anderer Status
+            steht als „Import BBPNeo“ im Verlauf.
+          </p>
+
+          <div
+            className={`drop-zone ${ueber ? 'over' : ''} ${datei ? 'bb-imp-klein' : ''}`}
+            {...alsKnopf(() => eingabe.current?.click())}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setUeber(true);
+            }}
+            onDragLeave={() => setUeber(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setUeber(false);
+              const f = e.dataTransfer.files[0];
               if (f) void lies(f);
             }}
-          />
-        </div>
-
-        {fehler ? (
-          <Callout ton="error" icon="!">
-            {fehler}
-          </Callout>
-        ) : null}
-
-        {blaetter.length > 1 ? (
-          <Field label="Tabellenblatt" hint="Mehrere Blätter der Datei sind Exporte der Anmeldungen.">
-            <Select
-              value={String(blattIndex)}
-              onChange={(v) => {
-                setBlattIndex(Number(v));
-                setProjektWahl({});
-                setProjektNamen({});
+          >
+            {datei ? (
+              <>
+                <Icon name="importieren" size={18} strokeWidth={1.5} />
+                <strong>{datei}</strong>
+                {blatt ? <span className="small">Blatt „{blatt.name}“</span> : null}
+                <span className="small">· Andere Datei wählen</span>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                  <Icon name="importieren" size={26} strokeWidth={1.4} />
+                </div>
+                <strong>Excel-Export aus BBPNeo hierher ziehen</strong>
+                <div className="small">oder klicken, um eine Datei auszuwählen</div>
+              </>
+            )}
+            <input
+              ref={eingabe}
+              type="file"
+              accept=".xlsx,.csv,.txt"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) void lies(f);
               }}
-              options={blaetter.map((b, i) => ({
-                value: String(i),
-                label: `${b.name} (${b.zeilen.length - 1} Zeilen)`,
-              }))}
             />
-          </Field>
-        ) : null}
+          </div>
 
-        {gelesen && plan ? (
-          <>
+          {fehler ? (
+            <Callout ton="error" icon="!">
+              {fehler}
+            </Callout>
+          ) : null}
+
+          {blaetter.length > 1 ? (
+            <Field label="Tabellenblatt" hint="Mehrere Blätter der Datei sind Exporte der Anmeldungen.">
+              <Select
+                value={String(blattIndex)}
+                onChange={(v) => {
+                  setBlattIndex(Number(v));
+                  setProjektWahl({});
+                  setProjektNamen({});
+                }}
+                options={blaetter.map((b, i) => ({
+                  value: String(i),
+                  label: `${b.name} (${b.zeilen.length - 1} Zeilen)`,
+                }))}
+              />
+            </Field>
+          ) : null}
+        </div>
+      </Card>
+
+      {gelesen && plan ? (
+        <Card>
+          <CardHeader
+            titel="Vorschau"
+            sub={`Blatt „${gelesen.blatt}“`}
+            actions={
+              <>
+                <button type="button" className="btn btn-outline" onClick={verwerfen}>
+                  Verwerfen
+                </button>
+                {importKnopf}
+              </>
+            }
+          />
+          <div className="card-pad stack" style={{ gap: 14 }}>
             <div className="bb-imp-summe">
               <span className="small muted">
                 {anzahl(gelesen.zeilen, 'Zeile', 'Zeilen')} ·{' '}
@@ -458,9 +492,12 @@ export function BbpImportDialog({ onClose }: { onClose: () => void }) {
                 </ul>
               </details>
             ) : null}
-          </>
-        ) : null}
-      </div>
-    </Modal>
+            <div className="row" style={{ justifyContent: 'flex-end' }}>
+              {importKnopf}
+            </div>
+          </div>
+        </Card>
+      ) : null}
+    </div>
   );
 }

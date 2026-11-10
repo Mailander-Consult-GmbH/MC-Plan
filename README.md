@@ -860,7 +860,8 @@ aus …“, die führende Bezeichnung erhält „(Kopie)“, ohne Nummer wird �
 öffnet sie.
 
 ### Import aus BBPNeo
-**Import aus BBPNeo** auf der Seite *Projekte* legt Anmeldungen aus dem Excel-Export von BBPNeo an
+**Import aus BBPNeo** – ein eigener Punkt in der Seitenleiste zwischen *Projekte* und
+*Einstellungen* (`#/baubetrieb/import`) – legt Anmeldungen aus dem Excel-Export von BBPNeo an
 bzw. aktualisiert sie – **nur KM und KKM**. Die Spalten erkennt der Import an ihren Überschriften,
 weil die Exporte von BBPNeo sie verschieden anordnen; im Export „Anmeldung (OS)“ sind es A
 `Anmeldung::ID` (Anmelde-ID), F `Anmeldung::Anmelder`, G `Anmeldung::Fachstatus-ID` (Status im
@@ -888,9 +889,11 @@ AC `Anmeldung::Mitwirkende BBK`, AG `Anmeldung::Projektnummern`, AH `Anmeldung::
   als Statuswechsel mit dem Tag des Imports und dem Vermerk „Import BBPNeo (Status in BBPNeo: …)“
   gesetzt – auch wenn er kein Nachfolger des bisherigen ist – und lässt sich wie jeder Wechsel
   zurücknehmen. Neue Anmeldungen beginnen im zugeordneten Status („Aus BBPNeo importiert“).
-* Die **Vorschau** zählt, was neu angelegt, aktualisiert (davon mit neuem Status), unverändert
-  gelassen und übersprungen wird, und nennt je Anmeldung Phase, Sperrzeitraum, Status in BBPNeo und
-  KaPlan sowie das Ergebnis.
+* Die Seite gliedert sich in die Karten **Datei** und **Vorschau**. Die Vorschau zählt, was neu
+  angelegt, aktualisiert (davon mit neuem Status), unverändert gelassen und übersprungen wird, und
+  nennt je Anmeldung Phase, Sperrzeitraum, Status in BBPNeo und KaPlan sowie das Ergebnis;
+  **Verwerfen** und **Importieren** stehen oben und unten. Nach dem Import meldet die Seite das
+  Ergebnis (mit **Zu den Projekten**) und ist für die nächste Datei leer.
 
 ### Workflows
 Wie im Planlaufmanagement sind die Workflows **anpassbar**. Mitgeliefert wird je Phase ein
@@ -959,7 +962,7 @@ Termin fest, **Termin festlegen …** setzt die Frist im aktuellen Status von Ha
 **Übersicht** (Kennzahlen, anstehende Terminfristen samt ausstehender Erstanmeldungen,
 Anmeldebedarf, Projekte mit ihren Anmeldungen je Workflow), **Termine & Nachhaken** (alle Fristen
 nach Projekten, je Projekt zuerst eine ausstehende Erstanmeldung, Filter
-Überfällig/Fällig/Im Plan/Zum Nachhaken), **Projekte** (mit **Import aus BBPNeo**) und – wie im Planlaufmanagement unter der
+Überfällig/Fällig/Im Plan/Zum Nachhaken), **Projekte**, **Import aus BBPNeo** und – wie im Planlaufmanagement unter der
 aufklappbaren Gruppe **Einstellungen** – **Workflows** und **Fristen** (Fristen laut Richtlinie,
 Ampel und Nachhaken; früher die Seite „Einstellungen“, deren Adresse weiter gilt).
 **Excel** im Projekt lädt Anmeldungen und Projekt als Arbeitsmappe herunter.
@@ -1861,9 +1864,10 @@ src/
       store/         storage.ts (Laden, Migration, Rohkopie, Sicherung) und store.tsx (alle
                      Schreibzugriffe, Lade- und Speicherzustand)
       lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
-      pages/         Übersicht, Termine, Projekte, Projekt, Anmeldung, Workflows (mit Editor), Fristen
+      pages/         Übersicht, Termine, Projekte, Import aus BBPNeo (BbpImport), Projekt, Anmeldung,
+                     Workflows (mit Editor), Fristen
       components/    Status- und Fristanzeigen, „Status ändern“ als Haken mit Auswahl (AufklappMenue),
-                     Dialoge (Anmeldung, Statuswechsel, Nachhaken, Import aus BBPNeo), Sicherung, Hinweisleisten
+                     Dialoge (Anmeldung, Statuswechsel, Nachhaken), Sicherung, Hinweisleisten
                      (Ladefehler, neuere Fassung, Speicher voll); baubetrieb.css (Präfix bb-)
     projektsteuerung/  Bereich „Projektsteuerung“ (erster Entwurf)
       index.tsx  Einstiegspunkt samt Datenbestand und Stylesheet des Bereichs

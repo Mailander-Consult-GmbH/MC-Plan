@@ -332,7 +332,7 @@ Anmeldungen, Monatsbericht an den Auftraggeber, PDF)?
 ein Beispiel mit den Spaltenüberschriften.
 
 *Entschieden:* Anmeldungen im KM und KKM kommen aus dem **Excel-Export von BBPNeo** („Import aus
-BBPNeo“ auf der Seite Projekte). Maßgebend sind Anmelde-ID, Anmelder, Status im Workflow
+BBPNeo“, eigener Menüpunkt in der Seitenleiste). Maßgebend sind Anmelde-ID, Anmelder, Status im Workflow
 (Fachstatus), Maßnahmenart, Sperrzeitraum von/bis (ohne Uhrzeit), Mitwirkende BBK, Projektnummer,
 Prozessphase (2. KP = KM N-2, 3. KP = KM N-1, KKM) und Titel. Je Anmelde-ID eine Anmeldung mit dem
 frühesten Beginn und dem spätesten Ende aller Zeilen; „Vorlage“ wird übersprungen. Status:
