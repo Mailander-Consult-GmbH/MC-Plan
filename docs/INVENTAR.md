@@ -325,7 +325,7 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   `{{liste}}` und `{{anzahl}}`); ist der Link länger als `MAILTO_GRENZE`, bleibt
   nur „Kopieren“ („Zu lang für die Übergabe – bitte „Kopieren“ verwenden“).
   „Kopieren (formatiert)“ legt nur den Text als `text/html` und `text/plain` ab
-  (`mailHtml` in `email.ts`; SharePoint-Links des Empfängers erscheinen dort als „SharePoint-Eingang“ bzw. „SharePoint-Ausgang“ über `sharepointKurztexte`, `formatiertKopieren` in `src/shared/zwischenablage.ts`):
+  (`mailHtml` in `email.ts`, `formatiertKopieren` in `src/shared/zwischenablage.ts`):
   Links als Links, „ORDNERNAME EINFÜGEN“ und fehlende Angaben rot und fett.
   Lücken im Text („[SharePoint-Link Eingang fehlt]“, „[SharePoint-Link Ausgang
   fehlt]“, „[Anliegen fehlt]“, `fehlendeAngaben`) meldet „Im Text fehlen
