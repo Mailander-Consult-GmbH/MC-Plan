@@ -19,39 +19,72 @@ import {
   type VersandAnliegen,
 } from './types';
 
+/** Gruppen der Platzhalter im Vorlagen-Editor (je Gruppe eine Farbe). */
+export type PlatzhalterKategorie = 'empfaenger' | 'plan' | 'termine' | 'versand' | 'sonstiges';
+
+export const PLATZHALTER_KATEGORIEN: { id: PlatzhalterKategorie; label: string }[] = [
+  { id: 'empfaenger', label: 'Empfänger' },
+  { id: 'plan', label: 'Projekt und Plan' },
+  { id: 'termine', label: 'Termine' },
+  { id: 'versand', label: 'Versand' },
+  { id: 'sonstiges', label: 'Sonstiges' },
+];
+
 export interface Platzhalter {
   schluessel: string;
+  /** Kurze Beschriftung des Bausteins im Editor, z.B. „Soll-Termin“. */
+  label: string;
+  kategorie: PlatzhalterKategorie;
   beschreibung: string;
+  /** Beispielwert für Tooltip und Vorschau im Editor. */
+  beispiel: string;
 }
 
+const P = (
+  schluessel: string,
+  label: string,
+  kategorie: PlatzhalterKategorie,
+  beschreibung: string,
+  beispiel: string,
+): Platzhalter => ({ schluessel, label, kategorie, beschreibung, beispiel });
+
 export const PLATZHALTER: Platzhalter[] = [
-  { schluessel: 'anrede', beschreibung: 'Anrede-Zeile, z.B. „Sehr geehrte Frau Berger,“' },
-  { schluessel: 'empfaenger', beschreibung: 'Vor- und Nachname des Empfängers' },
-  { schluessel: 'empfaenger.firma', beschreibung: 'Firma des Empfängers' },
-  { schluessel: 'empfaenger.anschrift', beschreibung: 'Anschrift des Empfängers (einzeilig)' },
-  { schluessel: 'rolle', beschreibung: 'Funktion im Prozessschritt' },
-  { schluessel: 'projekt', beschreibung: 'Projektname' },
-  { schluessel: 'projekt.nummer', beschreibung: 'Projektnummer' },
-  { schluessel: 'plan', beschreibung: 'Titel von Plan / Paket / Verzeichnis' },
-  { schluessel: 'plan.nummer', beschreibung: 'Plannummer' },
-  { schluessel: 'plan.index', beschreibung: 'Planindex' },
-  { schluessel: 'plan.gewerk', beschreibung: 'Gewerk des Plans' },
-  { schluessel: 'plan.phase', beschreibung: 'Planungsphase' },
-  { schluessel: 'planlauf', beschreibung: 'Bezeichnung des Planlaufs' },
-  { schluessel: 'schritt', beschreibung: 'Name des Prozessschritts' },
-  { schluessel: 'soll', beschreibung: 'Soll-Termin, z.B. 14.03.2026' },
-  { schluessel: 'frist', beschreibung: 'Relative Frist, z.B. „in 3 Tagen“' },
-  { schluessel: 'verzug', beschreibung: 'Verzug mit Einheit, z.B. „5 Arbeitstage“ (0 falls im Plan)' },
-  { schluessel: 'verzug.zahl', beschreibung: 'Verzug als Zahl (Arbeits- bzw. Kalendertage nach Projekt)' },
-  { schluessel: 'liste', beschreibung: 'Sammel-E-Mail: Liste der Pläne mit Schritt und Soll' },
-  { schluessel: 'anzahl', beschreibung: 'Sammel-E-Mail: Anzahl der Pläne in der Liste' },
-  { schluessel: 'anliegen', beschreibung: 'Versandmail: Anliegen des vorangehenden Versandschritts, z.B. „Freigabe“' },
-  { schluessel: 'sharepoint.eingang', beschreibung: 'Versandmail: SharePoint-Link Eingang des Empfängers' },
-  { schluessel: 'sharepoint.ausgang', beschreibung: 'Versandmail: SharePoint-Link Ausgang des Empfängers' },
-  { schluessel: 'versandliste', beschreibung: 'Versandmail: Unterlagen nach Planpaketen („Paket:“ und darunter „* Codierung Titel“)' },
-  { schluessel: 'heute', beschreibung: 'Heutiges Datum' },
-  { schluessel: 'absender', beschreibung: 'Absendername aus den Projekteinstellungen' },
+  P('anrede', 'Anrede', 'empfaenger', 'Anrede-Zeile, z.B. „Sehr geehrte Frau Berger,“', 'Sehr geehrte Frau Berger,'),
+  P('empfaenger', 'Empfänger', 'empfaenger', 'Vor- und Nachname des Empfängers', 'Katrin Berger'),
+  P('empfaenger.firma', 'Firma', 'empfaenger', 'Firma des Empfängers', 'Ingenieurbüro Berger'),
+  P('empfaenger.anschrift', 'Anschrift', 'empfaenger', 'Anschrift des Empfängers (einzeilig)', 'Billstraße 88, 20539 Hamburg'),
+  P('rolle', 'Funktion', 'empfaenger', 'Funktion im Prozessschritt', 'Fachplaner'),
+  P('projekt', 'Projekt', 'plan', 'Projektname', 'Ausbaustrecke Nordkreuz'),
+  P('projekt.nummer', 'Projektnummer', 'plan', 'Projektnummer', '2026-014'),
+  P('plan', 'Plantitel', 'plan', 'Titel von Plan / Paket / Verzeichnis', 'Planverzeichnis Überbau'),
+  P('plan.nummer', 'Plannummer', 'plan', 'Plannummer', 'NK-KIB-PV-001'),
+  P('plan.index', 'Planindex', 'plan', 'Planindex', 'C'),
+  P('plan.gewerk', 'Gewerk', 'plan', 'Gewerk des Plans', 'KIB'),
+  P('plan.phase', 'Planungsphase', 'plan', 'Planungsphase', 'Ausführungsplanung'),
+  P('planlauf', 'Planlauf', 'plan', 'Bezeichnung des Planlaufs', 'Planlauf NK-KIB-PV-001'),
+  P('schritt', 'Schritt', 'plan', 'Name des Prozessschritts', 'Fachprüfung'),
+  P('soll', 'Soll-Termin', 'termine', 'Soll-Termin, z.B. 14.03.2026', '30.09.2026'),
+  P('frist', 'Frist', 'termine', 'Relative Frist, z.B. „in 3 Tagen“', 'in 5 Tagen'),
+  P('verzug', 'Verzug', 'termine', 'Verzug mit Einheit, z.B. „5 Arbeitstage“ (0 falls im Plan)', '0'),
+  P('verzug.zahl', 'Verzug (Zahl)', 'termine', 'Verzug als Zahl (Arbeits- bzw. Kalendertage nach Projekt)', '0'),
+  P('heute', 'Heute', 'termine', 'Heutiges Datum', '15.09.2026'),
+  P('anliegen', 'Anliegen', 'versand', 'Versandmail: Anliegen des vorangehenden Versandschritts, z.B. „Freigabe“', 'Freigabe'),
+  P('sharepoint.eingang', 'SharePoint Eingang', 'versand', 'Versandmail: SharePoint-Link Eingang des Empfängers', 'https://example.sharepoint.com/sites/nordkreuz/eingang'),
+  P('sharepoint.ausgang', 'SharePoint Ausgang', 'versand', 'Versandmail: SharePoint-Link Ausgang des Empfängers', 'https://example.sharepoint.com/sites/nordkreuz/ausgang'),
+  P(
+    'versandliste',
+    'Versandliste',
+    'versand',
+    'Versandmail: Unterlagen nach Planpaketen („Paket:“ und darunter „* Codierung Titel“)',
+    'NK-KIB-PP-01 Überbau:\n* NK-KIB-PV-001 Planverzeichnis Überbau\n  – NK-KIB-001 Übersicht\n  – NK-KIB-002 Bewehrung',
+  ),
+  P('liste', 'Planliste', 'sonstiges', 'Sammel-E-Mail: Liste der Pläne mit Schritt und Soll', '• NK-KIB-PV-001 – Planverzeichnis Überbau (Index C): Fachprüfung, Soll 30.09.2026'),
+  P('anzahl', 'Anzahl Pläne', 'sonstiges', 'Sammel-E-Mail: Anzahl der Pläne in der Liste', '1'),
+  P('absender', 'Absender', 'sonstiges', 'Absendername aus den Projekteinstellungen', 'Planlaufmanagement Nordkreuz'),
 ];
+
+/** Beispielwerte aller Platzhalter – für die Vorschau im Vorlagen-Editor. */
+export const BEISPIEL_WERTE: Record<string, string> = Object.fromEntries(PLATZHALTER.map((p) => [p.schluessel, p.beispiel]));
 
 export interface MailKontext {
   project: Project;
@@ -352,7 +385,7 @@ function zeileHtml(zeile: string): string {
 }
 
 /**
- * Formatierte Fassung eines Mailtexts für „Kopieren (formatiert)“: Absätze,
+ * Formatierte Fassung eines Mailtexts für die Vorschau im Vorlagen-Editor: Absätze,
  * Zeilen mit „* “ als Aufzählung (eingerückte „– “-Zeilen darunter), die
  * Zeile davor mit Doppelpunkt fett, Links anklickbar, „ORDNERNAME EINFÜGEN“
  * rot und fett.

@@ -8,7 +8,14 @@
  */
 import { useRef, useState } from 'react';
 import { EMAIL_ANLASS_LABEL, type EmailAnlass, type EmailTemplate } from '../domain/types';
-import { PLATZHALTER, fuelleVorlage } from '../domain/email';
+import {
+  BEISPIEL_WERTE,
+  PLATZHALTER,
+  PLATZHALTER_KATEGORIEN,
+  fuelleVorlage,
+  mailHtml,
+  type PlatzhalterKategorie,
+} from '../domain/email';
 import {
   ROLLEN_HINWEISE,
   ROLLEN_KOPFZEILE,
@@ -28,10 +35,17 @@ import {
   Field,
   Modal,
   Select,
-  TextArea,
   TextInput,
 } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
+import {
+  BausteinEditor,
+  BausteinText,
+  type BausteinEditorGriff,
+  type BausteinTon,
+  type BausteinVerzeichnis,
+} from '../../../shared/bausteinEditor';
+import './vorlagen.css';
 
 type Seite = 'mail' | 'listen';
 
@@ -83,8 +97,8 @@ export function Vorlagen() {
         <>
           <div className="row-between wrap">
             <p className="muted small" style={{ maxWidth: 680 }}>
-              Diese Texte stehen in allen Projekten zur Verfügung. Bausteine in doppelten geschweiften Klammern
-              werden beim Vorbereiten einer E-Mail automatisch befüllt.
+              Diese Texte stehen in allen Projekten zur Verfügung. Die farbigen Bausteine sind Platzhalter – sie
+              werden beim Vorbereiten einer E-Mail aus Projekt, Plan, Schritt und Empfänger befüllt.
             </p>
             <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
               <Icon name="plus" size={14} /> Neue Vorlage
@@ -106,15 +120,16 @@ export function Vorlagen() {
                     <Icon name="mail" size={17} />
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="row" style={{ gap: 8 }}>
+                    <div className="row wrap" style={{ gap: 8 }}>
                       <strong>{t.name}</strong>
-                      <Badge
-                        ton={t.anlass === 'ueberfaellig' ? 'red' : t.anlass === 'erinnerung' ? 'orange' : 'blue'}
-                      >
-                        {EMAIL_ANLASS_LABEL[t.anlass]}
-                      </Badge>
+                      <AnlassBadge anlass={t.anlass} />
                     </div>
-                    <div className="small tertiary truncate">{t.betreff}</div>
+                    <div className="small vl-anriss">
+                      <BausteinText text={t.betreff} bausteine={BAUSTEINE} />
+                    </div>
+                    <div className="small tertiary vl-anriss">
+                      <BausteinText text={t.text.replace(/\s*\n\s*/g, ' ').slice(0, 160).replace(/\{\{[\w.\s]*\}?$/, '')} bausteine={BAUSTEINE} />
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -212,28 +227,37 @@ function ListenKarte({
   );
 }
 
-/** Beispielwerte für die Vorschau im Editor. */
-const BEISPIEL: Record<string, string> = {
-  anrede: 'Sehr geehrte Frau Berger,',
-  empfaenger: 'Katrin Berger',
-  'empfaenger.firma': 'Ingenieurbüro Berger',
-  'empfaenger.anschrift': 'Billstraße 88, 20539 Hamburg',
-  rolle: 'Fachplaner',
-  projekt: 'Ausbaustrecke Nordkreuz',
-  'projekt.nummer': '2026-014',
-  plan: 'Planverzeichnis Überbau',
-  'plan.nummer': 'NK-KIB-PV-001',
-  'plan.index': 'C',
-  'plan.gewerk': 'KIB',
-  'plan.phase': 'Ausführungsplanung',
-  planlauf: 'Planlauf NK-KIB-PV-001',
-  schritt: 'Fachprüfung',
-  soll: '30.09.2026',
-  frist: 'in 5 Tagen',
-  verzug: '0',
-  heute: '15.09.2026',
-  absender: 'Planlaufmanagement Nordkreuz',
+/** Farbe je Gruppe der Platzhalter. */
+const KATEGORIE_TON: Record<PlatzhalterKategorie, BausteinTon> = {
+  empfaenger: 'blau',
+  plan: 'gruen',
+  termine: 'orange',
+  versand: 'lila',
+  sonstiges: 'grau',
 };
+
+/** Beschriftung, Farbe und Tooltip der Bausteine im Editor. */
+const BAUSTEINE: BausteinVerzeichnis = Object.fromEntries(
+  PLATZHALTER.map((p) => [
+    p.schluessel,
+    { label: p.label, ton: KATEGORIE_TON[p.kategorie], titel: `${p.beschreibung}\nBeispiel: ${p.beispiel}` },
+  ]),
+);
+
+const ANLASS_TON: Record<EmailAnlass, 'orange' | 'red' | 'green' | 'purple' | 'blue'> = {
+  erinnerung: 'orange',
+  ueberfaellig: 'red',
+  freigabe: 'green',
+  uebergabe: 'purple',
+  allgemein: 'blue',
+};
+
+/** Anlass als farbiges Badge. */
+function AnlassBadge({ anlass }: { anlass: EmailAnlass }) {
+  return <Badge ton={ANLASS_TON[anlass]}>{EMAIL_ANLASS_LABEL[anlass]}</Badge>;
+}
+
+type Feld = 'betreff' | 'text';
 
 function MailVorlagenDialog({
   template,
@@ -245,8 +269,12 @@ function MailVorlagenDialog({
   onClose: () => void;
 }) {
   const toast = useToast();
-  const textRef = useRef<HTMLTextAreaElement | null>(null);
-  const [vorschau, setVorschau] = useState(false);
+  const betreffRef = useRef<BausteinEditorGriff>(null);
+  const textRef = useRef<BausteinEditorGriff>(null);
+  // Zuletzt bearbeitetes Feld – dort fügen die Knöpfe ein
+  const [ziel, setZiel] = useState<Feld>('text');
+  // Schmale Ansicht: Bearbeiten oder Vorschau; breit stehen beide nebeneinander
+  const [ansicht, setAnsicht] = useState<'bearbeiten' | 'vorschau'>('bearbeiten');
   const [form, setForm] = useState<EmailTemplate>(
     template ?? {
       id: newId('mail'),
@@ -263,22 +291,8 @@ Mit freundlichen Grüßen
     },
   );
 
-  /** Fügt einen Baustein an der Schreibmarke ein. */
   const einfuegen = (schluessel: string) => {
-    const feld = textRef.current;
-    const baustein = `{{${schluessel}}}`;
-    if (!feld) {
-      setForm((f) => ({ ...f, text: f.text + baustein }));
-      return;
-    }
-    const start = feld.selectionStart ?? feld.value.length;
-    const ende = feld.selectionEnd ?? start;
-    const neu = feld.value.slice(0, start) + baustein + feld.value.slice(ende);
-    setForm((f) => ({ ...f, text: neu }));
-    requestAnimationFrame(() => {
-      feld.focus();
-      feld.setSelectionRange(start + baustein.length, start + baustein.length);
-    });
+    (ziel === 'betreff' ? betreffRef : textRef).current?.einfuegen(schluessel);
   };
 
   const speichern = () => {
@@ -292,16 +306,18 @@ Mit freundlichen Grüßen
 
   return (
     <Modal
-      titel={template ? 'E-Mail-Vorlage bearbeiten' : 'Neue E-Mail-Vorlage'}
-      sub="Bausteine werden beim Vorbereiten der E-Mail automatisch befüllt"
+      titel={form.name.trim() || (template ? 'E-Mail-Vorlage' : 'Neue E-Mail-Vorlage')}
+      sub={
+        <span className="row wrap" style={{ gap: 8 }}>
+          <AnlassBadge anlass={form.anlass} />
+          <span>Platzhalter werden beim Vorbereiten der E-Mail automatisch befüllt</span>
+        </span>
+      }
       wide
+      klasse="vl-dialog"
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="btn btn-outline" onClick={() => setVorschau((v) => !v)}>
-            {vorschau ? 'Vorschau ausblenden' : 'Vorschau'}
-          </button>
-          <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
@@ -311,62 +327,112 @@ Mit freundlichen Grüßen
         </>
       }
     >
-      <div className="stack" style={{ gap: 14 }}>
-        <div className="form-grid">
-          <Field label="Name der Vorlage">
-            <TextInput value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
-          </Field>
-          <Field label="Anlass" hint="Bestimmt, welche Vorlage automatisch vorgeschlagen wird.">
-            <Select
-              value={form.anlass}
-              onChange={(v) => setForm({ ...form, anlass: v as EmailAnlass })}
-              options={Object.entries(EMAIL_ANLASS_LABEL).map(([value, label]) => ({ value, label }))}
-            />
-          </Field>
-          <Field label="Betreff" full>
-            <TextInput value={form.betreff} onChange={(v) => setForm({ ...form, betreff: v })} />
-          </Field>
+      <div className="vl-editor" data-ansicht={ansicht}>
+        <div className="tabs vl-umschalter">
+          <button type="button" className={ansicht === 'bearbeiten' ? 'active' : ''} onClick={() => setAnsicht('bearbeiten')}>
+            Bearbeiten
+          </button>
+          <button type="button" className={ansicht === 'vorschau' ? 'active' : ''} onClick={() => setAnsicht('vorschau')}>
+            Vorschau
+          </button>
         </div>
 
-        <div>
-          <div className="row-between wrap" style={{ marginBottom: 8 }}>
-            <h3>Bausteine</h3>
-            <span className="small tertiary">Klick fügt den Baustein an der Schreibmarke ein</span>
-          </div>
-          <div className="row wrap" style={{ gap: 6 }}>
-            {PLATZHALTER.map((p) => (
-              <button
-                key={p.schluessel}
-                type="button"
-                className="antwort-chip"
-                title={p.beschreibung}
-                onClick={() => einfuegen(p.schluessel)}
-              >
-                {p.schluessel}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <Field label="Text" full>
-          <TextArea
-            value={form.text}
-            onChange={(v) => setForm({ ...form, text: v })}
-            rows={14}
-            inputRef={textRef}
-          />
-        </Field>
-
-        {vorschau ? (
-          <Card>
-            <CardHeader titel="Vorschau" sub="mit Beispielwerten eines Planlaufs" />
-            <div className="card-pad">
-              <div className="small tertiary">Betreff</div>
-              <strong>{fuelleVorlage(form.betreff, BEISPIEL)}</strong>
-              <pre className="mail-vorschau">{fuelleVorlage(form.text, BEISPIEL)}</pre>
+        <div className="vl-bearbeiten">
+          <section className="vl-gruppe">
+            <h3 className="vl-gruppe-titel">Allgemein</h3>
+            <div className="form-grid">
+              <Field label="Name der Vorlage">
+                <TextInput value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+              </Field>
+              <Field label="Anlass" hint="Bestimmt, welche Vorlage automatisch vorgeschlagen wird.">
+                <Select
+                  value={form.anlass}
+                  onChange={(v) => setForm({ ...form, anlass: v as EmailAnlass })}
+                  options={Object.entries(EMAIL_ANLASS_LABEL).map(([value, label]) => ({ value, label }))}
+                />
+              </Field>
             </div>
-          </Card>
-        ) : null}
+          </section>
+
+          <section className="vl-gruppe">
+            <h3 className="vl-gruppe-titel">Inhalt</h3>
+            <div className="field">
+              <label onClick={() => betreffRef.current?.fokus()}>Betreff</label>
+              <BausteinEditor
+                griff={betreffRef}
+                wert={form.betreff}
+                onChange={(v) => setForm((f) => ({ ...f, betreff: v }))}
+                bausteine={BAUSTEINE}
+                einzeilig
+                label="Betreff"
+                leer="Betreff eingeben …"
+                onFokus={() => setZiel('betreff')}
+              />
+            </div>
+
+            <div className="vl-palette" role="group" aria-label="Platzhalter einfügen">
+              <div className="row-between wrap" style={{ gap: 6 }}>
+                <strong className="small">Platzhalter einfügen</strong>
+                <span className="small tertiary">
+                  fügt in <strong>{ziel === 'betreff' ? 'Betreff' : 'Text'}</strong> an der Schreibmarke ein
+                </span>
+              </div>
+              {PLATZHALTER_KATEGORIEN.map((k) => (
+                <div className="vl-palette-zeile" key={k.id}>
+                  <span className="vl-palette-kat">{k.label}</span>
+                  <div className="row wrap" style={{ gap: 6 }}>
+                    {PLATZHALTER.filter((p) => p.kategorie === k.id).map((p) => (
+                      <button
+                        key={p.schluessel}
+                        type="button"
+                        className={`bst-knopf bst-ton-${KATEGORIE_TON[k.id]}`}
+                        title={`${p.beschreibung}\nBeispiel: ${p.beispiel}`}
+                        // Schreibmarke und Auswahl im Feld bleiben beim Klick erhalten
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => einfuegen(p.schluessel)}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="field">
+              <label onClick={() => textRef.current?.fokus()}>Text</label>
+              <BausteinEditor
+                griff={textRef}
+                wert={form.text}
+                onChange={(v) => setForm((f) => ({ ...f, text: v }))}
+                bausteine={BAUSTEINE}
+                label="Text"
+                leer="Text der E-Mail …"
+                zeilen={12}
+                onFokus={() => setZiel('text')}
+              />
+            </div>
+          </section>
+        </div>
+
+        <aside className="vl-vorschau" aria-label="Vorschau">
+          <div className="row-between wrap" style={{ gap: 6 }}>
+            <h3 className="vl-gruppe-titel">Vorschau</h3>
+            <span className="small tertiary">mit Beispielwerten eines Planlaufs</span>
+          </div>
+          <div className="vl-mail">
+            <dl className="vl-mail-kopf">
+              <dt>An</dt>
+              <dd>{BEISPIEL_WERTE.empfaenger}</dd>
+              <dt>Betreff</dt>
+              <dd>
+                <strong>{fuelleVorlage(form.betreff, BEISPIEL_WERTE)}</strong>
+              </dd>
+            </dl>
+            {/* mailHtml maskiert den Text selbst */}
+            <div className="vl-mail-text" dangerouslySetInnerHTML={{ __html: mailHtml(fuelleVorlage(form.text, BEISPIEL_WERTE)) }} />
+          </div>
+        </aside>
       </div>
     </Modal>
   );

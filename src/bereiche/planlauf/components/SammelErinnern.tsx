@@ -3,10 +3,9 @@
  * Person über alle ihre anstehenden Schritte in den gewählten Planläufen
  * (email.sammelMailVorbereiten, Platzhalter {{liste}}).
  *
- * Je Person eine Zeile mit eigenen Schaltflächen – Outlook, Outlook im Web,
- * Kopieren –, denn ein Browser öffnet je Klick nur eine E-Mail. Vermerkt
+ * Je Person eine Zeile mit der Schaltfläche „In Outlook öffnen“, denn ein Browser öffnet je Klick nur eine E-Mail. Vermerkt
  * werden nur die Schritte der angeklickten Person (Erinnerungen, Protokoll).
- * Wird die E-Mail-Verknüpfung zu lang (MAILTO_GRENZE), bleibt nur „Kopieren“.
+ * Wird die E-Mail-Verknüpfung zu lang (MAILTO_GRENZE), bleibt nur „Text kopieren“.
  *
  * Als Versandmail (`art="versand"`, „Versandmail …“): je Empfänger und
  * Anliegen eine E-Mail mit der Vorlage „Versand“ über alle gewählten Pläne, die
@@ -18,13 +17,11 @@ import { formatDate } from '../../../shared/dates';
 import { ampelFuerSchritt, kontaktName } from '../domain/engine';
 import {
   fehlendeAngaben,
-  mailHtml,
   sammelMailVorbereiten,
   versandPosten,
   vorlageVorschlagen,
   type SammelPosten,
 } from '../domain/email';
-import { formatiertKopieren } from '../../../shared/zwischenablage';
 import { anstehendeSchritte } from '../domain/uebersicht';
 import { EMAIL_ANLASS_LABEL, VERSAND_ANLIEGEN_LABEL, type Contact, type ID, type VersandAnliegen } from '../domain/types';
 import { useStore } from '../store/store';
@@ -163,8 +160,8 @@ export function SammelErinnern({
       wide
       onClose={onClose}
       footer={
-        <button type="button" className="btn btn-primary" onClick={onClose}>
-          Fertig
+        <button type="button" className="btn" onClick={onClose}>
+          Abbrechen
         </button>
       }
     >
@@ -206,26 +203,16 @@ export function SammelErinnern({
               const zuSpaet = versand ? 0 : liste.filter(ueberfaellig).length;
               const weg = vermerkt[gruppe.schluessel];
               const luecken = fehlendeAngaben(mail.text);
-              const oeffnen = (weg: 'outlook' | 'web') => {
-                if (weg === 'outlook') window.location.href = mail.mailto;
-                else window.open(mail.outlookWeb, '_blank', 'noopener,noreferrer');
-                vermerken(gruppe, mail.an, mail.betreff, weg);
-                toast(weg === 'outlook' ? 'Outlook wird mit der E-Mail geöffnet.' : 'Outlook im Web wird geöffnet.');
+              const oeffnen = () => {
+                window.location.href = mail.mailto;
+                vermerken(gruppe, mail.an, mail.betreff, 'outlook');
+                toast('Outlook wird mit der E-Mail geöffnet.');
               };
               const kopieren = async () => {
                 try {
                   await navigator.clipboard.writeText(`An: ${mail.an}\nBetreff: ${mail.betreff}\n\n${mail.text}`);
                   vermerken(gruppe, mail.an, mail.betreff, 'kopie');
                   toast('E-Mail in die Zwischenablage kopiert.');
-                } catch {
-                  toast('Kopieren nicht möglich – bitte Text manuell markieren.');
-                }
-              };
-              const kopierenFormatiert = async () => {
-                try {
-                  await formatiertKopieren(mailHtml(mail.text), mail.text);
-                  vermerken(gruppe, mail.an, mail.betreff, 'kopie');
-                  toast('Text formatiert kopiert – in Outlook in die neue E-Mail einfügen.');
                 } catch {
                   toast('Kopieren nicht möglich – bitte Text manuell markieren.');
                 }
@@ -248,38 +235,20 @@ export function SammelErinnern({
                   </div>
                   <div className="pll-person-knoepfe">
                     {!mail.zuLang ? (
-                      <>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          disabled={!mail.an}
-                          onClick={() => oeffnen('outlook')}
-                          title={mail.an ? 'In Outlook öffnen' : 'Keine E-Mail-Adresse hinterlegt'}
-                        >
-                          <Icon name="mail" size={13} /> Outlook
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          disabled={!mail.an}
-                          onClick={() => oeffnen('web')}
-                          title={mail.an ? 'In Outlook im Web öffnen' : 'Keine E-Mail-Adresse hinterlegt'}
-                        >
-                          Web
-                        </button>
-                      </>
-                    ) : null}
-                    <button type="button" className="btn btn-sm btn-outline" onClick={kopieren}>
-                      <Icon name="kopieren" size={13} /> Kopieren
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline"
-                      onClick={kopierenFormatiert}
-                      title="Nur den Text mit Formatierung kopieren (Links, ORDNERNAME EINFÜGEN rot und fett)"
-                    >
-                      Kopieren (formatiert)
-                    </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        disabled={!mail.an}
+                        onClick={oeffnen}
+                        title={mail.an ? 'In Outlook öffnen' : 'Keine E-Mail-Adresse hinterlegt'}
+                      >
+                        <Icon name="mail" size={13} /> In Outlook öffnen
+                      </button>
+                    ) : (
+                      <button type="button" className="btn btn-sm btn-outline" onClick={kopieren}>
+                        <Icon name="kopieren" size={13} /> Text kopieren
+                      </button>
+                    )}
                   </div>
                   {luecken.length > 0 ? (
                     <span className="pll-warnung" style={{ flexBasis: '100%' }}>

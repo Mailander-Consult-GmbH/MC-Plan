@@ -657,13 +657,10 @@ Je Schritt öffnet der Button **Erinnern** ein Fenster mit der vorbereiteten E-M
 passende Vorlage (Erinnerung oder Mahnung) wird ausgewählt, die Platzhalter aus Projekt, Plan,
 Schritt, Frist und Empfänger ersetzt (`{{verzug}}` nennt die Einheit, etwa „5 Arbeitstage“,
 `{{verzug.zahl}}` nur die Zahl). Von dort lässt sich die Nachricht in **Outlook** öffnen
-(`mailto:`, also das eingerichtete Standardprogramm), in **Outlook im Web** anlegen oder in die
-Zwischenablage kopieren; jede vorbereitete E-Mail wird am Schritt vermerkt. Stehen bei einer Person
+(`mailto:`, also das eingerichtete Standardprogramm); jede vorbereitete E-Mail wird am Schritt vermerkt. Stehen bei einer Person
 mehrere Schritte an, entsteht eine **Sammel-E-Mail** (Vorlage *Sammelerinnerung*, Platzhalter
-`{{liste}}` und `{{anzahl}}`). Ist sie für die Übergabe an das Mailprogramm zu lang, bleibt nur
-„Kopieren“. **Kopieren (formatiert)** legt nur den Text mit Formatierung (Links anklickbar,
-Aufzählungen, „ORDNERNAME EINFÜGEN“ rot und fett) und zugleich als Klartext in die Zwischenablage –
-zum Einfügen in eine neue Outlook-Mail.
+`{{liste}}` und `{{anzahl}}`). Ist sie für die Übergabe an das Mailprogramm zu lang, bietet der Dialog
+stattdessen **Text kopieren** an.
 
 ### Versandmail
 Die Vorlage **Versand** schreibt der Person, die **nach einem Versandschritt** zuständig ist:
@@ -792,8 +789,20 @@ Stand nach, statt ihn mit dem eigenen älteren zu überschreiben (`useFremdeAend
 ### Projekteinstellungen
 Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie – wie im Reiter
 *Planläufe* – der **Export**. Die
-**E-Mail-Texte** (Betreff und Text, mit Übersicht der Platzhalter) werden projektübergreifend unter
+**E-Mail-Texte** (Betreff und Text) werden projektübergreifend unter
 **Einstellungen › Vorlagen** in der Seitenleiste gepflegt; dort liegen auch die Excel-Vorlagen für die Importe.
+Im Editor erscheinen Platzhalter als farbige **Bausteine** mit verständlicher Beschriftung
+(„Anrede“, „Plannummer“, „Soll-Termin“, „SharePoint Eingang“ …) statt als `{{schluessel}}`;
+gespeichert wird weiterhin der Text mit `{{schluessel}}`. Farbige Knöpfe unter
+„Platzhalter einfügen“ – je Gruppe eine Farbe: Empfänger blau, Projekt und Plan grün, Termine orange, Versand
+lila, Sonstiges grau – fügen einen Baustein an der Schreibmarke des zuletzt bearbeiteten Felds
+(Betreff oder Text) ein; der Tooltip nennt Beschreibung und Beispielwert. Ein Baustein lässt sich
+nur als Ganzes löschen (Rücktaste/Entf), Eingefügtes kommt als reiner Text an (darin enthaltene
+`{{…}}` werden zu Bausteinen), unbekannte Platzhalter erscheinen grau als „unbekannt: …“. Daneben
+zeigt eine Vorschau Betreff und Text mit Beispielwerten (Links anklickbar, „ORDNERNAME EINFÜGEN“
+rot und fett); auf schmalen Bildschirmen wechselt man zwischen „Bearbeiten“ und „Vorschau“. Die
+Vorlagenliste zeigt den Anlass als farbiges Abzeichen und den Anfang von Betreff und Text mit
+Bausteinen.
 
 ## Baubetriebsplanung
 
@@ -1789,6 +1798,9 @@ src/
     icons.tsx    Strichsymbole
     logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
+    bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
+    bausteinEditor.tsx  Eingabefeld mit farbigen, nicht teilbaren Bausteinen (BausteinEditor,
+                 BausteinText; Gestaltung bausteinEditor.css, Präfix bst-)
     menue.tsx    Aufklappmenü an einem Knopf (AufklappMenue): Portal, bleibt im Fenster, Tastatur
     tabellen.ts  Breite Tabellen scrollen quer (tabellenBreiteBeobachten, Klasse table-scroll-quer)
     scrollen.ts  Eine neue Seite beginnt oben (useNachObenBeiSeitenwechsel)
@@ -1800,7 +1812,6 @@ src/
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit (mit Zellformaten)
     xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe (Zahlenformate aus Nullen wie „00000“
                  behalten führende Nullen)
-    zwischenablage.ts  Formatiert (text/html) und als Klartext kopieren
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers; Fassung des Builds und Prüfung auf eine neuere
     global.css   Design-Tokens im hellen Apple-Erscheinungsbild
