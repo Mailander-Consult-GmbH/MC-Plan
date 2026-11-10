@@ -60,9 +60,8 @@ export function App({ onSperren }: { onSperren: () => void }) {
   return (
     <div className="app">
       <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
-        <button type="button" className="sidebar-brand ct-marke" onClick={() => gehe({ view: 'projekte' })} title="Zu den Projekten">
-          <KaPlanLogo variante="Startseite" width="100%" />
-          <span className="ct-marke-text">Controlling</span>
+        <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'projekte' })} title="Zu den Projekten">
+          <KaPlanLogo variante="Controlling" width="100%" />
         </button>
 
         <NavItem
