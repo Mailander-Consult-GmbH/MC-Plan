@@ -14,7 +14,6 @@ import {
   PLATZHALTER_KATEGORIEN,
   fuelleVorlage,
   mailHtml,
-  sharepointKurztexte,
   type PlatzhalterKategorie,
 } from '../domain/email';
 import {
@@ -431,7 +430,7 @@ Mit freundlichen Grüßen
               </dd>
             </dl>
             {/* mailHtml maskiert den Text selbst – wie „Kopieren (formatiert)“ im E-Mail-Dialog */}
-            <div className="vl-mail-text" dangerouslySetInnerHTML={{ __html: mailHtml(fuelleVorlage(form.text, BEISPIEL_WERTE), sharepointKurztexte({ sharepointEingang: BEISPIEL_WERTE['sharepoint.eingang'], sharepointAusgang: BEISPIEL_WERTE['sharepoint.ausgang'] })) }} />
+            <div className="vl-mail-text" dangerouslySetInnerHTML={{ __html: mailHtml(fuelleVorlage(form.text, BEISPIEL_WERTE)) }} />
           </div>
         </aside>
       </div>

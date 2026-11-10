@@ -375,35 +375,22 @@ export function versandListe(documentIds: ID[], documents: PlanDocument[]): stri
 const htmlEscape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** Eine Zeile als HTML: Links als Links, ORDNERNAME EINFÜGEN und fehlende Angaben rot und fett. */
-function zeileHtml(zeile: string, linkTexte: Record<string, string>): string {
+function zeileHtml(zeile: string): string {
   return htmlEscape(zeile)
-    .replace(/https?:\/\/[^\s<>"]+/g, (url) => `<a href="${url}">${linkTexte[url] ?? url}</a>`)
+    .replace(/https?:\/\/[^\s<>"]+/g, (url) => `<a href="${url}">${url}</a>`)
     .replace(
       new RegExp(`${ORDNERNAME_PLATZHALTER}|\\[[^\\]]+ fehlt\\]`, 'g'),
       (t) => `<strong style="color:#c00000">${t}</strong>`,
     );
 }
 
-/** Kurztexte für die SharePoint-Links eines Kontakts in der formatierten Mail. */
-export function sharepointKurztexte(contact: { sharepointEingang?: string; sharepointAusgang?: string } | null | undefined): Record<string, string> {
-  const texte: Record<string, string> = {};
-  const eingang = contact?.sharepointEingang?.trim();
-  const ausgang = contact?.sharepointAusgang?.trim();
-  if (eingang) texte[eingang] = 'SharePoint-Eingang';
-  if (ausgang) texte[ausgang] = 'SharePoint-Ausgang';
-  return texte;
-}
-
 /**
  * Formatierte Fassung eines Mailtexts für „Kopieren (formatiert)“: Absätze,
  * Zeilen mit „* “ als Aufzählung (eingerückte „– “-Zeilen darunter), die
- * Zeile davor mit Doppelpunkt fett, Links anklickbar (bekannte Links mit
- * Kurztext, z. B. „SharePoint-Eingang“), „ORDNERNAME EINFÜGEN“
+ * Zeile davor mit Doppelpunkt fett, Links anklickbar, „ORDNERNAME EINFÜGEN“
  * rot und fett.
  */
-export function mailHtml(text: string, kurztexte: Record<string, string> = {}): string {
-  // Schlüssel wie im maskierten Text, damit „&“ in Links passt
-  const linkTexte = Object.fromEntries(Object.entries(kurztexte).map(([url, t]) => [htmlEscape(url), htmlEscape(t)]));
+export function mailHtml(text: string): string {
   const absaetze = text.replace(/\r\n/g, '\n').split(/\n\s*\n/);
   const teile = absaetze.map((absatz) => {
     const zeilen = absatz.split('\n');
@@ -414,12 +401,12 @@ export function mailHtml(text: string, kurztexte: Record<string, string> = {}): 
       if (/^\* /.test(z)) {
         const punkte: string[] = [];
         while (i < zeilen.length && /^\* /.test(zeilen[i])) {
-          let punkt = `<li>${zeileHtml(zeilen[i].slice(2), linkTexte)}`;
+          let punkt = `<li>${zeileHtml(zeilen[i].slice(2))}`;
           i++;
           // Eingerückte „– “-Zeilen gehören zum Punkt davor
           const unter: string[] = [];
           while (i < zeilen.length && /^\s+– /.test(zeilen[i])) {
-            unter.push(`<li>${zeileHtml(zeilen[i].replace(/^\s+– /, ''), linkTexte)}</li>`);
+            unter.push(`<li>${zeileHtml(zeilen[i].replace(/^\s+– /, ''))}</li>`);
             i++;
           }
           if (unter.length > 0) punkt += `<ul style="margin:0;list-style-type:circle">${unter.join('')}</ul>`;
@@ -429,7 +416,7 @@ export function mailHtml(text: string, kurztexte: Record<string, string> = {}): 
         continue;
       }
       const ueberschrift = /:\s*$/.test(z) && /^\* /.test(zeilen[i + 1] ?? '');
-      html.push(ueberschrift ? `<strong>${zeileHtml(z, linkTexte)}</strong>` : zeileHtml(z, linkTexte));
+      html.push(ueberschrift ? `<strong>${zeileHtml(z)}</strong>` : zeileHtml(z));
       i++;
     }
     // Zeilen eines Absatzes mit <br>, Listen ohne zusätzlichen Umbruch
