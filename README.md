@@ -49,7 +49,10 @@ der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
 
 ## Logos
 
-Die Logos von KaPlan liegen unter `public/logos/`:
+Die Logos von KaPlan liegen unter `public/logos/`. Die Logos der Bereiche und des Controllings
+folgen einem Muster: das Dreieck mit je eigener Verteilung von Blau und Grau (Planlaufmanagement
+oben blau, Baubetriebsplanung links, Projektsteuerung rechts, Leistungsnachweise links und rechts,
+Controlling oben und links), daneben „KaPlan“ und darunter rechtsbündig der Name in Roboto Light.
 
 | Datei | Verwendung |
 | --- | --- |
@@ -58,6 +61,7 @@ Die Logos von KaPlan liegen unter `public/logos/`:
 | `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
 | `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
 | `Logo_Leistungsnachweise.png` | Kopf der Menüleiste in den Leistungsnachweisen |
+| `Logo_Controlling.png` | Kopf der Menüleiste im Controlling |
 | `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
 | `Logo.png` | Symbol; daraus sind Favicons und App-Symbole unter `public/icons/` erzeugt |
 

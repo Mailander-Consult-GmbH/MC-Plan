@@ -1396,7 +1396,9 @@ die PIN, „Entsperren“, „Zur Bereichsauswahl“; mit der vierten Ziffer wir
 geprüft; `.ct-pin` hat unten zusätzlich die Höhe des Hinweises „Neue Fassung“,
 `--neue-fassung-hoehe`, und reicht der Platz nicht, scrollt die Seite). Die Entsperrung gilt für die Sitzung (`sessionStorage`, Schlüssel
 `kaplan-controlling.entsperrt`) bis „Sperren“ in der Seitenleiste
-(`src/bereiche/controlling/App.tsx`). Einen eigenen Bestand hat das Controlling
+(`src/bereiche/controlling/App.tsx`; oben darin wie in den Bereichen ein eigenes Logo,
+`public/logos/Logo_Controlling.png`, Variante `Controlling` von `KaPlanLogo` in
+`src/shared/logos.tsx` – eine Überschrift darunter gibt es nicht). Einen eigenen Bestand hat das Controlling
 nicht; Gestaltung in `src/bereiche/controlling/controlling.css` (Präfix `ct-`).
 
 | Route | Seite | Aktionen |
