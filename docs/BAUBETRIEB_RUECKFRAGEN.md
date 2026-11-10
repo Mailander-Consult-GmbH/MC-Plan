@@ -388,3 +388,11 @@ Workflow, also auch direkt im Vorprozess oder unterjährig.
 **G4. Weitere Workflows** – Gibt es Abläufe, die nicht in die vier Phasen passen (z. B.
 kurzfristige Anmeldungen, Störungsbeseitigung, reine Containerstellungen), und sollen sie eigene
 Workflows erhalten?
+
+**G5. Standardverlauf im Workflow-Editor** – Der grafische Editor (wie im Planlaufmanagement)
+zeigt je Workflow einen Standardverlauf und die Abweichungen daneben. *Entwurf:* Der
+Standardverlauf führt vom Startstatus über den jeweils ersten Nachfolger und endet mit
+„Genehmigt“, einer Übernahme in die nächste Phase (etwa SKM → MKM) oder „Eintrag löschen“;
+„Abgelehnt“, Änderungsabstimmungen, „Angemeldet (verspätet)“ und die Anmeldeleiche stehen als
+Abweichungen. Welcher Nachfolger der erste ist, legt „Als Standardverlauf“ fest. Passt diese
+Lesart – oder soll etwa im KM die Übernahme in den KKM zum Standardverlauf gehören?

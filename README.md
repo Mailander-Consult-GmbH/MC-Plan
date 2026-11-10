@@ -976,18 +976,44 @@ lesbare Namen („Entwurf“, „Mitwirkung BBK“, „Angemeldet (fristgerecht)
 außerhalb der Projekttabellen mit der Kurzbezeichnung ihres Workflows, z. B. „MKM · Angemeldet“
 oder „KKM · Entwurf“.
 
-* Die Seite **Workflows** listet alle Workflows mit **Öffnen**, **Duplizieren** und – bei eigenen
-  Workflows ohne Anmeldungen – **Löschen**; **Neuer Workflow** legt einen weiteren an.
-* Im **Editor** stehen Name, Kurzbezeichnung, Beschreibung, Sperrzeitraum (ganzes Fahrplanjahr oder
-  tagesscharf) und die zulässigen Maßnahmenarten; darunter je Status eine Karte mit
-  Bezeichnung, Art (Entwurf, In Abstimmung, Angemeldet, Angemeldet (verspätet), Genehmigt,
-  Abgelehnt, Änderungsabstimmung, Anmeldeleiche), **Zuständig** (MIC, BBK, Projektleitung DB oder
-  niemand – in den Standard-Workflows MIC für Entwurf, Zugestimmt, Genehmigt und Abgelehnt, die BBK
-  für Mitwirkung, Angemeldet und Änderungen), Terminfrist, „Termin dient zum Nachhaken“, Bemerkung und
-  **Nachfolgern**. Status lassen sich verschieben, ergänzen und entfernen; der erste ist der
-  **Startstatus**. Ein Status, in dem noch Anmeldungen stehen, kann nicht entfallen, und der
-  Sperrzeitraum eines Workflows bleibt fest, solange Anmeldungen darin stehen. Eine Kopie erhält
-  „(Kopie)“ an Name und Kurzbezeichnung.
+* Die Seite **Workflows** zeigt die Workflows wie im Planlaufmanagement als **Karten**: Name,
+  Kennzeichen (Standard bzw. eigener Workflow), Beschreibung, der Standardverlauf als **Punktkette**
+  (Farbe nach Art des Status, am Ende die Übernahme in den nächsten Workflow, dazu die Zahl der
+  Abweichungen), Zahl der Status, Abweichungen und Anmeldungen, Sperrzeitraum und Maßnahmenarten;
+  dazu **Öffnen** (auch ein Klick auf die Karte), **Duplizieren** und – bei eigenen Workflows ohne
+  Anmeldungen – **Löschen**. **Neuer Workflow** legt einen weiteren an.
+* Der **Workflow-Editor** ist in Optik und Bedienung der grafische Editor des
+  Planlaufmanagements – übernommen ist, was zu Status mit Nachfolgern passt (keine E-Mails, keine
+  Entscheidungen mit Antworten, keine parallelen Zweige). Er füllt das Fenster: im Kopf der Name,
+  Kennzahlen, **Rückgängig**/**Wiederholen** (Strg+Z/Strg+Y) und **Status hinzufügen** (hinter dem
+  gewählten Status, sonst am Ende des Standardverlaufs bzw. vor „Genehmigt“); links die
+  **Arbeitsfläche**, rechts die Details; im Fuß „Vollständig“ bzw. die Zahl der **Hinweise**,
+  **Abbrechen** (mit Rückfrage „Änderungen verwerfen?“) und **Speichern**.
+  * **Arbeitsfläche:** Der **Standardverlauf** führt vom Startstatus über den jeweils ersten
+    Nachfolger, bis ein Status der Art „Genehmigt“ erreicht ist (Ziel des Workflows), der erste
+    Nachfolger in einen anderen Workflow übernimmt, „Eintrag löschen“ ist oder zurückführt
+    (Schleife). Daneben stehen die **Abweichungen** – Status, die nur über andere Nachfolger
+    erreicht werden, etwa „Abgelehnt“ oder die Anmeldeleiche –, verbunden durch gestrichelte
+    Linien (orange: Abweichung, lila: Rücksprung). Übernahmen in andere Workflows und „Eintrag
+    löschen“ stehen als Text auf der Karte, Einstiege aus anderen Workflows als Kennzeichen. Jede
+    Karte nennt Art, Nummer, Bezeichnung, Zuständigkeit, Terminfrist, „Nachhaken“ und die Zahl der
+    Anmeldungen. Das **„+“** zwischen zwei Karten fügt dort einen Status ein. Status, zu denen kein
+    Nachfolger führt, stehen unter „Nicht erreichbar“.
+  * **Statusdetails** (Klick auf eine Karte): Bezeichnung, Art (Entwurf, In Abstimmung, Angemeldet,
+    Angemeldet (verspätet), Genehmigt, Abgelehnt, Änderungsabstimmung, Anmeldeleiche),
+    **Zuständig** (MIC, BBK, Projektleitung DB oder niemand – in den Standard-Workflows MIC für
+    Entwurf, Zugestimmt, Genehmigt und Abgelehnt, die BBK für Mitwirkung, Angemeldet und
+    Änderungen), Terminfrist, „Termin dient zum Nachhaken“, Bemerkung und unter „Wie geht es
+    weiter?“ die **Nachfolger** – der erste bildet den Standardverlauf, **Als Standardverlauf**
+    macht einen anderen zum ersten; dazu Reihenfolge (der erste Status ist der **Startstatus**),
+    **Duplizieren** und **Entfernen** (wer zum entfernten Status führte, führt dann zu dessen erstem
+    Nachfolger).
+  * **Übersicht** (ohne gewählten Status): Kurzbezeichnung, Beschreibung, Sperrzeitraum (ganzes
+    Fahrplanjahr oder tagesscharf), Maßnahmenarten, Kennzahlen, Hinweise und eine Legende.
+  * Ein Status, in dem noch Anmeldungen stehen, kann nicht entfallen, und der Sperrzeitraum eines
+    Workflows bleibt fest, solange Anmeldungen darin stehen. Auf schmalen Bildschirmen stehen die
+    Abweichungen unter dem Standardverlauf, und die Details öffnen sich als Blatt von unten. Eine
+    Kopie eines Workflows erhält „(Kopie)“ an Name und Kurzbezeichnung.
 * **Nachfolger** sind Status desselben Workflows, Status eines anderen Workflows (**Übernahme in
   eine neue Phase**) oder **Eintrag löschen**. Beim Statuswechsel stehen nur sie zur Wahl – am
   Haken „Status ändern“ in Übersicht, Terminen und Projekt und auf der Seite der Anmeldung.
@@ -1931,6 +1957,7 @@ src/
         types.ts     Datenmodell (Projekt, Anmeldung, Workflow mit Status, Arten, AnnexVII, Richtlinienfristen)
         workflow.ts  Standard-Workflows je Phase, Nachschlagen von Status und Nachfolgern
         workflowPflege.ts  Workflows speichern, duplizieren, löschen – mit Prüfung belegter Status
+        workflowGraph.ts   Standardverlauf, Abweichungen, Prüfung und Bearbeitungen für den Workflow-Editor
         fristen.ts   Fahrplanjahr, Terminfrist je Status, Ampel, Anmeldebedarf
         ablauf.ts    Statuswechsel, Übernahme mit Aufteilung, Status aus dem Import, Rücknahme, Sachstand
         bbpImport.ts Import aus BBPNeo: Lesen (je Anmelde-ID), Vorschau, Anwenden
@@ -1943,7 +1970,9 @@ src/
       pages/         Übersicht, Termine, Projekte, Import aus BBPNeo (BbpImport), Projekt, Anmeldung,
                      Workflows (mit Editor), Fristen
       components/    Status- und Fristanzeigen, „Status ändern“ als Haken mit Auswahl (AufklappMenue),
-                     Dialoge (Anmeldung, Statuswechsel, Nachhaken), Sicherung, Hinweisleisten
+                     Dialoge (Anmeldung, Statuswechsel, Nachhaken), grafischer Workflow-Editor mit
+                     Punktkette der Liste (WorkflowEditor, AblaufVorschau, workflowEditor.css,
+                     Präfix bb-wf-), Sicherung, Hinweisleisten
                      (Ladefehler, neuere Fassung, Speicher voll); baubetrieb.css (Präfix bb-)
     projektsteuerung/  Bereich „Projektsteuerung“ (erster Entwurf)
       index.tsx  Einstiegspunkt samt Datenbestand und Stylesheet des Bereichs

@@ -725,7 +725,7 @@ N-x und unterjährige Anmeldung.
 | `#/baubetrieb/import` | Import aus BBPNeo (`src/bereiche/baubetrieb/pages/BbpImport.tsx`), Menüpunkt zwischen „Projekte“ und „Einstellungen“ | Karten „Datei“ und „Vorschau“ mit „Verwerfen“ und „Importieren“; siehe 7.5. |
 | `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen; nur in diesem Bereich; die Rückfrage endet mit „Die Anmeldung lässt sich nicht wiederherstellen.“ bzw. „Die Anmeldungen lassen sich nicht wiederherstellen.“ und dem Hinweis aus `useLoeschHinweis`, 9.3); Archivhinweis (9.3); Stammdaten; am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche („ID, Titel, BBK, Status …“; auch über Anmelder, Projektnummer und Bemerkung) und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; in der zweiten Zeile die Maßnahmenart – nur, wo der Workflow mehrere führt –, die KM-Runde und der Titel), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip), Sachstand (`SachstandKompakt` in `src/bereiche/baubetrieb/components/common.tsx`: Datum, darunter Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; alles im Tooltip) und „Status ändern“ (Haken, siehe 7.3; Tabellenklasse `bb-anmeldungen` – scrollt die Tabelle quer, bleibt die Haken-Spalte rechts stehen, `position: sticky` in `src/bereiche/baubetrieb/components/baubetrieb.css`). Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
 | `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“, „Letzten Wechsel zurücknehmen“, dazu „Zuständig:“ mit Rolle und Namen; Karte „Merkmale“ („Vorhabenname“ im SKM und wo er gesetzt ist, die Nummer als „tVE-Nr“ – bei älteren SKM-Einträgen ohne Vorhabenname weiter „Begriff / tVE-Nr“ –, „KM-Runde“ (falls gesetzt), „Titel“, „Mitwirkender BBK“, „Anmelder“, „Projektnummer (BBPNeo)“, Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; oben rechts „Bearbeiten“, „Duplizieren“ (Kopie mit aktuellem Stand und Statusverlauf, Vermerk „Dupliziert aus …“, „(Kopie)“ an der führenden Bezeichnung; öffnet die Kopie) und „Löschen“. |
-| `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Liste „Workflows“ mit Kennzeichen „Standard“ bzw. „Eigener Workflow“, Zahl der Status und Anmeldungen, den Status in ihrer Reihenfolge, „Öffnen“, „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
+| `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Karte „Workflows“ mit je Workflow einer Karte (`bb-wf-liste-karte`): Kennzeichen „Standard“ bzw. „Eigener Workflow“, Beschreibung, Standardverlauf als Punktkette (`AblaufVorschau` in `src/bereiche/baubetrieb/components/AblaufVorschau.tsx`, mit „+ … Abweichungen“), Zahl der Status, Abweichungen und Anmeldungen, Sperrzeitraum und Maßnahmenarten, „Öffnen“ (auch Klick auf die Karte), „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
 | `#/baubetrieb/fristen` | Fristen (`src/bereiche/baubetrieb/pages/Fristen.tsx`), Menügruppe „Einstellungen“ | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase eine Gruppenzeile mit Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. Die frühere Adresse `#/baubetrieb/einstellungen` zeigt dieselbe Seite. |
 
 Router: `src/bereiche/baubetrieb/lib/router.ts`; unbekannte Adressen führen auf
@@ -744,23 +744,59 @@ die Übersicht.
   „Phase und Maßnahmenart“, nach Phase gegliedert; je Eintrag Kurzbezeichnung
   und Art, etwa KKM · B(S));
   vorbelegt ist KKM (`NEUANLAGE_WORKFLOW`).
-* Editor (`WorkflowEditor` in `src/bereiche/baubetrieb/pages/Workflows.tsx`):
-  Name, Kurzbezeichnung, Beschreibung, Sperrzeitraum, Maßnahmenarten; je Status
-  eine Karte mit Bezeichnung, Art (`STATUS_ART_LABEL`), „Zuständig“ (MIC, BBK,
-  Projektleitung DB oder „– niemand –“), Terminfrist
-  (`FRIST_TYP_LABEL`: „Keine Terminfrist“, „Frist laut Richtlinie“, „Nächster
-  Stichtag (TT.MM.)“, „Nachhak-Termin nach Statuswechsel“; der Bezug einer
-  Frist laut Richtlinie nach Phase gegliedert, `RIL_BEZUG_LABEL` und
-  `RIL_BEZUG_PHASE`, Kurzform mit `RIL_BEZUG_KUERZEL`), „Termin dient zum
-  Nachhaken“, Bemerkung und Nachfolgern („Nachfolger hinzufügen …“ mit „Dieser
-  Workflow“, „Übernahme in …“ und „Eintrag löschen (endgültig)“; zur Art
-  „Anmeldeleiche“ ein Hinweis);
-  Verschieben, Entfernen (nicht bei Status mit Anmeldungen), „Status“ fügt
-  einen Status an. Der Sperrzeitraum ist gesperrt, solange Anmeldungen im
-  Workflow stehen. Speichern prüft Name, Status-Bezeichnungen, Arten und
-  belegte Status (`belegteEntfallendeStatus`); Nachfolger auf entfallene
-  Status werden in allen Workflows entfernt. „Duplizieren“ (`workflowKopie`)
-  hängt „(Kopie)“ an Name und Kurzbezeichnung.
+* Editor (`WorkflowEditor` in `src/bereiche/baubetrieb/components/WorkflowEditor.tsx`,
+  Gestaltung in `src/bereiche/baubetrieb/components/workflowEditor.css`, Präfix
+  `bb-wf-`): grafischer Vollbild-Editor wie im Planlaufmanagement (dort
+  unverändert), über ein Portal an `document.body`, die Seite dahinter `inert`.
+  Kopf: „Workflow bearbeiten“ bzw. „Neuer Workflow“, Name (Feld „Name des
+  Workflows“), Kurzbezeichnung · Sperrzeitraum · Anmeldungen, Kennzahl mit der
+  Zahl der Status und der Abweichungen, „Rückgängig“/„Wiederholen“ (Strg+Z, Strg+Y bzw.
+  Strg+Umschalt+Z; Tippen in einem Feld zählt als ein Schritt), „Übersicht“
+  (schmal), „Status hinzufügen“ (Tooltip nennt die Stelle: „Hinter „…““, „Vor
+  „…“ im Standardverlauf“ bzw. „Am Ende des Standardverlaufs“), Schließen; Fuß:
+  „Vollständig“ bzw. „… Hinweise“, Abweichungen und Übernahmen, „Abbrechen“
+  (mit Änderungen „Änderungen verwerfen?“ – „Verwerfen“/„Weiter bearbeiten“),
+  „Speichern“. Bei Standard-Workflows ein Hinweis über der Fläche
+  („Mitgelieferter Standard-Workflow: …“).
+* Gliederung in `src/bereiche/baubetrieb/domain/workflowGraph.ts` (`gliedern`):
+  Standardverlauf vom ersten Status über den jeweils ersten Nachfolger; er endet
+  (`VerlaufEnde`) mit einer Übernahme in einen anderen Workflow, „Eintrag
+  löschen“, einer Schleife, am Ziel (Status der Art `genehmigt`) oder offen.
+  Abweichungen per Breitensuche (mit `anker` im Standardverlauf), auch ab
+  Status, in die andere Workflows übernehmen (`einstiege`); übrige unter
+  „Nicht erreichbar – kein Nachfolger führt zu diesen Status“. Arbeitsfläche:
+  Spalten „Standardverlauf“ (Startknoten „Neu angelegt“, Endknoten etwa
+  „Genehmigt – Ziel des Workflows“, „Übernahme in …“, „Eintrag gelöscht“,
+  „Schleife zurück zu …“, „Workflow endet hier“) und „Abweichungen“; Linien
+  zwischen Karten als SVG aus gemessenen Positionen (orange Abweichung, lila
+  Rücksprung); Übernahmen und „Eintrag löschen“ als Text auf der Karte
+  (`fremdZielText`); Kennzeichen „Nachhaken“, „… Anmeldungen“, „Einstieg aus
+  …“; „+“ zwischen Karten („Status hier einfügen“, `einfuegen`) – nach einem
+  genehmigten Status am Ziel ohne „+“. Bis 820 px untereinander, Details als
+  Blatt von unten; bis 1279 px Details als Schublade.
+* Statusdetails (Karte gewählt): „Karte … von …“ mit Vor/Zurück, „Status
+  bearbeiten“, Bezeichnung, Art (`STATUS_ART_LABEL`), „Zuständig“ (MIC, BBK,
+  Projektleitung DB oder „– niemand –“), Terminfrist (`FRIST_TYP_LABEL`:
+  „Keine Terminfrist“, „Frist laut Richtlinie“, „Nächster Stichtag (TT.MM.)“,
+  „Nachhak-Termin nach Statuswechsel“; der Bezug einer Frist laut Richtlinie
+  nach Phase gegliedert, `RIL_BEZUG_LABEL` und `RIL_BEZUG_PHASE`, Kurzform mit
+  `fristRegelText`), „Termin dient zum Nachhaken“, Bemerkung; „Wie geht es
+  weiter?“ mit den Nachfolgern (Auswahl „Dieser Workflow“, „Übernahme in …“,
+  „Eintrag löschen (endgültig)“; der erste mit „Standardverlauf“, die übrigen mit
+  „Als Standardverlauf“, `alsStandard`) und „Nachfolger hinzufügen …“;
+  „Einstieg aus anderen Workflows“; bei belegten Status „Anmeldungen“;
+  „Reihenfolge“ (`verschieben`; der erste ist der Startstatus), „Duplizieren“
+  (`duplizieren`) und „Entfernen“ (`entfernen`: wer zum Status führte, führt zu
+  dessen erstem Nachfolger; gesperrt bei Status mit Anmeldungen). Übersicht
+  (ohne Auswahl): Kurzbezeichnung, Beschreibung, Sperrzeitraum (gesperrt,
+  solange Anmeldungen im Workflow stehen), Maßnahmenarten, Kacheln, „Hinweise“
+  (`pruefen`: fehlender Name, kein Status, keine Maßnahmenart, Status ohne
+  Bezeichnung und belegte entfallende Status sperren das Speichern; nicht
+  erreichbare Status, unbekannte Nachfolger und Anmeldeleichen ohne „Eintrag
+  löschen“ sind nur Hinweise) und „So lesen Sie das Bild“. Speichern prüft
+  zusätzlich `belegteEntfallendeStatus`; Nachfolger auf entfallene Status
+  werden in allen Workflows entfernt. „Duplizieren“ eines Workflows
+  (`workflowKopie`) hängt „(Kopie)“ an Name und Kurzbezeichnung.
 * „Status ändern“ (`NachfolgerAuswahl` in
   `src/bereiche/baubetrieb/components/common.tsx`, Haken gestaltet in
   `src/bereiche/baubetrieb/components/baubetrieb.css`, Präfix `bb-`) ist ein
@@ -929,9 +965,13 @@ die Übersicht.
 | „Bitte je Eintrag das Fahrplanjahr wählen.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Übernahme in einen Workflow mit ganzem Fahrplanjahr ohne Fahrplanjahr. |
 | „Das Ende eines Sperrzeitraums liegt vor dem Beginn.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Übernahme mit verkehrtem Sperrzeitraum. |
 | „Anmeldeleiche gelöscht.“ / „Anmeldung gelöscht.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Kein Fehler: „Eintrag löschen“ aus der Anmeldeleiche bzw. aus einem anderen Status. |
-| „Bitte einen Namen angeben.“ / „Bitte mindestens einen Status anlegen.“ / „Bitte jeden Status benennen.“ / „Bitte mindestens eine Maßnahmenart wählen.“ | `src/bereiche/baubetrieb/pages/Workflows.tsx` | Workflow-Editor: Pflichtangaben fehlen. |
-| „„…“ kann nicht entfallen – darin stehen noch Anmeldungen.“ | `src/bereiche/baubetrieb/pages/Workflows.tsx` | Beim Speichern entfiele ein Status, in dem noch Anmeldungen stehen. |
-| „Der Sperrzeitraum lässt sich nicht umstellen, solange Anmeldungen in diesem Workflow stehen.“ | `src/bereiche/baubetrieb/pages/Workflows.tsx` | Schutz beim Speichern; das Auswahlfeld ist in diesem Fall ohnehin gesperrt. |
+| „Bitte einen Namen angeben.“ | `src/bereiche/baubetrieb/components/WorkflowEditor.tsx` | Workflow-Editor: Speichern ohne Namen. |
+| „Der Workflow braucht mindestens einen Status.“ / „Status … hat keine Bezeichnung.“ / „Bitte mindestens eine Maßnahmenart wählen.“ | `src/bereiche/baubetrieb/domain/workflowGraph.ts` | Sperrende Hinweise (`pruefen`); „Speichern“ meldet den ersten und wählt den Status bzw. die Übersicht. |
+| „„…“ wird nie erreicht – kein Nachfolger führt dorthin.“ / „„…“ hat einen Nachfolger, den es nicht mehr gibt – er entfällt beim Speichern.“ / „Aus der Anmeldeleiche „…“ führt kein „Eintrag löschen“.“ | `src/bereiche/baubetrieb/domain/workflowGraph.ts` | Hinweise ohne Sperre. |
+| „„…“ kann nicht entfallen – darin stehen noch Anmeldungen.“ | `src/bereiche/baubetrieb/components/WorkflowEditor.tsx` | Sperrender Hinweis: Beim Speichern entfiele ein Status, in dem noch Anmeldungen stehen. |
+| „Der Status lässt sich nicht entfernen – darin …“ („steht noch eine Anmeldung“ bzw. „stehen noch … Anmeldungen“) | `src/bereiche/baubetrieb/components/WorkflowEditor.tsx` | „Entfernen“ bei einem belegten Status (der Knopf ist dann ohnehin gesperrt). |
+| „Status entfernt – „Rückgängig“ holt ihn zurück.“ | `src/bereiche/baubetrieb/components/WorkflowEditor.tsx` | Kein Fehler. |
+| „Der Sperrzeitraum lässt sich nicht umstellen, solange Anmeldungen in diesem Workflow stehen.“ | `src/bereiche/baubetrieb/components/WorkflowEditor.tsx` | Schutz beim Speichern; das Auswahlfeld ist in diesem Fall ohnehin gesperrt. |
 | „Die Datei ist keine gültige JSON-Datei.“ | `src/bereiche/baubetrieb/store/storage.ts` | Einspielen einer Datei, die kein JSON ist. |
 | „Die Datei ist eine Sicherung des Planlaufmanagements – bitte dort einspielen.“ | `src/bereiche/baubetrieb/store/storage.ts` | Das JSON enthält `projects`. |
 | „Die Datei ist keine Sicherung der Baubetriebsplanung.“ | `src/bereiche/baubetrieb/store/storage.ts` | Kennzeichen `bereich` fehlt oder Listen fehlen. |
