@@ -286,6 +286,11 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   (jüngster Verlaufseintrag oder `geaendertAm`, das nur `updateAnmeldung`/`terminSetzen` setzen,
   und nur bei tatsächlicher Änderung;
   angezeigt in den Anmeldungstabellen des Projekts, `SachstandKompakt`),
+  `domain/bbpImport.ts` Import aus BBPNeo (nur KM und KKM; Spalten über ihre Überschriften
+  „Anmeldung::…“, je Anmelde-ID eine Anmeldung mit frühestem Beginn und spätestem Ende,
+  Statuszuordnung in `Einstellungen.bbpStatus`, Projekte über die DB-G-Nummer; einen anderen
+  Status setzt `statusUebernehmen` in `domain/ablauf.ts` ohne Nachfolger-Prüfung, mit Vorstand
+  zum Zurücknehmen; Dialog `components/BbpImportDialog.tsx` auf der Seite Projekte),
   `store/` mit eigenem Schlüssel `baubetrieb-planung.data.v1`. Workflows und Fristen stehen in der
   Seitenleiste unter der aufklappbaren Gruppe „Einstellungen“ (wie im Planlaufmanagement);
   „Status ändern“ ist `NachfolgerAuswahl` (Haken in `components/baubetrieb.css`, Präfix

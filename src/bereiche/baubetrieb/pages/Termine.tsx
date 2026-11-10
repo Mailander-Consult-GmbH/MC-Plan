@@ -44,8 +44,8 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
     return [
       t.anmeldung.vorhaben,
       t.anmeldung.anmeldeId,
-      t.anmeldung.bfStrecke,
-      t.anmeldung.gewerk,
+      t.anmeldung.titel,
+      t.anmeldung.bbk,
       t.anmeldung.art,
       t.status.workflow.name,
       t.status.status.name,
@@ -177,7 +177,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
                               <strong>{anmeldungTitel(t.anmeldung)}</strong>
                             </button>
                             <div className="small tertiary">
-                              {[t.anmeldung.art, t.anmeldung.bfStrecke, t.anmeldung.gewerk].filter(Boolean).join(' · ')}
+                              {[t.anmeldung.art, t.anmeldung.titel].filter(Boolean).join(' · ')}
                             </div>
                           </td>
                           <td>

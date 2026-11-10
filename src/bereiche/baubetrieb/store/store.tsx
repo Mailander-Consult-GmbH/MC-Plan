@@ -18,6 +18,7 @@ import {
   wechselZuruecknehmen,
   type Wechsel,
 } from '../domain/ablauf';
+import { bbpIdBedarf, bbpImportAnwenden, type BbpGelesen, type BbpOptionen } from '../domain/bbpImport';
 import { newId, seedDaten } from '../domain/seed';
 import type {
   Anmeldung,
@@ -89,6 +90,12 @@ interface StoreValue {
   nachgehakt: (id: ID, datum: ISODate, notiz: string, neuerTermin: ISODate | null) => void;
   /** Legt die Terminfrist im aktuellen Status von Hand fest (null: berechnen); setzt `geaendertAm`, wenn sie sich ändert. */
   terminSetzen: (id: ID, termin: ISODate | null) => void;
+  /**
+   * Import aus BBPNeo (domain/bbpImport.ts): legt Anmeldungen und ggf. Projekte an,
+   * aktualisiert vorhandene Anmeldungen derselben Anmelde-ID und merkt sich die
+   * Statuszuordnung – in einem `mutate()`.
+   */
+  bbpImportieren: (gelesen: BbpGelesen, optionen: BbpOptionen) => void;
   /* Verwaltung */
   ersetzeDaten: (d: BaubetriebDaten) => void;
   zuruecksetzen: () => void;
@@ -331,6 +338,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       terminSetzen: (id, termin) => {
         const heute = today();
         anmeldungAendern(id, (a) => (a.terminManuell === termin ? a : { ...a, terminManuell: termin, geaendertAm: heute }));
+      },
+
+      bbpImportieren: (gelesen, optionen) => {
+        // Kennungen vor mutate() – im StrictMode läuft die Änderungsfunktion doppelt.
+        const bedarf = bbpIdBedarf(data, gelesen);
+        const ids = {
+          anmeldung: Array.from({ length: bedarf.anmeldung }, () => newId('an')),
+          verlauf: Array.from({ length: bedarf.verlauf }, () => newId('vl')),
+          projekt: Array.from({ length: bedarf.projekt }, () => newId('pr')),
+        };
+        const kontext = { heute: today(), erfasst: new Date().toISOString() };
+        mutate((d) => bbpImportAnwenden(d, gelesen, optionen, ids, { ...kontext, bearbeiter: d.einstellungen.bearbeiter }));
       },
 
       ersetzeDaten: (d) => {

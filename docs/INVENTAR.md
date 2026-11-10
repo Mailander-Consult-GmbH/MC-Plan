@@ -590,23 +590,32 @@ N-x und unterjährige Anmeldung.
   MIC, BBK, Projektleitung DB oder `null`); je Anmeldung `vorhaben`
   (Vorhabenname, führend bei der Art SKM – `vorhabenFuehrend`, `titelFeld`,
   `anmeldungTitel`; ohne Nummer „ohne ID“, in Rückfragen und Vermerken
-  notfalls das Gewerk – `anmeldungBezeichnung`), `bbk` (Zuständiger BBK),
-  `anmelder` (Anmelder; soll aus dem Import der Anmeldungen kommen, bis dahin
-  von Hand) und `geaendertAm` (Tag der letzten Änderung der Merkmale – gesetzt
+  notfalls der Titel – `anmeldungBezeichnung`), `titel` (Titel der Anmeldung,
+  in BBPNeo „Titel“), `bbk` (Mitwirkender BBK, auch mehrere Namen),
+  `anmelder` (Anmelder; aus dem BBPNeo-Import oder von Hand),
+  `bbpProjektnummer` (Projektnummer laut BBPNeo), `kmRunde` (`KmRunde`
+  `'N-2'` | `'N-1'` | `null`, `KM_RUNDE_LABEL`: „KM N-2 (2. KP)“, „KM N-1
+  (3. KP)“) und `geaendertAm` (Tag der letzten Änderung der Merkmale – gesetzt
   von `updateAnmeldung` und `terminSetzen` im Store, nur bei einer tatsächlichen
   Änderung: `updateAnmeldung` vergleicht feldweise mit dem bisherigen Stand,
   `unterscheidet`; ohne Änderung bleibt der Bestand unverändert). „Speichern“
   in „Anmeldung bearbeiten“ (`src/bereiche/baubetrieb/components/AnmeldungDialog.tsx`)
   prüft das vorab ebenso (beide Stände über `bauzeitraumAbgleichen`) und ruft
   `updateAnmeldung` samt Meldung „Anmeldung gespeichert.“ nur bei einer
-  Änderung auf; sonst schließt es den Dialog nur.
+  Änderung auf; sonst schließt es den Dialog nur. Das Feld „KM-Runde“ (Auswahl
+  mit „– automatisch (Ril_KM) –“) steht dort nur in Workflows, deren Status
+  mit Ril_KM rechnen (`rechnetMitRilKm`), oder wenn die Anmeldung eine KM-Runde
+  hat. `Einstellungen.bbpStatus` (`BbpStatusZuordnung`, je `BbpPhase` `km`
+  bzw. `kkm` der Status aus BBPNeo → Status-ID oder `null`) hält die
+  Statuszuordnung des BBPNeo-Imports; Vorgabe `bbpStatusVorgabe()` in
+  `src/bereiche/baubetrieb/domain/workflow.ts` (7.5).
 * Sachstand (`sachstand` in `src/bereiche/baubetrieb/domain/ablauf.ts`): Datum
   und Anlass des jüngsten Eintrags im Verlauf (fachliches Datum; Anlass
   „Statuswechsel“, „Angelegt“ oder der Text des Vermerks, etwa „Nachgehakt“)
   oder `geaendertAm` mit „Merkmale geändert“, was später liegt; bei gleichem
   Tag gilt der Verlauf.
 * Schlüssel `baubetrieb-planung.data.v1` im `localStorage`
-  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 9`.
+  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 10`.
   `migriere()` hebt ältere Stände in einem Aufruf Schritt für Schritt: Fassung 1 kannte nur den
   Farbmodus und erhält die Demodaten; Fassung 2 führte Statusnummern (V0 … Y9),
   die `STATUS_AUS_NUMMER` (`src/bereiche/baubetrieb/domain/workflow.ts`) den
@@ -635,7 +644,11 @@ N-x und unterjährige Anmeldung.
   Status der Standard-Workflows erhalten die Vorgabe der mitgelieferten, die
   übrigen die Vorgabe ihrer Art (`ZUSTAENDIG_NACH_ART`); `vorhaben` und `bbk`
   der Anmeldungen ergänzt `aufbereiten()` leer; Fassung 8 kannte `anmelder`
-  und `geaendertAm` nicht – `aufbereiten()` ergänzt sie leer.
+  und `geaendertAm` nicht – `aufbereiten()` ergänzt sie leer; Fassung 9
+  (`ausFassung9`) führte `bfStrecke` und `gewerk` – sie entfallen und gehen im
+  `titel` auf („Bf/Strecke – Gewerk“, leere Teile fallen weg);
+  `bbpProjektnummer`, `kmRunde` und `einstellungen.bbpStatus` ergänzt
+  `aufbereiten()` (leer bzw. Vorgabe, `bbpStatusAufbereiten`).
   Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekte mit acht
   Anmeldungen, Termine relativ zum heutigen Tag, und die Standard-Workflows.
@@ -672,7 +685,10 @@ N-x und unterjährige Anmeldung.
 * Alle Schreibzugriffe über `mutate()` in
   `src/bereiche/baubetrieb/store/store.tsx`; Statuswechsel und Rücknahme als
   reine Funktionen `wechselAnwenden` und `wechselZuruecknehmen` in
-  `src/bereiche/baubetrieb/domain/ablauf.ts`, Duplizieren über
+  `src/bereiche/baubetrieb/domain/ablauf.ts` (dort auch `statusUebernehmen` für
+  den BBPNeo-Import; der gespeicherte Vorstand `AnmeldungStand` enthält seit
+  Fassung 10 auch den `titel`), der Import über `bbpImportieren`
+  (`bbpImportAnwenden`, 7.5), Duplizieren über
   `anmeldungDuplizieren` (Kennungen vorab, Kopie direkt hinter dem Original;
   „(Kopie)“ an der führenden Bezeichnung, ohne Nummer wird „(Kopie)“ die
   Nummer, auch im gespeicherten Vorstand für das Zurücknehmen),
@@ -686,9 +702,9 @@ N-x und unterjährige Anmeldung.
 | --- | --- | --- |
 | `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`, samt ausstehender Erstanmeldungen, diese mit Prozessphase und Projekt) mit den Spalten Anmeldung, Projekt, Status, Terminfrist und „Status ändern“ je Zeile (Haken, siehe 7.3); Karte „Anmeldebedarf aus den Projekten“ (nur wenn Bedarf besteht); Karte „Projekte“ mit der Zahl der Anmeldungen je Workflow, überfälligen Fristen (samt überfälliger Erstanmeldung) und nächster Frist (ohne Anmeldung die der Erstanmeldung). Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
 | `#/baubetrieb/termine` | Termine & Nachhaken (`src/bereiche/baubetrieb/pages/Termine.tsx`) | Alle Anmeldungen mit Terminfrist über alle Projekte, gegliedert nach Projekt; Filter Alle / Überfällig / Fällig / Im Plan / Zum Nachhaken, Suche; je Zeile „Nachgehakt“ (bei Status zum Nachhaken) und „Status ändern“ (Haken, siehe 7.3); je Projekt zuerst eine Zeile „Erstanmeldung ausstehend“ (`ausstehendeErstanmeldungen`) mit „Ausstehend“, Terminfrist und „Zum Projekt“ – sie zählt in den Filtern mit. Darunter „Anmeldebedarf aus den Projekten“. |
-| `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit MIC-Projektnummer, Bezeichnung, Bemerkung (falls vorhanden), Status der Betreuung, ★-Markierung und „Auch in“; Suche auch über DB-G-Nummer, Projektleiter und Hauptbearbeiter; „Neues Projekt“ (`ProjektDialog`). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Baubetriebsplanung“ (siehe 9.3). |
-| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen; nur in diesem Bereich; die Rückfrage endet mit „Die Anmeldung lässt sich nicht wiederherstellen.“ bzw. „Die Anmeldungen lassen sich nicht wiederherstellen.“ und dem Hinweis aus `useLoeschHinweis`, 9.3); Archivhinweis (9.3); Stammdaten; am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; die Maßnahmenart in der zweiten Zeile nur, wo der Workflow mehrere führt), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip), Sachstand (`SachstandKompakt` in `src/bereiche/baubetrieb/components/common.tsx`: Datum, darunter Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; alles im Tooltip) und „Status ändern“ (Haken, siehe 7.3; Tabellenklasse `bb-anmeldungen` – scrollt die Tabelle quer, bleibt die Haken-Spalte rechts stehen, `position: sticky` in `src/bereiche/baubetrieb/components/baubetrieb.css`). Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
-| `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“, „Letzten Wechsel zurücknehmen“, dazu „Zuständig:“ mit Rolle und Namen; Karte „Merkmale“ („Vorhabenname“ im SKM und wo er gesetzt ist, die Nummer als „tVE-Nr“ – bei älteren SKM-Einträgen ohne Vorhabenname weiter „Begriff / tVE-Nr“ –, „Zuständiger BBK“, „Anmelder“, Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; oben rechts „Bearbeiten“, „Duplizieren“ (Kopie mit aktuellem Stand und Statusverlauf, Vermerk „Dupliziert aus …“, „(Kopie)“ an der führenden Bezeichnung; öffnet die Kopie) und „Löschen“. |
+| `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit MIC-Projektnummer, Bezeichnung, Bemerkung (falls vorhanden), Status der Betreuung, ★-Markierung und „Auch in“; Suche auch über DB-G-Nummer, Projektleiter und Hauptbearbeiter; „Import aus BBPNeo“ (`BbpImportDialog`, 7.5) und „Neues Projekt“ (`ProjektDialog`). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Baubetriebsplanung“ (siehe 9.3). |
+| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Löschen“ (samt Anmeldungen; nur in diesem Bereich; die Rückfrage endet mit „Die Anmeldung lässt sich nicht wiederherstellen.“ bzw. „Die Anmeldungen lassen sich nicht wiederherstellen.“ und dem Hinweis aus `useLoeschHinweis`, 9.3); Archivhinweis (9.3); Stammdaten; am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche („ID, Titel, BBK, Status …“; auch über Anmelder, Projektnummer und Bemerkung) und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; in der zweiten Zeile die Maßnahmenart – nur, wo der Workflow mehrere führt –, die KM-Runde und der Titel), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip), Sachstand (`SachstandKompakt` in `src/bereiche/baubetrieb/components/common.tsx`: Datum, darunter Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; alles im Tooltip) und „Status ändern“ (Haken, siehe 7.3; Tabellenklasse `bb-anmeldungen` – scrollt die Tabelle quer, bleibt die Haken-Spalte rechts stehen, `position: sticky` in `src/bereiche/baubetrieb/components/baubetrieb.css`). Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
+| `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“, „Letzten Wechsel zurücknehmen“, dazu „Zuständig:“ mit Rolle und Namen; Karte „Merkmale“ („Vorhabenname“ im SKM und wo er gesetzt ist, die Nummer als „tVE-Nr“ – bei älteren SKM-Einträgen ohne Vorhabenname weiter „Begriff / tVE-Nr“ –, „KM-Runde“ (falls gesetzt), „Titel“, „Mitwirkender BBK“, „Anmelder“, „Projektnummer (BBPNeo)“, Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; oben rechts „Bearbeiten“, „Duplizieren“ (Kopie mit aktuellem Stand und Statusverlauf, Vermerk „Dupliziert aus …“, „(Kopie)“ an der führenden Bezeichnung; öffnet die Kopie) und „Löschen“. |
 | `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Liste „Workflows“ mit Kennzeichen „Standard“ bzw. „Eigener Workflow“, Zahl der Status und Anmeldungen, den Status in ihrer Reihenfolge, „Öffnen“, „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
 | `#/baubetrieb/fristen` | Fristen (`src/bereiche/baubetrieb/pages/Fristen.tsx`), Menügruppe „Einstellungen“ | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase eine Gruppenzeile mit Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. Die frühere Adresse `#/baubetrieb/einstellungen` zeigt dieselbe Seite. |
 
@@ -738,8 +754,9 @@ die Übersicht.
 * Statuswechsel im Dialog `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx`:
   Datum, Bemerkung, beim Eintritt in eine Änderungsabstimmung ÄAbst-Nr und
   AnnexVII; bei einem Wechsel in einen anderen Workflow (`istUebernahme`)
-  Maßnahmenart und je Zeile Anmelde-ID, Bf/Strecke und Sperrzeitraum, mit
-  „Weitere Anmeldung“ zur Aufteilung (weitere Einträge erhalten `herkunftId`).
+  Maßnahmenart und je Zeile Anmelde-ID, Titel und Sperrzeitraum, mit
+  „Weitere Anmeldung“ zur Aufteilung (weitere Einträge erhalten `herkunftId`;
+  ein leerer Titel übernimmt den des Eintrags).
   Der Wechsel in eine Anmeldeleiche ist ein gewöhnlicher Statuswechsel mit
   Hinweis („Die Anmeldung bleibt als Anmeldeleiche rot gekennzeichnet im
   Projekt stehen …“). Erst „Eintrag löschen“ (`LOESCHEN`) fragt „Anmeldeleiche
@@ -749,9 +766,11 @@ die Übersicht.
   von Hand festgelegter Termin (`terminManuell`, gilt bis zum nächsten
   Wechsel), sonst nach der Fristregel des Status. Richtlinienfristen aus
   `rilFristen`; welche gilt, entscheidet `rilSchluesselFuer`: Ril_KM nimmt die
+  Frist der `kmRunde`, wenn sie gesetzt ist (Rechenweg „Prozessphase 2. KP“
+  bzw. „Prozessphase 3. KP“), sonst die
   N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und
   nicht vor dem ersten Anmeldetermin des Projekts abzüglich `CA_TOLERANZ_TAGE`
-  liegt, sonst die N-1-Frist (`kmGrundFuerN1`; der Rechenweg nennt den Grund),
+  liegt, danach die N-1-Frist (`kmGrundFuerN1`; der Rechenweg nennt den Grund),
   Ril_KKM die Frist der Maßnahmenart, für die Arten SKM und MKM die von A. Die Vorbelegung `standardRilFristen()` in `seed.ts` ist als
   `platzhalter` gekennzeichnet. Ampel `ampelFuer` mit `vorlaufTage`.
 * Fahrplanjahr: `fahrplanjahrBeginn`, `fahrplanjahrEnde`, `fahrplanjahrVon` –
@@ -819,7 +838,56 @@ die Übersicht.
   „Projekte“, Terminfristen bei überfälligen Anmeldungen rot, bei fälligen
   orange hinterlegt.
 
-### 7.5 Meldungen
+### 7.5 Import aus BBPNeo
+
+* Dialog `BbpImportDialog` in
+  `src/bereiche/baubetrieb/components/BbpImportDialog.tsx` (Titel „Import aus
+  BBPNeo“, Untertitel „Anmeldungen im KM und KKM aus dem Excel-Export von
+  BBPNeo“), geöffnet über „Import aus BBPNeo“ auf der Seite Projekte. Ablagefläche
+  „Excel-Export aus BBPNeo hierher ziehen“ (`.drop-zone` mit `alsKnopf`,
+  Dateien `.xlsx`, `.csv`, `.txt`, gelesen mit `tabelleLesen` aus
+  `src/shared/xlsxLesen.ts`). Als Export gilt ein Blatt mit den Überschriften
+  „Anmeldung::ID“, „Anmeldung::Fachstatus-ID“ und „Anmeldung::Prozessphase“
+  (`istBbpBlatt`); bei mehreren solchen Blättern die Auswahl „Tabellenblatt“.
+* Reine Funktionen in `src/bereiche/baubetrieb/domain/bbpImport.ts`:
+  `BBP_SPALTEN` (Feld, Lage im Export „Anmeldung (OS)“ – A, F, G, L, P, Q, AC,
+  AG, AH, AJ – und Überschriften, über `spaltenZuordnen`); `bbpLesen` fasst
+  die Zeilen je Anmelde-ID zusammen (`anmeldeIdSchluessel`: „Anmeldung-131437“
+  = „131437“; frühester Beginn, spätestes Ende über `datumLesen`, ohne
+  Uhrzeit; sonst die erste Angabe) und überspringt „Vorlage“ (`istVorlage`),
+  andere Prozessphasen als „2. KP“, „3. KP“ und „KKM“ (`prozessphaseLesen`:
+  KM N-2, KM N-1, KKM) sowie Zeilen ohne Anmelde-ID; fehlende übrige Spalten
+  nennt `fehlend`. `massnahmenartLesen` ordnet die Maßnahmenart zu („B (S)“ →
+  B(S)).
+* `bbpPlanen` rechnet die Vorschau: je Anmeldung `neu`, `aktualisiert`,
+  `unveraendert` oder `uebersprungen` (Status ohne Zuordnung, kein Projekt
+  gewählt), die Statusliste der Datei (`statusZiel`, auch bei abweichender
+  Groß-/Kleinschreibung) und die Projektgruppen nach Projektnummer (Treffer
+  über die DB-G-Nummer, ohne „G“, Punkte und Leerzeichen verglichen; Vorgabe:
+  Treffer, sonst mit Projektnummer `NEUES_PROJEKT` mit Bezeichnung aus dem
+  Anfang des Titels, ohne Nummer `KEIN_PROJEKT`). Vorhandene Anmeldungen
+  derselben ID (`aktualisieren`): erst `statusUebernehmen` (Statuswechsel mit
+  Datum des Imports, Text „Import BBPNeo (Status in BBPNeo: …)“, Vorstand zum
+  Zurücknehmen; auch ohne Nachfolger-Beziehung), dann die Merkmale
+  (`merkmaleUebernehmen` – leere Angaben der Datei überschreiben nichts) mit
+  `geaendertAm`. Neue Anmeldungen beginnen im zugeordneten Status mit dem
+  Verlaufseintrag „Aus BBPNeo importiert (Status in BBPNeo: …)“, neue Projekte
+  tragen die Bemerkung „Beim Import aus BBPNeo angelegt.“.
+* `bbpImportAnwenden` plant im `mutate()` gegen den aktuellen Bestand neu und
+  wendet an; Kennungen vergibt der Store vorab (`bbpIdBedarf`, `BbpIds`). Die
+  Zuordnung der Status der Datei wird in `einstellungen.bbpStatus` gemerkt.
+* Oberfläche: Kennzahlen „… neu“, „… aktualisiert“ (mit „davon … mit neuem
+  Status“), „… unverändert“, „… übersprungen“; Abschnitte „Status zuordnen“
+  („Die Zuordnung gilt auch für den nächsten Import.“, Auswahl je Status mit
+  „– nicht importieren –“), „Projekte“ (nur mit neuen Anmeldungen; Auswahl
+  „– nicht importieren –“, „+ Neues Projekt anlegen“, „Vorhandene Projekte“,
+  dazu die Bezeichnung des neuen Projekts) und „Anmeldungen“ (Anmeldung mit
+  Phase und Titel, Sperrzeitraum „aus … Zeilen“, Status in BBPNeo → KaPlan,
+  Ergebnis); darunter aufklappbar „Übersprungen: …“. „Importieren“ ist
+  gesperrt, solange nichts neu oder zu aktualisieren ist; danach die Meldung
+  „Import aus BBPNeo: …“ (7.6).
+
+### 7.6 Meldungen
 
 | Meldung | Fundstelle | Ursache |
 | --- | --- | --- |
@@ -828,6 +896,10 @@ die Übersicht.
 | „Das Ende des Sperrzeitraums liegt vor dem Beginn.“ | `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx` | Sperrzeitraum einer Anmeldung verkehrt. |
 | „Bitte das Fahrplanjahr wählen.“ | `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx` | Eintrag in einem Workflow mit ganzem Fahrplanjahr ohne Fahrplanjahr. |
 | „Ohne Beginn des Sperrzeitraums lässt sich die Terminfrist nach Richtlinie nicht berechnen.“ | `src/bereiche/baubetrieb/components/AnmeldungDialog.tsx` | Hinweis bei tagesscharfen Anmeldungen ohne Beginn des Sperrzeitraums. |
+| „Die Datei enthält keinen Export der Anmeldungen aus BBPNeo – erwartet werden die Spalten „Anmeldung::ID“, „Anmeldung::Fachstatus-ID“ und „Anmeldung::Prozessphase“.“ | `src/bereiche/baubetrieb/components/BbpImportDialog.tsx` | Kein Blatt der Datei ist ein Export der Anmeldungen. |
+| „… Erwartet wird der Excel-Export der Anmeldungen aus BBPNeo (.xlsx).“ | `src/bereiche/baubetrieb/components/BbpImportDialog.tsx` | Datei nicht lesbar (Meldung von `tabelleLesen` davor). |
+| „Die Datei enthält keine Spalte für … – diese Angaben bleiben bei neuen Anmeldungen leer und bei vorhandenen unverändert.“ | `src/bereiche/baubetrieb/components/BbpImportDialog.tsx` | Hinweis: Spalten außer Anmelde-ID, Status und Prozessphase fehlen. |
+| „Import aus BBPNeo: …“ | `src/bereiche/baubetrieb/components/BbpImportDialog.tsx` | Kein Fehler: Ergebnis des Imports, durch Kommas getrennt nur die Teile, die vorkommen – „… neu“, „… aktualisiert“ (dazu „… mit neuem Status“), „… unverändert“, „… übersprungen“, „neues Projekt“ bzw. „neue Projekte“. |
 | „Bitte das Datum des Statuswechsels angeben.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Datum geleert. |
 | „Bitte je Eintrag das Fahrplanjahr wählen.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Übernahme in einen Workflow mit ganzem Fahrplanjahr ohne Fahrplanjahr. |
 | „Das Ende eines Sperrzeitraums liegt vor dem Beginn.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Übernahme mit verkehrtem Sperrzeitraum. |

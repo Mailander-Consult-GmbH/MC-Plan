@@ -31,7 +31,7 @@ import { StatusBadge } from './common';
 
 interface Zeile {
   anmeldeId: string;
-  bfStrecke: string;
+  titel: string;
   fahrplanjahr: number | null;
   bauVon: string;
   bauBis: string;
@@ -73,7 +73,7 @@ export function StatusWechselDialog({
   const [art, setArt] = useState<AnmeldungsArt>(arten.includes(anmeldung.art) ? anmeldung.art : arten[0]);
   const ersteZeile: Zeile = {
     anmeldeId: anmeldung.anmeldeId,
-    bfStrecke: anmeldung.bfStrecke,
+    titel: anmeldung.titel,
     fahrplanjahr: anmeldung.fahrplanjahr,
     bauVon: anmeldung.bauVon ?? '',
     bauBis: anmeldung.bauBis ?? '',
@@ -124,9 +124,9 @@ export function StatusWechselDialog({
       bemerkung,
       aenderungsNr: wirdAenderung ? aenderungsNr : undefined,
       annexVII: wirdAenderung ? annexVII || null : undefined,
-      uebernahme: uebernahme ? { art, anmeldeId: erste.anmeldeId, ...bauzeit(erste) } : undefined,
+      uebernahme: uebernahme ? { art, anmeldeId: erste.anmeldeId, titel: erste.titel, ...bauzeit(erste) } : undefined,
       weitere: uebernahme
-        ? weitere.map((z): Aufteilung => ({ anmeldeId: z.anmeldeId, bfStrecke: z.bfStrecke, ...bauzeit(z) }))
+        ? weitere.map((z): Aufteilung => ({ anmeldeId: z.anmeldeId, titel: z.titel, ...bauzeit(z) }))
         : undefined,
     });
     if (loeschen) {
@@ -277,7 +277,7 @@ export function StatusWechselDialog({
                   <thead>
                     <tr>
                       <th>{ganzesJahr ? 'Begriff / tVE-Nr' : 'Anmelde-ID'}</th>
-                      <th>Bf/Strecke</th>
+                      <th>Titel</th>
                       {ganzesJahr ? <th>Fahrplanjahr</th> : <th>Sperrzeit von</th>}
                       {ganzesJahr ? null : <th>Sperrzeit bis</th>}
                       <th className="actions" />
@@ -296,9 +296,9 @@ export function StatusWechselDialog({
                         </td>
                         <td>
                           <TextInput
-                            value={z.bfStrecke}
-                            onChange={(v) => zeileSetzen(i, { bfStrecke: v })}
-                            aria-label="Bf/Strecke"
+                            value={z.titel}
+                            onChange={(v) => zeileSetzen(i, { titel: v })}
+                            aria-label="Titel"
                           />
                         </td>
                         {ganzesJahr ? (
@@ -352,8 +352,8 @@ export function StatusWechselDialog({
               </div>
               {zeilen.length > 1 ? (
                 <p className="small tertiary" style={{ marginTop: 6 }}>
-                  Die weiteren Anmeldungen übernehmen Gewerk/Tätigkeit und Bemerkungen und verweisen auf diesen Eintrag
-                  als Herkunft.
+                  Die weiteren Anmeldungen übernehmen die übrigen Angaben und Bemerkungen dieses Eintrags und
+                  verweisen auf ihn als Herkunft.
                 </p>
               ) : null}
             </div>

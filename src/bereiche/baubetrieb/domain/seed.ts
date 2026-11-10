@@ -14,13 +14,14 @@ import {
   type Einstellungen,
   type ID,
   type ISODate,
+  type KmRunde,
   type Projekt,
   type RilFrist,
   type RilSchluessel,
   type VerlaufEintrag,
   type Workflow,
 } from './types';
-import { STATUS_AUS_NUMMER, standardWorkflows, statusVon, zielText } from './workflow';
+import { STATUS_AUS_NUMMER, bbpStatusVorgabe, standardWorkflows, statusVon, zielText } from './workflow';
 
 export function newId(prefix = 'id'): ID {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -72,6 +73,7 @@ export function standardEinstellungen(): Einstellungen {
     nachhakTage: 21,
     bedarfVorschauTage: 180,
     rilFristen: standardRilFristen(),
+    bbpStatus: bbpStatusVorgabe(),
   };
 }
 
@@ -119,8 +121,8 @@ interface DemoAnmeldung {
   bauVon?: ISODate;
   bauBis?: ISODate;
   fahrplanjahr?: number;
-  bfStrecke: string;
-  gewerk: string;
+  titel: string;
+  kmRunde?: KmRunde;
   bemerkung?: string;
   aenderungsNr?: string;
   annexVII?: AnnexVIIGrund;
@@ -137,16 +139,17 @@ function demoAnmeldung(projektId: ID, d: DemoAnmeldung, bearbeiter: string, work
     projektId,
     anmeldeId: d.anmeldeId,
     vorhaben: d.vorhaben ?? '',
+    titel: d.titel,
     bbk: d.bbk ?? '',
     anmelder: d.anmelder ?? '',
+    bbpProjektnummer: '',
+    kmRunde: d.kmRunde ?? null,
     art: d.art,
     statusId,
     statusSeit,
     bauVon,
     bauBis: ganzesJahr ? fahrplanjahrEnde(d.fahrplanjahr!) : (d.bauBis ?? null),
     fahrplanjahr: ganzesJahr ? d.fahrplanjahr! : fahrplanjahrVon(bauVon),
-    bfStrecke: d.bfStrecke,
-    gewerk: d.gewerk,
     aenderungsNr: aenderung ? (d.aenderungsNr ?? '') : '',
     annexVII: aenderung ? (d.annexVII ?? null) : null,
     terminManuell: null,
@@ -229,8 +232,8 @@ export function seedDaten(): BaubetriebDaten {
         ],
         bauVon: `${jahr + 2}-03-04`,
         bauBis: `${jahr + 2}-03-20`,
-        bfStrecke: 'Strecke 4000, km 92,1–95,4',
-        gewerk: 'Totalsperrung Einhub Überbau',
+        titel: 'Strecke 4000, km 92,1–95,4 – Totalsperrung Einhub Überbau',
+        kmRunde: 'N-2',
       },
       wer,
       workflows,
@@ -245,8 +248,7 @@ export function seedDaten(): BaubetriebDaten {
           ['W2', `${jahr}-03-20`],
         ],
         fahrplanjahr: jahr + 3,
-        bfStrecke: 'Strecke 4000, Bereich Bf Durmersheim',
-        gewerk: 'Restarbeiten Überbau, Rückbau Hilfsbrücke',
+        titel: 'Strecke 4000, Bereich Bf Durmersheim – Restarbeiten Überbau, Rückbau Hilfsbrücke',
         bemerkung: 'Sammeleintrag – wird im KM in Einzelanmeldungen aufgeteilt.',
       },
       wer,
@@ -268,8 +270,7 @@ export function seedDaten(): BaubetriebDaten {
         ],
         bauVon: tag(40),
         bauBis: tag(44),
-        bfStrecke: 'Bf Rastatt, Gl. 3',
-        gewerk: 'Vorarbeiten Kabeltrog',
+        titel: 'Bf Rastatt, Gl. 3 – Vorarbeiten Kabeltrog',
       },
       wer,
       workflows,
@@ -282,8 +283,7 @@ export function seedDaten(): BaubetriebDaten {
         verlauf: [['Y0', tag(-6)]],
         bauVon: tag(60),
         bauBis: tag(61),
-        bfStrecke: 'Bf Durmersheim, W 12–14',
-        gewerk: 'Weichenprüfung nach IBN-Vorbereitung',
+        titel: 'Bf Durmersheim, W 12–14 – Weichenprüfung nach IBN-Vorbereitung',
       },
       wer,
       workflows,
@@ -305,8 +305,7 @@ export function seedDaten(): BaubetriebDaten {
         ],
         bauVon: tag(75),
         bauBis: tag(82),
-        bfStrecke: 'Strecke 4000, Durmersheim – Rastatt',
-        gewerk: 'Kabelumlegung, Signalaufstellung',
+        titel: 'Strecke 4000, Durmersheim – Rastatt – Kabelumlegung, Signalaufstellung',
         aenderungsNr: 'ÄA-0815',
         annexVII: 'anlagemangel',
         bemerkung: 'Verschiebung um eine Woche wegen Lieferverzug Signalausleger.',
@@ -331,8 +330,7 @@ export function seedDaten(): BaubetriebDaten {
         ],
         bauVon: tag(150),
         bauBis: tag(158),
-        bfStrecke: 'Bf Durmersheim',
-        gewerk: 'IBN ESTW, Totalsperrung',
+        titel: 'Bf Durmersheim – IBN ESTW, Totalsperrung',
       },
       wer,
       workflows,
@@ -349,8 +347,7 @@ export function seedDaten(): BaubetriebDaten {
         ],
         bauVon: tag(20),
         bauBis: tag(20),
-        bfStrecke: 'Bf Durmersheim, Ladestraße',
-        gewerk: 'Containerstellung Baustelleneinrichtung',
+        titel: 'Bf Durmersheim, Ladestraße – Containerstellung Baustelleneinrichtung',
         bemerkung: 'Abgelehnt – Kollision mit Sperrpause Nachbarmaßnahme.',
       },
       wer,
@@ -364,8 +361,7 @@ export function seedDaten(): BaubetriebDaten {
         anmeldeId: 'tVE 4000-23',
         verlauf: [['V0', tag(-12)]],
         fahrplanjahr: jahr + 5,
-        bfStrecke: 'Strecke 4020, Durlach – Weingarten',
-        gewerk: 'Kabeltiefbau, Querungen',
+        titel: 'Strecke 4020, Durlach – Weingarten – Kabeltiefbau, Querungen',
       },
       wer,
       workflows,

@@ -21,6 +21,7 @@ import {
   NACHHAK_TAGE,
   STATUS_AUS_NUMMER,
   ZUSTAENDIG_NACH_ART,
+  bbpStatusVorgabe,
   standardWorkflows,
   statusInfo,
   workflowFuerArt,
@@ -41,6 +42,8 @@ import {
   type AnmeldungStand,
   type AnmeldungsArt,
   type BaubetriebDaten,
+  type BbpPhase,
+  type BbpStatusZuordnung,
   type Einstellungen,
   type ErstePhase,
   type FristRegel,
@@ -97,7 +100,22 @@ function einstellungenAufbereiten(roh: Partial<Einstellungen> | undefined): Eins
     nachhakTage: zahl(roh?.nachhakTage, vorgabe.nachhakTage),
     bedarfVorschauTage: zahl(roh?.bedarfVorschauTage, vorgabe.bedarfVorschauTage),
     rilFristen: ril,
+    bbpStatus: bbpStatusAufbereiten(roh?.bbpStatus),
   };
+}
+
+/** Gespeicherte Statuszuordnung des BBPNeo-Imports über die Vorgabe gelegt. */
+function bbpStatusAufbereiten(roh: unknown): BbpStatusZuordnung {
+  const zuordnung = bbpStatusVorgabe();
+  if (!roh || typeof roh !== 'object') return zuordnung;
+  for (const phase of Object.keys(zuordnung) as BbpPhase[]) {
+    const gespeichert = (roh as Record<string, unknown>)[phase];
+    if (!gespeichert || typeof gespeichert !== 'object') continue;
+    for (const [status, ziel] of Object.entries(gespeichert)) {
+      if (status.trim() && (ziel === null || typeof ziel === 'string')) zuordnung[phase][status.trim()] = ziel;
+    }
+  }
+  return zuordnung;
 }
 
 function fristAufbereiten(roh: Partial<FristRegel> & Record<string, unknown>, nachhakTage: number): FristRegel {
@@ -185,16 +203,17 @@ function aufbereiten(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
         projektId: text(a.projektId),
         anmeldeId: text(a.anmeldeId),
         vorhaben: text(a.vorhaben),
+        titel: text(a.titel),
         bbk: text(a.bbk),
         anmelder: text(a.anmelder),
+        bbpProjektnummer: text(a.bbpProjektnummer),
+        kmRunde: a.kmRunde === 'N-2' || a.kmRunde === 'N-1' ? a.kmRunde : null,
         art,
         statusId,
         statusSeit: datum(a.statusSeit) ?? new Date().toISOString().slice(0, 10),
         bauVon: datum(a.bauVon),
         bauBis: datum(a.bauBis),
         fahrplanjahr: typeof a.fahrplanjahr === 'number' ? a.fahrplanjahr : null,
-        bfStrecke: text(a.bfStrecke),
-        gewerk: text(a.gewerk),
         aenderungsNr: text(a.aenderungsNr),
         annexVII: a.annexVII && ANNEX_IDS.includes(a.annexVII) ? a.annexVII : null,
         terminManuell: datum(a.terminManuell),
@@ -499,6 +518,22 @@ function ausFassung7(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
 }
 
 /**
+ * Hebt Fassung 9 auf Fassung 10: Bf/Strecke und Gewerk/Tätigkeit entfallen –
+ * sie gehen im Titel der Anmeldung auf („Bf/Strecke – Gewerk“). Projektnummer
+ * (BBPNeo) und KM-Runde ergänzt aufbereiten() leer.
+ */
+function ausFassung9(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
+  const anmeldungen = (Array.isArray(roh.anmeldungen) ? roh.anmeldungen : []).map(
+    (a: Partial<Anmeldung> & { bfStrecke?: unknown; gewerk?: unknown }) => {
+      const { bfStrecke, gewerk, ...rest } = a;
+      if (rest.titel !== undefined) return rest;
+      return { ...rest, titel: [text(bfStrecke).trim(), text(gewerk).trim()].filter(Boolean).join(' – ') };
+    },
+  );
+  return { ...roh, anmeldungen: anmeldungen as Anmeldung[] };
+}
+
+/**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt. Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch
  * keinen Inhalt. Sie erhält deshalb die Demodaten und behält ihre Einstellung.
@@ -520,6 +555,7 @@ function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   if (version <= 5) stand = ausFassung5(stand);
   if (version <= 6) stand = ausFassung6(stand);
   if (version <= 7) stand = ausFassung7(stand);
+  if (version <= 9) stand = ausFassung9(stand);
   return aufbereiten(stand);
 }
 

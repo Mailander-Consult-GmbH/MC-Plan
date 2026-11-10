@@ -129,7 +129,8 @@ eingleisig, Gleissperrung) oder betroffene Gleise?
 **C4. Bf/Strecke, Gewerk/Tätigkeit** – Freitext „in Stichworten“ oder Auswahllisten
 (Streckennummer, Betriebsstelle/DS100, km von–bis, Gewerkeliste)? Soll danach gefiltert werden?
 
-*Entwurf:* Freitext, durchsuchbar.
+*Entschieden:* Beide Felder entfallen. An ihre Stelle tritt der **Titel** der Anmeldung (in
+BBPNeo „Titel“, Freitext, durchsuchbar); bestehende Angaben gehen beim Umstellen im Titel auf.
 
 **C5. ★ ÄAbst-Nr und AnnexVII** – „nur relevant (und aktiv), wenn eine Änderungsabstimmung
 läuft“:
@@ -302,7 +303,7 @@ Stimmt das so, und bis wann am Mittwoch muss die Anmeldung eingehen?
 **E11. ★ Zuständigkeit je Status** – Jeder Status nennt, wer am Zug ist: MIC, BBK oder
 Projektleitung DB. *Entwurf:* MIC bei Entwurf, Zugestimmt, Genehmigt und Abgelehnt; BBK bei
 Mitwirkung BBK, Angemeldet und Änderungsabstimmung; die Anmeldeleiche ohne Zuständigkeit. Die Liste
-nennt dazu den Namen (Zuständiger BBK der Anmeldung, Hauptbearbeiter MIC, Projektleiter). Passt
+nennt dazu den Namen (Mitwirkender BBK der Anmeldung – auch mehrere –, Hauptbearbeiter MIC, Projektleiter). Passt
 die Vorbelegung, und braucht es weitere Rollen (z. B. Fahrplan/Kapazitätsmanagement DB, EVU)?
 
 ---
@@ -329,6 +330,29 @@ Anmeldungen, Monatsbericht an den Auftraggeber, PDF)?
 
 **F5. Import** – Gibt es bestehende Listen (Excel), die übernommen werden sollen? Wenn ja, bitte
 ein Beispiel mit den Spaltenüberschriften.
+
+*Entschieden:* Anmeldungen im KM und KKM kommen aus dem **Excel-Export von BBPNeo** („Import aus
+BBPNeo“ auf der Seite Projekte). Maßgebend sind Anmelde-ID, Anmelder, Status im Workflow
+(Fachstatus), Maßnahmenart, Sperrzeitraum von/bis (ohne Uhrzeit), Mitwirkende BBK, Projektnummer,
+Prozessphase (2. KP = KM N-2, 3. KP = KM N-1, KKM) und Titel. Je Anmelde-ID eine Anmeldung mit dem
+frühesten Beginn und dem spätesten Ende aller Zeilen; „Vorlage“ wird übersprungen. Status:
+„Anmeldung in Bearbeitung“ → Angemeldet, „Anmeldung bearbeitet“ → Genehmigt, „Anmeldung
+abgewiesen“ → Abgelehnt – im Dialog änderbar und gemerkt. Neue Anmeldungen kommen in das Projekt
+mit derselben DB-G-Nummer, sonst wählt man ein Projekt oder legt eines an. Vorhandene Anmeldungen
+derselben ID übernehmen alle Angaben aus BBPNeo; ein anderer Status steht als Statuswechsel „Import
+BBPNeo“ im Verlauf. Offen:
+
+- Welche **weiteren Status** gibt es in BBPNeo (etwa zurückgezogen, storniert), und welchem Status
+  in KaPlan entsprechen sie? *Entwurf:* Unbekannte Status werden erst importiert, wenn man sie im
+  Dialog zuordnet.
+- Soll ein Import einen Status auch **zurücksetzen**, etwa von „Genehmigt“ auf „Angemeldet“, wenn
+  BBPNeo wieder „in Bearbeitung“ meldet? *Entwurf:* Ja – BBPNeo gilt; der Wechsel lässt sich
+  zurücknehmen.
+- **Leere Angaben** in BBPNeo (etwa ohne mitwirkende BBK): *Entwurf:* Sie überschreiben nichts,
+  eine von Hand gepflegte Angabe bleibt stehen.
+- Im KM kennt der Standard-Workflow nur die Maßnahmenart A. Kommen im KM auch andere Arten vor?
+  *Entwurf:* Die Art aus BBPNeo wird übernommen, auch wenn der Workflow sie nicht führt.
+- Wird der Import auch für **SKM und MKM** gebraucht, sobald BBPNeo dafür Daten liefert?
 
 **F6. Zeitstrahl** – Wäre eine Kalender- oder Balkenansicht der Sperrpausen hilfreich, etwa je
 Strecke, um Überschneidungen zu erkennen? Soll die Anwendung vor Überschneidungen warnen?

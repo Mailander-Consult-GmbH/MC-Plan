@@ -17,6 +17,7 @@ import { letzterWechsel, verwandte } from '../domain/ablauf';
 import { ampelFuer, bauzeitraumText, fristRegelText, ganzesFahrplanjahr, terminfrist } from '../domain/fristen';
 import {
   ANNEX_VII_LABEL,
+  KM_RUNDE_LABEL,
   LOESCHEN,
   type Anmeldung,
   type Projekt,
@@ -121,7 +122,7 @@ export function AnmeldungDetail({
             vorhaben && anmeldung.vorhaben.trim() ? anmeldung.anmeldeId : '',
             anmeldung.art,
             bauzeitraumText(anmeldung, data.workflows),
-            anmeldung.gewerk,
+            anmeldung.titel,
           ]
             .filter(Boolean)
             .join(' · ')}
@@ -295,14 +296,20 @@ export function AnmeldungDetail({
                 <span className="tertiary small"> · Fahrplanjahr {anmeldung.fahrplanjahr}</span>
               ) : null}
             </dd>
-            <dt>Bf/Strecke</dt>
-            <dd>{anmeldung.bfStrecke || '–'}</dd>
-            <dt>Gewerk/Tätigkeit</dt>
-            <dd>{anmeldung.gewerk || '–'}</dd>
-            <dt>Zuständiger BBK</dt>
+            {anmeldung.kmRunde ? (
+              <>
+                <dt>KM-Runde</dt>
+                <dd>{KM_RUNDE_LABEL[anmeldung.kmRunde]}</dd>
+              </>
+            ) : null}
+            <dt>Titel</dt>
+            <dd>{anmeldung.titel || '–'}</dd>
+            <dt>Mitwirkender BBK</dt>
             <dd>{anmeldung.bbk || '–'}</dd>
             <dt>Anmelder</dt>
             <dd>{anmeldung.anmelder || '–'}</dd>
+            <dt>Projektnummer (BBPNeo)</dt>
+            <dd>{anmeldung.bbpProjektnummer || '–'}</dd>
             {istAenderung(data.workflows, anmeldung.statusId) ? (
               <>
                 <dt>ÄAbst-Nr</dt>
