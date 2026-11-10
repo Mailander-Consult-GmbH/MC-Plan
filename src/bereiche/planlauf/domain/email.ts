@@ -385,7 +385,7 @@ function zeileHtml(zeile: string): string {
 }
 
 /**
- * Formatierte Fassung eines Mailtexts für „Kopieren (formatiert)“: Absätze,
+ * Formatierte Fassung eines Mailtexts für die Vorschau im Vorlagen-Editor: Absätze,
  * Zeilen mit „* “ als Aufzählung (eingerückte „– “-Zeilen darunter), die
  * Zeile davor mit Doppelpunkt fett, Links anklickbar, „ORDNERNAME EINFÜGEN“
  * rot und fett.

@@ -1,7 +1,7 @@
 /**
  * Vorbereitete E-Mail zu einem Prozessschritt – bzw. als Sammel-E-Mail an eine
  * Person zu mehreren Schritten: Vorlage wählen, Text prüfen, per
- * E-Mail-Programm öffnen oder in die Zwischenablage kopieren. Jede vorbereitete
+ * E-Mail-Programm (Outlook) öffnen. Jede vorbereitete
  * E-Mail wird an den Schritten vermerkt (Erinnerungen, Protokoll).
  *
  * Lauf und Schritt werden über ihre IDs frisch aus dem Bestand gelesen; die
@@ -11,13 +11,11 @@ import { useState } from 'react';
 import { EMAIL_ANLASS_LABEL, type ID, type PlanRun, type Project, type RunStep } from '../domain/types';
 import {
   fehlendeAngaben,
-  mailHtml,
   mailLinks,
   mailVorbereiten,
   sammelMailVorbereiten,
   vorlageVorschlagen,
 } from '../domain/email';
-import { formatiertKopieren } from '../../../shared/zwischenablage';
 import { aktuelleSchritte, ampelFuerSchritt, kontaktName } from '../domain/engine';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -112,7 +110,7 @@ export function EmailDialog({
     setText(vorbereitet.text);
   }
 
-  const { mailto, outlookWeb, zuLang } = mailLinks(an, betreff, text);
+  const { mailto, zuLang } = mailLinks(an, betreff, text);
 
   /** Vermerkt die vorbereitete E-Mail an allen Schritten (Erinnerungen, Protokoll). */
   const merkeVersand = (weg: 'outlook' | 'web' | 'kopie') => {
@@ -141,14 +139,6 @@ export function EmailDialog({
     onClose();
   };
 
-  /** Öffnet ein neues Fenster in Outlook im Web. */
-  const imWeb = () => {
-    window.open(outlookWeb, '_blank', 'noopener,noreferrer');
-    merkeVersand('web');
-    toast('Outlook im Web wird geöffnet.');
-    onClose();
-  };
-
   const kopieren = async () => {
     try {
       await navigator.clipboard.writeText(`An: ${an}\nBetreff: ${betreff}\n\n${text}`);
@@ -159,16 +149,6 @@ export function EmailDialog({
     }
   };
 
-  /** Nur der Text, formatiert (Links, ORDNERNAME EINFÜGEN rot und fett) – zum Einfügen in Outlook. */
-  const kopierenFormatiert = async () => {
-    try {
-      await formatiertKopieren(mailHtml(text), text);
-      merkeVersand('kopie');
-      toast('Text formatiert kopiert – in Outlook in die neue E-Mail einfügen.');
-    } catch {
-      toast('Kopieren nicht möglich – bitte Text manuell markieren.');
-    }
-  };
   const luecken = fehlendeAngaben(text);
 
   if (!erster) {
@@ -208,32 +188,12 @@ export function EmailDialog({
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
-          <button type="button" className="btn btn-outline" onClick={kopieren}>
-            <Icon name="kopieren" size={14} /> Kopieren
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={kopierenFormatiert}
-            title="Nur den Text mit Formatierung kopieren (Links, ORDNERNAME EINFÜGEN rot und fett)"
-          >
-            <Icon name="kopieren" size={14} /> Kopieren (formatiert)
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={imWeb}
-            disabled={!an || zuLang}
-            title={zuLang ? 'Zu lang für die Übergabe – bitte „Kopieren“ verwenden' : undefined}
-          >
-            Outlook im Web
-          </button>
           <button
             type="button"
             className="btn btn-primary"
             onClick={inOutlook}
             disabled={!an || zuLang}
-            title={zuLang ? 'Zu lang für die Übergabe – bitte „Kopieren“ verwenden' : undefined}
+            title={zuLang ? 'Zu lang für die Übergabe an Outlook – siehe Hinweis' : undefined}
           >
             <Icon name="mail" size={14} /> In Outlook öffnen
           </button>
@@ -255,8 +215,11 @@ export function EmailDialog({
         ) : null}
         {zuLang ? (
           <Callout ton="warn" icon="!">
-            Die E-Mail ist zu lang, um sie direkt an Outlook zu übergeben. Bitte „Kopieren“ verwenden und den Text
-            in eine neue E-Mail einfügen.
+            Die E-Mail ist zu lang, um sie direkt an Outlook zu übergeben.{' '}
+            <button type="button" className="btn btn-sm btn-outline" onClick={kopieren}>
+              Text kopieren
+            </button>{' '}
+            und in eine neue E-Mail einfügen.
           </Callout>
         ) : null}
 

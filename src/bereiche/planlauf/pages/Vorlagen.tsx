@@ -429,7 +429,7 @@ Mit freundlichen Grüßen
                 <strong>{fuelleVorlage(form.betreff, BEISPIEL_WERTE)}</strong>
               </dd>
             </dl>
-            {/* mailHtml maskiert den Text selbst – wie „Kopieren (formatiert)“ im E-Mail-Dialog */}
+            {/* mailHtml maskiert den Text selbst */}
             <div className="vl-mail-text" dangerouslySetInnerHTML={{ __html: mailHtml(fuelleVorlage(form.text, BEISPIEL_WERTE)) }} />
           </div>
         </aside>
