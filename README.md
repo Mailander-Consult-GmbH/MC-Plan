@@ -68,18 +68,20 @@ Controlling oben und links), daneben „KaPlan“ und darunter rechtsbündig der
 Zum Austauschen genügt es, die Datei unter gleichem Namen zu ersetzen; die Logos werden nur über
 die Breite bzw. Höhe skaliert.
 
-Die App-Symbole in `public/icons/` (Browser-Tab, Taskleiste, Startbildschirm am Handy) zeigen die
-Marke aus `Logo.png` in der Logofarbe `#21426d` auf einer **grauen Kachel** (`#d6d9dd` mit feiner
-Randlinie `#c0c4c9`) – die dünnen Striche allein waren in der Windows-Taskleiste und auf dunklen
-Startbildschirmen kaum zu sehen. Die Marke ist dafür vektoriell nachgezeichnet und je Größe gerastert; bis 64 px ist sie
-größer und kräftiger gezeichnet:
+Die Symbole in `public/icons/` zeigen die Marke aus `Logo.png` in der Logofarbe `#21426d`, im
+Browser-Tab und in der Titelleiste des App-Fensters **ohne Hintergrund**, in der Taskleiste, im
+Startmenü und als Desktop-Verknüpfung auf einer **Kachel in der Hintergrundfarbe der Anwendung**
+(`#f5f5f7`, `--bg`, mit feiner Randlinie) – das dünne Dreieck allein war in der Windows-Taskleiste
+kaum zu sehen. Die Marke ist vektoriell nachgezeichnet, je Größe gerastert und steht genau mittig
+(gleicher Abstand oben und unten bzw. links und rechts); bis 64 px ist sie größer und kräftiger
+gezeichnet:
 
 | Datei | Verwendung |
 | --- | --- |
-| `kaplan-grau-32.png`, `kaplan-grau-64.png` | Browser-Tab (`index.html`) |
-| `kaplan-grau-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Desktop, Android-Browser ohne maskierbare Symbole) |
-| `kaplan-grau-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
-| `kaplan-grau-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
+| `kaplan-dreieck-32/64/192.png` | Browser-Tab und Titelleiste des App-Fensters (`index.html`) – nur das Dreieck |
+| `kaplan-app-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Startmenü, Desktop-Verknüpfung, Android-Browser ohne maskierbare Symbole) |
+| `kaplan-app-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
+| `kaplan-app-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
 
 Ein neues Symbol bekommt **neue Dateinamen** (Verweise in `index.html`, `public/manifest.webmanifest`
 und `SHELL` in `public/sw.js` anpassen), und der Cache-Name in `public/sw.js` wird hochgezählt –
@@ -196,7 +198,7 @@ Entfernen einer installierten App deshalb in jedem genutzten Bereich eine Sicher
 herunterladen**; Android und Desktop fragen beim Entfernen, ob auch die Daten gelöscht werden
 sollen.
 
-Enthalten sind `manifest.webmanifest`, App-Symbole auf grauer Kachel (`public/icons/`, siehe
+Enthalten sind `manifest.webmanifest`, App-Symbole auf einer Kachel in Programmfarbe (`public/icons/`, siehe
 [Logos](#logos): 48–512 px, maskierbar für Android und Apple-Touch-Icon für iOS) sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
 gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (gehashte Namen unter
