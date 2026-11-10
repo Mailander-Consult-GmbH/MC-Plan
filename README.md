@@ -792,8 +792,20 @@ Stand nach, statt ihn mit dem eigenen älteren zu überschreiben (`useFremdeAend
 ### Projekteinstellungen
 Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie – wie im Reiter
 *Planläufe* – der **Export**. Die
-**E-Mail-Texte** (Betreff und Text, mit Übersicht der Platzhalter) werden projektübergreifend unter
+**E-Mail-Texte** (Betreff und Text) werden projektübergreifend unter
 **Einstellungen › Vorlagen** in der Seitenleiste gepflegt; dort liegen auch die Excel-Vorlagen für die Importe.
+Im Editor erscheinen Platzhalter als farbige **Bausteine** mit verständlicher Beschriftung
+(„Anrede“, „Plannummer“, „Soll-Termin“, „SharePoint Eingang“ …) statt als `{{schluessel}}`;
+gespeichert wird weiterhin der Text mit `{{schluessel}}`. Farbige Knöpfe unter
+„Platzhalter einfügen“ – je Gruppe eine Farbe: Empfänger blau, Projekt und Plan grün, Termine orange, Versand
+lila, Sonstiges grau – fügen einen Baustein an der Schreibmarke des zuletzt bearbeiteten Felds
+(Betreff oder Text) ein; der Tooltip nennt Beschreibung und Beispielwert. Ein Baustein lässt sich
+nur als Ganzes löschen (Rücktaste/Entf), Eingefügtes kommt als reiner Text an (darin enthaltene
+`{{…}}` werden zu Bausteinen), unbekannte Platzhalter erscheinen grau als „unbekannt: …“. Daneben
+zeigt eine Vorschau Betreff und Text mit Beispielwerten so, wie „Kopieren (formatiert)“ sie
+aufbereitet; auf schmalen Bildschirmen wechselt man zwischen „Bearbeiten“ und „Vorschau“. Die
+Vorlagenliste zeigt den Anlass als farbiges Abzeichen und den Anfang von Betreff und Text mit
+Bausteinen.
 
 ## Baubetriebsplanung
 
@@ -1789,6 +1801,9 @@ src/
     icons.tsx    Strichsymbole
     logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
+    bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
+    bausteinEditor.tsx  Eingabefeld mit farbigen, nicht teilbaren Bausteinen (BausteinEditor,
+                 BausteinText; Gestaltung bausteinEditor.css, Präfix bst-)
     menue.tsx    Aufklappmenü an einem Knopf (AufklappMenue): Portal, bleibt im Fenster, Tastatur
     tabellen.ts  Breite Tabellen scrollen quer (tabellenBreiteBeobachten, Klasse table-scroll-quer)
     scrollen.ts  Eine neue Seite beginnt oben (useNachObenBeiSeitenwechsel)
