@@ -657,13 +657,10 @@ Je Schritt öffnet der Button **Erinnern** ein Fenster mit der vorbereiteten E-M
 passende Vorlage (Erinnerung oder Mahnung) wird ausgewählt, die Platzhalter aus Projekt, Plan,
 Schritt, Frist und Empfänger ersetzt (`{{verzug}}` nennt die Einheit, etwa „5 Arbeitstage“,
 `{{verzug.zahl}}` nur die Zahl). Von dort lässt sich die Nachricht in **Outlook** öffnen
-(`mailto:`, also das eingerichtete Standardprogramm), in **Outlook im Web** anlegen oder in die
-Zwischenablage kopieren; jede vorbereitete E-Mail wird am Schritt vermerkt. Stehen bei einer Person
+(`mailto:`, also das eingerichtete Standardprogramm); jede vorbereitete E-Mail wird am Schritt vermerkt. Stehen bei einer Person
 mehrere Schritte an, entsteht eine **Sammel-E-Mail** (Vorlage *Sammelerinnerung*, Platzhalter
-`{{liste}}` und `{{anzahl}}`). Ist sie für die Übergabe an das Mailprogramm zu lang, bleibt nur
-„Kopieren“. **Kopieren (formatiert)** legt nur den Text mit Formatierung (Links anklickbar,
-Aufzählungen, „ORDNERNAME EINFÜGEN“ rot und fett) und zugleich als Klartext in die Zwischenablage –
-zum Einfügen in eine neue Outlook-Mail.
+`{{liste}}` und `{{anzahl}}`). Ist sie für die Übergabe an das Mailprogramm zu lang, bietet der Dialog
+stattdessen **Text kopieren** an.
 
 ### Versandmail
 Die Vorlage **Versand** schreibt der Person, die **nach einem Versandschritt** zuständig ist:
@@ -802,8 +799,8 @@ lila, Sonstiges grau – fügen einen Baustein an der Schreibmarke des zuletzt b
 (Betreff oder Text) ein; der Tooltip nennt Beschreibung und Beispielwert. Ein Baustein lässt sich
 nur als Ganzes löschen (Rücktaste/Entf), Eingefügtes kommt als reiner Text an (darin enthaltene
 `{{…}}` werden zu Bausteinen), unbekannte Platzhalter erscheinen grau als „unbekannt: …“. Daneben
-zeigt eine Vorschau Betreff und Text mit Beispielwerten so, wie „Kopieren (formatiert)“ sie
-aufbereitet; auf schmalen Bildschirmen wechselt man zwischen „Bearbeiten“ und „Vorschau“. Die
+zeigt eine Vorschau Betreff und Text mit Beispielwerten (Links anklickbar, „ORDNERNAME EINFÜGEN“
+rot und fett); auf schmalen Bildschirmen wechselt man zwischen „Bearbeiten“ und „Vorschau“. Die
 Vorlagenliste zeigt den Anlass als farbiges Abzeichen und den Anfang von Betreff und Text mit
 Bausteinen.
 
@@ -1815,7 +1812,6 @@ src/
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit (mit Zellformaten)
     xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe (Zahlenformate aus Nullen wie „00000“
                  behalten führende Nullen)
-    zwischenablage.ts  Formatiert (text/html) und als Klartext kopieren
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers; Fassung des Builds und Prüfung auf eine neuere
     global.css   Design-Tokens im hellen Apple-Erscheinungsbild
