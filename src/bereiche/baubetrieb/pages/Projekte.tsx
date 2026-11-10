@@ -1,5 +1,6 @@
 /**
- * Projekte: Liste mit Anlage- und Bearbeitungsdialog. Die Kacheln nennen nur
+ * Projekte: Liste mit Anlage- und Bearbeitungsdialog, dazu der Import der
+ * Anmeldungen aus BBPNeo (components/BbpImportDialog.tsx). Die Kacheln nennen nur
  * die MIC-Projektnummer, die Bezeichnung, die Bemerkung und die anderen
  * Bereiche des Projekts. Darunter die im Bereich
  * archivierten Projekte und – grau hinterlegt – Projekte aus anderen Bereichen
@@ -25,6 +26,7 @@ import {
   type Projekt,
   type ProjektStatus,
 } from '../domain/types';
+import { BbpImportDialog } from '../components/BbpImportDialog';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 
@@ -38,6 +40,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const { data, toggleMarkiert } = useStore();
   const [suche, setSuche] = useState('');
   const [dialog, setDialog] = useState(false);
+  const [bbpImport, setBbpImport] = useState(false);
 
   const projekte = data.projekte.filter((p) =>
     [p.name, p.dbGNummer, p.projektnummer, p.projektleiter, p.hauptbearbeiter, p.bemerkung]
@@ -108,9 +111,19 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
             in der Seitenleiste.
           </span>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
-          <Icon name="plus" size={14} /> Neues Projekt
-        </button>
+        <div className="row wrap">
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => setBbpImport(true)}
+            title="Anmeldungen im KM und KKM aus dem Excel-Export von BBPNeo anlegen bzw. aktualisieren"
+          >
+            <Icon name="importieren" size={14} /> Import aus BBPNeo
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
+            <Icon name="plus" size={14} /> Neues Projekt
+          </button>
+        </div>
       </div>
 
       {aktive.length === 0 ? (
@@ -134,6 +147,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
       <FremdeProjekte bereich="baubetrieb" suche={suche} />
 
       {dialog ? <ProjektDialog onClose={() => setDialog(false)} navigate={navigate} /> : null}
+      {bbpImport ? <BbpImportDialog onClose={() => setBbpImport(false)} /> : null}
     </div>
   );
 }

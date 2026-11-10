@@ -64,7 +64,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
   const passt = (a: Anmeldung) => {
     if (!suche.trim()) return true;
     const { workflow, status } = statusVon(data.workflows, a.statusId);
-    return [a.vorhaben, a.anmeldeId, a.bfStrecke, a.gewerk, a.bemerkung, a.bbk, a.anmelder, a.art, workflow.name, status.name, a.aenderungsNr]
+    return [a.vorhaben, a.anmeldeId, a.titel, a.bemerkung, a.bbk, a.anmelder, a.bbpProjektnummer, a.art, workflow.name, status.name, a.aenderungsNr]
       .join(' ')
       .toLowerCase()
       .includes(suche.toLowerCase());
@@ -168,7 +168,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
           <div className="small tertiary">Je Workflow eine Tabelle; zur Wahl stehen nur die möglichen Nachfolge-Status</div>
         </div>
         <div className="row wrap">
-          <Search value={suche} onChange={setSuche} placeholder="ID, Bf/Strecke, Gewerk, Status …" />
+          <Search value={suche} onChange={setSuche} placeholder="ID, Titel, BBK, Status …" />
           <button type="button" className="btn btn-primary" onClick={() => setNeu(true)}>
             <Icon name="plus" size={14} /> Neue Anmeldung
           </button>
@@ -325,7 +325,7 @@ function AnmeldungenTabelle({
                 const { workflow, status } = statusVon(data.workflows, a.statusId);
                 // Die Maßnahmenart nur, wo der Workflow mehrere führt (KKM: A, B, C …)
                 const art = workflow.arten.length > 1 ? a.art : '';
-                const unterzeile = [vorhaben ? a.anmeldeId : '', art, a.bfStrecke, a.gewerk].filter(Boolean).join(' · ');
+                const unterzeile = [vorhaben ? a.anmeldeId : '', art, a.kmRunde ?? '', a.titel].filter(Boolean).join(' · ');
                 const zustaendig = zustaendigText(status, a, projekt);
                 const aenderung =
                   istAenderung(data.workflows, a.statusId) && (a.aenderungsNr || a.annexVII)

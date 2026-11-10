@@ -14,6 +14,7 @@ import {
   MASSNAHMENARTEN,
   PHASE_LABEL,
   type AnmeldungsArt,
+  type BbpStatusZuordnung,
   type Phase,
   type FristRegel,
   type ID,
@@ -334,7 +335,8 @@ export function istLeiche(workflows: Workflow[], statusId: ID | null): boolean {
 }
 
 /**
- * Wer im Status zuständig ist, mit Namen, soweit bekannt: „BBK · Fr. Weber“,
+ * Wer im Status zuständig ist, mit Namen, soweit bekannt: „BBK · Fr. Weber“
+ * (die mitwirkenden BBK der Anmeldung),
  * „MIC · M. Muster“ – oder null, wenn der Status niemanden nennt.
  */
 export function zustaendigText(
@@ -368,9 +370,9 @@ export function anmeldungTitel(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeI
   return feld ? a[feld].trim() : 'ohne ID';
 }
 
-/** Bezeichnung für Rückfragen und Vermerke – ohne Nummer notfalls das Gewerk. */
-export function anmeldungBezeichnung(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeId' | 'gewerk'>): string {
-  return titelFeld(a) ? anmeldungTitel(a) : a.gewerk.trim() || 'ohne ID';
+/** Bezeichnung für Rückfragen und Vermerke – ohne Nummer notfalls der Titel. */
+export function anmeldungBezeichnung(a: Pick<Anmeldung, 'art' | 'vorhaben' | 'anmeldeId' | 'titel'>): string {
+  return titelFeld(a) ? anmeldungTitel(a) : a.titel.trim() || 'ohne ID';
 }
 
 /** Während einer Änderungsabstimmung sind ÄAbst-Nr und AnnexVII relevant. */
@@ -390,6 +392,28 @@ export const STANDARD_WORKFLOW_ID: Record<Phase, ID> = {
   km: 'wf-vorprozess',
   kkm: 'wf-unterjahr',
 };
+
+/**
+ * Vorgabe der Statuszuordnung im BBPNeo-Import: „Anmeldung in Bearbeitung“ –
+ * angemeldet (fristgerecht), „Anmeldung bearbeitet“ – genehmigt, „Anmeldung
+ * abgewiesen“ – abgelehnt, je im Standard-Workflow KM bzw. KKM. „Vorlage“
+ * wird nie importiert. Der Import-Dialog merkt sich Änderungen
+ * (`Einstellungen.bbpStatus`).
+ */
+export function bbpStatusVorgabe(): BbpStatusZuordnung {
+  return {
+    km: {
+      'Anmeldung in Bearbeitung': 'vp-angemeldet',
+      'Anmeldung bearbeitet': 'vp-genehmigt',
+      'Anmeldung abgewiesen': 'vp-abgelehnt',
+    },
+    kkm: {
+      'Anmeldung in Bearbeitung': 'uj-angemeldet',
+      'Anmeldung bearbeitet': 'uj-genehmigt',
+      'Anmeldung abgewiesen': 'uj-abgelehnt',
+    },
+  };
+}
 
 /** Workflow, in dem „Neue Anmeldung“ ohne Vorgabe anlegt: KKM (unterjährig). */
 export const NEUANLAGE_WORKFLOW = STANDARD_WORKFLOW_ID.kkm;

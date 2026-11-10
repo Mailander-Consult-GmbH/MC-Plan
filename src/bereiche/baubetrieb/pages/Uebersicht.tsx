@@ -170,7 +170,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                     <td>
                       <strong>{anmeldungTitel(t.anmeldung)}</strong>
                       <div className="small tertiary">
-                        {[t.anmeldung.art, t.anmeldung.gewerk].filter(Boolean).join(' · ')}
+                        {[t.anmeldung.art, t.anmeldung.titel].filter(Boolean).join(' · ')}
                       </div>
                     </td>
                     <td className="small muted col-optional">{t.projekt.name}</td>

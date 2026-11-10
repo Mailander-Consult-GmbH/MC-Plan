@@ -12,11 +12,14 @@ import { bauzeitraumAbgleichen } from '../domain/ablauf';
 import { fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon, ganzesFahrplanjahr } from '../domain/fristen';
 import {
   ANNEX_VII,
+  KM_RUNDE_LABEL,
   type Anmeldung,
   type AnmeldungsArt,
   type AnnexVIIGrund,
   type ID,
+  type KmRunde,
   type Projekt,
+  type Workflow,
 } from '../domain/types';
 import { NEUANLAGE_WORKFLOW, istAenderung, startbareWorkflows, statusVon, vorhabenFuehrend } from '../domain/workflow';
 import { useStore } from '../store/store';
@@ -40,6 +43,16 @@ export function fahrplanjahrOptionen(mindestens?: number | null): { value: strin
 export const ANNEX_OPTIONEN = ANNEX_VII.map((a) => ({
   value: a.id,
   label: a.selten ? `${a.label} (selten)` : a.label,
+}));
+
+/** Der Workflow rechnet mit Ril_KM – dort zählt die KM-Runde (N-2 bzw. N-1). */
+function rechnetMitRilKm(workflow: Workflow | undefined): boolean {
+  return !!workflow?.status.some((s) => s.frist.typ === 'ril' && s.frist.bezug === 'Nx');
+}
+
+export const KM_RUNDE_OPTIONEN = (Object.keys(KM_RUNDE_LABEL) as KmRunde[]).map((r) => ({
+  value: r,
+  label: KM_RUNDE_LABEL[r],
 }));
 
 /** Vorgabe für das Fahrplanjahr: das erste noch laufende betroffene, sonst das aktuelle. */
@@ -70,13 +83,14 @@ export function AnmeldungDialog({
     art: (anmeldung?.art ?? startWorkflow?.arten[0] ?? 'A') as AnmeldungsArt,
     anmeldeId: anmeldung?.anmeldeId ?? '',
     vorhaben: anmeldung?.vorhaben ?? '',
+    titel: anmeldung?.titel ?? '',
     bbk: anmeldung?.bbk ?? '',
     anmelder: anmeldung?.anmelder ?? '',
+    bbpProjektnummer: anmeldung?.bbpProjektnummer ?? '',
+    kmRunde: (anmeldung?.kmRunde ?? '') as KmRunde | '',
     fahrplanjahr: anmeldung?.fahrplanjahr ?? vorgabeFahrplanjahr(projekt),
     bauVon: anmeldung?.bauVon ?? '',
     bauBis: anmeldung?.bauBis ?? '',
-    bfStrecke: anmeldung?.bfStrecke ?? '',
-    gewerk: anmeldung?.gewerk ?? '',
     aenderungsNr: anmeldung?.aenderungsNr ?? '',
     annexVII: (anmeldung?.annexVII ?? '') as AnnexVIIGrund | '',
     bemerkung: anmeldung?.bemerkung ?? '',
@@ -88,6 +102,8 @@ export function AnmeldungDialog({
   // Die bisherige Art bleibt wählbar, auch wenn der Workflow sie nicht mehr führt.
   const arten = [...new Set([...(workflow?.arten ?? []), ...(anmeldung ? [anmeldung.art] : [])])];
   const aenderung = !!anmeldung && istAenderung(data.workflows, anmeldung.statusId);
+  // Die KM-Runde zählt nur, wo Ril_KM gilt; eine gesetzte bleibt sichtbar
+  const kmFeld = rechnetMitRilKm(workflow) || !!anmeldung?.kmRunde;
   // Im SKM führt der Vorhabenname, die Nummer ist die tVE-Nr. Ein vorhandener Vorhabenname
   // (etwa aus dem SKM übernommen) bleibt auch in anderen Phasen sichtbar und änderbar.
   const vorhaben = vorhabenFuehrend(form);
@@ -123,10 +139,11 @@ export function AnmeldungDialog({
       art: form.art,
       anmeldeId: form.anmeldeId.trim(),
       vorhaben: form.vorhaben.trim(),
+      titel: form.titel.trim(),
       bbk: form.bbk.trim(),
       anmelder: form.anmelder.trim(),
-      bfStrecke: form.bfStrecke.trim(),
-      gewerk: form.gewerk.trim(),
+      bbpProjektnummer: form.bbpProjektnummer.trim(),
+      kmRunde: kmFeld ? form.kmRunde || null : (anmeldung?.kmRunde ?? null),
       bemerkung: form.bemerkung.trim(),
       ...bauzeit,
     };
@@ -288,17 +305,27 @@ export function AnmeldungDialog({
           </>
         )}
 
-        <Field label="Bf/Strecke" hint="in Stichworten">
-          <TextInput value={form.bfStrecke} onChange={(v) => set('bfStrecke', v)} placeholder="Strecke 4000, km 92,1–95,4" />
+        <Field label="Titel" full hint="Titel der Anmeldung – Ort und Tätigkeit in Stichworten">
+          <TextInput value={form.titel} onChange={(v) => set('titel', v)} placeholder="ESTW Schwetzingen – Kabeltiefbau" />
         </Field>
-        <Field label="Gewerk/Tätigkeit" hint="in Stichworten">
-          <TextInput value={form.gewerk} onChange={(v) => set('gewerk', v)} placeholder="Weichenerneuerung" />
+        {kmFeld ? (
+          <Field label="KM-Runde" hint="Prozessphase: 2. KP = N-2, 3. KP = N-1 – bestimmt die Frist nach Ril_KM">
+            <Select
+              value={form.kmRunde}
+              onChange={(v) => set('kmRunde', v as KmRunde | '')}
+              options={KM_RUNDE_OPTIONEN}
+              placeholder="– automatisch (Ril_KM) –"
+            />
+          </Field>
+        ) : null}
+        <Field label="Mitwirkender BBK" hint="Namen, mehrere durch Komma getrennt – erscheinen in „Zuständig“, wenn die BBK am Zug ist">
+          <TextInput value={form.bbk} onChange={(v) => set('bbk', v)} placeholder="Fr. Weber, Hr. Kaya" />
         </Field>
-        <Field label="Zuständiger BBK" hint="Name – erscheint in „Zuständig“, wenn die BBK am Zug ist">
-          <TextInput value={form.bbk} onChange={(v) => set('bbk', v)} placeholder="Fr. Weber" />
-        </Field>
-        <Field label="Anmelder" hint="wer die Anmeldung eingereicht hat – künftig aus dem Import">
+        <Field label="Anmelder" hint="wer die Anmeldung eingereicht hat – aus dem BBPNeo-Import oder von Hand">
           <TextInput value={form.anmelder} onChange={(v) => set('anmelder', v)} placeholder="z. B. DB InfraGO, I.NA-SW-N" />
+        </Field>
+        <Field label="Projektnummer (BBPNeo)" hint="DB-G-Nummer laut Anmeldung – aus dem BBPNeo-Import">
+          <TextInput value={form.bbpProjektnummer} onChange={(v) => set('bbpProjektnummer', v)} placeholder="G.016010101" />
         </Field>
 
         {aenderung ? (

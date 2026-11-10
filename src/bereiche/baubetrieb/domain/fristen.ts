@@ -80,12 +80,16 @@ function betreuungAb(p: Pick<Projekt, 'ersterAnmeldetermin'> | undefined): ISODa
   return p?.ersterAnmeldetermin ? addDays(p.ersterAnmeldetermin, -CA_TOLERANZ_TAGE) : null;
 }
 
-/** Warum Ril_KM die N-1-Frist nimmt – oder null, wenn die N-2-Frist gilt. */
+/**
+ * Warum Ril_KM die N-1-Frist nimmt – oder null, wenn die N-2-Frist gilt. Ist
+ * die Runde aus der Prozessphase bekannt (BBPNeo, `kmRunde`), entscheidet sie.
+ */
 function kmGrundFuerN1(
-  a: Pick<Anmeldung, 'statusSeit' | 'fahrplanjahr' | 'bauVon'>,
+  a: Pick<Anmeldung, 'statusSeit' | 'fahrplanjahr' | 'bauVon' | 'kmRunde'>,
   e: Pick<Einstellungen, 'rilFristen'>,
   ab: ISODate | null,
 ): string | null {
+  if (a.kmRunde) return a.kmRunde === 'N-1' ? 'Prozessphase 3. KP' : null;
   const n2 = rilDatum(e.rilFristen['N-2'], a.fahrplanjahr, a.bauVon);
   if (!n2) return null;
   if (a.statusSeit > n2) return 'die N-2-Frist war beim Statuswechsel verstrichen';
@@ -94,15 +98,16 @@ function kmGrundFuerN1(
 }
 
 /**
- * Welche Richtlinienfrist gilt. Ril_KM nimmt die N-2-Frist, solange sie am Tag
+ * Welche Richtlinienfrist gilt. Ril_KM nimmt die Frist der KM-Runde, wenn sie
+ * bekannt ist (Prozessphase aus BBPNeo), sonst die N-2-Frist, solange sie am Tag
  * des Statuswechsels nicht verstrichen ist und nicht vor der Betreuung durch
- * MIC (erster Anmeldetermin des Projekts) liegt, sonst die N-1-Frist. Ril_KKM
+ * MIC (erster Anmeldetermin des Projekts) liegt, und danach die N-1-Frist. Ril_KKM
  * richtet sich nach der Maßnahmenart; Einträge der Art SKM oder MKM rechnen
  * dabei wie A.
  */
 export function rilSchluesselFuer(
   bezug: RilBezug,
-  a: Pick<Anmeldung, 'art' | 'statusSeit' | 'fahrplanjahr' | 'bauVon'>,
+  a: Pick<Anmeldung, 'art' | 'statusSeit' | 'fahrplanjahr' | 'bauVon' | 'kmRunde'>,
   e: Pick<Einstellungen, 'rilFristen'>,
   ab: ISODate | null = null,
 ): RilSchluessel {
@@ -229,8 +234,9 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
     case 'ril': {
       const ab = betreuungAb(d.projekte.find((p) => p.id === a.projektId));
       const schluessel = rilSchluesselFuer(status.frist.bezug, a, e, ab);
-      // Ril_KM: Hinweis, warum die N-1-Frist gilt
-      const kmGrund = status.frist.bezug === 'Nx' ? kmGrundFuerN1(a, e, ab) : null;
+      // Ril_KM: Hinweis, warum die N-1-Frist gilt – bzw. dass die Prozessphase die N-2-Frist vorgibt
+      const kmGrund =
+        status.frist.bezug !== 'Nx' ? null : a.kmRunde === 'N-2' ? 'Prozessphase 2. KP' : kmGrundFuerN1(a, e, ab);
       const n1 = kmGrund ? ` – ${kmGrund}` : '';
       const ril = e.rilFristen[schluessel];
       const mittwoch = RIL_PHASE[schluessel] === 'kkm' && ril.bezug === 'baubeginn';

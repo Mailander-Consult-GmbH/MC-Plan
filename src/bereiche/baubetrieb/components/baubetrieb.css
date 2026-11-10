@@ -21,3 +21,13 @@
 .table-scroll-quer > .bb-anmeldungen tr.clickable:hover td.actions {
   background: linear-gradient(var(--bg-hover), var(--bg-hover)), var(--bg-elev);
 }
+
+/* Import aus BBPNeo (BbpImportDialog) */
+.drop-zone.bb-imp-klein { padding: 10px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.drop-zone.bb-imp-klein .small { opacity: 0.85; }
+.bb-imp-summe { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bb-imp-titel { font-size: 14px; margin: 0 0 2px; }
+.bb-imp-text { margin: 0 0 8px; }
+.bb-imp-details summary { cursor: pointer; color: var(--text-secondary); }
+.bb-imp-details ul { margin: 6px 0 0; padding-left: 18px; }
+.bb-imp-details li { overflow-wrap: anywhere; }

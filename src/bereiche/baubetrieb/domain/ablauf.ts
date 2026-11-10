@@ -1,6 +1,7 @@
 /**
  * Ablauflogik einer Anmeldung: Statuswechsel samt Übernahme in eine neue
- * Phase (einen anderen Workflow) und Aufteilung, Rücknahme des letzten
+ * Phase (einen anderen Workflow) und Aufteilung, Status aus dem BBPNeo-Import
+ * (`statusUebernehmen`), Rücknahme des letzten
  * Wechsels, Duplizieren und Abgleich des Sperrzeitraums, dazu der Sachstand. Reine
  * Funktionen – der Store ruft sie in `mutate()` auf.
  */
@@ -40,7 +41,8 @@ export interface Bauzeitraum {
 /** Weitere Anmeldung, die bei der Übernahme aus diesem Eintrag entsteht. */
 export interface Aufteilung extends Bauzeitraum {
   anmeldeId: string;
-  bfStrecke: string;
+  /** Titel der Anmeldung; leer – der des Eintrags. */
+  titel: string;
 }
 
 export interface Wechsel {
@@ -50,8 +52,8 @@ export interface Wechsel {
   /** Beim Eintritt in eine Änderungsabstimmung. */
   aenderungsNr?: string;
   annexVII?: AnnexVIIGrund | null;
-  /** Beim Wechsel in einen anderen Workflow: neue Maßnahmenart, Anmelde-ID und Sperrzeitraum. */
-  uebernahme?: Bauzeitraum & { art: AnmeldungsArt; anmeldeId: string };
+  /** Beim Wechsel in einen anderen Workflow: neue Maßnahmenart, Anmelde-ID, Titel (leer – bisheriger) und Sperrzeitraum. */
+  uebernahme?: Bauzeitraum & { art: AnmeldungsArt; anmeldeId: string; titel?: string };
   /** Beim Wechsel in einen anderen Workflow: weitere Anmeldungen aus diesem Eintrag. */
   weitere?: Aufteilung[];
 }
@@ -90,6 +92,7 @@ function standVon(a: Anmeldung): AnmeldungStand {
     aenderungsNr: a.aenderungsNr,
     annexVII: a.annexVII,
     terminManuell: a.terminManuell,
+    titel: a.titel,
   };
 }
 
@@ -151,6 +154,7 @@ export function wechselAnwenden(
       terminManuell: null,
       art: uebernahme?.art ?? alt.art,
       anmeldeId: uebernahme ? uebernahme.anmeldeId.trim() : alt.anmeldeId,
+      titel: uebernahme?.titel?.trim() || alt.titel,
       bauVon: uebernahme ? uebernahme.bauVon : alt.bauVon,
       bauBis: uebernahme ? uebernahme.bauBis : alt.bauBis,
       fahrplanjahr: uebernahme ? uebernahme.fahrplanjahr : alt.fahrplanjahr,
@@ -168,7 +172,7 @@ export function wechselAnwenden(
             ...neu,
             id: ids.weitere[i].anmeldung,
             anmeldeId: t.anmeldeId.trim(),
-            bfStrecke: t.bfStrecke.trim() || alt.bfStrecke,
+            titel: t.titel.trim() || alt.titel,
             bauVon: t.bauVon,
             bauBis: t.bauBis,
             fahrplanjahr: t.fahrplanjahr,
@@ -197,6 +201,55 @@ export function wechselAnwenden(
   const anmeldungen = [...d.anmeldungen];
   anmeldungen.splice(index, 1, neu, ...weitere);
   return { ...d, anmeldungen };
+}
+
+/**
+ * Setzt den Status ohne Blick auf die Nachfolger – für den BBPNeo-Import, der
+ * den Status aus BBPNeo übernimmt. Verlauf, Stand vor dem Wechsel (zum
+ * Zurücknehmen) und Änderungsabstimmung wie bei `wechselAnwenden`; die
+ * Terminfrist von Hand entfällt.
+ */
+export function statusUebernehmen(
+  alt: Anmeldung,
+  nach: ID,
+  datum: ISODate,
+  text: string,
+  verlaufId: ID,
+  bearbeiter: string,
+  erfasst: string,
+  workflows: Workflow[],
+): Anmeldung {
+  const warAenderung = istAenderung(workflows, alt.statusId);
+  const wirdAenderung = istAenderung(workflows, nach);
+  const eintrag: VerlaufEintrag = {
+    id: verlaufId,
+    typ: 'wechsel',
+    datum,
+    erfasst,
+    bearbeiter,
+    von: alt.statusId,
+    nach,
+    vonText: zielText(workflows, alt.statusId),
+    nachText: zielText(workflows, nach),
+    text,
+    vorher: standVon(alt),
+  };
+  if (warAenderung && !wirdAenderung && (alt.aenderungsNr || alt.annexVII)) {
+    eintrag.aenderungsNr = alt.aenderungsNr;
+    eintrag.annexVII = alt.annexVII;
+  }
+  return bauzeitraumAbgleichen(
+    {
+      ...alt,
+      statusId: nach,
+      statusSeit: datum,
+      terminManuell: null,
+      aenderungsNr: wirdAenderung ? alt.aenderungsNr : '',
+      annexVII: wirdAenderung ? alt.annexVII : null,
+      verlauf: [...alt.verlauf, eintrag],
+    },
+    workflows,
+  );
 }
 
 /** Der letzte Eintrag des Verlaufs, der ein Statuswechsel ist und zurückgenommen werden kann. */

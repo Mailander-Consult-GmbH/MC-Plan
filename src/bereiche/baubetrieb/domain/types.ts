@@ -17,8 +17,10 @@ export type ID = string;
  * Fassung des gespeicherten Bestands. Erhöhen, sobald `migriere()` in
  * `store/storage.ts` ältere Stände anheben muss.
  * Fassung 9: Anmelder und Datum der letzten Änderung an Anmeldungen.
+ * Fassung 10: Titel, Projektnummer (BBPNeo) und KM-Runde an Anmeldungen statt
+ * Bf/Strecke und Gewerk/Tätigkeit; Statuszuordnung des BBPNeo-Imports.
  */
-export const DATEN_VERSION = 9;
+export const DATEN_VERSION = 10;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -177,7 +179,7 @@ export type StatusZiel = ID;
 
 /**
  * Wer in einem Status am Zug ist. Die Tabelle nennt dazu den Namen: BBK – der
- * zuständige BBK der Anmeldung, MIC – der Hauptbearbeiter, Projektleitung –
+ * bzw. die mitwirkenden BBK der Anmeldung, MIC – der Hauptbearbeiter, Projektleitung –
  * der Projektleiter des Projekts.
  */
 export type Zustaendigkeit = 'mic' | 'bbk' | 'projektleitung';
@@ -315,7 +317,7 @@ export const PROJEKT_STATUS_LABEL: Record<ProjektStatus, string> = {
 export const RIL_PHASE_HINWEIS: Record<Phase, string> = {
   skm: 'Stichtag je Fahrplanjahr',
   mkm: 'Stichtag je Fahrplanjahr',
-  km: 'Es gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt, sonst die N-1-Frist (Ril_KM).',
+  km: 'Ist die KM-Runde bekannt (Prozessphase in BBPNeo: 2. KP = N-2, 3. KP = N-1), gilt ihre Frist. Sonst gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt, danach die N-1-Frist (Ril_KM).',
   kkm: 'Vorlauf je Maßnahmenart (Ril_KKM); Stichtag der Anmeldung ist der Mittwoch.',
 };
 
@@ -336,6 +338,17 @@ export const ERSTE_PHASE_LABEL: Record<ErstePhase, string> = {
   'N-2': 'KM N-2',
   'N-1': 'KM N-1',
   kkm: 'KKM (unterjährig)',
+};
+
+/**
+ * Runde im KM laut Prozessphase in BBPNeo: „2. KP“ = N-2, „3. KP“ = N-1. Ist
+ * sie bekannt, nimmt Ril_KM ihre Frist; ohne sie wählt Ril_KM selbst.
+ */
+export type KmRunde = 'N-2' | 'N-1';
+
+export const KM_RUNDE_LABEL: Record<KmRunde, string> = {
+  'N-2': 'KM N-2 (2. KP)',
+  'N-1': 'KM N-1 (3. KP)',
 };
 
 /** Projekt (im Lastenheft „Projekthülle“) – wird bei der MIC-Beauftragung angelegt. */
@@ -396,6 +409,8 @@ export interface AnmeldungStand {
   aenderungsNr: string;
   annexVII: AnnexVIIGrund | null;
   terminManuell: ISODate | null;
+  /** Titel – fehlt in Ständen vor Fassung 10 (dann bleibt er beim Zurücknehmen unverändert). */
+  titel?: string;
 }
 
 /** Baubetriebliche Anmeldung – eine „Zeile“ im Projekt. */
@@ -404,17 +419,16 @@ export interface Anmeldung extends AnmeldungStand {
   projektId: ID;
   /** Vorhabenname – im SKM führend vor der Nummer (tVE-Nr). */
   vorhaben: string;
-  /** Zuständiger BBK (Name). */
+  /** Titel der Anmeldung (in BBPNeo „Titel“) – Ort und Tätigkeit in Stichworten. */
+  titel: string;
+  /** Mitwirkende BBK (Namen, mehrere durch Komma getrennt). */
   bbk: string;
-  /**
-   * Anmelder laut Anmeldung (wer sie eingereicht hat). Soll aus dem Import der
-   * Anmeldungen kommen; bis es ihn gibt, wird er von Hand gepflegt.
-   */
+  /** Anmelder laut Anmeldung (wer sie eingereicht hat) – aus dem BBPNeo-Import oder von Hand. */
   anmelder: string;
-  /** Bf/Strecke in Stichworten. */
-  bfStrecke: string;
-  /** Gewerk/Tätigkeit in Stichworten. */
-  gewerk: string;
+  /** Projektnummer laut BBPNeo (DB-G-Nummer, z. B. „G.016010101“); leer, wenn keine vergeben ist. */
+  bbpProjektnummer: string;
+  /** Runde im KM laut Prozessphase (BBPNeo); null – Ril_KM wählt selbst. */
+  kmRunde: KmRunde | null;
   bemerkung: string;
   /** Eintrag, aus dessen Aufteilung diese Anmeldung bei der Übernahme entstand. */
   herkunftId: ID | null;
@@ -428,6 +442,16 @@ export interface Anmeldung extends AnmeldungStand {
   geaendertAm: ISODate | null;
 }
 
+/** Prozessphasen, aus denen der BBPNeo-Import Anmeldungen übernimmt. */
+export type BbpPhase = 'km' | 'kkm';
+
+/**
+ * Zuordnung der Status aus BBPNeo („Fachstatus“, z. B. „Anmeldung bearbeitet“)
+ * zu Status in KaPlan, je Phase; null – Anmeldungen in diesem Status nicht
+ * importieren.
+ */
+export type BbpStatusZuordnung = Record<BbpPhase, Record<string, ID | null>>;
+
 export interface Einstellungen {
   farbmodus: Farbmodus;
   bearbeiter: string;
@@ -438,6 +462,8 @@ export interface Einstellungen {
   /** Anmeldebedarf der Projekte: so viele Tage im Voraus anzeigen. */
   bedarfVorschauTage: number;
   rilFristen: Record<RilSchluessel, RilFrist>;
+  /** Statuszuordnung des BBPNeo-Imports – merkt sich die Wahl im Import-Dialog. */
+  bbpStatus: BbpStatusZuordnung;
 }
 
 export interface BaubetriebDaten {
