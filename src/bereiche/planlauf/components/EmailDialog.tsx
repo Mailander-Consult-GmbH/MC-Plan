@@ -12,6 +12,7 @@ import { EMAIL_ANLASS_LABEL, type ID, type PlanRun, type Project, type RunStep }
 import {
   fehlendeAngaben,
   mailHtml,
+  sharepointKurztexte,
   mailLinks,
   mailVorbereiten,
   sammelMailVorbereiten,
@@ -162,7 +163,7 @@ export function EmailDialog({
   /** Nur der Text, formatiert (Links, ORDNERNAME EINFÜGEN rot und fett) – zum Einfügen in Outlook. */
   const kopierenFormatiert = async () => {
     try {
-      await formatiertKopieren(mailHtml(text), text);
+      await formatiertKopieren(mailHtml(text, sharepointKurztexte(kontakt)), text);
       merkeVersand('kopie');
       toast('Text formatiert kopiert – in Outlook in die neue E-Mail einfügen.');
     } catch {

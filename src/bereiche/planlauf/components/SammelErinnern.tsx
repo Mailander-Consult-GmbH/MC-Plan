@@ -19,6 +19,7 @@ import { ampelFuerSchritt, kontaktName } from '../domain/engine';
 import {
   fehlendeAngaben,
   mailHtml,
+  sharepointKurztexte,
   sammelMailVorbereiten,
   versandPosten,
   vorlageVorschlagen,
@@ -223,7 +224,7 @@ export function SammelErinnern({
               };
               const kopierenFormatiert = async () => {
                 try {
-                  await formatiertKopieren(mailHtml(mail.text), mail.text);
+                  await formatiertKopieren(mailHtml(mail.text, sharepointKurztexte(kontakt)), mail.text);
                   vermerken(gruppe, mail.an, mail.betreff, 'kopie');
                   toast('Text formatiert kopiert – in Outlook in die neue E-Mail einfügen.');
                 } catch {
