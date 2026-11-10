@@ -661,7 +661,7 @@ Schritt, Frist und Empfänger ersetzt (`{{verzug}}` nennt die Einheit, etwa „5
 Zwischenablage kopieren; jede vorbereitete E-Mail wird am Schritt vermerkt. Stehen bei einer Person
 mehrere Schritte an, entsteht eine **Sammel-E-Mail** (Vorlage *Sammelerinnerung*, Platzhalter
 `{{liste}}` und `{{anzahl}}`). Ist sie für die Übergabe an das Mailprogramm zu lang, bleibt nur
-„Kopieren“. **Kopieren (formatiert)** legt nur den Text mit Formatierung (Links anklickbar,
+„Kopieren“. **Kopieren (formatiert)** legt nur den Text mit Formatierung (Links anklickbar, die SharePoint-Links des Empfängers als Kurztext „SharePoint-Eingang“ bzw. „SharePoint-Ausgang“,
 Aufzählungen, „ORDNERNAME EINFÜGEN“ rot und fett) und zugleich als Klartext in die Zwischenablage –
 zum Einfügen in eine neue Outlook-Mail.
 
