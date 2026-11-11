@@ -634,7 +634,7 @@ N-x und unterjährige Anmeldung.
   oder `geaendertAm` mit „Merkmale geändert“, was später liegt; bei gleichem
   Tag gilt der Verlauf.
 * Schlüssel `baubetrieb-planung.data.v1` im `localStorage`
-  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 10`.
+  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 11`.
   `migriere()` hebt ältere Stände in einem Aufruf Schritt für Schritt: Fassung 1 kannte nur den
   Farbmodus und erhält die Demodaten; Fassung 2 führte Statusnummern (V0 … Y9),
   die `STATUS_AUS_NUMMER` (`src/bereiche/baubetrieb/domain/workflow.ts`) den
@@ -667,7 +667,10 @@ N-x und unterjährige Anmeldung.
   (`ausFassung9`) führte `bfStrecke` und `gewerk` – sie entfallen und gehen im
   `titel` auf („Bf/Strecke – Gewerk“, leere Teile fallen weg);
   `bbpProjektnummer`, `kmRunde` und `einstellungen.bbpStatus` ergänzt
-  `aufbereiten()` (leer bzw. Vorgabe, `bbpStatusAufbereiten`).
+  `aufbereiten()` (leer bzw. Vorgabe, `bbpStatusAufbereiten`); Fassung 10
+  (`ausFassung10`) kannte keine Entscheidungen – Status der Standard-Workflows
+  übernehmen die mitgelieferte `entscheidung`, sofern ihre Nachfolger alle
+  Antworten enthalten, die übrigen erhalten `null` (`entscheidungAufbereiten`).
   Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekte mit acht
   Anmeldungen, Termine relativ zum heutigen Tag, und die Standard-Workflows.
@@ -750,11 +753,13 @@ die Übersicht.
   unverändert), über ein Portal an `document.body`, die Seite dahinter `inert`.
   Kopf: „Workflow bearbeiten“ bzw. „Neuer Workflow“, Name (Feld „Name des
   Workflows“), Kurzbezeichnung · Sperrzeitraum · Anmeldungen, Kennzahl mit der
-  Zahl der Status und der Abweichungen, „Rückgängig“/„Wiederholen“ (Strg+Z, Strg+Y bzw.
+  Zahl der Status, der Entscheidungen und der Abweichungen, „Rückgängig“/„Wiederholen“ (Strg+Z, Strg+Y bzw.
   Strg+Umschalt+Z; Tippen in einem Feld zählt als ein Schritt), „Übersicht“
-  (schmal), „Status hinzufügen“ (Tooltip nennt die Stelle: „Hinter „…““, „Vor
-  „…“ im Standardverlauf“ bzw. „Am Ende des Standardverlaufs“), Schließen; Fuß:
-  „Vollständig“ bzw. „… Hinweise“, Abweichungen und Übernahmen, „Abbrechen“
+  (schmal), „Status hinzufügen“ – ein `AufklappMenue` mit „Status“ („Ein Schritt
+  im Ablauf mit Terminfrist und Zuständigkeit“) und „Entscheidung“ („Verzweigt
+  je nach Antwort, z. B. Ja / Nein“); sein Titel nennt die Stelle: „Hinter „…““,
+  „Vor „…“ im Standardverlauf“ bzw. „Am Ende des Standardverlaufs“ –, Schließen; Fuß:
+  „Vollständig“ bzw. „… Hinweise“, Entscheidungen, Abweichungen und Übernahmen, „Abbrechen“
   (mit Änderungen „Änderungen verwerfen?“ – „Verwerfen“/„Weiter bearbeiten“),
   „Speichern“. Bei Standard-Workflows ein Hinweis über der Fläche
   („Mitgelieferter Standard-Workflow: …“).
@@ -770,12 +775,27 @@ die Übersicht.
   „Schleife zurück zu …“, „Workflow endet hier“) und „Abweichungen“; Linien
   zwischen Karten als SVG aus gemessenen Positionen (orange Abweichung, lila
   Rücksprung); Übernahmen und „Eintrag löschen“ als Text auf der Karte
-  (`fremdZielText`); Kennzeichen „Nachhaken“, „… Anmeldungen“, „Einstieg aus
-  …“; „+“ zwischen Karten („Status hier einfügen“, `einfuegen`) – nach einem
+  (`fremdZielText`); bei Entscheidungen die Frage auf der Karte (sonst
+  „Entscheidung“) und die Antworten (`Kante.text`) an Verbinder und Linien bzw.
+  vor dem Text auf der Karte; Kennzeichen „Nachhaken“, „… Anmeldungen“,
+  „Einstieg aus …“; „+“ zwischen Karten („Status hier einfügen“, `einfuegen`) – nach einem
   genehmigten Status am Ziel ohne „+“. Bis 820 px untereinander, Details als
   Blatt von unten; bis 1279 px Details als Schublade.
+* Entscheidungen (`Entscheidung` in `src/bereiche/baubetrieb/domain/types.ts`,
+  `WorkflowStatus.entscheidung`: `frage` und `antworten` je Ziel eines
+  Nachfolgers; vorbelegt „Ja“, „Nein“, dann „Antwort …“, `STANDARD_ANTWORTEN`,
+  `antwortVorgabe`): Die Bearbeitungen in `workflowGraph.ts` (`einfuegen`,
+  `entfernen`, `nachfolgerErsetzen`, `nachfolgerHinzufuegen`,
+  `nachfolgerEntfernen`, `antwortSetzen`, `typSetzen`, `duplizieren`) führen
+  die Antworten mit; `workflowKopie` und `nachfolgerBereinigen`
+  (`src/bereiche/baubetrieb/domain/workflowPflege.ts`) ebenso. Die
+  Standard-Workflows (`standardWorkflows`, `jaNein`) sehen Entscheidungen bei
+  „Angemeldet“ („Genehmigt?“), „Mitwirkung BBK“ („Stimmt die BBK zu?“),
+  „Zugestimmt“ im KKM („Fristgerecht angemeldet?“) und den Änderungen
+  („Änderung genehmigt?“) vor.
 * Statusdetails (Karte gewählt): „Karte … von …“ mit Vor/Zurück, „Status
-  bearbeiten“, Bezeichnung, Art (`STATUS_ART_LABEL`), „Zuständig“ (MIC, BBK,
+  bearbeiten“ bzw. „Entscheidung bearbeiten“, Bezeichnung, „Typ“ („Status“ /
+  „Entscheidung“, `typSetzen`), bei Entscheidungen „Frage“, Art (`STATUS_ART_LABEL`), „Zuständig“ (MIC, BBK,
   Projektleitung DB oder „– niemand –“), Terminfrist (`FRIST_TYP_LABEL`:
   „Keine Terminfrist“, „Frist laut Richtlinie“, „Nächster Stichtag (TT.MM.)“,
   „Nachhak-Termin nach Statuswechsel“; der Bezug einer Frist laut Richtlinie
@@ -783,7 +803,9 @@ die Übersicht.
   `fristRegelText`), „Termin dient zum Nachhaken“, Bemerkung; „Wie geht es
   weiter?“ mit den Nachfolgern (Auswahl „Dieser Workflow“, „Übernahme in …“,
   „Eintrag löschen (endgültig)“; der erste mit „Standardverlauf“, die übrigen mit
-  „Als Standardverlauf“, `alsStandard`) und „Nachfolger hinzufügen …“;
+  „Als Standardverlauf“, `alsStandard`) und „Nachfolger hinzufügen …“ – bei
+  Entscheidungen je Antwort ein Textfeld mit „→ Weiter mit“ und „Antwort
+  hinzufügen – führt zu …“;
   „Einstieg aus anderen Workflows“; bei belegten Status „Anmeldungen“;
   „Reihenfolge“ (`verschieben`; der erste ist der Startstatus), „Duplizieren“
   (`duplizieren`) und „Entfernen“ (`entfernen`: wer zum Status führte, führt zu
@@ -791,8 +813,9 @@ die Übersicht.
   (ohne Auswahl): Kurzbezeichnung, Beschreibung, Sperrzeitraum (gesperrt,
   solange Anmeldungen im Workflow stehen), Maßnahmenarten, Kacheln, „Hinweise“
   (`pruefen`: fehlender Name, kein Status, keine Maßnahmenart, Status ohne
-  Bezeichnung und belegte entfallende Status sperren das Speichern; nicht
-  erreichbare Status, unbekannte Nachfolger und Anmeldeleichen ohne „Eintrag
+  Bezeichnung, Entscheidungen mit leerer Antwort und belegte entfallende Status
+  sperren das Speichern; nicht erreichbare Status, unbekannte Nachfolger,
+  Entscheidungen mit weniger als zwei Antworten und Anmeldeleichen ohne „Eintrag
   löschen“ sind nur Hinweise) und „So lesen Sie das Bild“. Speichern prüft
   zusätzlich `belegteEntfallendeStatus`; Nachfolger auf entfallene Status
   werden in allen Workflows entfernt. „Duplizieren“ eines Workflows
@@ -803,12 +826,17 @@ die Übersicht.
   Haken wie der Erledigt-Haken des Planlaufmanagements und bietet nur die
   Nachfolger des aktuellen Status an (`nachfolgerVon`): Mit einem Nachfolger
   wählt der Haken ihn direkt (Tooltip „Status ändern: …“), mit mehreren öffnet
-  er ein Menü „Welcher Status folgt?“ („Eintrag löschen“ in Rot) – das
+  er ein Menü „Welcher Status folgt?“ – bei einer Entscheidung mit ihrer Frage
+  als Titel (`nachfolgerFrage`) und den Antworten vor den Zielen, „… → …“
+  (`nachfolgerText`, auch auf der Seite der Anmeldung, deren Zeile
+  „Weiter mit:“ dann die Frage nennt) – („Eintrag löschen“ in Rot) – das
   gemeinsame `AufklappMenue` (`src/shared/menue.tsx`, Abschnitt 2.4: bleibt im
   Fenster, Tastatur, schließt mit Escape, Tab, Klick daneben oder Scrollen).
   Die Wahl öffnet den Dialog des Statuswechsels.
 * Statuswechsel im Dialog `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx`:
-  Datum, Bemerkung, beim Eintritt in eine Änderungsabstimmung ÄAbst-Nr und
+  Datum, Bemerkung (aus einer Entscheidung steht die Antwort samt Frage im
+  Kopf des Dialogs und vor der Bemerkung im Statusverlauf), beim Eintritt in
+  eine Änderungsabstimmung ÄAbst-Nr und
   AnnexVII; bei einem Wechsel in einen anderen Workflow (`istUebernahme`)
   Maßnahmenart und je Zeile Anmelde-ID, Titel und Sperrzeitraum, mit
   „Weitere Anmeldung“ zur Aufteilung (weitere Einträge erhalten `herkunftId`;
@@ -967,6 +995,8 @@ die Übersicht.
 | „Anmeldeleiche gelöscht.“ / „Anmeldung gelöscht.“ | `src/bereiche/baubetrieb/components/StatusWechselDialog.tsx` | Kein Fehler: „Eintrag löschen“ aus der Anmeldeleiche bzw. aus einem anderen Status. |
 | „Bitte einen Namen angeben.“ | `src/bereiche/baubetrieb/components/WorkflowEditor.tsx` | Workflow-Editor: Speichern ohne Namen. |
 | „Der Workflow braucht mindestens einen Status.“ / „Status … hat keine Bezeichnung.“ / „Bitte mindestens eine Maßnahmenart wählen.“ | `src/bereiche/baubetrieb/domain/workflowGraph.ts` | Sperrende Hinweise (`pruefen`); „Speichern“ meldet den ersten und wählt den Status bzw. die Übersicht. |
+| „Bei der Entscheidung „…“ fehlt der Text einer Antwort.“ | `src/bereiche/baubetrieb/domain/workflowGraph.ts` | Sperrender Hinweis. |
+| „Die Entscheidung „…“ hat …“ („keine Antwort“ bzw. „nur eine Antwort“, „– sie braucht mindestens zwei.“) | `src/bereiche/baubetrieb/domain/workflowGraph.ts` | Hinweis ohne Sperre. |
 | „„…“ wird nie erreicht – kein Nachfolger führt dorthin.“ / „„…“ hat einen Nachfolger, den es nicht mehr gibt – er entfällt beim Speichern.“ / „Aus der Anmeldeleiche „…“ führt kein „Eintrag löschen“.“ | `src/bereiche/baubetrieb/domain/workflowGraph.ts` | Hinweise ohne Sperre. |
 | „„…“ kann nicht entfallen – darin stehen noch Anmeldungen.“ | `src/bereiche/baubetrieb/components/WorkflowEditor.tsx` | Sperrender Hinweis: Beim Speichern entfiele ein Status, in dem noch Anmeldungen stehen. |
 | „Der Status lässt sich nicht entfernen – darin …“ („steht noch eine Anmeldung“ bzw. „stehen noch … Anmeldungen“) | `src/bereiche/baubetrieb/components/WorkflowEditor.tsx` | „Entfernen“ bei einem belegten Status (der Knopf ist dann ohnehin gesperrt). |

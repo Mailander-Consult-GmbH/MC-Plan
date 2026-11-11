@@ -396,3 +396,10 @@ Standardverlauf führt vom Startstatus über den jeweils ersten Nachfolger und e
 „Abgelehnt“, Änderungsabstimmungen, „Angemeldet (verspätet)“ und die Anmeldeleiche stehen als
 Abweichungen. Welcher Nachfolger der erste ist, legt „Als Standardverlauf“ fest. Passt diese
 Lesart – oder soll etwa im KM die Übernahme in den KKM zum Standardverlauf gehören?
+
+**G6. Entscheidungen** – Wie im Planlaufmanagement kann ein Status eine Entscheidung mit Frage und
+Antworten sein; beim Statuswechsel stehen Frage und Antworten zur Wahl, die Antwort steht im
+Statusverlauf. *Entwurf:* In den Standard-Workflows sind „Angemeldet“ („Genehmigt?“),
+„Mitwirkung BBK“ („Stimmt die BBK zu?“), „Zugestimmt“ im KKM („Fristgerecht angemeldet?“) und die
+Änderungen („Änderung genehmigt?“) Entscheidungen mit „Ja“/„Nein“. Passen Fragen und Antworten,
+und fehlen Entscheidungen (etwa „Entwurf“: weiter oder Anmeldeleiche)?

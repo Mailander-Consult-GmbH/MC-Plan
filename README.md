@@ -983,10 +983,11 @@ oder „KKM · Entwurf“.
   dazu **Öffnen** (auch ein Klick auf die Karte), **Duplizieren** und – bei eigenen Workflows ohne
   Anmeldungen – **Löschen**. **Neuer Workflow** legt einen weiteren an.
 * Der **Workflow-Editor** ist in Optik und Bedienung der grafische Editor des
-  Planlaufmanagements – übernommen ist, was zu Status mit Nachfolgern passt (keine E-Mails, keine
-  Entscheidungen mit Antworten, keine parallelen Zweige). Er füllt das Fenster: im Kopf der Name,
-  Kennzahlen, **Rückgängig**/**Wiederholen** (Strg+Z/Strg+Y) und **Status hinzufügen** (hinter dem
-  gewählten Status, sonst am Ende des Standardverlaufs bzw. vor „Genehmigt“); links die
+  Planlaufmanagements – übernommen ist, was zu Status mit Nachfolgern passt, samt
+  **Entscheidungen**; E-Mails und parallele Zweige gibt es hier nicht. Er füllt das Fenster: im Kopf
+  der Name, Kennzahlen, **Rückgängig**/**Wiederholen** (Strg+Z/Strg+Y) und **Status hinzufügen** – ein
+  Menü mit **Status** und **Entscheidung** (hinter dem gewählten Status, sonst am Ende des
+  Standardverlaufs bzw. vor „Genehmigt“); links die
   **Arbeitsfläche**, rechts die Details; im Fuß „Vollständig“ bzw. die Zahl der **Hinweise**,
   **Abbrechen** (mit Rückfrage „Änderungen verwerfen?“) und **Speichern**.
   * **Arbeitsfläche:** Der **Standardverlauf** führt vom Startstatus über den jeweils ersten
@@ -996,16 +997,28 @@ oder „KKM · Entwurf“.
     erreicht werden, etwa „Abgelehnt“ oder die Anmeldeleiche –, verbunden durch gestrichelte
     Linien (orange: Abweichung, lila: Rücksprung). Übernahmen in andere Workflows und „Eintrag
     löschen“ stehen als Text auf der Karte, Einstiege aus anderen Workflows als Kennzeichen. Jede
-    Karte nennt Art, Nummer, Bezeichnung, Zuständigkeit, Terminfrist, „Nachhaken“ und die Zahl der
-    Anmeldungen. Das **„+“** zwischen zwei Karten fügt dort einen Status ein. Status, zu denen kein
-    Nachfolger führt, stehen unter „Nicht erreichbar“.
-  * **Statusdetails** (Klick auf eine Karte): Bezeichnung, Art (Entwurf, In Abstimmung, Angemeldet,
+    Karte nennt Art, Nummer, Bezeichnung, bei Entscheidungen die Frage (lila Raute), Zuständigkeit,
+    Terminfrist, „Nachhaken“ und die Zahl der Anmeldungen. Die **Antworten** einer Entscheidung
+    stehen an ihren Übergängen („Ja“ am Standardverlauf, „Nein“ an der Linie zur Abweichung). Das
+    **„+“** zwischen zwei Karten fügt dort einen Status ein. Status, zu denen kein Nachfolger führt,
+    stehen unter „Nicht erreichbar“.
+  * **Entscheidungen** wie im Planlaufmanagement: Ein Status vom Typ **Entscheidung** trägt eine
+    **Frage** (etwa „Stimmt die BBK zu?“) und je Nachfolger eine **Antwort** („Ja“ → Zugestimmt,
+    „Nein“ → Abgelehnt); die erste Antwort bildet den Standardverlauf. Beim **Status ändern** nennt
+    das Menü die Frage und die Antworten („Ja → Zugestimmt“), ebenso die Seite der Anmeldung; der
+    Dialog des Statuswechsels und der **Statusverlauf** vermerken die gewählte Antwort. In den
+    Standard-Workflows sind „Angemeldet“ („Genehmigt?“), „Mitwirkung BBK“ („Stimmt die BBK zu?“),
+    „Zugestimmt“ im KKM („Fristgerecht angemeldet?“) und die Änderungen („Änderung genehmigt?“)
+    Entscheidungen.
+  * **Statusdetails** (Klick auf eine Karte): Bezeichnung, **Typ** (Status oder Entscheidung, bei
+    Entscheidungen die Frage), Art (Entwurf, In Abstimmung, Angemeldet,
     Angemeldet (verspätet), Genehmigt, Abgelehnt, Änderungsabstimmung, Anmeldeleiche),
     **Zuständig** (MIC, BBK, Projektleitung DB oder niemand – in den Standard-Workflows MIC für
     Entwurf, Zugestimmt, Genehmigt und Abgelehnt, die BBK für Mitwirkung, Angemeldet und
     Änderungen), Terminfrist, „Termin dient zum Nachhaken“, Bemerkung und unter „Wie geht es
-    weiter?“ die **Nachfolger** – der erste bildet den Standardverlauf, **Als Standardverlauf**
-    macht einen anderen zum ersten; dazu Reihenfolge (der erste Status ist der **Startstatus**),
+    weiter?“ die **Nachfolger** bzw. bei Entscheidungen die **Antworten** mit „→ Weiter mit“ – der
+    erste bildet den Standardverlauf, **Als Standardverlauf** macht einen anderen zum ersten; eine
+    leere Antwort verhindert das Speichern; dazu Reihenfolge (der erste Status ist der **Startstatus**),
     **Duplizieren** und **Entfernen** (wer zum entfernten Status führte, führt dann zu dessen erstem
     Nachfolger).
   * **Übersicht** (ohne gewählten Status): Kurzbezeichnung, Beschreibung, Sperrzeitraum (ganzes
@@ -1081,7 +1094,9 @@ Tag der letzten Änderung der Merkmale (beide leer; gesetzt wird er nur bei eine
 Änderung – „Speichern“ ohne Änderung schließt den Dialog nur, ohne „Anmeldung gespeichert.“, und
 lässt den Sachstand stehen). Fassung 10 ersetzt Bf/Strecke und Gewerk/Tätigkeit durch den Titel
 (beim Umstellen „Bf/Strecke – Gewerk“), ergänzt Projektnummer (BBPNeo) und KM-Runde (leer) und die
-Statuszuordnung des BBPNeo-Imports (Vorgabe). Name unter „Angemeldet als“ und
+Statuszuordnung des BBPNeo-Imports (Vorgabe). Fassung 11 führt Entscheidungen an Status ein; die
+Status der Standard-Workflows übernehmen die mitgelieferten Entscheidungen, solange ihre Nachfolger
+die Antworten noch enthalten. Name unter „Angemeldet als“ und
 Farbmodus gelten in allen Bereichen; der Name steht im Statusverlauf und ist Hauptbearbeiter neuer
 Projekte.
 

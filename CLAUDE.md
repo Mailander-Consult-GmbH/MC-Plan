@@ -292,7 +292,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   und Nachschlagen von Status (Anmeldungen verweisen per `statusId` auf einen Status; die
   Workflows liegen im Bestand und sind bearbeitbar), `domain/workflowPflege.ts` Speichern,
   Duplizieren, Löschen von Workflows, `domain/workflowGraph.ts` Standardverlauf (erster Nachfolger
-  bis „Genehmigt“, Übernahme, Löschen oder Schleife), Abweichungen, Prüfung und Bearbeitungen für den
+  bis „Genehmigt“, Übernahme, Löschen oder Schleife), Abweichungen, Prüfung und Bearbeitungen (eine
+  Entscheidung – `WorkflowStatus.entscheidung` mit Frage und Antwort je Nachfolger – führen alle
+  Bearbeitungen mit; Antworten nie als eigene Liste neben `nachfolger` halten) für den
   grafischen Workflow-Editor `components/WorkflowEditor.tsx` (Optik und Bedienung wie im
   Planlaufmanagement, aber eigener Code mit Präfix `bb-wf-` in `components/workflowEditor.css`; die
   Liste zeigt den Standardverlauf mit `components/AblaufVorschau.tsx`), `domain/fristen.ts` Fahrplanjahr, Terminfrist, Ampel,
