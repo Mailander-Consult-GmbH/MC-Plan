@@ -45,6 +45,7 @@ import {
   type BbpPhase,
   type BbpStatusZuordnung,
   type Einstellungen,
+  type Entscheidung,
   type ErstePhase,
   type FristRegel,
   type Projekt,
@@ -135,6 +136,17 @@ function fristAufbereiten(roh: Partial<FristRegel> & Record<string, unknown>, na
   }
 }
 
+/** Entscheidung eines Status: Frage und Antworttexte (nur Texte); sonst null. */
+function entscheidungAufbereiten(roh: unknown): Entscheidung | null {
+  if (!roh || typeof roh !== 'object') return null;
+  const e = roh as Partial<Entscheidung>;
+  const antworten: Record<string, string> = {};
+  if (e.antworten && typeof e.antworten === 'object') {
+    for (const [ziel, t] of Object.entries(e.antworten)) if (typeof t === 'string') antworten[ziel] = t;
+  }
+  return { frage: text(e.frage), antworten };
+}
+
 function workflowsAufbereiten(roh: unknown, nachhakTage: number): Workflow[] {
   if (!Array.isArray(roh) || roh.length === 0) return standardWorkflows();
   return roh.map((w: Partial<Workflow>): Workflow => {
@@ -157,6 +169,7 @@ function workflowsAufbereiten(roh: unknown, nachhakTage: number): Workflow[] {
           nachhaken: s.nachhaken === true,
           bemerkung: text(s.bemerkung),
           nachfolger: (Array.isArray(s.nachfolger) ? s.nachfolger : []).filter((z) => typeof z === 'string'),
+          entscheidung: entscheidungAufbereiten(s.entscheidung),
         }),
       ),
     };
@@ -347,6 +360,7 @@ function ausFassung4(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
       nachhaken: false,
       bemerkung: '',
       nachfolger: [LOESCHEN],
+      entscheidung: null,
     };
     return {
       ...w,
@@ -534,6 +548,29 @@ function ausFassung9(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
 }
 
 /**
+ * Hebt Fassung 10 auf Fassung 11: Status können Entscheidungen sein. Die
+ * Status der Standard-Workflows übernehmen die mitgelieferten Entscheidungen
+ * („Genehmigt?“, „Stimmt die BBK zu?“ …), sofern ihre Nachfolger die
+ * Antworten noch enthalten; alle übrigen bleiben gewöhnliche Status
+ * (aufbereiten()).
+ */
+function ausFassung10(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
+  const vorgabe = new Map(standardWorkflows().flatMap((w) => w.status.map((s) => [s.id, s.entscheidung] as const)));
+  const workflows = (Array.isArray(roh.workflows) ? roh.workflows : []).map((w: Partial<Workflow>) => ({
+    ...w,
+    status: Array.isArray(w.status)
+      ? w.status.map((s: Partial<WorkflowStatus>) => {
+          const e = vorgabe.get(text(s.id));
+          if (s.entscheidung !== undefined || !e) return s;
+          const nachfolger = Array.isArray(s.nachfolger) ? s.nachfolger : [];
+          return Object.keys(e.antworten).every((z) => nachfolger.includes(z)) ? { ...s, entscheidung: e } : s;
+        })
+      : w.status,
+  }));
+  return { ...roh, workflows: workflows as Workflow[] };
+}
+
+/**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
  * für Schritt. Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch
  * keinen Inhalt. Sie erhält deshalb die Demodaten und behält ihre Einstellung.
@@ -556,6 +593,7 @@ function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   if (version <= 6) stand = ausFassung6(stand);
   if (version <= 7) stand = ausFassung7(stand);
   if (version <= 9) stand = ausFassung9(stand);
+  if (version <= 10) stand = ausFassung10(stand);
   return aufbereiten(stand);
 }
 

@@ -15,6 +15,7 @@ import {
   PHASE_LABEL,
   type AnmeldungsArt,
   type BbpStatusZuordnung,
+  type Entscheidung,
   type Phase,
   type FristRegel,
   type ID,
@@ -62,7 +63,7 @@ const status = (
   art: StatusArt,
   frist: FristRegel,
   nachfolger: StatusZiel[],
-  zusatz: Partial<Pick<WorkflowStatus, 'nachhaken' | 'bemerkung' | 'zustaendig'>> = {},
+  zusatz: Partial<Pick<WorkflowStatus, 'nachhaken' | 'bemerkung' | 'zustaendig' | 'entscheidung'>> = {},
 ): WorkflowStatus => ({
   id,
   name,
@@ -72,7 +73,11 @@ const status = (
   nachfolger,
   nachhaken: zusatz.nachhaken ?? frist.typ === 'nachhaken',
   bemerkung: zusatz.bemerkung ?? '',
+  entscheidung: zusatz.entscheidung ?? null,
 });
+
+/** Entscheidung mit „Ja“ zum ersten und „Nein“ zum zweiten Nachfolger. */
+const jaNein = (frage: string, ja: ID, nein: ID): Entscheidung => ({ frage, antworten: { [ja]: 'Ja', [nein]: 'Nein' } });
 
 /**
  * Anmeldeleiche am Ende eines Standard-Workflows: Die Anmeldung bleibt rot
@@ -109,7 +114,7 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
         status('skm-angemeldet', 'Angemeldet', 'angemeldet', { typ: 'stichtag', tag: 1, monat: 8 }, [
           'skm-genehmigt',
           'skm-abgelehnt',
-        ], { nachhaken: true }),
+        ], { nachhaken: true, entscheidung: jaNein('Genehmigt?', 'skm-genehmigt', 'skm-abgelehnt') }),
         status('skm-genehmigt', 'Genehmigt', 'genehmigt', ril('mkm'), ['pze-entwurf']),
         status('skm-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, ['skm-anmeldeleiche', 'skm-entwurf', 'pze-entwurf']),
         anmeldeleiche('skm-anmeldeleiche'),
@@ -128,7 +133,7 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
         status('pze-angemeldet', 'Angemeldet', 'angemeldet', { typ: 'stichtag', tag: 31, monat: 7 }, [
           'pze-genehmigt',
           'pze-abgelehnt',
-        ], { nachhaken: true }),
+        ], { nachhaken: true, entscheidung: jaNein('Genehmigt?', 'pze-genehmigt', 'pze-abgelehnt') }),
         status('pze-genehmigt', 'Genehmigt', 'genehmigt', ril('N-2'), ['vp-entwurf']),
         status('pze-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, [
           'pze-anmeldeleiche',
@@ -151,17 +156,18 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
         status('vp-entwurf', 'Entwurf', 'entwurf', ril('Nx', -14), ['vp-mitwirkung', 'vp-anmeldeleiche']),
         status('vp-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('Nx', -2), ['vp-zugestimmt', 'vp-abgelehnt'], {
           nachhaken: true,
+          entscheidung: jaNein('Stimmt die BBK zu?', 'vp-zugestimmt', 'vp-abgelehnt'),
         }),
         status('vp-zugestimmt', 'Zugestimmt', 'abstimmung', ril('Nx'), ['vp-angemeldet'], { zustaendig: 'mic' }),
         status('vp-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(), [
           'vp-genehmigt',
           'vp-abgelehnt',
-        ]),
+        ], { entscheidung: jaNein('Genehmigt?', 'vp-genehmigt', 'vp-abgelehnt') }),
         status('vp-genehmigt', 'Genehmigt', 'genehmigt', ril('A'), ['vp-aenderung', 'vp-genehmigt', 'uj-angemeldet']),
         status('vp-aenderung', 'Änderung angemeldet', 'aenderung', nachhakTermin(), [
           'vp-genehmigt',
           'vp-aenderung-abgelehnt',
-        ]),
+        ], { entscheidung: jaNein('Änderung genehmigt?', 'vp-genehmigt', 'vp-aenderung-abgelehnt') }),
         status('vp-aenderung-abgelehnt', 'Änderung abgelehnt', 'abgelehnt', ril('A'), ['vp-abgelehnt', 'vp-genehmigt']),
         status('vp-abgelehnt', 'Abgelehnt', 'abgelehnt', keine, [
           'vp-anmeldeleiche',
@@ -184,23 +190,25 @@ export function standardWorkflows(nachhakTage: number = NACHHAK_TAGE): Workflow[
         status('uj-entwurf', 'Entwurf', 'entwurf', ril('X', -14), ['uj-mitwirkung', 'uj-anmeldeleiche']),
         status('uj-mitwirkung', 'Mitwirkung BBK', 'abstimmung', ril('X', -2), ['uj-zugestimmt', 'uj-abgelehnt'], {
           nachhaken: true,
+          entscheidung: jaNein('Stimmt die BBK zu?', 'uj-zugestimmt', 'uj-abgelehnt'),
         }),
         status('uj-zugestimmt', 'Zugestimmt', 'abstimmung', ril('X'), ['uj-angemeldet', 'uj-verspaetet'], {
           zustaendig: 'mic',
+          entscheidung: jaNein('Fristgerecht angemeldet?', 'uj-angemeldet', 'uj-verspaetet'),
         }),
         status('uj-angemeldet', 'Angemeldet (fristgerecht)', 'angemeldet', nachhakTermin(), [
           'uj-genehmigt',
           'uj-abgelehnt',
-        ]),
+        ], { entscheidung: jaNein('Genehmigt?', 'uj-genehmigt', 'uj-abgelehnt') }),
         status('uj-verspaetet', 'Angemeldet (verspätet)', 'verspaetet', nachhakTermin(), [
           'uj-genehmigt',
           'uj-abgelehnt',
-        ]),
+        ], { entscheidung: jaNein('Genehmigt?', 'uj-genehmigt', 'uj-abgelehnt') }),
         status('uj-genehmigt', 'Genehmigt', 'genehmigt', keine, ['uj-abgelehnt', 'uj-aenderung']),
         status('uj-aenderung', 'Änderung angestoßen', 'aenderung', nachhakTermin(), [
           'uj-genehmigt',
           'uj-aenderung-abgelehnt',
-        ]),
+        ], { entscheidung: jaNein('Änderung genehmigt?', 'uj-genehmigt', 'uj-aenderung-abgelehnt') }),
         status('uj-aenderung-abgelehnt', 'Änderung abgelehnt', 'abgelehnt', keine, ['uj-genehmigt'], {
           bemerkung: 'Ggf. cfPeDi',
         }),
@@ -289,6 +297,7 @@ export function statusVon(workflows: Workflow[], statusId: ID): StatusInfo {
         nachhaken: false,
         bemerkung: '',
         nachfolger: [],
+        entscheidung: null,
       },
       index: -1,
     }

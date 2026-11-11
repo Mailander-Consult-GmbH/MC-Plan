@@ -37,6 +37,7 @@ export function Workflows({ navigate }: { navigate: (r: Route) => void }) {
   const karte = (w: Workflow) => {
     const anzahl = anmeldungenIn(w);
     const g = gliedern(w.status, w.id, data.workflows);
+    const entscheidungen = w.status.filter((s) => s.entscheidung).length;
     return (
       // Die ganze Karte öffnet den Editor; per Tastatur über „Öffnen“
       <div key={w.id} className="bb-wf-liste-karte" onClick={() => setEditor({ workflow: w })}>
@@ -57,6 +58,9 @@ export function Workflows({ navigate }: { navigate: (r: Route) => void }) {
         <div className="bb-wf-liste-zahlen">
           <span>
             <b>{w.status.length}</b> Status
+          </span>
+          <span>
+            <b>{entscheidungen}</b> {entscheidungen === 1 ? 'Entscheidung' : 'Entscheidungen'}
           </span>
           <span>
             <b>{g.abweichungen.length}</b> {g.abweichungen.length === 1 ? 'Abweichung' : 'Abweichungen'}

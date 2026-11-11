@@ -19,8 +19,9 @@ export type ID = string;
  * Fassung 9: Anmelder und Datum der letzten Änderung an Anmeldungen.
  * Fassung 10: Titel, Projektnummer (BBPNeo) und KM-Runde an Anmeldungen statt
  * Bf/Strecke und Gewerk/Tätigkeit; Statuszuordnung des BBPNeo-Imports.
+ * Fassung 11: Entscheidungen an Status (Frage und Antwort je Nachfolger).
  */
-export const DATEN_VERSION = 10;
+export const DATEN_VERSION = 11;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -190,6 +191,23 @@ export const ZUSTAENDIGKEIT_LABEL: Record<Zustaendigkeit, string> = {
   projektleitung: 'Projektleitung DB',
 };
 
+/**
+ * Entscheidung: Der Status endet mit einer Antwort auf eine Frage – je
+ * Nachfolger eine („Ja“ → Zugestimmt, „Nein“ → Abgelehnt), wie die
+ * Entscheidungen im Planlaufmanagement. Die erste Antwort (der erste
+ * Nachfolger) bildet den Standardverlauf. Beim Statuswechsel stehen Frage und
+ * Antworten zur Wahl.
+ */
+export interface Entscheidung {
+  /** Frage, z. B. „Stimmt die BBK zu?“; leer – ohne eigene Frage. */
+  frage: string;
+  /** Antworttext je Nachfolger (Schlüssel: Ziel des Nachfolgers). */
+  antworten: Partial<Record<StatusZiel, string>>;
+}
+
+/** Vorbelegte Antworten einer neuen Entscheidung, in der Reihenfolge der Nachfolger. */
+export const STANDARD_ANTWORTEN = ['Ja', 'Nein'];
+
 export interface WorkflowStatus {
   id: ID;
   name: string;
@@ -202,6 +220,8 @@ export interface WorkflowStatus {
   bemerkung: string;
   /** Mögliche Nachfolger – nur diese stehen beim Statuswechsel zur Wahl. */
   nachfolger: StatusZiel[];
+  /** Entscheidung mit Frage und Antworten; null – gewöhnlicher Status. */
+  entscheidung: Entscheidung | null;
 }
 
 /**

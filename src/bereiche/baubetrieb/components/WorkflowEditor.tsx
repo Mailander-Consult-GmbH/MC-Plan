@@ -1,8 +1,9 @@
 /**
  * Grafischer Workflow-Editor der Baubetriebsplanung – in Optik und Bedienung
  * wie der Workflow-Editor des Planlaufmanagements, aber eigenständig und auf
- * Status mit Nachfolgern zugeschnitten (ohne E-Mails, Entscheidungen und
- * parallele Zweige).
+ * Status mit Nachfolgern zugeschnitten (ohne E-Mails und parallele Zweige).
+ * Ein Status kann eine Entscheidung sein (Typ „Entscheidung“): mit Frage und
+ * je Nachfolger einer Antwort, die an den Übergängen steht.
  *
  * Links die Arbeitsfläche: der Standardverlauf als Spalte von Karten (vom
  * Startstatus über den jeweils ersten Nachfolger bis „Genehmigt“, einer
@@ -25,6 +26,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
+import { AufklappMenue } from '../../../shared/menue';
 import { ConfirmDialog } from '../../../shared/ui';
 import { fristRegelText } from '../domain/fristen';
 import {
@@ -54,13 +56,18 @@ import { zielText } from '../domain/workflow';
 import { anmeldungenJeStatus, belegteEntfallendeStatus } from '../domain/workflowPflege';
 import {
   alsStandard,
+  antwortSetzen,
+  antwortVorgabe,
   duplizieren,
   einfuegen,
   entfernen,
   fremdZielText,
   gliedern,
+  nachfolgerEntfernen,
   nachfolgerErsetzen,
+  nachfolgerHinzufuegen,
   pruefen,
+  typSetzen,
   verschieben,
   type Einfuegestelle,
   type Gliederung,
@@ -92,6 +99,7 @@ interface Verlauf {
 const nr = (i: number) => String(i + 1).padStart(2, '0');
 const statusText = (n: number) => `${n} Status`;
 const abweichungenText = (n: number) => `${n} ${n === 1 ? 'Abweichung' : 'Abweichungen'}`;
+const entscheidungenText = (n: number) => `${n} ${n === 1 ? 'Entscheidung' : 'Entscheidungen'}`;
 const anmeldungenText = (n: number) => `${n} ${n === 1 ? 'Anmeldung' : 'Anmeldungen'}`;
 
 /** Kürzel der Zuständigkeit auf der Karte. */
@@ -111,8 +119,12 @@ export function neuerStatus(): WorkflowStatus {
     nachhaken: false,
     bemerkung: '',
     nachfolger: [],
+    entscheidung: null,
   };
 }
+
+/** Typ eines neuen Eintrags im Ablauf: gewöhnlicher Status oder Entscheidung. */
+type NeuTyp = 'status' | 'entscheidung';
 
 /** Bildschirm schmaler als die Arbeitsfläche mit zwei Spalten. */
 function useSchmal(grenze = 820): boolean {
@@ -166,6 +178,9 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
     workflow ? null : (stand.status[0]?.id ?? null),
   );
   const [verwerfenFrage, setVerwerfenFrage] = useState(false);
+  /** Menü „Status hinzufügen“ (Status oder Entscheidung). */
+  const [menue, setMenue] = useState(false);
+  const hinzuKnopf = useRef<HTMLButtonElement>(null);
   const [hover, setHover] = useState<ID | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -250,6 +265,7 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
     [hinweise],
   );
   const uebernahmen = gliederung.kanten.filter((k) => k.art === 'uebernahme').length;
+  const entscheidungen = status.filter((s) => s.entscheidung).length;
 
   // Gewählter Status verschwindet (Rückgängig, Entfernen) → Auswahl aufheben
   const gewaehlt =
@@ -268,10 +284,14 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
   /* Bearbeitungen                                                     */
   /* ---------------------------------------------------------------- */
 
-  const einfuegenIn = (stelle: Einfuegestelle) => {
+  const einfuegenIn = (stelle: Einfuegestelle, typ: NeuTyp = 'status') => {
     const neu = neuerStatus();
-    aendernStatus((alle) => einfuegen(alle, stelle, neu));
+    aendernStatus((alle) => {
+      const mit = einfuegen(alle, stelle, neu);
+      return typ === 'entscheidung' ? typSetzen(mit, neu.id, true) : mit;
+    });
     setAuswahl(neu.id);
+    setMenue(false);
   };
 
   /**
@@ -439,7 +459,9 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
           </div>
           <div className="bb-wf-werkzeuge">
             <span className="bb-wf-kennzahl">
-              {statusText(status.length)} · {abweichungenText(gliederung.abweichungen.length)}
+              {statusText(status.length)}
+              {entscheidungen > 0 ? ` · ${entscheidungenText(entscheidungen)}` : ''} ·{' '}
+              {abweichungenText(gliederung.abweichungen.length)}
             </span>
             <div className="bb-wf-knopfgruppe">
               <button
@@ -469,13 +491,57 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
               </button>
             ) : null}
             <button
+              ref={hinzuKnopf}
               type="button"
               className="btn btn-sm btn-outline"
-              onClick={() => einfuegenIn(hinzu.stelle)}
-              title={`Status hinzufügen – ${hinzu.text}`}
+              onClick={() => setMenue((m) => !m)}
+              aria-haspopup="menu"
+              aria-expanded={menue}
             >
               <Icon name="plus" size={13} /> Status hinzufügen
             </button>
+            {menue ? (
+              <AufklappMenue
+                anker={hinzuKnopf}
+                titel={hinzu.text}
+                eintraege={[
+                  {
+                    key: 'status',
+                    inhalt: (
+                      <span className="bb-wf-menue-eintrag">
+                        <span className="bb-wf-art-zeichen ton-blue">
+                          <Icon name="aufgabe" size={15} />
+                        </span>
+                        <span>
+                          <b>Status</b>
+                          <small>Ein Schritt im Ablauf mit Terminfrist und Zuständigkeit</small>
+                        </span>
+                      </span>
+                    ),
+                    onWaehle: () => einfuegenIn(hinzu.stelle),
+                  },
+                  {
+                    key: 'entscheidung',
+                    inhalt: (
+                      <span className="bb-wf-menue-eintrag">
+                        <span className="bb-wf-art-zeichen ton-purple">
+                          <Icon name="raute" size={15} />
+                        </span>
+                        <span>
+                          <b>Entscheidung</b>
+                          <small>Verzweigt je nach Antwort, z. B. Ja / Nein</small>
+                        </span>
+                      </span>
+                    ),
+                    onWaehle: () => einfuegenIn(hinzu.stelle, 'entscheidung'),
+                  },
+                ]}
+                onSchliessen={(fokusZurueck) => {
+                  setMenue(false);
+                  if (fokusZurueck) hinzuKnopf.current?.focus();
+                }}
+              />
+            ) : null}
             <button type="button" className="btn-icon bb-wf-zu" onClick={schliessen} aria-label="Schließen">
               ✕
             </button>
@@ -499,9 +565,22 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
                 <Icon name="kette" size={30} strokeWidth={1.3} />
                 <strong>Noch kein Status</strong>
                 <span>Legen Sie den Startstatus an.</span>
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => einfuegenIn({ art: 'anfang' })}>
-                  <Icon name="plus" size={13} /> Status
-                </button>
+                <div className="row">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => einfuegenIn({ art: 'anfang' })}
+                  >
+                    <Icon name="plus" size={13} /> Status
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => einfuegenIn({ art: 'anfang' }, 'entscheidung')}
+                  >
+                    <Icon name="plus" size={13} /> Entscheidung
+                  </button>
+                </div>
               </div>
             ) : (
               <Ablaufbild
@@ -557,6 +636,7 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
               </span>
             )}
             <span className="tertiary">
+              {entscheidungen > 0 ? `${entscheidungenText(entscheidungen)} · ` : ''}
               {abweichungenText(gliederung.abweichungen.length)}
               {uebernahmen > 0
                 ? ` · ${uebernahmen} ${uebernahmen === 1 ? 'Übernahme' : 'Übernahmen'} in andere Workflows`
@@ -732,6 +812,7 @@ function Ablaufbild({
         anmeldungen={belegt(id)}
         einstiege={einstiege.get(id) ?? []}
         zweige={zweige.map((k) => ({
+          text: k.text,
           ziel: zielTextVon(k),
           art: k.art === 'intern' ? (istRueck(k) ? 'rueck' : 'abw') : k.art,
         }))}
@@ -742,10 +823,11 @@ function Ablaufbild({
     );
   };
 
-  /** Übergang im Standardverlauf, mit „+“ zum Einfügen an dieser Stelle. */
-  const verbinder = (stelle: Einfuegestelle | null) => (
+  /** Übergang im Standardverlauf, mit „+“ zum Einfügen an dieser Stelle; bei Entscheidungen mit der Antwort. */
+  const verbinder = (stelle: Einfuegestelle | null, beschriftung: string | null = null) => (
     <div className="bb-wf-verbinder">
       <span className="bb-wf-linie" />
+      {beschriftung ? <span className="bb-wf-antwort standard">{beschriftung}</span> : null}
       {stelle ? (
         <button
           type="button"
@@ -763,12 +845,19 @@ function Ablaufbild({
   );
 
   /** Eine Stelle des Standardverlaufs samt Übergang zur nächsten; nach „Genehmigt“ am Ziel ohne „+“. */
-  const stelle = (id: ID, k: number) => (
-    <>
-      {karte(id, 'haupt')}
-      {verbinder(k === haupt.length - 1 && ende.art === 'ziel' ? null : { art: 'nach', vonId: id })}
-    </>
-  );
+  const stelle = (id: ID, k: number) => {
+    // Antwort einer Entscheidung, die den Standardverlauf fortsetzt
+    const standard = kanten.find((x) => x.von === id && x.standard);
+    return (
+      <>
+        {karte(id, 'haupt')}
+        {verbinder(
+          k === haupt.length - 1 && ende.art === 'ziel' ? null : { art: 'nach', vonId: id },
+          standard?.text || null,
+        )}
+      </>
+    );
+  };
 
   const endknoten = (
     <div
@@ -921,7 +1010,7 @@ function KarteAnzeige({
   fehlt: boolean;
   anmeldungen: number;
   einstiege: string[];
-  zweige: { ziel: string; art: 'abw' | 'rueck' | 'uebernahme' | 'loeschen' | 'unbekannt' }[];
+  zweige: { text: string | null; ziel: string; art: 'abw' | 'rueck' | 'uebernahme' | 'loeschen' | 'unbekannt' }[];
   refFn: (el: HTMLElement | null) => void;
   onClick: (perTastatur: boolean) => void;
   onHover: (id: ID | null) => void;
@@ -945,6 +1034,12 @@ function KarteAnzeige({
         <span className="bb-wf-nr">{nr(nummer)}</span>
       </span>
       <span className={`bb-wf-karte-titel ${s.name.trim() ? '' : 'leer'}`}>{s.name.trim() || 'Bezeichnung fehlt'}</span>
+      {s.entscheidung ? (
+        <span className="bb-wf-frage">
+          <Icon name="raute" size={12} />
+          {s.entscheidung.frage.trim() || 'Entscheidung'}
+        </span>
+      ) : null}
       <span className="bb-wf-karte-fuss">
         <span className="bb-wf-rolle">
           {s.zustaendig ? (
@@ -976,7 +1071,7 @@ function KarteAnzeige({
         <span className="bb-wf-zweige">
           {zweige.map((z, n) => (
             <span key={n} className={`bb-wf-zweig ${z.art}`}>
-              → {z.ziel}
+              {z.text ? <b>{z.text}</b> : null} → {z.ziel}
             </span>
           ))}
         </span>
@@ -1096,6 +1191,8 @@ function Linien({
       return {
         d: `M ${cx} ${g.q.b} L ${cx} ${g.z.t}`,
         spitze: `M ${cx} ${g.z.t} l -4.5 -7 l 9 0 z`,
+        label: { x: cx + 8, y: g.q.b + 16, links: false, unten: false },
+        text: g.k.text,
         rueck: g.rueck,
         aktiv,
         hervor,
@@ -1116,21 +1213,50 @@ function Linien({
             [tx, g.ty],
           ];
     const spitze = g.art === 'zurAbw' ? `M ${tx} ${g.ty} l -7 -4.5 l 0 9 z` : `M ${tx} ${g.ty} l 7 -4.5 l 0 9 z`;
-    return { d: eckenPfad(punkte), spitze, rueck: g.rueck, aktiv, hervor };
+    const links = g.art === 'zurHaupt';
+    // Rechts der Abweichungen: führt die Linie nach oben, steht die Antwort unter ihr
+    const unten = g.art === 'abwAbw' && g.ty < g.sy;
+    return {
+      d: eckenPfad(punkte),
+      spitze,
+      label: { x: links ? g.sx - 8 : g.sx + 8, y: g.sy, links, unten },
+      text: g.k.text,
+      rueck: g.rueck,
+      aktiv,
+      hervor,
+    };
   });
 
   return (
-    <svg className="bb-wf-linien" width={geo.breite} height={geo.hoehe} aria-hidden="true">
-      {linien.map((l, n) => (
-        <g
-          key={n}
-          className={`bb-wf-kante ${l.rueck ? 'rueck' : 'abw'} ${l.aktiv ? 'aktiv' : ''} ${l.hervor ? 'hervor' : ''}`}
-        >
-          <path className="bb-wf-kante-linie" d={l.d} />
-          <path className="bb-wf-kante-spitze" d={l.spitze} />
-        </g>
-      ))}
-    </svg>
+    <>
+      <svg className="bb-wf-linien" width={geo.breite} height={geo.hoehe} aria-hidden="true">
+        {linien.map((l, n) => (
+          <g
+            key={n}
+            className={`bb-wf-kante ${l.rueck ? 'rueck' : 'abw'} ${l.aktiv ? 'aktiv' : ''} ${l.hervor ? 'hervor' : ''}`}
+          >
+            <path className="bb-wf-kante-linie" d={l.d} />
+            <path className="bb-wf-kante-spitze" d={l.spitze} />
+          </g>
+        ))}
+      </svg>
+      {/* Antworten der Entscheidungen an ihren Linien */}
+      {linien.map((l, n) =>
+        l.text ? (
+          <span
+            key={`t${n}`}
+            className={`bb-wf-antwort ${l.rueck ? 'rueck' : 'abw'} ${l.aktiv ? 'aktiv' : ''}`}
+            style={{
+              left: l.label.x,
+              top: l.label.y,
+              transform: `translate(${l.label.links ? '-100%' : '0'}, ${l.label.unten ? '25%' : '-125%'})`,
+            }}
+          >
+            {l.text}
+          </span>
+        ) : null,
+      )}
+    </>
   );
 }
 
@@ -1173,6 +1299,7 @@ function StatusDetails({
   const i = status.indexOf(s);
   const pos = bildFolge.indexOf(s.id);
   const ton = STATUS_TON[s.art];
+  const entscheidung = s.entscheidung;
   const ort = gliederung.haupt.includes(s.id)
     ? 'Standardverlauf'
     : gliederung.unerreichbar.includes(s.id)
@@ -1256,11 +1383,11 @@ function StatusDetails({
       </div>
 
       <div className="bb-wf-panel-titel">
-        <span className={`bb-wf-art-zeichen ${ton ? `ton-${ton}` : ''}`}>
-          <span className="bb-wf-punkt-art" />
+        <span className={`bb-wf-art-zeichen ${entscheidung ? 'ton-purple' : ton ? `ton-${ton}` : ''}`}>
+          {entscheidung ? <Icon name="raute" size={18} /> : <span className="bb-wf-punkt-art" />}
         </span>
         <div>
-          <strong>Status bearbeiten</strong>
+          <strong>{entscheidung ? 'Entscheidung bearbeiten' : 'Status bearbeiten'}</strong>
           <div className="small tertiary">
             Status {nr(i)} im Workflow · {ort}
             {i === 0 ? ' · Startstatus' : ''}
@@ -1279,6 +1406,41 @@ function StatusDetails({
             onChange={(e) => aendern({ name: e.target.value }, `${s.id}:name`)}
           />
         </label>
+        <div className="bb-wf-feld">
+          <span>Typ</span>
+          <div className="segmented bb-wf-typwahl" role="radiogroup" aria-label="Typ">
+            {([false, true] as const).map((alsEntscheidung) => (
+              <button
+                key={String(alsEntscheidung)}
+                type="button"
+                role="radio"
+                aria-checked={!!entscheidung === alsEntscheidung}
+                className={!!entscheidung === alsEntscheidung ? 'active' : ''}
+                onClick={() => onListeAendern((alle) => typSetzen(alle, s.id, alsEntscheidung))}
+              >
+                <Icon name={alsEntscheidung ? 'raute' : 'aufgabe'} size={13} />{' '}
+                {alsEntscheidung ? 'Entscheidung' : 'Status'}
+              </button>
+            ))}
+          </div>
+        </div>
+        {entscheidung ? (
+          <label className="bb-wf-feld">
+            <span>Frage</span>
+            <input
+              className="input"
+              value={entscheidung.frage}
+              placeholder="z. B. Stimmt die BBK zu?"
+              onChange={(e) =>
+                onStatusAendern(
+                  s.id,
+                  (x) => (x.entscheidung ? { ...x, entscheidung: { ...x.entscheidung, frage: e.target.value } } : x),
+                  `${s.id}:frage`,
+                )
+              }
+            />
+          </label>
+        ) : null}
         <div className="bb-wf-feld-reihe">
           <label className="bb-wf-feld">
             <span>Art</span>
@@ -1349,8 +1511,10 @@ function StatusDetails({
           <Icon name="kette" size={14} /> Wie geht es weiter?
         </h4>
         <p className="bb-wf-hilfe">
-          Beim Statuswechsel stehen nur diese Nachfolger zur Wahl. Der erste bildet den Standardverlauf; ein Nachfolger
-          in einem anderen Workflow übernimmt die Anmeldung in die nächste Phase.
+          {entscheidung
+            ? 'Jede Antwort führt zu einem Nachfolger; beim Statuswechsel stehen Frage und Antworten zur Wahl. Die erste Antwort bildet den Standardverlauf.'
+            : 'Beim Statuswechsel stehen nur diese Nachfolger zur Wahl. Der erste bildet den Standardverlauf.'}{' '}
+          Ein Nachfolger in einem anderen Workflow übernimmt die Anmeldung in die nächste Phase.
         </p>
         {s.nachfolger.length === 0 ? (
           <p className="bb-wf-hilfe">Ohne Nachfolger endet der Workflow in diesem Status.</p>
@@ -1358,8 +1522,31 @@ function StatusDetails({
           <div className="bb-wf-nachfolger">
             {s.nachfolger.map((z, n) => (
               <div key={z} className={`bb-wf-nachfolger-karte ${n === 0 ? 'standard' : ''}`}>
-                <div className="bb-wf-nachfolger-zeile">
-                  <span className="bb-wf-punkt" />
+                {entscheidung ? (
+                  <div className="bb-wf-nachfolger-zeile">
+                    <span className="bb-wf-punkt" />
+                    <input
+                      className={`input ${entscheidung.antworten[z]?.trim() ? '' : 'bb-wf-pflicht'}`}
+                      value={entscheidung.antworten[z] ?? ''}
+                      placeholder={antwortVorgabe(n)}
+                      aria-label={`Antwort ${n + 1}`}
+                      onChange={(e) =>
+                        onListeAendern((alle) => antwortSetzen(alle, s.id, z, e.target.value), `${s.id}:${z}:antwort`)
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="btn-icon"
+                      aria-label="Antwort entfernen"
+                      title="Antwort entfernen"
+                      onClick={() => onListeAendern((alle) => nachfolgerEntfernen(alle, s.id, z))}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : null}
+                <div className={entscheidung ? 'bb-wf-weiter' : 'bb-wf-nachfolger-zeile'}>
+                  {entscheidung ? <span>→ Weiter mit</span> : <span className="bb-wf-punkt" />}
                   <select
                     className="select"
                     value={z}
@@ -1373,15 +1560,17 @@ function StatusDetails({
                       <option value={z}>Unbekannter Status – entfällt beim Speichern</option>
                     ) : null}
                   </select>
-                  <button
-                    type="button"
-                    className="btn-icon"
-                    aria-label="Nachfolger entfernen"
-                    title="Nachfolger entfernen"
-                    onClick={() => aendern({ nachfolger: s.nachfolger.filter((x) => x !== z) })}
-                  >
-                    ✕
-                  </button>
+                  {entscheidung ? null : (
+                    <button
+                      type="button"
+                      className="btn-icon"
+                      aria-label="Nachfolger entfernen"
+                      title="Nachfolger entfernen"
+                      onClick={() => onListeAendern((alle) => nachfolgerEntfernen(alle, s.id, z))}
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
                 {n === 0 ? (
                   <span className="bb-wf-standard-marke">Standardverlauf</span>
@@ -1401,12 +1590,13 @@ function StatusDetails({
         <select
           className="select"
           value=""
-          aria-label="Nachfolger hinzufügen"
+          aria-label={entscheidung ? 'Antwort hinzufügen' : 'Nachfolger hinzufügen'}
           onChange={(e) => {
-            if (e.target.value) aendern({ nachfolger: [...s.nachfolger, e.target.value] });
+            const ziel = e.target.value;
+            if (ziel) onListeAendern((alle) => nachfolgerHinzufuegen(alle, s.id, ziel));
           }}
         >
-          <option value="">Nachfolger hinzufügen …</option>
+          <option value="">{entscheidung ? 'Antwort hinzufügen – führt zu …' : 'Nachfolger hinzufügen …'}</option>
           {zielOptionen(null)}
         </select>
       </section>
@@ -1744,6 +1934,10 @@ function Uebersicht({
           <span>Status</span>
         </div>
         <div>
+          <b>{stand.status.filter((x) => x.entscheidung).length}</b>
+          <span>Entscheidungen</span>
+        </div>
+        <div>
           <b>{gliederung.haupt.length}</b>
           <span>im Standardverlauf</span>
         </div>
@@ -1788,14 +1982,14 @@ function Uebersicht({
           <li>
             <span className="bb-wf-legende-linie" />
             <span>
-              <b>Standardverlauf</b> – vom Startstatus über den jeweils ersten Nachfolger bis „Genehmigt“, einer
-              Übernahme in einen anderen Workflow oder „Eintrag löschen“.
+              <b>Standardverlauf</b> – vom Startstatus über den jeweils ersten Nachfolger (bei Entscheidungen die erste
+              Antwort) bis „Genehmigt“, einer Übernahme in einen anderen Workflow oder „Eintrag löschen“.
             </span>
           </li>
           <li>
             <span className="bb-wf-legende-linie abw" />
             <span>
-              <b>Abweichung</b> – Weg über einen anderen Nachfolger, etwa „Abgelehnt“.
+              <b>Abweichung</b> – Weg über einen anderen Nachfolger bzw. eine andere Antwort, etwa „Nein“ → „Abgelehnt“.
             </span>
           </li>
           <li>

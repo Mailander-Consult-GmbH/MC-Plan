@@ -330,6 +330,41 @@
 .bb-wf-zweig.uebernahme { color: var(--accent); }
 .bb-wf-zweig.loeschen { color: var(--rot-text); }
 
+/* Entscheidungen: Frage auf der Karte, Antworten an den Übergängen */
+.bb-wf-frage { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--purple); }
+.bb-wf-antwort {
+  position: absolute;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  max-width: 104px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  background: var(--bg-elev);
+  border: 1px solid var(--separator-strong);
+  color: var(--text-secondary);
+}
+.bb-wf-antwort.standard { color: var(--accent); border-color: var(--accent-soft); }
+.bb-wf-antwort.abw { color: var(--orange-text); border-color: var(--orange); }
+.bb-wf-antwort.rueck { color: var(--purple); border-color: var(--purple); }
+.bb-wf-antwort.aktiv { box-shadow: 0 0 0 2px var(--accent-soft); }
+.bb-wf-verbinder .bb-wf-antwort.standard { top: 9px; left: calc(50% + 10px); }
+.bb-wf-zweig b { font-weight: 600; }
+
+/* Typwahl, Antworten und Menü „Status hinzufügen“ */
+.bb-wf-typwahl { width: 100%; }
+.bb-wf-typwahl button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.bb-wf-weiter { display: flex; flex-direction: column; gap: 4px; padding-left: 15px; }
+.bb-wf-weiter > span { font-size: 11.5px; color: var(--text-tertiary); }
+.bb-wf-menue-eintrag { display: flex; gap: 10px; align-items: flex-start; text-align: left; }
+.bb-wf-menue-eintrag b { display: block; }
+.bb-wf-menue-eintrag small { display: block; font-size: 11.5px; color: var(--text-tertiary); margin-top: 1px; font-weight: 400; }
+
 /* Abweichungen */
 .bb-wf-stapel { display: flex; flex-direction: column; gap: 28px; position: relative; z-index: 1; padding-bottom: 46px; }
 .bb-wf-abw-leer {
@@ -501,6 +536,7 @@
 .bb-wf-vorschau-knoten.ton-orange { background: var(--orange); }
 .bb-wf-vorschau-knoten.ton-red { background: var(--red); }
 .bb-wf-vorschau-knoten.ton-purple { background: var(--purple); }
+.bb-wf-vorschau-knoten.entscheidung { border-radius: 2px; transform: rotate(45deg) scale(0.9); background: var(--purple); }
 .bb-wf-vorschau-strich { flex: none; width: 10px; height: 2px; background: var(--separator-strong); }
 .bb-wf-vorschau-ende { flex: none; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--separator-strong); }
 .bb-wf-vorschau-weiter { margin-left: 6px; font-size: 11.5px; color: var(--accent); white-space: nowrap; }
@@ -544,6 +580,7 @@
 :root[data-farbmodus='kontrast'] .bb-wf-karte.abweichung { border-color: var(--orange); }
 :root[data-farbmodus='kontrast'] .bb-wf-karte.aktiv { border-color: var(--accent); border-width: 2px; }
 :root[data-farbmodus='kontrast'] .bb-wf-kante-linie { stroke-width: 2; }
+:root[data-farbmodus='kontrast'] .bb-wf-antwort { font-weight: 700; }
 
 /* Schmale Bildschirme ------------------------------------------------- */
 @media (max-width: 820px) {

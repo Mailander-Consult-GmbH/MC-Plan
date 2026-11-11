@@ -1,7 +1,7 @@
 /**
  * Kompakte Darstellung eines Workflows in der Workflow-Liste – wie im
  * Planlaufmanagement: die Status des Standardverlaufs als Punktkette (Farbe
- * nach Art des Status), am Ende die Übernahme in den nächsten Workflow bzw.
+ * nach Art des Status, Entscheidungen als lila Raute), am Ende die Übernahme in den nächsten Workflow bzw.
  * ein offener Kreis, dazu die Zahl der Abweichungen (domain/workflowGraph.ts).
  */
 import { STATUS_ART_LABEL, type Workflow } from '../domain/types';
@@ -23,8 +23,12 @@ export function AblaufVorschau({ workflow, workflows }: { workflow: Workflow; wo
           <span key={id} style={{ display: 'contents' }}>
             {k > 0 ? <span className="bb-wf-vorschau-strich" /> : null}
             <span
-              className={`bb-wf-vorschau-knoten ${ton ? `ton-${ton}` : ''}`}
-              title={`${String(i + 1).padStart(2, '0')} · ${s.name || 'ohne Bezeichnung'} (${STATUS_ART_LABEL[s.art]})`}
+              className={`bb-wf-vorschau-knoten ${s.entscheidung ? 'entscheidung' : ton ? `ton-${ton}` : ''}`}
+              title={`${String(i + 1).padStart(2, '0')} · ${s.name || 'ohne Bezeichnung'} (${
+                s.entscheidung
+                  ? `Entscheidung${s.entscheidung.frage ? `: ${s.entscheidung.frage}` : ''}`
+                  : STATUS_ART_LABEL[s.art]
+              })`}
             />
           </span>
         );

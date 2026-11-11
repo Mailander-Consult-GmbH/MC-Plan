@@ -1,10 +1,12 @@
 /**
  * Gliederung eines Workflows für den grafischen Editor und die Vorschau in der
  * Workflow-Liste – aufgebaut wie im Planlaufmanagement, aber für Status mit
- * Nachfolgern statt Schritten mit Antworten. Reine Funktionen.
+ * Nachfolgern. Ein Status kann eine Entscheidung sein: Dann trägt jeder
+ * Nachfolger eine Antwort („Ja“, „Nein“), die an seinem Übergang steht und
+ * bei allen Bearbeitungen mit ihm wandert. Reine Funktionen.
  *
  * Standardverlauf: vom Startstatus (dem ersten der Liste) über den jeweils
- * ersten Nachfolger. Er endet
+ * ersten Nachfolger (bei Entscheidungen die erste Antwort). Er endet
  * - mit einer Übernahme, wenn der erste Nachfolger in einem anderen Workflow liegt,
  * - mit „Eintrag löschen“,
  * - mit einer Schleife, wenn der erste Nachfolger schon im Standardverlauf steht,
@@ -15,7 +17,7 @@
  * werden – auch über Status, in die andere Workflows übernehmen (Einstiege).
  * Was nie erreicht wird, steht unter „Nicht erreichbar“.
  */
-import { LOESCHEN, type ID, type StatusZiel, type Workflow, type WorkflowStatus } from './types';
+import { LOESCHEN, STANDARD_ANTWORTEN, type ID, type StatusZiel, type Workflow, type WorkflowStatus } from './types';
 import { statusInfo, zielText } from './workflow';
 
 /** Wie der Standardverlauf endet. */
@@ -34,6 +36,8 @@ export interface Kante {
   art: 'intern' | 'uebernahme' | 'loeschen' | 'unbekannt';
   /** Teil des Standardverlaufs (auch der Übergang, mit dem er endet). */
   standard: boolean;
+  /** Antwort einer Entscheidung, die zu diesem Nachfolger führt; null bei gewöhnlichen Status. */
+  text: string | null;
 }
 
 export interface Gliederung {
@@ -105,7 +109,13 @@ export function gliedern(status: WorkflowStatus[], workflowId: ID | null, alle: 
       standardKante.add(`${s.id}>${s.nachfolger[0]}`);
   }
   const kanten: Kante[] = status.flatMap((s) =>
-    s.nachfolger.map((nach) => ({ von: s.id, nach, art: art(nach), standard: standardKante.has(`${s.id}>${nach}`) })),
+    s.nachfolger.map((nach) => ({
+      von: s.id,
+      nach,
+      art: art(nach),
+      standard: standardKante.has(`${s.id}>${nach}`),
+      text: s.entscheidung ? (s.entscheidung.antworten[nach] ?? '') : null,
+    })),
   );
 
   // Einstiege aus anderen Workflows
@@ -199,6 +209,23 @@ export function pruefen(w: { name: string; arten: unknown[]; status: WorkflowSta
     });
   }
   for (const s of w.status) {
+    const name = s.name.trim() || 'ohne Bezeichnung';
+    if (s.entscheidung) {
+      if (s.nachfolger.some((z) => !s.entscheidung!.antworten[z]?.trim())) {
+        hinweise.push({
+          text: `Bei der Entscheidung „${name}“ fehlt der Text einer Antwort.`,
+          statusId: s.id,
+          sperrt: true,
+        });
+      }
+      if (s.nachfolger.length < 2) {
+        hinweise.push({
+          text: `Die Entscheidung „${name}“ hat ${s.nachfolger.length === 0 ? 'keine Antwort' : 'nur eine Antwort'} – sie braucht mindestens zwei.`,
+          statusId: s.id,
+          sperrt: false,
+        });
+      }
+    }
     if (s.art === 'leiche' && !s.nachfolger.includes(LOESCHEN)) {
       hinweise.push({
         text: `Aus der Anmeldeleiche „${s.name || 'ohne Bezeichnung'}“ führt kein „Eintrag löschen“.`,
@@ -214,22 +241,50 @@ export function pruefen(w: { name: string; arten: unknown[]; status: WorkflowSta
 /* Bearbeitungen                                                       */
 /* ------------------------------------------------------------------ */
 
+/** Vorbelegter Text der n-ten Antwort: „Ja“, „Nein“, „Antwort 3“ … */
+export const antwortVorgabe = (n: number) => STANDARD_ANTWORTEN[n] ?? `Antwort ${n + 1}`;
+
+/** Status mit neuen Nachfolgern; bei einer Entscheidung wandern die Antworten mit (`umbenannt`: alter → neuer Schlüssel). */
+function mitNachfolgern(
+  s: WorkflowStatus,
+  nachfolger: StatusZiel[],
+  umbenannt: [StatusZiel, StatusZiel][] = [],
+): WorkflowStatus {
+  if (!s.entscheidung) return { ...s, nachfolger };
+  const alt = { ...s.entscheidung.antworten };
+  for (const [von, nach] of umbenannt) {
+    if (alt[von] !== undefined && alt[nach] === undefined) alt[nach] = alt[von];
+  }
+  const antworten: Partial<Record<StatusZiel, string>> = {};
+  nachfolger.forEach((z, n) => (antworten[z] = alt[z] ?? antwortVorgabe(n)));
+  return { ...s, nachfolger, entscheidung: { ...s.entscheidung, antworten } };
+}
+
 /** Stelle zum Einfügen: am Anfang (neuer Startstatus) oder hinter einem Status. */
 export type Einfuegestelle = { art: 'anfang' } | { art: 'nach'; vonId: ID };
 
 /**
  * Fügt einen Status ein. Am Anfang wird er Startstatus und führt zum bisherigen;
  * hinter einem Status übernimmt er dessen ersten Nachfolger (den Weg im
- * Standardverlauf), und der Status führt stattdessen zu ihm.
+ * Standardverlauf), und der Status führt stattdessen zu ihm – bei einer
+ * Entscheidung mit derselben Antwort.
  */
 export function einfuegen(status: WorkflowStatus[], stelle: Einfuegestelle, neu: WorkflowStatus): WorkflowStatus[] {
-  if (stelle.art === 'anfang') return [{ ...neu, nachfolger: status[0] ? [status[0].id] : [] }, ...status];
+  if (stelle.art === 'anfang') return [mitNachfolgern(neu, status[0] ? [status[0].id] : []), ...status];
   const index = status.findIndex((s) => s.id === stelle.vonId);
   if (index < 0) return [...status, neu];
   const von = status[index];
   const erster = von.nachfolger[0];
-  const eingefuegt = { ...neu, nachfolger: erster !== undefined ? [erster] : [] };
-  const ergebnis = status.map((s) => (s.id === von.id ? { ...s, nachfolger: [neu.id, ...s.nachfolger.slice(1)] } : s));
+  const eingefuegt = mitNachfolgern(neu, erster !== undefined ? [erster] : []);
+  const ergebnis = status.map((s) =>
+    s.id === von.id
+      ? mitNachfolgern(
+          s,
+          [neu.id, ...s.nachfolger.slice(1).filter((z) => z !== neu.id)],
+          erster !== undefined ? [[erster, neu.id]] : [],
+        )
+      : s,
+  );
   ergebnis.splice(index + 1, 0, eingefuegt);
   return ergebnis;
 }
@@ -237,7 +292,8 @@ export function einfuegen(status: WorkflowStatus[], stelle: Einfuegestelle, neu:
 /**
  * Entfernt einen Status. Wer zu ihm führte, führt nun zu seinem ersten
  * Nachfolger – so bleibt der Standardverlauf geschlossen –, sofern das kein
- * Rückverweis auf sich selbst und noch kein Nachfolger ist.
+ * Rückverweis auf sich selbst und noch kein Nachfolger ist; die Antwort einer
+ * Entscheidung bleibt dabei erhalten.
  */
 export function entfernen(status: WorkflowStatus[], id: ID): WorkflowStatus[] {
   const weg = status.find((s) => s.id === id);
@@ -253,20 +309,20 @@ export function entfernen(status: WorkflowStatus[], id: ID): WorkflowStatus[] {
         if (neu === undefined || neu === s.id || nachfolger.includes(neu)) continue;
         nachfolger.push(neu);
       }
-      return { ...s, nachfolger };
+      return mitNachfolgern(s, nachfolger, ersatz !== undefined ? [[id, ersatz]] : []);
     });
 }
 
-/** Macht einen Nachfolger zum ersten – er bildet dann den Standardverlauf. */
+/** Macht einen Nachfolger (eine Antwort) zum ersten – er bildet dann den Standardverlauf. */
 export function alsStandard(status: WorkflowStatus[], id: ID, ziel: StatusZiel): WorkflowStatus[] {
   return status.map((s) =>
     s.id === id && s.nachfolger.includes(ziel)
-      ? { ...s, nachfolger: [ziel, ...s.nachfolger.filter((z) => z !== ziel)] }
+      ? mitNachfolgern(s, [ziel, ...s.nachfolger.filter((z) => z !== ziel)])
       : s,
   );
 }
 
-/** Ersetzt einen Nachfolger (ein schon vorhandenes Ziel entfällt doppelt nicht). */
+/** Ersetzt einen Nachfolger – die Antwort bleibt; ein schon vorhandenes Ziel steht nicht doppelt. */
 export function nachfolgerErsetzen(
   status: WorkflowStatus[],
   id: ID,
@@ -276,7 +332,51 @@ export function nachfolgerErsetzen(
   return status.map((s) => {
     if (s.id !== id) return s;
     const nachfolger = s.nachfolger.map((z) => (z === alt ? neu : z));
-    return { ...s, nachfolger: nachfolger.filter((z, i) => nachfolger.indexOf(z) === i) };
+    const ohneDoppel = nachfolger.filter((z, i) => nachfolger.indexOf(z) === i);
+    if (!s.entscheidung) return { ...s, nachfolger: ohneDoppel };
+    // Die Antwort zieht zum neuen Ziel um (auch wenn es schon eine eigene hatte)
+    const antworten = { ...s.entscheidung.antworten, [neu]: s.entscheidung.antworten[alt] ?? '' };
+    return mitNachfolgern({ ...s, entscheidung: { ...s.entscheidung, antworten } }, ohneDoppel);
+  });
+}
+
+/** Hängt einen Nachfolger an – bei einer Entscheidung mit vorbelegter Antwort. */
+export function nachfolgerHinzufuegen(status: WorkflowStatus[], id: ID, ziel: StatusZiel): WorkflowStatus[] {
+  return status.map((s) =>
+    s.id === id && !s.nachfolger.includes(ziel) ? mitNachfolgern(s, [...s.nachfolger, ziel]) : s,
+  );
+}
+
+/** Entfernt einen Nachfolger samt seiner Antwort. */
+export function nachfolgerEntfernen(status: WorkflowStatus[], id: ID, ziel: StatusZiel): WorkflowStatus[] {
+  return status.map((s) =>
+    s.id === id
+      ? mitNachfolgern(
+          s,
+          s.nachfolger.filter((z) => z !== ziel),
+        )
+      : s,
+  );
+}
+
+/** Ändert den Text einer Antwort. */
+export function antwortSetzen(status: WorkflowStatus[], id: ID, ziel: StatusZiel, text: string): WorkflowStatus[] {
+  return status.map((s) =>
+    s.id === id && s.entscheidung
+      ? { ...s, entscheidung: { ...s.entscheidung, antworten: { ...s.entscheidung.antworten, [ziel]: text } } }
+      : s,
+  );
+}
+
+/**
+ * Macht einen Status zur Entscheidung (Antworten „Ja“, „Nein“, „Antwort 3“ …
+ * je Nachfolger) bzw. wieder zum gewöhnlichen Status (Frage und Antworten entfallen).
+ */
+export function typSetzen(status: WorkflowStatus[], id: ID, entscheidung: boolean): WorkflowStatus[] {
+  return status.map((s) => {
+    if (s.id !== id || !!s.entscheidung === entscheidung) return s;
+    if (!entscheidung) return { ...s, entscheidung: null };
+    return mitNachfolgern({ ...s, entscheidung: { frage: '', antworten: {} } }, s.nachfolger);
   });
 }
 
@@ -290,18 +390,23 @@ export function verschieben(status: WorkflowStatus[], id: ID, richtung: -1 | 1):
   return neu;
 }
 
-/** Kopie eines Status direkt dahinter – mit denselben Nachfolgern; noch führt nichts zu ihr. */
+/** Kopie eines Status direkt dahinter – mit denselben Nachfolgern und Antworten; noch führt nichts zu ihr. */
 export function duplizieren(status: WorkflowStatus[], id: ID, neueId: ID): WorkflowStatus[] {
   const i = status.findIndex((s) => s.id === id);
   if (i < 0) return status;
   const alt = status[i];
-  const kopie: WorkflowStatus = {
-    ...alt,
-    id: neueId,
-    name: alt.name.trim() ? `${alt.name.trim()} (Kopie)` : '',
-    frist: { ...alt.frist },
-    nachfolger: alt.nachfolger.filter((z) => z !== alt.id),
-  };
+  const kopie = mitNachfolgern(
+    {
+      ...alt,
+      id: neueId,
+      name: alt.name.trim() ? `${alt.name.trim()} (Kopie)` : '',
+      frist: { ...alt.frist },
+      entscheidung: alt.entscheidung
+        ? { frage: alt.entscheidung.frage, antworten: { ...alt.entscheidung.antworten } }
+        : null,
+    },
+    alt.nachfolger.filter((z) => z !== alt.id),
+  );
   const neu = [...status];
   neu.splice(i + 1, 0, kopie);
   return neu;

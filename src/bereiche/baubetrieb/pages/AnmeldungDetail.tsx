@@ -202,7 +202,9 @@ export function AnmeldungDetail({
 
                     {imWorkflow.length > 0 ? (
                       <div className="row wrap" style={{ gap: 6 }}>
-                        <span className="small muted">Weiter mit:</span>
+                        <span className="small muted">
+                          {s.entscheidung?.frage.trim() ? s.entscheidung.frage.trim() : 'Weiter mit:'}
+                        </span>
                         {imWorkflow.map((n) => (
                           <button key={n} type="button" className="antwort-chip" style={rot(n)} onClick={() => setWechsel(n)}>
                             {nachfolgerText(data.workflows, anmeldung.statusId, n)}
