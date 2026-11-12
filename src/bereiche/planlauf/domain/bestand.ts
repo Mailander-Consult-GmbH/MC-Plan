@@ -26,6 +26,8 @@ import {
   type Loeschvermerk,
   type PlanDocument,
   type PlanRun,
+  type Role,
+  type Zuordnung,
 } from './types';
 
 /** Wer wann eine Änderung vornimmt. */
@@ -223,6 +225,30 @@ export function funktionLoeschen(daten: AppData, id: ID, vorgang: Vorgang): AppD
       c.zuordnungen.some((z) => z.roleId === id) ? { ...c, zuordnungen: c.zuordnungen.filter((z) => z.roleId !== id) } : c,
     ),
     geloescht: [...(daten.geloescht ?? []), loeschvermerk('funktion', id, rolle.projectId, funktionsName(rolle), vorgang)],
+  };
+}
+
+/**
+ * Ändert eine Projektfunktion. Wechselt ihr Gewerk, folgt das Gewerk an den
+ * Zuordnungen der Personen, die sie besetzen: Es spiegelt dort nur die
+ * Funktion, und ein stehengebliebenes Gewerk zöge beim Abgleich mit einer
+ * Sicherung ein Gewerk mit, das die Funktion nicht mehr führt.
+ */
+export function funktionAendern(daten: AppData, id: ID, patch: Partial<Role>): AppData {
+  const alt = daten.roles.find((r) => r.id === id);
+  if (!alt) return daten;
+  const neu: Role = { ...alt, ...patch };
+  const roles = daten.roles.map((r) => (r.id === id ? neu : r));
+  if ((neu.gewerk ?? null) === (alt.gewerk ?? null)) return { ...daten, roles };
+  const veraltet = (z: Zuordnung) => z.roleId === id && (z.gewerk ?? null) !== (neu.gewerk ?? null);
+  return {
+    ...daten,
+    roles,
+    contacts: daten.contacts.map((c) =>
+      c.zuordnungen.some(veraltet)
+        ? { ...c, zuordnungen: c.zuordnungen.map((z) => (veraltet(z) ? { ...z, gewerk: neu.gewerk } : z)) }
+        : c,
+    ),
   };
 }
 

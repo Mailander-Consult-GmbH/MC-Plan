@@ -75,12 +75,23 @@ function gewerkeVon(rolle: { gewerke?: string[]; gewerk?: string | null; gewerkB
 const gewerkId = (id: string, gewerk: string | null) => (gewerk ? `${id}~${gewerk}` : id);
 
 /**
+ * Ob eine Funktion schon je Gewerk geführt wird (aktuelles Modell: Feld
+ * `gewerk`, auch `null`). Nur Funktionen des früheren Modells (Liste `gewerke`
+ * bzw. `gewerkBezug`) werden aufgeteilt und erhalten dabei neue Kennungen.
+ */
+const jeGewerkGefuehrt = (rolle: object): boolean => (rolle as { gewerk?: string | null }).gewerk !== undefined;
+
+/**
  * Teilt eine Funktion mit mehreren Gewerken in je eine Funktion pro Gewerk auf
  * („Fachplaner OLA“ und „Fachplaner KIB“ sind verschiedene Funktionen).
+ * Funktionen, die schon je Gewerk geführt werden, behalten ihre Kennung: Die
+ * Umstellung läuft bei jeder neuen Fassung, und mit jedem Mal hinge sonst
+ * „~Gewerk“ an – Löschvermerke und Besetzungen träfen die Funktion nicht mehr.
  */
 function rollenAufteilen<T extends { id: string; name: string }>(rollen: T[]): (Omit<T, 'gewerke'> & { gewerk: string | null })[] {
   return rollen.flatMap((r) => {
     const { gewerke: _alt, ...rest } = r as T & { gewerke?: string[] };
+    if (jeGewerkGefuehrt(r)) return [{ ...rest, name: rollenName(r.name) } as never];
     const gewerke = gewerkeVon(r as never);
     if (gewerke.length === 0) return [{ ...rest, name: rollenName(r.name), gewerk: null } as never];
     return gewerke.map(
@@ -577,6 +588,10 @@ function migriere(daten: AppData): AppData {
         zuordnungen: zuordnungen.flatMap((z) => {
           const alteRolle = alteRollen.find((r) => r.id === z.roleId);
           if (!alteRolle) return [z];
+          // Funktion schon je Gewerk geführt: Die Kennung bleibt (siehe
+          // rollenAufteilen), und das Gewerk der Zuordnung folgt der Funktion –
+          // auch wenn es an der Zuordnung noch anders steht, bleibt die Besetzung.
+          if (jeGewerkGefuehrt(alteRolle)) return [{ roleId: z.roleId, gewerk: alteRolle.gewerk ?? null }];
           const gewerke = gewerkeVon(alteRolle as never);
           if (gewerke.length === 0) return [{ roleId: z.roleId, gewerk: null }];
           // Ohne angegebenes Gewerk galt die Besetzung für alle Gewerke der Funktion

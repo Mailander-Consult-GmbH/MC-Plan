@@ -31,6 +31,7 @@ import {
   bestandAendern,
   eintraegeAendern,
   eintraegeLoeschen,
+  funktionAendern,
   funktionLoeschen,
   gewerkLoeschen,
   kontaktLoeschen,
@@ -466,7 +467,7 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
       mutate((d) => ({ ...d, roles: [...d.roles, { ...r, id }] }));
       return id;
     },
-    updateRole: (id, patch) => mutate((d) => ({ ...d, roles: upd(d.roles, id, patch) })),
+    updateRole: (id, patch) => mutate((d) => funktionAendern(d, id, patch)),
     deleteRole: (id) => mutate((d, v) => funktionLoeschen(d, id, v)),
 
     addContact: (c) => {
