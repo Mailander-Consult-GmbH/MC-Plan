@@ -76,6 +76,7 @@ async function entpacke(puffer: ArrayBuffer, daten: DataView, eintrag: ZipEintra
 /* ---------------------------- XLSX ------------------------------- */
 
 const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const NS_BEZIEHUNG = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 
 /** Spaltenname zu Index: A → 0, AA → 26. */
 function spaltenIndex(ref: string): number {
@@ -136,23 +137,49 @@ export async function xlsxLesen(datei: File): Promise<GeleseneTabelle[]> {
     nullen = nullenFormate(new DOMParser().parseFromString(await entpacke(puffer, daten, stilEintrag), 'application/xml'));
   }
 
-  // Blattnamen in der Reihenfolge der Mappe
+  // Blätter in der Reihenfolge der Mappe: Name aus workbook.xml, Datei über die
+  // Beziehung r:id (xl/_rels/workbook.xml.rels). Die Nummer im Dateinamen sagt
+  // nichts über die Reihenfolge – wer Blätter umordnet, benennt die Dateien
+  // nicht unbedingt um, und dann stünden die Namen an fremden Inhalten.
+  const ziele = new Map<string, string>();
+  const relEintrag = finde('xl/_rels/workbook.xml.rels');
+  if (relEintrag) {
+    const xml = new DOMParser().parseFromString(await entpacke(puffer, daten, relEintrag), 'application/xml');
+    for (const rel of Array.from(xml.getElementsByTagNameNS('*', 'Relationship'))) {
+      const id = rel.getAttribute('Id');
+      const ziel = rel.getAttribute('Target');
+      if (id && ziel) ziele.set(id, ziel.startsWith('/') ? ziel.slice(1) : `xl/${ziel}`);
+    }
+  }
   const namen: string[] = [];
+  let blaetter: { name: string; eintrag: ZipEintrag }[] = [];
+  let zugeordnet = false;
   const wbEintrag = finde('xl/workbook.xml');
   if (wbEintrag) {
     const xml = new DOMParser().parseFromString(await entpacke(puffer, daten, wbEintrag), 'application/xml');
-    for (const sheet of Array.from(xml.getElementsByTagNameNS(NS, 'sheet'))) {
-      namen.push(sheet.getAttribute('name') ?? `Tabelle${namen.length + 1}`);
+    const sheets = Array.from(xml.getElementsByTagNameNS(NS, 'sheet'));
+    zugeordnet = sheets.length > 0;
+    for (const sheet of sheets) {
+      const name = sheet.getAttribute('name') ?? `Tabelle${namen.length + 1}`;
+      namen.push(name);
+      const ziel = ziele.get(sheet.getAttributeNS(NS_BEZIEHUNG, 'id') ?? sheet.getAttribute('r:id') ?? '');
+      const eintrag = ziel ? finde(ziel) : undefined;
+      if (!ziel || !eintrag) zugeordnet = false;
+      // Diagrammblätter u. Ä. stehen auch in der Mappe, haben aber keine Zellen
+      else if (ziel.startsWith('xl/worksheets/')) blaetter.push({ name, eintrag });
     }
   }
-
-  const blattEintraege = eintraege
-    .filter((e) => /^xl\/worksheets\/sheet\d+\.xml$/.test(e.name))
-    .sort((a, b) => Number(/(\d+)/.exec(a.name)![1]) - Number(/(\d+)/.exec(b.name)![1]));
+  // Fehlt die Zuordnung (oder passt sie nicht), wie bisher nach der Nummer im Dateinamen
+  if (!zugeordnet) {
+    blaetter = eintraege
+      .filter((e) => /^xl\/worksheets\/sheet\d+\.xml$/.test(e.name))
+      .sort((a, b) => Number(/(\d+)/.exec(a.name)![1]) - Number(/(\d+)/.exec(b.name)![1]))
+      .map((eintrag, i) => ({ name: namen[i] ?? `Tabelle${i + 1}`, eintrag }));
+  }
 
   const tabellen: GeleseneTabelle[] = [];
-  for (let i = 0; i < blattEintraege.length; i++) {
-    const xml = new DOMParser().parseFromString(await entpacke(puffer, daten, blattEintraege[i]), 'application/xml');
+  for (const blatt of blaetter) {
+    const xml = new DOMParser().parseFromString(await entpacke(puffer, daten, blatt.eintrag), 'application/xml');
     const zeilen: string[][] = [];
     const zeilenNummern: number[] = [];
     let letzteNummer = 0;
@@ -163,8 +190,12 @@ export async function xlsxLesen(datei: File): Promise<GeleseneTabelle[]> {
       const nummer = Number.isInteger(r) && r > letzteNummer ? r : letzteNummer + 1;
       letzteNummer = nummer;
       const zeile: string[] = [];
+      let letzteSpalte = -1;
       for (const c of Array.from(row.getElementsByTagNameNS(NS, 'c'))) {
-        const spalte = spaltenIndex(c.getAttribute('r') ?? 'A');
+        // Spalte aus dem Zellbezug; fehlt er, folgt die Zelle auf die vorige (wie bei den Zeilen)
+        const bezug = c.getAttribute('r');
+        const spalte = bezug ? spaltenIndex(bezug) : letzteSpalte + 1;
+        letzteSpalte = spalte;
         const typ = c.getAttribute('t');
         let wert = '';
         if (typ === 's') {
@@ -189,7 +220,7 @@ export async function xlsxLesen(datei: File): Promise<GeleseneTabelle[]> {
       }
     }
 
-    tabellen.push({ name: namen[i] ?? `Tabelle${i + 1}`, zeilen, zeilenNummern });
+    tabellen.push({ name: blatt.name, zeilen, zeilenNummern });
   }
   return tabellen;
 }
