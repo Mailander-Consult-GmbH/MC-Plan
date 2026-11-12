@@ -107,7 +107,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Projektkopf zwischen „Bearbeiten“ und „Löschen“; wer den Knopf einrahmt, fragt mit
   `useArchivierbar`, ob er etwas zeigt – nicht bei einem archivierten oder dem Register
   unbekannten Projekt) und `ArchivHinweis` oben im archivierten
-  Projekt mit „Aus dem Archiv holen“; archivierte Projekte fehlen in Übersicht und Seitenleiste
+  Projekt mit „Aus dem Archiv holen“ (der Tastaturfokus geht vom einen Knopf an den anderen,
+  `fokusNachArchiv`; sind alle Projekte eines Bereichs archiviert, zeigt seine Projektliste
+  „Kein aktives Projekt“ statt „Kein Projekt gefunden“); archivierte Projekte fehlen in Übersicht und Seitenleiste
   (`useArchivierte`) und in den bereichsweiten Fristenlisten (`pages/Fristen.tsx` im
   Planlaufmanagement, `pages/Termine.tsx` samt Zähler der Seitenleiste in der
   Baubetriebsplanung), im Projekt selbst bleiben die Fristen sichtbar;
@@ -136,7 +138,11 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `nachRaeumenSpeichern`). `main.tsx` importiert `global.css` vor der Shell, damit
   Bereichsregeln gleicher Spezifität gewinnen – Reihenfolge nicht umdrehen. Der Ampelpunkt `.dot`
   ist `inline-block` (hat auch in einer Tabellenzelle eine Größe), der Dialogfuß `.modal-footer`
-  bricht um – beides in `global.css`, nicht je Bereich per Inline-Style nachbessern.
+  bricht um, anklickbare Karten `.card-click` haben keinen Innenabstand des Browsers
+  (`padding: 0`, stehen so in einer Flucht mit nicht anklickbaren) – alles in `global.css`, nicht
+  je Bereich per Inline-Style nachbessern. `xlsxLesen.ts` ordnet die Blätter einer Mappe über
+  ihre Beziehung `r:id` (`xl/_rels/workbook.xml.rels`) zu, nicht über die Nummer im Dateinamen
+  (nur als Rückfall); Zellen ohne Zellbezug folgen auf die vorige.
 * `src/bereiche/planlauf/`:
   * `domain/types.ts` Datenmodell (flache Listen in `AppData`, Verweise über IDs – außer: Schritte
     nennen ihre Funktion per `roleName`, Gewerke sind Namen; Umbenennungen müssen diese Stellen
@@ -203,7 +209,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   „Status ändern“ ist `NachfolgerAuswahl` (Haken in `components/baubetrieb.css`, Präfix
   `bb-`; das Menü ist `AufklappMenue` aus `src/shared/menue.tsx`). Neue Felder dort über `DATEN_VERSION`
   (`baubetrieb/domain/types.ts`) und `migriere()` (`baubetrieb/store/storage.ts`). Die festen IDs
-  der Standard-Status nicht ändern – `STATUS_AUS_NUMMER` ordnet ihnen ältere Stände zu.
+  der Standard-Status nicht ändern – `STATUS_AUS_NUMMER` ordnet ihnen ältere Stände zu. Stände
+  bis Fassung 5 führten die KM-Runde in der Maßnahmenart; die Umstellung übernimmt sie nach
+  `kmRunde` (`RUNDE_BIS_FASSUNG5` in `store/storage.ts`).
 * `src/bereiche/projektsteuerung/` – gleich aufgebaut, Schlüssel `projektsteuerung.data.v1`:
   `domain/types.ts` Datenmodell (projektübergreifende `Funktion`, `Beteiligter` mit `funktionId`,
   `Protokoll`), `domain/protokoll.ts` Reihen, Folgeprotokoll, Übernahme aus dem Protokoll-Tool und
@@ -303,7 +311,11 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 * Keine neuen Laufzeitabhängigkeiten ohne Rückfrage – Router, Excel-Import/-Export, PDF-Druck und
   Icons sind bewusst selbst geschrieben; Laufzeitabhängigkeiten sind nur `react`/`react-dom`.
 * Gestaltung über die Design-Tokens in `src/shared/global.css`; die Oberfläche bleibt bis etwa
-  400 px Breite bedienbar, der Farbmodus `kontrast` muss weiter funktionieren.
+  400 px Breite bedienbar, der Farbmodus `kontrast` muss weiter funktionieren. Knopfleisten über
+  Listen brechen um (`row wrap`). Eine Suche ohne Treffer ist kein leerer Bestand: eigener
+  Leerzustand ohne Anlegen-Knopf („Keine Funktion gefunden“ / „Für diese Suche gibt es keinen
+  Treffer.“). Ein volles Datum erscheint zweistellig als TT.MM.JJJJ (`formatDate` aus
+  `src/shared/dates.ts`), nicht über `toLocaleDateString('de-DE')` ohne Angaben zur Stellenzahl.
 * Sprache in Oberfläche, Bezeichnern, Kommentaren und Commit-Nachrichten ist Deutsch.
 
 ## Hinweise für Prüfungen im Browser

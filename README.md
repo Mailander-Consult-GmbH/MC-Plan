@@ -291,7 +291,8 @@ Seite verschwindet das gerade geöffnete wieder – der Dialog nennt vorher, wel
 entfallen. Gewerke gelten projektübergreifend: angelegt oder gelöscht wird überall, also auch im
 Reiter *Funktionen* im Hauptmenü, und jedes Gewerk des Projekts steht in der **Planliste** für Pläne,
 Planverzeichnisse und Planpakete zur Auswahl – darüber findet ein Planlauf die Verantwortlichen seines Gewerks.
-Über *Neue Funktion* entsteht eine weitere Funktion im gewählten Gewerk. Beide Wege führen zum Ziel: **Funktion anlegen und dort die Person
+Über *Neue Funktion* entsteht eine weitere Funktion im gewählten Gewerk; eine Suche ohne Treffer
+meldet „Keine Funktion gefunden“ und bietet kein Anlegen an. Beide Wege führen zum Ziel: **Funktion anlegen und dort die Person
 eintragen** oder mit *Person hinzufügen* die **Person erfassen und die Funktion gleich dabei
 zuweisen** – die Zuweisung kann offen bleiben und später nachgeholt werden. Personen ohne Funktion –
 aus einem Import, nach einem Wechsel oder bewusst ohne Zuordnung – stehen in einer eigenen Liste
@@ -640,7 +641,7 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
 * Der **Kopf** des Planlaufs zeigt den Fortschritt, das voraussichtliche bzw. tatsächliche Ende samt
   geplantem Ende, den Verzug gegenüber der Basis und den am stärksten überfälligen Schritt.
 * Jede vorbereitete E-Mail wird am Schritt als **Erinnerung** vermerkt („E-Mail vorbereitet am … an
-  …“). Die Karte **Protokoll** führt alle Änderungen am Lauf – wer wann einen Schritt erledigt,
+  …“, das Datum zweistellig als TT.MM.JJJJ). Die Karte **Protokoll** führt alle Änderungen am Lauf – wer wann einen Schritt erledigt,
   wieder geöffnet, angepasst, eine Person gewählt oder eine E-Mail vorbereitet hat, Rücksprünge,
   geänderte Arbeitstage, Feiertage oder Eingang Soll –, neueste zuerst; berechnete Termine
   erscheinen dort nicht.
@@ -838,7 +839,7 @@ Speichert ein anderes Fenster (Tab oder installierte App) den Bestand, lädt die
 Stand nach, statt ihn mit dem eigenen älteren zu überschreiben (`useFremdeAenderung`).
 
 ### Projekteinstellungen
-Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage und Absenderangaben sowie – wie im Reiter
+Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage (aufgelistet als TT.MM.JJJJ) und Absenderangaben sowie – wie im Reiter
 *Planläufe* – der **Export**. Unten stehen die Karten **Projekt archivieren** (mit **Archivieren**;
 sie steht nur, wenn es etwas zu archivieren gibt – das Projekt also nicht schon archiviert und dem
 Projektregister bekannt ist, siehe [Gemeinsame Projekte](#gemeinsame-projekte)) und
@@ -1092,13 +1093,16 @@ Standard-Workflows neu). Stände der ersten Entwurfsfassung mit Statusnummern we
 eingestellte Nachhak-Abstand gilt für deren Nachhak-Termine. Ältere Stände übernehmen die
 Phasennamen SKM, MKM, KM (n-2 & n-1) und KKM (unterjährig), sofern Name, Kurzbezeichnung bzw.
 Beschreibung der Standard-Workflows nicht geändert wurden; die Maßnahmenart PzE wird MKM,
-A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A. Aus der bisherigen geplanten Sperrzeit eines
+A_Vor_N-2, A_Vor_N-1 und A_unterjahr werden A – aus A_Vor_N-2 und A_Vor_N-1 bleibt die KM-Runde
+(N-2 bzw. N-1) an der Anmeldung erhalten, damit die Terminfrist weiter gegen die richtige Runde
+rechnet. Aus der bisherigen geplanten Sperrzeit eines
 Projekts werden seine betroffenen Fahrplanjahre. Die Status der Standard-Workflows erhalten ihre
 vorgegebene Zuständigkeit (Fassung 8). Fassung 9 ergänzt an den Anmeldungen den Anmelder und den
 Tag der letzten Änderung der Merkmale (beide leer; gesetzt wird er nur bei einer tatsächlichen
 Änderung – „Speichern“ ohne Änderung schließt den Dialog nur, ohne „Anmeldung gespeichert.“, und
 lässt den Sachstand stehen). Fassung 10 ersetzt Bf/Strecke und Gewerk/Tätigkeit durch den Titel
-(beim Umstellen „Bf/Strecke – Gewerk“), ergänzt Projektnummer (BBPNeo) und KM-Runde (leer) und die
+(beim Umstellen „Bf/Strecke – Gewerk“), ergänzt Projektnummer (BBPNeo) und KM-Runde (leer, soweit
+nicht aus der alten Maßnahmenart übernommen) und die
 Statuszuordnung des BBPNeo-Imports (Vorgabe). Fassung 11 führt Entscheidungen an Status ein; die
 Status der Standard-Workflows übernehmen die mitgelieferten Entscheidungen, solange ihre Nachfolger
 die Antworten noch enthalten. Name unter „Angemeldet als“ und
@@ -1143,7 +1147,8 @@ seinen Funktionen. Mitgeliefert sind typische Funktionen einer DB-Baumaßnahme (
 Auftraggeber, Projektleitung, Teilprojektleitung, Projektsteuerung, Objektplanung, Bauüberwachung,
 Bauunternehmen, Prüfsachverständiger, Eisenbahn-Bundesamt; je Gewerk 50 Hz, KIB, LST, OLA und TK
 die Fachplanung, für LST und OLA zusätzlich die Bauüberwachung). Funktionen und Gewerke, die noch
-Projektbeteiligten zugeordnet sind, lassen sich nicht löschen.
+Projektbeteiligten zugeordnet sind, lassen sich nicht löschen. Eine Suche ohne Treffer meldet
+„Keine Funktion gefunden“ und bietet kein Anlegen an.
 
 ### Projektbeteiligte
 Aufgebaut wie die Seite **Funktion** im Planlaufmanagement, aber ohne leere Funktionen: Es stehen
@@ -1364,7 +1369,10 @@ Angelegt, bearbeitet und gelöscht wird in den Bereichen.
   Baubetriebsplanung und in der Projektsteuerung oben im Projekt zwischen **Bearbeiten** und
   **Löschen**; eine Rückfrage gibt es nicht, eine Meldung nennt das Archiv. Ein archiviertes Projekt
   zeigt oben den Hinweis „Dieses Projekt ist in … archiviert. Es erscheint nicht in Übersicht und
-  Seitenleiste.“ mit **Aus dem Archiv holen** – der Knopf *Archivieren* fehlt dann. Auch die
+  Seitenleiste.“ mit **Aus dem Archiv holen** – der Knopf *Archivieren* fehlt dann; der
+  Tastaturfokus geht dabei vom einen Knopf an den anderen, statt verloren zu gehen. Sind alle
+  Projekte eines Bereichs archiviert, sagt die Projektliste „Kein aktives Projekt“ und verweist
+  auf das Archiv darunter. Auch die
   bereichsweiten Fristenlisten lassen archivierte Projekte weg – *Fristen & Erinnerungen* im
   Planlaufmanagement, *Termine & Nachhaken* samt Zähler in der Baubetriebsplanung –; im Projekt
   selbst bleiben die Fristen sichtbar. Archiviert wird
@@ -1475,7 +1483,8 @@ src/
     dates.ts     Fristen- und Datumsrechnung
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit (mit Zellformaten)
     xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe (Zahlenformate aus Nullen wie „00000“
-                 behalten führende Nullen)
+                 behalten führende Nullen; Blätter über ihre Beziehung r:id zugeordnet, nicht
+                 über die Nummer im Dateinamen; Zellen ohne Zellbezug folgen auf die vorige)
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers; Fassung des Builds und Prüfung auf eine neuere
     global.css   Design-Tokens im hellen Apple-Erscheinungsbild
