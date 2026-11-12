@@ -1,6 +1,6 @@
 /** Projekteinstellungen: Fristenrechnung, Erinnerungen und E-Mail-Vorlagen. */
 import { useState } from 'react';
-import { ArchivKnopf, useArchivierte, useLoeschHinweis } from '../../../../gemeinsam/ProjektBereiche';
+import { ArchivKnopf, useArchivierbar, useLoeschHinweis } from '../../../../gemeinsam/ProjektBereiche';
 import { type Project } from '../../domain/types';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
@@ -25,7 +25,8 @@ export function Einstellungen({ project, navigate }: { project: Project; navigat
   const [neuerFeiertag, setNeuerFeiertag] = useState('');
   const [exportOffen, setExportOffen] = useState(false);
   const loeschHinweis = useLoeschHinweis('planlauf', project.id);
-  const archiviert = useArchivierte('planlauf').has(project.id);
+  // Die Karte steht nur, wenn es etwas zu archivieren gibt (nicht archiviert, dem Register bekannt)
+  const archivierbar = useArchivierbar('planlauf', project.id);
 
   const s = project.settings;
   const setSettings = (patch: Partial<typeof s>) => updateProject(project.id, { settings: { ...s, ...patch } });
@@ -143,7 +144,7 @@ export function Einstellungen({ project, navigate }: { project: Project; navigat
         </div>
       </Card>
 
-      {archiviert ? null : (
+      {!archivierbar ? null : (
         <Card>
           <CardHeader
             titel="Projekt archivieren"

@@ -48,7 +48,7 @@ export function RegisterHinweis() {
 
   const ungespeichert = zustand === 'ok' && gespeichert !== 'ok';
   return (
-    <div ref={anker} tabIndex={-1} className={zustand !== 'ok' || ungespeichert ? 'gem-registerhinweis' : undefined}>
+    <div ref={anker} tabIndex={-1} className={zustand !== 'ok' || ungespeichert ? 'gem-registeranker gem-registerhinweis' : 'gem-registeranker'}>
       {zustand !== 'ok' ? (
         <Callout ton="error" icon="!" role="alert">
           <strong>

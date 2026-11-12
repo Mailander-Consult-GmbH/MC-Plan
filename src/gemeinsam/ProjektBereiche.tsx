@@ -5,9 +5,8 @@
  *   Bereichen das Projekt noch geführt wird,
  * * `FremdeProjekte` – grau hinterlegter Abschnitt „Projekte aus anderen
  *   Bereichen“ mit „Übernehmen in …“,
- * * `andereBereiche`, `vorgeseheneBereiche`, `useLoeschHinweis` – für
- *   Löschdialoge und Löschsperren,
- * * `ArchivKnopf`, `ArchivHinweis`, `ArchivAbschnitt`, `useArchivierte` – das
+ * * `andereBereiche`, `useLoeschHinweis` – für Löschdialoge,
+ * * `ArchivKnopf`, `useArchivierbar`, `ArchivHinweis`, `ArchivAbschnitt`, `useArchivierte` – das
  *   Archiv je Bereich: Archiviert wird im Projekt („Archivieren“), zurückgeholt
  *   im archivierten Projekt („Aus dem Archiv holen“); der Archivstand steht
  *   allein im Register (`bereichArchivieren`),
@@ -50,14 +49,6 @@ export function useArchivierte(bereich: ProjektBereich): Set<ID> {
  */
 export function andereBereiche(register: Register, bereich: ProjektBereich, lokaleId: ID): string {
   return bereicheMitStand(register, bereich, lokaleId, false);
-}
-
-/**
- * Titel der anderen Bereiche, für die das Projekt erst zur Übernahme
- * vorgesehen ist (offene Mitgliedschaft) – Aufbau wie `andereBereiche`.
- */
-export function vorgeseheneBereiche(register: Register, bereich: ProjektBereich, lokaleId: ID): string {
-  return bereicheMitStand(register, bereich, lokaleId, true);
 }
 
 function bereicheMitStand(register: Register, bereich: ProjektBereich, lokaleId: ID, offen: boolean): string {
@@ -143,6 +134,15 @@ function useArchiv(bereich: ProjektBereich, lokaleId: ID): { archiviert: boolean
  * archivierten Projekt steht stattdessen der `ArchivHinweis` mit „Aus dem
  * Archiv holen“.
  */
+/**
+ * Ob sich das Projekt hier archivieren lässt – also ob `ArchivKnopf` etwas
+ * zeigt: nicht, wenn es schon archiviert ist oder das Register es nicht kennt.
+ * Für Karten, die den Knopf einrahmen.
+ */
+export function useArchivierbar(bereich: ProjektBereich, lokaleId: ID): boolean {
+  return useArchiv(bereich, lokaleId).archiviert === false;
+}
+
 export function ArchivKnopf({ bereich, lokaleId, klein = false }: { bereich: ProjektBereich; lokaleId: ID; klein?: boolean }) {
   const { archiviert, setzen } = useArchiv(bereich, lokaleId);
   if (archiviert !== false) return null;

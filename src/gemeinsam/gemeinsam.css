@@ -70,7 +70,8 @@
 
 /* Hinweis: Projektregister nicht lesbar bzw. nicht gespeichert (RegisterHinweis.tsx) */
 .gem-registerhinweis { display: grid; gap: 10px; margin-bottom: 18px; }
-.gem-registerhinweis:focus { outline: none; }
+/* Der Anker nimmt nur einen sonst verlorenen Fokus auf – ohne Rahmen, auch wenn der Hinweis schon weg ist */
+.gem-registeranker:focus { outline: none; }
 .gem-registerhinweis .callout.error { box-shadow: inset 3px 0 0 var(--red); }
 .gem-registerhinweis-knoepfe { gap: 6px; margin-top: 8px; }
 
