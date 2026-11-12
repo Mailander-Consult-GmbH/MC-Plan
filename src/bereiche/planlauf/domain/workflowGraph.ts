@@ -589,11 +589,13 @@ export function einfuegenAn(steps: ProcessTemplateStep[], stelle: Einfuegestelle
 
 /**
  * Entfernt einen Schritt, ohne die Blockregeln wiederherzustellen (siehe
- * `entfernen`). Ergebnis mit vereinfachten Zielen.
+ * `entfernen`). Ergebnis mit vereinfachten Zielen. `anschlussNeu`: Schritte,
+ * die dabei ihren Zweig verlassen, ließen sich nur hinter einen Block stellen –
+ * dort geht es nun mit ihnen weiter (ANSCHLUSS_HINWEIS).
  */
-function entfernenRoh(steps: ProcessTemplateStep[], id: ID): ProcessTemplateStep[] {
+function entfernenRoh(steps: ProcessTemplateStep[], id: ID): { steps: ProcessTemplateStep[]; anschlussNeu: boolean } {
   const i = steps.findIndex((s) => s.id === id);
-  if (i < 0) return steps;
+  if (i < 0) return { steps, anschlussNeu: false };
   const struktur = strukturVon(steps);
   const lage = struktur.lage[i];
   const fest = festschreiben(steps);
@@ -605,7 +607,8 @@ function entfernenRoh(steps: ProcessTemplateStep[], id: ID): ProcessTemplateStep
    * Erster Schritt eines Zweigs: Der Zweig beginnt danach bei seinem
    * Standardziel. Führte der Schritt aus dem Zweig hinaus (Zweig beendet,
    * Ausstieg), waren die übrigen Schritte des Zweigs nur über ihn erreichbar –
-   * sie verlassen den Block (ans Listenende) und sind dann nicht erreichbar.
+   * sie verlassen den Block und sind dann nicht erreichbar (ans Listenende,
+   * aber nicht hinter einen Block, siehe unten).
    */
   const zweigRest = lage && lage.pos === 0 ? lage.block.zweige[lage.zweig].map((k) => steps[k].id).filter((x) => x !== id) : [];
   const neuerAnfang = ersatz !== 'ende' && zweigRest.includes(ersatz) ? ersatz : null;
@@ -614,6 +617,7 @@ function entfernenRoh(steps: ProcessTemplateStep[], id: ID): ProcessTemplateStep
   const blockErsatz = lage
     ? (lage.block.zweige.flat().map((k) => steps[k].id).find((x) => x !== id && !verlassen.has(x)) ?? ersatz)
     : ersatz;
+  let anschlussNeu = false;
   let rest = fest
     .map((s, k) => ({ s, k }))
     .filter(({ s }) => s.id !== id)
@@ -636,13 +640,30 @@ function entfernenRoh(steps: ProcessTemplateStep[], id: ID): ProcessTemplateStep
     const pos = ohne.findIndex((s) => zweigRest.includes(s.id));
     if (pos >= 0) rest = [...ohne.slice(0, pos), start, ...ohne.slice(pos)];
   } else if (verlassen.size > 0) {
-    rest = [...rest.filter((s) => !verlassen.has(s.id)), ...rest.filter((s) => verlassen.has(s.id))];
+    const bleiben = rest.filter((s) => !verlassen.has(s.id));
+    const gehen = rest.filter((s) => verlassen.has(s.id));
+    /*
+     * Die Ziele sind fest geschrieben; die Lage zählt nur noch für den ersten
+     * Schritt und für den Anschluss eines Blocks (der Schritt, der in der Liste
+     * hinter ihm steht). Endet die Liste mit einem Block, wären die
+     * herausgefallenen Schritte am Listenende dessen Anschluss und liefen in
+     * jedem Planlauf mit – darum stehen sie dann hinter dem letzten Schritt
+     * außerhalb von Blöcken. Gibt es keinen (nur Blöcke), bleibt allein das
+     * Listenende; dann sagt es der Hinweis zum Anschluss.
+     */
+    let k = bleiben.length;
+    while (k > 0 && bleiben[k - 1].parallel) k--;
+    if (k > 0) rest = [...bleiben.slice(0, k), ...gehen, ...bleiben.slice(k)];
+    else {
+      rest = [...bleiben, ...gehen];
+      anschlussNeu = bleiben.length > 0;
+    }
   }
   if (i === 0 && !lage && ersatz !== 'ende') {
     const start = rest.find((s) => s.id === ersatz);
     if (start) rest = [start, ...rest.filter((s) => s !== start)];
   }
-  return vereinfachen(rest);
+  return { steps: vereinfachen(rest), anschlussNeu };
 }
 
 /**
@@ -655,7 +676,8 @@ function entfernenRoh(steps: ProcessTemplateStep[], id: ID): ProcessTemplateStep
  */
 export function entfernenMitHinweis(steps: ProcessTemplateStep[], id: ID): Bearbeitung {
   if (!steps.some((s) => s.id === id)) return { steps, hinweis: null };
-  return geordnet(entfernenRoh(steps, id));
+  const roh = entfernenRoh(steps, id);
+  return geordnet(roh.steps, roh.anschlussNeu ? ANSCHLUSS_HINWEIS : null);
 }
 
 export function entfernen(steps: ProcessTemplateStep[], id: ID): ProcessTemplateStep[] {
@@ -823,10 +845,11 @@ export function ausBlockLoesen(steps: ProcessTemplateStep[], id: ID): Bearbeitun
   const schritt = zieleUmbiegen(festschreiben(steps)[i], (z) =>
     z === null || z === 'ende' || imBlock.has(z) || !st.index.has(z) ? anschluss : z,
   );
-  const rest = festschreiben(entfernenRoh(steps, id));
+  const roh = entfernenRoh(steps, id);
+  const rest = festschreiben(roh.steps);
   const b = strukturVon(rest).bloecke.get(blockId);
   if (!b) return { steps, hinweis: null };
-  return geordnet(vereinfachen(hinterBlockSetzen(rest, b, mitStandardZiel(schritt, anschluss))));
+  return geordnet(vereinfachen(hinterBlockSetzen(rest, b, mitStandardZiel(schritt, anschluss))), roh.anschlussNeu ? ANSCHLUSS_HINWEIS : null);
 }
 
 /**
