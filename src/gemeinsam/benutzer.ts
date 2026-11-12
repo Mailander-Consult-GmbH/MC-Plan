@@ -10,8 +10,8 @@
  *
  * Gibt es noch keinen gemeinsamen Stand, übernimmt `laden` einmalig den
  * ersten selbst eingetragenen Namen der Bereiche (Planlaufmanagement,
- * Projektsteuerung, Baubetriebsplanung, Leistungsnachweise) samt Farbmodus;
- * ihre Vorgabenamen und die Namen aus ihren Demodaten zählen nicht.
+ * Projektsteuerung, Baubetriebsplanung) samt Farbmodus; ihre Vorgabenamen und
+ * die Namen aus ihren Demodaten zählen nicht.
  */
 import { useSyncExternalStore } from 'react';
 
@@ -36,10 +36,9 @@ const farbmodusVon = (w: unknown): Farbmodus => (w === 'kontrast' ? 'kontrast' :
 
 /**
  * Frühere Angaben der Bereiche (je Bereich eigenes „Angemeldet als“) mit
- * ihren Vorgabenamen – nur für die einmalige Übernahme. Dazu zählen die
- * Namen, die die Demodaten der Projektsteuerung („Lena Roth“) und der
- * Leistungsnachweise („Anna Becker“) eintragen: Ein gespeicherter Demobestand
- * soll niemanden als Demoperson anmelden.
+ * ihren Vorgabenamen – nur für die einmalige Übernahme. Dazu zählt der Name,
+ * den die Demodaten der Projektsteuerung eintragen („Lena Roth“): Ein
+ * gespeicherter Demobestand soll niemanden als Demoperson anmelden.
  */
 const FRUEHER: { key: string; lesen: (d: Roh) => { name: unknown; farbmodus: unknown }; vorgaben: string[] }[] = [
   {
@@ -56,11 +55,6 @@ const FRUEHER: { key: string; lesen: (d: Roh) => { name: unknown; farbmodus: unk
     key: 'baubetrieb-planung.data.v1',
     lesen: (d) => ({ name: objekt(d.einstellungen)?.bearbeiter, farbmodus: objekt(d.einstellungen)?.farbmodus }),
     vorgaben: ['Bearbeitung MIC'],
-  },
-  {
-    key: 'leistungsnachweise.data.v1',
-    lesen: (d) => ({ name: objekt(d.einstellungen)?.bearbeiter, farbmodus: objekt(d.einstellungen)?.farbmodus }),
-    vorgaben: ['Mitarbeiter MIC', 'Anna Becker'],
   },
 ];
 

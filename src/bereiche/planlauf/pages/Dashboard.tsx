@@ -18,7 +18,7 @@ import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 
 /**
  * Markierte Projekte; ohne Markierung werden alle angezeigt. Archivierte
- * Projekte (Projektregister, archiviert im Controlling) bleiben außen vor.
+ * Projekte (Projektregister, im Bereich archiviert) bleiben außen vor.
  */
 export function sichtbareProjekte(projects: Project[], archiviert: Set<string>): Project[] {
   const aktiv = projects.filter((p) => !archiviert.has(p.id));

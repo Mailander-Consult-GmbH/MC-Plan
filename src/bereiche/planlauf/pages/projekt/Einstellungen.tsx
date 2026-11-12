@@ -1,6 +1,6 @@
 /** Projekteinstellungen: Fristenrechnung, Erinnerungen und E-Mail-Vorlagen. */
 import { useState } from 'react';
-import { useLoeschHinweis } from '../../../../gemeinsam/ProjektBereiche';
+import { ArchivKnopf, useArchivierte, useLoeschHinweis } from '../../../../gemeinsam/ProjektBereiche';
 import { type Project } from '../../domain/types';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
@@ -24,6 +24,7 @@ export function Einstellungen({ project }: { project: Project }) {
   const [neuerFeiertag, setNeuerFeiertag] = useState('');
   const [exportOffen, setExportOffen] = useState(false);
   const loeschHinweis = useLoeschHinweis('planlauf', project.id);
+  const archiviert = useArchivierte('planlauf').has(project.id);
 
   const s = project.settings;
   const setSettings = (patch: Partial<typeof s>) => updateProject(project.id, { settings: { ...s, ...patch } });
@@ -140,6 +141,18 @@ export function Einstellungen({ project }: { project: Project }) {
           </Callout>
         </div>
       </Card>
+
+      {archiviert ? null : (
+        <Card>
+          <CardHeader
+            titel="Projekt archivieren"
+            sub="Nimmt das Projekt aus Übersicht und Seitenleiste – es bleibt erhalten und lässt sich zurückholen"
+          />
+          <div className="card-pad">
+            <ArchivKnopf bereich="planlauf" lokaleId={project.id} />
+          </div>
+        </Card>
+      )}
 
       <Card>
         <CardHeader titel="Projekt löschen" sub="Entfernt Pläne, Rollen und Planläufe dauerhaft" />

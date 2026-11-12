@@ -9,7 +9,7 @@
  * 2. Unbekanntes trägt der Bereich ins Register ein, und was das Register
  *    Neues kennt, übernimmt er über sein eigenes `mutate()` (`abgleichen`,
  *    Plan → `anwenden`). Als maßgeblich (`vollstaendig`: nicht mehr geführte
- *    Projekte lösen, ★ übernehmen) gilt der Bestand nur beim ersten Abgleich
+ *    Projekte lösen) gilt der Bestand nur beim ersten Abgleich
  *    nach dem Laden und nach `ersetzt()` – so nimmt ein zweites Fenster mit
  *    älterem Bestand nicht zurück, was das erste eben eingetragen hat.
  *

@@ -9,7 +9,7 @@
  */
 // Die Fassung hochzählen, sobald sich Symbole oder die Hülle ändern – beim
 // Aktivieren werden alle älteren Caches gelöscht.
-const CACHE = 'mc-plan-v12';
+const CACHE = 'mc-plan-v13';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/kaplan-dreieck-64.png'];
 
 self.addEventListener('install', (event) => {

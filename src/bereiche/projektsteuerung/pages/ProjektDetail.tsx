@@ -1,9 +1,9 @@
 /**
  * Projektarbeitsbereich mit zwei Seiten: Projektbeteiligte und Protokolle.
- * Darüber Projektnummer, Status sowie „Bearbeiten“ und „Löschen“.
+ * Darüber Projektnummer, Status sowie „Bearbeiten“, „Archivieren“ und „Löschen“.
  */
 import { useState } from 'react';
-import { ArchivHinweis, useLoeschHinweis } from '../../../gemeinsam/ProjektBereiche';
+import { ArchivHinweis, ArchivKnopf, useLoeschHinweis } from '../../../gemeinsam/ProjektBereiche';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, ConfirmDialog } from '../../../shared/ui';
@@ -52,6 +52,7 @@ export function ProjektDetail({
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setBearbeiten(true)}>
             <Icon name="bearbeiten" size={12} /> Bearbeiten
           </button>
+          <ArchivKnopf bereich="projektsteuerung" lokaleId={projekt.id} klein />
           <button type="button" className="btn btn-sm btn-danger" onClick={() => setLoeschen(true)}>
             <Icon name="loeschen" size={12} /> Löschen
           </button>

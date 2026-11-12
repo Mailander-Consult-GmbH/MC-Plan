@@ -29,6 +29,7 @@ import { exportiereDaten, rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
+import { RegisterHinweis } from '../../gemeinsam/RegisterHinweis';
 
 export function App() {
   const { data, ladeZustand, zuruecksetzen } = useStore();
@@ -198,6 +199,7 @@ export function App() {
         <div className="content" ref={inhalt}>
           <div className="content-inner">
             <Hinweisleisten />
+            <RegisterHinweis />
             {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
             {route.view === 'termine' ? <Termine navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}

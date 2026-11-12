@@ -23,6 +23,7 @@ import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './c
 import { Hinweisleisten } from './components/Hinweisleisten';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
+import { RegisterHinweis } from '../../gemeinsam/RegisterHinweis';
 import type { IconName } from '../../shared/icons';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
 import { useSeitenleiste } from '../../shared/seitenleiste';
@@ -190,6 +191,7 @@ export function App() {
 
         <div className="content" ref={inhalt}>
           <div className="content-inner">
+            <RegisterHinweis />
             {route.view === 'dashboard' ? <Dashboard navigate={gehe} /> : null}
             {route.view === 'fristen' ? <Fristen navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}

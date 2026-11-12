@@ -13,16 +13,17 @@
  * Die Bereiche gleichen ihren Bestand mit dem Register ab (`abgleich.ts`,
  * `useRegisterAbgleich.ts`): Was jemand in einem Bereich ändert, geht ins
  * Register; was das Register Neues kennt, übernimmt der Bereich über sein
- * eigenes `mutate()`. Das Controlling arbeitet allein auf dem Register.
+ * eigenes `mutate()`. Unmittelbar auf dem Register arbeiten nur „Übernehmen
+ * in …“ und das Archivieren je Bereich (`inBereichUebernehmen`,
+ * `bereichArchivieren` in abgleich.ts).
  *
  * Gespeichert wird unter einem eigenen Schlüssel – nur, wenn sich der
  * gespeicherte Stand lesen ließ (sonst bleibt er unberührt, und die Bereiche
- * gleichen nicht ab). Ob das letzte Speichern gelungen ist, meldet
- * `useRegisterSpeicherZustand`; das Controlling zeigt sonst einen dauerhaften
- * Hinweis (src/bereiche/controlling/App.tsx). Speichert ein anderes Fenster das
- * Register, lädt dieses Fenster den neuen Stand; Änderungen, die sich hier nicht
- * speichern ließen, trägt es darauf nach und speichert erneut
- * (`eigeneAenderungenNachziehen`).
+ * gleichen nicht ab). Ein nicht gespeicherter Stand wird bei jeder weiteren
+ * Änderung erneut geschrieben (`registerErneutSpeichern`). Speichert ein
+ * anderes Fenster das Register, lädt dieses Fenster den neuen Stand;
+ * Änderungen, die sich hier nicht speichern ließen, trägt es darauf nach und
+ * speichert erneut (`eigeneAenderungenNachziehen`).
  */
 import { useSyncExternalStore } from 'react';
 import { nachRaeumenSpeichern, speicherVoll } from '../shared/speicher';
@@ -30,63 +31,35 @@ import { nachRaeumenSpeichern, speicherVoll } from '../shared/speicher';
 export type ID = string;
 
 /** Bereiche, in denen Projekte geführt werden. */
-export type ProjektBereich = 'planlauf' | 'baubetrieb' | 'projektsteuerung' | 'leistungsnachweise';
+export type ProjektBereich = 'planlauf' | 'baubetrieb' | 'projektsteuerung';
 
 export const PROJEKT_BEREICHE: { id: ProjektBereich; titel: string }[] = [
   { id: 'planlauf', titel: 'Planlaufmanagement' },
   { id: 'baubetrieb', titel: 'Baubetriebsplanung' },
   { id: 'projektsteuerung', titel: 'Projektsteuerung' },
-  { id: 'leistungsnachweise', titel: 'Leistungsnachweise' },
 ];
 
 export const BEREICH_TITEL: Record<ProjektBereich, string> = {
   planlauf: 'Planlaufmanagement',
   baubetrieb: 'Baubetriebsplanung',
   projektsteuerung: 'Projektsteuerung',
-  leistungsnachweise: 'Leistungsnachweise',
 };
 
-/**
- * Bereich, in dem grundsätzlich jedes Projekt geführt wird – auf jedes Projekt
- * lassen sich Leistungen erfassen. Sein Abgleich nimmt Projekte, die er noch
- * nicht führt, von selbst auf (`abgleichen` in abgleich.ts); zurücknehmen
- * lässt sich das nicht. Die anderen Bereiche nennen ihn in ihren
- * Projektansichten nicht (`genannteBereiche`).
- */
-export const JEDES_PROJEKT_IN: ProjektBereich = 'leistungsnachweise';
-
-/**
- * Bereiche, die eine Projektansicht nennt: im Bereich `bereich` die anderen
- * Bereiche – ohne `JEDES_PROJEKT_IN`, außer dort selbst; im Controlling
- * (`null`) alle.
- */
-export function genannteBereiche(bereich: ProjektBereich | null): ProjektBereich[] {
-  return PROJEKT_BEREICHE.map((b) => b.id).filter(
-    (b) => bereich === null || (b !== bereich && (b !== JEDES_PROJEKT_IN || bereich === JEDES_PROJEKT_IN)),
-  );
-}
-
-/**
- * Projekte, die in einem anderen Bereich als `bereich` mit ★ markiert sind –
- * je Kennung im Bereich die Titel der Bereiche, die sie markiert haben. Die
- * Leistungsnachweise zeigen solche Projekte als markiert.
- */
-export function markiertAnderswo(register: Register, bereich: ProjektBereich): Map<ID, string[]> {
-  const ergebnis = new Map<ID, string[]>();
-  for (const p of register.projekte) {
-    const eigen = p.bereiche[bereich];
-    if (!eigen) continue;
-    const titel = PROJEKT_BEREICHE.filter((b) => b.id !== bereich && p.bereiche[b.id]?.markiert).map((b) => b.titel);
-    if (titel.length > 0) ergebnis.set(eigen.id, titel);
-  }
-  return ergebnis;
+/** Die anderen Bereiche – die eine Projektansicht des Bereichs `bereich` nennt. */
+export function andereBereicheVon(bereich: ProjektBereich): ProjektBereich[] {
+  return PROJEKT_BEREICHE.map((b) => b.id).filter((b) => b !== bereich);
 }
 
 /**
  * Fassung des gespeicherten Registers. Neue Felder in `aufbereiten()` nachtragen und die Zahl erhöhen.
  * Fassung 2: ★-Markierung je Bereich (`Mitgliedschaft.markiert`).
+ * Fassung 3: ohne die Bereiche Leistungsnachweise und Controlling – ihre
+ * Mitgliedschaften und Kennungen entfallen, ebenso Projekte, die danach kein
+ * Bereich mehr führt; das Archiv „für alle Bereiche“ (`RegisterProjekt.archiviert`)
+ * geht in das Archiv je Bereich über; `herkunft` und der ★-Spiegel
+ * (`Mitgliedschaft.markiert`, nur von den Leistungsnachweisen gelesen) entfallen.
  */
-export const REGISTER_VERSION = 2;
+export const REGISTER_VERSION = 3;
 
 const KEY = 'kaplan-projektregister.v1';
 
@@ -97,16 +70,10 @@ export interface Mitgliedschaft {
   /** Im Bereich archiviert – in anderen Bereichen kann das Projekt aktiv bleiben. */
   archiviert: boolean;
   /**
-   * Zur Übernahme vorgesehen (Controlling bzw. „Übernehmen in …“): Der Bereich
-   * legt das Projekt beim nächsten Abgleich an; danach entfällt die Angabe.
+   * Zur Übernahme vorgesehen („Übernehmen in …“): Der Bereich legt das Projekt
+   * beim nächsten Abgleich an; danach entfällt die Angabe.
    */
   offen: boolean;
-  /**
-   * Im Bereich mit ★ markiert – Spiegel der Markierung des Bereichs (sein
-   * Abgleich trägt sie ein). In `JEDES_PROJEKT_IN` gilt ein Projekt als
-   * markiert, wenn es ein anderer Bereich ist (`markiertAnderswo`).
-   */
-  markiert: boolean;
 }
 
 export interface RegisterProjekt {
@@ -114,10 +81,6 @@ export interface RegisterProjekt {
   nummer: string;
   name: string;
   beschreibung: string;
-  /** Im Controlling archiviert – gilt in allen Bereichen. */
-  archiviert: boolean;
-  /** Wo das Projekt angelegt wurde. */
-  herkunft: ProjektBereich | 'controlling';
   /** ISO-Zeitstempel. */
   angelegtAm: string;
   geaendertAm: string;
@@ -202,19 +165,14 @@ export function newId(prefix: string): ID {
 
 export const leeresRegister = (): Register => ({ version: REGISTER_VERSION, projekte: [], personen: [], geloescht: [] });
 
-/** Bereiche, in denen das Projekt geführt wird (ohne die erst zur Übernahme vorgesehenen). */
-export function bereicheVon(p: RegisterProjekt): ProjektBereich[] {
-  return PROJEKT_BEREICHE.map((b) => b.id).filter((b) => p.bereiche[b] && !p.bereiche[b]!.offen);
-}
-
 /** Registerprojekt zur Kennung eines Projekts im Bereich. */
 export function projektImBereich(register: Register, bereich: ProjektBereich, lokaleId: ID): RegisterProjekt | undefined {
   return register.projekte.find((p) => p.bereiche[bereich]?.id === lokaleId);
 }
 
-/** Archiviert im Bereich – im Bereich selbst oder im Controlling für alle Bereiche. */
+/** Im Bereich archiviert – in anderen Bereichen kann das Projekt aktiv bleiben. */
 export function istArchiviert(p: RegisterProjekt, bereich: ProjektBereich): boolean {
-  return p.archiviert || !!p.bereiche[bereich]?.archiviert;
+  return !!p.bereiche[bereich]?.archiviert;
 }
 
 /** Kennungen der im Bereich archivierten Projekte. */
@@ -261,32 +219,39 @@ function idsAufbereiten(w: unknown): Partial<Record<ProjektBereich, ID>> {
   return ids;
 }
 
-/** Ergänzt fehlende Felder, damit auch ältere oder von Hand bearbeitete Stände laden. */
+/**
+ * Ergänzt fehlende Felder, damit auch ältere oder von Hand bearbeitete Stände
+ * laden, und hebt ältere Fassungen an: Mitgliedschaften und Kennungen
+ * entfernter Bereiche (Leistungsnachweise) entfallen; war ein Projekt „für
+ * alle Bereiche“ archiviert (bis Fassung 2 im Controlling), ist es das danach
+ * in jedem seiner Bereiche; ein Projekt, das kein Bereich (mehr) führt,
+ * entfällt samt seinen Personen – so, wie es `mitgliedschaftLoesen` in
+ * abgleich.ts beim Lösen der letzten Mitgliedschaft tut.
+ */
 export function aufbereiten(roh: Roh): Register {
   const projekte = liste(roh.projekte)
     .filter((p) => text(p.id))
     .map((p): RegisterProjekt => {
       const b = p.bereiche && typeof p.bereiche === 'object' ? (p.bereiche as Roh) : {};
       const bereiche: RegisterProjekt['bereiche'] = {};
+      const ueberallArchiviert = p.archiviert === true;
       for (const id of BEREICH_IDS) {
         const m = b[id] && typeof b[id] === 'object' ? (b[id] as Roh) : null;
         if (m && text(m.id)) {
-          bereiche[id] = { id: text(m.id), archiviert: m.archiviert === true, offen: m.offen === true, markiert: m.markiert === true };
+          bereiche[id] = { id: text(m.id), archiviert: ueberallArchiviert || m.archiviert === true, offen: m.offen === true };
         }
       }
-      const herkunft = text(p.herkunft);
       return {
         id: text(p.id),
         nummer: text(p.nummer),
         name: text(p.name),
         beschreibung: text(p.beschreibung),
-        archiviert: p.archiviert === true,
-        herkunft: herkunft === 'controlling' || (BEREICH_IDS as string[]).includes(herkunft) ? (herkunft as RegisterProjekt['herkunft']) : 'controlling',
         angelegtAm: text(p.angelegtAm),
         geaendertAm: text(p.geaendertAm),
         bereiche,
       };
-    });
+    })
+    .filter((p) => Object.keys(p.bereiche).length > 0);
   const projektIds = new Set(projekte.map((p) => p.id));
   const personen = liste(roh.personen)
     .filter((p) => text(p.id) && projektIds.has(text(p.projektId)))
@@ -489,7 +454,7 @@ const istObjekt = (w: unknown): w is Record<string, unknown> => !!w && typeof w 
  * Dreiwege-Zusammenführung eines Werts: Hat dieses Fenster ihn geändert
  * (`eigen` ≠ `basis`), gilt seine Fassung, sonst die fremde. Objekte führt sie
  * Feld für Feld zusammen, wenn es sie in allen drei Ständen gibt – so bleibt
- * etwa die ★ eines anderen Bereichs erhalten, wenn hier eine Übernahme
+ * etwa der Archivstand eines anderen Bereichs erhalten, wenn hier eine Übernahme
  * vorgesehen wurde; hat das andere Fenster ein Objekt entfernt (etwa eine
  * Mitgliedschaft gelöst), bleibt es entfernt. Listen gelten als ein Wert.
  */
@@ -542,13 +507,13 @@ const kennungenIn = (p: RegisterProjekt, auchOffene: boolean): Kennungen =>
  * vor. Personen ohne Projekt entfallen. Löschvermerke: die fremden ohne die
  * hier erledigten, dazu die hier neuen.
  *
- * Neu nachgezogen werden nur Projekte des Controllings: Was ein Bereich neu
- * eingetragen hat (Projekte mit Herkunft im Bereich, Personen), steht auch in
- * seinem Bestand, und sein nächster Abgleich trägt es wieder ein – verknüpft
- * mit einem Projekt gleicher Nummer bzw. einer Person gleicher E-Mail, das das
- * andere Fenster inzwischen eingetragen hat. Ein unverändertes Nachziehen
- * hinterließe Doppel; was hier am Register eines solchen Projekts sonst noch
- * geändert wurde (etwa im Controlling desselben Fensters), entfällt.
+ * Neu Eingetragenes wird nicht nachgezogen: Was ein Bereich neu eingetragen
+ * hat (Projekte, Personen), steht auch in seinem Bestand, und sein nächster
+ * Abgleich trägt es wieder ein – verknüpft mit einem Projekt gleicher Nummer
+ * bzw. einer Person gleicher E-Mail, das das andere Fenster inzwischen
+ * eingetragen hat. Ein unverändertes Nachziehen hinterließe Doppel; was hier am
+ * Register eines solchen Projekts sonst noch geändert wurde (etwa eine
+ * Übernahme in einen weiteren Bereich), entfällt.
  *
  * Hat die andere Seite ein Projekt bzw. eine Person, die eine Seite gelöscht
  * hat, seit `basis` in weitere Bereiche übernommen, ergänzt sie deren
@@ -559,7 +524,7 @@ const kennungenIn = (p: RegisterProjekt, auchOffene: boolean): Kennungen =>
  * Vermerke.
  */
 export function eigeneAenderungenNachziehen(basis: Register, eigen: Register, fremd: Register, jetzt: string): Register {
-  const projekte = listeZusammenfuehren(basis.projekte, eigen.projekte, fremd.projekte, (p) => p.herkunft === 'controlling');
+  const projekte = listeZusammenfuehren(basis.projekte, eigen.projekte, fremd.projekte, () => false);
   const projektIds = new Set(projekte.map((p) => p.id));
   const personen = listeZusammenfuehren(basis.personen, eigen.personen, fremd.personen, () => false).filter((p) =>
     projektIds.has(p.projektId),
@@ -608,8 +573,8 @@ function kennung(text: string): string {
 // Ein anderes Fenster hat das Register gespeichert: neu laden. Hält dieses
 // Fenster Änderungen, die sich nicht speichern ließen (`gespeichert` ≠ 'ok'),
 // trägt es sie auf den neuen Stand nach und versucht erneut zu speichern – sonst
-// gingen sie wortlos verloren, und der Hinweis im Controlling verschwände, als
-// sei gespeichert. Gelingt das Speichern nicht, bleibt der Hinweis. Ist der neue
+// gingen sie wortlos verloren, und der Hinweis (RegisterHinweis.tsx) verschwände,
+// als sei gespeichert. Gelingt das Speichern nicht, bleibt der Hinweis. Ist der neue
 // Stand unlesbar oder aus einer neueren Fassung, gilt er; die Änderungen entfallen.
 //
 // Hielten zwei Fenster nicht Gespeichertes, ziehen beide auf denselben fremden
@@ -670,7 +635,7 @@ export function useRegisterZustand(): RegisterZustand {
   return useSyncExternalStore(abonnieren, registerZustand, registerZustand);
 }
 
-/** Ob sich der letzte Stand des Registers speichern ließ (Hinweis im Controlling). */
+/** Ob sich der letzte Stand des Registers speichern ließ (Hinweis in den Bereichen, RegisterHinweis.tsx). */
 export function useRegisterSpeicherZustand(): RegisterSpeicherZustand {
   return useSyncExternalStore(abonnieren, registerSpeicherZustand, registerSpeicherZustand);
 }

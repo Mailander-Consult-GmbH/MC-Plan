@@ -5,7 +5,7 @@
  * Angaben werden gekürzt und stehen vollständig im Tooltip.
  */
 import { useState } from 'react';
-import { ArchivHinweis, RegisterBeteiligte, useLoeschHinweis } from '../../../gemeinsam/ProjektBereiche';
+import { ArchivHinweis, ArchivKnopf, RegisterBeteiligte, useLoeschHinweis } from '../../../gemeinsam/ProjektBereiche';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
@@ -100,6 +100,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
           <button type="button" className="btn btn-outline" onClick={() => setBearbeiten(true)}>
             <Icon name="bearbeiten" size={14} /> Bearbeiten
           </button>
+          <ArchivKnopf bereich="baubetrieb" lokaleId={projekt.id} />
           <button type="button" className="btn btn-danger" onClick={() => setLoeschen(true)}>
             <Icon name="loeschen" size={14} /> Löschen
           </button>

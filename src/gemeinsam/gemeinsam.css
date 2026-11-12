@@ -1,7 +1,8 @@
 /*
- * Bausteine zum Projektregister (ProjektBereiche.tsx): Bereichsmarken in der
- * Projektkachel, grau hinterlegte Projekte aus anderen Bereichen, Archiv.
- * Nur Design-Tokens aus src/shared/global.css.
+ * Bausteine zum Projektregister (ProjektBereiche.tsx, RegisterHinweis.tsx):
+ * Bereichsmarken in der Projektkachel, grau hinterlegte Projekte aus anderen
+ * Bereichen, Archiv, Hinweis bei nicht lesbarem bzw. nicht gespeichertem
+ * Register. Nur Design-Tokens aus src/shared/global.css.
  */
 
 /* Marken unten in der Kachel: „Auch in Planlaufmanagement …“ */
@@ -60,11 +61,18 @@
   cursor: pointer;
 }
 .gem-umschalter:hover { color: var(--accent); }
-.gem-umschalter-text { font-weight: 400; }
 .gem-pfeil { display: flex; color: var(--text-tertiary); transition: transform 0.14s ease; }
 .gem-pfeil.offen { transform: rotate(90deg); }
 .gem-archiv-liste > .card { background: var(--fill-gruppe); box-shadow: none; }
 .gem-archiv-liste > .card h2 { color: var(--text-secondary); }
+/* Archivhinweis oben im Projekt: Text und „Aus dem Archiv holen“ */
+.gem-archivhinweis { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+
+/* Hinweis: Projektregister nicht lesbar bzw. nicht gespeichert (RegisterHinweis.tsx) */
+.gem-registerhinweis { display: grid; gap: 10px; margin-bottom: 18px; }
+.gem-registerhinweis:focus { outline: none; }
+.gem-registerhinweis .callout.error { box-shadow: inset 3px 0 0 var(--red); }
+.gem-registerhinweis-knoepfe { gap: 6px; margin-top: 8px; }
 
 /* Projektkacheln der Bereiche (Schaltflächen): Inhalt oben, auch wenn die Nachbarkachel höher ist */
 .card.gem-kachel { display: flex; flex-direction: column; justify-content: flex-start; text-align: left; }

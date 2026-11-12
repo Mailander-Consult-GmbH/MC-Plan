@@ -4,7 +4,7 @@
  * jedem Seitenwechsel – auch bei einem, der nicht aus der Seitenleiste kommt,
  * etwa „Zurück“ im Browser oder die Zurück-Geste der installierten App; sonst
  * bliebe sie offen und verdeckte die neue Seite. Verwendet in den App.tsx
- * aller Bereiche und des Controllings.
+ * aller Bereiche.
  */
 import { useEffect, useState } from 'react';
 
