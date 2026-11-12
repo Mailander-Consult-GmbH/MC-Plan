@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { ArchivKnopf, useArchivierte, useLoeschHinweis } from '../../../../gemeinsam/ProjektBereiche';
 import { type Project } from '../../domain/types';
+import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
 import { ProjektDialog } from '../Projekte';
@@ -16,7 +17,7 @@ import {
 } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 
-export function Einstellungen({ project }: { project: Project }) {
+export function Einstellungen({ project, navigate }: { project: Project; navigate: (r: Route) => void }) {
   const { updateProject, deleteProject } = useStore();
   const toast = useToast();
   const [projektDialog, setProjektDialog] = useState(false);
@@ -172,7 +173,7 @@ export function Einstellungen({ project }: { project: Project }) {
           onConfirm={() => {
             deleteProject(project.id);
             toast('Projekt gelöscht.');
-            window.location.hash = '#/projekte';
+            navigate({ view: 'projekte' });
           }}
           onClose={() => setLoeschen(false)}
         />

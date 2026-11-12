@@ -425,5 +425,10 @@ export function sicherungLesen(inhalt: string): ProjektsteuerungDaten {
       'Die Sicherung stammt aus einer neueren Fassung von KaPlan. Bitte die Seite neu laden (Strg+Umschalt+R) und erneut einspielen.',
     );
   }
-  return migriere(daten);
+  // Eine beschädigte Datei (Felder falscher Art) soll keine Technikmeldung zeigen
+  try {
+    return migriere(daten);
+  } catch {
+    throw new Error('Die Sicherung konnte nicht gelesen werden.');
+  }
 }

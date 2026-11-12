@@ -19,8 +19,7 @@ export function AmpelBadge({ ampel }: { ampel: Ampel }) {
 }
 
 export function AmpelPunkt({ ampel }: { ampel: Ampel }) {
-  // inline-block: In einer Tabellenzelle stünde der Punkt sonst ohne Größe da.
-  return <span className={`dot ${AMPEL_TON[ampel]}`} style={{ display: 'inline-block' }} title={AMPEL_LABEL[ampel]} />;
+  return <span className={`dot ${AMPEL_TON[ampel]}`} title={AMPEL_LABEL[ampel]} />;
 }
 
 /** Mehrzeiliges Feld, das mit seinem Inhalt wächst. */

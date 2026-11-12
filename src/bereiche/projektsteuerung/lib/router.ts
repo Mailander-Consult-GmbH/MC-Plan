@@ -23,6 +23,11 @@ export const PREFIX = 'projektsteuerung';
 
 export function routeToHash(r: Route): string {
   switch (r.view) {
+    // Die Übersicht steht unter der Adresse des Bereichs, unter der die Shell ihn öffnet – sonst
+    // legte der Klick auf „Übersicht“ einen zweiten Verlaufseintrag für dieselbe Seite an.
+    // `#/projektsteuerung/uebersicht` bleibt gültig.
+    case 'uebersicht':
+      return `#/${PREFIX}`;
     case 'projekt':
       return `#/${PREFIX}/projekt/${r.projektId}/${r.tab}`;
     case 'protokoll':

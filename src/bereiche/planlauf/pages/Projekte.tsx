@@ -96,7 +96,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
     <div className="stack">
       <div className="row-between wrap">
         <div className="row wrap">
-          <Search value={suche} onChange={setSuche} placeholder="Projekt, Nummer, Bauherr …" />
+          <Search value={suche} onChange={setSuche} placeholder="Projekt, Nummer …" />
           <span className="small tertiary">
             Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
             Seitenleiste.
@@ -159,14 +159,16 @@ export function ProjektDialog({
       toast('Bitte einen Projektnamen angeben.');
       return;
     }
+    // Leerzeichen am Rand gehen nicht in den Bestand – die Nummer verknüpft das Projekt mit den anderen Bereichen
+    const werte = { ...form, name: form.name.trim(), nummer: form.nummer.trim() };
     if (project) {
-      updateProject(project.id, form);
+      updateProject(project.id, werte);
       toast('Projekt aktualisiert.');
       onClose();
       return;
     }
     const id = addProject({
-      ...form,
+      ...werte,
       settings: {
         erinnerungVorlaufTage: 5,
         fristenInArbeitstagen: true,

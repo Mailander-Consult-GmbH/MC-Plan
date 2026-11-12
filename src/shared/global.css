@@ -622,7 +622,8 @@ a:hover { text-decoration: underline; }
 .badge.blue { background: var(--accent-soft); color: var(--accent); }
 .badge.purple { background: var(--purple-soft); color: var(--purple); }
 
-.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--text-tertiary); }
+/* inline-block: als Inline-Element hätte der Punkt in einer Tabellenzelle keine Größe */
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--text-tertiary); }
 .dot.green { background: var(--green); }
 .dot.orange { background: var(--orange); }
 .dot.red { background: var(--red); }
@@ -782,8 +783,9 @@ a:hover { text-decoration: underline; }
 .modal-header h2 { font-size: 17px; }
 .modal-header .sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
 .modal-body { padding: 20px 22px; overflow-y: auto; }
+/* flex-wrap: Ein Fuß mit vielen oder langen Knöpfen bricht um, statt aus dem Dialog zu ragen */
 .modal-footer {
-  display: flex; justify-content: flex-end; gap: 8px;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px;
   padding: 14px 22px;
   border-top: 1px solid var(--separator);
   background: var(--bg-subtle);
@@ -1099,7 +1101,7 @@ a:hover { text-decoration: underline; }
 
   .modal { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); border-radius: var(--radius-lg); }
   .modal-header, .modal-body, .modal-footer { padding-left: 16px; padding-right: 16px; }
-  .modal-footer { flex-wrap: wrap; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .modal-footer { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
   .overlay { padding: 12px; }
   .form-grid { grid-template-columns: minmax(0, 1fr); }
 

@@ -741,6 +741,9 @@ export function sicherungLesen(inhalt: string): BaubetriebDaten {
   if (Array.isArray(daten.projects)) {
     throw new Error('Die Datei ist eine Sicherung des Planlaufmanagements – bitte dort einspielen.');
   }
+  if (daten.bereich === 'projektsteuerung') {
+    throw new Error('Die Datei ist eine Sicherung der Projektsteuerung – bitte dort einspielen.');
+  }
   if (daten.bereich !== SICHERUNG_BEREICH || !Array.isArray(daten.projekte) || !Array.isArray(daten.anmeldungen)) {
     throw new Error('Die Datei ist keine Sicherung der Baubetriebsplanung.');
   }
@@ -749,5 +752,10 @@ export function sicherungLesen(inhalt: string): BaubetriebDaten {
       'Die Sicherung stammt aus einer neueren Fassung von KaPlan. Bitte die Seite neu laden (Strg+Umschalt+R) und erneut einspielen.',
     );
   }
-  return migriere(daten);
+  // Eine beschädigte Datei (Felder falscher Art) soll keine Technikmeldung zeigen
+  try {
+    return migriere(daten);
+  } catch {
+    throw new Error('Die Sicherung konnte nicht gelesen werden.');
+  }
 }

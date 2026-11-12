@@ -330,15 +330,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       stammdatenHinweisQuittieren: () => setStammdatenKopien([]),
       ...storeAktionen(data, mutate),
       ersetzeDaten: (d) => {
+        // Ein Stand aus einer neueren Fassung darf nicht überschrieben werden
+        if (ladeZustand === 'neuere_fassung') return;
         ersetzt();
         mutate(() => d, { protokoll: false });
         setLadeZustand('ok');
       },
       zuruecksetzen: () => {
-        // Ein Stand aus einer neueren Fassung darf nicht überschrieben werden
         if (ladeZustand === 'neuere_fassung') return;
         ersetzt();
-        mutate(() => seedData(), { protokoll: false });
+        // Persönliche Einstellungen bleiben erhalten („Angemeldet als“ samt E-Mail-Nachfrage).
+        mutate((alt) => ({ ...seedData(), bearbeiter: alt.bearbeiter }), { protokoll: false });
         setLadeZustand('ok');
       },
     }),

@@ -175,14 +175,21 @@ const LISTEN = [
  * entsteht ein Fehler mit einer Meldung für die Oberfläche.
  */
 export function sicherungLesen(text: string): AppData {
-  let daten: Partial<AppData> | null;
+  let daten: (Partial<AppData> & { bereich?: unknown }) | null;
   try {
-    daten = JSON.parse(text) as Partial<AppData> | null;
+    daten = JSON.parse(text) as (Partial<AppData> & { bereich?: unknown }) | null;
   } catch {
     throw new Error('Die Datei ist keine gültige JSON-Datei.');
   }
+  // Sicherungen der anderen Bereiche tragen ihr Kennzeichen – dorthin verweisen
+  if (daten && typeof daten === 'object' && daten.bereich === 'baubetrieb') {
+    throw new Error('Die Datei ist eine Sicherung der Baubetriebsplanung – bitte dort einspielen.');
+  }
+  if (daten && typeof daten === 'object' && daten.bereich === 'projektsteuerung') {
+    throw new Error('Die Datei ist eine Sicherung der Projektsteuerung – bitte dort einspielen.');
+  }
   if (!daten || typeof daten !== 'object' || !Array.isArray(daten.projects)) {
-    throw new Error('Die Datei ist keine Sicherung von KaPlan.');
+    throw new Error('Die Datei ist keine Sicherung des Planlaufmanagements.');
   }
   if (typeof daten.version === 'number' && daten.version > DATEN_VERSION) {
     throw new Error(
