@@ -159,6 +159,19 @@ export function Funktionen() {
                             }`}
                       </td>
                       <td className="actions">
+                        {/* Die Zeile öffnet den Dialog nur per Mausklick – der Knopf ist der Weg mit der Tastatur */}
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          aria-label="Funktion bearbeiten"
+                          title="Funktion bearbeiten"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDialog({ funktion: f });
+                          }}
+                        >
+                          <Icon name="bearbeiten" size={15} />
+                        </button>
                         <button
                           type="button"
                           className="btn-icon"
