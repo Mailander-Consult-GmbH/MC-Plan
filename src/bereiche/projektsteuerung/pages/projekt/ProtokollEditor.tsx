@@ -18,7 +18,7 @@
  * entfernt es ohne Spur.
  */
 import { useEffect, useState } from 'react';
-import { formatDate, toISO, today } from '../../../../shared/dates';
+import { formatDate, toISO } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Card, CardHeader, EmptyState, Field, Modal, Segmented, TextInput } from '../../../../shared/ui';
@@ -241,17 +241,18 @@ export function ProtokollEditor({
               </div>
               <div className="s2">
                 <Field label="Nr.">
-                  <TextInput
+                  <PflichtFeld
                     type="number"
                     min={1}
-                    value={String(p.nr)}
-                    onChange={(v) => feld('nr', Math.max(1, Number.parseInt(v, 10) || 1))}
+                    wert={String(p.nr)}
+                    gueltig={(v) => Number.parseInt(v, 10) >= 1}
+                    onChange={(v) => feld('nr', Number.parseInt(v, 10))}
                   />
                 </Field>
               </div>
               <div className="s4">
                 <Field label="Datum">
-                  <TextInput type="date" value={p.datum} onChange={(v) => feld('datum', v || today())} />
+                  <PflichtFeld type="date" wert={p.datum} gueltig={(v) => v !== ''} onChange={(v) => feld('datum', v)} />
                 </Field>
               </div>
               <div className="s2">
@@ -1056,6 +1057,42 @@ function TeilnehmerAuswahl({
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Feld, das nie leer gespeichert wird (Nummer, Datum des Protokolls). Die
+ * Eingabe bleibt im Feld stehen, auch solange sie ungültig ist; übernommen
+ * wird nur Gültiges, und beim Verlassen zeigt das Feld wieder den
+ * gespeicherten Wert. Spiegelte es jeden Tastendruck aus dem Bestand zurück,
+ * würde aus der geleerten Nummer sofort „1“ – und aus der Eingabe 7 dann 17 –,
+ * aus einem geleerten Teil des Datums das heutige Datum.
+ */
+function PflichtFeld({
+  wert,
+  gueltig,
+  onChange,
+  ...rest
+}: {
+  wert: string;
+  gueltig: (eingabe: string) => boolean;
+  onChange: (eingabe: string) => void;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onBlur'>) {
+  const [eingabe, setEingabe] = useState(wert);
+  // Ändert sich der gespeicherte Wert (anderes Protokoll, anderes Fenster), folgt das Feld
+  useEffect(() => {
+    setEingabe(wert);
+  }, [wert]);
+  return (
+    <TextInput
+      {...rest}
+      value={eingabe}
+      onChange={(v) => {
+        setEingabe(v);
+        if (gueltig(v)) onChange(v);
+      }}
+      onBlur={() => setEingabe(wert)}
+    />
   );
 }
 
