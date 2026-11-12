@@ -32,9 +32,10 @@ fachfreie Bausteine, die Bereiche greifen nicht aufeinander zu und teilen sich n
 3. [Rahmen, Navigation, Sicherung](#3-rahmen-navigation-sicherung)
 4. [Übersichten, Projektlisten, Projektseiten](#4-übersichten-projektlisten-projektseiten)
 5. [Bedienmuster: Dialoge, Listen, Wortlaut](#5-bedienmuster-dialoge-listen-wortlaut)
-6. [Einzelhinweise Baubetriebsplanung](#6-einzelhinweise-baubetriebsplanung)
-7. [Aufräumen: unbenutzter Code](#7-aufräumen-unbenutzter-code)
-8. [Anhang: Was schon einheitlich ist](#8-anhang-was-schon-einheitlich-ist)
+6. [Optik und Gestaltung](#6-optik-und-gestaltung)
+7. [Einzelhinweise Baubetriebsplanung](#7-einzelhinweise-baubetriebsplanung)
+8. [Aufräumen: unbenutzter Code](#8-aufräumen-unbenutzter-code)
+9. [Anhang: Was schon einheitlich ist](#9-anhang-was-schon-einheitlich-ist)
 
 ---
 
@@ -65,6 +66,8 @@ mit einem Skript oder im Browser nachgestellt und nach der Korrektur erneut gepr
 | Baubetriebsplanung | Stände bzw. Sicherungen bis Fassung 5: Die KM-Runde (N-2/N-1) ging bei der Umstellung verloren, die Terminfrist sprang im Beispiel vom 29.10.2026 auf den 28.04.2027. | Die Runde wird übernommen. |
 | Planlaufmanagement, Projektsteuerung | Funktionslisten: Eine Suche ohne Treffer zeigte „Legen Sie die Funktionen an …“ samt Knopf „Neue Funktion“ – als wäre der Bestand leer. | „Keine Funktion gefunden – Für diese Suche gibt es keinen Treffer.“ |
 | Planlaufmanagement | „E-Mail vorbereitet am 5.3.2026“ und die Feiertage standen einstellig, alles andere als 05.03.2026. | Überall zweistellig. |
+| Planlaufmanagement | Projekt › Funktion: Bei 400 px ragte „Neue Funktion“ über den Rand, der ganze Inhalt scrollte quer. | Die Knopfleiste bricht um. |
+| Planlaufmanagement | In der Übersicht standen Zahl und Text der anklickbaren Kennzahl-Kacheln 6 px versetzt zu den übrigen. | In einer Flucht. |
 | Alle (Excel-Import) | In Mappen mit umsortierten Blättern standen die Blattnamen an fremden Inhalten; Zellen ohne Zellbezug landeten alle in Spalte A. | Blätter werden über ihre Beziehung in der Mappe zugeordnet. |
 
 ---
@@ -332,14 +335,12 @@ bestätigen oder anders entscheiden.
 * **Zu klären:** eine verbindliche Schreibweise der Projektnummer (MIC-Nummer?).
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
 
-### U-6 · Kennzahl-Kacheln: mal anklickbar, mal nicht, mal mit Filter – und nicht in einer Flucht
-* **Art:** Bedienung/Optik · **Aufwand:** klein · **Nutzen:** mittel
+### U-6 · Kennzahl-Kacheln: mal anklickbar, mal nicht, mal mit Filter
+* **Art:** Bedienung · **Aufwand:** klein · **Nutzen:** mittel
 * **Heute:** Projektsteuerung: Ein Klick auf „Überfällig“ zeigt genau die überfälligen Punkte.
   Planlaufmanagement und Baubetriebsplanung: Die Kachel öffnet eine andere Seite ohne Filter; im
-  Planlaufmanagement reagieren zwei Kacheln gar nicht. Zahl und Beschriftung anklickbarer Kacheln
-  stehen 6 px versetzt zu den übrigen.
-* **Vorschlag:** jede Kachel anklickbar, mit vorbelegtem Filter der Zielseite; der Versatz
-  entfällt mit einer Zeile CSS.
+  Planlaufmanagement reagieren zwei Kacheln gar nicht.
+* **Vorschlag:** jede Kachel anklickbar, mit vorbelegtem Filter der Zielseite.
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
 
 ### U-7 · Dasselbe Projekt trägt in der Baubetriebsplanung je nach Seite eine andere Nummer
@@ -511,8 +512,12 @@ bestätigen oder anders entscheiden.
   Beteiligten- und Funktionslisten bleiben gekürzte Tabellen zum Schieben; die Anmeldungsliste der
   Baubetriebsplanung ist fest 1080 px breit – fast dreimal so breit wie der Bildschirm. In
   gestapelten Tabellen fehlen die Spaltennamen (nur der Terminrechner beschriftet seine Zellen).
+  Entsprechend die Aktionen je Zeile: mal in der Karte, mal fest am rechten Rand (nur die
+  Anmeldungen der Baubetriebsplanung), mal muss man erst nach rechts schieben, um Stift und
+  Papierkorb zu sehen (Beteiligte und Funktionen).
 * **Vorschlag:** Regel festhalten: Listen bis etwa fünf Spalten stapeln und beschriften ihre
-  Zellen; nur echte Arbeitstabellen (Planliste, Planlaufliste) scrollen quer. Anmeldungen der
+  Zellen; nur echte Arbeitstabellen (Planliste, Planlaufliste) scrollen quer – mit der fest
+  stehenden Aktionsspalte, die es heute nur in der Baubetriebsplanung gibt. Anmeldungen der
   Baubetriebsplanung unter 720 px stapeln.
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
 
@@ -532,8 +537,10 @@ bestätigen oder anders entscheiden.
   verschieden ausgestatteten Masken gepflegt: „Mobil“ und „Kürzel“ gibt es nur in der
   Projektsteuerung, SharePoint-Links nur im Planlaufmanagement. **Eine in der Projektsteuerung
   erfasste Mobilnummer ist im Planlaufmanagement weder zu sehen noch zu ändern.** „Person
-  hinzufügen“ ist einmal Nebenknopf, einmal Hauptknopf. Rund 300 Zeilen Tabelle und Formular
-  doppelt.
+  hinzufügen“ ist einmal Nebenknopf, einmal Hauptknopf; die Spalte heißt „Besetzt durch“ bzw.
+  „Person“; den Reiter „Alle“ gibt es nur in der Projektsteuerung, das „+“ für ein neues Gewerk
+  nur im Planlaufmanagement; Drucken und Excel der Liste nur in der Projektsteuerung. Rund 300
+  Zeilen Tabelle und Formular doppelt.
 * **Vorschlag:** die gemeinsamen Kontaktfelder (einschließlich „Mobil“) und die Tabellenzeile als
   Bausteine in `src/gemeinsam/`; die bereichseigenen Felder kommen dazu. Die fachlich
   verschiedene Zuordnung bleibt (Planlaufmanagement: eine Person je Funktion; Projektsteuerung:
@@ -556,7 +563,8 @@ bestätigen oder anders entscheiden.
   (`components/WorkflowEditor.tsx`, 2226 bzw. 2020 Zeilen) samt Gestaltung (806 bzw. 613 Zeilen)
   und eine eigene Workflow-Liste – mit gleicher Optik, gleichen Kurzmeldungen und gleicher
   Rückfrage „Änderungen verwerfen?“. Für den Nutzer heute gleich; für die Pflege der größte
-  doppelte Bestand der Anwendung.
+  doppelte Bestand der Anwendung. In der Gestaltung sind nach Angleichen des Präfixes 135 Regeln
+  wortgleich, 25 tragen bereits abweichende Werte – die Fassungen laufen auseinander.
 * **Vorschlag:** nicht die Fachlogik teilen (Schritte mit parallelen Blöcken gegen Status mit
   Nachfolgern), sondern den fachfreien Rahmen: zuerst die Gestaltung unter einem Präfix
   zusammenführen (geringstes Risiko), dann Kopf, Rückgängig/Wiederholen, Hinweisliste und die
@@ -566,7 +574,77 @@ bestätigen oder anders entscheiden.
 
 ---
 
-## 6. Einzelhinweise Baubetriebsplanung
+## 6. Optik und Gestaltung
+
+Verglichen im Browser bei 1400 px und 400 px (Übersicht, Projektliste, Projektseite, Tabellen mit
+Aktionen, Anlegen-Dialoge, Einstellungsseiten) und in den CSS-Dateien.
+
+### O-1 · Suche, Filter und „Neu …“ stehen über den Listen an fünf verschiedenen Orten
+* **Art:** Optik · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Das Suchfeld steht mal links über der Tabelle, mal rechts neben „Neu …“, mal im Kopf
+  der Karte; der Filter „Alle / Überfällig / Fällig“ sitzt in der Projektsteuerung im Kartenkopf,
+  in Planlaufmanagement und Baubetriebsplanung darüber. Jede Seite baut ihre Leiste von Hand –
+  daraus entstand der behobene Überlauf im Reiter „Funktion“.
+* **Vorschlag:** ein Baustein „Werkzeugleiste“ in `src/shared/ui.tsx` mit festen Plätzen (links
+  Filter und Suche, rechts Nebenaktionen umrandet, die Hauptaktion ganz rechts) und eingebautem
+  Umbruch; Vorbild ist die Planliste.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### O-2 · „Abhaken“ sieht dreimal anders aus – und derselbe Haken bedeutet zweierlei
+* **Art:** Optik/Bedienung · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Planlaufmanagement und Baubetriebsplanung: grauer Knopf nur mit Haken; im
+  Planlaufmanagement erledigt er sofort, in der Baubetriebsplanung öffnet er die Auswahl des
+  nächsten Status. Projektsteuerung: umrandeter Knopf mit Text „Erledigt“. Auf der Seite eines
+  Planlaufs: blauer Knopf mit Text. „Erinnern“ ist mal nur ein Briefsymbol, mal Symbol und Text.
+* **Vorschlag:** ein fachfreier „Haken-Knopf“ mit einem Aussehen; in Listen mit Platz umrandet und
+  mit Text (Vorbild Projektsteuerung), der reine Haken nur in dichten Tabellen – mit Pfeil, wenn
+  er ein Menü öffnet. „Erinnern“ einheitlich Symbol und Text. (Gehört zu U-8.)
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### O-3 · „Öffnen“ bzw. „Bearbeiten“ einer Zeile: blauer Knopf, umrandeter Knopf oder nur ein Stift
+* **Art:** Optik · **Aufwand:** klein · **Nutzen:** mittel
+* **Heute:** Workflow-Karten (Planlaufmanagement, Baubetriebsplanung): „Öffnen“ klein und blau –
+  neben „Neuer Workflow“ stehen dadurch mehrere blaue Hauptknöpfe. Protokolle (Projektsteuerung):
+  „Öffnen“ und „Folgeprotokoll“ umrandet ohne Symbol. Vorlagen (Planlaufmanagement): „Bearbeiten“
+  umrandet. Planliste, Funktionen, Beteiligte: nur Stift und Papierkorb.
+* **Vorschlag:** Regel festhalten: je Ansicht ein blauer Hauptknopf („Neu …“); Zeilen- und
+  Kartenaktionen klein und umrandet mit Text, wenn es mehrere gibt, sonst Stift und Papierkorb;
+  ein Wort für die Aktion.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### O-4 · Farben stehen mehrfach im Code: Funktionsfarben fünfmal
+* **Art:** Code-Doppelung · **Aufwand:** klein · **Nutzen:** mittel
+* **Heute:** Die Palette der Funktionsfarben steht wortgleich in fünf Dateien (drei im
+  Planlaufmanagement, zwei in der Projektsteuerung), die Ersatzfarbe in zwei weiteren. Für den
+  Nutzer heute kein Unterschied – solange niemand eine der Stellen ändert.
+* **Vorschlag:** einmal in `src/gemeinsam/` (Funktionen gehören zum Projektregister); zusammen mit
+  den Ampelbausteinen aus U-1.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### O-5 · Projektsteuerung: fest eingetragene Farben und eigene Klassen für Vorhandenes
+* **Art:** Optik · **Aufwand:** klein · **Nutzen:** niedrig
+* **Heute:** Nur `projektsteuerung.css` trägt feste Farbwerte (sieben Stellen) statt der
+  gemeinsamen Design-Tokens – im Farbmodus „kontrast“ bleiben sie unverändert. Den kleinen
+  Verknüpfungsknopf gibt es dreimal (global, Planlaufmanagement, Projektsteuerung) mit je anderer
+  Größe und Unterstreichung; Ankreuzfelder sind in der Projektsteuerung 1 px größer.
+* **Vorschlag:** Tokens statt fester Werte, eine Klasse für den Verknüpfungsknopf, Ankreuzfelder
+  über die globale Regel.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### O-6 · Die „fachfreie“ `global.css` führt Regeln einzelner Bereiche; Präfixe folgen keinem Schema
+* **Art:** Code · **Aufwand:** mittel · **Nutzen:** niedrig
+* **Heute:** 21 Klassen in `src/shared/global.css` nutzt nur das Planlaufmanagement, 6 nur die
+  Baubetriebsplanung. Die CSS-Dateien des Planlaufmanagements tragen je Datei ein anderes Präfix
+  (`pl-`, `pll-`, `pli-`, `ab-` …), Baubetriebsplanung und Projektsteuerung je eines (`bb-`,
+  `ps-`). Die Projektsteuerung bricht zwischen 861 und 900 px schon um, die anderen noch nicht.
+* **Vorschlag:** fachliche Regeln in die CSS des Bereichs verschieben, fachfreie Tabellenhilfen
+  bleiben global; das Präfixschema und die Umbruchpunkte (640 px, 860 px) in `CLAUDE.md`
+  festhalten.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+---
+
+## 7. Einzelhinweise Baubetriebsplanung
 
 Aus der Fehlersuche in Domäne und Store der Baubetriebsplanung – keine Fehler, aber Stellen, an
 denen eine fachliche Entscheidung fehlt.
@@ -609,7 +687,7 @@ denen eine fachliche Entscheidung fehlt.
 
 ---
 
-## 7. Aufräumen: unbenutzter Code
+## 8. Aufräumen: unbenutzter Code
 
 Exporte, die nirgends verwendet werden (jeweils nur die Definition im Code). Entfernen ist
 gefahrlos und hält den Code lesbar.
@@ -627,11 +705,14 @@ gefahrlos und hält den Code lesbar.
 | `src/shared/xlsx.ts` | `bildGroesse` |
 | `src/shell/bereiche.ts` | `bereichInfo` |
 
+Ebenso unbenutzt sind vier Klassen in `src/shared/global.css`: `.topbar-actions`, `.grid-3`,
+`.chip-weg`, `.mail-vorschau`.
+
 * **Aufwand:** klein · **Entscheidung:** ☐ entfernen · ☐ lassen
 
 ---
 
-## 8. Anhang: Was schon einheitlich ist
+## 9. Anhang: Was schon einheitlich ist
 
 Damit die Liste nicht den Eindruck erweckt, alles liefe auseinander – diese Dinge sind in allen
 drei Bereichen bereits gleich gelöst:
