@@ -2,14 +2,14 @@
 
 KaPlan ist eine React-19-/TypeScript-/Vite-Anwendung **ohne Server**; alle Daten liegen im
 `localStorage` des Browsers. Installierbar als PWA, veröffentlicht über GitHub Pages. Sie besteht
-aus vier getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`),
-**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, erster Entwurf), **Projektsteuerung**
-(`src/bereiche/projektsteuerung/`, erster Entwurf) und **Leistungsnachweise**
-(`src/bereiche/leistungsnachweise/`, erster Entwurf, aus `LR-PMKA/KaPlan-Test`), dazu dem
-**Controlling** (`src/bereiche/controlling/`, mit PIN), das die Projekte aller Bereiche im
-gemeinsamen **Projektregister** (`src/gemeinsam/`) verwaltet und das Controlling der
-Leistungsnachweise einbindet. Überblick über Aufbau und
-Funktionen: `README.md`; belegtes Inventar aller Routen, Aktionen und Meldungen: `docs/INVENTAR.md`.
+aus drei getrennten Bereichen: **Planlaufmanagement** (`src/bereiche/planlauf/`),
+**Baubetriebsplanung** (`src/bereiche/baubetrieb/`, erster Entwurf) und **Projektsteuerung**
+(`src/bereiche/projektsteuerung/`, erster Entwurf). Projekte und Projektbeteiligte teilen sie sich
+über das gemeinsame **Projektregister** (`src/gemeinsam/`). Die früheren Bereiche
+Leistungsnachweise und Controlling (mit PIN) sind entfernt; ihr Stand liegt im Branch
+`backup/2026-11-12-mit-leistungsnachweisen-und-controlling`. Überblick über Aufbau und
+Funktionen: `README.md`; belegtes Inventar aller Routen, Aktionen und Meldungen: `docs/INVENTAR.md`;
+Optimierungspotenzial aus dem Vergleich der drei Bereiche: `docs/OPTIMIERUNG.md`.
 
 ## Nach jeder Änderung nachziehen
 
@@ -50,191 +50,76 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 ## Aufbau
 
 * `src/shell/` – Startbildschirm und Bereichswahl; die erste Wegmarke der Hash-Adresse
-  (`#/planlauf/…`, `#/baubetrieb/…`, `#/projektsteuerung/…`, `#/leistungsnachweise/…`,
-  `#/controlling/…`) bestimmt den Bereich. Ein neuer Bereich braucht einen Eintrag in `BereichId`/`BEREICHE`
+  (`#/planlauf/…`, `#/baubetrieb/…`, `#/projektsteuerung/…`) bestimmt den Bereich; Adressen der
+  entfernten Bereiche (`#/leistungsnachweise/…`, `#/controlling/…`) lenkt `umgelenkterHash`
+  (`src/shell/router.ts`, `ENTFERNTE_BEREICHE`) auf die Bereichsauswahl `#/`. Ein neuer Bereich
+  braucht einen Eintrag in `BereichId`/`BEREICHE`
   (`src/shell/bereiche.ts`) und in `src/shell/Shell.tsx`; führt er Projekte, zusätzlich einen in
-  `ProjektBereich`/`PROJEKT_BEREICHE` (`src/gemeinsam/register.ts`), ein `domain/register.ts`
-  und `useRegisterAbgleich` im Store.
+  `ProjektBereich`/`PROJEKT_BEREICHE` (`src/gemeinsam/register.ts`), ein `domain/register.ts`,
+  `useRegisterAbgleich` im Store und `RegisterHinweis` in seiner `App.tsx`. Die Startseite zeigt
+  die Kacheln dreispaltig, unter 720 px untereinander (`.start-kacheln` in `src/shared/global.css`).
+  Den **Farbmodus** setzt allein `src/shell/Shell.tsx` – aus `useBenutzer()` in einem
+  Layout-Effekt, also vor dem ersten Zeichnen (`document.documentElement.dataset.farbmodus`; auf
+  der Bereichsauswahl stets `standard`).
 * `src/gemeinsam/` – das **Projektregister**, der einzige Bestand, den sich die Bereiche teilen
   (Schlüssel `kaplan-projektregister.v1`): Projekte (Nummer, Bezeichnung, Beschreibung), ihre
   Zugehörigkeit je Bereich mit lokaler Kennung und Archivstand (`Mitgliedschaft`, `offen` =
   Übernahme steht aus) und die Projektbeteiligten mit Kontaktdaten und Funktionen (über
-  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). Jedes Projekt gehört auch in die
-  Leistungsnachweise (`JEDES_PROJEKT_IN`: deren Abgleich nimmt alle auf, kein Zurücknehmen);
-  die anderen Bereiche nennen sie in ihren Projektansichten nicht (`genannteBereiche`). Die
-  ★-Markierung der Bereiche steht als Spiegel in der Mitgliedschaft (`markiert`); in den
-  Leistungsnachweisen gilt ein anderswo markiertes Projekt als markiert (`markiertAnderswo`).
-  `register.ts` Modell, Laden/Speichern,
+  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). Archiviert ist ein Projekt nur je Bereich
+  (`istArchiviert`); die ★-Markierung der Bereiche steht nicht im Register. Die anderen Bereiche
+  einer Projektansicht liefert `andereBereicheVon(bereich)`.
+  `register.ts` Modell, Laden/Speichern (`REGISTER_VERSION` 3: `aufbereiten()` stellt ältere
+  Stände um – Mitgliedschaften und Kennungen der Leistungsnachweise, ★-Spiegel und `herkunft`
+  entfallen, das frühere Archiv für alle Bereiche wird Archivstand je Bereich, Projekte, die kein
+  Bereich mehr führt, entfallen samt Personen; vorher entsteht die Rohkopie
+  `kaplan-projektregister.v1.vor-fassung-<n>`),
   `registerAendern`/`useRegister` (ob das letzte Speichern gelang: `useRegisterSpeicherZustand`;
   ein ungespeicherter Stand wird bei jedem weiteren `registerAendern` erneut geschrieben,
   `registerErneutSpeichern`; speichert ein anderes Fenster, trägt der `storage`-Hörer ihn auf
   dessen Stand nach und speichert erneut, `eigeneAenderungenNachziehen` – neue Registerfelder
-  gehen dort ohne Weiteres mit, sie werden je Feld zusammengeführt; neu nachgezogen werden nur
-  Projekte des Controllings, was ein Bereich eingetragen hat, trägt sein Abgleich wieder ein;
+  gehen dort ohne Weiteres mit, sie werden je Feld zusammengeführt; neu Eingetragenes wird nicht
+  nachgezogen, was ein Bereich eingetragen hat, trägt sein Abgleich wieder ein;
   Löschvermerke ergänzt sie um Übernahmen der anderen Seite; zogen zwei Fenster zugleich nach,
   erkennt das überschriebene es an `nachgezogenAuf` und zieht noch einmal nach); `abgleich.ts` reine Funktionen: `uebertragen` (Änderungen
   des Bereichs → Register, alter gegen neuer Stand), `abgleichen` (Unbekanntes eintragen, `Plan`
-  für den Bereich; Mitgliedschaften lösen und ★ aus dem Bestand übernehmen nur bei `vollstaendig`
-  – erster Abgleich nach dem Laden bzw. nach `ersetzt()` – und die ★ eines eben übernommenen,
-  noch `offen`en Projekts, sonst kämen mehrere Fenster nicht zur Ruhe; Stammdaten gleicher Nummer
+  für den Bereich; Mitgliedschaften lösen nur bei `vollstaendig`
+  – erster Abgleich nach dem Laden bzw. nach `ersetzt()` –, sonst kämen mehrere Fenster nicht zur
+  Ruhe; führt kein Bereich ein Projekt mehr, entfällt es im Register, `mitgliedschaftLoesen`;
+  Stammdaten gleicher Nummer
   führt `stammdatenZusammenfuehren` zusammen – das Register gilt, Abweichungen des Bereichs stehen
-  als Vermerk in der Beschreibung) und die Aktionen des Controllings; `useRegisterAbgleich.ts`
+  als Vermerk in der Beschreibung) und die beiden Aktionen unmittelbar auf dem Register,
+  `inBereichUebernehmen` („Übernehmen in …“) und `bereichArchivieren` (Archiv je Bereich, über die
+  Kennung im Bereich); `useRegisterAbgleich.ts`
   bindet einen Store an; `useFremdeAenderung.ts` lädt den Bestand eines Stores nach, wenn ein
   anderes Fenster seinen Schlüssel (`SPEICHER_SCHLUESSEL` aus `store/storage.ts`) speichert –
-  jeder der vier Stores nutzt ihn (`nachgeladen(daten)` aus `useRegisterAbgleich` vor
+  jeder der drei Stores nutzt ihn (`nachgeladen(daten)` aus `useRegisterAbgleich` vor
   `setData(daten)` – derselbe Stand wird weder übertragen noch abgeglichen, bis sich das Register
   ändert; nicht zurückschreiben; nicht `ersetzt()`);
-  `ProjektBereiche.tsx` Bausteine der Projektlisten („Auch in“, „Projekte aus anderen
-  Bereichen“, Archiv, Archivhinweis, Beteiligte). Dazu **„Angemeldet als“ für alle Bereiche**:
+  `ProjektBereiche.tsx` Bausteine der Projektlisten und Projekte („Auch in“, „Projekte aus anderen
+  Bereichen“ mit „Übernehmen in …“ – ohne Projekte, die in allen ihren Bereichen archiviert sind,
+  `FremdeProjekte`; die Projektlisten zeigen den Abschnitt nur bei `ladeZustand === 'ok'`, sonst
+  sähe das Register eine Übernahme vor, die der Bereich nicht anlegt –, `ArchivAbschnitt`,
+  `VerknuepfungsHinweis` (nennt ein überall archiviertes Projekt „(dort archiviert)“),
+  `useLoeschHinweis`, Beteiligte)
+  und das **Archiv in den Bereichen**: `ArchivKnopf` („Archivieren“ mit Kurzmeldung, ohne
+  Rückfrage – im Planlaufmanagement in `pages/projekt/Einstellungen.tsx`, Karte „Projekt
+  archivieren“, in Baubetriebsplanung und Projektsteuerung in `pages/ProjektDetail.tsx` im
+  Projektkopf zwischen „Bearbeiten“ und „Löschen“; wer den Knopf einrahmt, fragt mit
+  `useArchivierbar`, ob er etwas zeigt – nicht bei einem archivierten oder dem Register
+  unbekannten Projekt) und `ArchivHinweis` oben im archivierten
+  Projekt mit „Aus dem Archiv holen“; archivierte Projekte fehlen in Übersicht und Seitenleiste
+  (`useArchivierte`) und in den bereichsweiten Fristenlisten (`pages/Fristen.tsx` im
+  Planlaufmanagement, `pages/Termine.tsx` samt Zähler der Seitenleiste in der
+  Baubetriebsplanung), im Projekt selbst bleiben die Fristen sichtbar;
+  `RegisterHinweis.tsx` steht in der `App.tsx` jedes Bereichs
+  über dem Inhalt: „Das Projektregister ließ sich nicht lesen.“ bzw. „… stammt aus einer neueren
+  Fassung von KaPlan.“ (mit „Seite neu laden“) und „Projektregister nicht gespeichert.“ mit
+  „Erneut speichern“ (gelingt es wieder: „Projektregister gespeichert.“, ein verlorener Fokus geht
+  an die Stelle des Hinweises, `.gem-registeranker`; ist der Stand eines anderen Fensters
+  unlesbar, meldet er das Verwerfen). Dazu **„Angemeldet als“ für alle Bereiche**:
   `benutzer.ts` (Name und Farbmodus, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
   `benutzerAendern`), `AngemeldetAls.tsx` (Knopf und Dialog in jeder Seitenleiste; eine eigene
   Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`.
-* `src/bereiche/controlling/` – ohne eigenen Bestand: Projekte und Archiv arbeiten auf dem
-  Register; die Menüpunkte „Leistungsnachweise“ (`#/controlling/leistungsnachweise/projekte`,
-  dazu die Seite je Projekt) und „Auswertung“ (`#/controlling/leistungsnachweise/auswertung`,
-  `Route` `{ view: 'auswertung' }` in `lib/router.ts`, Symbol `diagramm`) binden beide
-  `LeistungsnachweiseControlling` aus `src/bereiche/leistungsnachweise/controlling.tsx` ein. PIN in
-  `domain/pin.ts` (`CONTROLLING_PIN`, Entsperrung je Sitzung im `sessionStorage`); Gestaltung in
-  `controlling.css` (Präfix `ct-`). Lässt sich das Register nicht speichern, zeigt `App.tsx` über
-  jeder Ansicht „Projektregister nicht gespeichert.“ mit „Erneut speichern“ (gelingt es wieder:
-  „Projektregister gespeichert.“, ein verlorener Fokus geht an die Überschrift; ist der Stand
-  eines anderen Fensters unlesbar, meldet es das Verwerfen).
-* `src/bereiche/leistungsnachweise/` – Schlüssel `leistungsnachweise.data.v1`: `domain/types.ts`
-  (Mitarbeiter, Projekt mit Abschnitten, Leistung, Leistungsnachweis, `Periodentext`,
-  `Bestaetigung`), `domain/rechte.ts` – die
-  Rechte an einer Stelle, je **Zugang** (`'bereich'` | `'controlling'`): Der `StoreProvider` erhält
-  den Zugang als Eigenschaft (`index.tsx` ohne, `controlling.tsx` mit `'controlling'`); im Bereich
-  erfasst die angemeldete Person nur eigene Leistungen, schreibt am gemeinsamen Leistungstext der
-  Zeiträume mit eigenen Leistungen mit und bestätigt ihre Monate (Übersicht mit „Mein Kalender“
-  über alle Projekte und „Offene Bestätigungen“, Projektliste ohne Anlegen, Projekt =
-  Reiter (`.tabs`, `role="tab"`/`aria-selected`, `pages/ProjektDetail.tsx`) „Leistungstexte“ –
-  Vorgabe, `pages/projekt/MonatsErfassung.tsx`: ein Block mit allen Zeiträumen des Monats (Kopf mit
-  Stand und Monatswahl, „Meine Stichpunkte“ in festen Spalten Datum | Std. | Stichpunkt,
-  `ln-me-punkt-kopf` in `components/erfassung.css`), darunter der Block „Monat bestätigen“ – und
-  „Meine Leistungen“ – `pages/projekt/Leistungen.tsx` mit Kalender und Liste; Adressen
-  `#/leistungsnachweise/projekt/<id>` (Vorgabemonat, `vorgabeMonat`), `…/<JJJJ-MM>`,
-  `…/leistungen`, frühere Reiter → Leistungstexte;
-  Kalender: `components/LeistungsKalender.tsx` – kompakt per Container-Abfrage bis 730 px
-  Kalenderbreite, dann öffnet ein belegter Tag erst die `TagesListe`; Projektwahl im
-  `LeistungDialog` über `projektAuswahl`), alles Übrige (Projekte anlegen und einstellen –
-  `projektVerwalten`; Ausnahme: der Excel-Import legt auch im Bereich unbekannte Projekte und
-  Abschnitte an, soweit die eigenen Leistungen sie brauchen, `planErlaubt` –,
-  Leistungsnachweise samt Leistungstexten und Bemerkung, Abschließen, Aufschläge, Export,
-  Auswertung, Sammel-Import) gibt es nur im Controlling – ohne Reiter (`ControllingTab` =
-  `'projekte'` | `'auswertung'` in `lib/router.ts`): die Übersicht „Leistungsnachweise je Projekt“
-  (`pages/controlling/ProjektListe.tsx`: je Projekt der früheste offene Nachweis, gruppiert nach dem
-  Stand bis zum letzten Monatsende aus `abschlussEnden` – „Bereit zum Abschließen – alle haben
-  bestätigt“, „Bestätigungen fehlen“ (`fehlendeBestaetigungen`; Namen und Monate erst auf der Seite
-  des Projekts), „Noch
-  nichts abzuschließen“ –; Spalten Projekt, „Letzter Leistungsnachweis“ – der zuletzt
-  abgeschlossene, `zeitraumText`, „abgeschlossen am …“ bzw. „noch keiner“ –, „Offene Stunden“ bis
-  Monatsende und „Bestätigung“ mit „x von y bestätigt“; das Raster steht
-  nur in den „Einstellungen“ des Projekts; Sammel-Import, Neues Projekt – `ProjektDialog` dient nur
-  dem Anlegen), je Projekt
-  eine Seite (`Projekt.tsx`, Route `controllingProjekt`; `abrechnung` ist dieselbe Seite mit gewähltem
-  Nachweis: Kopf mit rechts drei beschrifteten Knöpfen wie in den anderen Bereichen – zum
-  gezeigten Nachweis „Vorschau“ (`NachweisVorschau`: Druckblatt mit „Drucken / PDF“), dann
-  „Einstellungen“ (`Modal` „Einstellungen“ mit `ProjektEinstellungen`: Karte „Projekt“ =
-  `ProjektDaten` mit allen Angaben samt Raster, darunter Abschnitte und Logos; ein neues Raster
-  setzt `updateProjekt` auch an den offenen Nachweisen, abgeschlossene behalten ihres) und zum
-  gezeigten Nachweis rot „Nachweis löschen“ (`NachweisLoeschenDialog`, beide aus
-  `Abrechnung.tsx`); ein Menü „⋯“,
-  „Projekt bearbeiten“ und ein Löschen des Projekts gibt es nicht (mehr) – Projekte löscht das
-  Controlling unter „Projekte“; darunter
-  `NachweisBearbeitung` aus `Abrechnung.tsx` – ohne Nachweis in der Adresse der früheste offene,
-  sonst der gewählte, dann mit „Zum offenen Leistungsnachweis“; sein Kopf (`ln-co-nachweiskopf`)
-  ohne Knöpfe: Überschrift, Zeitraum, Raster, abgeschlossen „Abgeschlossen am …“ mit dem Link
-  „Wieder öffnen …“; eine Excel-Fassung des Nachweises, „Zeitraum ändern“ und „Aufschläge
-  zurücksetzen“ gibt es nicht (mehr), „Neuer Leistungsnachweis“ nur auf der Seite ohne offenen
-  Nachweis –, ein offener in drei
-  Schritten, `SchrittKopf` in `hilfen.tsx` (ohne erläuternde Untertitel und Bedienhinweise – nur
-  Angaben und Meldungen zum Stand; das Raster steht im Kopf des Nachweises, nicht im Projektkopf): 1 „Haben alle eingetragen und bestätigt?“ –
-  `MitarbeiterBestaetigungen` in `pages/controlling/BestaetigungsStand.tsx` mit `schritt`: nur
-  Mitarbeiter und „Bestätigung je Monat“, ohne Stunden und Summe, gezählt bis zum in
-  Schritt 3 gewählten Ende –, 2 „Prüfen – so geht der Leistungsnachweis raus“ – eine Tabelle mit
-  Leistungstext (`ZeilenText` in `pages/controlling/Leistungstexte.tsx`: zuerst zum Lesen,
-  „✎ Korrigieren“/„Fertig“), Erfasst, Aufschlag je Zeile (`StundenFeld` in `hilfen.tsx`) und
-  Abgerechnet, darunter die Bemerkung –, 3 „Abschließen und PDF“ – `AbschliessenSchritt`: Wahl unter
-  `abschlussEnden`, fehlen Bestätigungen (`FehlendeBestaetigungen`), nur mit „Trotzdem
-  abschließen“, danach Druckdialog und Seite des abgeschlossenen; eine Rückfrage gibt es nicht;
-  ganz unten „Frühere Leistungsnachweise“, `FruehereNachweise` in `Projekt.tsx`, mit „PDF“ und
-  „Ansehen“) und die Auswertung (`pages/controlling/Auswertung.tsx`). Seiten für alle Nachweise,
-  für Mitarbeiter, für die Leistungen aller Mitarbeiter und für die Bestätigungen eines Projekts
-  gibt es nicht; frühere Adressen lenkt `lib/router.ts` um (`…/projekt/<id>/<reiter>` auf die
-  Seite des Projekts).
-  Eine Rolle „Controlling“ an Mitarbeitern gibt es nicht (mehr, Fassung 3). **Eine eigene
-  Anmeldung gibt es nicht:** Angemeldet ist der aktive Mitarbeiter, dessen Name dem gemeinsamen
-  „Angemeldet als“ entspricht (`mitarbeiterZumNamen`); der Store zieht `einstellungen.mitarbeiterId`
-  nach und legt im Bereich bei `ladeZustand` 'ok' eine fehlende Person selbst an
-  (`anmeldungAnwenden`, `anmeldeLage`: Vor- und Nachname nötig, kein ausgeschiedener gleichen
-  Namens – einen als ausgeschieden markierten setzt er dort wieder aktiv; Kennung aus dem Namen,
-  `mitarbeiterKennung`, vor `mutate` gebildet – StrictMode und zwei Fenster erzeugen keine Doppel;
-  hat das Controlling die so angelegte Person umbenannt, legt er keine neue an; ein Namenswechsel entfernt sie nur, solange sie keine Leistungen hat und
-  noch so ist, wie der Bereich sie angelegt hat – Name und Kürzel unverändert,
-  `automatischAngelegtOhneLeistungen`). Im Controlling wird niemand angelegt. Übrige Lagen nennt
-  `components/Anmeldung.tsx` (`AnmeldeHinweis` als Leiste, `useMitAnmeldung` als Kurzmeldung
-  vor Handlungen) – keinen Dialog. **Gemeinsame Leistungstexte und Monatsbestätigung**
-  (`domain/erfassung.ts`, rein): Erfassungsperiode = Periode im Raster des Projekts, auf den
-  Kalendermonat gekürzt und an den Grenzen aller Nachweise geteilt (`erfassungsPeriode` in
-  `domain/zeitraum.ts`, `erfassungsGliederung`/`erfassungsPeriodeIn` in `domain/nachweis.ts`;
-  abgeschlossene Nachweise im Raster ihres Abschlusses, `NachweisStand.erfassungsRaster`);
-  gesperrt ist ein Zeitraum, den ein abgeschlossener Nachweis umfasst (`abgeschlossenIm`);
-  `monatsStatus` mit Kennung je Zeitraum (`periodenKennung`, inhaltlich ohne IDs, samt
-  gemeinsamem Text – ändert ein anderer ihn, erlischt die Bestätigung); Store-Methoden
-  `periodentextSetzen`, `monatBestaetigen`, `bestaetigungZuruecknehmen`; nach jedem `mutate`
-  `periodentexteNachziehen` (Texte ziehen mit, wenn sich Grenzen der Nachweise ändern),
-  `bestaetigungenNachziehen` (gehen bestätigte Teile unverändert in einem Zeitraum auf, gilt die
-  Bestätigung weiter – nur, wenn der zusammengeführte Text nichts enthält, was die Person nicht
-  bestätigt hat, verglichen nach Sätzen ohne Reihenfolge, `nurBekannteTeile`; eine Teilung lässt
-  sie erlöschen – die Rückfragen im Controlling nennen das,
-  `grenzFolgen` rechnet wie der Store) und `erfassungBereinigen`. Eine abgerechnete Leistung, deren Datum aus ihrem
-  abgeschlossenen Nachweis herausgelegt wurde, gehört zu keinem Zeitraum (`AnderswoAbgerechnet`);
-  nach dem Abschluss geänderte abgerechnete erkennt `nachAbschlussGeaendert` (`domain/nachweis.ts`:
-  `Leistung.geaendert` nach dem Abschluss – gesetzt von `updateLeistung` und vom Neuimport mit
-  anderem Inhalt – und Abweichung vom Stand, `NachweisStand.inhalte`/`abschnittIds`;
-  Zurückändern hebt es auf; ordnet das Controlling Abschnitte neu zu, zieht
-  `standAbschnitteNachziehen` den Abschnitt im Stand mit). Im Bereich sieht niemand Stichpunkte, Stunden oder Leistungen der
-  anderen – auch nicht als Zahl (`stichpunkteDerPeriode`); gemeinsam ist allein der Text; das
-  Controlling liest alles. `domain/nachweis.ts`
-  Zeilen (Text ohne Bearbeitung von Hand aus den gemeinsamen Texten, `gemeinsamerZeilentext`,
-  `textGemeinsam`; sonst `automatikText`), Zeiträume, Ergänzen, Aufschläge, Abschluss (Nachweise eines Projekts überschneiden sich
-  nie; welche Leistungen ein Nachweis zeigt, ergibt sich aus dem Datum – außer nachgereichten
-  Leistungen, die ein späterer Nachweis nach Rückfrage übernommen hat (`nachgereicht`, eigene
-  Zeile mit `NACHGEREICHT_PRAEFIX`), und Leistungen im Stand eines anderen abgeschlossenen
-  Nachweises (`abgerechnetIn` – abgerechnet bleibt abgerechnet); deshalb
-  immer `leistungenDesNachweises` bzw. `nachweisDerLeistung` statt Datumsvergleichen – beide
-  lesen aus einem `WeakMap`-Verzeichnis je Nachweisliste, Nachweislisten also nie an Ort und
-  Stelle ändern; abgerechnet
-  ist, was im Stand abgeschlossener Nachweise steht, `abgerechneteLeistungen`; einen Rhythmus gibt
-  es nicht (mehr, Fassung 9): ein offener Nachweis ohne festgelegtes Ende (`laeuftBisAbschluss(n)`;
-  `bisFest` setzte früher „Zeitraum ändern“ – den Dialog gibt es nicht mehr, ältere Stände behalten
-  es) wächst in `nachweiseErgaenzen` bis zum Monatsende neuer
-  Leistungen mit, sonst entsteht ein neuer ab dem Monatsanfang; den Umfang legt erst das
-  **Abschließen** fest – statt eines freien Datums jedes Monatsende, dazu heute bzw. das bisherige
-  Ende vor heute (`abschlussEnden`, Vorschlag `abschlussVorschlag`: das letzte Monatsende), erlaubt
-  ab dem Beginn bis heute, höchstens bis zum bisherigen Ende
-  (`abschlussEndeBereich`/`abschlussEndeGueltig`), `abschlussZeitraum(…, bis?)`,
-  `nachweisAbschliessenAnwenden(…, bis?)`, Store `nachweisAbschliessen(id, bis?)`; spätere
-  Leistungen kommen in einen neuen offenen Nachweis; ohne Abschluss läuft der offene einfach
-  weiter – eine Fälligkeit gibt es nicht (mehr; `vorgabeEnde`, `nachweisFaellig`, `offenSeit`
-  entfallen); Aufschläge nur je Zeile und Abschnitt (`aufschlaege`) – einen Gesamtaufschlag gibt
-  es nicht (mehr, Fassung 10: `migriere()` rechnet ihn mit `gesamtAufschlaegeUmrechnen` in
-  `domain/migrationGesamtaufschlag.ts` in Aufschläge je Zeile bzw. Abschnitt um, die
-  abgerechneten Stunden bleiben gleich); „Neuer Leistungsnachweis“ fragt keinen Zeitraum ab, sondern
-  fasst alle nicht abgerechneten Leistungen und offenen Nachweise zusammen,
-  `nichtAbgerechnet`/`nachweisFuerNichtAbgerechneteAnwenden`),
-  `domain/import.ts`
-  Excel-Import, `domain/druck.ts` PDF des Nachweises, `domain/export.ts` Excel nur für Auswertung,
-  Leistungslisten und Importvorlage, `lib/router.ts` baut auch die
-  Adressen des Controllings (`CONTROLLING_PREFIX`) und nimmt nur Adressen dieser beiden Präfixe an;
-  frühere Adressen `#/leistungsnachweise/controlling/…` lenkt `App.tsx` um. Ohne eigenen Bestand
-  gibt es Demodaten nur bei leerem Projektregister (`ladeDaten`), sonst beginnt der Bereich leer. Kennungen, die erst in einer Änderung
-  anfallen, liefert `idVorrat` (StrictMode). Neue Felder über `DATEN_VERSION` (derzeit 10:
-  Gesamtaufschlag in Aufschläge je Zeile umgerechnet – `gesamtAufschlaegeLesen` in
-  `store/storage.ts` vor `aufbereiten`, `gesamtAufschlaegeUmrechnen` danach; 9: ohne
-  Rhythmus – `vonFassung8` führt mit `laufendeZusammenfuehren` aufeinanderfolgende offene Nachweise
-  ohne `bisFest` zusammen –, `gesamtAufschlag`; 7: `periodentexte`, `bestaetigungen`) und
-  `migriere()`.
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
   `localStorage`-Schlüssel, eigenen Einstellungen und eigenem Router.
 * `src/shared/` – fachfreie Bausteine (UI, Icons, Datumsrechnung, Excel lesen/schreiben, Druck,
@@ -249,7 +134,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   die nur auf Klicks hören (Ablageflächen `.drop-zone`), mit `alsKnopf` tastaturbedienbar machen.
   `speicher.ts` verwaltet Rohkopien im `localStorage` (`rohkopieVorEinspielen`,
   `nachRaeumenSpeichern`). `main.tsx` importiert `global.css` vor der Shell, damit
-  Bereichsregeln gleicher Spezifität gewinnen – Reihenfolge nicht umdrehen.
+  Bereichsregeln gleicher Spezifität gewinnen – Reihenfolge nicht umdrehen. Der Ampelpunkt `.dot`
+  ist `inline-block` (hat auch in einer Tabellenzelle eine Größe), der Dialogfuß `.modal-footer`
+  bricht um – beides in `global.css`, nicht je Bereich per Inline-Style nachbessern.
 * `src/bereiche/planlauf/`:
   * `domain/types.ts` Datenmodell (flache Listen in `AppData`, Verweise über IDs – außer: Schritte
     nennen ihre Funktion per `roleName`, Gewerke sind Namen; Umbenennungen müssen diese Stellen
@@ -298,13 +185,16 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   grafischen Workflow-Editor `components/WorkflowEditor.tsx` (Optik und Bedienung wie im
   Planlaufmanagement, aber eigener Code mit Präfix `bb-wf-` in `components/workflowEditor.css`; die
   Liste zeigt den Standardverlauf mit `components/AblaufVorschau.tsx`), `domain/fristen.ts` Fahrplanjahr, Terminfrist, Ampel,
-  Anmeldebedarf, `domain/ablauf.ts` Statuswechsel samt Übernahme/Aufteilung und `sachstand`
+  Anmeldebedarf (ob ein Termin zum Nachhaken dient, sagt allein `dientZumNachhaken` in
+  `domain/workflow.ts` – gekennzeichnete Status und stets die mit einem Nachhak-Termin als
+  Terminfrist; nicht `status.nachhaken` unmittelbar lesen), `domain/ablauf.ts` Statuswechsel samt Übernahme/Aufteilung und `sachstand`
   (jüngster Verlaufseintrag oder `geaendertAm`, das nur `updateAnmeldung`/`terminSetzen` setzen,
   und nur bei tatsächlicher Änderung;
   angezeigt in den Anmeldungstabellen des Projekts, `SachstandKompakt`),
   `domain/bbpImport.ts` Import aus BBPNeo (nur KM und KKM; Spalten über ihre Überschriften
   „Anmeldung::…“, je Anmelde-ID eine Anmeldung mit frühestem Beginn und spätestem Ende,
-  Statuszuordnung in `Einstellungen.bbpStatus`, Projekte über die DB-G-Nummer; einen anderen
+  Statuszuordnung in `Einstellungen.bbpStatus`, Projekte über die DB-G-Nummer – Anmeldungen, die
+  eine Projektnummer verbindet, bilden eine Projektgruppe, `projektGruppen`; einen anderen
   Status setzt `statusUebernehmen` in `domain/ablauf.ts` ohne Nachfolger-Prüfung, mit Vorstand
   zum Zurücknehmen; Seite `pages/BbpImport.tsx`, Route `import`, Menüpunkt zwischen „Projekte“ und
   „Einstellungen“),
@@ -340,18 +230,20 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 
 * `src/shared/` enthält nur Bausteine ohne fachlichen Bezug und importiert nichts aus
   `src/bereiche/`. Die Bereiche greifen nicht aufeinander zu; gemeinsam nutzen sie nur
-  `src/gemeinsam/` (importiert nichts aus `src/bereiche/`). Einzige Ausnahme: Das Controlling
-  bindet das Controlling eines Bereichs über dessen Einstiegsmodul `controlling.tsx` ein (heute nur
-  die Leistungsnachweise) – nichts sonst aus dem Bereich.
+  `src/gemeinsam/` (importiert nichts aus `src/bereiche/`).
 * **Angemeldet als** gilt für alle Bereiche: Name und Farbmodus ändert nur `benutzerAendern`
   (`src/gemeinsam/benutzer.ts`); die Bereiche führen sie in ihrem Bestand nur als Spiegel
   (`bearbeiter` bzw. `einstellungen`) und ziehen sie mit `useBenutzerAbgleich` nach. Keine eigenen
-  Dialoge „Angemeldet als“ in den Bereichen – `AngemeldetAls` verwenden.
+  Dialoge „Angemeldet als“ in den Bereichen – `AngemeldetAls` verwenden. Den Farbmodus setzt nur
+  die Hülle (`src/shell/Shell.tsx`, aus `useBenutzer()`) – kein eigener Effekt auf
+  `dataset.farbmodus` in einer `App.tsx`.
 * **Projektregister:** Ein Bereich schreibt seinen eigenen Bestand nur über sein `mutate()` –
   auch, was aus dem Register kommt (`registerPlanAnwenden` in `domain/register.ts`, reine
   Funktion, liefert ohne Änderung denselben Bestand zurück, damit der Abgleich zur Ruhe kommt).
   Das Register ändert nur `registerAendern` (außerhalb von React-Updates). Archivstand und
-  Zugehörigkeit stehen allein im Register, nicht im Bestand der Bereiche. `ersetzeDaten` und
+  Zugehörigkeit stehen allein im Register, nicht im Bestand der Bereiche – archiviert und
+  zurückgeholt wird je Bereich über `ArchivKnopf`/`ArchivHinweis` (`bereichArchivieren`), nicht
+  über eigene Knöpfe oder Felder im Bereich. `ersetzeDaten` und
   `zuruecksetzen` melden vorher `ersetzt()` – ein eingespielter Stand wird nicht übertragen.
   Einen aus einem anderen Fenster nachgeladenen Stand melden die Stores dagegen mit
   `nachgeladen()`, nicht mit `ersetzt()`: Bestand und Register kommen dort als zwei getrennte
@@ -377,17 +269,20 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 * Wer löscht, hinterlässt einen Löschvermerk in `AppData.geloescht` (`loeschvermerk` bzw. die
   Löschfunktionen in `domain/bestand.ts`) – der Abgleich braucht ihn. Neue Verweisfelder in `VERWEISFELDER`
   (`domain/abgleich.ts`) eintragen.
-* Gespeichert wird – in allen vier Bereichen – nur bei `ladeZustand === 'ok'`, und nur dann gleicht
+* Gespeichert wird – in allen drei Bereichen – nur bei `ladeZustand === 'ok'`, und nur dann gleicht
   der Store mit dem Register ab: Nach einem Ladefehler oder bei einem Stand aus einer neueren
   Fassung zeigt der Bereich Demodaten (mit Hinweisleiste) und lässt den gespeicherten Stand
   unberührt. Vor jeder Umstellung legt `ladeDaten` eine Rohkopie `<Schlüssel>.vor-fassung-<n>` an.
-  Im Planlaufmanagement, in der Baubetriebsplanung und in der Projektsteuerung (nicht in den
-  Leistungsnachweisen) entsteht vor dem Einspielen einer Sicherung über einen unlesbaren Stand mit
+  Vor dem Einspielen einer Sicherung über einen unlesbaren Stand entsteht mit
   `rohkopieVorEinspielen` eine `<Schlüssel>.vor-einspielen-<Zeitpunkt>`, und „Gespeicherten Stand
-  herunterladen“ im Dialog liefert dann den Rohtext statt der Demodaten. `speichereDaten` liefert `SpeicherZustand` und räumt bei vollem
+  herunterladen“ im Dialog liefert dann den Rohtext statt der Demodaten. `ersetzeDaten` und
+  `zuruecksetzen` tun nichts, solange der gespeicherte Stand aus einer neueren Fassung stammt;
+  „Zurücksetzen“ im Planlaufmanagement behält `bearbeiter`. `sicherungLesen` nennt Sicherungen
+  der anderen Bereiche beim Namen („… bitte dort einspielen.“) und meldet eine beschädigte Datei
+  mit „Die Sicherung konnte nicht gelesen werden.“ statt einer Technikmeldung. `speichereDaten` liefert `SpeicherZustand` und räumt bei vollem
   Speicher über `nachRaeumenSpeichern` (`src/shared/speicher.ts`) nach Bedarf diese Kopien – auch
   die anderer Bereiche; das Register räumt ebenso und meldet sein Ergebnis über
-  `useRegisterSpeicherZustand` (Hinweis im Controlling).
+  `useRegisterSpeicherZustand` (Hinweis in jedem Bereich, `RegisterHinweis`).
 * Der localStorage-Schlüssel `planlauf-management.data.v1` bleibt unverändert. Neue Felder am
   Datenmodell sind optional oder werden in `migriere()` (`store/storage.ts`) nachgetragen – dann
   **`DATEN_VERSION`** (`domain/types.ts`) erhöhen: `migriere()` läuft nur, wenn die gespeicherte
@@ -402,7 +297,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   (`domain/types.ts`): Planverzeichnisse laufen gebündelt oder mit Plänen einzeln, Pläne lassen
   sich herauslösen und wieder bündeln.
 * Neue Route: Typ `Route` sowie `routeToHash`/`hashToRoute` in `lib/router.ts` erweitern und in
-  `App.tsx` rendern. Frühere Adressen bleiben per Umleitung gültig.
+  `App.tsx` rendern. Frühere Adressen bleiben per Umleitung gültig. Die Übersicht eines Bereichs
+  steht unter dessen Adresse (`#/planlauf`, `#/baubetrieb`, `#/projektsteuerung`) – `routeToHash`
+  liefert sie so, `#/planlauf/dashboard` und `#/projektsteuerung/uebersicht` bleiben gültig.
 * Keine neuen Laufzeitabhängigkeiten ohne Rückfrage – Router, Excel-Import/-Export, PDF-Druck und
   Icons sind bewusst selbst geschrieben; Laufzeitabhängigkeiten sind nur `react`/`react-dom`.
 * Gestaltung über die Design-Tokens in `src/shared/global.css`; die Oberfläche bleibt bis etwa
@@ -419,26 +316,13 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   Hash lädt nicht neu, und der laufende Store überschreibt die Änderung.
 * Hilfsserver über ihre Prozessnummer beenden, nicht mit `pkill -f "<Befehl>"`: Das Muster trifft
   auch die eigene Shell, deren Befehlszeile denselben Text enthält.
-* Das Projektregister füllt sich erst, wenn ein Bereich geöffnet wird; was das Controlling ändert,
-  vollzieht ein Bereich beim nächsten Öffnen. PIN des Controllings: `0000`. Wer den
-  `localStorage` leert, leert auch `kaplan-projektregister.v1`.
-* Leistungsnachweise: Wer unter „Angemeldet als“ „Anna Becker“ einträgt, ist in den Demodaten
-  Mitarbeiterin (ebenso Jonas Keller, Miriam Vogt und Tobias Brandt); bei der Brücke
-  (monatsscharf) steht im Vormonat ein gemeinsamer Text, den Anna Becker bestätigt hat. Ein
-  anderer Name mit Vor- und Nachnamen – auch die Vorgabe „Max Mustermann“ – wird beim Öffnen des
-  Bereichs automatisch als Mitarbeiter angelegt (im Controlling nicht); ein Name aus nur einem
-  Wort zeigt den Hinweis, Vor- und Nachnamen einzutragen. Wer zwei Personen gegeneinander
-  prüft (gemeinsamer Text, erlöschende Bestätigung), wechselt den Namen unter „Angemeldet als“.
-  Demodaten gibt es nur, solange das Projektregister leer ist – nach dem Leeren des
-  `localStorage` also zuerst `#/leistungsnachweise` öffnen, sonst beginnt der Bereich leer.
-  Leistungsnachweise abschließen, Aufschläge und Raster prüft man im Controlling
-  (`#/controlling/leistungsnachweise/projekte`). Die offenen Demo-Nachweise enthalten Leistungen
-  aus vergangenen Monaten; die Brücke (K9101) steht unter „Bestätigungen fehlen“ und wird „bereit“,
-  wenn zusätzlich „Jonas Keller“ (unter „Angemeldet als“) im Bereich seinen Vormonat bestätigt.
-  Abgeschlossen wird auf der Seite eines Projekts in Schritt 3 „Abschließen und PDF“ mit einem
-  Monatsende bzw. „bis heute“ (Vorschlag Ende des Vormonats; spätere Leistungen laufen in einem
-  neuen offenen Nachweis weiter; danach öffnet sich der Druckdialog); Aufschläge je Zeile prüft
-  man in Schritt 2.
+* Das Projektregister füllt sich erst, wenn ein Bereich geöffnet wird; was ein Bereich übernimmt
+  („Übernehmen in …“ unter „Projekte aus anderen Bereichen“) oder an geteilten Projekten und
+  Personen ändert, vollzieht der andere Bereich beim nächsten Öffnen. Archiviert wird im Projekt
+  („Archivieren“: Planlaufmanagement in den Einstellungen des Projekts, sonst im Projektkopf),
+  zurückgeholt über „Aus dem Archiv holen“ im archivierten Projekt (Projektliste, Abschnitt
+  „Archiv“); der Archivstand gilt nur in diesem Bereich, der andere zeigt ihn unter „Auch in“.
+  Wer den `localStorage` leert, leert auch `kaplan-projektregister.v1`.
 * Projektsteuerung: Wer „Lena Roth“ einträgt, sieht die Demo-Aufgaben als eigene To-Dos; mit
   einem anderen Namen zeigt die Übersicht keine.
 * „Angemeldet als“ liegt unter `kaplan-benutzer.v1` – wer es zurücksetzen will, löscht diesen
