@@ -1207,8 +1207,23 @@ function projektKopieren(d: AppData, sicherung: AppData, pid: ID, neueId: (prefi
   };
 }
 
-/** Verweise ohne Ziel leeren (Regel „leeren“/„mitnehmen“) und fehlende Gewerke ergänzen. */
-function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>): AppData {
+/** Gewerke, die Funktionen, Zuordnungen und Einträge eines Bestands nennen. */
+function genutzteGewerke(d: Pick<AppData, 'roles' | 'standardRollen' | 'contacts' | 'documents'>): string[] {
+  return [
+    ...d.roles.map((r) => r.gewerk),
+    ...d.standardRollen.map((r) => r.gewerk),
+    ...d.contacts.flatMap((c) => c.zuordnungen.map((z) => z.gewerk)),
+    ...d.documents.map((x) => x.gewerk),
+  ].filter((g): g is string => !!g && g.trim() !== '');
+}
+
+/**
+ * Verweise ohne Ziel leeren (Regel „leeren“/„mitnehmen“) und fehlende Gewerke
+ * ergänzen – nur solche, die mit dem Abgleich hereinkommen. Ein Gewerk, das der
+ * Bestand `vorher` schon ohne Listeneintrag führte, wurde dort gelöscht (seine
+ * Einträge tragen es weiter als Angabe) und kommt nicht von selbst zurück.
+ */
+function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>, vorher: AppData): AppData {
   const vorlagen = new Set(d.emailVorlagen.map((x) => x.id));
   const workflows = new Set(d.templates.map((x) => x.id));
   const docs = new Set(d.documents.map((x) => x.id));
@@ -1245,13 +1260,9 @@ function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>): AppDa
       ? { ...c, zuordnungen: c.zuordnungen.filter((z) => rollen.has(z.roleId)) }
       : c,
   );
-  const genutzt = [
-    ...d.roles.map((r) => r.gewerk),
-    ...d.standardRollen.map((r) => r.gewerk),
-    ...contacts.flatMap((c) => c.zuordnungen.map((z) => z.gewerk)),
-    ...documents.map((x) => x.gewerk),
-  ].filter((g): g is string => !!g && g.trim() !== '');
-  const fehlend = [...new Set(genutzt)].filter((g) => !d.gewerke.includes(g));
+  const schonOhne = new Set(genutzteGewerke(vorher).filter((g) => !vorher.gewerke.includes(g)));
+  const genutzt = genutzteGewerke({ roles: d.roles, standardRollen: d.standardRollen, contacts, documents });
+  const fehlend = [...new Set(genutzt)].filter((g) => !d.gewerke.includes(g) && !schonOhne.has(g));
   return {
     ...d,
     templates,
@@ -1375,7 +1386,7 @@ export function abgleichAnwenden(
     d = projektKopieren(d, sicherungRoh, pid, neueId, v);
     for (const r of d.runs) if (!vorher.has(r.id)) beruehrteLaeufe.add(r.id);
   }
-  d = verweiseBereinigen(d, beruehrteLaeufe);
+  d = verweiseBereinigen(d, beruehrteLaeufe, bestand);
 
   // Wieder vorhandene Elemente verlieren ihren Löschvermerk
   const vorhanden = new Set<string>([
