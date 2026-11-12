@@ -896,7 +896,9 @@ export function verschiebbar(g: Gliederung, id: ID): { frueher: boolean; spaeter
  * Verschiebt einen Schritt des Standardverlaufs um eine Stelle nach vorn bzw.
  * hinten – im Ablauf, nicht nur in der Liste; ein paralleler Block zählt als
  * eine Stelle. Im Zweig eines Blocks bewegt er sich im Standardweg des Zweigs.
- * Abweichungen bleiben, wo sie sind.
+ * Abweichungen bleiben, wo sie sind – auch Sprünge von anderswo zum Schritt
+ * (Rücksprung, Nacharbeit: „Erneute Vorlage“ → „Formale Prüfung“) führen
+ * danach weiter zu ihm.
  */
 export function imVerlaufVerschieben(steps: ProcessTemplateStep[], id: ID, richtung: -1 | 1): Bearbeitung {
   const g = gliedern(steps);
@@ -904,7 +906,30 @@ export function imVerlaufVerschieben(steps: ProcessTemplateStep[], id: ID, richt
   const ok = verschiebbar(g, id);
   const unveraendert: Bearbeitung = { steps, hinweis: null };
   if (!l || (richtung === -1 ? !ok.frueher : !ok.spaeter)) return unveraendert;
-  const schritt = festschreiben(steps).find((s) => s.id === id)!;
+  const vorher = festschreiben(steps);
+  const schritt = vorher.find((s) => s.id === id)!;
+  /*
+   * Das Herausnehmen (entfernen) biegt jeden Übergang zum Schritt auf dessen
+   * Standardziel um. Richtig ist das nur für die Stelle davor im
+   * Standardverlauf – sie führt nun zum bisherigen Nachfolger (mit allen ihren
+   * Antworten bzw. bei einem Block mit allen Ausstiegen zum Anschluss).
+   * Sprünge von anderen Schritten merken wir uns und setzen sie nach dem
+   * Wiedereinfügen zurück. Im Zweig eines Blocks gilt das für die Schritte
+   * desselben Zweigs; von außen wird ohnehin der ganze Block betreten.
+   */
+  const st = strukturVon(steps);
+  const eigeneLage = st.lage[steps.findIndex((s) => s.id === id)];
+  const davor: Anzeige | null = l.art === 'oben' ? (l.k > 0 ? g.hauptAnzeige[l.k - 1] : null) : l.j > 0 ? l.z.standard[l.j - 1] : null;
+  const istDavor = (s: ProcessTemplateStep, k: number) =>
+    davor !== null && (istBlockAnzeige(davor) ? st.lage[k]?.block.id === davor.block : s.id === davor);
+  const spruenge: { von: ID; antwortId: ID | null }[] = [];
+  vorher.forEach((s, k) => {
+    if (s.id === id || istDavor(s, k)) return;
+    const lage = st.lage[k];
+    if (eigeneLage && !(lage && lage.block === eigeneLage.block && lage.zweig === eigeneLage.zweig)) return;
+    if (s.naechster === id) spruenge.push({ von: s.id, antwortId: null });
+    for (const a of s.antworten) if (a.ziel === id) spruenge.push({ von: s.id, antwortId: a.id });
+  });
   const ohne = festschreiben(entfernen(steps, id));
   // Einfügen hinter der Stelle, die danach unmittelbar davor stehen soll
   let ergebnis: ProcessTemplateStep[];
@@ -927,7 +952,8 @@ export function imVerlaufVerschieben(steps: ProcessTemplateStep[], id: ID, richt
     const vor = richtung === -1 ? (l.j >= 2 ? l.z.standard[l.j - 2] : null) : l.z.standard[l.j + 1];
     ergebnis = vor === null ? einfuegenAmZweiganfang(ohne, l.b.block, l.z.zweig, schritt) : hinter(vor);
   }
-  return geordnet(vereinfachen(festschreiben(ergebnis)));
+  const mitSpruengen = spruenge.reduce((liste, k) => zielSetzen(liste, k.von, k.antwortId, id), festschreiben(ergebnis));
+  return geordnet(vereinfachen(mitSpruengen));
 }
 
 /** Kopie eines Schritts, eingefügt direkt hinter ihm im Standardverlauf (im selben Zweig). */
