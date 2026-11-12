@@ -281,7 +281,9 @@ function funktionInSchrittenUmbenennen<T extends { roleName: string; mails: Mail
  *   die bisher genau diese Funktion galt (die des Gewerks ihres Eintrags,
  *   ersatzweise die übergreifende – siehe rolleFuerSchritt), samt ihren
  *   E-Mail-Regeln „an Funktion“: Schritte nennen die Funktion nur beim Namen
- *   und stünden sonst ohne zuständige Person da. Die Workflows des Projekts
+ *   und stünden sonst ohne zuständige Person da. Wechselt die Funktion zugleich
+ *   in ein anderes Gewerk, gilt sie für diese Läufe nicht mehr – ihre Schritte
+ *   behalten die alte Bezeichnung. Die Workflows des Projekts
  *   ziehen mit, wenn im Projekt keine Funktion mehr die alte Bezeichnung trägt;
  *   führt sie ein anderes Gewerk weiter, bleibt sie dort stehen (Workflows
  *   unterscheiden keine Gewerke). Übergreifende Workflows bleiben unberührt.
@@ -306,10 +308,13 @@ export function funktionAendern(daten: AppData, id: ID, patch: Partial<Role>): A
 
   if (umbenannt(alt.name, neu.name)) {
     const vorher = daten.roles.filter((r) => r.projectId === alt.projectId);
+    const nachher = d.roles.filter((r) => r.projectId === alt.projectId);
     const gewerkVon = new Map(daten.documents.map((x) => [x.id, x.gewerk]));
     const runs = d.runs.map((r) => {
       if (r.projectId !== alt.projectId) return r;
-      if (rolleFuerSchritt(vorher, alt.name, gewerkVon.get(r.documentId) ?? '')?.id !== id) return r;
+      const gewerk = gewerkVon.get(r.documentId) ?? '';
+      // Nur wo die Funktion galt und weiter gilt – wechselt sie zugleich das Gewerk, verlässt sie diese Läufe
+      if (rolleFuerSchritt(vorher, alt.name, gewerk)?.id !== id || rolleFuerSchritt(nachher, neu.name, gewerk)?.id !== id) return r;
       const steps = funktionInSchrittenUmbenennen(r.steps, alt.name, neu.name.trim());
       return steps === r.steps ? r : { ...r, steps };
     });
