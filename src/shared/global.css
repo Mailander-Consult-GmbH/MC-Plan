@@ -262,6 +262,9 @@ a:hover { text-decoration: underline; }
   font: inherit;
   color: inherit;
   display: block;
+  /* ohne den Innenabstand des Browsers für Knöpfe – sonst stünde der Inhalt 6 px eingerückt
+     gegenüber einer nicht anklickbaren Karte daneben */
+  padding: 0;
 }
 .card-click:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 .card-click:active { transform: translateY(0); }

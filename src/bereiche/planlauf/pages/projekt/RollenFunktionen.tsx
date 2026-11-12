@@ -111,7 +111,8 @@ export function RollenFunktionen({ project }: { project: Project }) {
 
       <div className="row-between wrap">
         <Search value={suche} onChange={setSuche} placeholder="Funktion, Person, Firma …" />
-        <div className="row">
+        {/* wrap: Bei schmaler Breite ragte „Neue Funktion“ sonst über den Rand */}
+        <div className="row wrap">
           <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
             <Icon name="importieren" size={14} /> Excel-Import
           </button>
