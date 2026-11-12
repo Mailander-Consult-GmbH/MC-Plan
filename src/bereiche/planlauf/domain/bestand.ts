@@ -254,8 +254,10 @@ export function funktionAendern(daten: AppData, id: ID, patch: Partial<Role>): A
 
 /**
  * Löscht einen Kontakt. Offene Schritte verlieren die Person (die Besetzung
- * zieht danach nach); erledigte Schritte, frühere Durchläufe und Erinnerungen
- * behalten den Verweis – sie belegen, wer den Schritt bearbeitet hat.
+ * zieht danach nach) – auch dort, wo sie von Hand eingetragen war: „von Hand“
+ * ohne Person bliebe sonst stehen, und der Schritt hätte auf Dauer niemanden,
+ * obwohl die Funktion besetzt ist. Erledigte Schritte, frühere Durchläufe und
+ * Erinnerungen behalten den Verweis – sie belegen, wer den Schritt bearbeitet hat.
  */
 export function kontaktLoeschen(daten: AppData, id: ID, vorgang: Vorgang): AppData {
   const kontakt = daten.contacts.find((c) => c.id === id);
@@ -265,7 +267,10 @@ export function kontaktLoeschen(daten: AppData, id: ID, vorgang: Vorgang): AppDa
     contacts: daten.contacts.filter((c) => c.id !== id),
     runs: daten.runs.map((r) =>
       r.steps.some((s) => s.contactId === id && !istErledigt(s))
-        ? { ...r, steps: r.steps.map((s) => (s.contactId === id && !istErledigt(s) ? { ...s, contactId: null } : s)) }
+        ? {
+            ...r,
+            steps: r.steps.map((s) => (s.contactId === id && !istErledigt(s) ? { ...s, contactId: null, contactManuell: false } : s)),
+          }
         : r,
     ),
     geloescht: [...(daten.geloescht ?? []), loeschvermerk('kontakt', id, kontakt.projectId, kontaktName(kontakt), vorgang)],

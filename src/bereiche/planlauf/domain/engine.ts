@@ -1162,7 +1162,9 @@ export function eigeneKontakteSichern(daten: AppData, neueId: (prefix: string) =
  * während des Projekts, gilt die neue Besetzung sofort – auch für bereits
  * gestartete Planläufe. Von Hand gesetzte Personen (`contactManuell`) und
  * abgeschlossene Schritte bleiben unangetastet: sie halten fest, wer den
- * Schritt tatsächlich bearbeitet hat.
+ * Schritt tatsächlich bearbeitet hat. „Von Hand“ ohne Person gibt es nicht –
+ * die Oberfläche setzt es nie; Stände, in denen ein von Hand eingetragener
+ * Kontakt gelöscht wurde, führen es noch und folgen hier wieder der Besetzung.
  */
 export function zustaendigkeitenNachziehen(daten: AppData): AppData {
   let geaendert = false;
@@ -1175,11 +1177,12 @@ export function zustaendigkeitenNachziehen(daten: AppData): AppData {
 
     let laufGeaendert = false;
     const steps = run.steps.map((step) => {
-      if (step.contactManuell || step.status === 'erledigt') return step;
+      const vonHand = step.contactManuell && step.contactId !== null;
+      if (vonHand || step.status === 'erledigt') return step;
       const contactId = kontaktFuerRolleUndGewerk(kontakte, rollen, step.roleName, gewerk);
-      if (contactId === step.contactId) return step;
+      if (contactId === step.contactId && !step.contactManuell) return step;
       laufGeaendert = true;
-      return { ...step, contactId };
+      return { ...step, contactId, contactManuell: false };
     });
     if (!laufGeaendert) return run;
     geaendert = true;
