@@ -381,7 +381,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
       {personLoeschen ? (
         <ConfirmDialog
           titel="Person löschen?"
-          text={`${personLoeschen.vorname} ${personLoeschen.nachname} wird aus diesem Projekt entfernt. Prozessschritte, denen die Person von Hand zugewiesen ist, sind danach unbesetzt.`}
+          text={`${personLoeschen.vorname} ${personLoeschen.nachname} wird aus diesem Projekt entfernt. Offene Prozessschritte, denen die Person von Hand zugewiesen ist, folgen danach wieder der Besetzung ihrer Funktion.`}
           onConfirm={() => {
             deleteContact(personLoeschen.id);
             toast('Person gelöscht.');
