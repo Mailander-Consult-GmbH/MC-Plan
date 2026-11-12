@@ -13,7 +13,7 @@
  * * `VerknuepfungsHinweis` – beim Anlegen: Das Projekt gibt es schon,
  * * `RegisterBeteiligte` – die geteilten Projektbeteiligten zum Nachschlagen.
  */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../shared/icons';
 import { useToast } from '../shared/toast';
 import { Badge, Callout, Card, CardHeader, EmptyState } from '../shared/ui';
@@ -110,6 +110,15 @@ export function BereichsMarken({ bereich, lokaleId }: { bereich: ProjektBereich;
  * steht allein im Register. `archiviert` ist null, solange das Register das
  * Projekt nicht kennt (etwa, weil es sich nicht lesen ließ).
  */
+/**
+ * Wohin der Tastaturfokus nach „Archivieren“ bzw. „Aus dem Archiv holen“ geht:
+ * Der gedrückte Knopf verschwindet, der Fokus fiele auf `body` – und der
+ * nächste Tab auf „Löschen“. Er geht an das Element, das dafür erscheint
+ * (Archivhinweis bzw. Knopf „Archivieren“); erscheint keines, verfällt der
+ * Vermerk.
+ */
+let fokusNachArchiv: 'hinweis' | 'knopf' | null = null;
+
 function useArchiv(bereich: ProjektBereich, lokaleId: ID): { archiviert: boolean | null; setzen: (an: boolean) => void } {
   const register = useRegister();
   const toast = useToast();
@@ -118,6 +127,11 @@ function useArchiv(bereich: ProjektBereich, lokaleId: ID): { archiviert: boolean
     archiviert: p ? istArchiviert(p, bereich) : null,
     setzen: (an) => {
       if (!p) return;
+      const ziel = an ? 'hinweis' : 'knopf';
+      fokusNachArchiv = ziel;
+      window.setTimeout(() => {
+        if (fokusNachArchiv === ziel) fokusNachArchiv = null;
+      }, 500);
       registerAendern((r) => bereichArchivieren(r, bereich, lokaleId, an));
       toast(
         an
@@ -145,9 +159,17 @@ export function useArchivierbar(bereich: ProjektBereich, lokaleId: ID): boolean 
 
 export function ArchivKnopf({ bereich, lokaleId, klein = false }: { bereich: ProjektBereich; lokaleId: ID; klein?: boolean }) {
   const { archiviert, setzen } = useArchiv(bereich, lokaleId);
+  const knopf = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (archiviert === false && fokusNachArchiv === 'knopf') {
+      fokusNachArchiv = null;
+      knopf.current?.focus();
+    }
+  }, [archiviert]);
   if (archiviert !== false) return null;
   return (
     <button
+      ref={knopf}
       type="button"
       className={`btn btn-outline ${klein ? 'btn-sm' : ''}`}
       title="Nimmt das Projekt in diesem Bereich aus Übersicht und Seitenleiste – es bleibt erhalten"
@@ -161,12 +183,20 @@ export function ArchivKnopf({ bereich, lokaleId, klein = false }: { bereich: Pro
 /** Archivhinweis oben im Projekt, mit „Aus dem Archiv holen“. */
 export function ArchivHinweis({ bereich, lokaleId }: { bereich: ProjektBereich; lokaleId: ID }) {
   const { archiviert, setzen } = useArchiv(bereich, lokaleId);
+  const knopf = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // focus() holt den Hinweis zugleich ins Bild, wenn weiter unten archiviert wurde
+    if (archiviert && fokusNachArchiv === 'hinweis') {
+      fokusNachArchiv = null;
+      knopf.current?.focus();
+    }
+  }, [archiviert]);
   if (!archiviert) return null;
   return (
     <Callout icon="🗄">
       <div className="gem-archivhinweis">
         <span>{`Dieses Projekt ist in ${BEREICH_TITEL[bereich]} archiviert. Es erscheint nicht in Übersicht und Seitenleiste.`}</span>
-        <button type="button" className="btn btn-sm btn-outline" onClick={() => setzen(false)}>
+        <button ref={knopf} type="button" className="btn btn-sm btn-outline" onClick={() => setzen(false)}>
           <Icon name="rueckgaengig" size={12} /> Aus dem Archiv holen
         </button>
       </div>

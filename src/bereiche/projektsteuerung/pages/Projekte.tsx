@@ -42,6 +42,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const archiviert = useArchivierte('projektsteuerung');
   const aktive = projekte.filter((p) => !archiviert.has(p.id));
   const archivierte = projekte.filter((p) => archiviert.has(p.id));
+  const nurArchivierte = archivierte.length > 0 && !suche.trim();
 
   const karte = (p: Projekt) => {
     return (
@@ -109,8 +110,13 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
         <Card>
           <EmptyState
             icon="projekt"
-            titel="Kein Projekt gefunden"
-            text="Legen Sie ein Projekt an oder übernehmen Sie eines aus einem anderen Bereich, um Projektbeteiligte und Protokolle zu führen."
+            // Sind alle Projekte archiviert, liest sich „Kein Projekt gefunden“, als gäbe es keines
+            titel={nurArchivierte ? 'Kein aktives Projekt' : 'Kein Projekt gefunden'}
+            text={
+              nurArchivierte
+                ? 'Alle Projekte dieses Bereichs sind archiviert – sie stehen unten unter „Archiv“.'
+                : 'Legen Sie ein Projekt an oder übernehmen Sie eines aus einem anderen Bereich, um Projektbeteiligte und Protokolle zu führen.'
+            }
             action={
               <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
                 <Icon name="plus" size={14} /> Neues Projekt
