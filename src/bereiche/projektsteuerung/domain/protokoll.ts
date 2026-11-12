@@ -606,19 +606,16 @@ const datum = (w: unknown) => (typeof w === 'string' && /^\d{4}-\d{2}-\d{2}$/.te
 const uhrzeit = (w: unknown) => (typeof w === 'string' && /^\d{1,2}:\d{2}$/.test(w) ? w : '');
 const normName = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
 
+/** Protokoll, wie es in einer Datei des Protokoll-Tools steht. */
+export type ToolProtokoll = Record<string, unknown>;
+
 /**
- * Liest eine Datei des eigenständigen Protokoll-Tools (`.protokoll`, eine
- * Reihe; oder dessen Sicherung mit allen Reihen) und bildet sie auf
- * Protokolle des Projekts ab. Teilnehmende, deren Name in der
- * Projektbeteiligtenliste steht, werden mit ihr verknüpft. Protokolle, die es
- * im Projekt bereits gibt (gleiche Kennung), werden ersetzt; sonst entstehen
- * neue Kennungen, wenn die alte schon vergeben ist.
+ * Liest die Protokolle einer Datei des eigenständigen Protokoll-Tools
+ * (`.protokoll`, eine Reihe; oder dessen Sicherung mit allen Reihen). Wirft
+ * einen Fehler, dessen Meldung auf den Dateinamen folgt („… ist keine gültige
+ * JSON-Datei“).
  */
-export function ausProtokollTool(
-  inhalt: string,
-  projektId: ID,
-  daten: ProjektsteuerungDaten,
-): Protokoll[] {
+export function protokollToolLesen(inhalt: string): ToolProtokoll[] {
   let d: Roh;
   try {
     d = JSON.parse(inhalt) as Roh;
@@ -638,7 +635,28 @@ export function ausProtokollTool(
   if (!roh.every((x) => x && typeof x === 'object' && text(x.id) && Array.isArray(x.tops))) {
     throw new Error('ist keine gültige Protokolldatei');
   }
+  // Die Reihe steht bei einer Einzeldatei an der Datei, nicht am Protokoll – sie geht mit
+  const serie = text(d.serie);
+  return serie ? roh.map((x) => (text(x.serie) ? x : { ...x, serie })) : roh;
+}
 
+/**
+ * Bildet Protokolle des Protokoll-Tools (`protokollToolLesen`) auf Protokolle
+ * des Projekts ab – die aller gewählten Dateien gemeinsam: „weitergeführt in“
+ * verweist bei Einzeldateien einer Reihe auf ein Protokoll in einer anderen
+ * Datei; je Datei aufgelöst ginge der Verweis verloren und die Aufgabe zählte
+ * doppelt. Teilnehmende, deren Name in der Projektbeteiligtenliste steht,
+ * werden mit ihr verknüpft. Protokolle, die es im Projekt bereits gibt
+ * (gleiche Kennung), werden ersetzt; sonst entstehen neue Kennungen, wenn die
+ * alte schon vergeben ist. Steht ein Protokoll in mehreren Dateien, gilt das
+ * zuletzt gelesene.
+ */
+export function ausProtokollTool(
+  protokolle: ToolProtokoll[],
+  projektId: ID,
+  daten: ProjektsteuerungDaten,
+): Protokoll[] {
+  const roh = [...new Map(protokolle.map((x) => [text(x.id), x])).values()];
   const imProjekt = new Set(daten.protokolle.filter((p) => p.projektId === projektId).map((p) => p.id));
   const vergeben = new Set(daten.protokolle.map((p) => p.id));
   const kennung = new Map<string, ID>();
@@ -649,7 +667,7 @@ export function ausProtokollTool(
   const beteiligte = daten.beteiligte.filter((b) => b.projektId === projektId);
 
   return roh.map((x): Protokoll => {
-    const serie = text(x.serie) || text(d.serie) || `pa:${text(x.projekt)}|${text(x.art)}`;
+    const serie = text(x.serie) || `pa:${text(x.projekt)}|${text(x.art)}`;
     const fuehrerName = text(x.fuehrer).trim();
     let fuehrerId: ID | null = null;
     const teilnehmer = (Array.isArray(x.teilnehmer) ? (x.teilnehmer as Roh[]) : [])

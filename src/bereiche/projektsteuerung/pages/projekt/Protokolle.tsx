@@ -17,9 +17,11 @@ import {
   naechsteNr,
   neueReihe,
   protokollAufgaben,
+  protokollToolLesen,
   reihenVon,
   uebernommeneEintraege,
   weitergefuehrtIn,
+  type ToolProtokoll,
 } from '../../domain/protokoll';
 import { ampelFuer } from '../../domain/punkte';
 import { BESPRECHUNG_VORSCHLAEGE, newId, personName, type Projekt, type Protokoll } from '../../domain/types';
@@ -49,18 +51,21 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
     navigate({ view: 'protokoll', projektId: projekt.id, protokollId: id });
   };
 
+  // Erst alle Dateien lesen, dann gemeinsam übernehmen: Bei Einzeldateien einer Reihe steht das
+  // Protokoll, das eine Aufgabe weiterführt, in einer anderen Datei (`ausProtokollTool`).
   const importieren = async (dateien: File[]) => {
-    let anzahl = 0;
+    const gelesen: ToolProtokoll[] = [];
     for (const f of dateien) {
       try {
-        const liste = ausProtokollTool(await f.text(), projekt.id, data);
-        protokolleUebernehmen(liste);
-        anzahl += liste.length;
+        gelesen.push(...protokollToolLesen(await f.text()));
       } catch (e) {
         toast(`${f.name} ${e instanceof Error ? e.message : 'konnte nicht gelesen werden'}.`);
       }
     }
-    if (anzahl > 0) toast(anzahl === 1 ? '1 Protokoll übernommen.' : `${anzahl} Protokolle übernommen.`);
+    if (gelesen.length === 0) return;
+    const liste = ausProtokollTool(gelesen, projekt.id, data);
+    protokolleUebernehmen(liste);
+    toast(liste.length === 1 ? '1 Protokoll übernommen.' : `${liste.length} Protokolle übernommen.`);
   };
 
   return (
