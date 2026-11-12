@@ -54,6 +54,10 @@ export function StatusWechselDialog({
   const { data, statusWechseln } = useStore();
   const toast = useToast();
   const von = statusVon(data.workflows, anmeldung.statusId);
+  // Entscheidung: die gewählte Antwort steht im Dialog und im Statusverlauf
+  const antwort = von.status.entscheidung?.antworten[nach]?.trim() ?? '';
+  const frage = von.status.entscheidung?.frage.trim() ?? '';
+  const antwortVermerk = antwort ? `${frage ? `${frage} ` : ''}${antwort}` : '';
   const loeschen = nach === LOESCHEN;
   const ziel = loeschen ? von : statusVon(data.workflows, nach);
   // Wechsel in den Status „Anmeldeleiche“ – gelöscht wird erst im nächsten Schritt.
@@ -121,7 +125,7 @@ export function StatusWechselDialog({
     const neueIds = statusWechseln(anmeldung.id, {
       nach,
       datum: datum || today(),
-      bemerkung,
+      bemerkung: [antwortVermerk, bemerkung.trim()].filter(Boolean).join(' · '),
       aenderungsNr: wirdAenderung ? aenderungsNr : undefined,
       annexVII: wirdAenderung ? annexVII || null : undefined,
       uebernahme: uebernahme ? { art, anmeldeId: erste.anmeldeId, titel: erste.titel, ...bauzeit(erste) } : undefined,
@@ -163,6 +167,7 @@ export function StatusWechselDialog({
           <StatusBadge statusId={anmeldung.statusId} />
           <Icon name="chevron" size={12} />
           {loeschen ? <span className="small">Löschen</span> : <StatusBadge statusId={nach} />}
+          {antwortVermerk ? <span className="small muted">· {antwortVermerk}</span> : null}
         </span>
       }
       onClose={onClose}

@@ -37,10 +37,17 @@ function nachfolgerBereinigen(workflows: Workflow[]): Workflow[] {
   const vorhanden = new Set(workflows.flatMap((w) => w.status.map((s) => s.id)));
   return workflows.map((w) => ({
     ...w,
-    status: w.status.map((s) => ({
-      ...s,
-      nachfolger: [...new Set(s.nachfolger)].filter((z) => z === LOESCHEN || vorhanden.has(z)),
-    })),
+    status: w.status.map((s) => {
+      const nachfolger = [...new Set(s.nachfolger)].filter((z) => z === LOESCHEN || vorhanden.has(z));
+      // Antworten einer Entscheidung nur für vorhandene Nachfolger
+      const entscheidung = s.entscheidung
+        ? {
+            ...s.entscheidung,
+            antworten: Object.fromEntries(Object.entries(s.entscheidung.antworten).filter(([z]) => nachfolger.includes(z))),
+          }
+        : null;
+      return { ...s, nachfolger, entscheidung };
+    }),
   }));
 }
 
@@ -79,6 +86,13 @@ export function workflowKopie(w: Workflow, neueId: () => ID, workflowId: ID): Wo
       id: idMap.get(s.id)!,
       frist: { ...s.frist },
       nachfolger: s.nachfolger.map((z) => idMap.get(z) ?? z),
+      // Antworten zeigen auf die kopierten Status
+      entscheidung: s.entscheidung
+        ? {
+            frage: s.entscheidung.frage,
+            antworten: Object.fromEntries(Object.entries(s.entscheidung.antworten).map(([z, t]) => [idMap.get(z) ?? z, t])),
+          }
+        : null,
     })),
   };
 }

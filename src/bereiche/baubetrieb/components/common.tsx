@@ -171,7 +171,7 @@ export function NachfolgerAuswahl({
       {menue ? (
         <AufklappMenue
           anker={knopf}
-          titel="Welcher Status folgt?"
+          titel={nachfolgerFrage(data.workflows, statusId)}
           eintraege={nachfolger.map((n) => ({
             key: n,
             inhalt: nachfolgerText(data.workflows, statusId, n),
@@ -188,12 +188,30 @@ export function NachfolgerAuswahl({
   );
 }
 
-/** „Genehmigt“, „→ MKM: Entwurf (Übernahme)“ bzw. „Eintrag löschen“. */
+/**
+ * „Genehmigt“, „→ MKM: Entwurf (Übernahme)“ bzw. „Eintrag löschen“; ist der
+ * Status eine Entscheidung, mit der Antwort davor: „Ja → Genehmigt“,
+ * „Nein → MKM: Entwurf (Übernahme)“.
+ */
 export function nachfolgerText(workflows: Workflow[], von: ID, nach: StatusZiel): string {
-  if (nach === LOESCHEN) return 'Eintrag löschen';
-  const ziel = statusInfo(workflows, nach);
-  if (!ziel) return 'Unbekannter Status';
-  if (nach === von) return `${ziel.status.name} (erneut)`;
-  if (istUebernahme(workflows, von, nach)) return `→ ${ziel.workflow.kurz || ziel.workflow.name}: ${ziel.status.name} (Übernahme)`;
-  return ziel.status.name;
+  const antwort = statusInfo(workflows, von)?.status.entscheidung?.antworten[nach]?.trim();
+  const ziel = nach === LOESCHEN ? null : statusInfo(workflows, nach);
+  const uebernahme = !!ziel && istUebernahme(workflows, von, nach);
+  const text =
+    nach === LOESCHEN
+      ? 'Eintrag löschen'
+      : !ziel
+        ? 'Unbekannter Status'
+        : nach === von
+          ? `${ziel.status.name} (erneut)`
+          : uebernahme
+            ? `${ziel.workflow.kurz || ziel.workflow.name}: ${ziel.status.name} (Übernahme)`
+            : ziel.status.name;
+  if (antwort) return `${antwort} → ${text}`;
+  return uebernahme ? `→ ${text}` : text;
+}
+
+/** Frage, unter der die Nachfolger zur Wahl stehen: die Frage einer Entscheidung, sonst „Welcher Status folgt?“. */
+export function nachfolgerFrage(workflows: Workflow[], von: ID): string {
+  return statusInfo(workflows, von)?.status.entscheidung?.frage.trim() || 'Welcher Status folgt?';
 }
