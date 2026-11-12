@@ -16,13 +16,15 @@
  * Zweig des Basisplans, verteilt auf genau
  * einen maßgeblichen Zweig – von dessen spätester Ausführung rückwärts. Was
  * darüber hinausgeht, hat der Puffer des Blocks aufgefangen (angezeigt, nicht
- * gezählt). So gilt Gesamtverzug = Σ Seiten + Seite fehlt − Zeitgewinn; der
- * Rest `nichtErklaert` ist im Regelfall 0.
+ * gezählt). Ein Schritt des Regelwegs, an dem der Lauf vorbeiführt (Antwort
+ * ohne Nacharbeit, Ausstieg nach vorn), wird nie ausgeführt: Seine Frist aus
+ * dem Basisplan ist ein Zeitgewinn. So gilt Gesamtverzug = Σ Seiten + Seite
+ * fehlt − Zeitgewinn; der Rest `nichtErklaert` ist im Regelfall 0.
  */
 import { addDays, diffArbeitstage, diffDays, naechsterArbeitstag, today } from '../../../shared/dates';
 import { aktuelleSchritte, istErledigt, nachfolger, strukturVon, verfolgen, type Struktur } from './ablauf';
 import { kontaktName, seiteFuerSchritt } from './engine';
-import { prognose } from './simulation';
+import { planEndeImRegelweg, prognose } from './simulation';
 import {
   SEITE_LABEL,
   type Contact,
@@ -492,9 +494,14 @@ export function terminnachweis(
   });
   // Laufende und künftige Ausführungen laut Prognose
   const laufend = run.status === 'laufend';
+  /** Die Prognose reicht nicht bis zum Ende – was noch kommt, ist dann unbekannt. */
+  let prognoseOffen = false;
   if (laufend) {
     const pg = prognose(run, project, doc ?? undefined, heute);
-    if (pg.fehler) warnungen.push('Die Prognose endet nicht (Schleife bzw. zu viele Schritte) – das Ende ist unsicher.');
+    if (pg.fehler) {
+      prognoseOffen = true;
+      warnungen.push('Die Prognose endet nicht (Schleife bzw. zu viele Schritte) – das Ende ist unsicher.');
+    }
     const anstehend = new Set(aktuelleSchritte(run).map((s) => s.id));
     pg.ausfuehrungen.forEach((a, k) => {
       const s = schrittVon.get(a.stepId);
@@ -903,6 +910,59 @@ export function terminnachweis(
       terminwirksam: true,
       prognose: u.ausf.some(prognoseVon),
     });
+  }
+
+  /* -------- Entfallene Schritte des Basisplans -------- */
+
+  /*
+   * Das Plan-Ende des Basisplans enthält die Fristen aller Schritte des
+   * Regelwegs (jede Entscheidung mit ihrer ersten Antwort). Führt der Lauf an
+   * einem solchen Schritt vorbei – Antwort ohne Nacharbeit, Ausstieg aus einem
+   * Block nach vorn –, gibt es keine Ausführung und damit keinen Posten; seine
+   * Frist bliebe als „Nicht erklärt“ stehen. Sie ist ein Zeitgewinn, angehängt
+   * an die letzte Ausführung des Regelwegs davor (meist die Entscheidung). In
+   * einem Block zählt der Blockverzug schon als Ganzes; ein ganz ausgelassener
+   * Block entfällt mit seiner geplanten Dauer. Nicht bei abgebrochenen Läufen
+   * und nicht, solange die Prognose das Ende nicht erreicht – dort fehlt der
+   * Rest des Wegs, er entfällt nicht.
+   */
+  if (basis?.planEnde && run.status !== 'abgebrochen' && !prognoseOffen) {
+    const weg = planEndeImRegelweg(steps, {
+      start: run.start,
+      eingangSoll,
+      arbeitstage: rahmen.arbeitstage,
+      feiertage: rahmen.feiertage,
+    });
+    const letzteVon = new Map<ID, Roh>();
+    for (const a of roh) letzteVon.set(a.stepId, a);
+    const bloeckeMitAusfuehrung = new Set(einheiten.map((u) => u.block));
+    const entfallen = (bezug: Roh, wert: number, text: string) => {
+      if (wert > 0) {
+        posten.push({ art: 'zeitgewinn', schluessel: bezug.schluessel, text, tage: wert, gezaehlt: wert, seite: null, prognose: prognoseVon(bezug) });
+      }
+    };
+    let bezug: Roh | null = null;
+    const gemeldet = new Set<ID>();
+    for (const w of weg.fehler ? [] : weg.ausfuehrungen) {
+      const ausgefuehrt = letzteVon.get(w.stepId);
+      if (ausgefuehrt) {
+        if (!bezug || ausgefuehrt.pos > bezug.pos) bezug = ausgefuehrt;
+        continue;
+      }
+      if (gemeldet.has(w.stepId)) continue;
+      gemeldet.add(w.stepId);
+      const s = schrittVon.get(w.stepId);
+      // Ohne Bezug gibt es nichts anzuhängen; Durchläufe aus der Zeit vor der Umstellung sind nicht gespeichert (siehe Warnung unten)
+      if (!bezug || !s || (s.durchlauf ?? 1) > (s.historie ?? []).length + 1) continue;
+      const block = w.parallel && st.bloecke.has(w.parallel.block) ? w.parallel.block : null;
+      if (block) {
+        if (bloeckeMitAusfuehrung.has(block)) continue;
+        bloeckeMitAusfuehrung.add(block);
+        entfallen(bezug, blockPlan(steps, st, block, basisFrist).dauer, 'Paralleler Block des Basisplans entfällt');
+      } else {
+        entfallen(bezug, basisFrist(w.stepId) ?? 0, `Schritt „${w.name}“ des Basisplans entfällt`);
+      }
+    }
   }
 
   /* -------- Zuordnung von Hand und Summen -------- */
