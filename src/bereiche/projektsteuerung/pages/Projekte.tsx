@@ -106,7 +106,20 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
         </button>
       </div>
 
-      {aktive.length === 0 ? (
+      {aktive.length === 0 && suche.trim() ? (
+        // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf; Treffer im Archiv stehen eingeklappt darunter
+        <Card>
+          <EmptyState
+            icon="projekt"
+            titel={archivierte.length > 0 ? 'Kein aktives Projekt gefunden' : 'Kein Projekt gefunden'}
+            text={
+              archivierte.length > 0
+                ? 'Für diese Suche gibt es nur Treffer im Archiv – sie stehen unten unter „Archiv“.'
+                : 'Für diese Suche gibt es keinen Treffer.'
+            }
+          />
+        </Card>
+      ) : aktive.length === 0 ? (
         <Card>
           <EmptyState
             icon="projekt"
