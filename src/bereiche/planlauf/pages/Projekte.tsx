@@ -33,7 +33,7 @@ const STATUS_TON: Record<ProjectStatus, '' | 'green' | 'orange'> = {
 };
 
 export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
-  const { data, toggleMarkiert } = useStore();
+  const { data, toggleMarkiert, ladeZustand } = useStore();
   const [suche, setSuche] = useState('');
   const [dialog, setDialog] = useState<{ project?: Project } | null>(null);
 
@@ -125,7 +125,8 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
       )}
 
       <ArchivAbschnitt anzahl={archivierte.length}>{archivierte.map(karte)}</ArchivAbschnitt>
-      <FremdeProjekte bereich="planlauf" suche={suche} />
+      {/* Nur bei geladenem Bestand: Sonst sähe das Register die Übernahme vor, angelegt würde nichts */}
+      {ladeZustand === 'ok' ? <FremdeProjekte bereich="planlauf" suche={suche} /> : null}
 
       {dialog ? <ProjektDialog project={dialog.project} onClose={() => setDialog(null)} navigate={navigate} /> : null}
     </div>

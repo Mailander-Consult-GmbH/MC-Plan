@@ -258,9 +258,11 @@ export function VerknuepfungsHinweis({ bereich, nummer }: { bereich: ProjektBere
   if (!n) return null;
   const p = register.projekte.find((x) => !x.bereiche[bereich] && x.nummer.trim().toLowerCase() === n);
   if (!p) return null;
+  // Ein überall archiviertes Projekt steht nicht unter „Projekte aus anderen Bereichen“ – hier sagen, dass es eines ist
+  const archiviert = Object.values(p.bereiche).every((m) => m?.archiviert);
   return (
     <Callout icon="↔">
-      {`Die Projektnummer gehört zu „${projektTitel(p)}“. Beim Anlegen wird es damit verknüpft: Bezeichnung und Projektbeteiligte kommen von dort und gelten in allen Bereichen.`}
+      {`Die Projektnummer gehört zu „${projektTitel(p)}“${archiviert ? ' (dort archiviert)' : ''}. Beim Anlegen wird es damit verknüpft: Bezeichnung und Projektbeteiligte kommen von dort und gelten in allen Bereichen.`}
     </Callout>
   );
 }
