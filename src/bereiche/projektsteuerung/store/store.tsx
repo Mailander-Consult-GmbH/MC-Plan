@@ -15,7 +15,13 @@ import type { ReactNode } from 'react';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
 import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
 import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
-import { folgeprotokoll, naechsteNr, protokollLoeschen, teilnehmerNachziehen } from '../domain/protokoll';
+import {
+  folgeprotokoll,
+  naechsteNr,
+  protokollLoeschen,
+  teilnehmerNachziehen,
+  werMitziehen,
+} from '../domain/protokoll';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { seedDaten } from '../domain/seed';
 import {
@@ -152,11 +158,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setData(neu.daten);
   });
 
+  // Ändern sich dabei die Teilnehmenden – jemand kommt mit einem schon geführten Kürzel hinzu oder
+  // geht, ein Gast erhält ein anderes Kürzel –, folgt „Verantwortlich“ den Personen (`werMitziehen`).
   const protokollAendern = useCallback(
     (id: ID, fn: (p: Protokoll) => Protokoll) =>
       mutate((d) => ({
         ...d,
-        protokolle: d.protokolle.map((p) => (p.id === id ? { ...fn(p), id, geaendert: new Date().toISOString() } : p)),
+        protokolle: d.protokolle.map((p) =>
+          p.id === id ? { ...werMitziehen(p.teilnehmer, fn(p)), id, geaendert: new Date().toISOString() } : p,
+        ),
       })),
     [mutate],
   );

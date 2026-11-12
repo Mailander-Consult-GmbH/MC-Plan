@@ -197,7 +197,10 @@ export interface Eintrag {
   typ: EintragTyp;
   /** Ursprung und Ergänzungen der Folgeprotokolle, je eine Zeile. */
   zeilen: Zeile[];
-  /** Verantwortlich (Aufgabe) bzw. Beteiligt; Kürzel einer teilnehmenden Person. */
+  /**
+   * Verantwortlich (Aufgabe) bzw. Beteiligt: Kürzel einer teilnehmenden Person – führen es im
+   * Protokoll mehrere, ihr Name (`zuordnung` in `protokoll.ts`).
+   */
   wer: string;
   termin: ISODate;
   status: Erledigung;

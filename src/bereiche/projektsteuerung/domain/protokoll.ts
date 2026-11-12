@@ -177,8 +177,20 @@ export function freierTeilnehmer(): Teilnehmer {
   return { id: newId('tn'), beteiligterId: null, name: '', funktion: '', firma: '', kuerzel: '', status: 'anwesend' };
 }
 
-/** Wert für „Verantwortlich“: das Kürzel, ohne Kürzel der Name. */
-export const zuordnung = (t: Teilnehmer): string => t.kuerzel.trim() || t.name.trim();
+/**
+ * Wert für „Verantwortlich“: das Kürzel, ohne Kürzel der Name. Führen mehrere
+ * Teilnehmende (`alle`) dasselbe Kürzel – etwa zwei Personen derselben
+ * Funktion ohne eigenes Kürzel –, steht für sie der Name: Der Wert muss im
+ * Protokoll eindeutig sein, sonst ließe sich die zweite Person nicht wählen
+ * und der Druck sagte nicht, wer gemeint ist.
+ */
+export function zuordnung(t: Teilnehmer, alle: readonly Teilnehmer[]): string {
+  const kuerzel = t.kuerzel.trim();
+  const name = t.name.trim();
+  const mehrfach =
+    kuerzel !== '' && alle.some((x) => x.id !== t.id && x.kuerzel.trim().toLowerCase() === kuerzel.toLowerCase());
+  return (mehrfach ? name : '') || kuerzel || name;
+}
 
 /**
  * Erstes Protokoll einer neuen Reihe. Die Protokollführung übernimmt die
@@ -477,26 +489,33 @@ export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
  * teilnehmende Person geführt wird (`zuordnung`): `vorher` sind die
  * Teilnehmenden vor der Änderung, `p` das Protokoll danach. „Verantwortlich“
  * ist nur dieser Text – bliebe er stehen, nennten die Aufgaben ein Kürzel, das
- * niemand mehr führt, und zählten nicht mehr als To-Dos der Person. Die
- * Vorstände gehen mit, sonst gälte „Verantwortlich“ als in diesem Protokoll
- * geändert. Nicht mitgezogen wird, was nicht zu entscheiden ist: ein Wert, den
- * danach noch jemand führt, und einer, den zwei Personen verschieden ablösen.
+ * niemand mehr führt, und zählten nicht mehr als To-Dos der Person. Das gilt
+ * auch für andere als die geänderte Person: Kommt jemand mit demselben Kürzel
+ * hinzu, steht für beide fortan der Name. Die Vorstände gehen mit, sonst gälte
+ * „Verantwortlich“ als in diesem Protokoll geändert. Nicht mitgezogen wird,
+ * was nicht zu entscheiden ist: ein Wert, den mehrere führten und nicht alle
+ * gleich ablösen (wer ihn behält, behält die Aufgaben).
  */
-function werMitziehen(vorher: readonly Teilnehmer[], p: Protokoll): Protokoll {
-  const alt = new Map(vorher.map((t) => [t.id, zuordnung(t)]));
-  const umbenannt = new Map<string, string | null>();
+export function werMitziehen(vorher: readonly Teilnehmer[], p: Protokoll): Protokoll {
+  if (vorher === p.teilnehmer) return p;
+  const alt = new Map(vorher.map((t) => [t.id, { wert: zuordnung(t, vorher), kuerzel: t.kuerzel.trim() }]));
+  // alter Wert → neuer Wert; null = nicht zu entscheiden
+  const ziel = new Map<string, string | null>();
+  const merken = (bisher: string, jetzt: string) => {
+    if (bisher) ziel.set(bisher, ziel.has(bisher) && ziel.get(bisher) !== jetzt ? null : jetzt);
+  };
   for (const t of p.teilnehmer) {
     const bisher = alt.get(t.id);
-    const jetzt = zuordnung(t);
-    if (!bisher || !jetzt || bisher === jetzt) continue;
-    umbenannt.set(bisher, umbenannt.has(bisher) && umbenannt.get(bisher) !== jetzt ? null : jetzt);
+    if (!bisher) continue;
+    merken(bisher.wert, zuordnung(t, p.teilnehmer));
+    // Bestände von früher nennen auch ein Kürzel, das mehrere führten: Es folgt, wenn alle es gleich ablösen
+    if (bisher.kuerzel !== bisher.wert) merken(bisher.kuerzel, t.kuerzel.trim());
   }
-  for (const t of p.teilnehmer) umbenannt.delete(zuordnung(t));
-  if (![...umbenannt.values()].some(Boolean)) return p;
   const mit = <T extends { wer: string }>(x: T): T => {
-    const wer = umbenannt.get(x.wer.trim());
-    return wer ? { ...x, wer } : x;
+    const wer = ziel.get(x.wer.trim());
+    return wer && wer !== x.wer.trim() ? { ...x, wer } : x;
   };
+  if (![...ziel].some(([bisher, jetzt]) => jetzt && jetzt !== bisher)) return p;
   return {
     ...p,
     tops: p.tops.map((top) => ({

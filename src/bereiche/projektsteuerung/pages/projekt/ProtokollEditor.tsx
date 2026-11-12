@@ -10,7 +10,7 @@
  * übernommene Zeile dennoch korrigieren. Eine Ergänzung kann eine eigene Art
  * erhalten (I, F oder A, mit eigenem Verantwortlich und Termin); ohne Auswahl
  * läuft sie unter dem Ursprung mit. „Verantwortlich“ wählt aus den
- * Teilnehmenden – mit ihrem Kürzel.
+ * Teilnehmenden – mit ihrem Kürzel; führen es mehrere, mit ihrem Namen.
  *
  * Löschen heißt standardmäßig Durchstreichen – für Tagesordnungspunkte,
  * Einträge und einzelne Zeilen: Das Gestrichene steht in diesem Protokoll
@@ -130,7 +130,7 @@ export function ProtokollEditor({
   const titel = `${bezeichnung(p)} – ${projekt.name}`;
   const liveOeffnen = useLiveDruck(titel, inhalt);
   // Für „Verantwortlich“ stehen nur Teilnehmende zur Wahl.
-  const zuordenbar = p.teilnehmer.filter((t) => zuordnung(t));
+  const zuordenbar = p.teilnehmer.filter((t) => zuordnung(t, p.teilnehmer));
 
   /* Änderungen – alle über den Store */
   const aendern = (fn: (x: Protokoll) => Protokoll) => updateProtokoll(p.id, fn);
@@ -1054,7 +1054,11 @@ function TeilnehmerAuswahl({
   );
 }
 
-/** Auswahl „Verantwortlich“: nur Teilnehmende, angezeigt mit Kürzel und Name. */
+/**
+ * Auswahl „Verantwortlich“: nur Teilnehmende, angezeigt mit Kürzel und Name.
+ * Gespeichert wird das Kürzel – führen es mehrere, der Name (`zuordnung`),
+ * damit sich jede Person wählen lässt.
+ */
 function WerAuswahl({
   wert,
   personen,
@@ -1070,18 +1074,18 @@ function WerAuswahl({
 }) {
   const wer = wert.trim();
   // Ein früher eingetragener Wert ohne passende Person bleibt wählbar.
-  const bekannt = !wer || personen.some((t) => zuordnung(t) === wer);
+  const bekannt = !wer || personen.some((t) => zuordnung(t, personen) === wer);
   return (
     <select
       className={`select ps-kompakt ${wer ? '' : 'ps-leer-wahl'}`}
       value={wer}
       onChange={(ev) => onChange(ev.target.value)}
       aria-label={label}
-      title={personen.find((t) => zuordnung(t) === wer)?.name || undefined}
+      title={personen.find((t) => zuordnung(t, personen) === wer)?.name || undefined}
     >
       <option value="">{platzhalter}</option>
       {personen.map((t) => (
-        <option key={t.id} value={zuordnung(t)}>
+        <option key={t.id} value={zuordnung(t, personen)}>
           {[t.kuerzel.trim(), t.name.trim()].filter(Boolean).join(' – ')}
         </option>
       ))}
