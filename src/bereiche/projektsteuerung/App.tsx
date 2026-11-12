@@ -61,13 +61,6 @@ export function App() {
     setMenuOffen(false);
   };
 
-  const farbmodus = data.einstellungen.farbmodus;
-  useEffect(() => {
-    // Spiegel des gemeinsamen Farbmodus aus „Angemeldet als“ (src/gemeinsam/benutzer.ts),
-    // nachgezogen über useBenutzerAbgleich im Store.
-    document.documentElement.dataset.farbmodus = farbmodus;
-  }, [farbmodus]);
-
   const kopf = kopfzeile(route, projekt?.name, protokoll ? bezeichnung(protokoll) : undefined);
 
   return (

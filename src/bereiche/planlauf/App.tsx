@@ -60,12 +60,6 @@ export function App() {
     setMenuOffen(false);
   };
 
-  const farbmodus = data.bearbeiter.farbmodus ?? 'standard';
-  useEffect(() => {
-    // Der Farbmodus steuert die Farbtokens der gesamten Oberfläche.
-    document.documentElement.dataset.farbmodus = farbmodus;
-  }, [farbmodus]);
-
   const kopf = kopfzeile(route, projekt?.name, lauf?.name);
 
   return (
