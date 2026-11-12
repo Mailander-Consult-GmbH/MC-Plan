@@ -107,7 +107,7 @@ export function ProtokollEditor({
     if (!fokus) return;
     let el = document.getElementById(fokus);
     // „Nach oben“/„Nach unten“ ist am Anfang bzw. Ende der Tagesordnung gesperrt – dann der Gegenknopf,
-    // sonst fiele der Fokus auf die Seite zurück
+    // sonst fiele der Fokus auf die Seite zurück (Einträge wie Tagesordnungspunkte)
     if (el instanceof HTMLButtonElement && el.disabled) {
       const gegen = fokus.startsWith('ps-hoch-')
         ? fokus.replace('ps-hoch-', 'ps-runter-')
@@ -530,35 +530,40 @@ export function ProtokollEditor({
                       Wiederherstellen
                     </button>
                   ) : null}
+                  {/* Der Fokus bleibt am verschobenen TOP – am Anfang bzw. Ende am Gegenknopf (Effekt oben) */}
                   <button
                     type="button"
+                    id={`ps-hoch-${top.id}`}
                     className="btn-icon"
                     disabled={ti === 0}
                     title="Nach oben"
                     aria-label="TOP nach oben"
-                    onClick={() =>
+                    onClick={() => {
                       aendern((x) => {
                         const tops = [...x.tops];
                         [tops[ti - 1], tops[ti]] = [tops[ti], tops[ti - 1]];
                         return { ...x, tops };
-                      })
-                    }
+                      });
+                      setFokus(`ps-hoch-${top.id}`);
+                    }}
                   >
                     <Icon name="hoch" size={14} />
                   </button>
                   <button
                     type="button"
+                    id={`ps-runter-${top.id}`}
                     className="btn-icon"
                     disabled={ti === p.tops.length - 1}
                     title="Nach unten"
                     aria-label="TOP nach unten"
-                    onClick={() =>
+                    onClick={() => {
                       aendern((x) => {
                         const tops = [...x.tops];
                         [tops[ti + 1], tops[ti]] = [tops[ti], tops[ti + 1]];
                         return { ...x, tops };
-                      })
-                    }
+                      });
+                      setFokus(`ps-runter-${top.id}`);
+                    }}
                   >
                     <Icon name="runter" size={14} />
                   </button>
