@@ -436,9 +436,48 @@ export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Zieht „Verantwortlich“ mit, wenn sich der Wert ändert, unter dem eine
+ * teilnehmende Person geführt wird (`zuordnung`): `vorher` sind die
+ * Teilnehmenden vor der Änderung, `p` das Protokoll danach. „Verantwortlich“
+ * ist nur dieser Text – bliebe er stehen, nennten die Aufgaben ein Kürzel, das
+ * niemand mehr führt, und zählten nicht mehr als To-Dos der Person. Die
+ * Vorstände gehen mit, sonst gälte „Verantwortlich“ als in diesem Protokoll
+ * geändert. Nicht mitgezogen wird, was nicht zu entscheiden ist: ein Wert, den
+ * danach noch jemand führt, und einer, den zwei Personen verschieden ablösen.
+ */
+function werMitziehen(vorher: readonly Teilnehmer[], p: Protokoll): Protokoll {
+  const alt = new Map(vorher.map((t) => [t.id, zuordnung(t)]));
+  const umbenannt = new Map<string, string | null>();
+  for (const t of p.teilnehmer) {
+    const bisher = alt.get(t.id);
+    const jetzt = zuordnung(t);
+    if (!bisher || !jetzt || bisher === jetzt) continue;
+    umbenannt.set(bisher, umbenannt.has(bisher) && umbenannt.get(bisher) !== jetzt ? null : jetzt);
+  }
+  for (const t of p.teilnehmer) umbenannt.delete(zuordnung(t));
+  if (![...umbenannt.values()].some(Boolean)) return p;
+  const mit = <T extends { wer: string }>(x: T): T => {
+    const wer = umbenannt.get(x.wer.trim());
+    return wer ? { ...x, wer } : x;
+  };
+  return {
+    ...p,
+    tops: p.tops.map((top) => ({
+      ...top,
+      eintraege: top.eintraege.map((e) => ({
+        ...mit(e),
+        vor: e.vor && mit(e.vor),
+        zeilen: e.zeilen.map((z) => ({ ...mit(z), vor: z.vor && mit(z.vor) })),
+      })),
+    })),
+  };
+}
+
+/**
  * Hält Teilnehmende auf dem Stand der Projektbeteiligtenliste: Name,
- * Funktion, Firma und Kürzel folgen der Person. Ist sie gelöscht, bleiben die
- * Angaben stehen und der Verweis entfällt. Läuft nach jeder Änderung im Store.
+ * Funktion, Firma und Kürzel folgen der Person, und „Verantwortlich“ folgt
+ * ihrem Kürzel (`werMitziehen`). Ist sie gelöscht, bleiben die Angaben stehen
+ * und der Verweis entfällt. Läuft nach jeder Änderung im Store.
  */
 export function teilnehmerNachziehen(d: ProjektsteuerungDaten): ProjektsteuerungDaten {
   const beteiligte = new Map(d.beteiligte.map((b) => [b.id, b]));
@@ -461,7 +500,7 @@ export function teilnehmerNachziehen(d: ProjektsteuerungDaten): Projektsteuerung
     });
     if (!anders) return p;
     geaendert = true;
-    return { ...p, teilnehmer };
+    return werMitziehen(p.teilnehmer, { ...p, teilnehmer });
   });
   return geaendert ? { ...d, protokolle } : d;
 }
