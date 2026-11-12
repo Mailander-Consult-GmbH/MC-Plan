@@ -33,9 +33,10 @@ fachfreie Bausteine, die Bereiche greifen nicht aufeinander zu und teilen sich n
 4. [Übersichten, Projektlisten, Projektseiten](#4-übersichten-projektlisten-projektseiten)
 5. [Bedienmuster: Dialoge, Listen, Wortlaut](#5-bedienmuster-dialoge-listen-wortlaut)
 6. [Optik und Gestaltung](#6-optik-und-gestaltung)
-7. [Einzelhinweise Baubetriebsplanung](#7-einzelhinweise-baubetriebsplanung)
-8. [Aufräumen: unbenutzter Code](#8-aufräumen-unbenutzter-code)
-9. [Anhang: Was schon einheitlich ist](#9-anhang-was-schon-einheitlich-ist)
+7. [Workflows, Fristen und Ampeln](#7-workflows-fristen-und-ampeln)
+8. [Einzelhinweise Baubetriebsplanung](#8-einzelhinweise-baubetriebsplanung)
+9. [Aufräumen: unbenutzter Code](#9-aufräumen-unbenutzter-code)
+10. [Anhang: Was schon einheitlich ist](#10-anhang-was-schon-einheitlich-ist)
 
 ---
 
@@ -68,6 +69,9 @@ mit einem Skript oder im Browser nachgestellt und nach der Korrektur erneut gepr
 | Planlaufmanagement | „E-Mail vorbereitet am 5.3.2026“ und die Feiertage standen einstellig, alles andere als 05.03.2026. | Überall zweistellig. |
 | Planlaufmanagement | Projekt › Funktion: Bei 400 px ragte „Neue Funktion“ über den Rand, der ganze Inhalt scrollte quer. | Die Knopfleiste bricht um. |
 | Planlaufmanagement | In der Übersicht standen Zahl und Text der anklickbaren Kennzahl-Kacheln 6 px versetzt zu den übrigen. | In einer Flucht. |
+| Baubetriebsplanung | Workflow-Editor: Escape im Menü „Status hinzufügen“ schloss den ganzen Editor. | Schließt nur das Menü. |
+| Planlaufmanagement | Workflow-Editor bei 821–1279 px Breite: Escape schloss den Editor statt der Schublade mit den Schrittdetails. | Schließt zuerst die Schublade, wie in der Baubetriebsplanung. |
+| Planlaufmanagement | „Fristen & Erinnerungen“: Die Suche fand weder Projekt- noch Plannummer, obwohl die Zeile sie zeigt; die Spalte hieß noch „Rolle & Person“. | Sucht in allem, was die Zeile zeigt; „Funktion & Person“. |
 | Alle (Excel-Import) | In Mappen mit umsortierten Blättern standen die Blattnamen an fremden Inhalten; Zellen ohne Zellbezug landeten alle in Spalte A. | Blätter werden über ihre Beziehung in der Mappe zugeordnet. |
 
 ---
@@ -276,7 +280,8 @@ bestätigen oder anders entscheiden.
   unsichtbare Punkt im Planlaufmanagement (Abschnitt 1) war genau die Folge: in zwei Kopien
   behoben, in der dritten vergessen.
   Ebenso mehrfach gebaut: das Datum mit dem Abstand darunter („in 3 Tagen“) in den
-  Fristenlisten.
+  Fristenlisten. Auch die Rechnung dahinter (überfällig, fällig, im Plan) und die Rangfolge der
+  Stufen stehen dreimal im Code; der Wert für „kein Termin“ heißt dreimal anders.
 * **Vorschlag:** fachfreie Bausteine in `src/shared/ui.tsx`; die Bereiche behalten nur ihre
   Zuordnung Stufe → Farbe und Text (siehe U-10).
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
@@ -644,7 +649,69 @@ Aktionen, Anlegen-Dialoge, Einstellungsseiten) und in den CSS-Dateien.
 
 ---
 
-## 7. Einzelhinweise Baubetriebsplanung
+## 7. Workflows, Fristen und Ampeln
+
+Der doppelte Workflow-Editor selbst steht unter M-12, die Fristenliste ohne Menüpunkt unter R-11,
+Ampelpunkt und -marke unter U-1 und U-10, der Haken-Knopf unter O-2.
+
+### W-1 · Menü „Schritt hinzufügen“ im Planlaufmanagement lässt sich nicht mit den Pfeiltasten bedienen
+* **Art:** Bedienung · **Aufwand:** klein · **Nutzen:** mittel
+* **Heute:** Die Baubetriebsplanung nutzt für „Status hinzufügen“ den gemeinsamen Baustein für
+  Aufklappmenüs: Der Fokus springt auf den ersten Eintrag, die Pfeiltasten wechseln. Das
+  Planlaufmanagement hat ein eigenes Menü: Der Fokus bleibt auf dem Knopf, Pfeiltasten wirken
+  nicht (Einträge nur über Tab). Das weicht auch von der Projektregel ab, Aufklappmenüs immer über
+  den gemeinsamen Baustein zu bauen.
+* **Vorschlag:** das Menü des Planlaufmanagements auf den gemeinsamen Baustein umstellen; rund 30
+  Zeilen eigene Gestaltung entfallen.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### W-2 · Ab wann etwas „fällig“ ist, wird an drei Stellen und mit drei Vorgaben festgelegt
+* **Art:** Datenmodell · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Planlaufmanagement: je Projekt, Vorgabe 5 Tage („Vorlaufzeit für Erinnerungen“ in den
+  Projekteinstellungen). Baubetriebsplanung: für den ganzen Bereich, Vorgabe 14 Tage.
+  Projektsteuerung: fest im Code. Ein Termin in sechs Tagen ist damit im Planlaufmanagement „Im
+  Plan“, in den beiden anderen Bereichen „Fällig“. Die Regel selbst ist überall dieselbe.
+* **Vorschlag:** einheitlich benennen („Fällig ab … Tagen vor dem Termin“) und als Einstellung des
+  Bereichs führen; im Planlaufmanagement bleibt eine Abweichung je Projekt möglich, die
+  Projektsteuerung bekommt die Einstellung.
+* **Zu klären:** eine gemeinsame Vorgabe für alle Bereiche?
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### W-3 · Tagesfelder im Planlaufmanagement lassen sich nicht leeren und haben keine Grenzen
+* **Art:** Bedienung · **Aufwand:** klein · **Nutzen:** mittel
+* **Heute:** Die Felder für Fristen und Vorlaufzeit (Workflow-Editor, Projekteinstellungen,
+  Planlauf, Terminnachweis) springen beim Leeren sofort auf „0“ – die nächste Ziffer ergibt „07“ –
+  und nehmen beliebig große Werte an. Die Baubetriebsplanung hat dafür ein Feld, das beim Tippen
+  leer sein darf, Grenzen kennt und nur gültige Werte übernimmt (allerdings in zwei fast gleichen
+  Fassungen).
+* **Vorschlag:** ein Zahlenfeld in `src/shared/ui.tsx` für alle sechs Stellen.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### W-4 · Geänderte Standard-Workflows: in der Baubetriebsplanung bleiben sie, im Planlaufmanagement nicht
+* **Art:** Datenmodell · **Aufwand:** mittel · **Nutzen:** niedrig
+* **Heute:** Wer einen mitgelieferten Workflow anpasst, behält die Änderung in der
+  Baubetriebsplanung dauerhaft; im Planlaufmanagement ersetzt die nächste Fassung der Stammdaten
+  alle Standard-Workflows samt Änderungen. Beide Editoren raten zum Duplizieren, mit verschiedenem
+  Wortlaut und aus verschiedenen Gründen.
+* **Vorschlag:** eine Regel und ein Hinweistext; technisch das Verfahren der Baubetriebsplanung
+  als Vorbild (Geändertes bleibt, nur Unverändertes wird fortgeschrieben).
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### W-5 · Workflow-Liste und Fristenlisten: gleiche Gerüste, kleine Abweichungen
+* **Art:** Code-Doppelung/Wortlaut · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Die Karte der Workflow-Liste und die Punktkette des Standardverlaufs sind in beiden
+  Bereichen je eigens gebaut (rund 150 Zeilen je), die Leerzustände weichen im Wortlaut ab. Die
+  Fristenlisten („Fristen & Erinnerungen“, „Termine & Nachhaken“) haben dasselbe Gerüst (rund 200
+  Zeilen je), ordnen die Projekte aber einmal nach Nummer, einmal nach Name. In den beiden
+  Editoren heißen gleiche Dinge schon verschieden („Art“ / „Typ“, „Früher im Ablauf“ / „Früher in
+  der Reihenfolge“).
+* **Vorschlag:** Karte und Punktkette als fachfreie Bausteine zusammen mit der gemeinsamen
+  Gestaltung aus M-12; Sortierung und Wörter angleichen.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+---
+
+## 8. Einzelhinweise Baubetriebsplanung
 
 Aus der Fehlersuche in Domäne und Store der Baubetriebsplanung – keine Fehler, aber Stellen, an
 denen eine fachliche Entscheidung fehlt.
@@ -687,7 +754,7 @@ denen eine fachliche Entscheidung fehlt.
 
 ---
 
-## 8. Aufräumen: unbenutzter Code
+## 9. Aufräumen: unbenutzter Code
 
 Exporte, die nirgends verwendet werden (jeweils nur die Definition im Code). Entfernen ist
 gefahrlos und hält den Code lesbar.
@@ -712,7 +779,7 @@ Ebenso unbenutzt sind vier Klassen in `src/shared/global.css`: `.topbar-actions`
 
 ---
 
-## 9. Anhang: Was schon einheitlich ist
+## 10. Anhang: Was schon einheitlich ist
 
 Damit die Liste nicht den Eindruck erweckt, alles liefe auseinander – diese Dinge sind in allen
 drei Bereichen bereits gleich gelöst:
