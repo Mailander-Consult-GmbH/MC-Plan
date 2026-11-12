@@ -268,7 +268,7 @@ function FunktionsDialog({
   onClose: () => void;
   onAnlegen: (werte: Omit<StandardRolle, 'id'>) => void;
 }) {
-  const { updateStandardRolle } = useStore();
+  const { data, updateStandardRolle } = useStore();
   const toast = useToast();
   const [form, setForm] = useState({
     name: funktion?.name ?? '',
@@ -299,8 +299,18 @@ function FunktionsDialog({
       kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
     };
     if (funktion) {
-      updateStandardRolle(funktion.id, werte);
-      toast('Funktion gespeichert.');
+      // Eine Umbenennung zieht die übergreifenden Workflows mit – Projekte führen
+      // ihre Funktionen als eigene Kopien, dort bleibt die bisherige Bezeichnung
+      const workflows = updateStandardRolle(funktion.id, werte);
+      const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+      const inProjekten = data.roles.some((r) => gleich(r.name, funktion.name));
+      toast(
+        workflows > 0
+          ? `Funktion gespeichert – ${workflows} ${workflows === 1 ? 'Workflow nennt' : 'Workflows nennen'} jetzt „${werte.name.trim()}“.${
+              inProjekten ? ` In bereits angelegten Projekten heißt die Funktion weiter „${funktion.name}“.` : ''
+            }`
+          : 'Funktion gespeichert.',
+      );
     } else {
       onAnlegen(werte);
     }

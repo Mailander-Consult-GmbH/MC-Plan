@@ -30,6 +30,7 @@ import {
   type PlanDocument,
   type PlanRun,
   type Role,
+  type StandardRolle,
   type Zuordnung,
 } from './types';
 
@@ -309,7 +310,7 @@ export function funktionAendern(daten: AppData, id: ID, patch: Partial<Role>): A
     const runs = d.runs.map((r) => {
       if (r.projectId !== alt.projectId) return r;
       if (rolleFuerSchritt(vorher, alt.name, gewerkVon.get(r.documentId) ?? '')?.id !== id) return r;
-      const steps = funktionInSchrittenUmbenennen(r.steps, alt.name, neu.name);
+      const steps = funktionInSchrittenUmbenennen(r.steps, alt.name, neu.name.trim());
       return steps === r.steps ? r : { ...r, steps };
     });
     const nochSoGenannt = d.roles.some((r) => r.projectId === alt.projectId && gleicherName(r.name, alt.name));
@@ -317,13 +318,39 @@ export function funktionAendern(daten: AppData, id: ID, patch: Partial<Role>): A
       ? d.templates
       : d.templates.map((t) => {
           if (t.projectId !== alt.projectId) return t;
-          const steps = funktionInSchrittenUmbenennen(t.steps, alt.name, neu.name);
+          const steps = funktionInSchrittenUmbenennen(t.steps, alt.name, neu.name.trim());
           return steps === t.steps ? t : { ...t, steps };
         });
     if (runs.some((r, i) => r !== d.runs[i])) d = { ...d, runs };
     if (templates.some((t, i) => t !== d.templates[i])) d = { ...d, templates };
   }
   return d;
+}
+
+/**
+ * Ändert eine projektübergreifende Funktion. Wird sie umbenannt und trägt
+ * danach keine übergreifende Funktion mehr die alte Bezeichnung, ziehen die
+ * übergreifenden Workflows mit (Schritte und E-Mail-Regeln „an Funktion“) –
+ * sonst fänden Planläufe neuer Projekte, die die Funktion unter dem neuen Namen
+ * übernehmen, für diese Schritte keine Funktion. Führt ein anderes Gewerk die
+ * Bezeichnung weiter, bleibt sie in den Workflows stehen. Bereits angelegte
+ * Projektfunktionen und Projekt-Workflows bleiben, wie sie sind (wie beim
+ * Löschen einer übergreifenden Funktion).
+ */
+export function standardFunktionAendern(daten: AppData, id: ID, patch: Partial<StandardRolle>): AppData {
+  const alt = daten.standardRollen.find((r) => r.id === id);
+  if (!alt) return daten;
+  const neu: StandardRolle = { ...alt, ...patch };
+  const standardRollen = daten.standardRollen.map((r) => (r.id === id ? neu : r));
+  if (!umbenannt(alt.name, neu.name) || standardRollen.some((r) => gleicherName(r.name, alt.name))) {
+    return { ...daten, standardRollen };
+  }
+  const templates = daten.templates.map((t) => {
+    if (t.projectId !== null) return t;
+    const steps = funktionInSchrittenUmbenennen(t.steps, alt.name, neu.name.trim());
+    return steps === t.steps ? t : { ...t, steps };
+  });
+  return templates.some((t, i) => t !== daten.templates[i]) ? { ...daten, standardRollen, templates } : { ...daten, standardRollen };
 }
 
 /**

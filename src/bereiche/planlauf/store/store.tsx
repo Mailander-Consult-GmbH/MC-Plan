@@ -42,6 +42,7 @@ import {
   paketAnlegen,
   paketZuweisen,
   projektLoeschen,
+  standardFunktionAendern,
   type AbschlussErgebnis,
   type EintragsPatch,
   type SchrittAbschluss,
@@ -111,7 +112,8 @@ interface StoreValue {
   deleteProject: (id: ID) => void;
   /* Funktionen (projektübergreifend) */
   addStandardRolle: (r: Omit<StandardRolle, 'id'>) => ID;
-  updateStandardRolle: (id: ID, patch: Partial<StandardRolle>) => void;
+  /** Liefert die Zahl der übergreifenden Workflows, die eine Umbenennung mitgezogen hat (siehe standardFunktionAendern). */
+  updateStandardRolle: (id: ID, patch: Partial<StandardRolle>) => number;
   deleteStandardRolle: (id: ID) => void;
   /* Projektfunktionen */
   addRole: (r: Omit<Role, 'id'>) => ID;
@@ -450,7 +452,10 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
       return id;
     },
     updateStandardRolle: (id, patch) =>
-      mutate((d) => ({ ...d, standardRollen: upd(d.standardRollen, id, patch) })),
+      mitErgebnis((d) => {
+        const daten = standardFunktionAendern(d, id, patch);
+        return { daten, ergebnis: daten.templates.filter((t, i) => t !== d.templates[i]).length };
+      }),
     deleteStandardRolle: (id) =>
       mutate((d, v) => {
         const rolle = d.standardRollen.find((r) => r.id === id);
