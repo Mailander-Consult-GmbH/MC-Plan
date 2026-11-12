@@ -19,6 +19,7 @@ import {
   protokollAufgaben,
   reihenVon,
   uebernommeneEintraege,
+  weitergefuehrtIn,
 } from '../../domain/protokoll';
 import { ampelFuer } from '../../domain/punkte';
 import { BESPRECHUNG_VORSCHLAEGE, newId, personName, type Projekt, type Protokoll } from '../../domain/types';
@@ -36,6 +37,8 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
   const protokolle = data.protokolle.filter((p) => p.projektId === projekt.id);
   const reihen = reihenVon(protokolle);
   const oeffne = (p: Protokoll) => navigate({ view: 'protokoll', projektId: projekt.id, protokollId: p.id });
+  // Rückfrage beim Löschen: Führt ein späteres Protokoll die Aufgaben schon weiter, bleiben sie dort
+  const weiter = loeschen ? weitergefuehrtIn(loeschen, protokolle) : null;
 
   const folge = (p: Protokoll) => {
     const nr = naechsteNr(protokolle, p.reiheId);
@@ -232,7 +235,9 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
       {loeschen ? (
         <ConfirmDialog
           titel="Protokoll löschen?"
-          text={`${bezeichnung(loeschen)} vom ${formatDate(loeschen.datum)} wird endgültig gelöscht. Aufgaben, die es weitergeführt hat, gelten im Vorprotokoll wieder als offen.`}
+          text={`${bezeichnung(loeschen)} vom ${formatDate(loeschen.datum)} wird endgültig gelöscht. Aufgaben, die es weitergeführt hat, ${
+            weiter ? `laufen in ${bezeichnung(weiter)} weiter.` : 'gelten im Vorprotokoll wieder als offen.'
+          }`}
           onConfirm={() => {
             deleteProtokoll(loeschen.id);
             toast('Protokoll gelöscht.');

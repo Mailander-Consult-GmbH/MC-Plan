@@ -343,6 +343,43 @@ export function folgeprotokoll(
 }
 
 /**
+ * Protokoll, das weiterführt, was `p` aus seinem Vorprotokoll übernommen hat –
+ * oder null, wenn davon nichts weiterläuft (letztes Protokoll der Reihe, oder
+ * alles Übernommene endete in `p`).
+ */
+export function weitergefuehrtIn(p: Protokoll, protokolle: Protokoll[]): Protokoll | null {
+  const id = p.tops.flatMap((t) => t.eintraege).find((e) => e.vor && e.uebernommenIn)?.uebernommenIn;
+  return (id && id !== p.id && protokolle.find((x) => x.id === id)) || null;
+}
+
+/**
+ * Löscht ein Protokoll. Aufgaben, die es aus dem Vorprotokoll weitergeführt
+ * hat, gelten dort wieder als offen – außer ein späteres Protokoll führt sie
+ * schon weiter (`weitergefuehrtIn`): Dann verweist das Vorprotokoll auf
+ * dieses, sonst zählte jede Aufgabe doppelt, im Vorprotokoll und im späteren.
+ * Entschieden wird je Protokoll, nicht je Aufgabe – die Kopie im
+ * Folgeprotokoll kennt ihren Ursprungseintrag nicht.
+ */
+export function protokollLoeschen(protokolle: Protokoll[], id: ID): Protokoll[] {
+  const weg = protokolle.find((p) => p.id === id);
+  if (!weg) return protokolle;
+  const ziel = weitergefuehrtIn(weg, protokolle)?.id ?? null;
+  return protokolle
+    .filter((p) => p.id !== id)
+    .map((p) =>
+      p.tops.some((t) => t.eintraege.some((e) => e.uebernommenIn === id))
+        ? {
+            ...p,
+            tops: p.tops.map((t) => ({
+              ...t,
+              eintraege: t.eintraege.map((e) => (e.uebernommenIn === id ? { ...e, uebernommenIn: ziel } : e)),
+            })),
+          }
+        : p,
+    );
+}
+
+/**
  * Verschiebt einen Eintrag um eine Stelle nach oben (-1) oder unten (1). Am
  * Anfang bzw. Ende seines Tagesordnungspunkts wechselt er ans Ende des vorigen
  * bzw. an den Anfang des nächsten Punkts; weiter geht es nicht.
