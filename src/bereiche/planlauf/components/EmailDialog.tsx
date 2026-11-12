@@ -111,10 +111,10 @@ export function EmailDialog({
   const [text, setText] = useState(vorbereitet?.text ?? '');
   const [zuletztVorlage, setZuletztVorlage] = useState(templateId);
 
-  // Beim Vorlagenwechsel die Felder neu füllen
+  // Beim Vorlagenwechsel Betreff und Text neu füllen. Der Empfänger hängt nicht an
+  // der Vorlage, sondern an der Person – eine von Hand eingetragene Adresse bleibt stehen.
   if (zuletztVorlage !== templateId && vorbereitet) {
     setZuletztVorlage(templateId);
-    setAn(vorbereitet.an);
     setBetreff(vorbereitet.betreff);
     setText(vorbereitet.text);
   }
