@@ -159,7 +159,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   });
 
   // Ändern sich dabei die Teilnehmenden – jemand kommt mit einem schon geführten Kürzel hinzu oder
-  // geht, ein Gast erhält ein anderes Kürzel –, folgt „Verantwortlich“ den Personen (`werMitziehen`).
+  // geht –, folgt „Verantwortlich“ den übrigen Personen (`werMitziehen`).
   const protokollAendern = useCallback(
     (id: ID, fn: (p: Protokoll) => Protokoll) =>
       mutate((d) => ({

@@ -497,11 +497,16 @@ export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
  * hinzu, steht für beide fortan der Name. Die Vorstände gehen mit, sonst gälte
  * „Verantwortlich“ als in diesem Protokoll geändert. Nicht mitgezogen wird,
  * was nicht zu entscheiden ist: ein Wert, den mehrere führten und nicht alle
- * gleich ablösen (wer ihn behält, behält die Aufgaben).
+ * gleich ablösen (wer ihn behält, behält die Aufgaben). Ebenso bleibt stehen,
+ * was jemand an einem Gast ohne Eintrag in der Projektbeteiligtenliste im
+ * Protokoll tippt (Name, Kürzel): Dort ändert sich der Wert mit jedem
+ * Tastendruck, und der halbe Wert träfe unterwegs fremde Aufgaben.
  */
 export function werMitziehen(vorher: readonly Teilnehmer[], p: Protokoll): Protokoll {
   if (vorher === p.teilnehmer) return p;
-  const alt = new Map(vorher.map((t) => [t.id, { wert: zuordnung(t, vorher), kuerzel: t.kuerzel.trim() }]));
+  const alt = new Map(
+    vorher.map((t) => [t.id, { wert: zuordnung(t, vorher), kuerzel: t.kuerzel.trim(), name: t.name.trim() }]),
+  );
   // alter Wert → neuer Wert; null = nicht zu entscheiden
   const ziel = new Map<string, string | null>();
   const merken = (bisher: string, jetzt: string) => {
@@ -510,6 +515,8 @@ export function werMitziehen(vorher: readonly Teilnehmer[], p: Protokoll): Proto
   for (const t of p.teilnehmer) {
     const bisher = alt.get(t.id);
     if (!bisher) continue;
+    const getippt = !t.beteiligterId && (bisher.kuerzel !== t.kuerzel.trim() || bisher.name !== t.name.trim());
+    if (getippt) continue;
     merken(bisher.wert, zuordnung(t, p.teilnehmer));
     // Bestände von früher nennen auch ein Kürzel, das mehrere führten: Es folgt, wenn alle es gleich ablösen
     if (bisher.kuerzel !== bisher.wert) merken(bisher.kuerzel, t.kuerzel.trim());
