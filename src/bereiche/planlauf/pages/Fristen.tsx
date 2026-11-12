@@ -1,8 +1,9 @@
 /**
  * Fristenübersicht mit Erinnerungsfunktion: anstehende Prozessschritte über
- * alle Projekte – je anstehendem Schritt eine Zeile, in parallelen Zweigen also
- * mehrere je Planlauf –, gefiltert nach Dringlichkeit, mit Button für die
- * vorbereitete E-Mail.
+ * alle nicht archivierten Projekte – je anstehendem Schritt eine Zeile, in
+ * parallelen Zweigen also mehrere je Planlauf –, gefiltert nach Dringlichkeit,
+ * mit Button für die vorbereitete E-Mail. Im Projekt: nur dessen Schritte, auch
+ * wenn es archiviert ist.
  */
 import { Fragment, useMemo, useState } from 'react';
 import { aktuelleSchritte, offeneFristen, type Ampel } from '../domain/engine';
@@ -15,6 +16,7 @@ import { Card, CardHeader, EmptyState, Search, Segmented } from '../../../shared
 import { EmailDialog } from '../components/EmailDialog';
 import { ErledigtButton, useSchrittStatus } from '../components/SchrittStatus';
 import { Icon } from '../../../shared/icons';
+import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 
 type Filter = 'alle' | 'ueberfaellig' | 'faellig' | 'geplant';
 
@@ -31,7 +33,16 @@ export function Fristen({
   const [suche, setSuche] = useState('');
   const [mail, setMail] = useState<{ project: Project; run: PlanRun; step: RunStep } | null>(null);
 
-  const alle = useMemo(() => offeneFristen(data, projectId ? [projectId] : undefined), [data, projectId]);
+  // Gesamtansicht: archivierte Projekte (Projektregister) bleiben außen vor, wie in der Übersicht
+  const archiviert = useArchivierte('planlauf');
+  const alle = useMemo(
+    () =>
+      offeneFristen(
+        data,
+        projectId ? [projectId] : data.projects.filter((p) => !archiviert.has(p.id)).map((p) => p.id),
+      ),
+    [data, projectId, archiviert],
+  );
 
   const eintraege = alle.filter((f) => {
     if (filter !== 'alle' && f.ampel !== (filter as Ampel)) return false;

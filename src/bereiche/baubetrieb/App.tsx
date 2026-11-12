@@ -52,10 +52,14 @@ export function App() {
 
   const archiviert = useArchivierte('baubetrieb');
   const markierte = sichtbareProjekte(data.projekte, archiviert);
-  const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
-  const termine = offeneTermine(data);
+  // Archivierte Projekte bleiben außen vor – auch im Zähler an „Termine & Nachhaken“
+  const aktiveIds = data.projekte.filter((p) => !archiviert.has(p.id)).map((p) => p.id);
+  const aktiveAnzahl = aktiveIds.length;
+  const termine = offeneTermine(data, aktiveIds);
   // Überfällig: Terminfristen der Anmeldungen und ausstehende Erstanmeldungen
-  const ueberfaellig = [...termine, ...ausstehendeErstanmeldungen(data)].filter((t) => t.ampel === 'ueberfaellig');
+  const ueberfaellig = [...termine, ...ausstehendeErstanmeldungen(data, aktiveIds)].filter(
+    (t) => t.ampel === 'ueberfaellig',
+  );
   const projekt =
     route.view === 'projekt' || route.view === 'anmeldung'
       ? data.projekte.find((p) => p.id === route.projektId)
