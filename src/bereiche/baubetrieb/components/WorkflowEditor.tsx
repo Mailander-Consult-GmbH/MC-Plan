@@ -52,7 +52,7 @@ import {
   type WorkflowStatus,
   type Zustaendigkeit,
 } from '../domain/types';
-import { zielText } from '../domain/workflow';
+import { dientZumNachhaken, zielText } from '../domain/workflow';
 import { anmeldungenJeStatus, belegteEntfallendeStatus } from '../domain/workflowPflege';
 import {
   alsStandard,
@@ -1056,9 +1056,9 @@ function KarteAnzeige({
           {fristKurz(s.frist)}
         </span>
       </span>
-      {s.nachhaken || anmeldungen > 0 || einstiege.length > 0 ? (
+      {dientZumNachhaken(s) || anmeldungen > 0 || einstiege.length > 0 ? (
         <span className="bb-wf-merkmale">
-          {s.nachhaken ? <span className="bb-wf-merkmal">Nachhaken</span> : null}
+          {dientZumNachhaken(s) ? <span className="bb-wf-merkmal">Nachhaken</span> : null}
           {anmeldungen > 0 ? <span className="bb-wf-merkmal grau">{anmeldungenText(anmeldungen)}</span> : null}
           {einstiege.length > 0 ? (
             <span className="bb-wf-merkmal grau" title={`Übernahme aus ${einstiege.join(', ')}`}>
@@ -1488,13 +1488,21 @@ function StatusDetails({
         <FristFeld
           frist={s.frist}
           nachhakTage={nachhakTage}
-          onChange={(frist, feld) => aendern({ frist }, feld)}
+          // Ein Nachhak-Termin dient immer zum Nachhaken – das Merkmal geht beim Wechsel der Art mit
+          onChange={(frist, feld) =>
+            aendern(frist.typ === 'nachhaken' && !s.nachhaken ? { frist, nachhaken: true } : { frist }, feld)
+          }
           statusId={s.id}
         />
 
         <label className="checkbox">
-          <input type="checkbox" checked={s.nachhaken} onChange={(e) => aendern({ nachhaken: e.target.checked })} />
-          Termin dient zum Nachhaken
+          <input
+            type="checkbox"
+            checked={dientZumNachhaken(s)}
+            disabled={s.frist.typ === 'nachhaken'}
+            onChange={(e) => aendern({ nachhaken: e.target.checked })}
+          />
+          Termin dient zum Nachhaken{s.frist.typ === 'nachhaken' ? ' (bei einem Nachhak-Termin immer)' : ''}
         </label>
         <label className="bb-wf-feld">
           <span>Bemerkung</span>
