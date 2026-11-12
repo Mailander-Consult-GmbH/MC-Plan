@@ -383,7 +383,9 @@ export function WorkflowEditor({
         e.stopPropagation();
         if (verwerfenFrage) setVerwerfenFrage(false);
         else if (menuOffen) setMenuOffen(false);
-        else if (schmal && auswahl) setAuswahl(null);
+        // Liegen die Schrittdetails als Blatt (schmal) oder Schublade (mittel) über der Fläche,
+        // schließt Escape zuerst sie – wie in der Baubetriebsplanung
+        else if ((schmal || mittel) && auswahl) setAuswahl(null);
         else schliessen();
         return;
       }
@@ -401,7 +403,7 @@ export function WorkflowEditor({
     };
     window.addEventListener('keydown', taste, true);
     return () => window.removeEventListener('keydown', taste, true);
-  }, [auswahl, menuOffen, rueckgaengig, schliessen, schmal, verwerfenFrage, wiederholen]);
+  }, [auswahl, menuOffen, mittel, rueckgaengig, schliessen, schmal, verwerfenFrage, wiederholen]);
 
   /* ---------------------------------------------------------------- */
   /* Darstellung                                                       */

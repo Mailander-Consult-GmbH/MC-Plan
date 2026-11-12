@@ -48,7 +48,20 @@ export function Fristen({
     if (filter !== 'alle' && f.ampel !== (filter as Ampel)) return false;
     if (!suche.trim()) return true;
     const kontakt = data.contacts.find((c) => c.id === f.step.contactId);
-    const heu = [f.step.name, f.run.name, f.project.name, f.step.roleName, kontakt?.nachname ?? '', kontakt?.firma ?? '']
+    // Gesucht wird in allem, was die Zeile zeigt – auch Projekt- und Plannummer und der Vorname
+    const doc = data.documents.find((d) => d.id === f.run.documentId);
+    const heu = [
+      f.step.name,
+      f.run.name,
+      doc?.nummer ?? '',
+      doc?.titel ?? '',
+      f.project.nummer,
+      f.project.name,
+      f.step.roleName,
+      kontakt?.vorname ?? '',
+      kontakt?.nachname ?? '',
+      kontakt?.firma ?? '',
+    ]
       .join(' ')
       .toLowerCase();
     return heu.includes(suche.toLowerCase());
@@ -95,7 +108,7 @@ export function Fristen({
               <tr>
                 <th className="col-optional" style={{ width: 22 }} />
                 <th>Schritt / Planlauf</th>
-                <th className="col-optional">Rolle & Person</th>
+                <th className="col-optional">Funktion & Person</th>
                 <th>Soll-Termin</th>
                 <th>Status</th>
                 <th className="actions">Aktion</th>
@@ -156,7 +169,7 @@ export function Fristen({
                       </div>
                     </td>
                     <td className="small col-optional">
-                      {f.step.roleName || <span className="tertiary">ohne Rolle</span>}
+                      {f.step.roleName || <span className="tertiary">ohne Funktion</span>}
                       <div className="tertiary small">
                         {kontakt ? `${kontakt.vorname} ${kontakt.nachname}, ${kontakt.firma}` : 'keine Person zugeordnet'}
                       </div>

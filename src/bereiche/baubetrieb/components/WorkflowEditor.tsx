@@ -368,6 +368,9 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Ist das Menü „Status hinzufügen“ offen, gilt Escape ihm: Das AufklappMenue schließt sich
+        // selbst und gibt den Fokus an den Knopf zurück – der Editor bleibt offen.
+        if (menue) return;
         e.stopPropagation();
         if (verwerfenFrage) setVerwerfenFrage(false);
         else if ((schmal || mittel) && auswahl) setAuswahl(null);
@@ -388,7 +391,7 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
     };
     window.addEventListener('keydown', taste, true);
     return () => window.removeEventListener('keydown', taste, true);
-  }, [auswahl, mittel, rueckgaengig, schliessen, schmal, verwerfenFrage, wiederholen]);
+  }, [auswahl, menue, mittel, rueckgaengig, schliessen, schmal, verwerfenFrage, wiederholen]);
 
   /* ---------------------------------------------------------------- */
   /* Darstellung                                                       */
