@@ -169,7 +169,8 @@ export function Fristen({
                       <AmpelBadge ampel={f.ampel} />
                       {f.step.letzteErinnerung ? (
                         <div className="tertiary small" title={new Date(f.step.letzteErinnerung).toLocaleString('de-DE')}>
-                          E-Mail vorbereitet am {new Date(f.step.letzteErinnerung).toLocaleDateString('de-DE')}
+                          E-Mail vorbereitet am{' '}
+                          {new Date(f.step.letzteErinnerung).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </div>
                       ) : null}
                     </td>

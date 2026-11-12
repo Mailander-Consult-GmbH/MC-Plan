@@ -134,20 +134,25 @@ export function RollenFunktionen({ project }: { project: Project }) {
           }`}
         />
         {sichtbar.length === 0 ? (
-          <EmptyState
-            icon="person"
-            titel="Keine Funktion"
-            text={
-              uebergreifend
-                ? 'Legen Sie die Funktionen an, die für alle Gewerke gelten.'
-                : `Legen Sie die Funktionen an, die in ${seite} vorkommen.`
-            }
-            action={
-              <button type="button" className="btn btn-primary" onClick={() => setFunktionDialog({})}>
-                <Icon name="plus" size={14} /> Neue Funktion
-              </button>
-            }
-          />
+          suche.trim() ? (
+            // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf
+            <EmptyState icon="person" titel="Keine Funktion gefunden" text="Für diese Suche gibt es keinen Treffer." />
+          ) : (
+            <EmptyState
+              icon="person"
+              titel="Keine Funktion"
+              text={
+                uebergreifend
+                  ? 'Legen Sie die Funktionen an, die für alle Gewerke gelten.'
+                  : `Legen Sie die Funktionen an, die in ${seite} vorkommen.`
+              }
+              action={
+                <button type="button" className="btn btn-primary" onClick={() => setFunktionDialog({})}>
+                  <Icon name="plus" size={14} /> Neue Funktion
+                </button>
+              }
+            />
+          )
         ) : (
           <div className="table-scroll">
             <table className="table">

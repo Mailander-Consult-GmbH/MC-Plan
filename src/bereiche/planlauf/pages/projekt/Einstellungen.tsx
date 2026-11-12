@@ -4,6 +4,7 @@ import { ArchivKnopf, useArchivierbar, useLoeschHinweis } from '../../../../geme
 import { type Project } from '../../domain/types';
 import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
+import { formatDate } from '../../../../shared/dates';
 import { useToast } from '../../../../shared/toast';
 import { ProjektDialog } from '../Projekte';
 import { ExportDialog } from './ExportDialog';
@@ -85,7 +86,7 @@ export function Einstellungen({ project, navigate }: { project: Project; navigat
                 {s.feiertage.length === 0 ? <span className="tertiary small">keine hinterlegt</span> : null}
                 {s.feiertage.map((f) => (
                   <span key={f} className="badge">
-                    {new Date(f).toLocaleDateString('de-DE')}
+                    {formatDate(f)}
                     <button
                       type="button"
                       className="btn-icon"
