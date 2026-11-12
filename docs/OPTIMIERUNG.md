@@ -31,9 +31,10 @@ fachfreie Bausteine, die Bereiche greifen nicht aufeinander zu und teilen sich n
 2. [Entscheidungen aus dem Entfernen der beiden Bereiche](#2-entscheidungen-aus-dem-entfernen-der-beiden-bereiche)
 3. [Rahmen, Navigation, Sicherung](#3-rahmen-navigation-sicherung)
 4. [Übersichten, Projektlisten, Projektseiten](#4-übersichten-projektlisten-projektseiten)
-5. [Einzelhinweise Baubetriebsplanung](#5-einzelhinweise-baubetriebsplanung)
-6. [Aufräumen: unbenutzter Code](#6-aufräumen-unbenutzter-code)
-7. [Anhang: Was schon einheitlich ist](#7-anhang-was-schon-einheitlich-ist)
+5. [Bedienmuster: Dialoge, Listen, Wortlaut](#5-bedienmuster-dialoge-listen-wortlaut)
+6. [Einzelhinweise Baubetriebsplanung](#6-einzelhinweise-baubetriebsplanung)
+7. [Aufräumen: unbenutzter Code](#7-aufräumen-unbenutzter-code)
+8. [Anhang: Was schon einheitlich ist](#8-anhang-was-schon-einheitlich-ist)
 
 ---
 
@@ -62,6 +63,8 @@ mit einem Skript oder im Browser nachgestellt und nach der Korrektur erneut gepr
 | Baubetriebsplanung | Workflow-Editor: Eine Terminfrist „Nachhak-Termin nach Statuswechsel“ wurde überfällig, ließ sich aber nicht als nachgehakt festhalten (das Merkmal blieb aus). | Ein Nachhak-Termin dient immer zum Nachhaken. |
 | Baubetriebsplanung | Der Vermerk „Nachgehakt · neuer Termin …“ nannte das Datum als 2026-12-03. | 03.12.2026 |
 | Baubetriebsplanung | Stände bzw. Sicherungen bis Fassung 5: Die KM-Runde (N-2/N-1) ging bei der Umstellung verloren, die Terminfrist sprang im Beispiel vom 29.10.2026 auf den 28.04.2027. | Die Runde wird übernommen. |
+| Planlaufmanagement, Projektsteuerung | Funktionslisten: Eine Suche ohne Treffer zeigte „Legen Sie die Funktionen an …“ samt Knopf „Neue Funktion“ – als wäre der Bestand leer. | „Keine Funktion gefunden – Für diese Suche gibt es keinen Treffer.“ |
+| Planlaufmanagement | „E-Mail vorbereitet am 5.3.2026“ und die Feiertage standen einstellig, alles andere als 05.03.2026. | Überall zweistellig. |
 | Alle (Excel-Import) | In Mappen mit umsortierten Blättern standen die Blattnamen an fremden Inhalten; Zellen ohne Zellbezug landeten alle in Spalte A. | Blätter werden über ihre Beziehung in der Mappe zugeordnet. |
 
 ---
@@ -269,7 +272,9 @@ bestätigen oder anders entscheiden.
 * **Heute:** `AmpelPunkt` und `AmpelBadge` stehen in allen drei `components/common.tsx`. Der
   unsichtbare Punkt im Planlaufmanagement (Abschnitt 1) war genau die Folge: in zwei Kopien
   behoben, in der dritten vergessen.
-* **Vorschlag:** ein fachfreier Baustein in `src/shared/ui.tsx`; die Bereiche behalten nur ihre
+  Ebenso mehrfach gebaut: das Datum mit dem Abstand darunter („in 3 Tagen“) in den
+  Fristenlisten.
+* **Vorschlag:** fachfreie Bausteine in `src/shared/ui.tsx`; die Bereiche behalten nur ihre
   Zuordnung Stufe → Farbe und Text (siehe U-10).
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
 
@@ -417,7 +422,151 @@ bestätigen oder anders entscheiden.
 
 ---
 
-## 5. Einzelhinweise Baubetriebsplanung
+## 5. Bedienmuster: Dialoge, Listen, Wortlaut
+
+### M-1 · „Kein Treffer“ heißt in jeder Liste anders
+* **Art:** Wortlaut · **Aufwand:** klein · **Nutzen:** niedrig
+* **Heute:** „Kein Eintrag passt zur Suche“, „Nichts gefunden“, „Keine Person gefunden“, „Keine
+  Funktion gefunden“ – je Liste ein eigener Text. (Dass zwei Funktionslisten bei einer Suche ohne
+  Treffer den Anlegen-Knopf eines leeren Bestands zeigten, ist behoben.)
+* **Vorschlag:** ein fachfreier Baustein „Nichts gefunden – Für diese Suche gibt es keinen
+  Treffer.“ für alle Listen; auch die drei Projektlisten unterscheiden dann „leer“ von „kein
+  Treffer“.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-2 · Seite „Funktionen“, Funktionsdialog und Gewerk-Dialog gibt es zweimal – mit anderem Verhalten
+* **Art:** Code-Doppelung/Funktion · **Aufwand:** mittel · **Nutzen:** hoch
+* **Heute:** Planlaufmanagement (`pages/Funktionen.tsx`, ein zweiter fast gleicher Dialog in
+  `pages/projekt/RollenFunktionen.tsx`, `components/GewerkDialog.tsx`) und Projektsteuerung
+  (`pages/Funktionen.tsx`, `components/FunktionDialog.tsx`, `components/GewerkDialog.tsx`) – rund
+  500 Zeilen in zwei, beim Dialog in drei Fassungen. Für den Nutzer: Suche und die Spalte
+  „Verwendet“ gibt es nur in der Projektsteuerung; ein Gewerk mit besetzten Funktionen lässt sich
+  im Planlaufmanagement löschen (die Rückfrage nennt die Folgen), in der Projektsteuerung nicht.
+  Beide Bereiche führen eigene Listen der Funktionen und Gewerke – wer beide nutzt, pflegt die
+  Stammdaten zweimal.
+* **Vorschlag:** gemeinsame Bausteine in `src/gemeinsam/` (Seite, Funktionsdialog, Gewerk-Dialog)
+  nach dem Vorbild der Projektsteuerung; die Löschregel bleibt je Bereich, wird aber gleich
+  dargestellt. Kleiner Zwischenschritt: Suche im Planlaufmanagement nachziehen und dessen
+  doppelten Funktionsdialog zusammenlegen.
+* **Zu klären:** Sollen Funktionen und Gewerke selbst geteilte Stammdaten werden (einmal pflegen,
+  in beiden Bereichen nutzen)?
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-3 · Enter speichert nur in wenigen Dialogen, Pflichtfelder sind nicht erkennbar
+* **Art:** Bedienung · **Aufwand:** mittel · **Nutzen:** hoch
+* **Heute:** In „Neues Gewerk“, „Angemeldet als“ und beim Anlegen von Planpaketen übernimmt die
+  Eingabetaste; in den Dialogen für Projekt, Funktion, Person, Anmeldung, Planlisten-Eintrag und
+  Protokollreihe passiert nichts. Welche Felder Pflicht sind, zeigt erst eine kurz eingeblendete
+  Meldung nach dem Klick auf den Hauptknopf. In großen Dialogen geht ein versehentlicher Klick
+  neben den Dialog mit allen Eingaben verloren.
+* **Vorschlag:** der gemeinsame Dialog-Baustein erhält ein Absenden (Enter speichert in
+  einzeiligen Feldern überall), Felder ein Pflicht-Kennzeichen und eine Fehlerzeile direkt am
+  Feld; große Dialoge schließen nicht durch Klick daneben.
+* **Risiko:** mittel – Enter darf in Auswahlfeldern und mehrzeiligen Feldern nicht absenden.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-4 · „Anlegen“, „Speichern“, „Projekt anlegen“ – „gespeichert“, „aktualisiert“
+* **Art:** Wortlaut · **Aufwand:** klein · **Nutzen:** mittel
+* **Heute:** Der Hauptknopf beim Anlegen heißt je Dialog „Projekt anlegen“, „Anlegen“ oder auch
+  für Neues „Speichern“; die Meldung nach dem Ändern „… aktualisiert.“ oder „… gespeichert.“.
+* **Vorschlag:** eine Regel: „Anlegen“ für Neues, „Speichern“ für Bestehendes; Meldungen
+  „<Ding> angelegt.“ / „… gespeichert.“ / „… gelöscht.“; Titel „Neues <Ding>“ bzw. „<Ding>
+  bearbeiten“. Die Regel in `CLAUDE.md` festhalten. (Überschneidet sich mit U-5.)
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-5 · Der rote „Löschen“-Knopf ist auf vier Arten gebaut
+* **Art:** Optik · **Aufwand:** klein · **Nutzen:** mittel
+* **Heute:** Die rot gefüllte Bestätigung entsteht an acht Stellen über eine fest eingetragene
+  Farbe, an einer über eine eigene Klasse des Planlaufmanagements; im Gewerk-Dialog des
+  Planlaufmanagements ist die endgültige Bestätigung nur rote Schrift (sieht aus wie ein
+  Nebenknopf), derselbe Dialog der Projektsteuerung ist rot gefüllt. Die fest eingetragene Farbe
+  überschreibt außerdem den Hover-Zustand.
+* **Vorschlag:** eine Klasse für „rot gefüllt“ in `src/shared/global.css` (mit Hover und
+  Kontrast-Variante); Regel: Auslöser = rote Schrift, Bestätigung = rot gefüllt.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-6 · „Lässt sich nicht löschen“ wird auf drei Arten gesagt
+* **Art:** Bedienung · **Aufwand:** klein · **Nutzen:** mittel
+* **Heute:** Baubetriebsplanung (Workflows): Knopf ausgegraut, der Grund steht nur im Tooltip –
+  auf dem Tablet und mit der Tastatur nicht erreichbar. Projektsteuerung (Funktionen): Knopf
+  bleibt bedienbar und meldet den Grund. Planlaufmanagement (mitgelieferte Workflows): Knopf fehlt
+  ohne Erklärung.
+* **Vorschlag:** ein Muster – der Knopf bleibt bedienbar und nennt den Grund, am besten in einem
+  kleinen Hinweisdialog statt in der flüchtigen Kurzmeldung.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-7 · Sortieren per Klick auf die Spaltenüberschrift gibt es nur im Planlaufmanagement
+* **Art:** Funktion · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Planliste und Planlaufliste lassen sich sortieren (mit zwei leicht verschiedenen
+  Regeln für den dritten Klick). Die Anmeldungen der Baubetriebsplanung stehen fest nach
+  Sperrbeginn, die Beteiligten der Projektsteuerung fest nach Funktion und Name.
+* **Vorschlag:** ein fachfreier Baustein für sortierbare Spaltenköpfe in `src/shared/`; danach in
+  den Anmeldungstabellen (Sperrzeitraum, Status, Terminfrist, Sachstand) und in der
+  Beteiligtenliste (Funktion, Person, Firma) einsetzen.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-8 · Schmale Breite: gleichartige Listen stapeln, kürzen oder scrollen quer
+* **Art:** Optik · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute (400 px):** Die Protokollliste und die Fristenlisten werden zu Karten gestapelt; die
+  Beteiligten- und Funktionslisten bleiben gekürzte Tabellen zum Schieben; die Anmeldungsliste der
+  Baubetriebsplanung ist fest 1080 px breit – fast dreimal so breit wie der Bildschirm. In
+  gestapelten Tabellen fehlen die Spaltennamen (nur der Terminrechner beschriftet seine Zellen).
+* **Vorschlag:** Regel festhalten: Listen bis etwa fünf Spalten stapeln und beschriften ihre
+  Zellen; nur echte Arbeitstabellen (Planliste, Planlaufliste) scrollen quer. Anmeldungen der
+  Baubetriebsplanung unter 720 px stapeln.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-9 · Die Excel-Import-Dialoge sind dreimal fast gleich gebaut
+* **Art:** Code-Doppelung · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Funktionen und Planliste (Planlaufmanagement), Projektbeteiligte (Projektsteuerung):
+  je 120–155 Zeilen Dialog mit Vorlage-Knopf, Ablagefläche, Hinweisen, Vorschau und „n Zeilen
+  übernehmen“. Für den Nutzer weitgehend gleich – nur heißt der Vorgang beim Import aus BBPNeo
+  „Importieren“ statt „Übernehmen“.
+* **Vorschlag:** eine fachfreie Hülle „Import-Dialog“ in `src/shared/`; die Bereiche liefern
+  Spaltenzuordnung, Vorschau und Übernahme.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-10 · Personen eines Projekts: zwei Masken mit verschiedenen Feldern
+* **Art:** Funktion/Code-Doppelung · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Die Beteiligten eines Projekts werden über das Projektregister geteilt, aber in zwei
+  verschieden ausgestatteten Masken gepflegt: „Mobil“ und „Kürzel“ gibt es nur in der
+  Projektsteuerung, SharePoint-Links nur im Planlaufmanagement. **Eine in der Projektsteuerung
+  erfasste Mobilnummer ist im Planlaufmanagement weder zu sehen noch zu ändern.** „Person
+  hinzufügen“ ist einmal Nebenknopf, einmal Hauptknopf. Rund 300 Zeilen Tabelle und Formular
+  doppelt.
+* **Vorschlag:** die gemeinsamen Kontaktfelder (einschließlich „Mobil“) und die Tabellenzeile als
+  Bausteine in `src/gemeinsam/`; die bereichseigenen Felder kommen dazu. Die fachlich
+  verschiedene Zuordnung bleibt (Planlaufmanagement: eine Person je Funktion; Projektsteuerung:
+  eine Funktion je Person).
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-11 · Drucken und Exportieren: anderes Symbol, andere Wörter
+* **Art:** Wortlaut/Optik · **Aufwand:** klein · **Nutzen:** niedrig
+* **Heute:** Ein Druckersymbol gibt es nicht – das Planlaufmanagement nimmt für „Drucken“ das
+  Export-Symbol, die Projektsteuerung für „Drucken / PDF“ das Plan-Symbol. Das Planlaufmanagement
+  bündelt die Ausgabe unter „Export“ (Dialog mit „PDF“/„Excel“), die Projektsteuerung hat zwei
+  Knöpfe. Zeitstempel „TT.MM.JJJJ, hh:mm“ werden an drei Stellen je eigens formatiert.
+* **Vorschlag:** ein Symbol „Drucken“, einheitlich „Drucken / PDF“ und „Excel“; Zeitstempel als
+  eine Funktion in `src/shared/dates.ts`.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### M-12 · Workflow-Liste und Workflow-Editor: gleiche Bedienung, zwei vollständige Codebestände
+* **Art:** Code-Doppelung · **Aufwand:** groß · **Nutzen:** mittel
+* **Heute:** Planlaufmanagement und Baubetriebsplanung haben je einen eigenen Editor
+  (`components/WorkflowEditor.tsx`, 2226 bzw. 2020 Zeilen) samt Gestaltung (806 bzw. 613 Zeilen)
+  und eine eigene Workflow-Liste – mit gleicher Optik, gleichen Kurzmeldungen und gleicher
+  Rückfrage „Änderungen verwerfen?“. Für den Nutzer heute gleich; für die Pflege der größte
+  doppelte Bestand der Anwendung.
+* **Vorschlag:** nicht die Fachlogik teilen (Schritte mit parallelen Blöcken gegen Status mit
+  Nachfolgern), sondern den fachfreien Rahmen: zuerst die Gestaltung unter einem Präfix
+  zusammenführen (geringstes Risiko), dann Kopf, Rückgängig/Wiederholen, Hinweisliste und die
+  Karte der Workflow-Liste.
+* **Risiko:** hoch – große, zentrale Bausteine ohne Tests; nur schrittweise.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+---
+
+## 6. Einzelhinweise Baubetriebsplanung
 
 Aus der Fehlersuche in Domäne und Store der Baubetriebsplanung – keine Fehler, aber Stellen, an
 denen eine fachliche Entscheidung fehlt.
@@ -460,7 +609,7 @@ denen eine fachliche Entscheidung fehlt.
 
 ---
 
-## 6. Aufräumen: unbenutzter Code
+## 7. Aufräumen: unbenutzter Code
 
 Exporte, die nirgends verwendet werden (jeweils nur die Definition im Code). Entfernen ist
 gefahrlos und hält den Code lesbar.
@@ -482,7 +631,7 @@ gefahrlos und hält den Code lesbar.
 
 ---
 
-## 7. Anhang: Was schon einheitlich ist
+## 8. Anhang: Was schon einheitlich ist
 
 Damit die Liste nicht den Eindruck erweckt, alles liefe auseinander – diese Dinge sind in allen
 drei Bereichen bereits gleich gelöst:
@@ -503,5 +652,12 @@ drei Bereichen bereits gleich gelöst:
   Verknüpfungshinweis sind gemeinsame Bausteine.
 * **Dialoge:** alle über denselben Baustein `Modal` (Fokus, Escape, Tab bleibt im Dialog); Titel
   „Neues Projekt“ / „Projekt bearbeiten“, Knöpfe „Abbrechen“ / „Speichern“.
+* **Rückfragen vor dem Löschen** laufen durchweg über denselben Baustein mit Titel „<Ding>
+  löschen?“ und den Knöpfen „Löschen“ / „Abbrechen“; Kurzmeldungen „<Ding> gelöscht.“ und
+  „Bitte … angeben.“ lauten überall gleich.
+* **Suchfelder, Tabellen, Symbole:** ein Baustein für die Suche, dieselben Tabellenklassen,
+  klickbare Zeilen und Aktionen rechts; die Symbole für Bearbeiten, Löschen, Neu, Excel-Import,
+  Duplizieren und Herunterladen sind in allen Bereichen dieselben.
+* **Begriffe:** „löschen“ für Objekte, „entfernen“ für das Herausnehmen aus einer Zuordnung.
 * **Farben** der Ampelstufen (rot, orange, blau, grau) und des Projektstatus (grün, orange, grau)
   sind in allen Bereichen gleich.
