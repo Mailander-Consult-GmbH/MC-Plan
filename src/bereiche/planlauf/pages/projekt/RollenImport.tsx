@@ -283,17 +283,18 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       gruppen.set(schluessel, eintrag);
     }
 
-    // 4. Personen anlegen oder ergänzen
-    const vergeben = new Set<ID>();
+    // 4. Personen anlegen oder ergänzen. Eine Funktion, die die Datei vergibt,
+    // verliert ihre bisherige Besetzung – auch wenn die bisherige Person selbst
+    // in der Datei steht (Tausch zweier Funktionen, Komplettliste nach einem
+    // Wechsel): Sonst hielten danach zwei Personen dieselbe Funktion, und
+    // Anzeige wie Zuständigkeit blieben bei der bisherigen.
+    const vergeben = new Set<ID>([...gruppen.values()].flatMap((e) => e.zuordnungen.map((z) => z.roleId)));
     let angelegt = 0;
     let ergaenzt = 0;
     for (const [schluessel, eintrag] of gruppen) {
-      eintrag.zuordnungen.forEach((z) => vergeben.add(z.roleId));
       const vorhanden = kontakte.find((c) => personSchluessel(c) === schluessel);
       if (vorhanden) {
-        const behalten = vorhanden.zuordnungen.filter(
-          (z) => !eintrag.zuordnungen.some((n) => n.roleId === z.roleId),
-        );
+        const behalten = vorhanden.zuordnungen.filter((z) => !vergeben.has(z.roleId));
         // Nur ausgefüllte Angaben überschreiben die vorhandenen (siehe ausgefuellt)
         updateContact(vorhanden.id, {
           ...ausgefuellt(eintrag.person),
@@ -313,7 +314,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       }
     }
 
-    // 5. Bisherige Besetzungen der vergebenen Funktionen aufheben
+    // 5. Bisherige Besetzungen der vergebenen Funktionen aufheben – bei Personen, die nicht in der Datei stehen
     for (const c of kontakte) {
       if (gruppen.has(personSchluessel(c))) continue;
       const bleibt = c.zuordnungen.filter((z) => !vergeben.has(z.roleId));
