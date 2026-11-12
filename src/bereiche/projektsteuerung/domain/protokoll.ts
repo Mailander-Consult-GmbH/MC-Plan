@@ -457,7 +457,8 @@ export interface ProtokollAufgabe {
 /**
  * Aufgaben aus Protokollen – Einträge vom Typ A und Ergänzungen mit eigener
  * Art „Aufgabe“, je Aufgabe nur ihr jüngstes Vorkommen: Wurde der Eintrag in
- * ein Folgeprotokoll übernommen, zählt er dort. Gestrichenes zählt nicht.
+ * ein Folgeprotokoll übernommen, zählt er dort. Gestrichenes zählt nicht –
+ * Punkt, Eintrag oder die Zeilen, die die Aufgabe tragen.
  */
 export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
   const aufgaben: ProtokollAufgabe[] = [];
@@ -466,7 +467,9 @@ export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
       top.eintraege.forEach((eintrag, ei) => {
         if (eintrag.uebernommenIn || eintragEntfaellt(top, eintrag)) return;
         const nr = `${ti + 1}.${ei + 1}`;
-        if (eintrag.typ === 'A' && eintrag.zeilen.some((z) => !eigeneArt(z))) {
+        // Der Eintrag ist nur Aufgabe, solange eine nicht gestrichene mitlaufende Zeile sie trägt – sind
+        // alle gestrichen, bliebe ein offener Punkt ohne Text, den auch das Folgeprotokoll nicht übernimmt
+        if (eintrag.typ === 'A' && eintrag.zeilen.some((z) => !eigeneArt(z) && !z.entfaellt)) {
           aufgaben.push({ protokoll, top, eintrag, zeile: null, nr });
         }
         for (const zeile of eintrag.zeilen) {
