@@ -13,6 +13,7 @@ import {
   laufUebernehmen,
   planlaufName,
   recalcRun,
+  rolleFuerSchritt,
   zustaendigkeitenNachziehen,
   type AbschlussKontext,
 } from './engine';
@@ -20,10 +21,12 @@ import { protokollNachziehen } from './protokoll';
 import {
   funktionsName,
   hatEigenenPlanlauf,
+  type Antwort,
   type AppData,
   type ID,
   type ISODate,
   type Loeschvermerk,
+  type MailRegel,
   type PlanDocument,
   type PlanRun,
   type Role,
@@ -228,28 +231,99 @@ export function funktionLoeschen(daten: AppData, id: ID, vorgang: Vorgang): AppD
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Funktionen ändern – Umbenennen zieht die Namensverweise mit         */
+/* ------------------------------------------------------------------ */
+
+const gleicherName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Wurde die Funktion umbenannt (nicht nur anders geschrieben)? Dann müssen ihre Namensverweise mit. */
+const umbenannt = (alt: string, neu: string) => alt.trim() !== '' && neu.trim() !== '' && !gleicherName(alt, neu);
+
 /**
- * Ändert eine Projektfunktion. Wechselt ihr Gewerk, folgt das Gewerk an den
- * Zuordnungen der Personen, die sie besetzen: Es spiegelt dort nur die
- * Funktion, und ein stehengebliebenes Gewerk zöge beim Abgleich mit einer
- * Sicherung ein Gewerk mit, das die Funktion nicht mehr führt.
+ * Setzt in Schritten (Workflow wie Planlauf) die neue Bezeichnung einer
+ * Funktion ein: am Schritt (`roleName`) und in seinen E-Mail-Regeln „an
+ * Funktion“ – beide nennen die Funktion nur beim Namen. Ohne Treffer kommt
+ * dieselbe Liste zurück (unveränderte Workflows behalten ihren Änderungszeitpunkt).
+ */
+function funktionInSchrittenUmbenennen<T extends { roleName: string; mails: MailRegel[]; antworten: Antwort[] }>(
+  steps: T[],
+  alt: string,
+  neu: string,
+): T[] {
+  const trifft = (regeln: MailRegel[] | undefined) => (regeln ?? []).some((r) => gleicherName(r.roleName, alt));
+  const regelnNeu = (regeln: MailRegel[]) =>
+    trifft(regeln) ? regeln.map((r) => (gleicherName(r.roleName, alt) ? { ...r, roleName: neu } : r)) : regeln;
+  let geaendert = false;
+  const liste = steps.map((s) => {
+    const amSchritt = gleicherName(s.roleName, alt);
+    if (!amSchritt && !trifft(s.mails) && !s.antworten.some((a) => trifft(a.mails))) return s;
+    geaendert = true;
+    return {
+      ...s,
+      roleName: amSchritt ? neu : s.roleName,
+      ...(trifft(s.mails) ? { mails: regelnNeu(s.mails) } : {}),
+      antworten: s.antworten.map((a) => (trifft(a.mails) ? { ...a, mails: regelnNeu(a.mails) } : a)),
+    };
+  });
+  return geaendert ? liste : steps;
+}
+
+/**
+ * Ändert eine Projektfunktion.
+ *
+ * * Wechselt ihr Gewerk, folgt das Gewerk an den Zuordnungen der Personen, die
+ *   sie besetzen: Es spiegelt dort nur die Funktion, und ein stehengebliebenes
+ *   Gewerk zöge beim Abgleich mit einer Sicherung ein Gewerk mit, das die
+ *   Funktion nicht mehr führt.
+ * * Wird sie umbenannt, ziehen die Schritte der Planläufe des Projekts mit, für
+ *   die bisher genau diese Funktion galt (die des Gewerks ihres Eintrags,
+ *   ersatzweise die übergreifende – siehe rolleFuerSchritt), samt ihren
+ *   E-Mail-Regeln „an Funktion“: Schritte nennen die Funktion nur beim Namen
+ *   und stünden sonst ohne zuständige Person da. Die Workflows des Projekts
+ *   ziehen mit, wenn im Projekt keine Funktion mehr die alte Bezeichnung trägt;
+ *   führt sie ein anderes Gewerk weiter, bleibt sie dort stehen (Workflows
+ *   unterscheiden keine Gewerke). Übergreifende Workflows bleiben unberührt.
  */
 export function funktionAendern(daten: AppData, id: ID, patch: Partial<Role>): AppData {
   const alt = daten.roles.find((r) => r.id === id);
   if (!alt) return daten;
   const neu: Role = { ...alt, ...patch };
-  const roles = daten.roles.map((r) => (r.id === id ? neu : r));
-  if ((neu.gewerk ?? null) === (alt.gewerk ?? null)) return { ...daten, roles };
-  const veraltet = (z: Zuordnung) => z.roleId === id && (z.gewerk ?? null) !== (neu.gewerk ?? null);
-  return {
-    ...daten,
-    roles,
-    contacts: daten.contacts.map((c) =>
-      c.zuordnungen.some(veraltet)
-        ? { ...c, zuordnungen: c.zuordnungen.map((z) => (veraltet(z) ? { ...z, gewerk: neu.gewerk } : z)) }
-        : c,
-    ),
-  };
+  let d: AppData = { ...daten, roles: daten.roles.map((r) => (r.id === id ? neu : r)) };
+
+  if ((neu.gewerk ?? null) !== (alt.gewerk ?? null)) {
+    const veraltet = (z: Zuordnung) => z.roleId === id && (z.gewerk ?? null) !== (neu.gewerk ?? null);
+    d = {
+      ...d,
+      contacts: d.contacts.map((c) =>
+        c.zuordnungen.some(veraltet)
+          ? { ...c, zuordnungen: c.zuordnungen.map((z) => (veraltet(z) ? { ...z, gewerk: neu.gewerk } : z)) }
+          : c,
+      ),
+    };
+  }
+
+  if (umbenannt(alt.name, neu.name)) {
+    const vorher = daten.roles.filter((r) => r.projectId === alt.projectId);
+    const gewerkVon = new Map(daten.documents.map((x) => [x.id, x.gewerk]));
+    const runs = d.runs.map((r) => {
+      if (r.projectId !== alt.projectId) return r;
+      if (rolleFuerSchritt(vorher, alt.name, gewerkVon.get(r.documentId) ?? '')?.id !== id) return r;
+      const steps = funktionInSchrittenUmbenennen(r.steps, alt.name, neu.name);
+      return steps === r.steps ? r : { ...r, steps };
+    });
+    const nochSoGenannt = d.roles.some((r) => r.projectId === alt.projectId && gleicherName(r.name, alt.name));
+    const templates = nochSoGenannt
+      ? d.templates
+      : d.templates.map((t) => {
+          if (t.projectId !== alt.projectId) return t;
+          const steps = funktionInSchrittenUmbenennen(t.steps, alt.name, neu.name);
+          return steps === t.steps ? t : { ...t, steps };
+        });
+    if (runs.some((r, i) => r !== d.runs[i])) d = { ...d, runs };
+    if (templates.some((t, i) => t !== d.templates[i])) d = { ...d, templates };
+  }
+  return d;
 }
 
 /**

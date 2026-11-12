@@ -384,16 +384,25 @@ export function funktionenFuerGewerk(rollen: Role[], gewerk: string): string[] {
   return [...new Set(passend.map((r) => r.name))];
 }
 
+/**
+ * Die Funktion, die ein Schritt mit dieser Bezeichnung bei einem Eintrag des
+ * Gewerks meint: die Funktion des Gewerks, ersatzweise die übergreifende
+ * gleichen Namens. Danach richten sich Zuständigkeit und – beim Umbenennen
+ * einer Funktion – welche Schritte ihre Bezeichnung mitziehen.
+ */
+export function rolleFuerSchritt(rollen: Role[], roleName: string, gewerk: string): Role | undefined {
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const passende = rollen.filter((r) => gleich(r.name, roleName));
+  return passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
+}
+
 export function kontaktFuerRolleUndGewerk(
   kontakte: Contact[],
   rollen: Role[],
   roleName: string,
   gewerk: string,
 ): ID | null {
-  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-  const passende = rollen.filter((r) => gleich(r.name, roleName));
-  // Funktion des Gewerks; ersatzweise die übergreifende Funktion gleichen Namens
-  const rolle = passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
+  const rolle = rolleFuerSchritt(rollen, roleName, gewerk);
   if (!rolle) return null;
   return kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === rolle.id))?.id ?? null;
 }
