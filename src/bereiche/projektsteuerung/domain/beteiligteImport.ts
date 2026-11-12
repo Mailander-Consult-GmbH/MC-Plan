@@ -122,7 +122,21 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
     if (z.every((f) => !f.trim())) continue;
     let vorname = wert(z, 'vorname');
     let nachname = wert(z, 'nachname');
-    if (!nachname && wert(z, 'name')) ({ vorname, nachname } = nameTeilen(wert(z, 'name')));
+    const gesamt = wert(z, 'name').replace(/\s+/g, ' ');
+    if (!nachname && gesamt) {
+      if (spalten.vorname === undefined) ({ vorname, nachname } = nameTeilen(gesamt));
+      else if (gesamt.includes(',')) {
+        const geteilt = nameTeilen(gesamt);
+        nachname = geteilt.nachname;
+        vorname = vorname || geteilt.vorname;
+      } else {
+        // Neben einer Spalte „Vorname“ ist „Name“ der Nachname: nicht zerlegen, sonst ginge der Vorname
+        // verloren („Berger | Anna“) oder ein Namenszusatz wanderte in den Vornamen („von der Heide“).
+        // Steht dort doch der volle Name („Anna Berger | Anna“), bleibt der Vorname vorn weg.
+        const voll = vorname !== '' && gesamt.toLowerCase().startsWith(`${vorname.toLowerCase()} `);
+        nachname = voll ? gesamt.slice(vorname.length).trim() : gesamt;
+      }
+    }
     if (!nachname) continue;
 
     const gewerkText = wert(z, 'gewerk');
