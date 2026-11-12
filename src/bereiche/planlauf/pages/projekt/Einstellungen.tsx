@@ -1,4 +1,7 @@
-/** Projekteinstellungen: Fristenrechnung, Erinnerungen und E-Mail-Vorlagen. */
+/**
+ * Projekteinstellungen: Projektdaten, Fristen und Erinnerungen, Export, Archivieren und Löschen.
+ * Die E-Mail-Vorlagen gelten für alle Projekte und stehen auf der Seite „Vorlagen“ – hier nur der Verweis.
+ */
 import { useState } from 'react';
 import { ArchivKnopf, useArchivierbar, useLoeschHinweis } from '../../../../gemeinsam/ProjektBereiche';
 import { type Project } from '../../domain/types';
