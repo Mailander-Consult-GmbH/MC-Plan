@@ -188,6 +188,7 @@ export interface BlockBilanz {
   eingang: ISODate;
   /** Dauer des längsten Zweigs im Basisplan. */
   geplanteDauer: number;
+  /** Eingang + geplante Dauer; im ersten Block mit Eingang Soll das Blockende laut Basisplan (Zweiganfänge am Eingang Soll). */
   geplantesEnde: ISODate;
   ende: ISODate;
   /** tage(geplantes Ende, Ende); negativ = Zeitgewinn des Blocks. */
@@ -773,11 +774,37 @@ export function terminnachweis(
     return plan.zweige.reduce((m, z) => Math.max(m, z.dauer + rundung(z.erster)), 0) - plan.dauer;
   };
 
-  /** Geplantes Soll des ersten Schritts laut Basisplan. */
-  const basisErsterSoll = (a: Roh): ISODate | null => {
+  /** Geplantes Soll eines ersten Schritts (Frist `frist` im Basisplan) laut Basisplan: das Eingang Soll, sonst Anker + Frist. */
+  const basisErsterSoll = (frist: number): ISODate | null => {
     if (!basis) return null;
     const mitSoll = basis.eingangSoll !== undefined ? basis.eingangSoll : basis.anker !== run.start ? basis.anker : null;
-    return mitSoll ?? fristSoll(basis.anker, a.basisFrist ?? a.frist, rahmen);
+    return mitSoll ?? fristSoll(basis.anker, frist, rahmen);
+  };
+
+  /**
+   * Posten eines ersten Schritts – des ersten Einzelschritts bzw. eines
+   * Zweiganfangs mit Eingang Soll, wenn der Lauf mit einem Block beginnt. Er
+   * wird nicht an Eingang + Frist gemessen, sondern an seinem geplanten Soll
+   * laut Basisplan: Verschiebung des Termins, Soll von Hand, Abweichung vom Soll.
+   */
+  const postenErster = (a: Roh): NachweisPosten[] => {
+    const liste: NachweisPosten[] = [];
+    const geplant = basisErsterSoll(a.basisFrist ?? a.frist);
+    const ohneHand = a.sollManuell ? (a.mitEingangSoll && eingangSoll ? eingangSoll : fristSoll(a.e, a.frist, rahmen)) : (a.soll ?? a.i);
+    if (geplant) {
+      neuerPosten(
+        liste,
+        a,
+        'erster_termin',
+        t(geplant, ohneHand),
+        'auftraggeber',
+        a.mitEingangSoll ? 'Eingang Soll gegenüber dem Basisplan verschoben' : 'Termin des ersten Schritts gegenüber dem Basisplan verschoben',
+      );
+    }
+    if (a.sollManuell && a.soll) neuerPosten(liste, a, 'soll_hand', t(ohneHand, a.soll), a.seite, 'Soll von Hand gesetzt (vereinbarte Fristverlängerung)');
+    const abw = a.soll ? t(a.soll, a.i) : 0;
+    neuerPosten(liste, a, 'frist', abw, a.seite, abw >= 0 ? (a.mitEingangSoll ? 'Eingang nach dem Eingang Soll' : 'Frist überschritten') : 'Vor dem Soll erledigt');
+    return liste;
   };
 
   let vorige: Einheit | null = null;
@@ -793,22 +820,8 @@ export function terminnachweis(
       a.terminwirksam = true;
       let liste: NachweisPosten[];
       if (istErste) {
-        liste = [];
-        const geplant = basisErsterSoll(a);
-        const ohneHand = a.sollManuell ? (a.mitEingangSoll && eingangSoll ? eingangSoll : fristSoll(a.e, a.frist, rahmen)) : (a.soll ?? a.i);
-        if (geplant) {
-          neuerPosten(
-            liste,
-            a,
-            'erster_termin',
-            t(geplant, ohneHand),
-            'auftraggeber',
-            a.mitEingangSoll ? 'Eingang Soll gegenüber dem Basisplan verschoben' : 'Termin des ersten Schritts gegenüber dem Basisplan verschoben',
-          );
-        }
-        if (a.sollManuell && a.soll) neuerPosten(liste, a, 'soll_hand', t(ohneHand, a.soll), a.seite, 'Soll von Hand gesetzt (vereinbarte Fristverlängerung)');
-        const abw = a.soll ? t(a.soll, a.i) : 0;
-        neuerPosten(liste, a, 'frist', abw, a.seite, abw >= 0 ? (a.mitEingangSoll ? 'Eingang nach dem Eingang Soll' : 'Frist überschritten') : 'Vor dem Soll erledigt');
+        liste = postenErster(a);
+        const geplant = basisErsterSoll(a.basisFrist ?? a.frist);
         if (geplant) {
           neuerPosten(liste, a, 'zeitgewinn', -planRundung(a.stepId, geplant), null, 'Basisplan: Frist 0 nach einem arbeitsfreien Tag eingeplant');
         }
@@ -832,7 +845,16 @@ export function terminnachweis(
     const blockArt: 'regel' | 'nacharbeit' = frueher || !regel.has(steps[blockStart].id) ? 'nacharbeit' : 'regel';
     const ersteAusf = u.ausf.reduce((x, a) => (a.e < x.e || (a.e === x.e && a.pos < x.pos) ? a : x), u.ausf[0]);
     const blockListe: NachweisPosten[] = [];
-    if (istErste && basis) {
+    /*
+     * Beginnt der Lauf mit diesem Block und hat der Eintrag ein Eingang Soll,
+     * haben die Zweiganfänge keine Frist, sondern genau dieses Datum (siehe
+     * recalcSollDaten) – so rechnet auch der Basisplan. Dann wird jeder
+     * Zweiganfang wie ein erster Einzelschritt an seinem geplanten Soll
+     * gemessen und der Block an seinem geplanten Ende laut Basisplan, nicht an
+     * Beginn + Dauer.
+     */
+    const anfangMitEingangSoll = istErste && Boolean(basis) && u.ausf.some((a) => a.mitEingangSoll);
+    if (istErste && basis && !anfangMitEingangSoll) {
       neuerPosten(blockListe, ersteAusf, 'erster_termin', t(basis.anker, u.e), 'auftraggeber', 'Beginn gegenüber dem Basisplan verschoben');
     }
     neuerPosten(blockListe, ersteAusf, 'uebergabe', uebergabe, ersteAusf.eingangGeschaetzt ? null : vorSeite, 'Eingang des Blocks später als der Abschluss des Vorgängers');
@@ -861,7 +883,8 @@ export function terminnachweis(
       for (const a of ausf) {
         const grund = plan.regelweg.has(a.stepId) && !gesehen.has(a.stepId);
         gesehen.add(a.stepId);
-        liste.push(...postenVon(a, grund, t(vor ? vor.i : u.e, a.e), vor ? vor.seite : vorSeite));
+        if (anfangMitEingangSoll && a.mitEingangSoll) liste.push(...postenErster(a));
+        else liste.push(...postenVon(a, grund, t(vor ? vor.i : u.e, a.e), vor ? vor.seite : vorSeite));
         vor = a;
       }
       const eigene = liste.reduce((s, p) => s + (p.art === 'zeitgewinn' ? -p.tage : p.tage), 0);
@@ -871,7 +894,15 @@ export function terminnachweis(
     for (const z of zweige) {
       if (z.ende > massgeblich.ende || (z.ende === massgeblich.ende && z.eigene > massgeblich.eigene)) massgeblich = z;
     }
-    const geplantesEnde = rahmen.arbeitstage ? addDays(u.e, plan.dauer, true, rahmen.feiertage) : addDays(u.e, plan.dauer);
+    const plusTage = (d: ISODate, n: number) => (rahmen.arbeitstage ? addDays(d, n, true, rahmen.feiertage) : addDays(d, n));
+    // Mit Eingang Soll: je Zweig das geplante Soll des Zweiganfangs + die Fristen der übrigen Schritte, davon das späteste
+    const geplantesEnde = anfangMitEingangSoll
+      ? plan.zweige.reduce<ISODate>((spaetestes, z) => {
+          const fristErster = basisFrist(z.erster);
+          const soll = basisErsterSoll(fristErster ?? schrittVon.get(z.erster)?.fristTage ?? 0) ?? u.e;
+          return spaeter(spaetestes, plusTage(soll, z.dauer - (fristErster ?? 0)));
+        }, '')
+      : plusTage(u.e, plan.dauer);
     const verzug = t(geplantesEnde, u.ende);
     for (const z of zweige) for (const a of z.ausf) a.terminwirksam = z === massgeblich;
     zaehlen(blockListe);
