@@ -58,6 +58,15 @@ const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toL
 type Person = Omit<Contact, 'id' | 'projectId' | 'zuordnungen' | 'eigen' | 'sharepointEingang' | 'sharepointAusgang'> &
   Partial<Pick<Contact, 'sharepointEingang' | 'sharepointAusgang'>>;
 
+/**
+ * Die ausgefüllten Angaben einer Zeile. Eine leere Zelle oder fehlende Spalte
+ * heißt „keine Angabe“, nicht „löschen“: Was bei einer Person schon steht
+ * (Telefon, Firma, Anschrift …), bleibt – sonst leerte eine Liste, die nur
+ * Funktion, Name und E-Mail nennt, alle übrigen Kontaktdaten.
+ */
+const ausgefuellt = (person: Person): Partial<Person> =>
+  Object.fromEntries(Object.entries(person).filter(([, wert]) => wert !== '')) as Partial<Person>;
+
 interface Zeile {
   /** Gewerk der Funktion; null = übergreifend. */
   gewerk: string | null;
@@ -263,7 +272,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
     for (const z of vorschau) {
       const schluessel = personSchluessel(z.person);
       const eintrag = gruppen.get(schluessel) ?? { person: z.person, zuordnungen: [] };
-      eintrag.person = z.person;
+      // Mehrere Zeilen einer Person: Jede ergänzt, was sie ausfüllt – spätere Angaben gelten
+      eintrag.person = { ...eintrag.person, ...ausgefuellt(z.person) };
       if (z.funktion) {
         const roleId = rolleIds.get(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`);
         if (roleId && !eintrag.zuordnungen.some((x) => x.roleId === roleId)) {
@@ -284,8 +294,9 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         const behalten = vorhanden.zuordnungen.filter(
           (z) => !eintrag.zuordnungen.some((n) => n.roleId === z.roleId),
         );
+        // Nur ausgefüllte Angaben überschreiben die vorhandenen (siehe ausgefuellt)
         updateContact(vorhanden.id, {
-          ...eintrag.person,
+          ...ausgefuellt(eintrag.person),
           zuordnungen: [...behalten, ...eintrag.zuordnungen],
         });
         ergaenzt += 1;
@@ -396,7 +407,9 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
             Optional ist <strong>Seite</strong> – die Seite der Funktion für den Verzug (Planer, Prüfer, Auftraggeber,
             PLM oder „nicht festgelegt“); ohne Angabe wird sie bei neuen Funktionen aus der Bezeichnung vorbelegt.
             Gewerke und Funktionen, die es noch nicht gibt, werden beim Import angelegt; „Übergreifend“ steht für
-            Funktionen ohne Gewerkbezug. Über <em>Vorlage</em> erhalten Sie eine Datei mit genau diesen Spalten.
+            Funktionen ohne Gewerkbezug. Personen, die es im Projekt schon gibt, werden aktualisiert; leere Zellen
+            lassen ihre vorhandenen Angaben stehen. Über <em>Vorlage</em> erhalten Sie eine Datei mit genau diesen
+            Spalten.
           </Callout>
         ) : null}
 
