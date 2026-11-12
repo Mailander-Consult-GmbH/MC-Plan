@@ -383,6 +383,17 @@ const ARTEN_BIS_FASSUNG5: Record<string, AnmeldungsArt> = {
   A_unterjahr: 'A',
 };
 
+/**
+ * Die Runde des KM stand bis Fassung 5 in der Maßnahmenart; seit Fassung 10
+ * führt sie `kmRunde`. Ohne die Übernahme rechnete die Terminfrist eines so
+ * alten Stands „automatisch“ – und damit, war die N-2-Frist am Tag des
+ * Statuswechsels verstrichen, gegen die N-1-Frist.
+ */
+const RUNDE_BIS_FASSUNG5: Record<string, 'N-2' | 'N-1'> = {
+  'A_Vor_N-2': 'N-2',
+  'A_Vor_N-1': 'N-1',
+};
+
 /** Name, Kurzbezeichnung und Beschreibung der umbenannten Standard-Workflows bis Fassung 5. */
 const STANDARDS_BIS_FASSUNG5: Record<string, Pick<Workflow, 'name' | 'kurz' | 'beschreibung'>> = {
   'wf-pze': {
@@ -455,6 +466,9 @@ function ausFassung5(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
   const anmeldungen = (Array.isArray(roh.anmeldungen) ? roh.anmeldungen : []).map((a: Partial<Anmeldung>) => ({
     ...a,
     art: art(a.art),
+    ...(typeof a.art === 'string' && a.art in RUNDE_BIS_FASSUNG5 && !a.kmRunde
+      ? { kmRunde: RUNDE_BIS_FASSUNG5[a.art] }
+      : {}),
     verlauf: Array.isArray(a.verlauf)
       ? a.verlauf.map((v) => ({
           ...v,
