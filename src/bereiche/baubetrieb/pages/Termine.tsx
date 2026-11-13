@@ -6,7 +6,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
-import { Badge, Card, CardHeader, EmptyState, Search, Segmented } from '../../../shared/ui';
+import { Badge, Card, CardHeader, EmptyState, Search, Segmented, alsKlickZeile } from '../../../shared/ui';
 import { AmpelPunkt, NachfolgerAuswahl, NachhakenBadge, StatusBadge, TerminZelle } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import { NachhakenDialog } from '../components/TerminDialoge';
@@ -239,7 +239,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
             <div
               key={`${projekt.id}-${zelle.fahrplanjahr}-${zelle.phase}`}
               className="list-row clickable"
-              onClick={() => navigate({ view: 'projekt', projektId: projekt.id })}
+              {...alsKlickZeile(() => navigate({ view: 'projekt', projektId: projekt.id }))}
             >
               <Icon name="kalender" size={16} />
               <div style={{ flex: 1, minWidth: 0 }}>

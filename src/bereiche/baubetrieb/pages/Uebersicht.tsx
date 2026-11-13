@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
-import { Badge, Card, CardHeader, EmptyState, Stat } from '../../../shared/ui';
+import { Badge, Card, CardHeader, EmptyState, Stat, alsKlickZeile } from '../../../shared/ui';
 import { AmpelPunkt, NachfolgerAuswahl, StatusBadge, TerminZelle } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import {
@@ -129,7 +129,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                     <tr
                       key={`erst-${e.projekt.id}`}
                       className="clickable"
-                      onClick={() => navigate({ view: 'projekt', projektId: e.projekt.id })}
+                      {...alsKlickZeile(() => navigate({ view: 'projekt', projektId: e.projekt.id }))}
                     >
                       <td className="col-optional">
                         <AmpelPunkt ampel={e.ampel} />
@@ -160,9 +160,9 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                   <tr
                     key={t.anmeldung.id}
                     className="clickable"
-                    onClick={() =>
-                      navigate({ view: 'anmeldung', projektId: t.projekt.id, anmeldungId: t.anmeldung.id })
-                    }
+                    {...alsKlickZeile(() =>
+                      navigate({ view: 'anmeldung', projektId: t.projekt.id, anmeldungId: t.anmeldung.id }),
+                    )}
                   >
                     <td className="col-optional">
                       <AmpelPunkt ampel={t.ampel} />
@@ -206,7 +206,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
             <div
               key={`${projekt.id}-${zelle.fahrplanjahr}-${zelle.phase}`}
               className="list-row clickable"
-              onClick={() => navigate({ view: 'projekt', projektId: projekt.id })}
+              {...alsKlickZeile(() => navigate({ view: 'projekt', projektId: projekt.id }))}
             >
               <Icon name="kalender" size={16} />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -254,7 +254,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                   // Ohne Anmeldung ist die Erstanmeldung die nächste Frist
                   const naechsteErst = !naechste && offen?.frist && offen.ampel !== 'ueberfaellig' ? offen : null;
                   return (
-                    <tr key={p.id} className="clickable" onClick={() => navigate({ view: 'projekt', projektId: p.id })}>
+                    <tr key={p.id} className="clickable" {...alsKlickZeile(() => navigate({ view: 'projekt', projektId: p.id }))}>
                       <td>
                         <span className="num tertiary">{p.dbGNummer}</span>
                         <div>
