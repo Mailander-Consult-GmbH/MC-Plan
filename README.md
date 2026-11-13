@@ -290,9 +290,13 @@ schon führt, weist der Dialog ab („Die Funktion „…“ gibt es bereits.“
 Kleinschreibung); dieselbe Bezeichnung in einem anderen Gewerk bleibt möglich. Gespeichert wird die
 Bezeichnung ohne Leerzeichen am Rand. Wird eine projektübergreifende Funktion **umbenannt**, nennen
 auch die projektübergreifenden Workflows – Schritte und E-Mail-Regeln „an Funktion“ – die neue
-Bezeichnung, sobald keine übergreifende Funktion mehr die alte trägt; die Kurzmeldung nennt die
-Zahl der Workflows. Bereits angelegte Projekte führen ihre Funktionen als eigene Kopien und behalten
-die bisherige Bezeichnung.
+Bezeichnung, sobald keine übergreifende Funktion mehr die alte trägt. Mit ihnen ziehen die Kopien
+der Funktion in den bereits angelegten Projekten mit (gleiche Bezeichnung, gleiches Gewerk) – samt
+den Schritten ihrer Planläufe und Projekt-Workflows: Projekte starten Planläufe auch aus den
+übergreifenden Workflows und fänden sonst für diese Schritte keine zuständige Person. Führt ein
+Projekt die neue Bezeichnung im selben Gewerk schon, bleibt seine Kopie, wie sie ist. Die
+Kurzmeldung nennt, wo die Funktion jetzt so heißt („Funktion gespeichert – sie heißt jetzt auch in
+3 Workflows und 2 Projekten „…“.“).
 
 ### Funktion (im Projekt)
 Im Vordergrund steht die **Funktion, nicht die Person**: Die Seite ist – wie der projektübergreifende
@@ -323,20 +327,35 @@ ersatzweise die übergreifende), samt ihren E-Mail-Regeln „an Funktion“ – 
 zuständige Person. Die Workflows des Projekts ziehen mit, wenn im Projekt keine Funktion mehr die
 alte Bezeichnung trägt. Wechselt die Funktion zugleich das Gewerk, behalten die Läufe, für die sie
 nicht mehr gilt, die alte Bezeichnung. Das Änderungsprotokoll fasst das je Lauf zusammen
-(„Funktion von 6 Schritten geändert: …“).
+(„Funktion von 6 Schritten geändert: …“). Die projektübergreifenden Workflows ziehen nicht mit –
+sie gelten für alle Projekte. Nennen Workflows, aus denen das Projekt Planläufe startet, die alte
+Bezeichnung weiter, ohne dass das Projekt dafür noch eine Funktion hat, sagt es die Kurzmeldung:
+„Funktion gespeichert – 3 Workflows nennen weiter „Projektleitung“; neue Planläufe daraus haben für
+diese Schritte keine zuständige Person.“ Dann die Funktion im Workflow anpassen oder die Person im
+neuen Planlauf von Hand eintragen.
 
 **Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · Telefon ·
 Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*. Personen, die
 es im Projekt schon gibt, werden aktualisiert; eine leere Zelle oder fehlende Spalte heißt „keine
 Angabe“ und lässt stehen, was bei der Person schon eingetragen ist (Telefon, Firma, Anschrift,
-SharePoint-Links …), mehrere Zeilen derselben Person ergänzen einander. Eine Funktion, die die
+SharePoint-Links …), mehrere Zeilen derselben Person ergänzen einander. Erkannt wird eine Person
+an ihrer E-Mail; fehlt die E-Mail in der Zeile oder bei der bekannten Person, entscheidet der Name,
+wenn er genau eine Person trifft – trifft er mehrere, entsteht eine neue Person, und die Vorschau
+sagt es. Die **Anschrift** entsteht aus Straße, Nr., PLZ und Ort: Eine vorhandene Anschrift ersetzt
+nur eine Zeile, die Straße und Ort nennt; eine Teilangabe (etwa nur der Ort) füllt eine leere
+Anschrift, sonst bleibt die bisherige. Eine Funktion, die die
 Datei vergibt, verliert ihre bisherige Besetzung – auch wenn die bisherige Person selbst in der
-Datei steht. Eine Postleitzahl im Excel-Format „Postleitzahl“
+Datei steht. Nennt die Datei dieselbe Funktion in mehreren Zeilen mit verschiedenen Personen, gilt
+die letzte Zeile; die Personen der früheren Zeilen werden ohne diese Funktion hinterlegt. Eine
+Postleitzahl im Excel-Format „Postleitzahl“
 (Zahlenformat aus Nullen) behält ihre führende Null. Gewerke und Funktionen, die es noch nicht gibt, werden
-beim Import angelegt; „Übergreifend“ steht für Funktionen ohne Gewerkbezug. Eine optionale Spalte
+beim Import angelegt; ein Gewerk, das die Datei nur anders schreibt als die Gewerkeliste („kib“
+statt „KIB“), ist dasselbe Gewerk und legt keine zweite Funktion an. „Übergreifend“ steht für
+Funktionen ohne Gewerkbezug. Eine optionale Spalte
 *Seite* setzt die Seite für den Verzug – bei neuen Funktionen (sonst gilt die Vorbelegung) und bei
 vorhandenen, wenn sie abweicht. Die Vorschau nennt je Zeile, was angelegt wird, wen eine Besetzung
-ersetzt und welche Seite sich ändert.
+ersetzt, welche Seite sich ändert, wo eine unvollständige Anschrift nicht übernommen wird und
+welche Zeile eine mehrfach genannte Funktion nicht vergibt.
 
 ### Planliste
 Planbestand aus Plänen, Planpaketen und Planverzeichnissen im Reiter **Planliste**. Je Eintrag
@@ -720,7 +739,10 @@ erster Termin verschoben und Zeitgewinn. Ein paralleler Block zählt als Ganzes:
 gegenüber dem längsten Zweig des Basisplans, verteilt auf genau einen maßgeblichen Zweig; was
 darüber hinausgeht, hat der Puffer aufgefangen. Beginnt der Workflow mit einem parallelen Block und
 hat der Eintrag ein Eingang Soll, werden die Zweiganfänge – wie sonst der erste Schritt – an ihrem
-geplanten Soll laut Basisplan gemessen, der Block an seinem geplanten Ende. Führt der Lauf an einem
+geplanten Soll laut Basisplan gemessen, der Block an seinem geplanten Ende. Liegt das Eingang Soll
+vor dem Start des Laufs (die Unterlage kam später als geplant), zählt es dabei ab dem Start – ab da
+rechnet auch der Basisplan weiter; die Tage zwischen Eingang Soll und Start sind kein Verzug des
+Laufs. Führt der Lauf an einem
 Schritt des Regelwegs vorbei (Antwort ohne Nacharbeit, die ihn überspringt, oder Ausstieg aus einem
 Block nach vorn), zählt dessen Frist aus dem Basisplan als Zeitgewinn („Schritt „…“ des Basisplans
 entfällt“), ein ganz ausgelassener Block mit seiner geplanten Dauer – nicht bei abgebrochenen
@@ -868,7 +890,9 @@ werden Protokoll, frühere Durchläufe und Erinnerungen beider Seiten vereinigt.
 Codierung mit anderer Kennung gelten als „vermutlich dasselbe“, ein Projekt mit gleicher Kennung und
 anderer Projektnummer lässt sich als Kopie übernehmen. Ein Gewerk, das im Bestand gelöscht wurde
 und das Pläne nur noch als Angabe führen, holt der Abgleich nicht von selbst zurück – nur, wenn es
-gewählt wird oder mit einer gewählten Funktion hereinkommt. Wäre der Stand danach nicht stimmig,
+gewählt wird oder mit dem Übernommenen hereinkommt: mit einer gewählten Funktion, einem neuen
+Eintrag oder einem als Kopie übernommenen Projekt, dessen Funktionen es nennen. Wäre der Stand
+danach nicht stimmig,
 wird nichts übernommen. Dazu merkt sich der Bestand Löschungen (Löschvermerke) und den
 Änderungszeitpunkt von Projekten, Einträgen, Kontakten, Funktionen und Workflows.
 
@@ -1455,7 +1479,9 @@ Angelegt, bearbeitet und gelöscht wird in den Bereichen.
   Projekte eines Bereichs archiviert, sagt die Projektliste „Kein aktives Projekt“ und verweist
   auf das Archiv darunter. Findet die Suche der Projektliste nichts, heißt es „Kein Projekt
   gefunden“ – ohne den Knopf *Neues Projekt*, den es nur ohne Suchbegriff gibt –, und bei Treffern
-  allein im Archiv „Kein aktives Projekt gefunden“. Auch die
+  allein im Archiv „Kein aktives Projekt gefunden“. Trifft die Suche nur Projekte unter *Projekte
+  aus anderen Bereichen*, heißt es „Kein Projekt in diesem Bereich gefunden“, und der Text verweist
+  auf den Abschnitt darunter (bei Treffern im Archiv und in anderen Bereichen auf beide). Auch die
   bereichsweiten Fristenlisten lassen archivierte Projekte weg – *Fristen & Erinnerungen* im
   Planlaufmanagement, *Termine & Nachhaken* samt Zähler in der Baubetriebsplanung –; im Projekt
   selbst bleiben die Fristen sichtbar. Archiviert wird

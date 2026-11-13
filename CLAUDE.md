@@ -100,7 +100,9 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `FremdeProjekte`; die Projektlisten zeigen den Abschnitt nur bei `ladeZustand === 'ok'`, sonst
   sähe das Register eine Übernahme vor, die der Bereich nicht anlegt –, `ArchivAbschnitt`,
   `VerknuepfungsHinweis` (nennt ein überall archiviertes Projekt „(dort archiviert)“),
-  `useLoeschHinweis`, Beteiligte)
+  `useSucheOhneTreffer` (Leerzustand der Projektlisten bei einer Suche ohne aktiven Treffer – nennt
+  Treffer im Archiv und unter „Projekte aus anderen Bereichen“, statt „keinen Treffer“ über einen
+  zu schreiben), `useLoeschHinweis`, Beteiligte)
   und das **Archiv in den Bereichen**: `ArchivKnopf` („Archivieren“ mit Kurzmeldung, ohne
   Rückfrage – im Planlaufmanagement in `pages/projekt/Einstellungen.tsx`, Karte „Projekt
   archivieren“, in Baubetriebsplanung und Projektsteuerung in `pages/ProjektDetail.tsx` im
@@ -169,7 +171,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   * `domain/abschluss.ts` Statuswechsel (`schrittStatusSetzen`), Wieder öffnen, Einfügen,
   * `domain/simulation.ts` Prognose, Basisplan und Rückwärtsrechnung – erledigt die Schritte mit
     `schrittStatusSetzen` und rechnet mit `recalcSollDaten`, also ohne eigene Regeln,
-  * `domain/nachweis.ts` Terminnachweis (Verzug gegenüber dem Basisplan je Seite),
+  * `domain/nachweis.ts` Terminnachweis (Verzug gegenüber dem Basisplan je Seite; ein Eingang
+    Soll vor dem Start des Laufs zählt dort ab dem Start, `abStart` – so rechnet der Basisplan),
   * `domain/protokoll.ts` Änderungsprotokoll: `protokollNachziehen` vergleicht in jedem `mutate()`
     alten und neuen Stand und schreibt je Lauf, was jemand getan hat (nichts Berechnetes),
   * `domain/bestand.ts` Ablauf von `mutate()` (`bestandAendern`), Löschen mit Löschvermerk
@@ -177,14 +180,18 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
     reine Funktionen; `funktionAendern` (hinter `updateRole`): Ein Gewerkwechsel zieht
     `zuordnungen[].gewerk` der Personen mit, eine Umbenennung `roleName` und `MailRegel.roleName` in
     den Planläufen des Projekts, für die genau diese Funktion gilt (`rolleFuerSchritt`), und – trägt
-    im Projekt keine Funktion mehr den alten Namen – in den Projekt-Workflows;
-    `standardFunktionAendern` (hinter `updateStandardRolle`, liefert die Zahl der Workflows) zieht
-    ebenso die übergreifenden Workflows mit, bereits angelegte Projektfunktionen bleiben,
+    im Projekt keine Funktion mehr den alten Namen – in den Projekt-Workflows, nicht in den
+    übergreifenden (`workflowsMitAlterBezeichnung` nennt die Workflows, aus denen ein neuer
+    Planlauf danach keine Funktion mehr fände; `updateRole` liefert ihre Zahl für die Kurzmeldung);
+    `standardFunktionAendern` (hinter `updateStandardRolle`, liefert die Zahl der Workflows und
+    Projekte) zieht ebenso die übergreifenden Workflows mit und – über `funktionAendern` – die
+    Kopien der Funktion in den Projekten (gleiche Bezeichnung, gleiches Gewerk),
   * `domain/abgleich.ts` selektiver Abgleich mit einer Sicherung; Verweise zwischen Objekten
     stehen zentral in `VERWEISFELDER`. Funktionen ordnet er über die Kennung zu, dann über die
     Kennung ohne angehängtes „~Gewerk“ bei gleichem Gewerk (`kennungOhneGewerk`, auch für
     Löschvermerke), zuletzt über Projekt, Name und Gewerk; fehlende Gewerke ergänzt er nur, wenn
-    sie mit dem Übernommenen hereinkommen (`verweiseBereinigen`),
+    sie mit dem Übernommenen hereinkommen (`verweiseBereinigen` – dann auch ein vorher gelöschtes,
+    etwa mit einem als Kopie übernommenen Projekt),
   * `domain/terminrechner.ts` Terminrechner über `simulieren`/`rueckwaerts`,
   * `domain/mailRegeln.ts` E-Mail-Regeln der Workflows (`MailRegel` in `types.ts`): Regeln stehen
     am Schritt (`mails`, „anstehen“ bzw. „abschluss“) und – für verschiedene E-Mails je Ausgang
