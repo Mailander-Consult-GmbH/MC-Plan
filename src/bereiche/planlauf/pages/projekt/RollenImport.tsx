@@ -555,7 +555,9 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
                 {mitHinweis} Zeile(n) mit Hinweisen – sie werden trotzdem übernommen.
               </Callout>
             ) : null}
-            <div className="card" style={{ maxHeight: 320, overflowY: 'auto' }}>
+            {/* overflow in beide Richtungen: Nur „overflowY“ machte aus dem „clip“ der Karte quer ein „hidden“ –
+                bei 400 px Breite wäre die Spalte „Hinweis“ abgeschnitten und nicht erreichbar. */}
+            <div className="card" style={{ maxHeight: 320, overflow: 'auto' }}>
               <table className="table">
                 <thead>
                   <tr>
