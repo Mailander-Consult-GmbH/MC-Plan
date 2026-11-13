@@ -391,6 +391,9 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
             style={{ display: 'none' }}
             onChange={(e) => {
               const f = e.target.files?.[0];
+              // Feld leeren: Sonst meldet der Browser keine Änderung, wenn dieselbe –
+              // inzwischen berichtigte – Datei noch einmal gewählt wird
+              e.target.value = '';
               if (f) void lies(f);
             }}
           />
