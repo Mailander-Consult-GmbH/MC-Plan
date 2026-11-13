@@ -418,6 +418,11 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         // Nur ausgefüllte Angaben überschreiben die vorhandenen (siehe ausgefuellt) – die Anschrift
         // nur, wenn die Datei sie vollständig nennt oder die Person noch keine hat
         const { anschrift, ...angaben } = ausgefuellt(eintrag.person);
+        // Nennt die Datei den vollen Namen nur in „Name“ (ohne Vornamen), ist die Person über ihn erkannt –
+        // sie behält ihre Aufteilung in Vor- und Nachname. Sonst hieße „Sabine | Ortmann“ danach „Sabine |
+        // Sabine Ortmann“ (der Vorname bliebe als leere Zelle stehen), und der nächste Import derselben
+        // Datei fände sie unter diesem Namen nicht mehr.
+        if (!eintrag.person.vorname && nameVon(eintrag.person) === nameVon(vorhanden)) delete angaben.nachname;
         const anschriftUebernehmen = anschrift !== undefined && (eintrag.anschriftVoll || !vorhanden.anschrift.trim());
         updateContact(vorhanden.id, {
           ...angaben,
