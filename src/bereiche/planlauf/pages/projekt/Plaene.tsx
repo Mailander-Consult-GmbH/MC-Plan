@@ -251,10 +251,16 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     }
   };
 
-  const Kopf = ({ feld, children, klasse = '' }: { feld: SortFeld; children: React.ReactNode; klasse?: string }) => (
-    <th className={klasse}>
+  /**
+   * Spaltenkopf mit Sortierknopf. Bewusst eine Zeichenfunktion und keine hier
+   * definierte Komponente: Die wäre bei jedem Zeichnen ein neuer Typ, React
+   * hängte den Knopf aus und neu ein – der Tastaturfokus ginge mit jedem
+   * Sortieren verloren, ein zweites Enter kehrte die Richtung nicht mehr um.
+   */
+  const kopf = (feld: SortFeld, inhalt: string, klasse = '') => (
+    <th key={feld} className={klasse}>
       <button type="button" className="sort-btn" onClick={() => sortieren(feld)}>
-        {children}
+        {inhalt}
         <span className={`sort-pfeil ${sortFeld === feld ? 'aktiv' : ''}`}>
           {sortFeld === feld ? (absteigend ? '▾' : '▴') : '▴'}
         </span>
@@ -613,12 +619,12 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                       disabled={zeilen.length === 0}
                     />
                   </th>
-                  <Kopf feld="lfd">Nr.</Kopf>
-                  <Kopf feld="kind">Art</Kopf>
-                  <Kopf feld="nummer">Bezeichnung / Titel</Kopf>
-                  <Kopf feld="gewerk">Gewerk</Kopf>
-                  <Kopf feld="parent" klasse="col-optional">Planverzeichnis</Kopf>
-                  <Kopf feld="eingangSoll">Eingang Soll</Kopf>
+                  {kopf('lfd', 'Nr.')}
+                  {kopf('kind', 'Art')}
+                  {kopf('nummer', 'Bezeichnung / Titel')}
+                  {kopf('gewerk', 'Gewerk')}
+                  {kopf('parent', 'Planverzeichnis', 'col-optional')}
+                  {kopf('eingangSoll', 'Eingang Soll')}
                   <th className="actions" />
                 </tr>
               </thead>
