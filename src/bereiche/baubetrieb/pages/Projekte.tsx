@@ -202,9 +202,17 @@ export function ProjektDialog({
       toast('Bitte eine Bezeichnung angeben.');
       return;
     }
+    // Leerzeichen am Rand (etwa aus Excel kopiert) gehen nicht in den Bestand: Die
+    // MIC-Projektnummer verknüpft das Projekt über das Projektregister mit den anderen
+    // Bereichen und stünde sonst auch dort mit Leerzeichen; die DB-G-Nummer ordnet der
+    // Import aus BBPNeo zu.
     const werte = {
       ...form,
       name: form.name.trim(),
+      projektnummer: form.projektnummer.trim(),
+      dbGNummer: form.dbGNummer.trim(),
+      projektleiter: form.projektleiter.trim(),
+      hauptbearbeiter: form.hauptbearbeiter.trim(),
       ersterAnmeldetermin: form.ersterAnmeldetermin || null,
       inbetriebnahme: form.inbetriebnahme || null,
     };
