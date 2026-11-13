@@ -235,9 +235,18 @@ das fokussierte Element, bleibt der Fokus im Dialog. Nach dem Schließen – auc
 geht er an das Element zurück, von dem der Dialog kam, bzw. an den Knopf des Aufklappmenüs, sofern es
 noch da ist; löst ein Dialog einen anderen ab, landet er im neuen und kehrt nach dessen Schließen
 dorthin zurück, wo der erste herkam (etwa *Sicherung abgleichen* nach *Sicherung einspielen* an
-**Einspielen**). Die Ablageflächen der Importe von
-Plänen, Funktionen, Projektbeteiligten und Leistungen sind per Tab erreichbar; Enter oder Leertaste
-öffnen die Dateiauswahl. Kurzmeldungen am unteren Rand (`src/shared/toast.tsx`) lesen
+**Einspielen**). Die Ablageflächen der Importe (Pläne,
+Funktionen, Projektbeteiligte, BBPNeo) sind per Tab erreichbar; Enter oder Leertaste
+öffnen die Dateiauswahl. Ebenso sind **anklickbare Zeilen** Tab-Halte (`alsKlickZeile` in
+`src/shared/ui.tsx`): Enter oder Leertaste öffnen wie der Klick – im Planlaufmanagement Planläufe,
+*Meine To-Dos*, Projekte der Übersicht, Einträge und Planpakete der Planliste, Funktionen und
+Personen, in der Baubetriebsplanung die Anmeldungen des Projekts, die Zeilen der Übersicht und der
+Anmeldebedarf unter *Termine & Nachhaken*; Knöpfe und Kästchen in der Zeile lösen weiter nur sich
+selbst aus. Schließt die Eingabetaste in einem Feld den Dialog ab (*Neues Gewerk*, *Angemeldet
+als*, Freigabe- bzw. Prüfbericht-Nr.), löst sie den Knopf, an den der Fokus zurückgeht, nicht noch
+einmal aus (`beiEnter`). Die Dateifelder der Importe werden nach dem Lesen geleert – eine
+berichtigte Datei gleichen Namens lässt sich über *Andere Datei wählen* erneut lesen.
+Kurzmeldungen am unteren Rand (`src/shared/toast.tsx`) lesen
 Bildschirmleser vor, jede neue für sich, auch wenn eine ältere noch steht (`role="status"`,
 `aria-atomic="false"`); lange brechen um und bleiben auch auf schmalen Bildschirmen ganz lesbar.
 
@@ -333,12 +342,16 @@ ersetzt und welche Seite sich ändert.
 Planbestand aus Plänen, Planpaketen und Planverzeichnissen im Reiter **Planliste**. Je Eintrag
 werden Plancodierung, Titel, Index (standardmäßig leer), Gewerk (EEA, KIB, LST, OLA, OSE, TK, VA oder
 freie Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
-der Soll-Termin für den Eingang und eine Bemerkung geführt.
+der Soll-Termin für den Eingang und eine Bemerkung geführt. Plancodierung, Index, Titel, Gewerk und
+Planungsphase – beim Planpaket Name, Kurzzeichen und Gewerk – werden ohne Leerzeichen am Rand
+gespeichert, damit der Name des Planlaufs, die Besetzung nach Gewerk und das Wiedererkennen im
+Excel-Import stimmen.
 
 Pläne lassen sich einem **Planpaket oder Planverzeichnis unterordnen**. Wie die Pläne eines
 **Planverzeichnisses** laufen, legt das Verzeichnis fest (siehe nächster Abschnitt). In der
 Planliste stehen die Pläne eingerückt unter ihrem Verzeichnis und lassen sich am Pfeil zwischen
-Nummer und Symbol zuklappen.
+Nummer und Symbol zuklappen. Ein Planverzeichnis, das Pläne führt, lässt sich nicht zum Plan
+umstellen – erst wenn seine Pläne einem anderen Verzeichnis zugeordnet oder Einzelpläne sind.
 
 **Planpakete** sind ein reines Ordnungsmerkmal ohne eigenen Planlauf – und gliedern die Planliste:
 Je Paket steht eine Kopfzeile mit der Zahl seiner Einträge, darunter seine Planverzeichnisse und
@@ -522,7 +535,11 @@ Zweigen nebeneinander (bei Platzmangel untereinander), Gabel- und Zusammenführu
 Zweig, Abweichungen im Zweig gestrichelt darunter und Ausstiegen als Text; angelegt wird er über
 *Schritt hinzufügen* → *Parallele Zweige* oder in den Schrittdetails mit *Parallel dazu ausführen*,
 aufgelöst mit *Aus dem Block lösen*. Ändert sich dabei der Anschluss hinter einem Block, weist der
-Editor darauf hin. Block und Zweige lassen sich **benennen**: im Abschnitt *Parallel* der
+Editor darauf hin. *Früher im Ablauf* / *Später im Ablauf* ändert nur die Reihenfolge im
+Standardverlauf: Sprünge anderer Schritte zum verschobenen Schritt (Rücksprung, Nacharbeit) führen
+weiter zu ihm. Fallen beim Entfernen oder Lösen Schritte aus ihrem Zweig heraus, werden sie nicht
+zum Anschluss des Blocks, sondern nicht mehr erreicht – die Fußzeile meldet sie. Block und Zweige
+lassen sich **benennen**: im Abschnitt *Parallel* der
 Schrittdetails mit *Name des Blocks* und *Name des Zweigs*; ein Klick auf den Kopf der
 Containerkarte wählt den ersten Schritt des Blocks und setzt den Cursor in *Name des Blocks*. Die
 Karte heißt dann etwa „Versand · parallel, 4 Zweige“, die Zweigköpfe tragen ihren Namen statt
@@ -530,7 +547,8 @@ Karte heißt dann etwa „Versand · parallel, 4 Zweige“, die Zweigköpfe trag
 Planläufe übernehmen sie mit dem Workflow. Änderungen lassen sich rückgängig machen (Strg+Z / Strg+Y); die Fußzeile meldet
 Unvollständiges (fehlende Bezeichnung, Entscheidung ohne Antwort, nie erreichte Schritte), und
 erst *Speichern* bzw. *Übernehmen* schreibt den Stand. Auf schmalen Bildschirmen stehen die
-Schrittdetails in einem Blatt von unten, bei mittlerer Breite in einer Schublade.
+Schrittdetails in einem Blatt von unten, bei mittlerer Breite in einer Schublade; Escape schließt
+dann zuerst Blatt bzw. Schublade, erst danach den Editor.
 
 Mitgeliefert sind die drei vorgegebenen Ketten **VVBau ohne Prüfstatik**, **VVBau mit Prüfstatik**
 und **VVBau STE** mit ihren Verzweigungen und Rücksprüngen. Jede Prüf- bzw. Freigabeentscheidung
@@ -605,7 +623,9 @@ Exportfassungen.
 Über **Schritt einfügen** wird ein zusätzlicher Prüfschritt in den laufenden Verlauf eingehängt –
 mit Funktion (z.B. Erdungsprüfer), Frist und Nachweis. Die Einfügeposition wird aus dem aktuellen
 Verlauf gewählt, vorgeschlagen ist die Stelle hinter dem anstehenden Schritt; angeboten werden nur
-Stellen, hinter denen noch nichts erledigt ist. Im parallelen Block landet der Schritt im Zweig des
+Stellen, hinter denen noch nichts erledigt ist – die Stelle *– an den Anfang –* vor dem ersten
+Schritt nur, wenn der Eintrag kein Eingang Soll hat (es gilt für den ersten Schritt; der Hinweis am
+Feld sagt das). Im parallelen Block landet der Schritt im Zweig des
 gewählten Schritts, wahlweise am Ende eines Zweigs oder nach dem Block. Die Verkettung wird dabei
 richtig gesetzt, auch hinter Entscheidungen.
 
@@ -627,7 +647,8 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   Vergangenheit und ist als „voraussichtlich“ gekennzeichnet; aus ihr ergibt sich auch das
   voraussichtliche Ende des Laufs.
 * Ein Soll-Termin kann **manuell festgesetzt** werden und bildet dann die Basis für alle folgenden
-  Schritte.
+  Schritte. Er bleibt auch stehen, solange der Schritt nicht im aktuellen Verlauf liegt (andere
+  Antwort, abgeschnittener Zweig), und gilt, sobald der Schritt erreicht wird.
 * Führt eine Antwort oder das „Weiter mit“ einer Aufgabe zurück auf einen früheren Schritt
   (**Rücksprung**), beginnt mit dem Erledigen dieses Schritts ein **weiterer Durchlauf** ab dem Ziel:
   Das Ziel und alles, was ab ihm schon begonnen war, wird zurückgesetzt und als „2. Durchlauf“
@@ -697,7 +718,13 @@ zerfällt in Posten je Ausführung: Fristüberschreitung, Nacharbeit (der Weg na
 zu Nacharbeit führt, oder eine erneute Bearbeitung), Planänderung, Soll von Hand, Übergabelücke,
 erster Termin verschoben und Zeitgewinn. Ein paralleler Block zählt als Ganzes: nur sein Verzug
 gegenüber dem längsten Zweig des Basisplans, verteilt auf genau einen maßgeblichen Zweig; was
-darüber hinausgeht, hat der Puffer aufgefangen. Bei laufenden Läufen geht die Prognose bis zum Ende
+darüber hinausgeht, hat der Puffer aufgefangen. Beginnt der Workflow mit einem parallelen Block und
+hat der Eintrag ein Eingang Soll, werden die Zweiganfänge – wie sonst der erste Schritt – an ihrem
+geplanten Soll laut Basisplan gemessen, der Block an seinem geplanten Ende. Führt der Lauf an einem
+Schritt des Regelwegs vorbei (Antwort ohne Nacharbeit, die ihn überspringt, oder Ausstieg aus einem
+Block nach vorn), zählt dessen Frist aus dem Basisplan als Zeitgewinn („Schritt „…“ des Basisplans
+entfällt“), ein ganz ausgelassener Block mit seiner geplanten Dauer – nicht bei abgebrochenen
+Läufen. Bei laufenden Läufen geht die Prognose bis zum Ende
 ein. Es gilt Gesamtverzug = Summe der Seiten + Seite fehlt − Zeitgewinn; ein Rest erscheint als
 *Nicht erklärt*.
 
@@ -723,13 +750,16 @@ Das Ergebnis lässt sich drucken.
 Fristenübersicht über alle Projekte – ohne archivierte –, sortiert nach Dringlichkeit und gefiltert nach
 überfällig / fällig / im Plan. Angezeigt werden **alle anstehenden Schritte** – bei parallelen
 Zweigen mehrere je Planlauf. Ein Schritt gilt als *fällig*, sobald der Soll-Termin näher liegt als
-die in den Projekteinstellungen gepflegte Vorlaufzeit.
+die in den Projekteinstellungen gepflegte Vorlaufzeit. Die Suche findet alles, was die Zeile zeigt –
+Schritt, Planlauf, Plannummer und -titel, Projektnummer und -name, Funktion, Person und Firma.
 
 Je Schritt öffnet der Button **Erinnern** ein Fenster mit der vorbereiteten E-Mail: Die zur Lage
 passende Vorlage (Erinnerung oder Mahnung) wird ausgewählt, die Platzhalter aus Projekt, Plan,
 Schritt, Frist und Empfänger ersetzt (`{{verzug}}` nennt die Einheit, etwa „5 Arbeitstage“,
 `{{verzug.zahl}}` nur die Zahl). Von dort lässt sich die Nachricht in **Outlook** öffnen
-(`mailto:`, also das eingerichtete Standardprogramm); jede vorbereitete E-Mail wird am Schritt vermerkt. Stehen bei einer Person
+(`mailto:`, also das eingerichtete Standardprogramm); jede vorbereitete E-Mail wird am Schritt vermerkt. Ein Wechsel der Vorlage füllt
+Betreff und Nachricht neu, ein von Hand eingetragener Empfänger bleibt stehen; fehlt jede Vorlage,
+verweist der Dialog auf **Vorlagen › E-Mail-Vorlagen**. Stehen bei einer Person
 mehrere Schritte an, entsteht eine **Sammel-E-Mail** (Vorlage *Sammelerinnerung*, Platzhalter
 `{{liste}}` und `{{anzahl}}`). Ist sie für die Übergabe an das Mailprogramm zu lang, bietet der Dialog
 stattdessen **Text kopieren** an.
@@ -836,8 +866,10 @@ und Planläufen – und kennzeichnet sie als neu, geändert, gleich, nur im Best
 gelöscht. Gewählte Elemente werden samt Abhängigkeiten übernommen; bei Läufen gleicher Kennung
 werden Protokoll, frühere Durchläufe und Erinnerungen beider Seiten vereinigt. Einträge gleicher
 Codierung mit anderer Kennung gelten als „vermutlich dasselbe“, ein Projekt mit gleicher Kennung und
-anderer Projektnummer lässt sich als Kopie übernehmen. Wäre der Stand danach nicht stimmig, wird
-nichts übernommen. Dazu merkt sich der Bestand Löschungen (Löschvermerke) und den
+anderer Projektnummer lässt sich als Kopie übernehmen. Ein Gewerk, das im Bestand gelöscht wurde
+und das Pläne nur noch als Angabe führen, holt der Abgleich nicht von selbst zurück – nur, wenn es
+gewählt wird oder mit einer gewählten Funktion hereinkommt. Wäre der Stand danach nicht stimmig,
+wird nichts übernommen. Dazu merkt sich der Bestand Löschungen (Löschvermerke) und den
 Änderungszeitpunkt von Projekten, Einträgen, Kontakten, Funktionen und Workflows.
 
 **Hinweisleisten** unter der Kopfzeile melden, wenn sich der gespeicherte Stand nicht laden lässt
@@ -896,7 +928,9 @@ MIC-Projektnummer (wiko), Status der Betreuung (Aktiv, Betreuungspause, Abgeschl
 Bemerkung. Aus Prozessphase und erstem betroffenen Fahrplanjahr schlägt der Dialog den ersten
 Anmeldetermin laut Richtlinie vor („übernehmen“ unter dem Datumsfeld); Prozessphase, erster
 Anmeldetermin, Inbetriebnahme und Status der Betreuung stehen in einer Zeile mit einzeiligen
-Beschriftungen. Mit ★ markierte Projekte erscheinen in Übersicht und Seitenleiste. Oben rechts im
+Beschriftungen. Bezeichnung, MIC-Projektnummer, DB-G-Nummer, Projektleiter und Hauptbearbeiter
+werden ohne Leerzeichen am Rand gespeichert – die MIC-Projektnummer verknüpft das Projekt mit den
+anderen Bereichen. Mit ★ markierte Projekte erscheinen in Übersicht und Seitenleiste. Oben rechts im
 Projekt stehen **Excel**, **Bearbeiten**, **Archivieren** (siehe
 [Gemeinsame Projekte](#gemeinsame-projekte)) und **Löschen**.
 
@@ -1013,7 +1047,9 @@ oder „KKM · Entwurf“.
   Menü mit **Status** und **Entscheidung** (hinter dem gewählten Status, sonst am Ende des
   Standardverlaufs bzw. vor „Genehmigt“); links die
   **Arbeitsfläche**, rechts die Details; im Fuß „Vollständig“ bzw. die Zahl der **Hinweise**,
-  **Abbrechen** (mit Rückfrage „Änderungen verwerfen?“) und **Speichern**.
+  **Abbrechen** (mit Rückfrage „Änderungen verwerfen?“) und **Speichern**. Escape schließt zuerst
+  das offene Menü bzw. die Details, wenn sie als Blatt oder Schublade über der Fläche liegen, erst
+  danach den Editor.
   * **Arbeitsfläche:** Der **Standardverlauf** führt vom Startstatus über den jeweils ersten
     Nachfolger, bis ein Status der Art „Genehmigt“ erreicht ist (Ziel des Workflows), der erste
     Nachfolger in einen anderen Workflow übernimmt, „Eintrag löschen“ ist oder zurückführt
@@ -1094,7 +1130,8 @@ Die Ampel zeigt *Überfällig*, *Fällig* (Vorgabe 14 Tage vorher) und *Im Plan*
 Nachhaken“ sind eigens gekennzeichnet – das sind die so gekennzeichneten Status und stets die mit
 einem Nachhak-Termin als Terminfrist. **Nachgehakt …** hält das Nachhaken mit Notiz und neuem
 Termin fest (im Statusverlauf „… · neuer Termin TT.MM.JJJJ“), **Termin festlegen …** setzt die
-Frist im aktuellen Status von Hand.
+Frist im aktuellen Status von Hand; ein geleertes Datum hebt den von Hand gesetzten Termin wieder
+auf („Terminfrist wird wieder berechnet.“), ohne solchen Termin verlangt der Dialog ein Datum.
 
 ### Ansichten
 **Übersicht** (Kennzahlen, anstehende Terminfristen samt ausstehender Erstanmeldungen,
@@ -1171,7 +1208,8 @@ Auftraggeber, Projektleitung, Teilprojektleitung, Projektsteuerung, Objektplanun
 Bauunternehmen, Prüfsachverständiger, Eisenbahn-Bundesamt; je Gewerk 50 Hz, KIB, LST, OLA und TK
 die Fachplanung, für LST und OLA zusätzlich die Bauüberwachung). Funktionen und Gewerke, die noch
 Projektbeteiligten zugeordnet sind, lassen sich nicht löschen. Eine Suche ohne Treffer meldet
-„Keine Funktion gefunden“ und bietet kein Anlegen an.
+„Keine Funktion gefunden“ und bietet kein Anlegen an. Bearbeitet wird per Klick auf die Zeile oder
+– auch mit der Tastatur – über den Knopf *Funktion bearbeiten* vor dem Löschknopf.
 
 ### Projektbeteiligte
 Aufgebaut wie die Seite **Funktion** im Planlaufmanagement, aber ohne leere Funktionen: Es stehen
@@ -1183,7 +1221,8 @@ vorkommen. Die Liste lässt sich drucken (PDF) und als Excel-Datei herunterladen
 
 **Excel-Import** liest eine Liste (.xlsx oder .csv) mit den Spalten Funktion, Gewerk, Kürzel,
 Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift, Notiz; zwingend ist nur
-der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen). Gelesen wird das erste Blatt mit
+der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen; steht daneben eine Spalte
+„Vorname“, gilt „Name“ als Nachname und wird nicht zerlegt). Gelesen wird das erste Blatt mit
 Kopfzeile und Personen – ein vorangestelltes Hinweis- oder Deckblatt wird übersprungen. Die Vorschau nennt je Zeile, ob die
 Person neu ist oder aktualisiert wird (gleicher Name im Projekt) und ob Funktion oder Gewerk neu
 angelegt werden. **Vorlage** lädt eine leere Datei mit diesen Spalten; die Excel-Ausgabe der
@@ -1195,11 +1234,19 @@ aus Kopfdaten (Besprechung, Nr., Datum, Beginn, Ende, Ort, nächster Termin, Pro
 zusätzlicher Verteiler), den **Teilnehmenden**, der **Tagesordnung** mit Einträgen vom Typ
 **I** (Information), **F** (Festlegung) und **A** (Aufgabe, mit Verantwortlich, Termin und
 Erledigt) und einem Hinweis am Ende. **Verantwortlich** wird aus den Teilnehmenden des Protokolls
-gewählt und erscheint mit ihrem Kürzel.
+gewählt und erscheint mit ihrem Kürzel – führen im Protokoll mehrere dasselbe Kürzel (etwa zwei
+Personen derselben Funktion ohne eigenes Kürzel), mit ihrem Namen, damit jede Person wählbar und im
+Druck erkennbar bleibt. **Nr.** und **Datum** übernehmen nur Gültiges (eine Nummer ab 1, ein
+vollständiges Datum); die Eingabe bleibt beim Tippen stehen, beim Verlassen zeigt das Feld wieder
+den gespeicherten Wert.
 
 * **Teilnehmende** kommen aus der Projektbeteiligtenliste (**Aus Beteiligtenliste …**, auch mit
   **Neue Person …**); Name, Funktion, Firma und Kürzel werden dort gepflegt und im Protokoll
-  nachgezogen. **Weitere Person** nimmt Gäste ohne Eintrag auf; über das Personensymbol lassen
+  nachgezogen. Ändert sich dabei das Kürzel, unter dem eine Person geführt wird – eigenes Kürzel,
+  Funktion, Abgleich mit dem Projektregister –, oder kommt jemand mit einem schon geführten Kürzel
+  hinzu bzw. geht, folgt **Verantwortlich** der Aufgaben der Person; stehen bleibt, was nicht zu
+  entscheiden ist, und was jemand im Protokoll an Name oder Kürzel eines Gastes tippt.
+  **Weitere Person** nimmt Gäste ohne Eintrag auf; über das Personensymbol lassen
   sie sich nachträglich in die Projektbeteiligtenliste übernehmen. Die Protokollführung wird aus
   den Teilnehmenden oder der Projektbeteiligtenliste gewählt; bei einer neuen Reihe übernimmt sie
   die angemeldete Person, sofern ihr Name in der Projektbeteiligtenliste steht.
@@ -1218,7 +1265,8 @@ gewählt und erscheint mit ihrem Kürzel.
   von ihnen zum Eintrag.
 * **Einträge verschieben**: Die Pfeile am rechten Rand rücken einen Eintrag eine Stelle nach oben
   oder unten; am Anfang bzw. Ende seines Tagesordnungspunkts wechselt er ans Ende des vorigen bzw.
-  an den Anfang des nächsten. Die Nummern folgen der neuen Reihenfolge.
+  an den Anfang des nächsten. Die Nummern folgen der neuen Reihenfolge. Beim Verschieben mit der
+  Tastatur – auch eines Tagesordnungspunkts – bleibt der Fokus am Knopf des verschobenen Elements.
 * **Löschen heißt Durchstreichen** (Standard) – für Tagesordnungspunkte, Einträge und einzelne
   Zeilen (sobald ein Eintrag mehr als eine hat): Der Papierkorb bietet **Durchstreichen** und
   **Sofort löschen**. Gestrichenes steht im Druck und in der Live-Druckansicht dieses Protokolls
@@ -1237,13 +1285,23 @@ gewählt und erscheint mit ihrem Kürzel.
 * **Aus Protokoll-Tool** übernimmt Dateien des bisherigen Protokoll-Tools (`.protokoll` oder
   dessen Sicherung `.json`) in das Projekt. Teilnehmende, deren Name in der
   Projektbeteiligtenliste steht, werden mit ihr verknüpft; ein erneuter Import ersetzt die
-  Protokolle, statt sie zu verdoppeln.
+  Protokolle, statt sie zu verdoppeln. Mehrere gewählte Dateien werden gemeinsam übernommen: Stehen
+  die Protokolle einer Reihe in einzelnen Dateien, bleibt der Verweis auf das Folgeprotokoll
+  erhalten und weitergeführte Aufgaben zählen nicht doppelt – die Dateien einer Reihe also in einem
+  Zug wählen.
+* **Protokoll löschen**: Aufgaben, die das gelöschte Protokoll weitergeführt hat, gelten im
+  Vorprotokoll wieder als offen – außer ein späteres Protokoll führt sie schon weiter; dann laufen
+  sie dort weiter, und die Rückfrage nennt dieses Protokoll.
 
 ### Übersicht
 Nur die **eigenen To-Dos**: offene Aufgaben der Protokolle aller markierten Projekte (Einträge vom
 Typ A und Ergänzungen mit eigener Art „Aufgabe“), deren Verantwortlich die Person unter
-**Angemeldet als** nennt – mit ihrem Kürzel oder Namen aus der Projektbeteiligtenliste oder den
-Teilnehmenden; Groß- und Kleinschreibung zählen nicht. Steht der Name in keiner
+**Angemeldet als** nennt – mit ihrem Kürzel oder Namen aus den Teilnehmenden oder der
+Projektbeteiligtenliste; Groß- und Kleinschreibung zählen nicht. Kürzel und Name aus der Liste
+gelten nur, wenn sie im Protokoll niemand anderes führt – wer bloß dieselbe Funktion hat, sieht die
+Aufgaben der anderen Person nicht als eigene. Ein Eintrag zählt nur als Aufgabe, solange eine nicht
+gestrichene Zeile sie trägt – ist sie gestrichen und bleibt nur eine Ergänzung mit eigener Art,
+zählt allein diese. Steht der Name in keiner
 Projektbeteiligtenliste der angezeigten Projekte, weist die Übersicht darauf hin. Kennzahlen
 (aktive Projekte, meine To-Dos, überfällig, demnächst fällig – 7 Tage vorher), die Liste
 **Meine To-Dos**, Überfälliges zuerst, mit **Erledigt** je Zeile;
@@ -1396,7 +1454,7 @@ Angelegt, bearbeitet und gelöscht wird in den Bereichen.
   Tastaturfokus geht dabei vom einen Knopf an den anderen, statt verloren zu gehen. Sind alle
   Projekte eines Bereichs archiviert, sagt die Projektliste „Kein aktives Projekt“ und verweist
   auf das Archiv darunter. Findet die Suche der Projektliste nichts, heißt es „Kein Projekt
-  gefunden“ – ohne den Knopf *Neues Projekt*, den nur der leere Bestand zeigt –, und bei Treffern
+  gefunden“ – ohne den Knopf *Neues Projekt*, den es nur ohne Suchbegriff gibt –, und bei Treffern
   allein im Archiv „Kein aktives Projekt gefunden“. Auch die
   bereichsweiten Fristenlisten lassen archivierte Projekte weg – *Fristen & Erinnerungen* im
   Planlaufmanagement, *Termine & Nachhaken* samt Zähler in der Baubetriebsplanung –; im Projekt
@@ -1542,10 +1600,13 @@ src/
                      Einfügestellen
         engine.ts    Fristenrechnung ab dem tatsächlichen Eingang, Rücksprung mit Historie,
                      Ampel, Verzug, gewichteter Fortschritt, To-Dos, Zuständigkeiten
+                     (rolleFuerSchritt)
         simulation.ts  Simulation eines Laufs: Prognose, Basisplan, Rückwärtsrechnung
         nachweis.ts  Terminnachweis – Verzug gegenüber dem Basisplan je Seite
         protokoll.ts Änderungsprotokoll der Planläufe (protokollNachziehen)
-        bestand.ts   Ablauf von mutate, Löschen mit Löschvermerk, Sammelaktionen
+        bestand.ts   Ablauf von mutate, Löschen mit Löschvermerk, Sammelaktionen, Funktionen
+                     ändern (funktionAendern, standardFunktionAendern – Umbenennen zieht
+                     Schritte und E-Mail-Regeln mit)
         abgleich.ts  Selektiver Abgleich mit einer Sicherung
         terminrechner.ts  Späteste Übergabe bzw. Ende des Planlaufs aus einem Workflow
         workflowGraph.ts  Gliederung und Bearbeitung eines Workflows für den Editor (blockbewusst)
@@ -1599,8 +1660,9 @@ src/
       domain/
         types.ts     Datenmodell (Projekt, Funktion mit Gewerk, Beteiligter, Protokoll mit TOPs, Einträgen
                      und Zeilen)
-        protokoll.ts Reihen, Folgeprotokoll, Zeilen mit eigener Art und Streichen, Aufgaben,
-                     Teilnehmende nachziehen, Übernahme aus dem Protokoll-Tool
+        protokoll.ts Reihen, Folgeprotokoll, Löschen (protokollLoeschen), Zeilen mit eigener Art
+                     und Streichen, Aufgaben, Teilnehmende nachziehen samt „Verantwortlich“
+                     (zuordnung, werMitziehen), Übernahme aus dem Protokoll-Tool
         beteiligteImport.ts  Excel-/CSV-Import der Projektbeteiligten (Spalten, Abgleich von Funktionen)
         punkte.ts    Offene Aufgaben der Protokolle mit Ampel
         druck.ts     Druckfassungen (Protokoll, Beteiligtenliste) samt Gestaltung und Live-Fenster

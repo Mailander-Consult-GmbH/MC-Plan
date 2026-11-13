@@ -152,7 +152,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 * `src/bereiche/planlauf/`:
   * `domain/types.ts` Datenmodell (flache Listen in `AppData`, Verweise über IDs – außer: Schritte
     nennen ihre Funktion per `roleName`, Gewerke sind Namen; Umbenennungen müssen diese Stellen
-    mitziehen),
+    mitziehen – für Funktionen tun das `funktionAendern`/`standardFunktionAendern`, siehe
+    `domain/bestand.ts`),
   * `domain/ablauf.ts` Ablaufverfolgung – **die einzige Stelle, die Ziele auflöst**
     (`nachfolger`, `verfolgen`); Planlauf, Editor, Terminrechnung und Simulation folgen ihr.
     Blockregeln: Schritte bleiben eine flache Liste; ein paralleler Block ist nur der Marker
@@ -160,18 +161,30 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
     (`bloeckeOrdnen` stellt das her), Blöcke werden nicht geschachtelt. Ein Ziel im Zweig führt im
     Zweig weiter, außerhalb des Blocks ist es ein Ausstieg, in einem anderen Zweig unzulässig; ein
     Ziel auf einen Blockschritt betritt den ganzen Block,
-  * `domain/engine.ts` Soll-Termine ab dem tatsächlichen Eingang (`recalcSollDaten`),
-    Rücksprung mit Historie, Ampel, Verzug, gewichteter Fortschritt, To-Dos, Zuständigkeiten,
+  * `domain/engine.ts` Soll-Termine ab dem tatsächlichen Eingang (`recalcSollDaten`; ein von Hand
+    gesetztes Soll bleibt auch außerhalb des Verlaufs stehen, `sollManuell` gibt es nur mit Datum),
+    Rücksprung mit Historie, Ampel, Verzug, gewichteter Fortschritt, To-Dos, Zuständigkeiten
+    (`rolleFuerSchritt`: welche Funktion ein Schritt meint – die des Gewerks, ersatzweise die
+    übergreifende; `zustaendigkeitenNachziehen`: „von Hand“ gilt nur mit Person),
   * `domain/abschluss.ts` Statuswechsel (`schrittStatusSetzen`), Wieder öffnen, Einfügen,
   * `domain/simulation.ts` Prognose, Basisplan und Rückwärtsrechnung – erledigt die Schritte mit
     `schrittStatusSetzen` und rechnet mit `recalcSollDaten`, also ohne eigene Regeln,
   * `domain/nachweis.ts` Terminnachweis (Verzug gegenüber dem Basisplan je Seite),
   * `domain/protokoll.ts` Änderungsprotokoll: `protokollNachziehen` vergleicht in jedem `mutate()`
     alten und neuen Stand und schreibt je Lauf, was jemand getan hat (nichts Berechnetes),
-  * `domain/bestand.ts` Ablauf von `mutate()` (`bestandAendern`), Löschen mit Löschvermerk,
-    Sammelaktionen als reine Funktionen,
+  * `domain/bestand.ts` Ablauf von `mutate()` (`bestandAendern`), Löschen mit Löschvermerk
+    (`kontaktLoeschen` nimmt an offenen Schritten Person und „von Hand“ zurück), Sammelaktionen als
+    reine Funktionen; `funktionAendern` (hinter `updateRole`): Ein Gewerkwechsel zieht
+    `zuordnungen[].gewerk` der Personen mit, eine Umbenennung `roleName` und `MailRegel.roleName` in
+    den Planläufen des Projekts, für die genau diese Funktion gilt (`rolleFuerSchritt`), und – trägt
+    im Projekt keine Funktion mehr den alten Namen – in den Projekt-Workflows;
+    `standardFunktionAendern` (hinter `updateStandardRolle`, liefert die Zahl der Workflows) zieht
+    ebenso die übergreifenden Workflows mit, bereits angelegte Projektfunktionen bleiben,
   * `domain/abgleich.ts` selektiver Abgleich mit einer Sicherung; Verweise zwischen Objekten
-    stehen zentral in `VERWEISFELDER`,
+    stehen zentral in `VERWEISFELDER`. Funktionen ordnet er über die Kennung zu, dann über die
+    Kennung ohne angehängtes „~Gewerk“ bei gleichem Gewerk (`kennungOhneGewerk`, auch für
+    Löschvermerke), zuletzt über Projekt, Name und Gewerk; fehlende Gewerke ergänzt er nur, wenn
+    sie mit dem Übernommenen hereinkommen (`verweiseBereinigen`),
   * `domain/terminrechner.ts` Terminrechner über `simulieren`/`rueckwaerts`,
   * `domain/mailRegeln.ts` E-Mail-Regeln der Workflows (`MailRegel` in `types.ts`): Regeln stehen
     am Schritt (`mails`, „anstehen“ bzw. „abschluss“) und – für verschiedene E-Mails je Ausgang
@@ -220,9 +233,16 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `kmRunde` (`RUNDE_BIS_FASSUNG5` in `store/storage.ts`).
 * `src/bereiche/projektsteuerung/` – gleich aufgebaut, Schlüssel `projektsteuerung.data.v1`:
   `domain/types.ts` Datenmodell (projektübergreifende `Funktion`, `Beteiligter` mit `funktionId`,
-  `Protokoll`), `domain/protokoll.ts` Reihen, Folgeprotokoll, Übernahme aus dem Protokoll-Tool und
-  `teilnehmerNachziehen` (läuft nach jedem `mutate()` und hält Teilnehmende auf dem Stand der
-  Projektbeteiligtenliste), `domain/beteiligteImport.ts` Excel-Import, `domain/punkte.ts` offene
+  `Protokoll`), `domain/protokoll.ts` Reihen, Folgeprotokoll, Löschen (`protokollLoeschen` –
+  führt ein späteres Protokoll die Aufgaben schon weiter, `weitergefuehrtIn`, verweist das
+  Vorprotokoll auf dieses), Übernahme aus dem Protokoll-Tool (`protokollToolLesen` je Datei,
+  `ausProtokollTool` für alle gewählten Dateien gemeinsam – „weitergeführt in“ reicht über
+  Dateigrenzen) und `teilnehmerNachziehen` (läuft nach jedem `mutate()` und hält Teilnehmende auf
+  dem Stand der Projektbeteiligtenliste). „Verantwortlich“ (`wer`) ist nur Text: Den Wert bildet allein
+  `zuordnung(t, alle)` – das Kürzel, führen es im Protokoll mehrere, der Name –, und ändert er
+  sich für eine Person, zieht `werMitziehen` ihn an Einträgen, Ergänzungen und Vorständen mit
+  (aus `teilnehmerNachziehen` und aus `protokollAendern` im Store; nicht bei getippten Angaben
+  eines Gastes). `domain/beteiligteImport.ts` Excel-Import, `domain/punkte.ts` offene
   Aufgaben und Ampel, `domain/druck.ts` Druckfassungen. Eine Liste offener Punkte (LOP) gibt es
   nicht mehr; ältere Bestände verlieren sie beim Laden. Funktionen tragen ein Gewerk (`null` =
   übergreifend); angezeigt wird stets `funktionsName`. Ein Eintrag besteht aus `zeilen`; jede
@@ -300,7 +320,10 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 * Der localStorage-Schlüssel `planlauf-management.data.v1` bleibt unverändert. Neue Felder am
   Datenmodell sind optional oder werden in `migriere()` (`store/storage.ts`) nachgetragen – dann
   **`DATEN_VERSION`** (`domain/types.ts`) erhöhen: `migriere()` läuft nur, wenn die gespeicherte
-  Fassung abweicht, und hebt jeden älteren Stand in einem Schritt auf die aktuelle.
+  Fassung abweicht, und hebt jeden älteren Stand in einem Schritt auf die aktuelle – sie läuft
+  also bei jeder neuen Fassung auch über schon Umgestelltes (`rollenAufteilen` teilt deshalb nur
+  Funktionen des früheren Modells mit `gewerke`/`gewerkBezug` auf; Funktionen mit Feld `gewerk`
+  behalten Kennung und Besetzung).
 * Mitgelieferte Stammdaten geändert (`STANDARD_ROLLEN`, `STANDARD_TEMPLATES` in `seed.ts`)?
   **`STAMMDATEN_VERSION`** erhöhen, damit vorhandene Bestände sie übernehmen
   (`stammdatenAktualisieren`). Achtung: Das ersetzt alle Standard-Workflows samt Änderungen der
