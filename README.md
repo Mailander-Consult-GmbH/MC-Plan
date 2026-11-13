@@ -1245,8 +1245,10 @@ vorkommen. Die Liste lässt sich drucken (PDF) und als Excel-Datei herunterladen
 
 **Excel-Import** liest eine Liste (.xlsx oder .csv) mit den Spalten Funktion, Gewerk, Kürzel,
 Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift, Notiz; zwingend ist nur
-der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen; steht daneben eine Spalte
-„Vorname“, gilt „Name“ als Nachname und wird nicht zerlegt). Gelesen wird das erste Blatt mit
+der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen; steht daneben in der Zeile ein
+Vorname, gilt „Name“ als Nachname und wird nicht zerlegt – enthält „Name“ den Vornamen doch,
+bleibt als Nachname, was auf ihn folgt; ohne Vornamen in der Zeile wird „Name“ zerlegt wie in
+einer Liste ohne Spalte „Vorname“). Gelesen wird das erste Blatt mit
 Kopfzeile und Personen – ein vorangestelltes Hinweis- oder Deckblatt wird übersprungen. Die Vorschau nennt je Zeile, ob die
 Person neu ist oder aktualisiert wird (gleicher Name im Projekt) und ob Funktion oder Gewerk neu
 angelegt werden. **Vorlage** lädt eine leere Datei mit diesen Spalten; die Excel-Ausgabe der
@@ -1315,7 +1317,11 @@ den gespeicherten Wert.
   Zug wählen.
 * **Protokoll löschen**: Aufgaben, die das gelöschte Protokoll weitergeführt hat, gelten im
   Vorprotokoll wieder als offen – außer ein späteres Protokoll führt sie schon weiter; dann laufen
-  sie dort weiter, und die Rückfrage nennt dieses Protokoll.
+  sie dort weiter, und die Rückfrage nennt dieses Protokoll. Entschieden wird je Protokoll, nicht
+  je Aufgabe: Offene Aufgaben, die das gelöschte Protokoll übernommen, aber nicht weitergegeben hat
+  (etwa im Protokoll gestrichen und erst nach dem Folgeprotokoll wiederhergestellt), stehen danach
+  in keinem Protokoll mehr – die Rückfrage nennt ihre Zahl („… – bis auf eine offene, die nur noch
+  in diesem Protokoll steht und mit ihm entfällt.“).
 
 ### Übersicht
 Nur die **eigenen To-Dos**: offene Aufgaben der Protokolle aller markierten Projekte (Einträge vom

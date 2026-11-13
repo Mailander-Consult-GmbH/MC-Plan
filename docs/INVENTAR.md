@@ -1208,9 +1208,12 @@ Hinweisblatt wird übersprungen), Kopfzeile in den ersten 15
 Zeilen gesucht, Spalten nach `BETEILIGTE_KOPF` (Funktion, Gewerk, Kürzel,
 Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift,
 Notiz) mit weiteren Schreibweisen; statt Vor- und Nachname genügt „Name“
-(„Berger, Anna“ oder „Anna Berger“). Gibt es daneben eine Spalte „Vorname“,
-ist „Name“ der Nachname und wird nicht zerlegt; steht dort doch der volle
-Name, bleibt nur der Nachname. Funktionen über `funktionFinden`
+(„Berger, Anna“ oder „Anna Berger“). Steht daneben in der Zeile ein Vorname
+(Spalte „Vorname“), ist „Name“ der Nachname und wird nicht zerlegt; steht
+dort doch der volle Name, bleibt als Nachname, was auf den Vornamen folgt,
+und was davor steht, beim Vornamen (ein Titel) – folgt nichts, ist der Teil
+davor der Nachname. Ohne Vornamen in der Zeile wird „Name“ zerlegt wie in
+einer Liste ohne Spalte „Vorname“. Funktionen über `funktionFinden`
 (Bezeichnung und Gewerk, volle Bezeichnung, eindeutige Bezeichnung, Kürzel);
 fehlende werden samt Gewerk angelegt. Personen gleichen Namens im Projekt
 werden mit den ausgefüllten Angaben aktualisiert. Die Vorschau nennt je
@@ -1293,7 +1296,12 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
   – außer ein späteres Protokoll führt sie schon weiter (`weitergefuehrtIn`):
   Dann verweist das Vorprotokoll auf dieses, und die Rückfrage „Protokoll
   löschen?“ endet statt mit „gelten im Vorprotokoll wieder als offen.“ mit
-  „laufen in … weiter.“
+  „laufen in … weiter“ und einem Punkt. Entschieden wird je Protokoll: Offene
+  Aufgaben, die das gelöschte Protokoll übernommen, aber nicht weitergegeben
+  hat (`endetImProtokoll`), stehen danach in keinem Protokoll mehr; die
+  Rückfrage endet dann statt mit dem Punkt mit „– bis auf eine offene, die nur
+  noch in diesem Protokoll steht und mit ihm entfällt.“ bzw. „– bis auf …
+  offene, die nur noch in diesem Protokoll stehen und mit ihm entfallen.“
 * „Verantwortlich“ folgt den Personen: Ändert sich der Wert, unter dem eine
   teilnehmende Person geführt wird – eigenes Kürzel, Kürzel oder Wechsel ihrer
   Funktion, Name, Abgleich mit dem Projektregister –, oder kommt jemand mit
@@ -1303,7 +1311,10 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
   „Verantwortlich“ der Einträge und Ergänzungen samt Vorständen mit. Stehen
   bleibt, was nicht zu entscheiden ist – ein Wert, den mehrere führten und
   nicht alle gleich ablösen – und was jemand im Protokoll an Name oder Kürzel
-  eines Gastes (ohne Eintrag in der Projektbeteiligtenliste) tippt.
+  eines Gastes (ohne Eintrag in der Projektbeteiligtenliste) tippt. Mitgezogen
+  wird nur in Protokollen, an denen die Person teilnimmt: Nennt eine Aufgabe
+  sie in einem Protokoll, in dem sie nicht (mehr) unter den Teilnehmenden
+  steht, bleibt „Verantwortlich“ dort stehen.
 * Druckfassung `protokollHtml` (`src/bereiche/projektsteuerung/domain/druck.ts`): Kopf mit Logos,
   Datum, Zeit, Ort, Protokollführung, Teilnehmende und Verteiler, Legende,
   Tabelle Nr. / Inhalt / Typ / Verantwortlich / Termin, nächster Termin,
