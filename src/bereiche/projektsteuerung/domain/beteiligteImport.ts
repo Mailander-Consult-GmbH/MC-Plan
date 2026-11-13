@@ -143,7 +143,9 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
         // verloren („Berger | Anna“) oder ein Namenszusatz wanderte in den Vornamen („von der Heide“).
         // Steht dort doch der volle Name, bleibt als Nachname, was auf den Vornamen folgt („Anna Berger |
         // Anna“ → Berger); was davor steht, gehört wie bei `nameTeilen` zum Vornamen („Dr. Eva Sommer |
-        // Eva“ → „Dr. Eva“ | Sommer). Folgt nichts, steht der Nachname davor („Meier Anna | Anna“).
+        // Eva“ → „Dr. Eva“ | Sommer). Folgt nichts, bleibt „Name“ der Nachname („Ben Ali | Ali“ heißt Ali
+        // Ben Ali) – außer das Projekt führt die Person schon mit dem Teil davor als Nachnamen und nicht
+        // mit dem ganzen („Meier Anna | Anna“ neben einer vorhandenen Anna Meier).
         const woerter = gesamt.split(' ');
         const vor = vorname.split(/\s+/);
         const stelle = woerter.findIndex((_, i) => vor.every((w, k) => gleich(woerter[i + k] ?? '', w)));
@@ -151,7 +153,11 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
         if (danach.length > 0) {
           vorname = [...woerter.slice(0, stelle), ...vor].join(' ');
           nachname = danach.join(' ');
-        } else nachname = stelle > 0 ? woerter.slice(0, stelle).join(' ') : gesamt;
+        } else {
+          const davor = stelle > 0 ? woerter.slice(0, stelle).join(' ') : '';
+          const fuehrt = (n: string) => imProjekt.some((b) => gleich(b.vorname, vorname) && gleich(b.nachname, n));
+          nachname = davor && fuehrt(davor) && !fuehrt(gesamt) ? davor : gesamt;
+        }
       }
     }
     if (!nachname) continue;
