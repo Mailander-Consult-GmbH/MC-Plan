@@ -365,12 +365,26 @@ export function weitergefuehrtIn(p: Protokoll, protokolle: Protokoll[]): Protoko
 }
 
 /**
+ * Zahl der offenen Aufgaben, die `p` aus seinem Vorprotokoll übernommen, aber
+ * an kein späteres weitergegeben hat – etwa weil sie beim Anlegen des
+ * Folgeprotokolls gestrichen waren und danach wiederhergestellt wurden. Sie
+ * zählen nur noch in `p`. Führt ein späteres Protokoll anderes aus `p` weiter
+ * (`weitergefuehrtIn`), gehen sie mit `p` verloren: `protokollLoeschen` lässt
+ * das Vorprotokoll dann für alle seine Einträge auf das spätere verweisen.
+ * Die Rückfrage vor dem Löschen nennt sie deshalb.
+ */
+export const endetImProtokoll = (p: Protokoll): number =>
+  protokollAufgaben([p]).filter((a) => a.eintrag.vor && (a.zeile ?? a.eintrag).status !== 'erledigt').length;
+
+/**
  * Löscht ein Protokoll. Aufgaben, die es aus dem Vorprotokoll weitergeführt
  * hat, gelten dort wieder als offen – außer ein späteres Protokoll führt sie
  * schon weiter (`weitergefuehrtIn`): Dann verweist das Vorprotokoll auf
  * dieses, sonst zählte jede Aufgabe doppelt, im Vorprotokoll und im späteren.
  * Entschieden wird je Protokoll, nicht je Aufgabe – die Kopie im
- * Folgeprotokoll kennt ihren Ursprungseintrag nicht.
+ * Folgeprotokoll kennt ihren Ursprungseintrag nicht. Was das gelöschte
+ * Protokoll übernommen, aber nicht weitergegeben hat, steht danach in keinem
+ * Protokoll mehr (`endetImProtokoll`).
  */
 export function protokollLoeschen(protokolle: Protokoll[], id: ID): Protokoll[] {
   const weg = protokolle.find((p) => p.id === id);

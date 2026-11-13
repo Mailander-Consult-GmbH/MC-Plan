@@ -13,6 +13,7 @@ import { LogoVerwaltung, ReihenLogosDialog } from '../../components/Logos';
 import {
   ausProtokollTool,
   bezeichnung,
+  endetImProtokoll,
   mitgehendeEintraege,
   naechsteNr,
   neueReihe,
@@ -39,8 +40,17 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
   const protokolle = data.protokolle.filter((p) => p.projektId === projekt.id);
   const reihen = reihenVon(protokolle);
   const oeffne = (p: Protokoll) => navigate({ view: 'protokoll', projektId: projekt.id, protokollId: p.id });
-  // Rückfrage beim Löschen: Führt ein späteres Protokoll die Aufgaben schon weiter, bleiben sie dort
+  // Rückfrage beim Löschen: Führt ein späteres Protokoll die Aufgaben schon weiter, bleiben sie dort –
+  // bis auf die offenen, die das gelöschte übernommen, aber nicht weitergegeben hat (`endetImProtokoll`).
+  // Sie stehen danach in keinem Protokoll mehr; die Rückfrage nennt sie, statt „laufen weiter“ zu sagen.
   const weiter = loeschen ? weitergefuehrtIn(loeschen, protokolle) : null;
+  const nurHier = loeschen && weiter ? endetImProtokoll(loeschen) : 0;
+  const ausnahme =
+    nurHier === 0
+      ? '.'
+      : nurHier === 1
+        ? ' – bis auf eine offene, die nur noch in diesem Protokoll steht und mit ihm entfällt.'
+        : ` – bis auf ${nurHier} offene, die nur noch in diesem Protokoll stehen und mit ihm entfallen.`;
 
   const folge = (p: Protokoll) => {
     const nr = naechsteNr(protokolle, p.reiheId);
@@ -241,7 +251,7 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
         <ConfirmDialog
           titel="Protokoll löschen?"
           text={`${bezeichnung(loeschen)} vom ${formatDate(loeschen.datum)} wird endgültig gelöscht. Aufgaben, die es weitergeführt hat, ${
-            weiter ? `laufen in ${bezeichnung(weiter)} weiter.` : 'gelten im Vorprotokoll wieder als offen.'
+            weiter ? `laufen in ${bezeichnung(weiter)} weiter${ausnahme}` : 'gelten im Vorprotokoll wieder als offen.'
           }`}
           onConfirm={() => {
             deleteProtokoll(loeschen.id);
