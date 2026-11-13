@@ -12,6 +12,7 @@ import {
   FremdeProjekte,
   VerknuepfungsHinweis,
   useArchivierte,
+  useSucheOhneTreffer,
 } from '../../../gemeinsam/ProjektBereiche';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
@@ -43,6 +44,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const aktive = projekte.filter((p) => !archiviert.has(p.id));
   const archivierte = projekte.filter((p) => archiviert.has(p.id));
   const nurArchivierte = archivierte.length > 0 && !suche.trim();
+  const ohneTreffer = useSucheOhneTreffer('projektsteuerung', suche, archivierte.length, ladeZustand === 'ok');
 
   const karte = (p: Projekt) => {
     return (
@@ -107,17 +109,10 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
       </div>
 
       {aktive.length === 0 && suche.trim() ? (
-        // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf; Treffer im Archiv stehen eingeklappt darunter
+        // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf; Treffer im Archiv und in anderen
+        // Bereichen stehen darunter, der Text nennt sie (useSucheOhneTreffer)
         <Card>
-          <EmptyState
-            icon="projekt"
-            titel={archivierte.length > 0 ? 'Kein aktives Projekt gefunden' : 'Kein Projekt gefunden'}
-            text={
-              archivierte.length > 0
-                ? 'Für diese Suche gibt es nur Treffer im Archiv – sie stehen unten unter „Archiv“.'
-                : 'Für diese Suche gibt es keinen Treffer.'
-            }
-          />
+          <EmptyState icon="projekt" titel={ohneTreffer.titel} text={ohneTreffer.text} />
         </Card>
       ) : aktive.length === 0 ? (
         <Card>

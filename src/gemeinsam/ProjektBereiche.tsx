@@ -5,6 +5,8 @@
  *   Bereichen das Projekt noch geführt wird,
  * * `FremdeProjekte` – grau hinterlegter Abschnitt „Projekte aus anderen
  *   Bereichen“ mit „Übernehmen in …“,
+ * * `useSucheOhneTreffer` – Leerzustand der Projektlisten bei einer Suche ohne
+ *   aktiven Treffer (nennt Treffer im Archiv und in anderen Bereichen),
  * * `andereBereiche`, `useLoeschHinweis` – für Löschdialoge,
  * * `ArchivKnopf`, `useArchivierbar`, `ArchivHinweis`, `ArchivAbschnitt`, `useArchivierte` – das
  *   Archiv je Bereich: Archiviert wird im Projekt („Archivieren“), zurückgeholt
@@ -222,6 +224,47 @@ export function ArchivAbschnitt({ anzahl, children }: { anzahl: number; children
   );
 }
 
+/** Projekte, die andere Bereiche führen, dieser nicht (ohne überall archivierte) – auf die Suche gefiltert. */
+function fremdeTreffer(register: Register, bereich: ProjektBereich, suche: string): RegisterProjekt[] {
+  const begriff = suche.trim().toLowerCase();
+  return register.projekte
+    .filter((p) => !p.bereiche[bereich] && !Object.values(p.bereiche).every((m) => m?.archiviert))
+    .filter((p) => !begriff || [p.nummer, p.name, p.beschreibung].join(' ').toLowerCase().includes(begriff));
+}
+
+/**
+ * Leerzustand der Projektliste, wenn die Suche kein aktives Projekt des
+ * Bereichs trifft. Die Liste sucht mit demselben Begriff auch im Archiv und –
+ * `mitFremden`, also bei geladenem Bestand – unter „Projekte aus anderen
+ * Bereichen“; steht dort ein Treffer, sagt der Text, wo – „keinen Treffer“
+ * stünde sonst unmittelbar über einem.
+ */
+export function useSucheOhneTreffer(
+  bereich: ProjektBereich,
+  suche: string,
+  archivTreffer: number,
+  mitFremden: boolean,
+): { titel: string; text: string } {
+  const register = useRegister();
+  const fremde = mitFremden ? fremdeTreffer(register, bereich, suche).length : 0;
+  if (archivTreffer > 0) {
+    return {
+      titel: 'Kein aktives Projekt gefunden',
+      text:
+        fremde > 0
+          ? 'Für diese Suche gibt es nur Treffer im Archiv und in anderen Bereichen – sie stehen unten unter „Archiv“ und „Projekte aus anderen Bereichen“.'
+          : 'Für diese Suche gibt es nur Treffer im Archiv – sie stehen unten unter „Archiv“.',
+    };
+  }
+  if (fremde > 0) {
+    return {
+      titel: 'Kein Projekt in diesem Bereich gefunden',
+      text: 'Für diese Suche gibt es nur Treffer in anderen Bereichen – sie stehen unten unter „Projekte aus anderen Bereichen“.',
+    };
+  }
+  return { titel: 'Kein Projekt gefunden', text: 'Für diese Suche gibt es keinen Treffer.' };
+}
+
 /**
  * Grau hinterlegter Abschnitt mit den Projekten, die andere Bereiche führen,
  * dieser aber nicht – ohne die, die in allen ihren Bereichen archiviert sind.
@@ -231,11 +274,9 @@ export function ArchivAbschnitt({ anzahl, children }: { anzahl: number; children
 export function FremdeProjekte({ bereich, suche }: { bereich: ProjektBereich; suche: string }) {
   const register = useRegister();
   const toast = useToast();
-  const begriff = suche.trim().toLowerCase();
-  const liste = register.projekte
-    .filter((p) => !p.bereiche[bereich] && !Object.values(p.bereiche).every((m) => m?.archiviert))
-    .filter((p) => !begriff || [p.nummer, p.name, p.beschreibung].join(' ').toLowerCase().includes(begriff))
-    .sort((a, b) => projektTitel(a).localeCompare(projektTitel(b), 'de'));
+  const liste = fremdeTreffer(register, bereich, suche).sort((a, b) =>
+    projektTitel(a).localeCompare(projektTitel(b), 'de'),
+  );
   if (liste.length === 0) return null;
 
   const uebernehmen = (p: RegisterProjekt) => {
