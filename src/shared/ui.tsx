@@ -182,12 +182,27 @@ export function Segmented<T extends string>({
  * Rolle „button“, Enter und Leertaste lösen `aktion` aus wie ein Klick.
  */
 export function alsKnopf(aktion: () => void) {
+  return { role: 'button', ...alsKlickZeile(aktion) };
+}
+
+/**
+ * Macht eine anklickbare Zeile (`tr.clickable`, `.list-row.clickable`) auch per
+ * Tastatur bedienbar: Tab-Halt, Enter und Leertaste lösen `aktion` aus wie ein
+ * Klick; den Fokus zeigt `global.css` an der ganzen Zeile. Anders als `alsKnopf`
+ * ohne Rolle „button“ – die Zeile bleibt für Bildschirmleser eine Tabellenzeile,
+ * und Knöpfe in ihr bleiben erreichbar. Tasten auf einem Knopf oder Feld in der
+ * Zeile gehören diesem allein (`target !== currentTarget`), sonst öffnete Enter
+ * auf „Löschen“ zugleich die Zeile; deren Klick hält der Knopf wie bisher mit
+ * `stopPropagation` von der Zeile fern.
+ */
+export function alsKlickZeile(aktion: () => void) {
   return {
-    role: 'button',
     tabIndex: 0,
     onClick: aktion,
     onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
       if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+      // Ohne Standardaktion: kein Blättern mit der Leertaste und kein zweites
+      // Auslösen, wenn `aktion` den Fokus auf einen Knopf versetzt (Dialog)
       e.preventDefault();
       aktion();
     },
