@@ -31,6 +31,7 @@ import {
   Select,
   TextArea,
   TextInput,
+  alsKlickZeile,
 } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
 import { GewerkDialog, GewerkLoeschenDialog } from '../components/GewerkDialog';
@@ -136,7 +137,8 @@ export function Funktionen() {
               </thead>
               <tbody>
                 {funktionen.map((f) => (
-                  <tr key={f.id} className="clickable" onClick={() => setDialog({ funktion: f })}>
+                  // Tab-Halt: „Funktion bearbeiten“ ist sonst nur mit der Maus erreichbar
+                  <tr key={f.id} className="clickable" {...alsKlickZeile(() => setDialog({ funktion: f }))}>
                     <td>
                       <span className="row wrap" style={{ gap: 8 }}>
                         <span className="dot" style={{ background: f.farbe }} />

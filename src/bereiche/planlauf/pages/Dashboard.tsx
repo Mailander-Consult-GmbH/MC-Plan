@@ -10,7 +10,7 @@ import { EIGENE_ROLLE, type PlanRun, type Project, type RunStep } from '../domai
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { AmpelBadge, AmpelPunkt } from '../components/common';
-import { Card, CardHeader, EmptyState, Progress, Stat } from '../../../shared/ui';
+import { Card, CardHeader, EmptyState, Progress, Stat, alsKlickZeile } from '../../../shared/ui';
 import { EmailDialog } from '../components/EmailDialog';
 import { Icon } from '../../../shared/icons';
 import { ErledigtButton, useSchrittStatus } from '../components/SchrittStatus';
@@ -100,7 +100,8 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                   <tr
                     key={`${f.run.id}-${f.step.id}`}
                     className="clickable"
-                    onClick={() => navigate({ view: 'planlauf', projectId: f.project.id, runId: f.run.id })}
+                    // Tab-Halt: Der Planlauf des To-Dos öffnet sich sonst nur per Mausklick
+                    {...alsKlickZeile(() => navigate({ view: 'planlauf', projectId: f.project.id, runId: f.run.id }))}
                   >
                     <td className="col-optional">
                       <AmpelPunkt ampel={f.ampel} />
@@ -190,7 +191,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                     <tr
                       key={project.id}
                       className="clickable"
-                      onClick={() => navigate({ view: 'projekt', projectId: project.id, tab: 'uebersicht' })}
+                      {...alsKlickZeile(() => navigate({ view: 'projekt', projectId: project.id, tab: 'uebersicht' }))}
                     >
                       <td>
                         <span className="num tertiary">{project.nummer}</span>

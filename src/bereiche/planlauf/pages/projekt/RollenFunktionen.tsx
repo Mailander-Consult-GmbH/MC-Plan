@@ -41,6 +41,7 @@ import {
   Select,
   TextArea,
   TextInput,
+  alsKlickZeile,
 } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 import '../../components/planlauf.css';
@@ -170,7 +171,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
                 {sichtbar.map((rolle) => {
                   const c = besetztVon(rolle);
                   return (
-                    <tr key={rolle.id} className="clickable" onClick={() => setBesetzen(rolle)}>
+                    <tr key={rolle.id} className="clickable" {...alsKlickZeile(() => setBesetzen(rolle))}>
                       <td>
                         <span className="row" style={{ gap: 8 }}>
                           <span className="dot" style={{ background: rolle.farbe }} />
@@ -261,7 +262,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
               </thead>
               <tbody>
                 {ohneFunktion.map((c) => (
-                  <tr key={c.id} className="clickable" onClick={() => setPerson(c)}>
+                  <tr key={c.id} className="clickable" {...alsKlickZeile(() => setPerson(c))}>
                     <td>
                       <span className="row" style={{ gap: 8 }}>
                         <Avatar name={`${c.vorname} ${c.nachname}`} />

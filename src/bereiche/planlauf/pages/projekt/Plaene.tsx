@@ -65,6 +65,7 @@ import {
   Select,
   TextArea,
   TextInput,
+  alsKlickZeile,
   beiEnter,
 } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
@@ -342,7 +343,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
         className={`clickable ${eingerueckt ? 'unterzeile' : ''} ${
           abgeschlossen(doc) ? 'zeile-fertig' : wartetAufEingang(doc) ? 'zeile-eingang' : ''
         } ${gewaehltMenge.has(doc.id) ? 'pli-gewaehlt' : ''}`}
-        onClick={() => setDialog({ doc })}
+        {...alsKlickZeile(() => setDialog({ doc }))}
         title={
           abgeschlossen(doc)
             ? 'Planlauf abgeschlossen'
@@ -468,7 +469,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     const offen = !zugeklappt.includes(paket.id);
     const leer = !alle.some((d) => paketIdVon(d) === paket.id);
     return (
-      <tr key={paket.id} className="paket-zeile clickable" onClick={() => setPaketDialog({ paket })}>
+      <tr key={paket.id} className="paket-zeile clickable" {...alsKlickZeile(() => setPaketDialog({ paket }))}>
         {wahlZelle(gruppenIds(oben), `Einträge des Planpakets „${paket.titel}“ wählen`)}
         <td colSpan={4}>
           <span className="row" style={{ gap: 9 }}>
