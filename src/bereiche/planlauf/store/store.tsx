@@ -47,6 +47,7 @@ import {
   type EintragsPatch,
   type SchrittAbschluss,
   type Vorgang,
+  workflowsMitAlterBezeichnung,
 } from '../domain/bestand';
 import { basisplanFestlegen } from '../domain/simulation';
 import { laeufeMitAnderenRegeln, mailRegelnUebernehmen } from '../domain/mailRegeln';
@@ -120,7 +121,12 @@ interface StoreValue {
   deleteStandardRolle: (id: ID) => void;
   /* Projektfunktionen */
   addRole: (r: Omit<Role, 'id'>) => ID;
-  updateRole: (id: ID, patch: Partial<Role>) => void;
+  /**
+   * Ändert eine Projektfunktion. Liefert die Zahl der Workflows, die nach einer Umbenennung weiter
+   * die alte Bezeichnung nennen, ohne dass das Projekt dafür noch eine Funktion hat (siehe
+   * `workflowsMitAlterBezeichnung`) – neue Planläufe daraus hätten für diese Schritte keine Person.
+   */
+  updateRole: (id: ID, patch: Partial<Role>) => { workflowsMitAlterBezeichnung: number };
   deleteRole: (id: ID) => void;
   /* Kontakte */
   addContact: (c: Omit<Contact, 'id'>) => ID;
@@ -481,7 +487,15 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
       mutate((d) => ({ ...d, roles: [...d.roles, { ...r, id }] }));
       return id;
     },
-    updateRole: (id, patch) => mutate((d) => funktionAendern(d, id, patch)),
+    updateRole: (id, patch) =>
+      mitErgebnis((d) => {
+        const alt = d.roles.find((r) => r.id === id);
+        const daten = funktionAendern(d, id, patch);
+        return {
+          daten,
+          ergebnis: { workflowsMitAlterBezeichnung: alt ? workflowsMitAlterBezeichnung(daten, alt).length : 0 },
+        };
+      }),
     deleteRole: (id) => mutate((d, v) => funktionLoeschen(d, id, v)),
 
     addContact: (c) => {

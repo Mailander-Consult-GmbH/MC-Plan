@@ -29,6 +29,7 @@ import {
   type MailRegel,
   type PlanDocument,
   type PlanRun,
+  type ProcessTemplate,
   type Role,
   type StandardRolle,
   type Zuordnung,
@@ -330,6 +331,31 @@ export function funktionAendern(daten: AppData, id: ID, patch: Partial<Role>): A
     if (templates.some((t, i) => t !== d.templates[i])) d = { ...d, templates };
   }
   return d;
+}
+
+/**
+ * Workflows, aus denen das Projekt Planläufe startet (übergreifende und eigene)
+ * und die nach dem Umbenennen einer Projektfunktion weiter ihre alte Bezeichnung
+ * nennen, obwohl das Projekt dafür keine Funktion mehr hat: Der nächste Planlauf
+ * daraus stünde für diese Schritte ohne zuständige Person da, E-Mail-Regeln „an
+ * Funktion“ ohne Empfänger. `funktionAendern` lässt die übergreifenden Workflows
+ * bewusst stehen (sie gelten für alle Projekte) und die des Projekts, solange
+ * ein anderes Gewerk die Bezeichnung weiterführt – die Oberfläche nennt die
+ * Folge deshalb beim Speichern.
+ *
+ * `nachher` ist der Bestand nach `funktionAendern`, `alt` die Funktion davor.
+ * Leer, wenn die Funktion nicht umbenannt wurde oder für ihr Gewerk weiter eine
+ * Funktion der alten Bezeichnung gilt (etwa die übergreifende gleichen Namens).
+ */
+export function workflowsMitAlterBezeichnung(nachher: AppData, alt: Role): ProcessTemplate[] {
+  const neu = nachher.roles.find((r) => r.id === alt.id);
+  if (!neu || !umbenannt(alt.name, neu.name)) return [];
+  const rollen = nachher.roles.filter((r) => r.projectId === alt.projectId);
+  if (rolleFuerSchritt(rollen, alt.name, alt.gewerk ?? '')) return [];
+  return nachher.templates.filter(
+    (t) =>
+      (t.projectId === null || t.projectId === alt.projectId) && t.steps.some((s) => gleicherName(s.roleName, alt.name)),
+  );
 }
 
 /**

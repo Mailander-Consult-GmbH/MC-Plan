@@ -724,8 +724,15 @@ function FunktionsDialog({
       kuerzel: form.kuerzel.trim() || kuerzelAus(name),
     };
     if (rolle) {
-      updateRole(rolle.id, werte);
-      toast('Funktion gespeichert.');
+      // Übergreifende Workflows ziehen bei einer Umbenennung nicht mit (sie gelten für alle Projekte):
+      // Nennen sie die alte Bezeichnung weiter, fände der nächste Planlauf daraus für diese Schritte
+      // keine zuständige Person – das sagt die Kurzmeldung, statt es stillschweigend geschehen zu lassen
+      const { workflowsMitAlterBezeichnung: workflows } = updateRole(rolle.id, werte);
+      toast(
+        workflows > 0
+          ? `Funktion gespeichert – ${workflows === 1 ? '1 Workflow nennt' : `${workflows} Workflows nennen`} weiter „${rolle.name}“; neue Planläufe daraus haben für diese Schritte keine zuständige Person.`
+          : 'Funktion gespeichert.',
+      );
     } else {
       addRole({ ...werte, projectId: project.id });
       toast('Funktion angelegt.');
