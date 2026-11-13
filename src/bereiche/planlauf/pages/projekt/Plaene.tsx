@@ -1027,7 +1027,7 @@ function PlanDialog({
                   // weil sie weiter an ihm hängen, in keinem Planlauf mit.
                   if (v === 'plan' && doc?.kind === 'verzeichnis' && planIds.length > 0) {
                     toast(
-                      `Das Planverzeichnis führt ${planIds.length === 1 ? 'einen Plan' : `${planIds.length} Pläne`} – zum Plan lässt es sich erst machen, wenn sie einem anderen Planverzeichnis zugeordnet oder Einzelpläne sind.`,
+                      `Das Planverzeichnis führt ${planIds.length === 1 ? 'einen Plan' : `${planIds.length} Pläne`} – zum Plan lässt es sich erst machen, wenn es keine mehr führt (im Plan ein anderes Planverzeichnis oder „– Einzelplan –“ wählen).`,
                     );
                     return;
                   }
