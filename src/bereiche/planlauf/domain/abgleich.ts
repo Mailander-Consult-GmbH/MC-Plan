@@ -1207,21 +1207,31 @@ function projektKopieren(d: AppData, sicherung: AppData, pid: ID, neueId: (prefi
   };
 }
 
-/** Gewerke, die Funktionen, Zuordnungen und Einträge eines Bestands nennen. */
-function genutzteGewerke(d: Pick<AppData, 'roles' | 'standardRollen' | 'contacts' | 'documents'>): string[] {
-  return [
-    ...d.roles.map((r) => r.gewerk),
-    ...d.standardRollen.map((r) => r.gewerk),
-    ...d.contacts.flatMap((c) => c.zuordnungen.map((z) => z.gewerk)),
-    ...d.documents.map((x) => x.gewerk),
-  ].filter((g): g is string => !!g && g.trim() !== '');
+/**
+ * Wer welches Gewerk nennt: Funktionen, Zuordnungen und Einträge eines Bestands,
+ * als „Kennung|Gewerk“ → Gewerk. An der Kennung ist zu erkennen, was ein
+ * Abgleich neu hereinbringt.
+ */
+function gewerkNennungen(d: Pick<AppData, 'roles' | 'standardRollen' | 'contacts' | 'documents'>): Map<string, string> {
+  const nennungen = new Map<string, string>();
+  const merken = (id: ID, g: string | null | undefined) => {
+    if (g && g.trim() !== '') nennungen.set(`${id}|${g}`, g);
+  };
+  for (const r of d.roles) merken(r.id, r.gewerk);
+  for (const r of d.standardRollen) merken(r.id, r.gewerk);
+  for (const c of d.contacts) for (const z of c.zuordnungen) merken(c.id, z.gewerk);
+  for (const x of d.documents) merken(x.id, x.gewerk);
+  return nennungen;
 }
 
 /**
  * Verweise ohne Ziel leeren (Regel „leeren“/„mitnehmen“) und fehlende Gewerke
  * ergänzen – nur solche, die mit dem Abgleich hereinkommen. Ein Gewerk, das der
  * Bestand `vorher` schon ohne Listeneintrag führte, wurde dort gelöscht (seine
- * Einträge tragen es weiter als Angabe) und kommt nicht von selbst zurück.
+ * Einträge tragen es weiter als Angabe) und kommt nicht von selbst zurück –
+ * wohl aber, wenn etwas Hereingekommenes es nennt: Ein als Kopie übernommenes
+ * Projekt bringt Funktionen und Einträge mit diesem Gewerk mit, und eine
+ * Funktion mit einem Gewerk außerhalb der Liste lässt sich nicht pflegen.
  */
 function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>, vorher: AppData): AppData {
   const vorlagen = new Set(d.emailVorlagen.map((x) => x.id));
@@ -1260,9 +1270,14 @@ function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>, vorher
       ? { ...c, zuordnungen: c.zuordnungen.filter((z) => rollen.has(z.roleId)) }
       : c,
   );
-  const schonOhne = new Set(genutzteGewerke(vorher).filter((g) => !vorher.gewerke.includes(g)));
-  const genutzt = genutzteGewerke({ roles: d.roles, standardRollen: d.standardRollen, contacts, documents });
-  const fehlend = [...new Set(genutzt)].filter((g) => !d.gewerke.includes(g) && !schonOhne.has(g));
+  const frueher = gewerkNennungen(vorher);
+  const schonOhne = new Set([...frueher.values()].filter((g) => !vorher.gewerke.includes(g)));
+  const jetzt = gewerkNennungen({ roles: d.roles, standardRollen: d.standardRollen, contacts, documents });
+  // Hereingekommen ist, was vorher niemand mit dieser Kennung nannte (neue Kennung oder neu gesetztes Gewerk)
+  const hereingekommen = new Set([...jetzt].filter(([nennung]) => !frueher.has(nennung)).map(([, g]) => g));
+  const fehlend = [...new Set(jetzt.values())].filter(
+    (g) => !d.gewerke.includes(g) && (!schonOhne.has(g) || hereingekommen.has(g)),
+  );
   return {
     ...d,
     templates,
