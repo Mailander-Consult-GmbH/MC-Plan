@@ -27,6 +27,7 @@ import { SeiteBadge, SeiteFeld } from '../../components/SeiteAuswahl';
 import { gewerkeFuerProjekt } from '../../domain/engine';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
+import { funktionsSchluessel } from '../../../../gemeinsam/register';
 import { GewerkDialog, GewerkLoeschenDialog } from '../../components/GewerkDialog';
 import { RollenImport } from './RollenImport';
 import {
@@ -675,7 +676,7 @@ function FunktionsDialog({
   onClose: () => void;
   onNeuesGewerk: () => void;
 }) {
-  const { addRole, updateRole } = useStore();
+  const { data, addRole, updateRole } = useStore();
   const toast = useToast();
   const [form, setForm] = useState({
     name: rolle?.name ?? '',
@@ -693,18 +694,34 @@ function FunktionsDialog({
     setForm((f) => ({ ...f, name, seite: seiteVonHand ? f.seite : seiteAusFunktion(name) }));
 
   const speichern = () => {
-    if (!form.name.trim()) {
+    const name = form.name.trim();
+    if (!name) {
       toast('Bitte eine Bezeichnung angeben.');
       return;
     }
-    if (istEigeneFunktion({ name: form.name, gewerk: form.gewerk })) {
+    if (istEigeneFunktion({ name, gewerk: form.gewerk })) {
       toast(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person.`);
+      return;
+    }
+    // Je Gewerk gibt es eine Bezeichnung im Projekt nur einmal: Die Besetzung der
+    // Schritte nimmt die erste Funktion dieses Namens – die Person an einer zweiten
+    // fände ihre Schritte nicht. Geprüft wird nur, wenn sich Bezeichnung oder Gewerk
+    // ändern – eine schon doppelt geführte Funktion bleibt bearbeitbar.
+    const schluessel = funktionsSchluessel({ name, gewerk: form.gewerk });
+    const doppelt =
+      rolle && funktionsSchluessel(rolle) === schluessel
+        ? undefined
+        : data.roles.find(
+            (r) => r.projectId === project.id && r.id !== rolle?.id && funktionsSchluessel(r) === schluessel,
+          );
+    if (doppelt) {
+      toast(`Die Funktion „${funktionsName(doppelt)}“ gibt es bereits.`);
       return;
     }
     const werte = {
       ...form,
-      name: form.name.trim(),
-      kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
+      name,
+      kuerzel: form.kuerzel.trim() || kuerzelAus(name),
     };
     if (rolle) {
       updateRole(rolle.id, werte);

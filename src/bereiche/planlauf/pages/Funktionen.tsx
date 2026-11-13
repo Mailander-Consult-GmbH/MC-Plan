@@ -11,12 +11,14 @@ import { useState } from 'react';
 import {
   EIGENE_ROLLE,
   UEBERGREIFEND,
+  funktionsName,
   istEigeneFunktion,
   kuerzelAus,
   seiteAusFunktion,
   type Seite,
   type StandardRolle,
 } from '../domain/types';
+import { funktionsSchluessel } from '../../../gemeinsam/register';
 import { SeiteBadge, SeiteFeld } from '../components/SeiteAuswahl';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -288,17 +290,34 @@ function FunktionsDialog({
     setForm((f) => ({ ...f, name, seite: seiteVonHand ? f.seite : seiteAusFunktion(name) }));
 
   const speichern = () => {
-    if (!form.name.trim()) {
+    // Ohne Leerzeichen am Rand – die Bezeichnung ist der Schlüssel der Funktion
+    // (Schritte nennen sie beim Namen, Löschvermerk und Register ebenso)
+    const name = form.name.trim();
+    if (!name) {
       toast('Bitte eine Bezeichnung angeben.');
       return;
     }
-    if (istEigeneFunktion({ name: form.name, gewerk: form.gewerk })) {
+    if (istEigeneFunktion({ name, gewerk: form.gewerk })) {
       toast(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person.`);
+      return;
+    }
+    // Je Gewerk gibt es eine Bezeichnung nur einmal: Ein neues Projekt erhielte
+    // sonst beide Funktionen, und die Besetzung der Schritte fände nur die Person
+    // an der ersten. Geprüft wird nur, wenn sich Bezeichnung oder Gewerk ändern –
+    // eine schon doppelt geführte Funktion bleibt bearbeitbar.
+    const schluessel = funktionsSchluessel({ name, gewerk: form.gewerk });
+    const doppelt =
+      funktion && funktionsSchluessel(funktion) === schluessel
+        ? undefined
+        : data.standardRollen.find((r) => r.id !== funktion?.id && funktionsSchluessel(r) === schluessel);
+    if (doppelt) {
+      toast(`Die Funktion „${funktionsName(doppelt)}“ gibt es bereits.`);
       return;
     }
     const werte = {
       ...form,
-      kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
+      name,
+      kuerzel: form.kuerzel.trim() || kuerzelAus(name),
     };
     if (funktion) {
       // Eine Umbenennung zieht die übergreifenden Workflows mit – Projekte führen
