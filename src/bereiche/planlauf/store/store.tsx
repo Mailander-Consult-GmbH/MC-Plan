@@ -112,8 +112,11 @@ interface StoreValue {
   deleteProject: (id: ID) => void;
   /* Funktionen (projektübergreifend) */
   addStandardRolle: (r: Omit<StandardRolle, 'id'>) => ID;
-  /** Liefert die Zahl der übergreifenden Workflows, die eine Umbenennung mitgezogen hat (siehe standardFunktionAendern). */
-  updateStandardRolle: (id: ID, patch: Partial<StandardRolle>) => number;
+  /**
+   * Liefert, was eine Umbenennung mitgezogen hat (siehe standardFunktionAendern): die Zahl der
+   * übergreifenden Workflows und die der Projekte, deren Kopie der Funktion jetzt ebenso heißt.
+   */
+  updateStandardRolle: (id: ID, patch: Partial<StandardRolle>) => { workflows: number; projekte: number };
   deleteStandardRolle: (id: ID) => void;
   /* Projektfunktionen */
   addRole: (r: Omit<Role, 'id'>) => ID;
@@ -454,7 +457,13 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
     updateStandardRolle: (id, patch) =>
       mitErgebnis((d) => {
         const daten = standardFunktionAendern(d, id, patch);
-        return { daten, ergebnis: daten.templates.filter((t, i) => t !== d.templates[i]).length };
+        return {
+          daten,
+          ergebnis: {
+            workflows: daten.templates.filter((t, i) => t.projectId === null && t !== d.templates[i]).length,
+            projekte: daten.roles.filter((r, i) => r !== d.roles[i]).length,
+          },
+        };
       }),
     deleteStandardRolle: (id) =>
       mutate((d, v) => {

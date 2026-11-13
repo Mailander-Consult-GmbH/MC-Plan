@@ -320,16 +320,16 @@ function FunktionsDialog({
       kuerzel: form.kuerzel.trim() || kuerzelAus(name),
     };
     if (funktion) {
-      // Eine Umbenennung zieht die übergreifenden Workflows mit – Projekte führen
-      // ihre Funktionen als eigene Kopien, dort bleibt die bisherige Bezeichnung
-      const workflows = updateStandardRolle(funktion.id, werte);
-      const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-      const inProjekten = data.roles.some((r) => gleich(r.name, funktion.name));
+      // Eine Umbenennung zieht die übergreifenden Workflows und die Kopien der Funktion in den
+      // Projekten mit – sonst fänden neue Planläufe dort keine zuständige Person
+      const { workflows, projekte } = updateStandardRolle(funktion.id, werte);
+      const mitgezogen = [
+        workflows > 0 ? `${workflows} ${workflows === 1 ? 'Workflow' : 'Workflows'}` : '',
+        projekte > 0 ? `${projekte} ${projekte === 1 ? 'Projekt' : 'Projekten'}` : '',
+      ].filter(Boolean);
       toast(
-        workflows > 0
-          ? `Funktion gespeichert – ${workflows} ${workflows === 1 ? 'Workflow nennt' : 'Workflows nennen'} jetzt „${werte.name.trim()}“.${
-              inProjekten ? ` In bereits angelegten Projekten heißt die Funktion weiter „${funktion.name}“.` : ''
-            }`
+        mitgezogen.length > 0
+          ? `Funktion gespeichert – sie heißt jetzt auch in ${mitgezogen.join(' und ')} „${werte.name.trim()}“.`
           : 'Funktion gespeichert.',
       );
     } else {
