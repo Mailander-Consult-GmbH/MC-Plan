@@ -25,6 +25,23 @@ Randbedingungen des Projekts, an die sich alle Vorschläge halten: `src/shared/`
 fachfreie Bausteine, die Bereiche greifen nicht aufeinander zu und teilen sich nur
 `src/gemeinsam/`; keine neuen Laufzeitabhängigkeiten.
 
+## Empfehlung in Kürze
+
+Wenn nur wenig Zeit ist – diese Punkte bringen am meisten:
+
+1. **Abschnitt 2 bestätigen** (E-1 bis E-6): die Festlegungen aus dem Entfernen der beiden Bereiche.
+2. **Fachlich entscheiden**, was nur Sie entscheiden können: Zähler und Kacheln (U-2), Projektstatus
+   (U-13), Schwelle „fällig“ (W-2), Beschreibung/Bemerkung (D-1), Abgleich von Sicherungen in allen
+   Bereichen (D-4).
+3. **Schnelle Verbesserungen für die Nutzer** (je bis etwa eine Stunde): Fristenliste ins Menü des
+   Planlaufmanagements (R-11), einheitliche Begriffe (U-10, M-4), Rückfrage beim Löschen (U-11),
+   Tagesfelder (W-3), roter Löschen-Knopf (M-5).
+4. **Größter Hebel für die Pflege:** gemeinsamer Anwendungsrahmen (R-1), Projektliste und
+   Projektkopf (U-3, U-4), Hinweisleisten (R-2), Dialog „Sicherung einspielen“ (R-3) – danach laufen
+   die Bereiche nicht mehr auseinander.
+5. **Absichern:** die Prüfskripte der Durchsicht ins Repository übernehmen (P-2) – das Projekt hat
+   bisher keine Tests.
+
 **Inhalt**
 
 1. [Bereits behoben](#1-bereits-behoben-in-diesem-pull-request)
@@ -34,9 +51,10 @@ fachfreie Bausteine, die Bereiche greifen nicht aufeinander zu und teilen sich n
 5. [Bedienmuster: Dialoge, Listen, Wortlaut](#5-bedienmuster-dialoge-listen-wortlaut)
 6. [Optik und Gestaltung](#6-optik-und-gestaltung)
 7. [Workflows, Fristen und Ampeln](#7-workflows-fristen-und-ampeln)
-8. [Einzelhinweise Baubetriebsplanung](#8-einzelhinweise-baubetriebsplanung)
-9. [Aufräumen: unbenutzter Code](#9-aufräumen-unbenutzter-code)
-10. [Anhang: Was schon einheitlich ist](#10-anhang-was-schon-einheitlich-ist)
+8. [Datenhaltung und Datenmodell](#8-datenhaltung-und-datenmodell)
+9. [Einzelhinweise je Bereich](#9-einzelhinweise-je-bereich)
+10. [Aufräumen: unbenutzter Code](#10-aufräumen-unbenutzter-code)
+11. [Anhang: Was schon einheitlich ist](#11-anhang-was-schon-einheitlich-ist)
 
 ---
 
@@ -73,6 +91,75 @@ mit einem Skript oder im Browser nachgestellt und nach der Korrektur erneut gepr
 | Planlaufmanagement | Workflow-Editor bei 821–1279 px Breite: Escape schloss den Editor statt der Schublade mit den Schrittdetails. | Schließt zuerst die Schublade, wie in der Baubetriebsplanung. |
 | Planlaufmanagement | „Fristen & Erinnerungen“: Die Suche fand weder Projekt- noch Plannummer, obwohl die Zeile sie zeigt; die Spalte hieß noch „Rolle & Person“. | Sucht in allem, was die Zeile zeigt; „Funktion & Person“. |
 | Alle (Excel-Import) | In Mappen mit umsortierten Blättern standen die Blattnamen an fremden Inhalten; Zellen ohne Zellbezug landeten alle in Spalte A. | Blätter werden über ihre Beziehung in der Mappe zugeordnet. |
+
+### Weitere Korrekturen aus der Fehlersuche
+
+Die Fehlersuche in den drei Bereichen hat 41 Fehler gemeldet (einige doppelt). Jeder wurde zuerst
+nachgestellt, dann behoben und einzeln festgehalten – je Fehler ein eigener Commit, dessen
+Nachricht beschreibt, was falsch war und was jetzt gilt. Die schwersten:
+
+* **Planlaufmanagement – Umstellung alter Stände:** Bei jedem Wechsel auf eine neue Fassung wurden
+  alle Funktionen behandelt, als stammten sie aus dem alten Modell; eine Person konnte dabei ohne
+  Meldung ihre Besetzung verlieren.
+* **Planlaufmanagement – Funktionen-Import:** Der Excel-Import überschrieb bei vorhandenen Personen
+  alle Kontaktdaten, auch mit leeren Zellen – eine Liste nur mit Funktion, Name und E-Mail leerte
+  Telefon, Firma und Anschrift.
+* **Projektsteuerung – „Verantwortlich“:** Änderte sich das Kürzel oder die Funktion einer Person,
+  verloren ihre Aufgaben die Zuordnung; „Meine To-Dos“ wurden ohne Hinweis leer.
+
+Alle Korrekturen dieser Runde:
+
+**Planlaufmanagement**
+
+* Umstellung lässt Kennungen und Besetzung je Gewerk geführter Funktionen stehen
+* Funktionen-Import lässt vorhandene Kontaktdaten bei leeren Zellen stehen
+* Funktionen-Import löst die bisherige Besetzung auch bei Personen aus der Datei
+* Gelöschter Kontakt hinterlässt kein „von Hand“ ohne Person
+* Rückfrage „Person löschen?“ nennt die Folge für von Hand zugewiesene Schritte
+* Umbenannte Projektfunktion zieht Schritte und E-Mail-Regeln der Planläufe mit
+* Umbenannte übergreifende Funktion zieht die übergreifenden Workflows mit
+* Abgleich mit einer Sicherung holt ein gelöschtes Gewerk nicht von selbst zurück
+* Umbenennen mit Gewerkwechsel zieht nur Läufe mit, für die die Funktion weiter gilt
+* Von Hand gesetztes Soll bleibt außerhalb des Verlaufs stehen
+* Mit Eingang Soll kein Schritt vor dem ersten Schritt einfügen
+* Terminnachweis rechnet entfallene Schritte des Basisplans als Zeitgewinn
+* Terminnachweis stimmt bei Block am Anfang mit Eingang Soll
+* „Früher/Später im Ablauf“ lässt Sprünge zum verschobenen Schritt stehen
+* Aus dem Zweig herausfallende Schritte werden nicht zum Anschluss des Blocks
+* E-Mail vorbereiten – Vorlagenwechsel lässt den Empfänger stehen
+* Dialog „Keine E-Mail-Vorlage“ nennt die Seite „Vorlagen“
+* Planverzeichnis mit Plänen lässt sich nicht zum Plan umstellen
+* Planlauf aus der Liste der Planläufe auch mit der Tastatur öffnen
+* Planliste behält den Tastaturfokus beim Sortieren
+* Planliste speichert Titel, Codierung und Gewerk ohne Leerzeichen am Rand
+* Excel-Import liest dieselbe Datei auch beim zweiten Wählen
+* Funktion bearbeiten und To-Do öffnen auch mit der Tastatur
+* Funktion gibt es je Gewerk nur einmal; Bezeichnung ohne Leerzeichen am Rand
+* Meldung zum Planverzeichnis mit Plänen stimmt auch bei einem Plan
+
+**Projektsteuerung**
+
+* „Verantwortlich“ folgt dem Kürzel der Person
+* Löschen eines mittleren Protokolls verdoppelt keine Aufgaben
+* zwei Personen mit demselben Kürzel bleiben unterscheidbar
+* Excel-Import liest „Name“ neben „Vorname“ als Nachnamen
+* Aufgabe mit gestrichener Ursprungszeile zählt nicht mehr als offen
+* Einzeldateien des Protokoll-Tools gemeinsam übernehmen
+* Funktion auch mit der Tastatur bearbeiten
+* Fokus bleibt beim Verschieben eines TOP mit der Tastatur
+* Nummer und Datum des Protokolls lassen sich überschreiben
+* im Protokoll getippte Angaben eines Gastes ziehen „Verantwortlich“ nicht mit
+
+**Baubetriebsplanung**
+
+* Anmeldung aus den Tabellen auch mit der Tastatur öffnen
+* „Termin festlegen“ meldet bei geleertem Datum, was geschieht
+* Projektdialog speichert Nummern ohne Leerzeichen am Rand
+
+**Alle Bereiche**
+
+* Projektlisten: Suche ohne Treffer zeigt eigenen Leerzustand ohne „Neues Projekt“
+* Eingabetaste im Dialogfeld löst den Öffner des Dialogs nicht noch einmal aus
 
 ---
 
@@ -436,8 +523,8 @@ bestätigen oder anders entscheiden.
   Funktion gefunden“ – je Liste ein eigener Text. (Dass zwei Funktionslisten bei einer Suche ohne
   Treffer den Anlegen-Knopf eines leeren Bestands zeigten, ist behoben.)
 * **Vorschlag:** ein fachfreier Baustein „Nichts gefunden – Für diese Suche gibt es keinen
-  Treffer.“ für alle Listen; auch die drei Projektlisten unterscheiden dann „leer“ von „kein
-  Treffer“.
+  Treffer.“ für alle Listen. (Die drei Projektlisten unterscheiden „leer“ von „kein Treffer“
+  inzwischen ebenfalls – noch je für sich.)
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
 
 ### M-2 · Seite „Funktionen“, Funktionsdialog und Gewerk-Dialog gibt es zweimal – mit anderem Verhalten
@@ -711,10 +798,146 @@ Ampelpunkt und -marke unter U-1 und U-10, der Haken-Knopf unter O-2.
 
 ---
 
-## 8. Einzelhinweise Baubetriebsplanung
+## 8. Datenhaltung und Datenmodell
 
-Aus der Fehlersuche in Domäne und Store der Baubetriebsplanung – keine Fehler, aber Stellen, an
-denen eine fachliche Entscheidung fehlt.
+### D-1 · Freitext zum Projekt: „Beschreibung“ wird geteilt, die „Bemerkung“ der Baubetriebsplanung nicht
+* **Art:** Datenmodell · **Aufwand:** klein · **Nutzen:** mittel
+* **Heute:** Planlaufmanagement und Projektsteuerung führen eine „Beschreibung“, die über das
+  Projektregister in allen Bereichen gilt. Die Baubetriebsplanung hat an derselben Stelle des
+  Dialogs eine „Bemerkung“, die nur dort steht: Ein Projekt mit Beschreibung kommt in der
+  Baubetriebsplanung mit leerer Bemerkung an, und umgekehrt. Wer ein Projekt in zwei Bereichen
+  führt, pflegt den Text zweimal.
+* **Vorschlag:** die Bemerkung an die Beschreibung des Registers anbinden und „Beschreibung“
+  nennen – oder, wenn sie bewusst bereichseigen bleiben soll, die geteilte Beschreibung daneben
+  anzeigen.
+* **Entscheidung:** ☐ anbinden · ☐ bereichseigen lassen, Beschreibung anzeigen · ☐ so lassen
+
+### D-2 · Mobilnummer einer Person kennt das Planlaufmanagement nicht
+* **Art:** Datenmodell · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Dieselbe Person zeigt in Projektsteuerung und Baubetriebsplanung eine Mobilnummer, im
+  Planlaufmanagement lässt sie sich weder sehen noch eintragen (das Projektregister führt das
+  Feld). Siehe auch M-10.
+* **Vorschlag:** das Feld im Planlaufmanagement ergänzen (Kontaktdialog, Tabelle, Excel-Vorlage).
+  Das persönliche Kürzel kann der Projektsteuerung vorbehalten bleiben – es dient nur den
+  Protokollen.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### D-3 · Demodaten: kein gemeinsames Projekt, Übersicht der Projektsteuerung bleibt leer
+* **Art:** Funktion · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Nach dem Öffnen aller drei Bereiche führt das Register sechs Demoprojekte, keines in
+  zwei Bereichen – „Auch in …“, geteilte Beteiligte und das Archiv je Bereich sind in der Demo
+  nicht zu sehen. Mit der Vorgabe „Max Mustermann“ zeigt das Planlaufmanagement drei To-Dos, die
+  Projektsteuerung keine (dort müsste man „Lena Roth“ eintragen).
+* **Vorschlag:** ein gemeinsames Demoprojekt in allen drei Bereichen und Demo-Aufgaben für die
+  Vorgabe-Anmeldung.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### D-4 · „Sicherung abgleichen“ gibt es nur im Planlaufmanagement
+* **Art:** Funktion · **Aufwand:** groß · **Nutzen:** mittel
+* **Heute:** Ohne Server ist die Sicherung der einzige Weg, die Stände zweier Arbeitsplätze
+  zusammenzubringen. Im Planlaufmanagement lassen sich Änderungen aus einer Sicherung einzeln
+  übernehmen; in Baubetriebsplanung und Projektsteuerung überschreibt das Einspielen den ganzen
+  Bestand – wer inzwischen selbst etwas eingetragen hat, verliert es. Dieselbe Aktion hat damit
+  je Bereich eine andere Tragweite.
+* **Vorschlag:** stufenweise: erst die Voraussetzungen schaffen (Änderungszeitpunkt je Objekt,
+  D-5; Löschvermerke), dann den fachfreien Kern des Abgleichs herauslösen und in den beiden
+  anderen Bereichen anbieten.
+* **Zu klären:** Wird in Baubetriebsplanung und Projektsteuerung an mehreren Arbeitsplätzen
+  gearbeitet? Dann ist das der wichtigste Punkt dieses Abschnitts.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### D-5 · Wer hat wann was geändert? Drei verschiedene Stände
+* **Art:** Datenmodell · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Planlaufmanagement: Änderungsprotokoll je Planlauf und Änderungszeitpunkt an jedem
+  Objekt. Baubetriebsplanung: nur der Statusverlauf je Anmeldung. Projektsteuerung: nichts – wer
+  ein Protokoll, eine Person oder eine Funktion zuletzt geändert hat, lässt sich nicht
+  feststellen. Das gleichnamige Feld `geaendertAm` bedeutet im Planlaufmanagement „Zeitstempel
+  jeder Änderung“, in der Baubetriebsplanung „Tag der letzten fachlichen Änderung“.
+* **Vorschlag:** den Änderungszeitpunkt in allen drei Bereichen gleich führen (fachfreier
+  Baustein, keine Umstellung der Bestände nötig); das fachliche Datum der Baubetriebsplanung
+  umbenennen.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### D-6 · Was nach jeder Änderung nachgezogen wird, ist dreimal anders gebaut
+* **Art:** Code-Doppelung · **Aufwand:** mittel · **Nutzen:** mittel
+* **Heute:** Im Planlaufmanagement läuft jede Änderung durch eine zentrale, ohne Oberfläche
+  prüfbare Funktion, die Abgeleitetes nachzieht. In Baubetriebsplanung und Projektsteuerung hängt
+  es an jeder einzelnen Aktion, ob Abgeleitetes stimmt – daher blieben etwa Logos gelöschter
+  Protokollreihen im Bestand. Ebenso steht die Anbindung an das Projektregister als gleiches
+  Gerüst in drei Dateien (rund 60 Zeilen je), und was ein neues Projekt mitbekommt, steht je
+  Bereich an zwei Stellen (Dialog und Übernahme aus dem Register).
+* **Vorschlag:** in beiden Bereichen eine zentrale Änderungsfunktion nach dem Muster des
+  Planlaufmanagements; je Bereich eine Funktion „Projekt anlegen“, die Dialog und Register
+  gemeinsam nutzen.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### D-7 · Kleine Helfer mehrfach definiert – zwei gleichnamige liefern Verschiedenes
+* **Art:** Code-Doppelung · **Aufwand:** klein · **Nutzen:** mittel
+* **Heute:** Das Kürzel einer Funktion wird in Planlaufmanagement und Projektsteuerung von zwei
+  gleichnamigen Funktionen gebildet, die Verschiedenes liefern („Bau-Überwachung“: „BAU“ gegen
+  „BÜ“) – legt der Abgleich dieselbe Funktion in beiden Bereichen neu an, trägt sie verschiedene
+  Kürzel. Der Anzeigename einer Person ohne Namen ist im Register die Firma, in der
+  Projektsteuerung leer. Grundtypen (Kennung, Datum, Farbmodus) sind bis zu viermal definiert.
+* **Vorschlag:** je eine Fassung in `src/gemeinsam/` bzw. `src/shared/`.
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### D-8 · Vorgabenamen und „Zurücksetzen“: verstreute Sonderfälle
+* **Art:** Datenmodell · **Aufwand:** klein · **Nutzen:** niedrig
+* **Heute:** „Angemeldet als“ muss fünf Vorgabenamen der Demodaten als feste Zeichenketten kennen
+  („Max Mustermann“, „PLM“, „Projektsteuerung MIC“, „Lena Roth“, „Bearbeitung MIC“); ändert jemand
+  einen Namen in den Demodaten, gilt er unbemerkt als selbst eingetragen. Was „Zurücksetzen“
+  behält, steht an drei Stellen in drei Fassungen.
+* **Vorschlag:** eine Konstante für den Vorgabenamen; eine Regel für „Zurücksetzen“ (Persönliches
+  bleibt, alles Übrige kommt aus den Demodaten).
+* **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
+
+### D-9 · Bezeichner im Code: Planlaufmanagement englisch, die anderen deutsch
+* **Art:** Code · **Aufwand:** groß · **Nutzen:** niedrig
+* **Heute:** Dieselbe Sache hat bis zu vier Namen (Person: `Contact`, `Beteiligter`,
+  `RegisterPerson`, `LokalePerson`). Jede Anbindung ans Register übersetzt von Hand; gemeinsamer
+  Code braucht je Bereich einen Adapter. Für den Nutzer ohne Folge.
+* **Vorschlag:** die gespeicherten Feldnamen nicht anfassen (das beträfe Umstellung, Sicherungen
+  und Abgleich). Neue Felder und Funktionen deutsch benennen; gemeinsamer Code arbeitet über die
+  einheitliche Sicht des Registers.
+* **Entscheidung:** ☐ so vorgehen · ☐ nicht umsetzen
+
+---
+
+## 9. Einzelhinweise je Bereich
+
+Aus der Fehlersuche: keine belegten Fehler (die sind behoben, Abschnitt 1), sondern Stellen, an
+denen eine fachliche Festlegung fehlt oder der Code robuster sein könnte. Jeder Punkt ist klein.
+
+### Planlaufmanagement
+
+| Kennung | Hinweis | Vorschlag | Entscheidung |
+| --- | --- | --- | --- |
+| P-1 | Die Umstellung alter Stände führt bei jeder neuen Fassung alle früheren Umstellungsschritte erneut aus – die Wurzel des behobenen Fehlers bei den Funktionen je Gewerk und ein Risiko für jede weitere Erweiterung. | Schritte an die Ausgangsfassung binden. Aufwand mittel. | ☐ umsetzen · ☐ später |
+| P-2 | Das Projekt hat keine Tests. Die Prüfer haben für Ablauf- und Terminrechnung und für den Workflow-Editor Zufallsprüfungen geschrieben (7200 Läufe bzw. 72 000 Editor-Operationen), die Fehler in Sekunden fanden. | Die Skripte als wiederholbare Prüfung ins Repository übernehmen (keine neue Abhängigkeit). Aufwand mittel. | ☐ umsetzen · ☐ später |
+| P-3 | Beide Excel-Importe (Planliste, Funktionen) schreiben je Zeile einzeln in den Bestand und rechnen auf dem Stand vor dem Import. | Je Import eine reine Funktion und ein einziger Schreibvorgang. Aufwand mittel. | ☐ umsetzen · ☐ später |
+| P-4 | Ein nicht lesbares Datum im Planlisten-Import („10/30/2027“) wird stillschweigend weggelassen – der Planlauf startet ohne Eingangstermin. | In der Vorschau einen Hinweis je Zeile zeigen. | ☐ umsetzen · ☐ später |
+| P-5 | Der Funktionen-Import erkennt Personen über „E-Mail, sonst Name“: Bekommt eine vorhandene Person in der Datei erstmals eine E-Mail, entsteht eine zweite Person gleichen Namens. | Ersatzweise über Vor- und Nachname suchen; in der Vorschau „neu“ bzw. „aktualisiert“ ausweisen. | ☐ umsetzen · ☐ später |
+| P-6 | Nennt eine Importzeile zugleich Planverzeichnis und Planpaket, entsteht ein leeres Planpaket. | Das Paket nicht anlegen und in der Vorschau vermerken. | ☐ umsetzen · ☐ später |
+| P-7 | „Schritt einfügen“ ist bei beendeten Planläufen nur in der Oberfläche gesperrt, nicht in der Rechnung. | Auch dort abweisen. | ☐ umsetzen · ☐ später |
+| P-8 | Übersprungene Schritte wechseln bei einer Umbesetzung der Funktion die zuständige Person (erledigte nicht). | Übersprungene wie erledigte behandeln. | ☐ umsetzen · ☐ später |
+| P-9 | Terminrechner: Der ausgewiesene Puffer eines Zweigs, dessen Antwort aus dem parallelen Block aussteigt, gilt bei Gleichstand nicht; die Hinweistexte sprechen auch bei gewähltem Zielschritt vom „Termin auf der Baustelle“; archivierte Projekte stehen in der Auswahl. | Texte aus der Feldbeschriftung ableiten, Archivierte kennzeichnen, Puffer als „bis zum Ausstieg“ ausweisen. | ☐ umsetzen · ☐ später |
+| P-10 | Änderungen, die aus dem Projektregister kommen (ein anderer Bereich löscht eine geteilte Person), stehen im Änderungsprotokoll unter dem Namen der angemeldeten Person. | Als „Projektregister“ kennzeichnen. | ☐ umsetzen · ☐ später |
+| P-11 | „Sicherung abgleichen“: Projektübergreifende Funktionen tragen keinen Änderungszeitpunkt („zuletzt geändert: unbekannt“); das Löschdatum im Kennzeichen kann kurz nach Mitternacht einen anderen Tag nennen als die Zeile darunter. | Zeitpunkt mitführen; Ortszeit verwenden. | ☐ umsetzen · ☐ später |
+| P-12 | Die Rohkopie vor einer Umstellung wird nach der Daten-Fassung benannt und nie erneuert; nach einer reinen Stammdaten-Umstellung fehlt sie deshalb bei der nächsten Daten-Umstellung. | Eigener Schlüssel für Stammdaten-Umstellungen. | ☐ umsetzen · ☐ später |
+| P-13 | Beim Duplizieren eines Schritts oder Workflows behalten die E-Mail-Regeln ihre Kennungen (heute folgenlos). | Neue Kennungen vergeben. | ☐ umsetzen · ☐ später |
+| P-14 | Das Gewerk an der Zuordnung Person–Funktion ist eine Kopie ohne Leser (seit dieser Durchsicht wird es beim Ändern der Funktion wenigstens mitgezogen). | Feld auslaufen lassen. | ☐ umsetzen · ☐ später |
+| P-15 | Terminnachweis: Führt eine Antwort ohne Nacharbeit auf einen Schritt, der nicht auf dem Regelweg des Basisplans liegt („anderer Weg“), geht die Rechnung weiterhin nicht auf („Nicht erklärt“). Das Auslassen von Schritten (Abkürzung, Ausstieg nach vorn) ist behoben. | Fachlich festlegen, wem die Zeit eines solchen Schritts zugerechnet wird. | ☐ festlegen · ☐ später |
+
+### Baubetriebsplanung
+
+Zu B-1 bis B-4 (unten) kommen aus der Prüfung der Oberfläche:
+
+| Kennung | Hinweis | Vorschlag | Entscheidung |
+| --- | --- | --- | --- |
+| B-5 | „Letzten Wechsel zurücknehmen“ stellt den ganzen Stand vor dem Wechsel her – auch Merkmale, die danach von Hand geändert wurden. | Bei Wechseln im selben Workflow nur Status und Termin zurücknehmen. | ☐ umsetzen · ☐ später |
+| B-6 | Übernahme-Dialog bei 400 px: Die Felder der aufgeteilten Anmeldungen stehen ohne Beschriftung untereinander. | Zellen beschriften (gehört zu M-8). | ☐ umsetzen · ☐ später |
+| B-7 | Die Adresse einer Anmeldung prüft das Projekt nicht: Unter der Adresse eines anderen Projekts erscheint die Anmeldung mit dessen Kopfzeile und Zuständigkeit. | „Nicht gefunden“ zeigen. | ☐ umsetzen · ☐ später |
+
 
 ### B-1 · „Nachgehakt …“ überschreibt mit seiner Vorbelegung auch Richtlinienfristen
 * **Aufwand:** klein · **Nutzen:** mittel
@@ -752,9 +975,21 @@ denen eine fachliche Entscheidung fehlt.
   ungenutzten Zustände samt Code entfernen.
 * **Entscheidung:** ☐ als überfällig zeigen · ☐ ungenutzten Code entfernen · ☐ so lassen
 
+
+### Projektsteuerung
+
+| Kennung | Hinweis | Vorschlag | Entscheidung |
+| --- | --- | --- | --- |
+| S-1 | Zeigt der Verweis „weitergeführt in“ auf ein Protokoll, das es nicht mehr gibt (bearbeitete Sicherung, erneuter Import), ist die Aufgabe dauerhaft unsichtbar. | Beim Laden gegen die vorhandenen Protokolle prüfen. | ☐ umsetzen · ☐ später |
+| S-2 | Der Excel-Import der Beteiligten bildet seinen eigenen Schlüssel dafür, wann zwei Funktionen „dieselbe“ sind – das Register einen anderen. | Den Schlüssel des Registers verwenden. | ☐ umsetzen · ☐ später |
+| S-3 | Übersicht: Das Protokoll zu einer Aufgabe öffnet sich nur per Mausklick auf die Zeile; mit der Tastatur ist je Zeile nur „Erledigt“ erreichbar. | Die Fundstelle als Knopf ausführen. | ☐ umsetzen · ☐ später |
+| S-4 | Protokoll-Editor: Das Feld „Ergänzung eintragen“ wechselt beim ersten Zeichen das Eingabeelement – bei Tottasten (´, ^) und Bildschirmtastaturen kann dabei ein Zeichen verloren gehen. | Dasselbe Element weiterführen. Aufwand mittel. | ☐ umsetzen · ☐ später |
+| S-5 | Die Auswahl „Verantwortlich“ schneidet Namen ab („PS – Lena Rot“). | Nur das Kürzel zeigen oder die Spalte verbreitern. | ☐ umsetzen · ☐ später |
+| S-6 | Löscht das Projektregister ein Projekt samt Protokollen (seltener Weg über zwei Fenster), bleiben die Logos seiner Protokollreihen im Bestand liegen und belegen Speicher. | Die Logos zentral nach jeder Änderung bereinigen (gehört zu D-6). | ☐ umsetzen · ☐ später |
+
 ---
 
-## 9. Aufräumen: unbenutzter Code
+## 10. Aufräumen: unbenutzter Code
 
 Exporte, die nirgends verwendet werden (jeweils nur die Definition im Code). Entfernen ist
 gefahrlos und hält den Code lesbar.
@@ -779,7 +1014,7 @@ Ebenso unbenutzt sind vier Klassen in `src/shared/global.css`: `.topbar-actions`
 
 ---
 
-## 10. Anhang: Was schon einheitlich ist
+## 11. Anhang: Was schon einheitlich ist
 
 Damit die Liste nicht den Eindruck erweckt, alles liefe auseinander – diese Dinge sind in allen
 drei Bereichen bereits gleich gelöst:
