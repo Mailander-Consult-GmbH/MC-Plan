@@ -161,6 +161,25 @@ Alle Korrekturen dieser Runde:
 * Projektlisten: Suche ohne Treffer zeigt eigenen Leerzustand ohne „Neues Projekt“
 * Eingabetaste im Dialogfeld löst den Öffner des Dialogs nicht noch einmal aus
 
+### Nachbesserungen aus dem Gegenlesen
+
+Drei weitere Prüfer haben die Korrekturen der Fehlersuche gegengelesen – mit dem Auftrag, darin
+Fehler zu finden. Sie meldeten zwölf Folgefehler, darunter einen schweren Rückschritt: Eine
+umbenannte übergreifende Funktion ließ in bestehenden Projekten neue Planläufe ohne zuständige
+Person zurück. Neun sind behoben, zwei gemildert (P-16, S-7), einer ist offen (S-8):
+
+* Planlauf: Umbenannte übergreifende Funktion zieht auch ihre Kopien in den Projekten mit
+* Projektlisten: Leerzustand der Suche nennt Treffer in anderen Bereichen
+* Planlauf: Projekt als Kopie aus der Sicherung bringt sein gelöschtes Gewerk wieder mit
+* Planlauf: Funktionen-Import erkennt eine Person auch ohne E-Mail in der Zeile
+* Planlauf: Funktionen-Import legt bei anders geschriebenem Gewerk keine zweite Funktion an
+* Planlauf: Terminnachweis geht auf, wenn das Eingang Soll vor dem Start des Laufs liegt
+* Planlauf: Umbenannte Projektfunktion nennt beim Speichern die Workflows mit der alten Bezeichnung
+* Planlauf: Funktionen-Import ersetzt eine vorhandene Anschrift nicht mehr durch eine Teilangabe
+* Planlauf: Funktionen-Import vergibt eine Funktion, die mehrfach in der Datei steht, nur einmal
+* Projektsteuerung: Excel-Import verdoppelt den Namen nicht mehr, wenn „Name“ den vollen Namen trägt
+* Projektsteuerung: Rückfrage beim Löschen eines Protokolls nennt Aufgaben, die mit ihm entfallen
+
 ---
 
 ## 2. Entscheidungen aus dem Entfernen der beiden Bereiche
@@ -927,7 +946,8 @@ denen eine fachliche Festlegung fehlt oder der Code robuster sein könnte. Jeder
 | P-13 | Beim Duplizieren eines Schritts oder Workflows behalten die E-Mail-Regeln ihre Kennungen (heute folgenlos). | Neue Kennungen vergeben. | ☐ umsetzen · ☐ später |
 | P-14 | Das Gewerk an der Zuordnung Person–Funktion ist eine Kopie ohne Leser (seit dieser Durchsicht wird es beim Ändern der Funktion wenigstens mitgezogen). | Feld auslaufen lassen. | ☐ umsetzen · ☐ später |
 | P-15 | Terminnachweis: Führt eine Antwort ohne Nacharbeit auf einen Schritt, der nicht auf dem Regelweg des Basisplans liegt („anderer Weg“), geht die Rechnung weiterhin nicht auf („Nicht erklärt“). Das Auslassen von Schritten (Abkürzung, Ausstieg nach vorn) ist behoben. | Fachlich festlegen, wem die Zeit eines solchen Schritts zugerechnet wird. | ☐ festlegen · ☐ später |
-| P-16 | Eine umbenannte projektübergreifende Funktion zieht jetzt die übergreifenden Workflows mit; schon angelegte Projekte behalten aber den alten Namen und finden für neue Planläufe aus diesen Workflows keine Funktion, bis die Projektfunktion ebenfalls umbenannt wird (die Kurzmeldung weist darauf hin). | Festlegen: beim Umbenennen anbieten, die Projekte mitzuziehen. | ☐ festlegen · ☐ später |
+| P-16 | Wird im Projekt eine Funktion umbenannt, nennen die projektübergreifenden Workflows weiter den alten Namen – der nächste neue Planlauf daraus hat für diese Schritte keine zuständige Person. Seit dieser Durchsicht sagt das die Kurzmeldung beim Speichern; die Folge selbst bleibt. (Die Gegenrichtung ist behoben: Eine umbenannte übergreifende Funktion zieht Workflows und Projekte mit.) | Festlegen: Projektfassung des Workflows anlegen oder die Funktion anders finden; dazu ein bleibender Hinweis statt der kurzen Meldung. | ☐ festlegen · ☐ später |
+| P-17 | Terminnachweis: Wird das Eingang Soll nach dem Start aus dem Eintrag entfernt und beginnt der Workflow mit einem parallelen Block, geht die Rechnung nicht auf (in Zufallsläufen 708 von 39 810 Zuständen). | Den Nachweis in diesem Fall am Basisplan ausrichten. | ☐ umsetzen · ☐ später |
 
 ### Baubetriebsplanung
 
@@ -987,6 +1007,8 @@ Zu B-1 bis B-4 (unten) kommen aus der Prüfung der Oberfläche:
 | S-4 | Protokoll-Editor: Das Feld „Ergänzung eintragen“ wechselt beim ersten Zeichen das Eingabeelement – bei Tottasten (´, ^) und Bildschirmtastaturen kann dabei ein Zeichen verloren gehen. | Dasselbe Element weiterführen. Aufwand mittel. | ☐ umsetzen · ☐ später |
 | S-5 | Die Auswahl „Verantwortlich“ schneidet Namen ab („PS – Lena Rot“). | Nur das Kürzel zeigen oder die Spalte verbreitern. | ☐ umsetzen · ☐ später |
 | S-6 | Löscht das Projektregister ein Projekt samt Protokollen (seltener Weg über zwei Fenster), bleiben die Logos seiner Protokollreihen im Bestand liegen und belegen Speicher. | Die Logos zentral nach jeder Änderung bereinigen (gehört zu D-6). | ☐ umsetzen · ☐ später |
+| S-7 | Wird ein Protokoll mitten aus einer Reihe gelöscht, entfallen Aufgaben, die nur noch dort zählen (etwa im Folgeprotokoll gestrichen und danach wiederhergestellt). Die Rückfrage nennt jetzt, wie viele das sind; verhindern lässt es sich nicht, weil ein übernommener Eintrag seinen Ursprung nicht kennt. | Festlegen: Übernommene Einträge merken sich ihren Ursprung (neues Feld, Umstellung der Bestände) – dann kann das Löschen je Aufgabe entscheiden. | ☐ festlegen · ☐ später |
+| S-8 | „Verantwortlich“ folgt einem geänderten Kürzel nur in Protokollen, in denen die Person teilnimmt. Steht sie dort nicht (mehr) unter den Teilnehmenden, nennt die Aufgabe weiter das alte Kürzel und fehlt in „Meine To-Dos“. | Festlegen, wie das Mitziehen ohne Teilnahme gelten soll – ohne dass eine eingespielte Sicherung dabei umgeschrieben wird. | ☐ festlegen · ☐ später |
 
 ---
 
