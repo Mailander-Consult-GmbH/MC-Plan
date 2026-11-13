@@ -109,7 +109,8 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   unbekannten Projekt) und `ArchivHinweis` oben im archivierten
   Projekt mit „Aus dem Archiv holen“ (der Tastaturfokus geht vom einen Knopf an den anderen,
   `fokusNachArchiv`; sind alle Projekte eines Bereichs archiviert, zeigt seine Projektliste
-  „Kein aktives Projekt“ statt „Kein Projekt gefunden“); archivierte Projekte fehlen in Übersicht und Seitenleiste
+  „Kein aktives Projekt“ statt „Kein Projekt gefunden“, bei einer Suche mit Treffern nur im Archiv
+  „Kein aktives Projekt gefunden“); archivierte Projekte fehlen in Übersicht und Seitenleiste
   (`useArchivierte`) und in den bereichsweiten Fristenlisten (`pages/Fristen.tsx` im
   Planlaufmanagement, `pages/Termine.tsx` samt Zähler der Seitenleiste in der
   Baubetriebsplanung), im Projekt selbst bleiben die Fristen sichtbar;
@@ -133,7 +134,12 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   `App.tsx` die aufklappbare Seitenleiste und schließt sie bei jedem Seitenwechsel (`hashchange`). Dialoge immer über `Modal` (`ui.tsx`: Fokus beim Öffnen,
   Tab bleibt im Dialog, Escape schließt nur den obersten, Fokus zurück an den Öffner; wo ein Klick
   daneben nicht schließen soll, `klickDanebenSchliesst={false}`, kein eigenes Overlay); Elemente,
-  die nur auf Klicks hören (Ablageflächen `.drop-zone`), mit `alsKnopf` tastaturbedienbar machen.
+  die nur auf Klicks hören (Ablageflächen `.drop-zone`), mit `alsKnopf` tastaturbedienbar machen;
+  anklickbare Tabellen- und Listenzeilen (`tr.clickable`, `.list-row.clickable`) mit
+  `alsKlickZeile` (Tab-Halt, Enter und Leertaste wie der Klick, ohne Rolle „button“ – die Zeile
+  bleibt Tabellenzeile, ihre Knöpfe lösen sie nicht aus). Schließt die Eingabetaste in einem Feld
+  den Dialog ab, `onKeyDown={beiEnter(…)}` (unterdrückt die Standardaktion – sonst löst dieselbe
+  Taste den Öffner, an den der Fokus zurückgeht, noch einmal aus). Alle drei in `ui.tsx`.
   `speicher.ts` verwaltet Rohkopien im `localStorage` (`rohkopieVorEinspielen`,
   `nachRaeumenSpeichern`). `main.tsx` importiert `global.css` vor der Shell, damit
   Bereichsregeln gleicher Spezifität gewinnen – Reihenfolge nicht umdrehen. Der Ampelpunkt `.dot`

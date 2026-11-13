@@ -319,7 +319,23 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   `RollenImport.tsx` (`src/bereiche/planlauf/pages/projekt/`) und
   `src/bereiche/projektsteuerung/components/BeteiligteImport.tsx` ist über `alsKnopf`
   (`src/shared/ui.tsx`) per Tastatur bedienbar: `role="button"`, Tab-Halt, Enter und Leertaste
-  öffnen die Dateiauswahl.
+  öffnen die Dateiauswahl. Anklickbare Zeilen (`tr.clickable`, `.list-row.clickable`) sind über
+  `alsKlickZeile` (`src/shared/ui.tsx`; `alsKnopf` baut darauf auf) Tab-Halte ohne Rolle
+  „button“: Enter und Leertaste öffnen wie der Klick, Tasten auf Knöpfen und Kästchen in der
+  Zeile lösen sie nicht aus, den Fokus zeigt `src/shared/global.css` an der ganzen Zeile. Im
+  Planlaufmanagement gilt das für die Liste der Planläufe
+  (`src/bereiche/planlauf/components/PlanlaufListe.tsx`), „Meine To-Dos“ und Projekte der
+  Übersicht (`Dashboard.tsx`), Einträge und Planpakete der Planliste (`Plaene.tsx`), die
+  Funktionen (`Funktionen.tsx`) sowie Funktionen und Personen im Projekt
+  (`RollenFunktionen.tsx`); in der Baubetriebsplanung für die Anmeldungstabellen des Projekts
+  (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`), die Zeilen der Übersicht
+  (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) und den Anmeldebedarf unter „Termine &
+  Nachhaken“ (`src/bereiche/baubetrieb/pages/Termine.tsx`). Felder, in denen die Eingabetaste
+  den Dialog abschließt, nutzen `beiEnter` (`src/shared/ui.tsx`): Die Aktion läuft, die
+  Standardaktion der Taste entfällt – sonst gäbe `Modal` den Fokus an den Öffner zurück und
+  dieselbe Taste löste ihn noch einmal aus („Neues Gewerk“ in Planlaufmanagement und
+  Projektsteuerung, „Angemeldet als“, Freigabe- bzw. Prüfbericht-Nr. in `SchrittStatus.tsx`,
+  „Neues Planverzeichnis“ und „Neues Planpaket“ aus der Auswahl im Eintragsdialog).
 * **Tabellen** (alle Bereiche): `.table-scroll` schneidet ab 861 px quer ab, damit die
   Kopfzeile stehen bleibt; passt eine Tabelle nicht in ihre Karte, setzt
   `tabellenBreiteBeobachten` (`src/shared/tabellen.ts`, aufgerufen in `src/main.tsx`) die
@@ -1497,7 +1513,13 @@ Bausteine in `src/gemeinsam/ProjektBereiche.tsx` (Gestaltung in
   `src/bereiche/projektsteuerung/pages/Projekte.tsx`) ohne Suchbegriff statt
   „Kein Projekt gefunden“ den Leerzustand „Kein aktives Projekt“ mit „Alle
   Projekte dieses Bereichs sind archiviert – sie stehen unten unter „Archiv“.“
-  (`nurArchivierte`). Archivierte Projekte fehlen in Übersicht und Seitenleiste
+  (`nurArchivierte`). Eine Suche ohne Treffer ist kein leerer Bestand: Sie
+  zeigt in allen drei Listen „Kein Projekt gefunden“ mit „Für diese Suche gibt
+  es keinen Treffer.“ ohne den Knopf „Neues Projekt“; trifft sie nur
+  archivierte Projekte, „Kein aktives Projekt gefunden“ mit „Für diese Suche
+  gibt es nur Treffer im Archiv – sie stehen unten unter „Archiv“.“ Den
+  Leerzustand mit „Neues Projekt“ gibt es nur ohne Suchbegriff. Archivierte
+  Projekte fehlen in Übersicht und Seitenleiste
   (`useArchivierte`, `sichtbareProjekte`). Nach derselben Regel erscheint in
   den Übersichten aller drei Bereiche der Hinweis „Kein Projekt markiert – es
   werden alle angezeigt.“ (im Planlaufmanagement „Kein Projekt markiert – es

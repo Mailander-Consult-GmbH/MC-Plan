@@ -276,6 +276,15 @@ Bauüberwachung → Auftraggeber), bis sie von Hand gewählt wird. Die Listen ze
 Abzeichen; fehlt sie, steht dort gelb *Seite offen*. Dasselbe Feld gibt es im Projekt unter
 **Funktion**.
 
+Je Gewerk gibt es eine Bezeichnung nur einmal – hier wie im Projekt: Eine Funktion, die das Gewerk
+schon führt, weist der Dialog ab („Die Funktion „…“ gibt es bereits.“, ohne Rücksicht auf Groß- und
+Kleinschreibung); dieselbe Bezeichnung in einem anderen Gewerk bleibt möglich. Gespeichert wird die
+Bezeichnung ohne Leerzeichen am Rand. Wird eine projektübergreifende Funktion **umbenannt**, nennen
+auch die projektübergreifenden Workflows – Schritte und E-Mail-Regeln „an Funktion“ – die neue
+Bezeichnung, sobald keine übergreifende Funktion mehr die alte trägt; die Kurzmeldung nennt die
+Zahl der Workflows. Bereits angelegte Projekte führen ihre Funktionen als eigene Kopien und behalten
+die bisherige Bezeichnung.
+
 ### Funktion (im Projekt)
 Im Vordergrund steht die **Funktion, nicht die Person**: Die Seite ist – wie der projektübergreifende
 Reiter *Funktionen* – nach **Gewerken** gegliedert (je Gewerk eine Seite, dazu „Übergreifend“). Je
@@ -299,9 +308,21 @@ aus einem Import, nach einem Wechsel oder bewusst ohne Zuordnung – stehen in e
 darunter; ein Klick weist ihnen eine Funktion zu, das Papierkorb-Symbol rechts löscht sie aus dem
 Projekt. Das Planlaufmanagement erscheint auf dieser Seite nicht – es ist immer die angemeldete Person.
 
+Wird eine Funktion des Projekts **umbenannt**, nehmen die Planläufe des Projekts die neue
+Bezeichnung mit: die Schritte, für die genau diese Funktion gilt (die des Gewerks ihres Eintrags,
+ersatzweise die übergreifende), samt ihren E-Mail-Regeln „an Funktion“ – sie blieben sonst ohne
+zuständige Person. Die Workflows des Projekts ziehen mit, wenn im Projekt keine Funktion mehr die
+alte Bezeichnung trägt. Wechselt die Funktion zugleich das Gewerk, behalten die Läufe, für die sie
+nicht mehr gilt, die alte Bezeichnung. Das Änderungsprotokoll fasst das je Lauf zusammen
+(„Funktion von 6 Schritten geändert: …“).
+
 **Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · Telefon ·
-Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*; leere
-SharePoint-Zellen lassen vorhandene Links stehen; eine Postleitzahl im Excel-Format „Postleitzahl“
+Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*. Personen, die
+es im Projekt schon gibt, werden aktualisiert; eine leere Zelle oder fehlende Spalte heißt „keine
+Angabe“ und lässt stehen, was bei der Person schon eingetragen ist (Telefon, Firma, Anschrift,
+SharePoint-Links …), mehrere Zeilen derselben Person ergänzen einander. Eine Funktion, die die
+Datei vergibt, verliert ihre bisherige Besetzung – auch wenn die bisherige Person selbst in der
+Datei steht. Eine Postleitzahl im Excel-Format „Postleitzahl“
 (Zahlenformat aus Nullen) behält ihre führende Null. Gewerke und Funktionen, die es noch nicht gibt, werden
 beim Import angelegt; „Übergreifend“ steht für Funktionen ohne Gewerkbezug. Eine optionale Spalte
 *Seite* setzt die Seite für den Verzug – bei neuen Funktionen (sonst gilt die Vorbelegung) und bei
@@ -457,7 +478,9 @@ die übergreifenden an, jede einmal. Die
 Zuordnung wird laufend nachgezogen: Wird eine Person erst nach dem Start eines Planlaufs eingetragen
 oder wechselt sie während des Projekts, gilt die neue Besetzung sofort auch in laufenden Planläufen.
 Bereits erledigte Schritte behalten ihre Person, ebenso Schritte, in denen im Planlauf eine Person
-von Hand gewählt wurde.
+von Hand gewählt wurde. Wird die von Hand gewählte Person aus dem Projekt gelöscht, folgt der
+offene Schritt wieder der Besetzung seiner Funktion – die Rückfrage *Person löschen?* sagt das
+vorher.
 
 ### Prozessketten
 Ein Schritt ist eine **Aufgabe** oder eine **Entscheidung**, hat eine Frist in Tagen und
@@ -1372,7 +1395,9 @@ Angelegt, bearbeitet und gelöscht wird in den Bereichen.
   Seitenleiste.“ mit **Aus dem Archiv holen** – der Knopf *Archivieren* fehlt dann; der
   Tastaturfokus geht dabei vom einen Knopf an den anderen, statt verloren zu gehen. Sind alle
   Projekte eines Bereichs archiviert, sagt die Projektliste „Kein aktives Projekt“ und verweist
-  auf das Archiv darunter. Auch die
+  auf das Archiv darunter. Findet die Suche der Projektliste nichts, heißt es „Kein Projekt
+  gefunden“ – ohne den Knopf *Neues Projekt*, den nur der leere Bestand zeigt –, und bei Treffern
+  allein im Archiv „Kein aktives Projekt gefunden“. Auch die
   bereichsweiten Fristenlisten lassen archivierte Projekte weg – *Fristen & Erinnerungen* im
   Planlaufmanagement, *Termine & Nachhaken* samt Zähler in der Baubetriebsplanung –; im Projekt
   selbst bleiben die Fristen sichtbar. Archiviert wird
@@ -1466,7 +1491,8 @@ src/
     BereichWechsel.tsx  Rückweg aus einem Bereich zur Bereichsauswahl
   shared/        Bausteine ohne fachlichen Bezug – von keinem Bereich abhängig
     ui.tsx       Karten, Felder, Dialoge (Modal: Fokus, Tab, Escape, Fokus zurück), Segmented
-                 Controls (die gewählte Option mit aria-pressed), alsKnopf …
+                 Controls (die gewählte Option mit aria-pressed), alsKnopf, alsKlickZeile
+                 (anklickbare Zeilen als Tab-Halt), beiEnter (Eingabetaste im Dialogfeld) …
     icons.tsx    Strichsymbole
     logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
