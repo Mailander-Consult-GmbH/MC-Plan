@@ -96,8 +96,15 @@ export function TerminDialog({ anmeldung, onClose }: { anmeldung: Anmeldung; onC
             type="button"
             className="btn btn-primary"
             onClick={() => {
+              // Ein geleertes Feld hebt den von Hand gesetzten Termin auf – dann sagt die
+              // Meldung das auch. Ohne solchen Termin gibt es nichts aufzuheben und nichts
+              // festzulegen; „Termin festgelegt.“ wäre in beiden Fällen falsch.
+              if (!termin && !anmeldung.terminManuell) {
+                toast('Bitte einen Termin angeben.');
+                return;
+              }
               terminSetzen(anmeldung.id, termin || null);
-              toast('Termin festgelegt.');
+              toast(termin ? 'Termin festgelegt.' : 'Terminfrist wird wieder berechnet.');
               onClose();
             }}
           >
