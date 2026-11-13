@@ -367,12 +367,14 @@ export function workflowsMitAlterBezeichnung(nachher: AppData, alt: Role): Proce
  * Bezeichnung weiter, bleibt sie in den Workflows stehen – und dann auch in den
  * Projekten.
  *
- * Mit den Workflows ziehen die Kopien der Funktion in den Projekten mit (gleiche
- * Bezeichnung, gleiches Gewerk; über `funktionAendern`, also samt den Schritten
- * ihrer Planläufe und Projekt-Workflows): Projekte starten Planläufe auch aus
- * den übergreifenden Workflows – hieße die Funktion dort anders als im Projekt,
- * fänden die Schritte neuer Planläufe keine zuständige Person. Führt ein Projekt
- * die neue Bezeichnung im selben Gewerk schon, bleibt seine Kopie, wie sie ist.
+ * Mit den Workflows ziehen die Funktionen dieser Bezeichnung in den Projekten
+ * mit – in jedem Gewerk (über `funktionAendern`, also samt den Schritten ihrer
+ * Planläufe und Projekt-Workflows): Projekte starten Planläufe auch aus den
+ * übergreifenden Workflows, und Workflows unterscheiden keine Gewerke – hieße
+ * die Funktion dort anders als im Projekt, fänden die Schritte neuer Planläufe
+ * keine zuständige Person, oder (bliebe nur die Fassung eines Gewerks beim
+ * alten Namen) eine andere als die laufenden. Führt ein Projekt die neue
+ * Bezeichnung im selben Gewerk schon, bleibt seine Funktion, wie sie ist.
  */
 export function standardFunktionAendern(daten: AppData, id: ID, patch: Partial<StandardRolle>): AppData {
   const alt = daten.standardRollen.find((r) => r.id === id);
@@ -393,7 +395,7 @@ export function standardFunktionAendern(daten: AppData, id: ID, patch: Partial<S
   const gleichesGewerk = (a: { gewerk?: string | null }, b: { gewerk?: string | null }) =>
     (a.gewerk ?? null) === (b.gewerk ?? null);
   for (const r of daten.roles) {
-    if (!gleicherName(r.name, alt.name) || !gleichesGewerk(r, alt)) continue;
+    if (!gleicherName(r.name, alt.name)) continue;
     const belegt = daten.roles.some(
       (x) => x.projectId === r.projectId && gleicherName(x.name, neu.name) && gleichesGewerk(x, r),
     );

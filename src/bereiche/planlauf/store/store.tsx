@@ -467,7 +467,8 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
           daten,
           ergebnis: {
             workflows: daten.templates.filter((t, i) => t.projectId === null && t !== d.templates[i]).length,
-            projekte: daten.roles.filter((r, i) => r !== d.roles[i]).length,
+            // Projekte, nicht Funktionen: Je Projekt können mehrere mitziehen (eine je Gewerk)
+            projekte: new Set(daten.roles.filter((r, i) => r !== d.roles[i]).map((r) => r.projectId)).size,
           },
         };
       }),
