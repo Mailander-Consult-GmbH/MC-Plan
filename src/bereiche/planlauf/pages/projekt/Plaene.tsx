@@ -999,6 +999,15 @@ function PlanDialog({
               <Select
                 value={form.kind}
                 onChange={(v) => {
+                  // Ein Planverzeichnis, das Pläne führt, bleibt eines: Als „Plan“ zeigte es
+                  // seine Pläne nicht mehr – sie verschwänden aus der Planliste und liefen,
+                  // weil sie weiter an ihm hängen, in keinem Planlauf mit.
+                  if (v === 'plan' && doc?.kind === 'verzeichnis' && planIds.length > 0) {
+                    toast(
+                      `Das Planverzeichnis führt ${planIds.length === 1 ? 'einen Plan' : `${planIds.length} Pläne`} – zum Plan lässt es sich erst machen, wenn sie einem anderen Planverzeichnis zugeordnet oder Einzelpläne sind.`,
+                    );
+                    return;
+                  }
                   set('kind', v as DocumentKind);
                   if (v !== 'plan') set('parentId', null);
                 }}
