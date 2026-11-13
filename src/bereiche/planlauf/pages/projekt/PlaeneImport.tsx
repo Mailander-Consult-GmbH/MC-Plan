@@ -408,7 +408,8 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
                 {mitHinweis} Zeile(n) mit Hinweisen – bitte vor dem Übernehmen prüfen.
               </Callout>
             ) : null}
-            <div className="card" style={{ maxHeight: 320, overflowY: 'auto' }}>
+            {/* overflow in beide Richtungen – nur „overflowY“ schnitte die Spalte „Hinweis“ bei 400 px ab */}
+            <div className="card" style={{ maxHeight: 320, overflow: 'auto' }}>
               <table className="table">
                 <thead>
                   <tr>
