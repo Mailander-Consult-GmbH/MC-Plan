@@ -75,7 +75,7 @@ const nameVon = (p: Pick<Person, 'vorname' | 'nachname'>) => `${p.vorname} ${p.n
 
 /**
  * Ordnet die Zeilen einer Datei Personen zu – vorhandenen des Projekts und
- * früheren Zeilen. Wer eine E-Mail nennt, ist die Person mit dieser E-Mail.
+ * anderen Zeilen der Datei. Wer eine E-Mail nennt, ist die Person mit dieser E-Mail.
  * Fehlt die E-Mail auf einer Seite – in der Zeile (Datei ohne Spalte „Email“,
  * leere Zelle) oder bei der bekannten Person –, entscheidet der Name, wenn er
  * genau eine Person trifft: Eine leere E-Mail-Zelle heißt „keine Angabe“,
@@ -83,10 +83,16 @@ const nameVon = (p: Pick<Person, 'vorname' | 'nachname'>) => `${p.vorname} ${p.n
  * Funktion und die offenen Schritte der vorhandenen Person. Trifft der Name
  * mehrere Personen, ist die Zeile nicht zuzuordnen (`mehrdeutig`) und ergibt
  * eine neue Person.
+ *
+ * Der Aufrufer macht zuerst alle Zeilen mit E-Mail bekannt und ordnet dann
+ * Zeile für Zeile zu: Eine Zeile ohne E-Mail muss auch die Personen gleichen
+ * Namens kennen, die weiter unten in der Datei stehen. Sonst hinge das Ergebnis
+ * von der Reihenfolge der Zeilen ab, und ein zweiter Import derselben Datei –
+ * die Personen stehen dann alle im Projekt – legte eine weitere Person an.
  */
 function personenZuordnen(kontakte: readonly Contact[]) {
   const bekannte = kontakte.map((c) => ({ kennung: personSchluessel(c), email: c.email.trim().toLowerCase(), name: nameVon(c) }));
-  return (p: Person): { kennung: string; mehrdeutig: boolean } => {
+  return (p: Pick<Person, 'email' | 'vorname' | 'nachname'>): { kennung: string; mehrdeutig: boolean } => {
     const email = p.email.trim().toLowerCase();
     const mitName = bekannte.filter((b) => b.name === nameVon(p));
     let treffer = email ? bekannte.find((b) => b.email === email) : mitName.find((b) => !b.email);
@@ -182,6 +188,11 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       // Funktionen, deren Seite die Datei schon nennt – maßgeblich ist die erste Angabe
       const seiteGenannt = new Set<string>();
       const zuordnen = personenZuordnen(kontakte);
+      // Erst alle Zeilen mit E-Mail bekannt machen (siehe personenZuordnen)
+      for (const zeile of zeilen) {
+        const p = { email: wert(zeile, 'email'), vorname: wert(zeile, 'vorname'), nachname: wert(zeile, 'nachname') };
+        if (p.nachname && p.email) zuordnen(p);
+      }
       // Personen, für die eine frühere Zeile der Datei schon eine vollständige Anschrift nennt
       const anschriftGenannt = new Set<string>();
 
@@ -267,7 +278,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         // Zeilen ohne Namen entfallen (siehe unten) und ordnen sich keiner Person zu
         const zuordnung = person.nachname ? zuordnen(person) : { kennung: '', mehrdeutig: false };
         if (zuordnung.mehrdeutig) {
-          hinweise.push('Name mehrfach im Projekt – ohne E-Mail nicht zuzuordnen, die Person wird neu angelegt');
+          hinweise.push('Name mehrfach im Projekt oder in der Datei – ohne E-Mail nicht zuzuordnen, die Person wird neu angelegt');
         }
 
         // Teilangabe zur Anschrift: Sie füllt nur eine leere Anschrift (siehe Zeile.anschriftVoll)
