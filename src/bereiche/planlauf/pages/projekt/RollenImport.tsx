@@ -128,6 +128,12 @@ interface Zeile {
   personKennung: string;
   neuesGewerk: boolean;
   neueFunktion: boolean;
+  /**
+   * Die Funktion steht weiter unten in der Datei noch einmal mit einer anderen
+   * Person. Eine Funktion hat genau eine Person – es gilt die letzte Zeile;
+   * diese hier hinterlegt ihre Person ohne die Funktion.
+   */
+  ueberholt: boolean;
   hinweis: string;
 }
 
@@ -274,14 +280,6 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         }
         if (person.nachname && anschriftVoll) anschriftGenannt.add(zuordnung.kennung);
 
-        const vorhandeneRolle = funktion ? findeRolle(funktion, gewerk) : undefined;
-        const bisher = vorhandeneRolle
-          ? kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === vorhandeneRolle.id))
-          : undefined;
-        if (bisher && personSchluessel(bisher) !== zuordnung.kennung) {
-          hinweise.push(`ersetzt ${bisher.vorname} ${bisher.nachname} in dieser Funktion`);
-        }
-
         return {
           gewerk,
           funktion,
@@ -292,11 +290,37 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           personKennung: zuordnung.kennung,
           neuesGewerk,
           neueFunktion,
+          ueberholt: false,
           hinweis: hinweise.join('; '),
         };
       });
 
-      setVorschau(ergebnis.filter((z) => z.person.nachname));
+      // Wer die Funktion bekommt: Nennt die Datei dieselbe Funktion in mehreren Zeilen mit verschiedenen
+      // Personen, gilt die letzte Zeile (wie bei den Kontaktdaten – spätere Angaben gelten). Sonst hielten
+      // nach dem Import zwei Personen die Funktion, und Liste wie offene Schritte zeigten nur die erste.
+      const mitNamen = ergebnis.filter((z) => z.person.nachname);
+      const letztePerson = new Map<string, string>();
+      for (const z of mitNamen) {
+        if (z.funktion) letztePerson.set(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`, z.personKennung);
+      }
+      setVorschau(
+        mitNamen.map((z) => {
+          if (!z.funktion) return z;
+          const hinweise = z.hinweis ? [z.hinweis] : [];
+          if (letztePerson.get(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`) !== z.personKennung) {
+            hinweise.push('Funktion steht weiter unten mit einer anderen Person – es gilt die letzte Zeile');
+            return { ...z, ueberholt: true, hinweis: hinweise.join('; ') };
+          }
+          const vorhandeneRolle = findeRolle(z.funktion, z.gewerk);
+          const bisher = vorhandeneRolle
+            ? kontakte.find((c) => c.zuordnungen.some((x) => x.roleId === vorhandeneRolle.id))
+            : undefined;
+          if (bisher && personSchluessel(bisher) !== z.personKennung) {
+            hinweise.push(`ersetzt ${bisher.vorname} ${bisher.nachname} in dieser Funktion`);
+          }
+          return { ...z, hinweis: hinweise.join('; ') };
+        }),
+      );
     } catch (e) {
       setFehler(e instanceof Error ? e.message : 'Die Datei konnte nicht gelesen werden.');
     }
@@ -358,7 +382,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         eintrag.person.anschrift = anschrift;
         eintrag.anschriftVoll = z.anschriftVoll;
       }
-      if (z.funktion) {
+      // Eine Funktion, die weiter unten an eine andere Person geht, vergibt diese Zeile nicht (siehe Zeile.ueberholt)
+      if (z.funktion && !z.ueberholt) {
         const roleId = rolleIds.get(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`);
         if (roleId && !eintrag.zuordnungen.some((x) => x.roleId === roleId)) {
           eintrag.zuordnungen.push({ roleId, gewerk: z.gewerk });
