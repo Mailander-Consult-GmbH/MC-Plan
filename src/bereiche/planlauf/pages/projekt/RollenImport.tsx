@@ -163,16 +163,22 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       const wert = (zeile: string[], feld: string) =>
         spalten[feld] !== undefined ? (zeile[spalten[feld]] ?? '').trim() : '';
 
-      // Gewerke und Funktionen, die im Laufe der Datei neu hinzukommen
-      const neueGewerke = new Set<string>();
+      // Gewerke und Funktionen, die im Laufe der Datei neu hinzukommen (Gewerke: klein geschrieben → erste Schreibweise)
+      const neueGewerke = new Map<string, string>();
       const neueFunktionen = new Set<string>();
       // Funktionen, deren Seite die Datei schon nennt – maßgeblich ist die erste Angabe
       const seiteGenannt = new Set<string>();
       const zuordnen = personenZuordnen(kontakte);
 
       const ergebnis: Zeile[] = zeilen.map((zeile) => {
+        // Das Gewerk in der Schreibweise der Gewerkeliste bzw. seiner ersten Nennung in der Datei: Gewerke
+        // gelten ohne Groß-/Kleinschreibung als dieselben, Funktionen werden aber über das genaue Gewerk
+        // gefunden – „kib“ legte sonst neben „Fachplaner KIB“ eine zweite Funktion „Fachplaner kib“ an.
         const gewerkRoh = wert(zeile, 'gewerk');
-        const gewerk = !gewerkRoh || gleich(gewerkRoh, UEBERGREIFEND) ? null : gewerkRoh;
+        const gewerk =
+          !gewerkRoh || gleich(gewerkRoh, UEBERGREIFEND)
+            ? null
+            : (data.gewerke.find((g) => gleich(g, gewerkRoh)) ?? neueGewerke.get(gewerkRoh.toLowerCase()) ?? gewerkRoh);
         const hinweise: string[] = [];
         // Das Planlaufmanagement füllt stets die angemeldete Person aus; die
         // Person der Zeile wird deshalb ohne diese Funktion übernommen.
@@ -186,8 +192,10 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         let neuesGewerk = false;
         if (gewerk && !data.gewerke.some((g) => gleich(g, gewerk))) {
           neuesGewerk = !neueGewerke.has(gewerk.toLowerCase());
-          neueGewerke.add(gewerk.toLowerCase());
-          if (neuesGewerk) hinweise.push(`Gewerk „${gewerk}“ wird angelegt`);
+          if (neuesGewerk) {
+            neueGewerke.set(gewerk.toLowerCase(), gewerk);
+            hinweise.push(`Gewerk „${gewerk}“ wird angelegt`);
+          }
         }
 
         let neueFunktion = false;
