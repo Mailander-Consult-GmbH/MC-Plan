@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { useToast } from '../../../shared/toast';
-import { Field, Modal, TextInput } from '../../../shared/ui';
+import { Field, Modal, TextInput, beiEnter } from '../../../shared/ui';
 import { UEBERGREIFEND, funktionsName } from '../domain/types';
 import { useStore } from '../store/store';
 
@@ -53,7 +53,7 @@ export function GewerkDialog({ onClose, onAngelegt }: { onClose: () => void; onA
             onChange={setName}
             placeholder="z. B. Oberbau"
             autoFocus
-            onKeyDown={(e) => e.key === 'Enter' && speichern()}
+            onKeyDown={beiEnter(speichern)}
           />
         </Field>
       </div>

@@ -65,6 +65,7 @@ import {
   Select,
   TextArea,
   TextInput,
+  beiEnter,
 } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 
@@ -1367,7 +1368,7 @@ function SchnellDialog({
                 onChange={setNummer}
                 autoFocus
                 placeholder="NK-KIB-PV-001"
-                onKeyDown={(e) => e.key === 'Enter' && speichern()}
+                onKeyDown={beiEnter(speichern)}
               />
             </Field>
             <Field label="Titel" full>
@@ -1375,7 +1376,7 @@ function SchnellDialog({
                 value={titel}
                 onChange={setTitel}
                 placeholder="Planverzeichnis Überbau"
-                onKeyDown={(e) => e.key === 'Enter' && speichern()}
+                onKeyDown={beiEnter(speichern)}
               />
             </Field>
           </>
@@ -1387,7 +1388,7 @@ function SchnellDialog({
                 onChange={setTitel}
                 autoFocus
                 placeholder="Eisenbahnüberführung Nordkanal"
-                onKeyDown={(e) => e.key === 'Enter' && speichern()}
+                onKeyDown={beiEnter(speichern)}
               />
             </Field>
             <Field label="Kurzzeichen" full hint="optional">

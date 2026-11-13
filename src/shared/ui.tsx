@@ -209,6 +209,22 @@ export function alsKlickZeile(aktion: () => void) {
   };
 }
 
+/**
+ * Tastenbehandlung für ein Eingabefeld, in dem die Eingabetaste den Dialog
+ * abschließt: `onKeyDown={beiEnter(speichern)}`. Unterdrückt dabei die
+ * Standardaktion der Taste – schließt `aktion` den Dialog, gibt `Modal` den
+ * Fokus noch im selben Tastendruck an den Öffner zurück, und das folgende
+ * keypress löste sonst dessen Klick aus: Der Dialog stünde sofort wieder
+ * offen, ein „Erledigt“-Knopf träfe gleich den nächsten Schritt.
+ */
+export function beiEnter(aktion: () => void) {
+  return (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    aktion();
+  };
+}
+
 export function Search({
   value,
   onChange,

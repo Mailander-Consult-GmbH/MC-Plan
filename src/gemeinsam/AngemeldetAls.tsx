@@ -9,7 +9,7 @@
  */
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Field, Modal, TextInput } from '../shared/ui';
+import { Field, Modal, TextInput, beiEnter } from '../shared/ui';
 import { benutzerAendern, initialen, useBenutzer } from './benutzer';
 import './gemeinsam.css';
 
@@ -96,9 +96,8 @@ export function BenutzerDialog({
             onChange={setName}
             placeholder="Vor- und Nachname"
             autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') uebernehmen();
-            }}
+            // beiEnter: sonst löste dieselbe Taste den Knopf „Angemeldet als“ gleich wieder aus
+            onKeyDown={beiEnter(uebernehmen)}
           />
         </Field>
         {zusatz ? (
