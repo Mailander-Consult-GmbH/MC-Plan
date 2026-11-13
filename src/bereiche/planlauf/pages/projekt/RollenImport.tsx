@@ -117,6 +117,13 @@ interface Zeile {
   /** Seite aus der Spalte „Seite“; undefined = leer bzw. unbekannt (neue Funktionen: aus der Bezeichnung). */
   seite: Seite | null | undefined;
   person: Person;
+  /**
+   * Die Zeile nennt Straße und Ort. Die vier Spalten zur Anschrift ergeben ein
+   * einziges Feld; nur eine solche vollständige Angabe ersetzt eine Anschrift,
+   * die schon da ist. Eine Teilangabe (etwa nur der Ort) heißt für die übrigen
+   * Zellen „keine Angabe“ – sie ersetzte sonst Straße, Hausnummer und PLZ mit.
+   */
+  anschriftVoll: boolean;
   /** Kennung der Person, zu der die Zeile gehört – die einer vorhandenen Person oder einer früheren Zeile (personenZuordnen). */
   personKennung: string;
   neuesGewerk: boolean;
@@ -169,6 +176,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       // Funktionen, deren Seite die Datei schon nennt – maßgeblich ist die erste Angabe
       const seiteGenannt = new Set<string>();
       const zuordnen = personenZuordnen(kontakte);
+      // Personen, für die eine frühere Zeile der Datei schon eine vollständige Anschrift nennt
+      const anschriftGenannt = new Set<string>();
 
       const ergebnis: Zeile[] = zeilen.map((zeile) => {
         // Das Gewerk in der Schreibweise der Gewerkeliste bzw. seiner ersten Nennung in der Datei: Gewerke
@@ -255,6 +264,16 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           hinweise.push('Name mehrfach im Projekt – ohne E-Mail nicht zuzuordnen, die Person wird neu angelegt');
         }
 
+        // Teilangabe zur Anschrift: Sie füllt nur eine leere Anschrift (siehe Zeile.anschriftVoll)
+        const anschriftVoll = Boolean(wert(zeile, 'strasse') && wert(zeile, 'ort'));
+        if (person.nachname && person.anschrift && !anschriftVoll) {
+          const bekannt = kontakte.find((c) => personSchluessel(c) === zuordnung.kennung);
+          if (bekannt?.anschrift.trim() || anschriftGenannt.has(zuordnung.kennung)) {
+            hinweise.push('Anschrift unvollständig (ohne Straße oder Ort) – die bisherige bleibt');
+          }
+        }
+        if (person.nachname && anschriftVoll) anschriftGenannt.add(zuordnung.kennung);
+
         const vorhandeneRolle = funktion ? findeRolle(funktion, gewerk) : undefined;
         const bisher = vorhandeneRolle
           ? kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === vorhandeneRolle.id))
@@ -269,6 +288,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           kuerzel: wert(zeile, 'kuerzel'),
           seite,
           person,
+          anschriftVoll,
           personKennung: zuordnung.kennung,
           neuesGewerk,
           neueFunktion,
@@ -325,13 +345,19 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
     }
 
     // 3. Zeilen je Person bündeln – eine Person kann mehrere Funktionen ausfüllen
-    const gruppen = new Map<string, { person: Person; zuordnungen: Zuordnung[] }>();
+    const gruppen = new Map<string, { person: Person; anschriftVoll: boolean; zuordnungen: Zuordnung[] }>();
     for (const z of vorschau) {
       // Die Kennung stammt aus der Vorschau: die der vorhandenen Person bzw. der ersten Zeile dieser Person
       const schluessel = z.personKennung;
-      const eintrag = gruppen.get(schluessel) ?? { person: z.person, zuordnungen: [] };
-      // Mehrere Zeilen einer Person: Jede ergänzt, was sie ausfüllt – spätere Angaben gelten
-      eintrag.person = { ...eintrag.person, ...ausgefuellt(z.person) };
+      const eintrag = gruppen.get(schluessel) ?? { person: z.person, anschriftVoll: z.anschriftVoll, zuordnungen: [] };
+      // Mehrere Zeilen einer Person: Jede ergänzt, was sie ausfüllt – spätere Angaben gelten.
+      // Nur die Anschrift nicht Zelle für Zelle: Eine Teilangabe ersetzt keine vollständige.
+      const { anschrift, ...angaben } = ausgefuellt(z.person);
+      eintrag.person = { ...eintrag.person, ...angaben };
+      if (anschrift !== undefined && (z.anschriftVoll || !eintrag.anschriftVoll)) {
+        eintrag.person.anschrift = anschrift;
+        eintrag.anschriftVoll = z.anschriftVoll;
+      }
       if (z.funktion) {
         const roleId = rolleIds.get(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`);
         if (roleId && !eintrag.zuordnungen.some((x) => x.roleId === roleId)) {
@@ -353,9 +379,13 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       const vorhanden = kontakte.find((c) => personSchluessel(c) === schluessel);
       if (vorhanden) {
         const behalten = vorhanden.zuordnungen.filter((z) => !vergeben.has(z.roleId));
-        // Nur ausgefüllte Angaben überschreiben die vorhandenen (siehe ausgefuellt)
+        // Nur ausgefüllte Angaben überschreiben die vorhandenen (siehe ausgefuellt) – die Anschrift
+        // nur, wenn die Datei sie vollständig nennt oder die Person noch keine hat
+        const { anschrift, ...angaben } = ausgefuellt(eintrag.person);
+        const anschriftUebernehmen = anschrift !== undefined && (eintrag.anschriftVoll || !vorhanden.anschrift.trim());
         updateContact(vorhanden.id, {
-          ...ausgefuellt(eintrag.person),
+          ...angaben,
+          ...(anschriftUebernehmen ? { anschrift } : {}),
           zuordnungen: [...behalten, ...eintrag.zuordnungen],
         });
         ergaenzt += 1;
@@ -470,7 +500,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
             PLM oder „nicht festgelegt“); ohne Angabe wird sie bei neuen Funktionen aus der Bezeichnung vorbelegt.
             Gewerke und Funktionen, die es noch nicht gibt, werden beim Import angelegt; „Übergreifend“ steht für
             Funktionen ohne Gewerkbezug. Personen, die es im Projekt schon gibt, werden aktualisiert; leere Zellen
-            lassen ihre vorhandenen Angaben stehen. Über <em>Vorlage</em> erhalten Sie eine Datei mit genau diesen
+            lassen ihre vorhandenen Angaben stehen, und eine vorhandene Anschrift wird nur ersetzt, wenn die Zeile
+            Straße und Ort nennt. Über <em>Vorlage</em> erhalten Sie eine Datei mit genau diesen
             Spalten.
           </Callout>
         ) : null}
