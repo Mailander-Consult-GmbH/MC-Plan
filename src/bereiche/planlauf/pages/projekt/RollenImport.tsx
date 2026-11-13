@@ -67,6 +67,48 @@ type Person = Omit<Contact, 'id' | 'projectId' | 'zuordnungen' | 'eigen' | 'shar
 const ausgefuellt = (person: Person): Partial<Person> =>
   Object.fromEntries(Object.entries(person).filter(([, wert]) => wert !== '')) as Partial<Person>;
 
+/** Kennung einer Person: E-Mail, sonst der Name. */
+const personSchluessel = (p: Pick<Person, 'email' | 'vorname' | 'nachname'>) =>
+  (p.email || `${p.vorname} ${p.nachname}`).trim().toLowerCase();
+
+const nameVon = (p: Pick<Person, 'vorname' | 'nachname'>) => `${p.vorname} ${p.nachname}`.trim().toLowerCase();
+
+/**
+ * Ordnet die Zeilen einer Datei Personen zu – vorhandenen des Projekts und
+ * früheren Zeilen. Wer eine E-Mail nennt, ist die Person mit dieser E-Mail.
+ * Fehlt die E-Mail auf einer Seite – in der Zeile (Datei ohne Spalte „Email“,
+ * leere Zelle) oder bei der bekannten Person –, entscheidet der Name, wenn er
+ * genau eine Person trifft: Eine leere E-Mail-Zelle heißt „keine Angabe“,
+ * nicht „eine andere Person“. Sonst hielte eine Dublette ohne E-Mail die
+ * Funktion und die offenen Schritte der vorhandenen Person. Trifft der Name
+ * mehrere Personen, ist die Zeile nicht zuzuordnen (`mehrdeutig`) und ergibt
+ * eine neue Person.
+ */
+function personenZuordnen(kontakte: readonly Contact[]) {
+  const bekannte = kontakte.map((c) => ({ kennung: personSchluessel(c), email: c.email.trim().toLowerCase(), name: nameVon(c) }));
+  return (p: Person): { kennung: string; mehrdeutig: boolean } => {
+    const email = p.email.trim().toLowerCase();
+    const mitName = bekannte.filter((b) => b.name === nameVon(p));
+    let treffer = email ? bekannte.find((b) => b.email === email) : mitName.find((b) => !b.email);
+    let mehrdeutig = false;
+    if (!treffer) {
+      // Zeile mit E-Mail: nur Personen ohne E-Mail kommen in Frage – eine andere E-Mail ist eine andere Person
+      const moegliche = email ? mitName.filter((b) => !b.email) : mitName;
+      const kennungen = new Set(moegliche.map((b) => b.kennung));
+      if (kennungen.size === 1) treffer = moegliche[0];
+      else mehrdeutig = kennungen.size > 1;
+    }
+    if (!treffer) {
+      treffer = { kennung: personSchluessel(p), email, name: nameVon(p) };
+      bekannte.push(treffer);
+    } else if (email && !treffer.email) {
+      // Die Zeile liefert die fehlende E-Mail nach – spätere Zeilen finden die Person auch darüber
+      treffer.email = email;
+    }
+    return { kennung: treffer.kennung, mehrdeutig };
+  };
+}
+
 interface Zeile {
   /** Gewerk der Funktion; null = übergreifend. */
   gewerk: string | null;
@@ -75,6 +117,8 @@ interface Zeile {
   /** Seite aus der Spalte „Seite“; undefined = leer bzw. unbekannt (neue Funktionen: aus der Bezeichnung). */
   seite: Seite | null | undefined;
   person: Person;
+  /** Kennung der Person, zu der die Zeile gehört – die einer vorhandenen Person oder einer früheren Zeile (personenZuordnen). */
+  personKennung: string;
   neuesGewerk: boolean;
   neueFunktion: boolean;
   hinweis: string;
@@ -95,9 +139,6 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
   /** Vorhandene Funktion des Projekts zu Bezeichnung und Gewerk. */
   const findeRolle = (name: string, gewerk: string | null) =>
     rollen.find((r) => gleich(r.name, name) && (r.gewerk ?? '') === (gewerk ?? ''));
-
-  /** Kennung einer Person: E-Mail, sonst der Name. */
-  const personSchluessel = (p: Person) => (p.email || `${p.vorname} ${p.nachname}`).trim().toLowerCase();
 
   const lies = async (f: File) => {
     setFehler('');
@@ -127,6 +168,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       const neueFunktionen = new Set<string>();
       // Funktionen, deren Seite die Datei schon nennt – maßgeblich ist die erste Angabe
       const seiteGenannt = new Set<string>();
+      const zuordnen = personenZuordnen(kontakte);
 
       const ergebnis: Zeile[] = zeilen.map((zeile) => {
         const gewerkRoh = wert(zeile, 'gewerk');
@@ -199,11 +241,17 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           ...(wert(zeile, 'sharepointAusgang') ? { sharepointAusgang: wert(zeile, 'sharepointAusgang') } : {}),
         };
 
+        // Zeilen ohne Namen entfallen (siehe unten) und ordnen sich keiner Person zu
+        const zuordnung = person.nachname ? zuordnen(person) : { kennung: '', mehrdeutig: false };
+        if (zuordnung.mehrdeutig) {
+          hinweise.push('Name mehrfach im Projekt – ohne E-Mail nicht zuzuordnen, die Person wird neu angelegt');
+        }
+
         const vorhandeneRolle = funktion ? findeRolle(funktion, gewerk) : undefined;
         const bisher = vorhandeneRolle
           ? kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === vorhandeneRolle.id))
           : undefined;
-        if (bisher && personSchluessel(bisher) !== personSchluessel(person)) {
+        if (bisher && personSchluessel(bisher) !== zuordnung.kennung) {
           hinweise.push(`ersetzt ${bisher.vorname} ${bisher.nachname} in dieser Funktion`);
         }
 
@@ -213,6 +261,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           kuerzel: wert(zeile, 'kuerzel'),
           seite,
           person,
+          personKennung: zuordnung.kennung,
           neuesGewerk,
           neueFunktion,
           hinweis: hinweise.join('; '),
@@ -270,7 +319,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
     // 3. Zeilen je Person bündeln – eine Person kann mehrere Funktionen ausfüllen
     const gruppen = new Map<string, { person: Person; zuordnungen: Zuordnung[] }>();
     for (const z of vorschau) {
-      const schluessel = personSchluessel(z.person);
+      // Die Kennung stammt aus der Vorschau: die der vorhandenen Person bzw. der ersten Zeile dieser Person
+      const schluessel = z.personKennung;
       const eintrag = gruppen.get(schluessel) ?? { person: z.person, zuordnungen: [] };
       // Mehrere Zeilen einer Person: Jede ergänzt, was sie ausfüllt – spätere Angaben gelten
       eintrag.person = { ...eintrag.person, ...ausgefuellt(z.person) };
