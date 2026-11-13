@@ -180,6 +180,37 @@ Person zurück. Neun sind behoben, zwei gemildert (P-16, S-7), einer ist offen (
 * Projektsteuerung: Excel-Import verdoppelt den Namen nicht mehr, wenn „Name“ den vollen Namen trägt
 * Projektsteuerung: Rückfrage beim Löschen eines Protokolls nennt Aufgaben, die mit ihm entfallen
 
+### Zweites Gegenlesen: die Nachbesserungen selbst
+
+Auch diese elf Nachbesserungen wurden gegengelesen – wieder von drei Prüfern mit dem Auftrag,
+Fehler zu finden; jeden gemeldeten Befund versuchte danach ein zweiter Prüfer zu widerlegen. Von
+zwölf Meldungen hielten zehn stand (vier davon Rückschritte gegenüber dem Stand vor der jeweiligen
+Nachbesserung), zwei beschreiben gewolltes Verhalten und stehen als Entscheidungspunkte in
+Abschnitt 9 (P-18, Ergänzung zu S-7). Die zehn sind behoben; die Korrekturen sind mit den
+Prüfskripten beider Prüfer nachgerechnet:
+
+* Planlauf: Terminnachweis geht wieder auf, wenn der Basisplan mit dem ersten Schritt endet
+  (Workflow mit einem Schritt) – über 105 094 Zufallszustände kein Rückschritt mehr (vorher 4 298)
+* Planlauf: Umbenannte übergreifende Funktion zieht die Projektfunktionen jedes Gewerks mit; die
+  Kurzmeldung zählt Projekte statt Funktionen
+* Planlauf: Umbenannte Funktion lässt Schritte nicht ohne Person zurück, wenn das Gewerk die neue
+  Bezeichnung schon führt
+* Planlauf: Funktionen-Import ordnet Personen unabhängig von der Reihenfolge der Zeilen zu – ein
+  zweiter Import derselben Datei ändert nichts mehr
+* Planlauf: Funktionen-Import verdoppelt den Vornamen nicht, wenn „Name“ den vollen Namen trägt
+* Planlauf: Funktionen-Import legt ein neues Gewerk auch an, wenn es zuerst in einer Zeile ohne
+  Namen steht
+* Projektsteuerung: Excel-Import schreibt eine über den vollen Namen erkannte Person nicht mehr um
+  („von der Heide“ wurde zu „von der | Heide“)
+* Projektsteuerung: Excel-Import kürzt einen Nachnamen nicht mehr, der auf den Vornamen endet
+  („Ben Ali | Ali“)
+* Alle drei Excel-Importe: Die Vorschau lässt sich bei 400 px quer scrollen – die Spalte „Hinweis“
+  war abgeschnitten und nicht erreichbar (gemeldet für den Funktionen-Import, dieselbe Ursache in
+  Planliste und Projektbeteiligten)
+
+Diese letzten Korrekturen folgen Vorschlägen, die beide Prüfer vorab an Kopien erprobt hatten; ein
+weiteres Mal gegengelesen sind sie nicht.
+
 ---
 
 ## 2. Entscheidungen aus dem Entfernen der beiden Bereiche
@@ -639,7 +670,8 @@ bestätigen oder anders entscheiden.
   übernehmen“. Für den Nutzer weitgehend gleich – nur heißt der Vorgang beim Import aus BBPNeo
   „Importieren“ statt „Übernehmen“.
 * **Vorschlag:** eine fachfreie Hülle „Import-Dialog“ in `src/shared/`; die Bereiche liefern
-  Spaltenzuordnung, Vorschau und Übernahme.
+  Spaltenzuordnung, Vorschau und Übernahme. Dass die Vorschau bei 400 px in allen dreien dieselbe
+  Spalte abschnitt (inzwischen behoben, dreimal einzeln), zeigt den Nutzen.
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
 
 ### M-10 · Personen eines Projekts: zwei Masken mit verschiedenen Feldern
@@ -935,7 +967,7 @@ denen eine fachliche Festlegung fehlt oder der Code robuster sein könnte. Jeder
 | P-2 | Das Projekt hat keine Tests. Die Prüfer haben für Ablauf- und Terminrechnung und für den Workflow-Editor Zufallsprüfungen geschrieben (7200 Läufe bzw. 72 000 Editor-Operationen), die Fehler in Sekunden fanden. | Die Skripte als wiederholbare Prüfung ins Repository übernehmen (keine neue Abhängigkeit). Aufwand mittel. | ☐ umsetzen · ☐ später |
 | P-3 | Beide Excel-Importe (Planliste, Funktionen) schreiben je Zeile einzeln in den Bestand und rechnen auf dem Stand vor dem Import. | Je Import eine reine Funktion und ein einziger Schreibvorgang. Aufwand mittel. | ☐ umsetzen · ☐ später |
 | P-4 | Ein nicht lesbares Datum im Planlisten-Import („10/30/2027“) wird stillschweigend weggelassen – der Planlauf startet ohne Eingangstermin. | In der Vorschau einen Hinweis je Zeile zeigen. | ☐ umsetzen · ☐ später |
-| P-5 | Der Funktionen-Import erkennt Personen über „E-Mail, sonst Name“: Bekommt eine vorhandene Person in der Datei erstmals eine E-Mail, entsteht eine zweite Person gleichen Namens. | Ersatzweise über Vor- und Nachname suchen; in der Vorschau „neu“ bzw. „aktualisiert“ ausweisen. | ☐ umsetzen · ☐ später |
+| P-5 | Der Funktionen-Import erkennt Personen über die E-Mail, ersatzweise über den Namen (inzwischen behoben: eine Zeile, die erstmals eine E-Mail nennt, legt keine zweite Person mehr an). Offen: Die Vorschau sagt nicht, ob eine Person neu angelegt oder aktualisiert wird, und eine neue Person aus einer Liste nur mit „Name“ erhält den vollen Namen als Nachnamen – die Projektsteuerung zerlegt ihn. | In der Vorschau „neu“ bzw. „aktualisiert“ ausweisen; „Name“ ohne Vornamen wie in der Projektsteuerung zerlegen. | ☐ umsetzen · ☐ später |
 | P-6 | Nennt eine Importzeile zugleich Planverzeichnis und Planpaket, entsteht ein leeres Planpaket. | Das Paket nicht anlegen und in der Vorschau vermerken. | ☐ umsetzen · ☐ später |
 | P-7 | „Schritt einfügen“ ist bei beendeten Planläufen nur in der Oberfläche gesperrt, nicht in der Rechnung. | Auch dort abweisen. | ☐ umsetzen · ☐ später |
 | P-8 | Übersprungene Schritte wechseln bei einer Umbesetzung der Funktion die zuständige Person (erledigte nicht). | Übersprungene wie erledigte behandeln. | ☐ umsetzen · ☐ später |
@@ -946,8 +978,9 @@ denen eine fachliche Festlegung fehlt oder der Code robuster sein könnte. Jeder
 | P-13 | Beim Duplizieren eines Schritts oder Workflows behalten die E-Mail-Regeln ihre Kennungen (heute folgenlos). | Neue Kennungen vergeben. | ☐ umsetzen · ☐ später |
 | P-14 | Das Gewerk an der Zuordnung Person–Funktion ist eine Kopie ohne Leser (seit dieser Durchsicht wird es beim Ändern der Funktion wenigstens mitgezogen). | Feld auslaufen lassen. | ☐ umsetzen · ☐ später |
 | P-15 | Terminnachweis: Führt eine Antwort ohne Nacharbeit auf einen Schritt, der nicht auf dem Regelweg des Basisplans liegt („anderer Weg“), geht die Rechnung weiterhin nicht auf („Nicht erklärt“). Das Auslassen von Schritten (Abkürzung, Ausstieg nach vorn) ist behoben. | Fachlich festlegen, wem die Zeit eines solchen Schritts zugerechnet wird. | ☐ festlegen · ☐ später |
-| P-16 | Wird im Projekt eine Funktion umbenannt, nennen die projektübergreifenden Workflows weiter den alten Namen – der nächste neue Planlauf daraus hat für diese Schritte keine zuständige Person. Seit dieser Durchsicht sagt das die Kurzmeldung beim Speichern; die Folge selbst bleibt. (Die Gegenrichtung ist behoben: Eine umbenannte übergreifende Funktion zieht Workflows und Projekte mit.) | Festlegen: Projektfassung des Workflows anlegen oder die Funktion anders finden; dazu ein bleibender Hinweis statt der kurzen Meldung. | ☐ festlegen · ☐ später |
-| P-17 | Terminnachweis: Wird das Eingang Soll nach dem Start aus dem Eintrag entfernt und beginnt der Workflow mit einem parallelen Block, geht die Rechnung nicht auf (in Zufallsläufen 708 von 39 810 Zuständen). | Den Nachweis in diesem Fall am Basisplan ausrichten. | ☐ umsetzen · ☐ später |
+| P-16 | Wird im Projekt eine Funktion umbenannt, nennen die projektübergreifenden Workflows weiter den alten Namen – der nächste neue Planlauf daraus hat für diese Schritte keine zuständige Person. Seit dieser Durchsicht sagt das die Kurzmeldung beim Speichern; die Folge selbst bleibt. (Die Gegenrichtung ist behoben: Eine umbenannte übergreifende Funktion zieht Workflows und Projekte mit.) Dieselbe Folge hat ein reiner Gewerkwechsel der Funktion – dort ohne Hinweis. | Festlegen: Projektfassung des Workflows anlegen oder die Funktion anders finden; dazu ein bleibender Hinweis statt der kurzen Meldung. | ☐ festlegen · ☐ später |
+| P-17 | Terminnachweis: Wird das Eingang Soll nach dem Start aus dem Eintrag entfernt und beginnt der Workflow mit einem parallelen Block, geht die Rechnung nicht auf (in Zufallsläufen 708 von 39 810 Zuständen). Ebenso bei Workflows, die nur aus einem parallelen Block bestehen (im zweiten Gegenlesen zusammen 2 729 von 105 094 Zuständen – vor und nach den Korrekturen gleich). Am Rand: Die Zeile der Ausführung im Excel-Export misst den ersten Schritt am Eingang Soll selbst, auch wo der Nachweis ab dem Start rechnet. | Den Nachweis in diesen Fällen am Basisplan ausrichten. | ☐ umsetzen · ☐ später |
+| P-18 | Abgleich mit einer Sicherung: Ein absichtlich gelöschtes Gewerk kommt zurück, sobald ein einzelner übernommener Eintrag es als Angabe führt – auch aus einer Sicherung, die das Gewerk selbst nicht mehr führt, und ohne dass eine Funktion hereinkommt. So ist es festgelegt („was hereinkommt, bringt sein Gewerk mit“), es hebt aber eine Löschung auf. | Festlegen: Einträge holen ein gelöschtes Gewerk nicht zurück (am Löschvermerk festmachen, für Kopie und Einzeleintrag gleich) – oder so lassen. | ☐ so lassen · ☐ ändern |
 
 ### Baubetriebsplanung
 
@@ -1007,7 +1040,7 @@ Zu B-1 bis B-4 (unten) kommen aus der Prüfung der Oberfläche:
 | S-4 | Protokoll-Editor: Das Feld „Ergänzung eintragen“ wechselt beim ersten Zeichen das Eingabeelement – bei Tottasten (´, ^) und Bildschirmtastaturen kann dabei ein Zeichen verloren gehen. | Dasselbe Element weiterführen. Aufwand mittel. | ☐ umsetzen · ☐ später |
 | S-5 | Die Auswahl „Verantwortlich“ schneidet Namen ab („PS – Lena Rot“). | Nur das Kürzel zeigen oder die Spalte verbreitern. | ☐ umsetzen · ☐ später |
 | S-6 | Löscht das Projektregister ein Projekt samt Protokollen (seltener Weg über zwei Fenster), bleiben die Logos seiner Protokollreihen im Bestand liegen und belegen Speicher. | Die Logos zentral nach jeder Änderung bereinigen (gehört zu D-6). | ☐ umsetzen · ☐ später |
-| S-7 | Wird ein Protokoll mitten aus einer Reihe gelöscht, entfallen Aufgaben, die nur noch dort zählen (etwa im Folgeprotokoll gestrichen und danach wiederhergestellt). Die Rückfrage nennt jetzt, wie viele das sind; verhindern lässt es sich nicht, weil ein übernommener Eintrag seinen Ursprung nicht kennt. | Festlegen: Übernommene Einträge merken sich ihren Ursprung (neues Feld, Umstellung der Bestände) – dann kann das Löschen je Aufgabe entscheiden. | ☐ festlegen · ☐ später |
+| S-7 | Wird ein Protokoll mitten aus einer Reihe gelöscht, entfallen Aufgaben, die nur noch dort zählen (etwa im Folgeprotokoll gestrichen und danach wiederhergestellt). Die Rückfrage nennt jetzt, wie viele das sind; verhindern lässt es sich nicht, weil ein übernommener Eintrag seinen Ursprung nicht kennt. Nicht genannt werden offene Aufgaben, die im gelöschten Protokoll selbst entstanden sind – bei keinem Löschen; sie fallen unter „wird endgültig gelöscht“. | Festlegen: Übernommene Einträge merken sich ihren Ursprung (neues Feld, Umstellung der Bestände) – dann kann das Löschen je Aufgabe entscheiden. Dazu ein eigener Satz in der Rückfrage: „N offene Aufgaben stehen nur in diesem Protokoll und entfallen mit ihm.“ | ☐ festlegen · ☐ später |
 | S-8 | „Verantwortlich“ folgt einem geänderten Kürzel nur in Protokollen, in denen die Person teilnimmt. Steht sie dort nicht (mehr) unter den Teilnehmenden, nennt die Aufgabe weiter das alte Kürzel und fehlt in „Meine To-Dos“. | Festlegen, wie das Mitziehen ohne Teilnahme gelten soll – ohne dass eine eingespielte Sicherung dabei umgeschrieben wird. | ☐ festlegen · ☐ später |
 
 ---
