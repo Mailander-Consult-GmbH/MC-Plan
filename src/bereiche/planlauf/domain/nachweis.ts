@@ -781,8 +781,15 @@ export function terminnachweis(
    * Eingang) – ab da rechnet der Basisplan weiter. Gemessen am Eingang Soll
    * selbst stünden die Tage bis zum Start als Verzug im Nachweis, die das
    * Plan-Ende des Basisplans schon enthält („Nicht erklärt“ im Minus).
+   *
+   * Ausnahme: Endet der Basisplan schon mit dem ersten Schritt (Workflow mit
+   * einem Schritt, nur ein Block ohne Folgeschritt), ist sein Plan-Ende das
+   * Eingang Soll selbst und liegt vor dem Start – es folgt nichts, das ab dem
+   * Start weiterrechnete. Dort zählen die Tage bis zum Start zum Verzug und
+   * gehören in den Nachweis; ab dem Start gemessen blieben sie „Nicht erklärt“.
    */
-  const abStart = (d: ISODate): ISODate => (d < run.start ? run.start : d);
+  const planEndetVorStart = Boolean(basis?.planEnde && basis.planEnde < run.start);
+  const abStart = (d: ISODate): ISODate => (d < run.start && !planEndetVorStart ? run.start : d);
 
   /** Geplantes Soll eines ersten Schritts (Frist `frist` im Basisplan) laut Basisplan: das Eingang Soll (frühestens der Start), sonst Anker + Frist. */
   const basisErsterSoll = (frist: number): ISODate | null => {
