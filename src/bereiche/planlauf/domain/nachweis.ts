@@ -774,11 +774,21 @@ export function terminnachweis(
     return plan.zweige.reduce((m, z) => Math.max(m, z.dauer + rundung(z.erster)), 0) - plan.dauer;
   };
 
-  /** Geplantes Soll eines ersten Schritts (Frist `frist` im Basisplan) laut Basisplan: das Eingang Soll, sonst Anker + Frist. */
+  /**
+   * Ein Eingang Soll vor dem Start des Laufs (die Unterlage kam später als
+   * geplant) zählt ab dem Start: Der erste Schritt hat seinen Eingang am Start
+   * und ist frühestens dann fertig (recalcSollDaten: das späteste aus Ist und
+   * Eingang) – ab da rechnet der Basisplan weiter. Gemessen am Eingang Soll
+   * selbst stünden die Tage bis zum Start als Verzug im Nachweis, die das
+   * Plan-Ende des Basisplans schon enthält („Nicht erklärt“ im Minus).
+   */
+  const abStart = (d: ISODate): ISODate => (d < run.start ? run.start : d);
+
+  /** Geplantes Soll eines ersten Schritts (Frist `frist` im Basisplan) laut Basisplan: das Eingang Soll (frühestens der Start), sonst Anker + Frist. */
   const basisErsterSoll = (frist: number): ISODate | null => {
     if (!basis) return null;
     const mitSoll = basis.eingangSoll !== undefined ? basis.eingangSoll : basis.anker !== run.start ? basis.anker : null;
-    return mitSoll ?? fristSoll(basis.anker, frist, rahmen);
+    return mitSoll ? abStart(mitSoll) : fristSoll(basis.anker, frist, rahmen);
   };
 
   /**
@@ -790,7 +800,13 @@ export function terminnachweis(
   const postenErster = (a: Roh): NachweisPosten[] => {
     const liste: NachweisPosten[] = [];
     const geplant = basisErsterSoll(a.basisFrist ?? a.frist);
-    const ohneHand = a.sollManuell ? (a.mitEingangSoll && eingangSoll ? eingangSoll : fristSoll(a.e, a.frist, rahmen)) : (a.soll ?? a.i);
+    // Das Soll ohne Eingriff von Hand – mit Eingang Soll wie im Basisplan frühestens der Start (siehe abStart)
+    const sollAbStart = a.soll && a.mitEingangSoll ? abStart(a.soll) : a.soll;
+    const ohneHand = a.sollManuell
+      ? a.mitEingangSoll && eingangSoll
+        ? abStart(eingangSoll)
+        : fristSoll(a.e, a.frist, rahmen)
+      : (sollAbStart ?? a.i);
     if (geplant) {
       neuerPosten(
         liste,
@@ -802,7 +818,8 @@ export function terminnachweis(
       );
     }
     if (a.sollManuell && a.soll) neuerPosten(liste, a, 'soll_hand', t(ohneHand, a.soll), a.seite, 'Soll von Hand gesetzt (vereinbarte Fristverlängerung)');
-    const abw = a.soll ? t(a.soll, a.i) : 0;
+    // Gemessen wird am Soll von Hand, sonst am Soll ab dem Start – die drei Posten ergeben zusammen geplant → Ist
+    const abw = a.soll ? t(a.sollManuell ? a.soll : ohneHand, a.i) : 0;
     neuerPosten(liste, a, 'frist', abw, a.seite, abw >= 0 ? (a.mitEingangSoll ? 'Eingang nach dem Eingang Soll' : 'Frist überschritten') : 'Vor dem Soll erledigt');
     return liste;
   };
