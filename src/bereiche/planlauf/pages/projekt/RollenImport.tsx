@@ -196,7 +196,10 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       // Personen, für die eine frühere Zeile der Datei schon eine vollständige Anschrift nennt
       const anschriftGenannt = new Set<string>();
 
-      const ergebnis: Zeile[] = zeilen.map((zeile) => {
+      // Zeilen ohne Namen entfallen – vor der Buchführung über neue Gewerke, Funktionen und Seiten: Nennt eine
+      // solche Zeile ein Gewerk oder eine Funktion zuerst, gälte die Zeile mit Namen sonst nicht mehr als erste
+      // Nennung, und das Gewerk würde nicht angelegt.
+      const ergebnis: Zeile[] = zeilen.filter((zeile) => wert(zeile, 'nachname')).map((zeile) => {
         // Das Gewerk in der Schreibweise der Gewerkeliste bzw. seiner ersten Nennung in der Datei: Gewerke
         // gelten ohne Groß-/Kleinschreibung als dieselben, Funktionen werden aber über das genaue Gewerk
         // gefunden – „kib“ legte sonst neben „Fachplaner KIB“ eine zweite Funktion „Fachplaner kib“ an.
@@ -275,21 +278,20 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           ...(wert(zeile, 'sharepointAusgang') ? { sharepointAusgang: wert(zeile, 'sharepointAusgang') } : {}),
         };
 
-        // Zeilen ohne Namen entfallen (siehe unten) und ordnen sich keiner Person zu
-        const zuordnung = person.nachname ? zuordnen(person) : { kennung: '', mehrdeutig: false };
+        const zuordnung = zuordnen(person);
         if (zuordnung.mehrdeutig) {
           hinweise.push('Name mehrfach im Projekt oder in der Datei – ohne E-Mail nicht zuzuordnen, die Person wird neu angelegt');
         }
 
         // Teilangabe zur Anschrift: Sie füllt nur eine leere Anschrift (siehe Zeile.anschriftVoll)
         const anschriftVoll = Boolean(wert(zeile, 'strasse') && wert(zeile, 'ort'));
-        if (person.nachname && person.anschrift && !anschriftVoll) {
+        if (person.anschrift && !anschriftVoll) {
           const bekannt = kontakte.find((c) => personSchluessel(c) === zuordnung.kennung);
           if (bekannt?.anschrift.trim() || anschriftGenannt.has(zuordnung.kennung)) {
             hinweise.push('Anschrift unvollständig (ohne Straße oder Ort) – die bisherige bleibt');
           }
         }
-        if (person.nachname && anschriftVoll) anschriftGenannt.add(zuordnung.kennung);
+        if (anschriftVoll) anschriftGenannt.add(zuordnung.kennung);
 
         return {
           gewerk,
@@ -309,13 +311,12 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       // Wer die Funktion bekommt: Nennt die Datei dieselbe Funktion in mehreren Zeilen mit verschiedenen
       // Personen, gilt die letzte Zeile (wie bei den Kontaktdaten – spätere Angaben gelten). Sonst hielten
       // nach dem Import zwei Personen die Funktion, und Liste wie offene Schritte zeigten nur die erste.
-      const mitNamen = ergebnis.filter((z) => z.person.nachname);
       const letztePerson = new Map<string, string>();
-      for (const z of mitNamen) {
+      for (const z of ergebnis) {
         if (z.funktion) letztePerson.set(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`, z.personKennung);
       }
       setVorschau(
-        mitNamen.map((z) => {
+        ergebnis.map((z) => {
           if (!z.funktion) return z;
           const hinweise = z.hinweis ? [z.hinweis] : [];
           if (letztePerson.get(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`) !== z.personKennung) {
