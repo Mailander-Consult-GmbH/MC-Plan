@@ -124,17 +124,29 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
     let nachname = wert(z, 'nachname');
     const gesamt = wert(z, 'name').replace(/\s+/g, ' ');
     if (!nachname && gesamt) {
-      if (spalten.vorname === undefined) ({ vorname, nachname } = nameTeilen(gesamt));
+      // Ohne Vornamen in der Zeile trägt „Name“ den ganzen Namen – auch in einer Liste mit Spalte
+      // „Vorname“. Bliebe „Anna Meier“ dort als Nachname stehen, hieße eine vorhandene Anna Meier nach
+      // der Übernahme „Anna Anna Meier“: Erkannt wird sie über den vollen Namen, übernommen werden nur
+      // ausgefüllte Angaben, ihr Vorname bliebe also neben dem neuen Nachnamen stehen.
+      if (!vorname) ({ vorname, nachname } = nameTeilen(gesamt));
       else if (gesamt.includes(',')) {
         const geteilt = nameTeilen(gesamt);
         nachname = geteilt.nachname;
         vorname = vorname || geteilt.vorname;
       } else {
-        // Neben einer Spalte „Vorname“ ist „Name“ der Nachname: nicht zerlegen, sonst ginge der Vorname
+        // Neben einem Vornamen ist „Name“ der Nachname: nicht zerlegen, sonst ginge der Vorname
         // verloren („Berger | Anna“) oder ein Namenszusatz wanderte in den Vornamen („von der Heide“).
-        // Steht dort doch der volle Name („Anna Berger | Anna“), bleibt der Vorname vorn weg.
-        const voll = vorname !== '' && gesamt.toLowerCase().startsWith(`${vorname.toLowerCase()} `);
-        nachname = voll ? gesamt.slice(vorname.length).trim() : gesamt;
+        // Steht dort doch der volle Name, bleibt als Nachname, was auf den Vornamen folgt („Anna Berger |
+        // Anna“ → Berger); was davor steht, gehört wie bei `nameTeilen` zum Vornamen („Dr. Eva Sommer |
+        // Eva“ → „Dr. Eva“ | Sommer). Folgt nichts, steht der Nachname davor („Meier Anna | Anna“).
+        const woerter = gesamt.split(' ');
+        const vor = vorname.split(/\s+/);
+        const stelle = woerter.findIndex((_, i) => vor.every((w, k) => gleich(woerter[i + k] ?? '', w)));
+        const danach = stelle < 0 ? [] : woerter.slice(stelle + vor.length);
+        if (danach.length > 0) {
+          vorname = [...woerter.slice(0, stelle), ...vor].join(' ');
+          nachname = danach.join(' ');
+        } else nachname = stelle > 0 ? woerter.slice(0, stelle).join(' ') : gesamt;
       }
     }
     if (!nachname) continue;
