@@ -78,6 +78,15 @@ export function PaketDialog({
       toast('Bitte einen Namen für das Planpaket angeben.');
       return;
     }
+    // Ohne Leerzeichen am Rand, wie die Einträge der Planliste – der Excel-Import
+    // erkennt ein Planpaket nur an genau seinem Namen oder Kurzzeichen wieder
+    const werte = {
+      ...form,
+      nummer: form.nummer.trim(),
+      titel: form.titel.trim(),
+      gewerk: form.gewerk.trim(),
+      planungsphase: form.planungsphase.trim(),
+    };
     if (ausAuswahl) {
       const id = paketAusAuswahl(form.titel, auswahl ?? []);
       if (!id) {
@@ -89,11 +98,11 @@ export function PaketDialog({
       );
       onAngelegt?.(id);
     } else if (paket) {
-      updateDocument(paket.id, form);
+      updateDocument(paket.id, werte);
       toast('Planpaket gespeichert.');
     } else {
       addDocument({
-        ...form,
+        ...werte,
         projectId: project.id,
         kind: 'paket',
         parentId: null,

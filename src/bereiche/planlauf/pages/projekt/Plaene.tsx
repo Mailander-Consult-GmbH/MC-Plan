@@ -792,8 +792,22 @@ function PlanDialog({
       ? eltern
       : undefined;
   const braucheLauf = Boolean(verzeichnisOhneLauf) || (!vorhandenerLauf && !laeuftMit && !verzeichnisEinzeln);
+  /**
+   * Die Textangaben ohne Leerzeichen am Rand (etwa aus einer Tabelle kopiert) –
+   * so gehen sie in den Bestand, in den Namen des Planlaufs und in die Suche
+   * nach den Personen des Gewerks. Sonst hieße der Lauf „Planlauf   Titel  “,
+   * das Gewerk „ KIB “ fände seine Funktionen nicht, und der Excel-Import
+   * erkennte ein so benanntes Planverzeichnis nicht wieder.
+   */
+  const texte = {
+    nummer: form.nummer.trim(),
+    titel: form.titel.trim(),
+    index: form.index.trim(),
+    gewerk: form.gewerk.trim(),
+    planungsphase: form.planungsphase.trim(),
+  };
   /** Eintrag, für den der Planlauf startet: der Eintrag selbst oder das Verzeichnis des Plans. */
-  const laufZiel = verzeichnisOhneLauf ?? form;
+  const laufZiel = verzeichnisOhneLauf ?? { ...form, ...texte };
 
   // Die Wahl gebündelt/einzeln ist frei, solange weder das Verzeichnis noch
   // seine Pläne einen Lauf haben. Danach geht es nur noch Richtung „einzeln“.
@@ -845,8 +859,8 @@ function PlanDialog({
       nummer,
       titel,
       index: '',
-      gewerk: form.gewerk,
-      planungsphase: art === 'verzeichnis' ? form.planungsphase : '',
+      gewerk: texte.gewerk,
+      planungsphase: art === 'verzeichnis' ? texte.planungsphase : '',
       eingangSoll: null,
       datum: null,
       bemerkung: '',
@@ -887,12 +901,13 @@ function PlanDialog({
     kontaktFuerRolleUndGewerk(kontakte, rollen, roleName, laufZiel.gewerk);
 
   const speichern = () => {
-    if (!form.titel.trim()) {
+    if (!texte.titel) {
       toast('Bitte einen Titel angeben.');
       return;
     }
     const werte = {
       ...form,
+      ...texte,
       eingangSoll: form.eingangSoll || null,
       datum: form.kind === 'verzeichnis' ? form.datum || null : null,
       parentId: form.kind === 'plan' ? form.parentId : null,
