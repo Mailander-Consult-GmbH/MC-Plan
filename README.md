@@ -290,11 +290,11 @@ schon führt, weist der Dialog ab („Die Funktion „…“ gibt es bereits.“
 Kleinschreibung); dieselbe Bezeichnung in einem anderen Gewerk bleibt möglich. Gespeichert wird die
 Bezeichnung ohne Leerzeichen am Rand. Wird eine projektübergreifende Funktion **umbenannt**, nennen
 auch die projektübergreifenden Workflows – Schritte und E-Mail-Regeln „an Funktion“ – die neue
-Bezeichnung, sobald keine übergreifende Funktion mehr die alte trägt. Mit ihnen ziehen die Kopien
-der Funktion in den bereits angelegten Projekten mit (gleiche Bezeichnung, gleiches Gewerk) – samt
+Bezeichnung, sobald keine übergreifende Funktion mehr die alte trägt. Mit ihnen ziehen die Funktionen
+dieser Bezeichnung in den bereits angelegten Projekten mit – in jedem Gewerk, das sie führt –, samt
 den Schritten ihrer Planläufe und Projekt-Workflows: Projekte starten Planläufe auch aus den
 übergreifenden Workflows und fänden sonst für diese Schritte keine zuständige Person. Führt ein
-Projekt die neue Bezeichnung im selben Gewerk schon, bleibt seine Kopie, wie sie ist. Die
+Projekt die neue Bezeichnung im selben Gewerk schon, bleibt seine Funktion, wie sie ist. Die
 Kurzmeldung nennt, wo die Funktion jetzt so heißt („Funktion gespeichert – sie heißt jetzt auch in
 3 Workflows und 2 Projekten „…“.“).
 
@@ -325,8 +325,10 @@ Wird eine Funktion des Projekts **umbenannt**, nehmen die Planläufe des Projekt
 Bezeichnung mit: die Schritte, für die genau diese Funktion gilt (die des Gewerks ihres Eintrags,
 ersatzweise die übergreifende), samt ihren E-Mail-Regeln „an Funktion“ – sie blieben sonst ohne
 zuständige Person. Die Workflows des Projekts ziehen mit, wenn im Projekt keine Funktion mehr die
-alte Bezeichnung trägt. Wechselt die Funktion zugleich das Gewerk, behalten die Läufe, für die sie
-nicht mehr gilt, die alte Bezeichnung. Das Änderungsprotokoll fasst das je Lauf zusammen
+alte Bezeichnung trägt. Führt das Projekt die neue Bezeichnung im Gewerk eines Laufs schon, gilt
+dort danach die Funktion des Gewerks: Die Schritte ziehen trotzdem mit und gehen an deren Person –
+dieselbe, die ein neuer Planlauf dieses Gewerks bekommt. Wechselt die Funktion zugleich das Gewerk,
+behalten die Läufe, für die sie nicht mehr gilt, die alte Bezeichnung. Das Änderungsprotokoll fasst das je Lauf zusammen
 („Funktion von 6 Schritten geändert: …“). Die projektübergreifenden Workflows ziehen nicht mit –
 sie gelten für alle Projekte. Nennen Workflows, aus denen das Projekt Planläufe startet, die alte
 Bezeichnung weiter, ohne dass das Projekt dafür noch eine Funktion hat, sagt es die Kurzmeldung:
@@ -340,8 +342,10 @@ es im Projekt schon gibt, werden aktualisiert; eine leere Zelle oder fehlende Sp
 Angabe“ und lässt stehen, was bei der Person schon eingetragen ist (Telefon, Firma, Anschrift,
 SharePoint-Links …), mehrere Zeilen derselben Person ergänzen einander. Erkannt wird eine Person
 an ihrer E-Mail; fehlt die E-Mail in der Zeile oder bei der bekannten Person, entscheidet der Name,
-wenn er genau eine Person trifft – trifft er mehrere, entsteht eine neue Person, und die Vorschau
-sagt es. Die **Anschrift** entsteht aus Straße, Nr., PLZ und Ort: Eine vorhandene Anschrift ersetzt
+wenn er genau eine Person trifft – im Projekt und in der ganzen Datei, gleich in welcher
+Reihenfolge die Zeilen stehen; trifft er mehrere, entsteht eine neue Person, und die Vorschau
+sagt es. Führt die Datei den vollen Namen nur in „Name“ (ohne Vornamen), behält eine darüber
+erkannte Person ihre Aufteilung in Vor- und Nachname. Zeilen ohne Namen entfallen. Die **Anschrift** entsteht aus Straße, Nr., PLZ und Ort: Eine vorhandene Anschrift ersetzt
 nur eine Zeile, die Straße und Ort nennt; eine Teilangabe (etwa nur der Ort) füllt eine leere
 Anschrift, sonst bleibt die bisherige. Eine Funktion, die die
 Datei vergibt, verliert ihre bisherige Besetzung – auch wenn die bisherige Person selbst in der
@@ -742,7 +746,9 @@ hat der Eintrag ein Eingang Soll, werden die Zweiganfänge – wie sonst der ers
 geplanten Soll laut Basisplan gemessen, der Block an seinem geplanten Ende. Liegt das Eingang Soll
 vor dem Start des Laufs (die Unterlage kam später als geplant), zählt es dabei ab dem Start – ab da
 rechnet auch der Basisplan weiter; die Tage zwischen Eingang Soll und Start sind kein Verzug des
-Laufs. Führt der Lauf an einem
+Laufs. Endet der Basisplan schon mit dem ersten Schritt (Workflow mit einem Schritt, nur ein
+paralleler Block), ist sein geplantes Ende das Eingang Soll selbst – dort wird am Eingang Soll
+gemessen, und die Tage bis zum Start zählen zum Verzug. Führt der Lauf an einem
 Schritt des Regelwegs vorbei (Antwort ohne Nacharbeit, die ihn überspringt, oder Ausstieg aus einem
 Block nach vorn), zählt dessen Frist aus dem Basisplan als Zeitgewinn („Schritt „…“ des Basisplans
 entfällt“), ein ganz ausgelassener Block mit seiner geplanten Dauer – nicht bei abgebrochenen
@@ -1248,7 +1254,8 @@ Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift, Not
 der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen; steht daneben in der Zeile ein
 Vorname, gilt „Name“ als Nachname und wird nicht zerlegt – enthält „Name“ den Vornamen doch,
 bleibt als Nachname, was auf ihn folgt; ohne Vornamen in der Zeile wird „Name“ zerlegt wie in
-einer Liste ohne Spalte „Vorname“). Gelesen wird das erste Blatt mit
+einer Liste ohne Spalte „Vorname“ – außer das Projekt führt die Person unter diesem vollen Namen
+schon, dann behält sie ihre Aufteilung in Vor- und Nachname). Gelesen wird das erste Blatt mit
 Kopfzeile und Personen – ein vorangestelltes Hinweis- oder Deckblatt wird übersprungen. Die Vorschau nennt je Zeile, ob die
 Person neu ist oder aktualisiert wird (gleicher Name im Projekt) und ob Funktion oder Gewerk neu
 angelegt werden. **Vorlage** lädt eine leere Datei mit diesen Spalten; die Excel-Ausgabe der

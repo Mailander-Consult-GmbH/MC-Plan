@@ -172,20 +172,22 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
   * `domain/simulation.ts` Prognose, Basisplan und Rückwärtsrechnung – erledigt die Schritte mit
     `schrittStatusSetzen` und rechnet mit `recalcSollDaten`, also ohne eigene Regeln,
   * `domain/nachweis.ts` Terminnachweis (Verzug gegenüber dem Basisplan je Seite; ein Eingang
-    Soll vor dem Start des Laufs zählt dort ab dem Start, `abStart` – so rechnet der Basisplan),
+    Soll vor dem Start des Laufs zählt dort ab dem Start, `abStart` – so rechnet der Basisplan;
+    endet er schon mit dem ersten Schritt, wird am Eingang Soll selbst gemessen),
   * `domain/protokoll.ts` Änderungsprotokoll: `protokollNachziehen` vergleicht in jedem `mutate()`
     alten und neuen Stand und schreibt je Lauf, was jemand getan hat (nichts Berechnetes),
   * `domain/bestand.ts` Ablauf von `mutate()` (`bestandAendern`), Löschen mit Löschvermerk
     (`kontaktLoeschen` nimmt an offenen Schritten Person und „von Hand“ zurück), Sammelaktionen als
     reine Funktionen; `funktionAendern` (hinter `updateRole`): Ein Gewerkwechsel zieht
     `zuordnungen[].gewerk` der Personen mit, eine Umbenennung `roleName` und `MailRegel.roleName` in
-    den Planläufen des Projekts, für die genau diese Funktion gilt (`rolleFuerSchritt`), und – trägt
+    den Planläufen des Projekts, für die genau diese Funktion gilt (`rolleFuerSchritt`; führt das
+    Gewerk eines Laufs die neue Bezeichnung schon, gehen seine Schritte an dessen Funktion), und – trägt
     im Projekt keine Funktion mehr den alten Namen – in den Projekt-Workflows, nicht in den
     übergreifenden (`workflowsMitAlterBezeichnung` nennt die Workflows, aus denen ein neuer
     Planlauf danach keine Funktion mehr fände; `updateRole` liefert ihre Zahl für die Kurzmeldung);
     `standardFunktionAendern` (hinter `updateStandardRolle`, liefert die Zahl der Workflows und
     Projekte) zieht ebenso die übergreifenden Workflows mit und – über `funktionAendern` – die
-    Kopien der Funktion in den Projekten (gleiche Bezeichnung, gleiches Gewerk),
+    Funktionen dieser Bezeichnung in den Projekten (in jedem Gewerk),
   * `domain/abgleich.ts` selektiver Abgleich mit einer Sicherung; Verweise zwischen Objekten
     stehen zentral in `VERWEISFELDER`. Funktionen ordnet er über die Kennung zu, dann über die
     Kennung ohne angehängtes „~Gewerk“ bei gleichem Gewerk (`kennungOhneGewerk`, auch für
