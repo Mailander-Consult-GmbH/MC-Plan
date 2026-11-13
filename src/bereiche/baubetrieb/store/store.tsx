@@ -10,7 +10,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { today } from '../../../shared/dates';
+import { formatDate, today } from '../../../shared/dates';
 import {
   anmeldungDuplizieren,
   bauzeitraumAbgleichen,
@@ -325,7 +325,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                       nach: null,
                       vonText: '',
                       nachText: '',
-                      text: [notiz.trim() || 'Nachgehakt', neuerTermin ? `neuer Termin ${neuerTermin}` : '']
+                      text: [notiz.trim() || 'Nachgehakt', neuerTermin ? `neuer Termin ${formatDate(neuerTermin)}` : '']
                         .filter(Boolean)
                         .join(' · '),
                     },

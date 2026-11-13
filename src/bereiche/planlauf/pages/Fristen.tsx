@@ -1,8 +1,9 @@
 /**
  * Fristenübersicht mit Erinnerungsfunktion: anstehende Prozessschritte über
- * alle Projekte – je anstehendem Schritt eine Zeile, in parallelen Zweigen also
- * mehrere je Planlauf –, gefiltert nach Dringlichkeit, mit Button für die
- * vorbereitete E-Mail.
+ * alle nicht archivierten Projekte – je anstehendem Schritt eine Zeile, in
+ * parallelen Zweigen also mehrere je Planlauf –, gefiltert nach Dringlichkeit,
+ * mit Button für die vorbereitete E-Mail. Im Projekt: nur dessen Schritte, auch
+ * wenn es archiviert ist.
  */
 import { Fragment, useMemo, useState } from 'react';
 import { aktuelleSchritte, offeneFristen, type Ampel } from '../domain/engine';
@@ -15,6 +16,7 @@ import { Card, CardHeader, EmptyState, Search, Segmented } from '../../../shared
 import { EmailDialog } from '../components/EmailDialog';
 import { ErledigtButton, useSchrittStatus } from '../components/SchrittStatus';
 import { Icon } from '../../../shared/icons';
+import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 
 type Filter = 'alle' | 'ueberfaellig' | 'faellig' | 'geplant';
 
@@ -31,13 +33,35 @@ export function Fristen({
   const [suche, setSuche] = useState('');
   const [mail, setMail] = useState<{ project: Project; run: PlanRun; step: RunStep } | null>(null);
 
-  const alle = useMemo(() => offeneFristen(data, projectId ? [projectId] : undefined), [data, projectId]);
+  // Gesamtansicht: archivierte Projekte (Projektregister) bleiben außen vor, wie in der Übersicht
+  const archiviert = useArchivierte('planlauf');
+  const alle = useMemo(
+    () =>
+      offeneFristen(
+        data,
+        projectId ? [projectId] : data.projects.filter((p) => !archiviert.has(p.id)).map((p) => p.id),
+      ),
+    [data, projectId, archiviert],
+  );
 
   const eintraege = alle.filter((f) => {
     if (filter !== 'alle' && f.ampel !== (filter as Ampel)) return false;
     if (!suche.trim()) return true;
     const kontakt = data.contacts.find((c) => c.id === f.step.contactId);
-    const heu = [f.step.name, f.run.name, f.project.name, f.step.roleName, kontakt?.nachname ?? '', kontakt?.firma ?? '']
+    // Gesucht wird in allem, was die Zeile zeigt – auch Projekt- und Plannummer und der Vorname
+    const doc = data.documents.find((d) => d.id === f.run.documentId);
+    const heu = [
+      f.step.name,
+      f.run.name,
+      doc?.nummer ?? '',
+      doc?.titel ?? '',
+      f.project.nummer,
+      f.project.name,
+      f.step.roleName,
+      kontakt?.vorname ?? '',
+      kontakt?.nachname ?? '',
+      kontakt?.firma ?? '',
+    ]
       .join(' ')
       .toLowerCase();
     return heu.includes(suche.toLowerCase());
@@ -84,7 +108,7 @@ export function Fristen({
               <tr>
                 <th className="col-optional" style={{ width: 22 }} />
                 <th>Schritt / Planlauf</th>
-                <th className="col-optional">Rolle & Person</th>
+                <th className="col-optional">Funktion & Person</th>
                 <th>Soll-Termin</th>
                 <th>Status</th>
                 <th className="actions">Aktion</th>
@@ -145,7 +169,7 @@ export function Fristen({
                       </div>
                     </td>
                     <td className="small col-optional">
-                      {f.step.roleName || <span className="tertiary">ohne Rolle</span>}
+                      {f.step.roleName || <span className="tertiary">ohne Funktion</span>}
                       <div className="tertiary small">
                         {kontakt ? `${kontakt.vorname} ${kontakt.nachname}, ${kontakt.firma}` : 'keine Person zugeordnet'}
                       </div>
@@ -158,7 +182,8 @@ export function Fristen({
                       <AmpelBadge ampel={f.ampel} />
                       {f.step.letzteErinnerung ? (
                         <div className="tertiary small" title={new Date(f.step.letzteErinnerung).toLocaleString('de-DE')}>
-                          E-Mail vorbereitet am {new Date(f.step.letzteErinnerung).toLocaleDateString('de-DE')}
+                          E-Mail vorbereitet am{' '}
+                          {new Date(f.step.letzteErinnerung).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </div>
                       ) : null}
                     </td>

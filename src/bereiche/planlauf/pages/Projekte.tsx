@@ -12,6 +12,7 @@ import {
   FremdeProjekte,
   VerknuepfungsHinweis,
   useArchivierte,
+  useSucheOhneTreffer,
 } from '../../../gemeinsam/ProjektBereiche';
 import type { Project, ProjectStatus } from '../domain/types';
 import type { Route } from '../lib/router';
@@ -33,7 +34,7 @@ const STATUS_TON: Record<ProjectStatus, '' | 'green' | 'orange'> = {
 };
 
 export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
-  const { data, toggleMarkiert } = useStore();
+  const { data, toggleMarkiert, ladeZustand } = useStore();
   const [suche, setSuche] = useState('');
   const [dialog, setDialog] = useState<{ project?: Project } | null>(null);
 
@@ -43,6 +44,8 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const archiviert = useArchivierte('planlauf');
   const aktive = projekte.filter((p) => !archiviert.has(p.id));
   const archivierte = projekte.filter((p) => archiviert.has(p.id));
+  const nurArchivierte = archivierte.length > 0 && !suche.trim();
+  const ohneTreffer = useSucheOhneTreffer('planlauf', suche, archivierte.length, ladeZustand === 'ok');
 
   const karte = (p: Project) => {
     return (
@@ -96,7 +99,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
     <div className="stack">
       <div className="row-between wrap">
         <div className="row wrap">
-          <Search value={suche} onChange={setSuche} placeholder="Projekt, Nummer, Bauherr …" />
+          <Search value={suche} onChange={setSuche} placeholder="Projekt, Nummer …" />
           <span className="small tertiary">
             Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
             Seitenleiste.
@@ -107,12 +110,23 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
         </button>
       </div>
 
-      {aktive.length === 0 ? (
+      {aktive.length === 0 && suche.trim() ? (
+        // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf; Treffer im Archiv und in anderen
+        // Bereichen stehen darunter, der Text nennt sie (useSucheOhneTreffer)
+        <Card>
+          <EmptyState icon="projekt" titel={ohneTreffer.titel} text={ohneTreffer.text} />
+        </Card>
+      ) : aktive.length === 0 ? (
         <Card>
           <EmptyState
             icon="projekt"
-            titel="Kein Projekt gefunden"
-            text="Legen Sie ein Projekt an oder übernehmen Sie eines aus einem anderen Bereich, um Planpakete und Planläufe zu verwalten."
+            // Sind alle Projekte archiviert, liest sich „Kein Projekt gefunden“, als gäbe es keines
+            titel={nurArchivierte ? 'Kein aktives Projekt' : 'Kein Projekt gefunden'}
+            text={
+              nurArchivierte
+                ? 'Alle Projekte dieses Bereichs sind archiviert – sie stehen unten unter „Archiv“.'
+                : 'Legen Sie ein Projekt an oder übernehmen Sie eines aus einem anderen Bereich, um Planpakete und Planläufe zu verwalten.'
+            }
             action={
               <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
                 <Icon name="plus" size={14} /> Neues Projekt
@@ -125,7 +139,8 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
       )}
 
       <ArchivAbschnitt anzahl={archivierte.length}>{archivierte.map(karte)}</ArchivAbschnitt>
-      <FremdeProjekte bereich="planlauf" suche={suche} />
+      {/* Nur bei geladenem Bestand: Sonst sähe das Register die Übernahme vor, angelegt würde nichts */}
+      {ladeZustand === 'ok' ? <FremdeProjekte bereich="planlauf" suche={suche} /> : null}
 
       {dialog ? <ProjektDialog project={dialog.project} onClose={() => setDialog(null)} navigate={navigate} /> : null}
     </div>
@@ -159,14 +174,16 @@ export function ProjektDialog({
       toast('Bitte einen Projektnamen angeben.');
       return;
     }
+    // Leerzeichen am Rand gehen nicht in den Bestand – die Nummer verknüpft das Projekt mit den anderen Bereichen
+    const werte = { ...form, name: form.name.trim(), nummer: form.nummer.trim() };
     if (project) {
-      updateProject(project.id, form);
+      updateProject(project.id, werte);
       toast('Projekt aktualisiert.');
       onClose();
       return;
     }
     const id = addProject({
-      ...form,
+      ...werte,
       settings: {
         erinnerungVorlaufTage: 5,
         fristenInArbeitstagen: true,

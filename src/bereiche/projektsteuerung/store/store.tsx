@@ -15,7 +15,13 @@ import type { ReactNode } from 'react';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
 import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
 import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
-import { folgeprotokoll, naechsteNr, teilnehmerNachziehen } from '../domain/protokoll';
+import {
+  folgeprotokoll,
+  naechsteNr,
+  protokollLoeschen,
+  teilnehmerNachziehen,
+  werMitziehen,
+} from '../domain/protokoll';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { seedDaten } from '../domain/seed';
 import {
@@ -74,7 +80,10 @@ interface StoreValue {
   addProtokoll: (p: Protokoll) => void;
   /** Ändert ein Protokoll über eine reine Funktion und vermerkt den Zeitpunkt. */
   updateProtokoll: (id: ID, fn: (p: Protokoll) => Protokoll) => void;
-  /** Löscht ein Protokoll; Aufgaben, die es weitergeführt hat, gelten im Vorprotokoll wieder als offen. */
+  /**
+   * Löscht ein Protokoll; Aufgaben, die es weitergeführt hat, gelten im Vorprotokoll wieder als
+   * offen – oder laufen im späteren Protokoll weiter, das sie schon übernommen hat (`protokollLoeschen`).
+   */
   deleteProtokoll: (id: ID) => void;
   /** Legt das Folgeprotokoll an (Nummer: höchste der Reihe + 1) und liefert seine Kennung. */
   folgeprotokollAnlegen: (id: ID) => ID | null;
@@ -149,11 +158,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setData(neu.daten);
   });
 
+  // Ändern sich dabei die Teilnehmenden – jemand kommt mit einem schon geführten Kürzel hinzu oder
+  // geht –, folgt „Verantwortlich“ den übrigen Personen (`werMitziehen`).
   const protokollAendern = useCallback(
     (id: ID, fn: (p: Protokoll) => Protokoll) =>
       mutate((d) => ({
         ...d,
-        protokolle: d.protokolle.map((p) => (p.id === id ? { ...fn(p), id, geaendert: new Date().toISOString() } : p)),
+        protokolle: d.protokolle.map((p) =>
+          p.id === id ? { ...werMitziehen(p.teilnehmer, fn(p)), id, geaendert: new Date().toISOString() } : p,
+        ),
       })),
     [mutate],
   );
@@ -242,24 +255,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addProtokoll: (p) => mutate((d) => ({ ...d, protokolle: [...d.protokolle, p] })),
       updateProtokoll: protokollAendern,
       deleteProtokoll: (id) =>
-        mutate((d) =>
-          reihenLogosBereinigen({
-            ...d,
-            protokolle: d.protokolle
-              .filter((p) => p.id !== id)
-              .map((p) =>
-                p.tops.some((t) => t.eintraege.some((e) => e.uebernommenIn === id))
-                  ? {
-                      ...p,
-                      tops: p.tops.map((t) => ({
-                        ...t,
-                        eintraege: t.eintraege.map((e) => (e.uebernommenIn === id ? { ...e, uebernommenIn: null } : e)),
-                      })),
-                    }
-                  : p,
-              ),
-          }),
-        ),
+        mutate((d) => reihenLogosBereinigen({ ...d, protokolle: protokollLoeschen(d.protokolle, id) })),
       folgeprotokollAnlegen: (id) => {
         if (!data.protokolle.some((p) => p.id === id)) return null;
         // Die Kennung entsteht außerhalb von mutate, damit sie beim doppelten

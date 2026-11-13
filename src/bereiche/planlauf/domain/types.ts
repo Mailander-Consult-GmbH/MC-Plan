@@ -655,9 +655,10 @@ export interface RunStep {
   /**
    * Soll-Datum: Eingang + Frist, berechnet von recalcSollDaten. Bei künftigen
    * Schritten eine Prognose (nie vor heute). Von Hand überschreibbar (sollManuell).
+   * Außerhalb des Verlaufs leer – außer einem von Hand gesetzten Soll.
    */
   sollDatum: ISODate | null;
-  /** true, sobald der Nutzer das Soll-Datum manuell gesetzt hat. */
+  /** true, sobald der Nutzer das Soll-Datum manuell gesetzt hat – nur zusammen mit einem Datum. */
   sollManuell: boolean;
   istDatum: ISODate | null;
   /**

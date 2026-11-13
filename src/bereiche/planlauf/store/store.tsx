@@ -31,6 +31,7 @@ import {
   bestandAendern,
   eintraegeAendern,
   eintraegeLoeschen,
+  funktionAendern,
   funktionLoeschen,
   gewerkLoeschen,
   kontaktLoeschen,
@@ -41,10 +42,12 @@ import {
   paketAnlegen,
   paketZuweisen,
   projektLoeschen,
+  standardFunktionAendern,
   type AbschlussErgebnis,
   type EintragsPatch,
   type SchrittAbschluss,
   type Vorgang,
+  workflowsMitAlterBezeichnung,
 } from '../domain/bestand';
 import { basisplanFestlegen } from '../domain/simulation';
 import { laeufeMitAnderenRegeln, mailRegelnUebernehmen } from '../domain/mailRegeln';
@@ -110,11 +113,20 @@ interface StoreValue {
   deleteProject: (id: ID) => void;
   /* Funktionen (projektübergreifend) */
   addStandardRolle: (r: Omit<StandardRolle, 'id'>) => ID;
-  updateStandardRolle: (id: ID, patch: Partial<StandardRolle>) => void;
+  /**
+   * Liefert, was eine Umbenennung mitgezogen hat (siehe standardFunktionAendern): die Zahl der
+   * übergreifenden Workflows und die der Projekte, deren Kopie der Funktion jetzt ebenso heißt.
+   */
+  updateStandardRolle: (id: ID, patch: Partial<StandardRolle>) => { workflows: number; projekte: number };
   deleteStandardRolle: (id: ID) => void;
   /* Projektfunktionen */
   addRole: (r: Omit<Role, 'id'>) => ID;
-  updateRole: (id: ID, patch: Partial<Role>) => void;
+  /**
+   * Ändert eine Projektfunktion. Liefert die Zahl der Workflows, die nach einer Umbenennung weiter
+   * die alte Bezeichnung nennen, ohne dass das Projekt dafür noch eine Funktion hat (siehe
+   * `workflowsMitAlterBezeichnung`) – neue Planläufe daraus hätten für diese Schritte keine Person.
+   */
+  updateRole: (id: ID, patch: Partial<Role>) => { workflowsMitAlterBezeichnung: number };
   deleteRole: (id: ID) => void;
   /* Kontakte */
   addContact: (c: Omit<Contact, 'id'>) => ID;
@@ -330,15 +342,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       stammdatenHinweisQuittieren: () => setStammdatenKopien([]),
       ...storeAktionen(data, mutate),
       ersetzeDaten: (d) => {
+        // Ein Stand aus einer neueren Fassung darf nicht überschrieben werden
+        if (ladeZustand === 'neuere_fassung') return;
         ersetzt();
         mutate(() => d, { protokoll: false });
         setLadeZustand('ok');
       },
       zuruecksetzen: () => {
-        // Ein Stand aus einer neueren Fassung darf nicht überschrieben werden
         if (ladeZustand === 'neuere_fassung') return;
         ersetzt();
-        mutate(() => seedData(), { protokoll: false });
+        // Persönliche Einstellungen bleiben erhalten („Angemeldet als“ samt E-Mail-Nachfrage).
+        mutate((alt) => ({ ...seedData(), bearbeiter: alt.bearbeiter }), { protokoll: false });
         setLadeZustand('ok');
       },
     }),
@@ -447,7 +461,17 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
       return id;
     },
     updateStandardRolle: (id, patch) =>
-      mutate((d) => ({ ...d, standardRollen: upd(d.standardRollen, id, patch) })),
+      mitErgebnis((d) => {
+        const daten = standardFunktionAendern(d, id, patch);
+        return {
+          daten,
+          ergebnis: {
+            workflows: daten.templates.filter((t, i) => t.projectId === null && t !== d.templates[i]).length,
+            // Projekte, nicht Funktionen: Je Projekt können mehrere mitziehen (eine je Gewerk)
+            projekte: new Set(daten.roles.filter((r, i) => r !== d.roles[i]).map((r) => r.projectId)).size,
+          },
+        };
+      }),
     deleteStandardRolle: (id) =>
       mutate((d, v) => {
         const rolle = d.standardRollen.find((r) => r.id === id);
@@ -464,7 +488,15 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
       mutate((d) => ({ ...d, roles: [...d.roles, { ...r, id }] }));
       return id;
     },
-    updateRole: (id, patch) => mutate((d) => ({ ...d, roles: upd(d.roles, id, patch) })),
+    updateRole: (id, patch) =>
+      mitErgebnis((d) => {
+        const alt = d.roles.find((r) => r.id === id);
+        const daten = funktionAendern(d, id, patch);
+        return {
+          daten,
+          ergebnis: { workflowsMitAlterBezeichnung: alt ? workflowsMitAlterBezeichnung(daten, alt).length : 0 },
+        };
+      }),
     deleteRole: (id) => mutate((d, v) => funktionLoeschen(d, id, v)),
 
     addContact: (c) => {

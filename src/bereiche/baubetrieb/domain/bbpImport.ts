@@ -137,22 +137,112 @@ export function anmeldeIdSchluessel(id: string): string {
     .replace(/\s+/g, '');
 }
 
-/** Projektnummern einer Zelle („G.016010101, G.016267085“), vergleichbar gemacht: ohne „G“, Punkte und Leerzeichen. */
+/** Eine Projektnummer vergleichbar gemacht: ohne „G“, Punkte und Leerzeichen. */
+const vergleichbar = (nummer: string): string =>
+  nummer
+    .toUpperCase()
+    .replace(/[^0-9A-Z]/g, '')
+    .replace(/^G/, '');
+
+/** Projektnummern einer Zelle („G.016010101, G.016267085“), vergleichbar gemacht. */
 function nummernVon(text: string): string[] {
   return text
     .split(/[,;\n]+/)
-    .map((n) =>
-      n
-        .toUpperCase()
-        .replace(/[^0-9A-Z]/g, '')
-        .replace(/^G/, ''),
-    )
+    .map(vergleichbar)
     .filter(Boolean);
 }
 
-/** Schlüssel einer Projektgruppe: die vergleichbaren Projektnummern der Zelle; leer – ohne Nummer. */
+/** Schlüssel einer Zelle „Projektnummern“: ihre vergleichbaren Nummern; leer – ohne Nummer. */
 function gruppenSchluessel(text: string): string {
   return nummernVon(text).join(',');
+}
+
+/** Projektgruppe einer Zelle „Projektnummern“: Schlüssel, alle Nummern der Gruppe und der Treffer im Bestand. */
+interface ProjektZuordnung {
+  schluessel: string;
+  projektnummer: string;
+  treffer: Projekt | null;
+}
+
+/**
+ * Ordnet die Zellen „Projektnummern“ ihren Projektgruppen zu. Anmeldungen
+ * desselben Vorhabens tragen nicht immer dieselbe Liste – eine nennt
+ * „G.016010101“, die andere „G.016010101, G.016267085“. Zusammen gehört, was
+ * über eine gemeinsame Nummer verbunden ist; so findet auch der Treffer im
+ * Bestand ein Projekt schon über eine gemeinsame Nummer. Ohne das entstünden
+ * für ein Vorhaben mehrere neue Projekte, die sich in der Vorschau nicht
+ * zusammenlegen lassen.
+ *
+ * Schlüssel der Gruppe ist der ihrer ersten Zelle, ihre Projektnummer nennt
+ * alle Nummern. Verbindet eine Zelle zwei verschiedene Projekte des Bestands,
+ * bleibt jede Zelle für sich – wohin die Anmeldungen gehören, entscheidet dann
+ * die Auswahl in der Vorschau. Zellen ohne Nummer bilden eine eigene Gruppe.
+ */
+function projektGruppen(zellen: string[], projekte: Projekt[]): Map<string, ProjektZuordnung> {
+  const einzeln = new Map<string, { text: string; nummern: string[]; treffer: Projekt | null }>();
+  for (const text of zellen) {
+    const schluessel = gruppenSchluessel(text);
+    if (einzeln.has(schluessel)) continue;
+    const nummern = nummernVon(text);
+    const treffer =
+      nummern.length > 0
+        ? (projekte.find((p) => nummernVon(p.dbGNummer).some((n) => nummern.includes(n))) ?? null)
+        : null;
+    einzeln.set(schluessel, { text, nummern, treffer });
+  }
+
+  // Zellen über gemeinsame Nummern verbinden; die früheste Zelle steht für die Gruppe
+  const reihenfolge = [...einzeln.keys()];
+  const platz = new Map(reihenfolge.map((k, i) => [k, i]));
+  const wurzel = new Map(reihenfolge.map((k) => [k, k]));
+  const finde = (k: string): string => {
+    let w = k;
+    while (wurzel.get(w) !== w) w = wurzel.get(w)!;
+    return w;
+  };
+  const ersteMit = new Map<string, string>();
+  for (const k of reihenfolge) {
+    for (const n of einzeln.get(k)!.nummern) {
+      const andere = ersteMit.get(n);
+      if (andere === undefined) {
+        ersteMit.set(n, k);
+        continue;
+      }
+      const a = finde(andere);
+      const b = finde(k);
+      if (a === b) continue;
+      if (platz.get(a)! < platz.get(b)!) wurzel.set(b, a);
+      else wurzel.set(a, b);
+    }
+  }
+  const glieder = new Map<string, string[]>();
+  for (const k of reihenfolge) glieder.set(finde(k), [...(glieder.get(finde(k)) ?? []), k]);
+
+  const zuordnung = new Map<string, ProjektZuordnung>();
+  for (const [erste, teile] of glieder) {
+    const treffer = [...new Set(teile.map((k) => einzeln.get(k)!.treffer).filter((p): p is Projekt => p !== null))];
+    if (teile.length === 1 || treffer.length > 1) {
+      for (const k of teile) {
+        const z = einzeln.get(k)!;
+        zuordnung.set(k, { schluessel: k, projektnummer: z.text, treffer: z.treffer });
+      }
+      continue;
+    }
+    // alle Nummern der Gruppe in ihrer Schreibweise, jede einmal
+    const gesehen = new Set<string>();
+    const nummern: string[] = [];
+    for (const k of teile) {
+      for (const teil of einzeln.get(k)!.text.split(/[,;\n]+/)) {
+        const n = vergleichbar(teil);
+        if (!n || gesehen.has(n)) continue;
+        gesehen.add(n);
+        nummern.push(teil.trim());
+      }
+    }
+    const gruppe = { schluessel: erste, projektnummer: nummern.join(', '), treffer: treffer[0] ?? null };
+    for (const k of teile) zuordnung.set(k, gruppe);
+  }
+  return zuordnung;
 }
 
 /* ------------------------------------------------------------------ */
@@ -302,7 +392,7 @@ export interface BbpOptionen {
   projektNamen: Record<string, string>;
 }
 
-/** Anmeldungen mit derselben Projektnummer – sie kommen gemeinsam in ein Projekt. */
+/** Anmeldungen, die eine Projektnummer verbindet (`projektGruppen`) – sie kommen gemeinsam in ein Projekt. */
 export interface BbpProjektGruppe {
   schluessel: string;
   /** Projektnummer wie in der Datei; leer – ohne Projektnummer. */
@@ -453,25 +543,16 @@ export function bbpPlanen(d: BaubetriebDaten, gelesen: BbpGelesen, optionen: Bbp
   }
 
   // Projektgruppen nach Projektnummer, Treffer über die DB-G-Nummer
+  const zuordnung = projektGruppen(
+    gelesen.anmeldungen.map((q) => q.projektnummer),
+    d.projekte,
+  );
   const gruppen = new Map<string, BbpProjektGruppe>();
   const posten: BbpPosten[] = gelesen.anmeldungen.map((q) => {
     const bestehend = vorhanden.get(anmeldeIdSchluessel(q.anmeldeId)) ?? [];
-    const gruppe = gruppenSchluessel(q.projektnummer);
+    const { schluessel: gruppe, projektnummer, treffer } = zuordnung.get(gruppenSchluessel(q.projektnummer))!;
     if (!gruppen.has(gruppe)) {
-      const nummern = nummernVon(q.projektnummer);
-      const treffer =
-        nummern.length > 0
-          ? (d.projekte.find((p) => nummernVon(p.dbGNummer).some((n) => nummern.includes(n))) ?? null)
-          : null;
-      gruppen.set(gruppe, {
-        schluessel: gruppe,
-        projektnummer: q.projektnummer,
-        treffer,
-        neu: 0,
-        vorhanden: 0,
-        wahl: '',
-        name: '',
-      });
+      gruppen.set(gruppe, { schluessel: gruppe, projektnummer, treffer, neu: 0, vorhanden: 0, wahl: '', name: '' });
     }
     const g = gruppen.get(gruppe)!;
     const statusId = statusZiel(d, optionen.zuordnung, q.phase, q.status);

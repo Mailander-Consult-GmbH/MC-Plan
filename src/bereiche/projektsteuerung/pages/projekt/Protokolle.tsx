@@ -13,12 +13,16 @@ import { LogoVerwaltung, ReihenLogosDialog } from '../../components/Logos';
 import {
   ausProtokollTool,
   bezeichnung,
+  endetImProtokoll,
   mitgehendeEintraege,
   naechsteNr,
   neueReihe,
   protokollAufgaben,
+  protokollToolLesen,
   reihenVon,
   uebernommeneEintraege,
+  weitergefuehrtIn,
+  type ToolProtokoll,
 } from '../../domain/protokoll';
 import { ampelFuer } from '../../domain/punkte';
 import { BESPRECHUNG_VORSCHLAEGE, newId, personName, type Projekt, type Protokoll } from '../../domain/types';
@@ -36,6 +40,17 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
   const protokolle = data.protokolle.filter((p) => p.projektId === projekt.id);
   const reihen = reihenVon(protokolle);
   const oeffne = (p: Protokoll) => navigate({ view: 'protokoll', projektId: projekt.id, protokollId: p.id });
+  // Rückfrage beim Löschen: Führt ein späteres Protokoll die Aufgaben schon weiter, bleiben sie dort –
+  // bis auf die offenen, die das gelöschte übernommen, aber nicht weitergegeben hat (`endetImProtokoll`).
+  // Sie stehen danach in keinem Protokoll mehr; die Rückfrage nennt sie, statt „laufen weiter“ zu sagen.
+  const weiter = loeschen ? weitergefuehrtIn(loeschen, protokolle) : null;
+  const nurHier = loeschen && weiter ? endetImProtokoll(loeschen) : 0;
+  const ausnahme =
+    nurHier === 0
+      ? '.'
+      : nurHier === 1
+        ? ' – bis auf eine offene, die nur noch in diesem Protokoll steht und mit ihm entfällt.'
+        : ` – bis auf ${nurHier} offene, die nur noch in diesem Protokoll stehen und mit ihm entfallen.`;
 
   const folge = (p: Protokoll) => {
     const nr = naechsteNr(protokolle, p.reiheId);
@@ -46,18 +61,21 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
     navigate({ view: 'protokoll', projektId: projekt.id, protokollId: id });
   };
 
+  // Erst alle Dateien lesen, dann gemeinsam übernehmen: Bei Einzeldateien einer Reihe steht das
+  // Protokoll, das eine Aufgabe weiterführt, in einer anderen Datei (`ausProtokollTool`).
   const importieren = async (dateien: File[]) => {
-    let anzahl = 0;
+    const gelesen: ToolProtokoll[] = [];
     for (const f of dateien) {
       try {
-        const liste = ausProtokollTool(await f.text(), projekt.id, data);
-        protokolleUebernehmen(liste);
-        anzahl += liste.length;
+        gelesen.push(...protokollToolLesen(await f.text()));
       } catch (e) {
         toast(`${f.name} ${e instanceof Error ? e.message : 'konnte nicht gelesen werden'}.`);
       }
     }
-    if (anzahl > 0) toast(anzahl === 1 ? '1 Protokoll übernommen.' : `${anzahl} Protokolle übernommen.`);
+    if (gelesen.length === 0) return;
+    const liste = ausProtokollTool(gelesen, projekt.id, data);
+    protokolleUebernehmen(liste);
+    toast(liste.length === 1 ? '1 Protokoll übernommen.' : `${liste.length} Protokolle übernommen.`);
   };
 
   return (
@@ -232,7 +250,9 @@ export function Protokolle({ projekt, navigate }: { projekt: Projekt; navigate: 
       {loeschen ? (
         <ConfirmDialog
           titel="Protokoll löschen?"
-          text={`${bezeichnung(loeschen)} vom ${formatDate(loeschen.datum)} wird endgültig gelöscht. Aufgaben, die es weitergeführt hat, gelten im Vorprotokoll wieder als offen.`}
+          text={`${bezeichnung(loeschen)} vom ${formatDate(loeschen.datum)} wird endgültig gelöscht. Aufgaben, die es weitergeführt hat, ${
+            weiter ? `laufen in ${bezeichnung(weiter)} weiter${ausnahme}` : 'gelten im Vorprotokoll wieder als offen.'
+          }`}
           onConfirm={() => {
             deleteProtokoll(loeschen.id);
             toast('Protokoll gelöscht.');

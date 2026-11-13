@@ -262,6 +262,9 @@ a:hover { text-decoration: underline; }
   font: inherit;
   color: inherit;
   display: block;
+  /* ohne den Innenabstand des Browsers für Knöpfe – sonst stünde der Inhalt 6 px eingerückt
+     gegenüber einer nicht anklickbaren Karte daneben */
+  padding: 0;
 }
 .card-click:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 .card-click:active { transform: translateY(0); }
@@ -436,6 +439,15 @@ a:hover { text-decoration: underline; }
 .table tbody tr:last-child td { border-bottom: none; }
 .table tbody tr.clickable { cursor: pointer; }
 .table tbody tr.clickable:hover { background: var(--bg-hover); }
+/* Anklickbare Zeilen sind Tab-Halte (alsKlickZeile in ui.tsx): Der Tastaturfokus
+   liegt sichtbar auf der ganzen Zeile – Rahmen nach innen, damit ihn die
+   Scrollfläche der Tabelle nicht abschneidet. */
+.table tbody tr.clickable:focus-visible,
+.list-row.clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--bg-active);
+}
 .table .num { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; }
 /* Kennzahlen in Tabellen: mittig in der Spalte, größer und kräftiger */
 .table th.zahl, .table td.zahl { text-align: center; }
@@ -622,7 +634,8 @@ a:hover { text-decoration: underline; }
 .badge.blue { background: var(--accent-soft); color: var(--accent); }
 .badge.purple { background: var(--purple-soft); color: var(--purple); }
 
-.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--text-tertiary); }
+/* inline-block: als Inline-Element hätte der Punkt in einer Tabellenzelle keine Größe */
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--text-tertiary); }
 .dot.green { background: var(--green); }
 .dot.orange { background: var(--orange); }
 .dot.red { background: var(--red); }
@@ -782,8 +795,9 @@ a:hover { text-decoration: underline; }
 .modal-header h2 { font-size: 17px; }
 .modal-header .sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
 .modal-body { padding: 20px 22px; overflow-y: auto; }
+/* flex-wrap: Ein Fuß mit vielen oder langen Knöpfen bricht um, statt aus dem Dialog zu ragen */
 .modal-footer {
-  display: flex; justify-content: flex-end; gap: 8px;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px;
   padding: 14px 22px;
   border-top: 1px solid var(--separator);
   background: var(--bg-subtle);
@@ -945,16 +959,15 @@ a:hover { text-decoration: underline; }
 /* Wie .topbar-logo: mittig in der Kopfzeile (76 px ohne ihre untere Linie) */
 .start-logo { flex: none; display: flex; align-items: center; height: 75.8px; padding-left: 12px; }
 
-/* Die Kacheln stehen hochkant nebeneinander und sind gleich hoch: breit alle
-   fünf in einer Reihe, darunter drei bzw. zwei je Reihe, unter 720 px
-   untereinander (siehe Telefonbreiten unten). */
+/* Die Kacheln stehen hochkant nebeneinander und sind gleich hoch: alle drei
+   in einer Reihe, unter 720 px untereinander (siehe Telefonbreiten unten). */
 .start-kacheln {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   align-items: stretch;
   width: 100%;
-  max-width: 1400px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 0 24px;
 }
@@ -1059,13 +1072,6 @@ a:hover { text-decoration: underline; }
 }
 .bereich-wechsel:hover { background: var(--bg-hover); color: var(--accent); }
 
-@media (max-width: 1240px) {
-  .start-kacheln { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 1000px; }
-}
-@media (max-width: 900px) {
-  .start-kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 760px; }
-}
-
 @media (max-width: 720px) {
   .start-kacheln { max-width: none; padding: 0 16px; grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .bereich-kachel-bild { height: 128px; }
@@ -1107,7 +1113,7 @@ a:hover { text-decoration: underline; }
 
   .modal { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); border-radius: var(--radius-lg); }
   .modal-header, .modal-body, .modal-footer { padding-left: 16px; padding-right: 16px; }
-  .modal-footer { flex-wrap: wrap; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .modal-footer { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
   .overlay { padding: 12px; }
   .form-grid { grid-template-columns: minmax(0, 1fr); }
 

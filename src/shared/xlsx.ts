@@ -296,7 +296,7 @@ function absolut(bereich: string): string {
   return bereich.replace(/([A-Z]+)(\d+)/g, '$$$1$$$2');
 }
 
-/** Blattname in Bezügen, etwa „'Leistungsnachweis'“. */
+/** Blattname in Bezügen, etwa „'Planliste'“. */
 const blattBezug = (name: string) => `'${name.replace(/'/g, "''")}'`;
 
 /** Fußzeile aus ihren drei Teilen mit den Excel-Kürzeln für links (&L), mittig (&C) und rechts (&R). */

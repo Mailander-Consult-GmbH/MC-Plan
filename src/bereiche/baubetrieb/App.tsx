@@ -29,6 +29,7 @@ import { exportiereDaten, rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
+import { RegisterHinweis } from '../../gemeinsam/RegisterHinweis';
 
 export function App() {
   const { data, ladeZustand, zuruecksetzen } = useStore();
@@ -51,10 +52,14 @@ export function App() {
 
   const archiviert = useArchivierte('baubetrieb');
   const markierte = sichtbareProjekte(data.projekte, archiviert);
-  const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
-  const termine = offeneTermine(data);
+  // Archivierte Projekte bleiben außen vor – auch im Zähler an „Termine & Nachhaken“
+  const aktiveIds = data.projekte.filter((p) => !archiviert.has(p.id)).map((p) => p.id);
+  const aktiveAnzahl = aktiveIds.length;
+  const termine = offeneTermine(data, aktiveIds);
   // Überfällig: Terminfristen der Anmeldungen und ausstehende Erstanmeldungen
-  const ueberfaellig = [...termine, ...ausstehendeErstanmeldungen(data)].filter((t) => t.ampel === 'ueberfaellig');
+  const ueberfaellig = [...termine, ...ausstehendeErstanmeldungen(data, aktiveIds)].filter(
+    (t) => t.ampel === 'ueberfaellig',
+  );
   const projekt =
     route.view === 'projekt' || route.view === 'anmeldung'
       ? data.projekte.find((p) => p.id === route.projektId)
@@ -66,13 +71,6 @@ export function App() {
     navigate(r);
     setMenuOffen(false);
   };
-
-  const farbmodus = data.einstellungen.farbmodus;
-  useEffect(() => {
-    // Spiegel des gemeinsamen Farbmodus aus „Angemeldet als“ (src/gemeinsam/benutzer.ts),
-    // nachgezogen über useBenutzerAbgleich im Store.
-    document.documentElement.dataset.farbmodus = farbmodus;
-  }, [farbmodus]);
 
   const kopf = kopfzeile(route, projekt?.name, anmeldung ? anmeldungBezeichnung(anmeldung) : undefined);
 
@@ -198,6 +196,7 @@ export function App() {
         <div className="content" ref={inhalt}>
           <div className="content-inner">
             <Hinweisleisten />
+            <RegisterHinweis />
             {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
             {route.view === 'termine' ? <Termine navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}

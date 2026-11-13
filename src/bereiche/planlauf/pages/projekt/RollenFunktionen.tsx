@@ -27,6 +27,7 @@ import { SeiteBadge, SeiteFeld } from '../../components/SeiteAuswahl';
 import { gewerkeFuerProjekt } from '../../domain/engine';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
+import { funktionsSchluessel } from '../../../../gemeinsam/register';
 import { GewerkDialog, GewerkLoeschenDialog } from '../../components/GewerkDialog';
 import { RollenImport } from './RollenImport';
 import {
@@ -41,6 +42,7 @@ import {
   Select,
   TextArea,
   TextInput,
+  alsKlickZeile,
 } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 import '../../components/planlauf.css';
@@ -111,7 +113,8 @@ export function RollenFunktionen({ project }: { project: Project }) {
 
       <div className="row-between wrap">
         <Search value={suche} onChange={setSuche} placeholder="Funktion, Person, Firma …" />
-        <div className="row">
+        {/* wrap: Bei schmaler Breite ragte „Neue Funktion“ sonst über den Rand */}
+        <div className="row wrap">
           <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
             <Icon name="importieren" size={14} /> Excel-Import
           </button>
@@ -134,20 +137,25 @@ export function RollenFunktionen({ project }: { project: Project }) {
           }`}
         />
         {sichtbar.length === 0 ? (
-          <EmptyState
-            icon="person"
-            titel="Keine Funktion"
-            text={
-              uebergreifend
-                ? 'Legen Sie die Funktionen an, die für alle Gewerke gelten.'
-                : `Legen Sie die Funktionen an, die in ${seite} vorkommen.`
-            }
-            action={
-              <button type="button" className="btn btn-primary" onClick={() => setFunktionDialog({})}>
-                <Icon name="plus" size={14} /> Neue Funktion
-              </button>
-            }
-          />
+          suche.trim() ? (
+            // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf
+            <EmptyState icon="person" titel="Keine Funktion gefunden" text="Für diese Suche gibt es keinen Treffer." />
+          ) : (
+            <EmptyState
+              icon="person"
+              titel="Keine Funktion"
+              text={
+                uebergreifend
+                  ? 'Legen Sie die Funktionen an, die für alle Gewerke gelten.'
+                  : `Legen Sie die Funktionen an, die in ${seite} vorkommen.`
+              }
+              action={
+                <button type="button" className="btn btn-primary" onClick={() => setFunktionDialog({})}>
+                  <Icon name="plus" size={14} /> Neue Funktion
+                </button>
+              }
+            />
+          )
         ) : (
           <div className="table-scroll">
             <table className="table">
@@ -164,7 +172,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
                 {sichtbar.map((rolle) => {
                   const c = besetztVon(rolle);
                   return (
-                    <tr key={rolle.id} className="clickable" onClick={() => setBesetzen(rolle)}>
+                    <tr key={rolle.id} className="clickable" {...alsKlickZeile(() => setBesetzen(rolle))}>
                       <td>
                         <span className="row" style={{ gap: 8 }}>
                           <span className="dot" style={{ background: rolle.farbe }} />
@@ -255,7 +263,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
               </thead>
               <tbody>
                 {ohneFunktion.map((c) => (
-                  <tr key={c.id} className="clickable" onClick={() => setPerson(c)}>
+                  <tr key={c.id} className="clickable" {...alsKlickZeile(() => setPerson(c))}>
                     <td>
                       <span className="row" style={{ gap: 8 }}>
                         <Avatar name={`${c.vorname} ${c.nachname}`} />
@@ -375,7 +383,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
       {personLoeschen ? (
         <ConfirmDialog
           titel="Person löschen?"
-          text={`${personLoeschen.vorname} ${personLoeschen.nachname} wird aus diesem Projekt entfernt. Prozessschritte, denen die Person von Hand zugewiesen ist, sind danach unbesetzt.`}
+          text={`${personLoeschen.vorname} ${personLoeschen.nachname} wird aus diesem Projekt entfernt. Offene Prozessschritte, denen die Person von Hand zugewiesen ist, folgen danach wieder der Besetzung ihrer Funktion.`}
           onConfirm={() => {
             deleteContact(personLoeschen.id);
             toast('Person gelöscht.');
@@ -668,7 +676,7 @@ function FunktionsDialog({
   onClose: () => void;
   onNeuesGewerk: () => void;
 }) {
-  const { addRole, updateRole } = useStore();
+  const { data, addRole, updateRole } = useStore();
   const toast = useToast();
   const [form, setForm] = useState({
     name: rolle?.name ?? '',
@@ -686,22 +694,45 @@ function FunktionsDialog({
     setForm((f) => ({ ...f, name, seite: seiteVonHand ? f.seite : seiteAusFunktion(name) }));
 
   const speichern = () => {
-    if (!form.name.trim()) {
+    const name = form.name.trim();
+    if (!name) {
       toast('Bitte eine Bezeichnung angeben.');
       return;
     }
-    if (istEigeneFunktion({ name: form.name, gewerk: form.gewerk })) {
+    if (istEigeneFunktion({ name, gewerk: form.gewerk })) {
       toast(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person.`);
+      return;
+    }
+    // Je Gewerk gibt es eine Bezeichnung im Projekt nur einmal: Die Besetzung der
+    // Schritte nimmt die erste Funktion dieses Namens – die Person an einer zweiten
+    // fände ihre Schritte nicht. Geprüft wird nur, wenn sich Bezeichnung oder Gewerk
+    // ändern – eine schon doppelt geführte Funktion bleibt bearbeitbar.
+    const schluessel = funktionsSchluessel({ name, gewerk: form.gewerk });
+    const doppelt =
+      rolle && funktionsSchluessel(rolle) === schluessel
+        ? undefined
+        : data.roles.find(
+            (r) => r.projectId === project.id && r.id !== rolle?.id && funktionsSchluessel(r) === schluessel,
+          );
+    if (doppelt) {
+      toast(`Die Funktion „${funktionsName(doppelt)}“ gibt es bereits.`);
       return;
     }
     const werte = {
       ...form,
-      name: form.name.trim(),
-      kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
+      name,
+      kuerzel: form.kuerzel.trim() || kuerzelAus(name),
     };
     if (rolle) {
-      updateRole(rolle.id, werte);
-      toast('Funktion gespeichert.');
+      // Übergreifende Workflows ziehen bei einer Umbenennung nicht mit (sie gelten für alle Projekte):
+      // Nennen sie die alte Bezeichnung weiter, fände der nächste Planlauf daraus für diese Schritte
+      // keine zuständige Person – das sagt die Kurzmeldung, statt es stillschweigend geschehen zu lassen
+      const { workflowsMitAlterBezeichnung: workflows } = updateRole(rolle.id, werte);
+      toast(
+        workflows > 0
+          ? `Funktion gespeichert – ${workflows === 1 ? '1 Workflow nennt' : `${workflows} Workflows nennen`} weiter „${rolle.name}“; neue Planläufe daraus haben für diese Schritte keine zuständige Person.`
+          : 'Funktion gespeichert.',
+      );
     } else {
       addRole({ ...werte, projectId: project.id });
       toast('Funktion angelegt.');

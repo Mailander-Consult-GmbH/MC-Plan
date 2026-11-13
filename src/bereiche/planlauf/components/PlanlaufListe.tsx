@@ -50,7 +50,7 @@ import { AmpelBadge, AngekuendigtBadge, DocKindIcon, RunStatusBadge } from './co
 import { BuendelnDialog } from './BuendelnDialog';
 import { EmailDialog } from './EmailDialog';
 import { useSchrittStatus } from './SchrittStatus';
-import { ConfirmDialog, EmptyState, Progress } from '../../../shared/ui';
+import { ConfirmDialog, EmptyState, Progress, alsKlickZeile } from '../../../shared/ui';
 import { useToast } from '../../../shared/toast';
 import { Icon } from '../../../shared/icons';
 import { AufklappMenue } from '../../../shared/menue';
@@ -474,7 +474,8 @@ export function PlanlaufListe({
         className={`clickable ${abgebrochen ? 'zeile-verworfen' : ''} ${
           fertig ? 'zeile-fertig' : wartetAufEingang ? 'zeile-eingang' : ''
         }`}
-        onClick={() => oeffneLauf(run.id)}
+        // Die Zeile ist der einzige Weg zum Planlauf – darum auch Tab-Halt mit Enter/Leertaste
+        {...alsKlickZeile(() => oeffneLauf(run.id))}
         title={
           abgebrochen
             ? 'Abgebrochener Planlauf – nur noch zum Nachschlagen'

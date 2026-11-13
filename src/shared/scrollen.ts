@@ -4,12 +4,10 @@
  * Seiten bestehen bleibt – ohne Zurücksetzen öffnete die neue Seite an der
  * Stelle, an der die alte verlassen wurde.
  *
- * Der Schlüssel kennzeichnet die Seite (Ansicht und Projekt bzw. Nachweis),
- * nicht Reiter oder Filter – ein Reiterwechsel innerhalb einer Seite bleibt,
- * wo er ist. Der Ref gehört an `.content` selbst oder an ein Element darin
- * (die eingebundenen Leistungsnachweise im Controlling hängen ihn an ihren
- * Rahmen, `.content` gehört dort dem Controlling). Verwendet in den App.tsx
- * aller Bereiche.
+ * Der Schlüssel kennzeichnet die Seite (Ansicht und Projekt), nicht Reiter
+ * oder Filter – ein Reiterwechsel innerhalb einer Seite bleibt, wo er ist. Der
+ * Ref gehört an `.content` selbst oder an ein Element darin. Verwendet in den
+ * App.tsx aller Bereiche.
  */
 import { useLayoutEffect, useRef } from 'react';
 

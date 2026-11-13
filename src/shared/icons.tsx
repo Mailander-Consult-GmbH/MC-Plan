@@ -32,9 +32,6 @@ const paths: Record<string, string> = {
   kopieren: 'M9 9h11v11H9zM15 9V4H4v11h5',
   // Klemmbrett mit Textzeilen – Protokolle und Projektsteuerung
   protokoll: 'M9 4.5H6.5v16h11v-16H15M9 3h6v3H9zM9.5 11h5M9.5 14.5h5M9.5 18h3',
-  // Blatt mit Uhr – Leistungsnachweise und erfasste Stunden
-  stunden:
-    'M11 21H4.5V3H13l4 4v3.5M13 3v4h4M7.5 8.5h3M7.5 12h3.5M7.5 15.5h2M15.5 21a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM15.5 14.5v2.2l1.4 1',
   // Workflow-Editor: Rückgängig/Wiederholen, Schrittarten, Start und Ende
   rueckgaengig: 'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
   wiederholen: 'M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13',
@@ -44,10 +41,8 @@ const paths: Record<string, string> = {
   ziel: 'M5 21V4M5 4.5h11.5l-2.5 4 2.5 4H5',
   schleife: 'M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 20v-4.5h4.5',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5.5M12 7.5h.01',
-  // Controlling: Schloss (PIN) und Archivkarton
-  schloss: 'M6 11h12v9.5H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11M12 14.5v2.5',
+  // Archivkarton – Archiv der Projektlisten
   archiv: 'M3.5 4.5h17v4h-17zM5 8.5V20h14V8.5M10 12.5h4',
-  diagramm: 'M4 20.5h16M6.5 20.5v-6M11 20.5V8M15.5 20.5v-9M20 20.5V5',
   mehr: 'M5.5 12h.01M12 12h.01M18.5 12h.01',
 };
 

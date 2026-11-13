@@ -21,6 +21,13 @@
 .table-scroll-quer > .bb-anmeldungen tr.clickable:hover td.actions {
   background: linear-gradient(var(--bg-hover), var(--bg-hover)), var(--bg-elev);
 }
+/* Tastaturfokus der Zeile (global.css): Die stehende Spalte liegt über dem Rahmen
+   der Zeile und führt ihn darum selbst weiter – oben, unten und rechts. */
+.table-scroll-quer > .bb-anmeldungen tr.clickable:focus-visible td.actions {
+  background: linear-gradient(var(--bg-active), var(--bg-active)), var(--bg-elev);
+  box-shadow: inset 1px 0 0 var(--separator), inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent),
+    inset -2px 0 0 var(--accent);
+}
 
 /* Import aus BBPNeo (pages/BbpImport.tsx) */
 .drop-zone.bb-imp-klein { padding: 10px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }

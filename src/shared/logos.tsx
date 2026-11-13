@@ -3,9 +3,8 @@ import { useState } from 'react';
 /**
  * Bildmarken der Anwendung.
  *
- * Die Logos von KaPlan liegen als PNG unter `public/logos/` (je Bereich und
- * für das Controlling eines, dazu das Logo der Startseite und das Symbol
- * `Logo.png`). Die Wortmarke
+ * Die Logos von KaPlan liegen als PNG unter `public/logos/` (je Bereich
+ * eines, dazu das Logo der Startseite und das Symbol `Logo.png`). Die Wortmarke
  * Mailänder Consult stammt aus der Originaldatei `public/mailaender-consult.svg`
  * und wird nur über die Höhe skaliert.
  */
@@ -18,17 +17,13 @@ export type KaPlanLogo =
   | 'Startseite'
   | 'Planlaufmanagement'
   | 'Baubetriebsplanung'
-  | 'Projektsteuerung'
-  | 'Leistungsnachweise'
-  | 'Controlling';
+  | 'Projektsteuerung';
 
 const KAPLAN_TEXT: Record<KaPlanLogo, string> = {
   Startseite: 'KaPlan',
   Planlaufmanagement: 'KaPlan – Planlaufmanagement',
   Baubetriebsplanung: 'KaPlan – Baubetriebsplanung',
   Projektsteuerung: 'KaPlan – Projektsteuerung',
-  Leistungsnachweise: 'KaPlan – Leistungsnachweise',
-  Controlling: 'KaPlan – Controlling',
 };
 
 /**

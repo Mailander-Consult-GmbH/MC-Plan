@@ -43,7 +43,7 @@ export function ProjektDetail({
       {tab === 'plaene' ? <Plaene project={project} oeffneLauf={oeffneLauf} /> : null}
       {tab === 'rollen' ? <RollenFunktionen project={project} /> : null}
       {tab === 'ketten' ? <Workflows projectId={project.id} /> : null}
-      {tab === 'einstellungen' ? <Einstellungen project={project} /> : null}
+      {tab === 'einstellungen' ? <Einstellungen project={project} navigate={navigate} /> : null}
 
     </div>
   );

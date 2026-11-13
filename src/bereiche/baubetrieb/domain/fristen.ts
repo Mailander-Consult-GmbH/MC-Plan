@@ -22,7 +22,7 @@ import {
   type RilSchluessel,
   type Workflow,
 } from './types';
-import { istLeiche, statusVon, type StatusInfo } from './workflow';
+import { dientZumNachhaken, istLeiche, statusVon, type StatusInfo } from './workflow';
 
 /** Was die Fristenrechnung aus dem Bestand braucht. */
 export type FristKontext = Pick<BaubetriebDaten, 'einstellungen' | 'workflows' | 'projekte'>;
@@ -201,7 +201,7 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
   const e = d.einstellungen;
   const { status } = statusVon(d.workflows, a.statusId);
   const regel = fristRegelText(status.frist);
-  const basis = { regel, manuell: false, nachhaken: status.nachhaken, platzhalter: false };
+  const basis = { regel, manuell: false, nachhaken: dientZumNachhaken(status), platzhalter: false };
 
   if (a.terminManuell) {
     return {

@@ -16,13 +16,15 @@
  * Zweig des Basisplans, verteilt auf genau
  * einen maßgeblichen Zweig – von dessen spätester Ausführung rückwärts. Was
  * darüber hinausgeht, hat der Puffer des Blocks aufgefangen (angezeigt, nicht
- * gezählt). So gilt Gesamtverzug = Σ Seiten + Seite fehlt − Zeitgewinn; der
- * Rest `nichtErklaert` ist im Regelfall 0.
+ * gezählt). Ein Schritt des Regelwegs, an dem der Lauf vorbeiführt (Antwort
+ * ohne Nacharbeit, Ausstieg nach vorn), wird nie ausgeführt: Seine Frist aus
+ * dem Basisplan ist ein Zeitgewinn. So gilt Gesamtverzug = Σ Seiten + Seite
+ * fehlt − Zeitgewinn; der Rest `nichtErklaert` ist im Regelfall 0.
  */
 import { addDays, diffArbeitstage, diffDays, naechsterArbeitstag, today } from '../../../shared/dates';
 import { aktuelleSchritte, istErledigt, nachfolger, strukturVon, verfolgen, type Struktur } from './ablauf';
 import { kontaktName, seiteFuerSchritt } from './engine';
-import { prognose } from './simulation';
+import { planEndeImRegelweg, prognose } from './simulation';
 import {
   SEITE_LABEL,
   type Contact,
@@ -186,6 +188,7 @@ export interface BlockBilanz {
   eingang: ISODate;
   /** Dauer des längsten Zweigs im Basisplan. */
   geplanteDauer: number;
+  /** Eingang + geplante Dauer; im ersten Block mit Eingang Soll das Blockende laut Basisplan (Zweiganfänge am Eingang Soll). */
   geplantesEnde: ISODate;
   ende: ISODate;
   /** tage(geplantes Ende, Ende); negativ = Zeitgewinn des Blocks. */
@@ -492,9 +495,14 @@ export function terminnachweis(
   });
   // Laufende und künftige Ausführungen laut Prognose
   const laufend = run.status === 'laufend';
+  /** Die Prognose reicht nicht bis zum Ende – was noch kommt, ist dann unbekannt. */
+  let prognoseOffen = false;
   if (laufend) {
     const pg = prognose(run, project, doc ?? undefined, heute);
-    if (pg.fehler) warnungen.push('Die Prognose endet nicht (Schleife bzw. zu viele Schritte) – das Ende ist unsicher.');
+    if (pg.fehler) {
+      prognoseOffen = true;
+      warnungen.push('Die Prognose endet nicht (Schleife bzw. zu viele Schritte) – das Ende ist unsicher.');
+    }
     const anstehend = new Set(aktuelleSchritte(run).map((s) => s.id));
     pg.ausfuehrungen.forEach((a, k) => {
       const s = schrittVon.get(a.stepId);
@@ -766,11 +774,61 @@ export function terminnachweis(
     return plan.zweige.reduce((m, z) => Math.max(m, z.dauer + rundung(z.erster)), 0) - plan.dauer;
   };
 
-  /** Geplantes Soll des ersten Schritts laut Basisplan. */
-  const basisErsterSoll = (a: Roh): ISODate | null => {
+  /**
+   * Ein Eingang Soll vor dem Start des Laufs (die Unterlage kam später als
+   * geplant) zählt ab dem Start: Der erste Schritt hat seinen Eingang am Start
+   * und ist frühestens dann fertig (recalcSollDaten: das späteste aus Ist und
+   * Eingang) – ab da rechnet der Basisplan weiter. Gemessen am Eingang Soll
+   * selbst stünden die Tage bis zum Start als Verzug im Nachweis, die das
+   * Plan-Ende des Basisplans schon enthält („Nicht erklärt“ im Minus).
+   *
+   * Ausnahme: Endet der Basisplan schon mit dem ersten Schritt (Workflow mit
+   * einem Schritt, nur ein Block ohne Folgeschritt), ist sein Plan-Ende das
+   * Eingang Soll selbst und liegt vor dem Start – es folgt nichts, das ab dem
+   * Start weiterrechnete. Dort zählen die Tage bis zum Start zum Verzug und
+   * gehören in den Nachweis; ab dem Start gemessen blieben sie „Nicht erklärt“.
+   */
+  const planEndetVorStart = Boolean(basis?.planEnde && basis.planEnde < run.start);
+  const abStart = (d: ISODate): ISODate => (d < run.start && !planEndetVorStart ? run.start : d);
+
+  /** Geplantes Soll eines ersten Schritts (Frist `frist` im Basisplan) laut Basisplan: das Eingang Soll (frühestens der Start), sonst Anker + Frist. */
+  const basisErsterSoll = (frist: number): ISODate | null => {
     if (!basis) return null;
     const mitSoll = basis.eingangSoll !== undefined ? basis.eingangSoll : basis.anker !== run.start ? basis.anker : null;
-    return mitSoll ?? fristSoll(basis.anker, a.basisFrist ?? a.frist, rahmen);
+    return mitSoll ? abStart(mitSoll) : fristSoll(basis.anker, frist, rahmen);
+  };
+
+  /**
+   * Posten eines ersten Schritts – des ersten Einzelschritts bzw. eines
+   * Zweiganfangs mit Eingang Soll, wenn der Lauf mit einem Block beginnt. Er
+   * wird nicht an Eingang + Frist gemessen, sondern an seinem geplanten Soll
+   * laut Basisplan: Verschiebung des Termins, Soll von Hand, Abweichung vom Soll.
+   */
+  const postenErster = (a: Roh): NachweisPosten[] => {
+    const liste: NachweisPosten[] = [];
+    const geplant = basisErsterSoll(a.basisFrist ?? a.frist);
+    // Das Soll ohne Eingriff von Hand – mit Eingang Soll wie im Basisplan frühestens der Start (siehe abStart)
+    const sollAbStart = a.soll && a.mitEingangSoll ? abStart(a.soll) : a.soll;
+    const ohneHand = a.sollManuell
+      ? a.mitEingangSoll && eingangSoll
+        ? abStart(eingangSoll)
+        : fristSoll(a.e, a.frist, rahmen)
+      : (sollAbStart ?? a.i);
+    if (geplant) {
+      neuerPosten(
+        liste,
+        a,
+        'erster_termin',
+        t(geplant, ohneHand),
+        'auftraggeber',
+        a.mitEingangSoll ? 'Eingang Soll gegenüber dem Basisplan verschoben' : 'Termin des ersten Schritts gegenüber dem Basisplan verschoben',
+      );
+    }
+    if (a.sollManuell && a.soll) neuerPosten(liste, a, 'soll_hand', t(ohneHand, a.soll), a.seite, 'Soll von Hand gesetzt (vereinbarte Fristverlängerung)');
+    // Gemessen wird am Soll von Hand, sonst am Soll ab dem Start – die drei Posten ergeben zusammen geplant → Ist
+    const abw = a.soll ? t(a.sollManuell ? a.soll : ohneHand, a.i) : 0;
+    neuerPosten(liste, a, 'frist', abw, a.seite, abw >= 0 ? (a.mitEingangSoll ? 'Eingang nach dem Eingang Soll' : 'Frist überschritten') : 'Vor dem Soll erledigt');
+    return liste;
   };
 
   let vorige: Einheit | null = null;
@@ -786,22 +844,8 @@ export function terminnachweis(
       a.terminwirksam = true;
       let liste: NachweisPosten[];
       if (istErste) {
-        liste = [];
-        const geplant = basisErsterSoll(a);
-        const ohneHand = a.sollManuell ? (a.mitEingangSoll && eingangSoll ? eingangSoll : fristSoll(a.e, a.frist, rahmen)) : (a.soll ?? a.i);
-        if (geplant) {
-          neuerPosten(
-            liste,
-            a,
-            'erster_termin',
-            t(geplant, ohneHand),
-            'auftraggeber',
-            a.mitEingangSoll ? 'Eingang Soll gegenüber dem Basisplan verschoben' : 'Termin des ersten Schritts gegenüber dem Basisplan verschoben',
-          );
-        }
-        if (a.sollManuell && a.soll) neuerPosten(liste, a, 'soll_hand', t(ohneHand, a.soll), a.seite, 'Soll von Hand gesetzt (vereinbarte Fristverlängerung)');
-        const abw = a.soll ? t(a.soll, a.i) : 0;
-        neuerPosten(liste, a, 'frist', abw, a.seite, abw >= 0 ? (a.mitEingangSoll ? 'Eingang nach dem Eingang Soll' : 'Frist überschritten') : 'Vor dem Soll erledigt');
+        liste = postenErster(a);
+        const geplant = basisErsterSoll(a.basisFrist ?? a.frist);
         if (geplant) {
           neuerPosten(liste, a, 'zeitgewinn', -planRundung(a.stepId, geplant), null, 'Basisplan: Frist 0 nach einem arbeitsfreien Tag eingeplant');
         }
@@ -825,7 +869,16 @@ export function terminnachweis(
     const blockArt: 'regel' | 'nacharbeit' = frueher || !regel.has(steps[blockStart].id) ? 'nacharbeit' : 'regel';
     const ersteAusf = u.ausf.reduce((x, a) => (a.e < x.e || (a.e === x.e && a.pos < x.pos) ? a : x), u.ausf[0]);
     const blockListe: NachweisPosten[] = [];
-    if (istErste && basis) {
+    /*
+     * Beginnt der Lauf mit diesem Block und hat der Eintrag ein Eingang Soll,
+     * haben die Zweiganfänge keine Frist, sondern genau dieses Datum (siehe
+     * recalcSollDaten) – so rechnet auch der Basisplan. Dann wird jeder
+     * Zweiganfang wie ein erster Einzelschritt an seinem geplanten Soll
+     * gemessen und der Block an seinem geplanten Ende laut Basisplan, nicht an
+     * Beginn + Dauer.
+     */
+    const anfangMitEingangSoll = istErste && Boolean(basis) && u.ausf.some((a) => a.mitEingangSoll);
+    if (istErste && basis && !anfangMitEingangSoll) {
       neuerPosten(blockListe, ersteAusf, 'erster_termin', t(basis.anker, u.e), 'auftraggeber', 'Beginn gegenüber dem Basisplan verschoben');
     }
     neuerPosten(blockListe, ersteAusf, 'uebergabe', uebergabe, ersteAusf.eingangGeschaetzt ? null : vorSeite, 'Eingang des Blocks später als der Abschluss des Vorgängers');
@@ -854,7 +907,8 @@ export function terminnachweis(
       for (const a of ausf) {
         const grund = plan.regelweg.has(a.stepId) && !gesehen.has(a.stepId);
         gesehen.add(a.stepId);
-        liste.push(...postenVon(a, grund, t(vor ? vor.i : u.e, a.e), vor ? vor.seite : vorSeite));
+        if (anfangMitEingangSoll && a.mitEingangSoll) liste.push(...postenErster(a));
+        else liste.push(...postenVon(a, grund, t(vor ? vor.i : u.e, a.e), vor ? vor.seite : vorSeite));
         vor = a;
       }
       const eigene = liste.reduce((s, p) => s + (p.art === 'zeitgewinn' ? -p.tage : p.tage), 0);
@@ -864,7 +918,15 @@ export function terminnachweis(
     for (const z of zweige) {
       if (z.ende > massgeblich.ende || (z.ende === massgeblich.ende && z.eigene > massgeblich.eigene)) massgeblich = z;
     }
-    const geplantesEnde = rahmen.arbeitstage ? addDays(u.e, plan.dauer, true, rahmen.feiertage) : addDays(u.e, plan.dauer);
+    const plusTage = (d: ISODate, n: number) => (rahmen.arbeitstage ? addDays(d, n, true, rahmen.feiertage) : addDays(d, n));
+    // Mit Eingang Soll: je Zweig das geplante Soll des Zweiganfangs + die Fristen der übrigen Schritte, davon das späteste
+    const geplantesEnde = anfangMitEingangSoll
+      ? plan.zweige.reduce<ISODate>((spaetestes, z) => {
+          const fristErster = basisFrist(z.erster);
+          const soll = basisErsterSoll(fristErster ?? schrittVon.get(z.erster)?.fristTage ?? 0) ?? u.e;
+          return spaeter(spaetestes, plusTage(soll, z.dauer - (fristErster ?? 0)));
+        }, '')
+      : plusTage(u.e, plan.dauer);
     const verzug = t(geplantesEnde, u.ende);
     for (const z of zweige) for (const a of z.ausf) a.terminwirksam = z === massgeblich;
     zaehlen(blockListe);
@@ -903,6 +965,59 @@ export function terminnachweis(
       terminwirksam: true,
       prognose: u.ausf.some(prognoseVon),
     });
+  }
+
+  /* -------- Entfallene Schritte des Basisplans -------- */
+
+  /*
+   * Das Plan-Ende des Basisplans enthält die Fristen aller Schritte des
+   * Regelwegs (jede Entscheidung mit ihrer ersten Antwort). Führt der Lauf an
+   * einem solchen Schritt vorbei – Antwort ohne Nacharbeit, Ausstieg aus einem
+   * Block nach vorn –, gibt es keine Ausführung und damit keinen Posten; seine
+   * Frist bliebe als „Nicht erklärt“ stehen. Sie ist ein Zeitgewinn, angehängt
+   * an die letzte Ausführung des Regelwegs davor (meist die Entscheidung). In
+   * einem Block zählt der Blockverzug schon als Ganzes; ein ganz ausgelassener
+   * Block entfällt mit seiner geplanten Dauer. Nicht bei abgebrochenen Läufen
+   * und nicht, solange die Prognose das Ende nicht erreicht – dort fehlt der
+   * Rest des Wegs, er entfällt nicht.
+   */
+  if (basis?.planEnde && run.status !== 'abgebrochen' && !prognoseOffen) {
+    const weg = planEndeImRegelweg(steps, {
+      start: run.start,
+      eingangSoll,
+      arbeitstage: rahmen.arbeitstage,
+      feiertage: rahmen.feiertage,
+    });
+    const letzteVon = new Map<ID, Roh>();
+    for (const a of roh) letzteVon.set(a.stepId, a);
+    const bloeckeMitAusfuehrung = new Set(einheiten.map((u) => u.block));
+    const entfallen = (bezug: Roh, wert: number, text: string) => {
+      if (wert > 0) {
+        posten.push({ art: 'zeitgewinn', schluessel: bezug.schluessel, text, tage: wert, gezaehlt: wert, seite: null, prognose: prognoseVon(bezug) });
+      }
+    };
+    let bezug: Roh | null = null;
+    const gemeldet = new Set<ID>();
+    for (const w of weg.fehler ? [] : weg.ausfuehrungen) {
+      const ausgefuehrt = letzteVon.get(w.stepId);
+      if (ausgefuehrt) {
+        if (!bezug || ausgefuehrt.pos > bezug.pos) bezug = ausgefuehrt;
+        continue;
+      }
+      if (gemeldet.has(w.stepId)) continue;
+      gemeldet.add(w.stepId);
+      const s = schrittVon.get(w.stepId);
+      // Ohne Bezug gibt es nichts anzuhängen; Durchläufe aus der Zeit vor der Umstellung sind nicht gespeichert (siehe Warnung unten)
+      if (!bezug || !s || (s.durchlauf ?? 1) > (s.historie ?? []).length + 1) continue;
+      const block = w.parallel && st.bloecke.has(w.parallel.block) ? w.parallel.block : null;
+      if (block) {
+        if (bloeckeMitAusfuehrung.has(block)) continue;
+        bloeckeMitAusfuehrung.add(block);
+        entfallen(bezug, blockPlan(steps, st, block, basisFrist).dauer, 'Paralleler Block des Basisplans entfällt');
+      } else {
+        entfallen(bezug, basisFrist(w.stepId) ?? 0, `Schritt „${w.name}“ des Basisplans entfällt`);
+      }
+    }
   }
 
   /* -------- Zuordnung von Hand und Summen -------- */

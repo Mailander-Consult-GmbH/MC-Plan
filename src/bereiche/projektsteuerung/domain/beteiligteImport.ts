@@ -122,7 +122,44 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
     if (z.every((f) => !f.trim())) continue;
     let vorname = wert(z, 'vorname');
     let nachname = wert(z, 'nachname');
-    if (!nachname && wert(z, 'name')) ({ vorname, nachname } = nameTeilen(wert(z, 'name')));
+    const gesamt = wert(z, 'name').replace(/\s+/g, ' ');
+    if (!nachname && gesamt) {
+      // Ohne Vornamen in der Zeile trägt „Name“ den ganzen Namen – auch in einer Liste mit Spalte
+      // „Vorname“. Bliebe „Anna Meier“ dort als Nachname stehen, hieße eine vorhandene Anna Meier nach
+      // der Übernahme „Anna Anna Meier“: Erkannt wird sie über den vollen Namen, übernommen werden nur
+      // ausgefüllte Angaben, ihr Vorname bliebe also neben dem neuen Nachnamen stehen.
+      // Führt das Projekt die Person unter diesem vollen Namen schon, behält sie ihre Aufteilung – das
+      // Zerlegen schriebe sonst „von der Heide“ oder „DB InfraGO AG“ (nur Nachname) zu „von der | Heide“
+      // bzw. „DB InfraGO | AG“ um. In einer Liste ohne Spalte „Vorname“ wird wie bisher stets zerlegt.
+      const bekannt = spalten.vorname === undefined ? undefined : imProjekt.find((b) => gleich(personName(b), gesamt));
+      if (!vorname && bekannt) ({ vorname, nachname } = bekannt);
+      else if (!vorname) ({ vorname, nachname } = nameTeilen(gesamt));
+      else if (gesamt.includes(',')) {
+        const geteilt = nameTeilen(gesamt);
+        nachname = geteilt.nachname;
+        vorname = vorname || geteilt.vorname;
+      } else {
+        // Neben einem Vornamen ist „Name“ der Nachname: nicht zerlegen, sonst ginge der Vorname
+        // verloren („Berger | Anna“) oder ein Namenszusatz wanderte in den Vornamen („von der Heide“).
+        // Steht dort doch der volle Name, bleibt als Nachname, was auf den Vornamen folgt („Anna Berger |
+        // Anna“ → Berger); was davor steht, gehört wie bei `nameTeilen` zum Vornamen („Dr. Eva Sommer |
+        // Eva“ → „Dr. Eva“ | Sommer). Folgt nichts, bleibt „Name“ der Nachname („Ben Ali | Ali“ heißt Ali
+        // Ben Ali) – außer das Projekt führt die Person schon mit dem Teil davor als Nachnamen und nicht
+        // mit dem ganzen („Meier Anna | Anna“ neben einer vorhandenen Anna Meier).
+        const woerter = gesamt.split(' ');
+        const vor = vorname.split(/\s+/);
+        const stelle = woerter.findIndex((_, i) => vor.every((w, k) => gleich(woerter[i + k] ?? '', w)));
+        const danach = stelle < 0 ? [] : woerter.slice(stelle + vor.length);
+        if (danach.length > 0) {
+          vorname = [...woerter.slice(0, stelle), ...vor].join(' ');
+          nachname = danach.join(' ');
+        } else {
+          const davor = stelle > 0 ? woerter.slice(0, stelle).join(' ') : '';
+          const fuehrt = (n: string) => imProjekt.some((b) => gleich(b.vorname, vorname) && gleich(b.nachname, n));
+          nachname = davor && fuehrt(davor) && !fuehrt(gesamt) ? davor : gesamt;
+        }
+      }
+    }
     if (!nachname) continue;
 
     const gewerkText = wert(z, 'gewerk');

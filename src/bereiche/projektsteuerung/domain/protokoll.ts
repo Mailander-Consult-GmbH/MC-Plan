@@ -177,8 +177,20 @@ export function freierTeilnehmer(): Teilnehmer {
   return { id: newId('tn'), beteiligterId: null, name: '', funktion: '', firma: '', kuerzel: '', status: 'anwesend' };
 }
 
-/** Wert für „Verantwortlich“: das Kürzel, ohne Kürzel der Name. */
-export const zuordnung = (t: Teilnehmer): string => t.kuerzel.trim() || t.name.trim();
+/**
+ * Wert für „Verantwortlich“: das Kürzel, ohne Kürzel der Name. Führen mehrere
+ * Teilnehmende (`alle`) dasselbe Kürzel – etwa zwei Personen derselben
+ * Funktion ohne eigenes Kürzel –, steht für sie der Name: Der Wert muss im
+ * Protokoll eindeutig sein, sonst ließe sich die zweite Person nicht wählen
+ * und der Druck sagte nicht, wer gemeint ist.
+ */
+export function zuordnung(t: Teilnehmer, alle: readonly Teilnehmer[]): string {
+  const kuerzel = t.kuerzel.trim();
+  const name = t.name.trim();
+  const mehrfach =
+    kuerzel !== '' && alle.some((x) => x.id !== t.id && x.kuerzel.trim().toLowerCase() === kuerzel.toLowerCase());
+  return (mehrfach ? name : '') || kuerzel || name;
+}
 
 /**
  * Erstes Protokoll einer neuen Reihe. Die Protokollführung übernimmt die
@@ -343,6 +355,57 @@ export function folgeprotokoll(
 }
 
 /**
+ * Protokoll, das weiterführt, was `p` aus seinem Vorprotokoll übernommen hat –
+ * oder null, wenn davon nichts weiterläuft (letztes Protokoll der Reihe, oder
+ * alles Übernommene endete in `p`).
+ */
+export function weitergefuehrtIn(p: Protokoll, protokolle: Protokoll[]): Protokoll | null {
+  const id = p.tops.flatMap((t) => t.eintraege).find((e) => e.vor && e.uebernommenIn)?.uebernommenIn;
+  return (id && id !== p.id && protokolle.find((x) => x.id === id)) || null;
+}
+
+/**
+ * Zahl der offenen Aufgaben, die `p` aus seinem Vorprotokoll übernommen, aber
+ * an kein späteres weitergegeben hat – etwa weil sie beim Anlegen des
+ * Folgeprotokolls gestrichen waren und danach wiederhergestellt wurden. Sie
+ * zählen nur noch in `p`. Führt ein späteres Protokoll anderes aus `p` weiter
+ * (`weitergefuehrtIn`), gehen sie mit `p` verloren: `protokollLoeschen` lässt
+ * das Vorprotokoll dann für alle seine Einträge auf das spätere verweisen.
+ * Die Rückfrage vor dem Löschen nennt sie deshalb.
+ */
+export const endetImProtokoll = (p: Protokoll): number =>
+  protokollAufgaben([p]).filter((a) => a.eintrag.vor && (a.zeile ?? a.eintrag).status !== 'erledigt').length;
+
+/**
+ * Löscht ein Protokoll. Aufgaben, die es aus dem Vorprotokoll weitergeführt
+ * hat, gelten dort wieder als offen – außer ein späteres Protokoll führt sie
+ * schon weiter (`weitergefuehrtIn`): Dann verweist das Vorprotokoll auf
+ * dieses, sonst zählte jede Aufgabe doppelt, im Vorprotokoll und im späteren.
+ * Entschieden wird je Protokoll, nicht je Aufgabe – die Kopie im
+ * Folgeprotokoll kennt ihren Ursprungseintrag nicht. Was das gelöschte
+ * Protokoll übernommen, aber nicht weitergegeben hat, steht danach in keinem
+ * Protokoll mehr (`endetImProtokoll`).
+ */
+export function protokollLoeschen(protokolle: Protokoll[], id: ID): Protokoll[] {
+  const weg = protokolle.find((p) => p.id === id);
+  if (!weg) return protokolle;
+  const ziel = weitergefuehrtIn(weg, protokolle)?.id ?? null;
+  return protokolle
+    .filter((p) => p.id !== id)
+    .map((p) =>
+      p.tops.some((t) => t.eintraege.some((e) => e.uebernommenIn === id))
+        ? {
+            ...p,
+            tops: p.tops.map((t) => ({
+              ...t,
+              eintraege: t.eintraege.map((e) => (e.uebernommenIn === id ? { ...e, uebernommenIn: ziel } : e)),
+            })),
+          }
+        : p,
+    );
+}
+
+/**
  * Verschiebt einen Eintrag um eine Stelle nach oben (-1) oder unten (1). Am
  * Anfang bzw. Ende seines Tagesordnungspunkts wechselt er ans Ende des vorigen
  * bzw. an den Anfang des nächsten Punkts; weiter geht es nicht.
@@ -408,7 +471,8 @@ export interface ProtokollAufgabe {
 /**
  * Aufgaben aus Protokollen – Einträge vom Typ A und Ergänzungen mit eigener
  * Art „Aufgabe“, je Aufgabe nur ihr jüngstes Vorkommen: Wurde der Eintrag in
- * ein Folgeprotokoll übernommen, zählt er dort. Gestrichenes zählt nicht.
+ * ein Folgeprotokoll übernommen, zählt er dort. Gestrichenes zählt nicht –
+ * Punkt, Eintrag oder die Zeilen, die die Aufgabe tragen.
  */
 export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
   const aufgaben: ProtokollAufgabe[] = [];
@@ -417,7 +481,9 @@ export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
       top.eintraege.forEach((eintrag, ei) => {
         if (eintrag.uebernommenIn || eintragEntfaellt(top, eintrag)) return;
         const nr = `${ti + 1}.${ei + 1}`;
-        if (eintrag.typ === 'A' && eintrag.zeilen.some((z) => !eigeneArt(z))) {
+        // Der Eintrag ist nur Aufgabe, solange eine nicht gestrichene mitlaufende Zeile sie trägt – sind
+        // alle gestrichen, bliebe ein offener Punkt ohne Text, den auch das Folgeprotokoll nicht übernimmt
+        if (eintrag.typ === 'A' && eintrag.zeilen.some((z) => !eigeneArt(z) && !z.entfaellt)) {
           aufgaben.push({ protokoll, top, eintrag, zeile: null, nr });
         }
         for (const zeile of eintrag.zeilen) {
@@ -436,9 +502,62 @@ export function protokollAufgaben(protokolle: Protokoll[]): ProtokollAufgabe[] {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Zieht „Verantwortlich“ mit, wenn sich der Wert ändert, unter dem eine
+ * teilnehmende Person geführt wird (`zuordnung`): `vorher` sind die
+ * Teilnehmenden vor der Änderung, `p` das Protokoll danach. „Verantwortlich“
+ * ist nur dieser Text – bliebe er stehen, nennten die Aufgaben ein Kürzel, das
+ * niemand mehr führt, und zählten nicht mehr als To-Dos der Person. Das gilt
+ * auch für andere als die geänderte Person: Kommt jemand mit demselben Kürzel
+ * hinzu, steht für beide fortan der Name. Die Vorstände gehen mit, sonst gälte
+ * „Verantwortlich“ als in diesem Protokoll geändert. Nicht mitgezogen wird,
+ * was nicht zu entscheiden ist: ein Wert, den mehrere führten und nicht alle
+ * gleich ablösen (wer ihn behält, behält die Aufgaben). Ebenso bleibt stehen,
+ * was jemand an einem Gast ohne Eintrag in der Projektbeteiligtenliste im
+ * Protokoll tippt (Name, Kürzel): Dort ändert sich der Wert mit jedem
+ * Tastendruck, und der halbe Wert träfe unterwegs fremde Aufgaben.
+ */
+export function werMitziehen(vorher: readonly Teilnehmer[], p: Protokoll): Protokoll {
+  if (vorher === p.teilnehmer) return p;
+  const alt = new Map(
+    vorher.map((t) => [t.id, { wert: zuordnung(t, vorher), kuerzel: t.kuerzel.trim(), name: t.name.trim() }]),
+  );
+  // alter Wert → neuer Wert; null = nicht zu entscheiden
+  const ziel = new Map<string, string | null>();
+  const merken = (bisher: string, jetzt: string) => {
+    if (bisher) ziel.set(bisher, ziel.has(bisher) && ziel.get(bisher) !== jetzt ? null : jetzt);
+  };
+  for (const t of p.teilnehmer) {
+    const bisher = alt.get(t.id);
+    if (!bisher) continue;
+    const getippt = !t.beteiligterId && (bisher.kuerzel !== t.kuerzel.trim() || bisher.name !== t.name.trim());
+    if (getippt) continue;
+    merken(bisher.wert, zuordnung(t, p.teilnehmer));
+    // Bestände von früher nennen auch ein Kürzel, das mehrere führten: Es folgt, wenn alle es gleich ablösen
+    if (bisher.kuerzel !== bisher.wert) merken(bisher.kuerzel, t.kuerzel.trim());
+  }
+  const mit = <T extends { wer: string }>(x: T): T => {
+    const wer = ziel.get(x.wer.trim());
+    return wer && wer !== x.wer.trim() ? { ...x, wer } : x;
+  };
+  if (![...ziel].some(([bisher, jetzt]) => jetzt && jetzt !== bisher)) return p;
+  return {
+    ...p,
+    tops: p.tops.map((top) => ({
+      ...top,
+      eintraege: top.eintraege.map((e) => ({
+        ...mit(e),
+        vor: e.vor && mit(e.vor),
+        zeilen: e.zeilen.map((z) => ({ ...mit(z), vor: z.vor && mit(z.vor) })),
+      })),
+    })),
+  };
+}
+
+/**
  * Hält Teilnehmende auf dem Stand der Projektbeteiligtenliste: Name,
- * Funktion, Firma und Kürzel folgen der Person. Ist sie gelöscht, bleiben die
- * Angaben stehen und der Verweis entfällt. Läuft nach jeder Änderung im Store.
+ * Funktion, Firma und Kürzel folgen der Person, und „Verantwortlich“ folgt
+ * ihrem Kürzel (`werMitziehen`). Ist sie gelöscht, bleiben die Angaben stehen
+ * und der Verweis entfällt. Läuft nach jeder Änderung im Store.
  */
 export function teilnehmerNachziehen(d: ProjektsteuerungDaten): ProjektsteuerungDaten {
   const beteiligte = new Map(d.beteiligte.map((b) => [b.id, b]));
@@ -461,7 +580,7 @@ export function teilnehmerNachziehen(d: ProjektsteuerungDaten): Projektsteuerung
     });
     if (!anders) return p;
     geaendert = true;
-    return { ...p, teilnehmer };
+    return werMitziehen(p.teilnehmer, { ...p, teilnehmer });
   });
   return geaendert ? { ...d, protokolle } : d;
 }
@@ -508,19 +627,16 @@ const datum = (w: unknown) => (typeof w === 'string' && /^\d{4}-\d{2}-\d{2}$/.te
 const uhrzeit = (w: unknown) => (typeof w === 'string' && /^\d{1,2}:\d{2}$/.test(w) ? w : '');
 const normName = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
 
+/** Protokoll, wie es in einer Datei des Protokoll-Tools steht. */
+export type ToolProtokoll = Record<string, unknown>;
+
 /**
- * Liest eine Datei des eigenständigen Protokoll-Tools (`.protokoll`, eine
- * Reihe; oder dessen Sicherung mit allen Reihen) und bildet sie auf
- * Protokolle des Projekts ab. Teilnehmende, deren Name in der
- * Projektbeteiligtenliste steht, werden mit ihr verknüpft. Protokolle, die es
- * im Projekt bereits gibt (gleiche Kennung), werden ersetzt; sonst entstehen
- * neue Kennungen, wenn die alte schon vergeben ist.
+ * Liest die Protokolle einer Datei des eigenständigen Protokoll-Tools
+ * (`.protokoll`, eine Reihe; oder dessen Sicherung mit allen Reihen). Wirft
+ * einen Fehler, dessen Meldung auf den Dateinamen folgt („… ist keine gültige
+ * JSON-Datei“).
  */
-export function ausProtokollTool(
-  inhalt: string,
-  projektId: ID,
-  daten: ProjektsteuerungDaten,
-): Protokoll[] {
+export function protokollToolLesen(inhalt: string): ToolProtokoll[] {
   let d: Roh;
   try {
     d = JSON.parse(inhalt) as Roh;
@@ -540,7 +656,28 @@ export function ausProtokollTool(
   if (!roh.every((x) => x && typeof x === 'object' && text(x.id) && Array.isArray(x.tops))) {
     throw new Error('ist keine gültige Protokolldatei');
   }
+  // Die Reihe steht bei einer Einzeldatei an der Datei, nicht am Protokoll – sie geht mit
+  const serie = text(d.serie);
+  return serie ? roh.map((x) => (text(x.serie) ? x : { ...x, serie })) : roh;
+}
 
+/**
+ * Bildet Protokolle des Protokoll-Tools (`protokollToolLesen`) auf Protokolle
+ * des Projekts ab – die aller gewählten Dateien gemeinsam: „weitergeführt in“
+ * verweist bei Einzeldateien einer Reihe auf ein Protokoll in einer anderen
+ * Datei; je Datei aufgelöst ginge der Verweis verloren und die Aufgabe zählte
+ * doppelt. Teilnehmende, deren Name in der Projektbeteiligtenliste steht,
+ * werden mit ihr verknüpft. Protokolle, die es im Projekt bereits gibt
+ * (gleiche Kennung), werden ersetzt; sonst entstehen neue Kennungen, wenn die
+ * alte schon vergeben ist. Steht ein Protokoll in mehreren Dateien, gilt das
+ * zuletzt gelesene.
+ */
+export function ausProtokollTool(
+  protokolle: ToolProtokoll[],
+  projektId: ID,
+  daten: ProjektsteuerungDaten,
+): Protokoll[] {
+  const roh = [...new Map(protokolle.map((x) => [text(x.id), x])).values()];
   const imProjekt = new Set(daten.protokolle.filter((p) => p.projektId === projektId).map((p) => p.id));
   const vergeben = new Set(daten.protokolle.map((p) => p.id));
   const kennung = new Map<string, ID>();
@@ -551,7 +688,7 @@ export function ausProtokollTool(
   const beteiligte = daten.beteiligte.filter((b) => b.projektId === projektId);
 
   return roh.map((x): Protokoll => {
-    const serie = text(x.serie) || text(d.serie) || `pa:${text(x.projekt)}|${text(x.art)}`;
+    const serie = text(x.serie) || `pa:${text(x.projekt)}|${text(x.art)}`;
     const fuehrerName = text(x.fuehrer).trim();
     let fuehrerId: ID | null = null;
     const teilnehmer = (Array.isArray(x.teilnehmer) ? (x.teilnehmer as Roh[]) : [])

@@ -102,20 +102,25 @@ export function Funktionen() {
           sub={`${aufSeite.length} Funktionen · ${data.funktionen.length} insgesamt, projektübergreifend`}
         />
         {funktionen.length === 0 ? (
-          <EmptyState
-            icon="person"
-            titel={suche ? 'Keine Funktion gefunden' : 'Keine Funktionen'}
-            text={
-              uebergreifend
-                ? 'Legen Sie die Funktionen ohne Gewerkbezug an.'
-                : `Legen Sie die Funktionen an, die in ${seite} vorkommen.`
-            }
-            action={
-              <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
-                <Icon name="plus" size={14} /> Neue Funktion
-              </button>
-            }
-          />
+          suche.trim() ? (
+            // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf
+            <EmptyState icon="person" titel="Keine Funktion gefunden" text="Für diese Suche gibt es keinen Treffer." />
+          ) : (
+            <EmptyState
+              icon="person"
+              titel="Keine Funktionen"
+              text={
+                uebergreifend
+                  ? 'Legen Sie die Funktionen ohne Gewerkbezug an.'
+                  : `Legen Sie die Funktionen an, die in ${seite} vorkommen.`
+              }
+              action={
+                <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
+                  <Icon name="plus" size={14} /> Neue Funktion
+                </button>
+              }
+            />
+          )
         ) : (
           <div className="table-scroll">
             <table className="table">
@@ -154,6 +159,19 @@ export function Funktionen() {
                             }`}
                       </td>
                       <td className="actions">
+                        {/* Die Zeile öffnet den Dialog nur per Mausklick – der Knopf ist der Weg mit der Tastatur */}
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          aria-label="Funktion bearbeiten"
+                          title="Funktion bearbeiten"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDialog({ funktion: f });
+                          }}
+                        >
+                          <Icon name="bearbeiten" size={15} />
+                        </button>
                         <button
                           type="button"
                           className="btn-icon"

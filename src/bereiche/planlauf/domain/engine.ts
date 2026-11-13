@@ -116,7 +116,11 @@ function spaetestes(daten: (ISODate | null | undefined)[]): ISODate | null {
  * 3. Künftige Schritte rechnen mit dem voraussichtlichen Eingang: erledigte
  *    Vorgänger mit ihrem Abschluss, offene mit ihrem Soll, frühestens heute.
  *    Diese Prognose liegt nie in der Vergangenheit.
- * Schritte außerhalb des Verlaufs erhalten weder Eingang noch Soll.
+ * Schritte außerhalb des Verlaufs erhalten weder Eingang noch Soll – außer
+ * einem von Hand gesetzten Soll: Es bleibt stehen und gilt, sobald der Schritt
+ * (wieder) erreicht wird. „Von Hand“ ohne Datum gibt es nicht; das Kennzeichen
+ * wird dann zurückgenommen, sonst stünde das nächste berechnete Soll als von
+ * Hand gesetzt fest.
  */
 export function recalcSollDaten(
   steps: RunStep[],
@@ -167,7 +171,9 @@ export function recalcSollDaten(
 
     // 3. Soll
     let soll: ISODate;
-    if (step.sollManuell && step.sollDatum) soll = step.sollDatum;
+    // Von Hand gilt nur mit Datum (ältere Stände führen das Kennzeichen auch ohne)
+    const vonHand = step.sollManuell && Boolean(step.sollDatum);
+    if (vonHand && step.sollDatum) soll = step.sollDatum;
     // Eingang Soll gilt nur im ersten Durchlauf und nicht für einen Zweiganfang,
     // der erst beim erneuten Betreten seines Blocks beginnt (Eingang aus dem Rücksprung)
     else if (ohneVorgaenger && (step.durchlauf ?? 1) <= 1 && (step.blockDurchgang ?? 1) <= 1 && eingangSoll) soll = eingangSoll;
@@ -176,19 +182,28 @@ export function recalcSollDaten(
       if (arbeitstage) soll = naechsterArbeitstag(soll, feiertage);
     }
 
-    const gleich = step.eingangIst === eingangIst && step.eingangDatum === eingang && step.sollDatum === soll;
-    berechnet.set(step.id, gleich ? step : { ...step, eingangIst, eingangDatum: eingang, sollDatum: soll });
+    const gleich =
+      step.eingangIst === eingangIst && step.eingangDatum === eingang && step.sollDatum === soll && step.sollManuell === vonHand;
+    berechnet.set(step.id, gleich ? step : { ...step, eingangIst, eingangDatum: eingang, sollDatum: soll, sollManuell: vonHand });
   }
 
   let geaendert = false;
   const ergebnis = steps.map((step) => {
-    const neu =
-      berechnet.get(step.id) ??
-      (step.sollDatum === null && step.eingangDatum === null && (istErledigt(step) || step.eingangIst === null)
-        ? step
-        : { ...step, sollDatum: null, eingangDatum: null, eingangIst: istErledigt(step) ? step.eingangIst : null });
-    if (neu !== step) geaendert = true;
-    return neu;
+    const imVerlauf = berechnet.get(step.id);
+    if (imVerlauf) {
+      if (imVerlauf !== step) geaendert = true;
+      return imVerlauf;
+    }
+    // Außerhalb des Verlaufs: kein Eingang, kein berechnetes Soll – ein von Hand
+    // gesetztes Soll bleibt (vereinbarter Termin, falls der Schritt doch noch drankommt)
+    const vonHand = step.sollManuell && Boolean(step.sollDatum);
+    const soll = vonHand ? step.sollDatum : null;
+    const eingangIst = istErledigt(step) ? step.eingangIst : null;
+    if (step.sollDatum === soll && step.sollManuell === vonHand && step.eingangDatum === null && step.eingangIst === eingangIst) {
+      return step;
+    }
+    geaendert = true;
+    return { ...step, sollDatum: soll, sollManuell: vonHand, eingangDatum: null, eingangIst };
   });
   return geaendert ? ergebnis : steps;
 }
@@ -384,16 +399,25 @@ export function funktionenFuerGewerk(rollen: Role[], gewerk: string): string[] {
   return [...new Set(passend.map((r) => r.name))];
 }
 
+/**
+ * Die Funktion, die ein Schritt mit dieser Bezeichnung bei einem Eintrag des
+ * Gewerks meint: die Funktion des Gewerks, ersatzweise die übergreifende
+ * gleichen Namens. Danach richten sich Zuständigkeit und – beim Umbenennen
+ * einer Funktion – welche Schritte ihre Bezeichnung mitziehen.
+ */
+export function rolleFuerSchritt(rollen: Role[], roleName: string, gewerk: string): Role | undefined {
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const passende = rollen.filter((r) => gleich(r.name, roleName));
+  return passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
+}
+
 export function kontaktFuerRolleUndGewerk(
   kontakte: Contact[],
   rollen: Role[],
   roleName: string,
   gewerk: string,
 ): ID | null {
-  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-  const passende = rollen.filter((r) => gleich(r.name, roleName));
-  // Funktion des Gewerks; ersatzweise die übergreifende Funktion gleichen Namens
-  const rolle = passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
+  const rolle = rolleFuerSchritt(rollen, roleName, gewerk);
   if (!rolle) return null;
   return kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === rolle.id))?.id ?? null;
 }
@@ -1162,7 +1186,9 @@ export function eigeneKontakteSichern(daten: AppData, neueId: (prefix: string) =
  * während des Projekts, gilt die neue Besetzung sofort – auch für bereits
  * gestartete Planläufe. Von Hand gesetzte Personen (`contactManuell`) und
  * abgeschlossene Schritte bleiben unangetastet: sie halten fest, wer den
- * Schritt tatsächlich bearbeitet hat.
+ * Schritt tatsächlich bearbeitet hat. „Von Hand“ ohne Person gibt es nicht –
+ * die Oberfläche setzt es nie; Stände, in denen ein von Hand eingetragener
+ * Kontakt gelöscht wurde, führen es noch und folgen hier wieder der Besetzung.
  */
 export function zustaendigkeitenNachziehen(daten: AppData): AppData {
   let geaendert = false;
@@ -1175,11 +1201,12 @@ export function zustaendigkeitenNachziehen(daten: AppData): AppData {
 
     let laufGeaendert = false;
     const steps = run.steps.map((step) => {
-      if (step.contactManuell || step.status === 'erledigt') return step;
+      const vonHand = step.contactManuell && step.contactId !== null;
+      if (vonHand || step.status === 'erledigt') return step;
       const contactId = kontaktFuerRolleUndGewerk(kontakte, rollen, step.roleName, gewerk);
-      if (contactId === step.contactId) return step;
+      if (contactId === step.contactId && !step.contactManuell) return step;
       laufGeaendert = true;
-      return { ...step, contactId };
+      return { ...step, contactId, contactManuell: false };
     });
     if (!laufGeaendert) return run;
     geaendert = true;

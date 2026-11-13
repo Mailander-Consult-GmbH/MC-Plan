@@ -53,8 +53,7 @@ export function AmpelBadge({ ampel }: { ampel: Ampel }) {
 }
 
 export function AmpelPunkt({ ampel }: { ampel: Ampel }) {
-  // Als Inline-Element hätte der Punkt in einer Tabellenzelle keine Größe
-  return <span className={`dot ${AMPEL_TON[ampel]}`} title={AMPEL_LABEL[ampel]} style={{ display: 'inline-block' }} />;
+  return <span className={`dot ${AMPEL_TON[ampel]}`} title={AMPEL_LABEL[ampel]} />;
 }
 
 export function NachhakenBadge() {

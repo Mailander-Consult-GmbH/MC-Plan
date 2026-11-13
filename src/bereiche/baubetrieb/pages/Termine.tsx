@@ -1,12 +1,12 @@
 /**
- * Termine & Nachhaken: alle Anmeldungen mit Terminfrist über alle Projekte,
- * gefiltert nach Dringlichkeit – je Projekt zuerst eine ausstehende
- * Erstanmeldung –, dazu der Anmeldebedarf aus den Projekten.
+ * Termine & Nachhaken: alle Anmeldungen mit Terminfrist über alle nicht
+ * archivierten Projekte, gefiltert nach Dringlichkeit – je Projekt zuerst eine
+ * ausstehende Erstanmeldung –, dazu der Anmeldebedarf aus den Projekten.
  */
 import { Fragment, useMemo, useState } from 'react';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
-import { Badge, Card, CardHeader, EmptyState, Search, Segmented } from '../../../shared/ui';
+import { Badge, Card, CardHeader, EmptyState, Search, Segmented, alsKlickZeile } from '../../../shared/ui';
 import { AmpelPunkt, NachfolgerAuswahl, NachhakenBadge, StatusBadge, TerminZelle } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
 import { NachhakenDialog } from '../components/TerminDialoge';
@@ -15,6 +15,7 @@ import { ERSTE_PHASE_LABEL, RIL_LABEL, type Anmeldung, type StatusZiel } from '.
 import { anmeldungTitel } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
+import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 
 type Filter = 'alle' | 'ueberfaellig' | 'faellig' | 'geplant' | 'nachhaken';
 
@@ -25,9 +26,15 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
   const [wechsel, setWechsel] = useState<{ anmeldung: Anmeldung; nach: StatusZiel } | null>(null);
   const [nachhaken, setNachhaken] = useState<Anmeldung | null>(null);
 
-  const alle = useMemo(() => offeneTermine(data), [data]);
-  const erst = useMemo(() => ausstehendeErstanmeldungen(data), [data]);
-  const bedarf = useMemo(() => faelligerBedarf(data), [data]);
+  // Archivierte Projekte (Projektregister) bleiben außen vor, wie in der Übersicht
+  const archiviert = useArchivierte('baubetrieb');
+  const ids = useMemo(
+    () => data.projekte.filter((p) => !archiviert.has(p.id)).map((p) => p.id),
+    [data.projekte, archiviert],
+  );
+  const alle = useMemo(() => offeneTermine(data, ids), [data, ids]);
+  const erst = useMemo(() => ausstehendeErstanmeldungen(data, ids), [data, ids]);
+  const bedarf = useMemo(() => faelligerBedarf(data, ids), [data, ids]);
   const zaehler = (f: Filter) =>
     alle.filter((t) => passt(f, t.ampel, t.frist.nachhaken)).length + erst.filter((e) => passt(f, e.ampel, false)).length;
   const sucheTrifft = (felder: string[]) =>
@@ -232,7 +239,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
             <div
               key={`${projekt.id}-${zelle.fahrplanjahr}-${zelle.phase}`}
               className="list-row clickable"
-              onClick={() => navigate({ view: 'projekt', projektId: projekt.id })}
+              {...alsKlickZeile(() => navigate({ view: 'projekt', projektId: projekt.id }))}
             >
               <Icon name="kalender" size={16} />
               <div style={{ flex: 1, minWidth: 0 }}>

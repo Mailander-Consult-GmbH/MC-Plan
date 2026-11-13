@@ -10,7 +10,7 @@
  * übernommene Zeile dennoch korrigieren. Eine Ergänzung kann eine eigene Art
  * erhalten (I, F oder A, mit eigenem Verantwortlich und Termin); ohne Auswahl
  * läuft sie unter dem Ursprung mit. „Verantwortlich“ wählt aus den
- * Teilnehmenden – mit ihrem Kürzel.
+ * Teilnehmenden – mit ihrem Kürzel; führen es mehrere, mit ihrem Namen.
  *
  * Löschen heißt standardmäßig Durchstreichen – für Tagesordnungspunkte,
  * Einträge und einzelne Zeilen: Das Gestrichene steht in diesem Protokoll
@@ -18,7 +18,7 @@
  * entfernt es ohne Spur.
  */
 import { useEffect, useState } from 'react';
-import { formatDate, toISO, today } from '../../../../shared/dates';
+import { formatDate, toISO } from '../../../../shared/dates';
 import { Icon } from '../../../../shared/icons';
 import { useToast } from '../../../../shared/toast';
 import { Badge, Card, CardHeader, EmptyState, Field, Modal, Segmented, TextInput } from '../../../../shared/ui';
@@ -107,7 +107,7 @@ export function ProtokollEditor({
     if (!fokus) return;
     let el = document.getElementById(fokus);
     // „Nach oben“/„Nach unten“ ist am Anfang bzw. Ende der Tagesordnung gesperrt – dann der Gegenknopf,
-    // sonst fiele der Fokus auf die Seite zurück
+    // sonst fiele der Fokus auf die Seite zurück (Einträge wie Tagesordnungspunkte)
     if (el instanceof HTMLButtonElement && el.disabled) {
       const gegen = fokus.startsWith('ps-hoch-')
         ? fokus.replace('ps-hoch-', 'ps-runter-')
@@ -130,7 +130,7 @@ export function ProtokollEditor({
   const titel = `${bezeichnung(p)} – ${projekt.name}`;
   const liveOeffnen = useLiveDruck(titel, inhalt);
   // Für „Verantwortlich“ stehen nur Teilnehmende zur Wahl.
-  const zuordenbar = p.teilnehmer.filter((t) => zuordnung(t));
+  const zuordenbar = p.teilnehmer.filter((t) => zuordnung(t, p.teilnehmer));
 
   /* Änderungen – alle über den Store */
   const aendern = (fn: (x: Protokoll) => Protokoll) => updateProtokoll(p.id, fn);
@@ -241,17 +241,18 @@ export function ProtokollEditor({
               </div>
               <div className="s2">
                 <Field label="Nr.">
-                  <TextInput
+                  <PflichtFeld
                     type="number"
                     min={1}
-                    value={String(p.nr)}
-                    onChange={(v) => feld('nr', Math.max(1, Number.parseInt(v, 10) || 1))}
+                    wert={String(p.nr)}
+                    gueltig={(v) => Number.parseInt(v, 10) >= 1}
+                    onChange={(v) => feld('nr', Number.parseInt(v, 10))}
                   />
                 </Field>
               </div>
               <div className="s4">
                 <Field label="Datum">
-                  <TextInput type="date" value={p.datum} onChange={(v) => feld('datum', v || today())} />
+                  <PflichtFeld type="date" wert={p.datum} gueltig={(v) => v !== ''} onChange={(v) => feld('datum', v)} />
                 </Field>
               </div>
               <div className="s2">
@@ -530,35 +531,40 @@ export function ProtokollEditor({
                       Wiederherstellen
                     </button>
                   ) : null}
+                  {/* Der Fokus bleibt am verschobenen TOP – am Anfang bzw. Ende am Gegenknopf (Effekt oben) */}
                   <button
                     type="button"
+                    id={`ps-hoch-${top.id}`}
                     className="btn-icon"
                     disabled={ti === 0}
                     title="Nach oben"
                     aria-label="TOP nach oben"
-                    onClick={() =>
+                    onClick={() => {
                       aendern((x) => {
                         const tops = [...x.tops];
                         [tops[ti - 1], tops[ti]] = [tops[ti], tops[ti - 1]];
                         return { ...x, tops };
-                      })
-                    }
+                      });
+                      setFokus(`ps-hoch-${top.id}`);
+                    }}
                   >
                     <Icon name="hoch" size={14} />
                   </button>
                   <button
                     type="button"
+                    id={`ps-runter-${top.id}`}
                     className="btn-icon"
                     disabled={ti === p.tops.length - 1}
                     title="Nach unten"
                     aria-label="TOP nach unten"
-                    onClick={() =>
+                    onClick={() => {
                       aendern((x) => {
                         const tops = [...x.tops];
                         [tops[ti + 1], tops[ti]] = [tops[ti], tops[ti + 1]];
                         return { ...x, tops };
-                      })
-                    }
+                      });
+                      setFokus(`ps-runter-${top.id}`);
+                    }}
                   >
                     <Icon name="runter" size={14} />
                   </button>
@@ -1054,7 +1060,47 @@ function TeilnehmerAuswahl({
   );
 }
 
-/** Auswahl „Verantwortlich“: nur Teilnehmende, angezeigt mit Kürzel und Name. */
+/**
+ * Feld, das nie leer gespeichert wird (Nummer, Datum des Protokolls). Die
+ * Eingabe bleibt im Feld stehen, auch solange sie ungültig ist; übernommen
+ * wird nur Gültiges, und beim Verlassen zeigt das Feld wieder den
+ * gespeicherten Wert. Spiegelte es jeden Tastendruck aus dem Bestand zurück,
+ * würde aus der geleerten Nummer sofort „1“ – und aus der Eingabe 7 dann 17 –,
+ * aus einem geleerten Teil des Datums das heutige Datum.
+ */
+function PflichtFeld({
+  wert,
+  gueltig,
+  onChange,
+  ...rest
+}: {
+  wert: string;
+  gueltig: (eingabe: string) => boolean;
+  onChange: (eingabe: string) => void;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onBlur'>) {
+  const [eingabe, setEingabe] = useState(wert);
+  // Ändert sich der gespeicherte Wert (anderes Protokoll, anderes Fenster), folgt das Feld
+  useEffect(() => {
+    setEingabe(wert);
+  }, [wert]);
+  return (
+    <TextInput
+      {...rest}
+      value={eingabe}
+      onChange={(v) => {
+        setEingabe(v);
+        if (gueltig(v)) onChange(v);
+      }}
+      onBlur={() => setEingabe(wert)}
+    />
+  );
+}
+
+/**
+ * Auswahl „Verantwortlich“: nur Teilnehmende, angezeigt mit Kürzel und Name.
+ * Gespeichert wird das Kürzel – führen es mehrere, der Name (`zuordnung`),
+ * damit sich jede Person wählen lässt.
+ */
 function WerAuswahl({
   wert,
   personen,
@@ -1070,18 +1116,18 @@ function WerAuswahl({
 }) {
   const wer = wert.trim();
   // Ein früher eingetragener Wert ohne passende Person bleibt wählbar.
-  const bekannt = !wer || personen.some((t) => zuordnung(t) === wer);
+  const bekannt = !wer || personen.some((t) => zuordnung(t, personen) === wer);
   return (
     <select
       className={`select ps-kompakt ${wer ? '' : 'ps-leer-wahl'}`}
       value={wer}
       onChange={(ev) => onChange(ev.target.value)}
       aria-label={label}
-      title={personen.find((t) => zuordnung(t) === wer)?.name || undefined}
+      title={personen.find((t) => zuordnung(t, personen) === wer)?.name || undefined}
     >
       <option value="">{platzhalter}</option>
       {personen.map((t) => (
-        <option key={t.id} value={zuordnung(t)}>
+        <option key={t.id} value={zuordnung(t, personen)}>
           {[t.kuerzel.trim(), t.name.trim()].filter(Boolean).join(' – ')}
         </option>
       ))}

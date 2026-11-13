@@ -58,7 +58,7 @@ export function sichtFuerRegister(d: AppData): Sicht {
         return (inhaber.get(`${person.projektId}|${k}`) ?? []).some((id) => id !== person.id);
       });
     },
-    projekte: d.projects.map((p) => ({ id: p.id, nummer: p.nummer, name: p.name, beschreibung: p.beschreibung, markiert: p.markiert })),
+    projekte: d.projects.map((p) => ({ id: p.id, nummer: p.nummer, name: p.name, beschreibung: p.beschreibung })),
     personen: d.contacts
       .filter((c) => !c.eigen)
       .map((c) => {

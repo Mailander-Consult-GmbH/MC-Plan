@@ -1446,13 +1446,18 @@ interface EinfuegeOrt {
  * Zulässige Stellen zum Einfügen: hinter jedem Schritt des Verlaufs, in einem
  * parallelen Block auch am Ende eines Zweigs bzw. nach dem Block – nur dort,
  * wo der neue Schritt nichts Erledigtes überholt.
+ *
+ * Hat der Eintrag ein Eingang Soll, gibt es die Stelle vor dem ersten Schritt
+ * nicht: Das Eingang Soll gilt für den ersten Schritt im ersten Durchlauf
+ * (recalcSollDaten) – der neue Schritt erhielte es anstelle seiner Frist und
+ * wäre nach einem verstrichenen Eingang Soll vom ersten Augenblick an überfällig.
  */
-function einfuegeOrte(run: PlanRun, verlauf: Verlauf<RunStep>, nummer: Map<ID, number>): EinfuegeOrt[] {
+function einfuegeOrte(run: PlanRun, verlauf: Verlauf<RunStep>, nummer: Map<ID, number>, mitEingangSoll: boolean): EinfuegeOrt[] {
   const orte: EinfuegeOrt[] = [];
   const dazu = (nachId: ID | null, position: EinfuegePosition, label: string) => {
     if (einfuegenMoeglich(run.steps, nachId, position)) orte.push({ wert: `${position}:${nachId ?? ''}`, label, nachId, position });
   };
-  dazu(null, 'danach', '– an den Anfang –');
+  if (!mitEingangSoll) dazu(null, 'danach', '– an den Anfang –');
   for (const a of verlauf.abschnitte) {
     if (a.art === 'schritt') {
       dazu(a.step.id, 'danach', `nach ${nummer.get(a.step.id)}. ${a.step.name}`);
@@ -1544,7 +1549,13 @@ function SchrittDialog({
   const [frage, setFrage] = useState(false);
 
   // Einfügeposition: Vorgabe direkt hinter dem (ersten) anstehenden Schritt
-  const orte = useMemo(() => (step ? [] : einfuegeOrte(run, verlauf, nummer)), [step, run, verlauf, nummer]);
+  const mitEingangSoll = Boolean(data.documents.find((d) => d.id === run.documentId)?.eingangSoll);
+  const orte = useMemo(
+    () => (step ? [] : einfuegeOrte(run, verlauf, nummer, mitEingangSoll)),
+    [step, run, verlauf, nummer, mitEingangSoll],
+  );
+  /** Die Stelle vor dem ersten Schritt fehlt nur wegen des Eingang Soll – dann sagt es der Hinweis am Feld. */
+  const anfangGesperrt = !step && mitEingangSoll && einfuegenMoeglich(run.steps, null, 'danach');
   const [ortWert, setOrtWert] = useState<string>(() => {
     if (step) return '';
     const erster = aktuelleSchritte(run)[0];
@@ -1794,7 +1805,9 @@ function SchrittDialog({
           <Field
             label="Einfügen"
             full
-            hint="Der Schritt wird in den laufenden Verlauf eingehängt – nicht vor Schritten, die schon erledigt sind; im parallelen Block in den Zweig des gewählten Schritts."
+            hint={`Der Schritt wird in den laufenden Verlauf eingehängt – nicht vor Schritten, die schon erledigt sind; im parallelen Block in den Zweig des gewählten Schritts.${
+              anfangGesperrt ? ' Vor dem ersten Schritt geht es nicht, solange der Eintrag ein Eingang Soll hat – es gilt für den ersten Schritt.' : ''
+            }`}
           >
             {orte.length > 0 ? (
               <Select

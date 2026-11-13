@@ -181,7 +181,8 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
                 {mitHinweis} {mitHinweis === 1 ? 'Zeile' : 'Zeilen'} mit Hinweisen – sie werden trotzdem übernommen.
               </Callout>
             ) : null}
-            <div className="card" style={{ maxHeight: 340, overflowY: 'auto' }}>
+            {/* overflow in beide Richtungen – nur „overflowY“ schnitte die Spalte „Hinweis“ bei 400 px ab */}
+            <div className="card" style={{ maxHeight: 340, overflow: 'auto' }}>
               <table className="table">
                 <thead>
                   <tr>

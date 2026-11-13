@@ -21,6 +21,7 @@ import { exportiereDaten, rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
+import { RegisterHinweis } from '../../gemeinsam/RegisterHinweis';
 
 export function App() {
   const { data, ladeZustand, zuruecksetzen } = useStore();
@@ -59,13 +60,6 @@ export function App() {
     navigate(r);
     setMenuOffen(false);
   };
-
-  const farbmodus = data.einstellungen.farbmodus;
-  useEffect(() => {
-    // Spiegel des gemeinsamen Farbmodus aus „Angemeldet als“ (src/gemeinsam/benutzer.ts),
-    // nachgezogen über useBenutzerAbgleich im Store.
-    document.documentElement.dataset.farbmodus = farbmodus;
-  }, [farbmodus]);
 
   const kopf = kopfzeile(route, projekt?.name, protokoll ? bezeichnung(protokoll) : undefined);
 
@@ -181,6 +175,7 @@ export function App() {
         <div className="content" ref={inhalt}>
           <div className="content-inner">
             <Hinweisleisten />
+            <RegisterHinweis />
             {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
             {route.view === 'funktionen' ? <Funktionen /> : null}

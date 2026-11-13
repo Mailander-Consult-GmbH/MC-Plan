@@ -65,6 +65,8 @@ import {
   Select,
   TextArea,
   TextInput,
+  alsKlickZeile,
+  beiEnter,
 } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 
@@ -251,10 +253,16 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     }
   };
 
-  const Kopf = ({ feld, children, klasse = '' }: { feld: SortFeld; children: React.ReactNode; klasse?: string }) => (
-    <th className={klasse}>
+  /**
+   * Spaltenkopf mit Sortierknopf. Bewusst eine Zeichenfunktion und keine hier
+   * definierte Komponente: Die wäre bei jedem Zeichnen ein neuer Typ, React
+   * hängte den Knopf aus und neu ein – der Tastaturfokus ginge mit jedem
+   * Sortieren verloren, ein zweites Enter kehrte die Richtung nicht mehr um.
+   */
+  const kopf = (feld: SortFeld, inhalt: string, klasse = '') => (
+    <th key={feld} className={klasse}>
       <button type="button" className="sort-btn" onClick={() => sortieren(feld)}>
-        {children}
+        {inhalt}
         <span className={`sort-pfeil ${sortFeld === feld ? 'aktiv' : ''}`}>
           {sortFeld === feld ? (absteigend ? '▾' : '▴') : '▴'}
         </span>
@@ -335,7 +343,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
         className={`clickable ${eingerueckt ? 'unterzeile' : ''} ${
           abgeschlossen(doc) ? 'zeile-fertig' : wartetAufEingang(doc) ? 'zeile-eingang' : ''
         } ${gewaehltMenge.has(doc.id) ? 'pli-gewaehlt' : ''}`}
-        onClick={() => setDialog({ doc })}
+        {...alsKlickZeile(() => setDialog({ doc }))}
         title={
           abgeschlossen(doc)
             ? 'Planlauf abgeschlossen'
@@ -461,7 +469,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     const offen = !zugeklappt.includes(paket.id);
     const leer = !alle.some((d) => paketIdVon(d) === paket.id);
     return (
-      <tr key={paket.id} className="paket-zeile clickable" onClick={() => setPaketDialog({ paket })}>
+      <tr key={paket.id} className="paket-zeile clickable" {...alsKlickZeile(() => setPaketDialog({ paket }))}>
         {wahlZelle(gruppenIds(oben), `Einträge des Planpakets „${paket.titel}“ wählen`)}
         <td colSpan={4}>
           <span className="row" style={{ gap: 9 }}>
@@ -613,12 +621,12 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                       disabled={zeilen.length === 0}
                     />
                   </th>
-                  <Kopf feld="lfd">Nr.</Kopf>
-                  <Kopf feld="kind">Art</Kopf>
-                  <Kopf feld="nummer">Bezeichnung / Titel</Kopf>
-                  <Kopf feld="gewerk">Gewerk</Kopf>
-                  <Kopf feld="parent" klasse="col-optional">Planverzeichnis</Kopf>
-                  <Kopf feld="eingangSoll">Eingang Soll</Kopf>
+                  {kopf('lfd', 'Nr.')}
+                  {kopf('kind', 'Art')}
+                  {kopf('nummer', 'Bezeichnung / Titel')}
+                  {kopf('gewerk', 'Gewerk')}
+                  {kopf('parent', 'Planverzeichnis', 'col-optional')}
+                  {kopf('eingangSoll', 'Eingang Soll')}
                   <th className="actions" />
                 </tr>
               </thead>
@@ -786,8 +794,22 @@ function PlanDialog({
       ? eltern
       : undefined;
   const braucheLauf = Boolean(verzeichnisOhneLauf) || (!vorhandenerLauf && !laeuftMit && !verzeichnisEinzeln);
+  /**
+   * Die Textangaben ohne Leerzeichen am Rand (etwa aus einer Tabelle kopiert) –
+   * so gehen sie in den Bestand, in den Namen des Planlaufs und in die Suche
+   * nach den Personen des Gewerks. Sonst hieße der Lauf „Planlauf   Titel  “,
+   * das Gewerk „ KIB “ fände seine Funktionen nicht, und der Excel-Import
+   * erkennte ein so benanntes Planverzeichnis nicht wieder.
+   */
+  const texte = {
+    nummer: form.nummer.trim(),
+    titel: form.titel.trim(),
+    index: form.index.trim(),
+    gewerk: form.gewerk.trim(),
+    planungsphase: form.planungsphase.trim(),
+  };
   /** Eintrag, für den der Planlauf startet: der Eintrag selbst oder das Verzeichnis des Plans. */
-  const laufZiel = verzeichnisOhneLauf ?? form;
+  const laufZiel = verzeichnisOhneLauf ?? { ...form, ...texte };
 
   // Die Wahl gebündelt/einzeln ist frei, solange weder das Verzeichnis noch
   // seine Pläne einen Lauf haben. Danach geht es nur noch Richtung „einzeln“.
@@ -839,8 +861,8 @@ function PlanDialog({
       nummer,
       titel,
       index: '',
-      gewerk: form.gewerk,
-      planungsphase: art === 'verzeichnis' ? form.planungsphase : '',
+      gewerk: texte.gewerk,
+      planungsphase: art === 'verzeichnis' ? texte.planungsphase : '',
       eingangSoll: null,
       datum: null,
       bemerkung: '',
@@ -881,12 +903,13 @@ function PlanDialog({
     kontaktFuerRolleUndGewerk(kontakte, rollen, roleName, laufZiel.gewerk);
 
   const speichern = () => {
-    if (!form.titel.trim()) {
+    if (!texte.titel) {
       toast('Bitte einen Titel angeben.');
       return;
     }
     const werte = {
       ...form,
+      ...texte,
       eingangSoll: form.eingangSoll || null,
       datum: form.kind === 'verzeichnis' ? form.datum || null : null,
       parentId: form.kind === 'plan' ? form.parentId : null,
@@ -999,6 +1022,15 @@ function PlanDialog({
               <Select
                 value={form.kind}
                 onChange={(v) => {
+                  // Ein Planverzeichnis, das Pläne führt, bleibt eines: Als „Plan“ zeigte es
+                  // seine Pläne nicht mehr – sie verschwänden aus der Planliste und liefen,
+                  // weil sie weiter an ihm hängen, in keinem Planlauf mit.
+                  if (v === 'plan' && doc?.kind === 'verzeichnis' && planIds.length > 0) {
+                    toast(
+                      `Das Planverzeichnis führt ${planIds.length === 1 ? 'einen Plan' : `${planIds.length} Pläne`} – zum Plan lässt es sich erst machen, wenn es keine mehr führt (im Plan ein anderes Planverzeichnis oder „– Einzelplan –“ wählen).`,
+                    );
+                    return;
+                  }
                   set('kind', v as DocumentKind);
                   if (v !== 'plan') set('parentId', null);
                 }}
@@ -1337,7 +1369,7 @@ function SchnellDialog({
                 onChange={setNummer}
                 autoFocus
                 placeholder="NK-KIB-PV-001"
-                onKeyDown={(e) => e.key === 'Enter' && speichern()}
+                onKeyDown={beiEnter(speichern)}
               />
             </Field>
             <Field label="Titel" full>
@@ -1345,7 +1377,7 @@ function SchnellDialog({
                 value={titel}
                 onChange={setTitel}
                 placeholder="Planverzeichnis Überbau"
-                onKeyDown={(e) => e.key === 'Enter' && speichern()}
+                onKeyDown={beiEnter(speichern)}
               />
             </Field>
           </>
@@ -1357,7 +1389,7 @@ function SchnellDialog({
                 onChange={setTitel}
                 autoFocus
                 placeholder="Eisenbahnüberführung Nordkanal"
-                onKeyDown={(e) => e.key === 'Enter' && speichern()}
+                onKeyDown={beiEnter(speichern)}
               />
             </Field>
             <Field label="Kurzzeichen" full hint="optional">

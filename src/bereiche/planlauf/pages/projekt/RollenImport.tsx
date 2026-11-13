@@ -58,6 +58,63 @@ const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toL
 type Person = Omit<Contact, 'id' | 'projectId' | 'zuordnungen' | 'eigen' | 'sharepointEingang' | 'sharepointAusgang'> &
   Partial<Pick<Contact, 'sharepointEingang' | 'sharepointAusgang'>>;
 
+/**
+ * Die ausgefüllten Angaben einer Zeile. Eine leere Zelle oder fehlende Spalte
+ * heißt „keine Angabe“, nicht „löschen“: Was bei einer Person schon steht
+ * (Telefon, Firma, Anschrift …), bleibt – sonst leerte eine Liste, die nur
+ * Funktion, Name und E-Mail nennt, alle übrigen Kontaktdaten.
+ */
+const ausgefuellt = (person: Person): Partial<Person> =>
+  Object.fromEntries(Object.entries(person).filter(([, wert]) => wert !== '')) as Partial<Person>;
+
+/** Kennung einer Person: E-Mail, sonst der Name. */
+const personSchluessel = (p: Pick<Person, 'email' | 'vorname' | 'nachname'>) =>
+  (p.email || `${p.vorname} ${p.nachname}`).trim().toLowerCase();
+
+const nameVon = (p: Pick<Person, 'vorname' | 'nachname'>) => `${p.vorname} ${p.nachname}`.trim().toLowerCase();
+
+/**
+ * Ordnet die Zeilen einer Datei Personen zu – vorhandenen des Projekts und
+ * anderen Zeilen der Datei. Wer eine E-Mail nennt, ist die Person mit dieser E-Mail.
+ * Fehlt die E-Mail auf einer Seite – in der Zeile (Datei ohne Spalte „Email“,
+ * leere Zelle) oder bei der bekannten Person –, entscheidet der Name, wenn er
+ * genau eine Person trifft: Eine leere E-Mail-Zelle heißt „keine Angabe“,
+ * nicht „eine andere Person“. Sonst hielte eine Dublette ohne E-Mail die
+ * Funktion und die offenen Schritte der vorhandenen Person. Trifft der Name
+ * mehrere Personen, ist die Zeile nicht zuzuordnen (`mehrdeutig`) und ergibt
+ * eine neue Person.
+ *
+ * Der Aufrufer macht zuerst alle Zeilen mit E-Mail bekannt und ordnet dann
+ * Zeile für Zeile zu: Eine Zeile ohne E-Mail muss auch die Personen gleichen
+ * Namens kennen, die weiter unten in der Datei stehen. Sonst hinge das Ergebnis
+ * von der Reihenfolge der Zeilen ab, und ein zweiter Import derselben Datei –
+ * die Personen stehen dann alle im Projekt – legte eine weitere Person an.
+ */
+function personenZuordnen(kontakte: readonly Contact[]) {
+  const bekannte = kontakte.map((c) => ({ kennung: personSchluessel(c), email: c.email.trim().toLowerCase(), name: nameVon(c) }));
+  return (p: Pick<Person, 'email' | 'vorname' | 'nachname'>): { kennung: string; mehrdeutig: boolean } => {
+    const email = p.email.trim().toLowerCase();
+    const mitName = bekannte.filter((b) => b.name === nameVon(p));
+    let treffer = email ? bekannte.find((b) => b.email === email) : mitName.find((b) => !b.email);
+    let mehrdeutig = false;
+    if (!treffer) {
+      // Zeile mit E-Mail: nur Personen ohne E-Mail kommen in Frage – eine andere E-Mail ist eine andere Person
+      const moegliche = email ? mitName.filter((b) => !b.email) : mitName;
+      const kennungen = new Set(moegliche.map((b) => b.kennung));
+      if (kennungen.size === 1) treffer = moegliche[0];
+      else mehrdeutig = kennungen.size > 1;
+    }
+    if (!treffer) {
+      treffer = { kennung: personSchluessel(p), email, name: nameVon(p) };
+      bekannte.push(treffer);
+    } else if (email && !treffer.email) {
+      // Die Zeile liefert die fehlende E-Mail nach – spätere Zeilen finden die Person auch darüber
+      treffer.email = email;
+    }
+    return { kennung: treffer.kennung, mehrdeutig };
+  };
+}
+
 interface Zeile {
   /** Gewerk der Funktion; null = übergreifend. */
   gewerk: string | null;
@@ -66,8 +123,23 @@ interface Zeile {
   /** Seite aus der Spalte „Seite“; undefined = leer bzw. unbekannt (neue Funktionen: aus der Bezeichnung). */
   seite: Seite | null | undefined;
   person: Person;
+  /**
+   * Die Zeile nennt Straße und Ort. Die vier Spalten zur Anschrift ergeben ein
+   * einziges Feld; nur eine solche vollständige Angabe ersetzt eine Anschrift,
+   * die schon da ist. Eine Teilangabe (etwa nur der Ort) heißt für die übrigen
+   * Zellen „keine Angabe“ – sie ersetzte sonst Straße, Hausnummer und PLZ mit.
+   */
+  anschriftVoll: boolean;
+  /** Kennung der Person, zu der die Zeile gehört – die einer vorhandenen Person oder einer früheren Zeile (personenZuordnen). */
+  personKennung: string;
   neuesGewerk: boolean;
   neueFunktion: boolean;
+  /**
+   * Die Funktion steht weiter unten in der Datei noch einmal mit einer anderen
+   * Person. Eine Funktion hat genau eine Person – es gilt die letzte Zeile;
+   * diese hier hinterlegt ihre Person ohne die Funktion.
+   */
+  ueberholt: boolean;
   hinweis: string;
 }
 
@@ -86,9 +158,6 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
   /** Vorhandene Funktion des Projekts zu Bezeichnung und Gewerk. */
   const findeRolle = (name: string, gewerk: string | null) =>
     rollen.find((r) => gleich(r.name, name) && (r.gewerk ?? '') === (gewerk ?? ''));
-
-  /** Kennung einer Person: E-Mail, sonst der Name. */
-  const personSchluessel = (p: Person) => (p.email || `${p.vorname} ${p.nachname}`).trim().toLowerCase();
 
   const lies = async (f: File) => {
     setFehler('');
@@ -113,15 +182,32 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       const wert = (zeile: string[], feld: string) =>
         spalten[feld] !== undefined ? (zeile[spalten[feld]] ?? '').trim() : '';
 
-      // Gewerke und Funktionen, die im Laufe der Datei neu hinzukommen
-      const neueGewerke = new Set<string>();
+      // Gewerke und Funktionen, die im Laufe der Datei neu hinzukommen (Gewerke: klein geschrieben → erste Schreibweise)
+      const neueGewerke = new Map<string, string>();
       const neueFunktionen = new Set<string>();
       // Funktionen, deren Seite die Datei schon nennt – maßgeblich ist die erste Angabe
       const seiteGenannt = new Set<string>();
+      const zuordnen = personenZuordnen(kontakte);
+      // Erst alle Zeilen mit E-Mail bekannt machen (siehe personenZuordnen)
+      for (const zeile of zeilen) {
+        const p = { email: wert(zeile, 'email'), vorname: wert(zeile, 'vorname'), nachname: wert(zeile, 'nachname') };
+        if (p.nachname && p.email) zuordnen(p);
+      }
+      // Personen, für die eine frühere Zeile der Datei schon eine vollständige Anschrift nennt
+      const anschriftGenannt = new Set<string>();
 
-      const ergebnis: Zeile[] = zeilen.map((zeile) => {
+      // Zeilen ohne Namen entfallen – vor der Buchführung über neue Gewerke, Funktionen und Seiten: Nennt eine
+      // solche Zeile ein Gewerk oder eine Funktion zuerst, gälte die Zeile mit Namen sonst nicht mehr als erste
+      // Nennung, und das Gewerk würde nicht angelegt.
+      const ergebnis: Zeile[] = zeilen.filter((zeile) => wert(zeile, 'nachname')).map((zeile) => {
+        // Das Gewerk in der Schreibweise der Gewerkeliste bzw. seiner ersten Nennung in der Datei: Gewerke
+        // gelten ohne Groß-/Kleinschreibung als dieselben, Funktionen werden aber über das genaue Gewerk
+        // gefunden – „kib“ legte sonst neben „Fachplaner KIB“ eine zweite Funktion „Fachplaner kib“ an.
         const gewerkRoh = wert(zeile, 'gewerk');
-        const gewerk = !gewerkRoh || gleich(gewerkRoh, UEBERGREIFEND) ? null : gewerkRoh;
+        const gewerk =
+          !gewerkRoh || gleich(gewerkRoh, UEBERGREIFEND)
+            ? null
+            : (data.gewerke.find((g) => gleich(g, gewerkRoh)) ?? neueGewerke.get(gewerkRoh.toLowerCase()) ?? gewerkRoh);
         const hinweise: string[] = [];
         // Das Planlaufmanagement füllt stets die angemeldete Person aus; die
         // Person der Zeile wird deshalb ohne diese Funktion übernommen.
@@ -135,8 +221,10 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         let neuesGewerk = false;
         if (gewerk && !data.gewerke.some((g) => gleich(g, gewerk))) {
           neuesGewerk = !neueGewerke.has(gewerk.toLowerCase());
-          neueGewerke.add(gewerk.toLowerCase());
-          if (neuesGewerk) hinweise.push(`Gewerk „${gewerk}“ wird angelegt`);
+          if (neuesGewerk) {
+            neueGewerke.set(gewerk.toLowerCase(), gewerk);
+            hinweise.push(`Gewerk „${gewerk}“ wird angelegt`);
+          }
         }
 
         let neueFunktion = false;
@@ -190,13 +278,20 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           ...(wert(zeile, 'sharepointAusgang') ? { sharepointAusgang: wert(zeile, 'sharepointAusgang') } : {}),
         };
 
-        const vorhandeneRolle = funktion ? findeRolle(funktion, gewerk) : undefined;
-        const bisher = vorhandeneRolle
-          ? kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === vorhandeneRolle.id))
-          : undefined;
-        if (bisher && personSchluessel(bisher) !== personSchluessel(person)) {
-          hinweise.push(`ersetzt ${bisher.vorname} ${bisher.nachname} in dieser Funktion`);
+        const zuordnung = zuordnen(person);
+        if (zuordnung.mehrdeutig) {
+          hinweise.push('Name mehrfach im Projekt oder in der Datei – ohne E-Mail nicht zuzuordnen, die Person wird neu angelegt');
         }
+
+        // Teilangabe zur Anschrift: Sie füllt nur eine leere Anschrift (siehe Zeile.anschriftVoll)
+        const anschriftVoll = Boolean(wert(zeile, 'strasse') && wert(zeile, 'ort'));
+        if (person.anschrift && !anschriftVoll) {
+          const bekannt = kontakte.find((c) => personSchluessel(c) === zuordnung.kennung);
+          if (bekannt?.anschrift.trim() || anschriftGenannt.has(zuordnung.kennung)) {
+            hinweise.push('Anschrift unvollständig (ohne Straße oder Ort) – die bisherige bleibt');
+          }
+        }
+        if (anschriftVoll) anschriftGenannt.add(zuordnung.kennung);
 
         return {
           gewerk,
@@ -204,13 +299,40 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           kuerzel: wert(zeile, 'kuerzel'),
           seite,
           person,
+          anschriftVoll,
+          personKennung: zuordnung.kennung,
           neuesGewerk,
           neueFunktion,
+          ueberholt: false,
           hinweis: hinweise.join('; '),
         };
       });
 
-      setVorschau(ergebnis.filter((z) => z.person.nachname));
+      // Wer die Funktion bekommt: Nennt die Datei dieselbe Funktion in mehreren Zeilen mit verschiedenen
+      // Personen, gilt die letzte Zeile (wie bei den Kontaktdaten – spätere Angaben gelten). Sonst hielten
+      // nach dem Import zwei Personen die Funktion, und Liste wie offene Schritte zeigten nur die erste.
+      const letztePerson = new Map<string, string>();
+      for (const z of ergebnis) {
+        if (z.funktion) letztePerson.set(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`, z.personKennung);
+      }
+      setVorschau(
+        ergebnis.map((z) => {
+          if (!z.funktion) return z;
+          const hinweise = z.hinweis ? [z.hinweis] : [];
+          if (letztePerson.get(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`) !== z.personKennung) {
+            hinweise.push('Funktion steht weiter unten mit einer anderen Person – es gilt die letzte Zeile');
+            return { ...z, ueberholt: true, hinweis: hinweise.join('; ') };
+          }
+          const vorhandeneRolle = findeRolle(z.funktion, z.gewerk);
+          const bisher = vorhandeneRolle
+            ? kontakte.find((c) => c.zuordnungen.some((x) => x.roleId === vorhandeneRolle.id))
+            : undefined;
+          if (bisher && personSchluessel(bisher) !== z.personKennung) {
+            hinweise.push(`ersetzt ${bisher.vorname} ${bisher.nachname} in dieser Funktion`);
+          }
+          return { ...z, hinweis: hinweise.join('; ') };
+        }),
+      );
     } catch (e) {
       setFehler(e instanceof Error ? e.message : 'Die Datei konnte nicht gelesen werden.');
     }
@@ -259,12 +381,21 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
     }
 
     // 3. Zeilen je Person bündeln – eine Person kann mehrere Funktionen ausfüllen
-    const gruppen = new Map<string, { person: Person; zuordnungen: Zuordnung[] }>();
+    const gruppen = new Map<string, { person: Person; anschriftVoll: boolean; zuordnungen: Zuordnung[] }>();
     for (const z of vorschau) {
-      const schluessel = personSchluessel(z.person);
-      const eintrag = gruppen.get(schluessel) ?? { person: z.person, zuordnungen: [] };
-      eintrag.person = z.person;
-      if (z.funktion) {
+      // Die Kennung stammt aus der Vorschau: die der vorhandenen Person bzw. der ersten Zeile dieser Person
+      const schluessel = z.personKennung;
+      const eintrag = gruppen.get(schluessel) ?? { person: z.person, anschriftVoll: z.anschriftVoll, zuordnungen: [] };
+      // Mehrere Zeilen einer Person: Jede ergänzt, was sie ausfüllt – spätere Angaben gelten.
+      // Nur die Anschrift nicht Zelle für Zelle: Eine Teilangabe ersetzt keine vollständige.
+      const { anschrift, ...angaben } = ausgefuellt(z.person);
+      eintrag.person = { ...eintrag.person, ...angaben };
+      if (anschrift !== undefined && (z.anschriftVoll || !eintrag.anschriftVoll)) {
+        eintrag.person.anschrift = anschrift;
+        eintrag.anschriftVoll = z.anschriftVoll;
+      }
+      // Eine Funktion, die weiter unten an eine andere Person geht, vergibt diese Zeile nicht (siehe Zeile.ueberholt)
+      if (z.funktion && !z.ueberholt) {
         const roleId = rolleIds.get(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`);
         if (roleId && !eintrag.zuordnungen.some((x) => x.roleId === roleId)) {
           eintrag.zuordnungen.push({ roleId, gewerk: z.gewerk });
@@ -273,19 +404,30 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       gruppen.set(schluessel, eintrag);
     }
 
-    // 4. Personen anlegen oder ergänzen
-    const vergeben = new Set<ID>();
+    // 4. Personen anlegen oder ergänzen. Eine Funktion, die die Datei vergibt,
+    // verliert ihre bisherige Besetzung – auch wenn die bisherige Person selbst
+    // in der Datei steht (Tausch zweier Funktionen, Komplettliste nach einem
+    // Wechsel): Sonst hielten danach zwei Personen dieselbe Funktion, und
+    // Anzeige wie Zuständigkeit blieben bei der bisherigen.
+    const vergeben = new Set<ID>([...gruppen.values()].flatMap((e) => e.zuordnungen.map((z) => z.roleId)));
     let angelegt = 0;
     let ergaenzt = 0;
     for (const [schluessel, eintrag] of gruppen) {
-      eintrag.zuordnungen.forEach((z) => vergeben.add(z.roleId));
       const vorhanden = kontakte.find((c) => personSchluessel(c) === schluessel);
       if (vorhanden) {
-        const behalten = vorhanden.zuordnungen.filter(
-          (z) => !eintrag.zuordnungen.some((n) => n.roleId === z.roleId),
-        );
+        const behalten = vorhanden.zuordnungen.filter((z) => !vergeben.has(z.roleId));
+        // Nur ausgefüllte Angaben überschreiben die vorhandenen (siehe ausgefuellt) – die Anschrift
+        // nur, wenn die Datei sie vollständig nennt oder die Person noch keine hat
+        const { anschrift, ...angaben } = ausgefuellt(eintrag.person);
+        // Nennt die Datei den vollen Namen nur in „Name“ (ohne Vornamen), ist die Person über ihn erkannt –
+        // sie behält ihre Aufteilung in Vor- und Nachname. Sonst hieße „Sabine | Ortmann“ danach „Sabine |
+        // Sabine Ortmann“ (der Vorname bliebe als leere Zelle stehen), und der nächste Import derselben
+        // Datei fände sie unter diesem Namen nicht mehr.
+        if (!eintrag.person.vorname && nameVon(eintrag.person) === nameVon(vorhanden)) delete angaben.nachname;
+        const anschriftUebernehmen = anschrift !== undefined && (eintrag.anschriftVoll || !vorhanden.anschrift.trim());
         updateContact(vorhanden.id, {
-          ...eintrag.person,
+          ...angaben,
+          ...(anschriftUebernehmen ? { anschrift } : {}),
           zuordnungen: [...behalten, ...eintrag.zuordnungen],
         });
         ergaenzt += 1;
@@ -302,7 +444,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       }
     }
 
-    // 5. Bisherige Besetzungen der vergebenen Funktionen aufheben
+    // 5. Bisherige Besetzungen der vergebenen Funktionen aufheben – bei Personen, die nicht in der Datei stehen
     for (const c of kontakte) {
       if (gruppen.has(personSchluessel(c))) continue;
       const bleibt = c.zuordnungen.filter((z) => !vergeben.has(z.roleId));
@@ -379,6 +521,9 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
             style={{ display: 'none' }}
             onChange={(e) => {
               const f = e.target.files?.[0];
+              // Feld leeren: Sonst meldet der Browser keine Änderung, wenn dieselbe –
+              // inzwischen berichtigte – Datei noch einmal gewählt wird
+              e.target.value = '';
               if (f) void lies(f);
             }}
           />
@@ -396,7 +541,10 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
             Optional ist <strong>Seite</strong> – die Seite der Funktion für den Verzug (Planer, Prüfer, Auftraggeber,
             PLM oder „nicht festgelegt“); ohne Angabe wird sie bei neuen Funktionen aus der Bezeichnung vorbelegt.
             Gewerke und Funktionen, die es noch nicht gibt, werden beim Import angelegt; „Übergreifend“ steht für
-            Funktionen ohne Gewerkbezug. Über <em>Vorlage</em> erhalten Sie eine Datei mit genau diesen Spalten.
+            Funktionen ohne Gewerkbezug. Personen, die es im Projekt schon gibt, werden aktualisiert; leere Zellen
+            lassen ihre vorhandenen Angaben stehen, und eine vorhandene Anschrift wird nur ersetzt, wenn die Zeile
+            Straße und Ort nennt. Über <em>Vorlage</em> erhalten Sie eine Datei mit genau diesen
+            Spalten.
           </Callout>
         ) : null}
 
@@ -407,7 +555,9 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
                 {mitHinweis} Zeile(n) mit Hinweisen – sie werden trotzdem übernommen.
               </Callout>
             ) : null}
-            <div className="card" style={{ maxHeight: 320, overflowY: 'auto' }}>
+            {/* overflow in beide Richtungen: Nur „overflowY“ machte aus dem „clip“ der Karte quer ein „hidden“ –
+                bei 400 px Breite wäre die Spalte „Hinweis“ abgeschnitten und nicht erreichbar. */}
+            <div className="card" style={{ maxHeight: 320, overflow: 'auto' }}>
               <table className="table">
                 <thead>
                   <tr>

@@ -19,7 +19,7 @@ import { mailVorschlaege, type MailEreignis } from '../domain/mailRegeln';
 import { NACHWEIS_LABEL, type ID, type PlanRun, type RunStep, type StepStatus } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
-import { Field, Modal, TextInput } from '../../../shared/ui';
+import { Field, Modal, TextInput, beiEnter } from '../../../shared/ui';
 import { NeuZustaendig } from './NeuZustaendig';
 import { Icon } from '../../../shared/icons';
 import { AufklappMenue } from '../../../shared/menue';
@@ -246,7 +246,9 @@ export function NachweisDialog({
           onChange={setNummer}
           autoFocus
           placeholder={step.nachweis === 'freigabe' ? 'z.B. FG-2026-0147' : 'z.B. PB-2026-0032'}
-          onKeyDown={(e) => e.key === 'Enter' && uebernehmen()}
+          // beiEnter: Der Öffner ist „Schritt als erledigt vermerken“ – ein zweites
+          // Auslösen erledigte gleich den nächsten Schritt mit
+          onKeyDown={beiEnter(uebernehmen)}
         />
       </Field>
     </Modal>

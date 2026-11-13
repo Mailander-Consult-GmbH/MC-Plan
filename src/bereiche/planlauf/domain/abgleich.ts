@@ -365,6 +365,25 @@ function obersterEintrag(d: PlanDocument, nachId: Map<ID, PlanDocument>): ID {
   return d.id;
 }
 
+/**
+ * Kennung einer Funktion ohne angehängtes „~Gewerk“. Umstellungen bis Fassung 15
+ * hängten das Gewerk bei jedem Lauf erneut an („rol-x“ → „rol-x~KIB“ →
+ * „rol-x~KIB~KIB“); Bestand und ältere Sicherung führen dieselbe Funktion
+ * deshalb mit verschieden langen Kennungen. Verglichen wird stets zusammen mit
+ * dem Gewerk – „rol-x~KIB“ und „rol-x~LST“ bleiben verschiedene Funktionen.
+ */
+function kennungOhneGewerk(id: ID, gewerk: string | null): ID {
+  if (!gewerk) return id;
+  const anhang = `~${gewerk}`;
+  let kennung = id;
+  while (kennung.length > anhang.length && kennung.endsWith(anhang)) kennung = kennung.slice(0, -anhang.length);
+  return kennung;
+}
+
+/** Dieselbe Funktion, deren Kennung frühere Umstellungen verschieden oft verlängert haben. */
+const gleicheKennung = (a: { id: ID; gewerk: string | null }, b: { id: ID; gewerk: string | null }) =>
+  (a.gewerk ?? null) === (b.gewerk ?? null) && kennungOhneGewerk(a.id, a.gewerk) === kennungOhneGewerk(b.id, b.gewerk);
+
 function zuordnen(bestand: AppData, sicherung: AppData, getrennt: ReadonlySet<ID>): Zuordnung {
   const gleicheFunktion = (a: { name: string; gewerk: string | null }, b: { name: string; gewerk: string | null }) =>
     norm(a.name) === norm(b.name) && (a.gewerk ?? null) === (b.gewerk ?? null);
@@ -383,12 +402,15 @@ function zuordnen(bestand: AppData, sicherung: AppData, getrennt: ReadonlySet<ID
         vergeben.add(x.id);
       }
     }
-    for (const x of s) {
-      if (karte.has(x.id)) continue;
-      const treffer = b.find((y) => !vergeben.has(y.id) && projekt(y) === projekt(x) && gleicheFunktion(x, y));
-      if (treffer) {
-        karte.set(x.id, treffer.id);
-        vergeben.add(treffer.id);
+    // Erst über die Kennung ohne „~Gewerk“ (trifft auch umbenannte Funktionen), dann über Name und Gewerk
+    for (const gleich of [gleicheKennung, gleicheFunktion]) {
+      for (const x of s) {
+        if (karte.has(x.id)) continue;
+        const treffer = b.find((y) => !vergeben.has(y.id) && projekt(y) === projekt(x) && gleich(x, y));
+        if (treffer) {
+          karte.set(x.id, treffer.id);
+          vergeben.add(treffer.id);
+        }
       }
     }
     return karte;
@@ -666,6 +688,22 @@ function ermitteln(bestand: AppData, sicherungRoh: AppData, getrennt: ReadonlySe
   const s = abbilden(sicherungRoh, z);
   const vermerke = new Map<string, Loeschvermerk>();
   for (const v of bestand.geloescht ?? []) vermerke.set(`${v.art}:${v.id}`, v);
+  // Im Bestand gelöschte Funktionen, die die Sicherung unter einer um „~Gewerk“
+  // kürzeren oder längeren Kennung führt (siehe kennungOhneGewerk), bleiben „gelöscht“
+  const funktionsVermerke = (bestand.geloescht ?? []).filter((v) => v.art === 'funktion');
+  if (funktionsVermerke.length > 0) {
+    const funktionen: { id: ID; gewerk: string | null; projectId: ID | null }[] = [
+      ...s.standardRollen.map((r) => ({ id: r.id, gewerk: r.gewerk, projectId: null })),
+      ...s.roles,
+    ];
+    for (const r of funktionen) {
+      if (vermerke.has(`funktion:${r.id}`)) continue;
+      const vermerk = funktionsVermerke.find(
+        (v) => v.projectId === r.projectId && gleicheKennung({ id: v.id, gewerk: r.gewerk }, r),
+      );
+      if (vermerk) vermerke.set(`funktion:${r.id}`, vermerk);
+    }
+  }
 
   const elemente: Record<string, AbgleichElement> = {};
   const element = (v: Vorlage, andereNummer = false): AbgleichElement => {
@@ -781,8 +819,11 @@ function ermitteln(bestand: AppData, sicherungRoh: AppData, getrennt: ReadonlySe
       ),
     },
   ];
+  /** Über Name und Gewerk zugeordnet – nicht, wenn nur frühere Umstellungen die Kennung verlängert haben. */
+  const ueberName = (r: { id: ID; gewerk: string | null }, karte: Map<ID, ID>, id: ID) =>
+    r.id !== id && karte.get(r.id) === id && !gleicheKennung(r, { id, gewerk: r.gewerk });
   for (const e of global[1].elemente) {
-    const roh = sicherungRoh.standardRollen.find((r) => z.standard.get(r.id) === e.id && r.id !== e.id);
+    const roh = sicherungRoh.standardRollen.find((r) => ueberName(r, z.standard, e.id));
     if (roh && e.zustand !== 'nur_bestand') e.hinweise.push('über Name und Gewerk zugeordnet');
   }
 
@@ -832,7 +873,7 @@ function ermitteln(bestand: AppData, sicherungRoh: AppData, getrennt: ReadonlySe
       andere,
     );
     for (const e of funktionen) {
-      if (e.zustand !== 'nur_bestand' && sicherungRoh.roles.some((r) => r.id !== e.id && z.funktion.get(r.id) === e.id)) {
+      if (e.zustand !== 'nur_bestand' && sicherungRoh.roles.some((r) => ueberName(r, z.funktion, e.id))) {
         e.hinweise.push('über Name und Gewerk zugeordnet');
       }
     }
@@ -1166,8 +1207,33 @@ function projektKopieren(d: AppData, sicherung: AppData, pid: ID, neueId: (prefi
   };
 }
 
-/** Verweise ohne Ziel leeren (Regel „leeren“/„mitnehmen“) und fehlende Gewerke ergänzen. */
-function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>): AppData {
+/**
+ * Wer welches Gewerk nennt: Funktionen, Zuordnungen und Einträge eines Bestands,
+ * als „Kennung|Gewerk“ → Gewerk. An der Kennung ist zu erkennen, was ein
+ * Abgleich neu hereinbringt.
+ */
+function gewerkNennungen(d: Pick<AppData, 'roles' | 'standardRollen' | 'contacts' | 'documents'>): Map<string, string> {
+  const nennungen = new Map<string, string>();
+  const merken = (id: ID, g: string | null | undefined) => {
+    if (g && g.trim() !== '') nennungen.set(`${id}|${g}`, g);
+  };
+  for (const r of d.roles) merken(r.id, r.gewerk);
+  for (const r of d.standardRollen) merken(r.id, r.gewerk);
+  for (const c of d.contacts) for (const z of c.zuordnungen) merken(c.id, z.gewerk);
+  for (const x of d.documents) merken(x.id, x.gewerk);
+  return nennungen;
+}
+
+/**
+ * Verweise ohne Ziel leeren (Regel „leeren“/„mitnehmen“) und fehlende Gewerke
+ * ergänzen – nur solche, die mit dem Abgleich hereinkommen. Ein Gewerk, das der
+ * Bestand `vorher` schon ohne Listeneintrag führte, wurde dort gelöscht (seine
+ * Einträge tragen es weiter als Angabe) und kommt nicht von selbst zurück –
+ * wohl aber, wenn etwas Hereingekommenes es nennt: Ein als Kopie übernommenes
+ * Projekt bringt Funktionen und Einträge mit diesem Gewerk mit, und eine
+ * Funktion mit einem Gewerk außerhalb der Liste lässt sich nicht pflegen.
+ */
+function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>, vorher: AppData): AppData {
   const vorlagen = new Set(d.emailVorlagen.map((x) => x.id));
   const workflows = new Set(d.templates.map((x) => x.id));
   const docs = new Set(d.documents.map((x) => x.id));
@@ -1204,13 +1270,14 @@ function verweiseBereinigen(d: AppData, beruehrteLaeufe: ReadonlySet<ID>): AppDa
       ? { ...c, zuordnungen: c.zuordnungen.filter((z) => rollen.has(z.roleId)) }
       : c,
   );
-  const genutzt = [
-    ...d.roles.map((r) => r.gewerk),
-    ...d.standardRollen.map((r) => r.gewerk),
-    ...contacts.flatMap((c) => c.zuordnungen.map((z) => z.gewerk)),
-    ...documents.map((x) => x.gewerk),
-  ].filter((g): g is string => !!g && g.trim() !== '');
-  const fehlend = [...new Set(genutzt)].filter((g) => !d.gewerke.includes(g));
+  const frueher = gewerkNennungen(vorher);
+  const schonOhne = new Set([...frueher.values()].filter((g) => !vorher.gewerke.includes(g)));
+  const jetzt = gewerkNennungen({ roles: d.roles, standardRollen: d.standardRollen, contacts, documents });
+  // Hereingekommen ist, was vorher niemand mit dieser Kennung nannte (neue Kennung oder neu gesetztes Gewerk)
+  const hereingekommen = new Set([...jetzt].filter(([nennung]) => !frueher.has(nennung)).map(([, g]) => g));
+  const fehlend = [...new Set(jetzt.values())].filter(
+    (g) => !d.gewerke.includes(g) && (!schonOhne.has(g) || hereingekommen.has(g)),
+  );
   return {
     ...d,
     templates,
@@ -1334,7 +1401,7 @@ export function abgleichAnwenden(
     d = projektKopieren(d, sicherungRoh, pid, neueId, v);
     for (const r of d.runs) if (!vorher.has(r.id)) beruehrteLaeufe.add(r.id);
   }
-  d = verweiseBereinigen(d, beruehrteLaeufe);
+  d = verweiseBereinigen(d, beruehrteLaeufe, bestand);
 
   // Wieder vorhandene Elemente verlieren ihren Löschvermerk
   const vorhanden = new Set<string>([

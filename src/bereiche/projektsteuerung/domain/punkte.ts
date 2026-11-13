@@ -8,7 +8,7 @@
  * Projektbeteiligtenliste oder aus den Teilnehmenden des Protokolls.
  */
 import { diffDays, today } from '../../../shared/dates';
-import { bezeichnung, eintragText, protokollAufgaben, zuordnung } from './protokoll';
+import { bezeichnung, eintragText, protokollAufgaben } from './protokoll';
 import {
   VORLAUF_TAGE,
   kuerzelVon,
@@ -19,6 +19,7 @@ import {
   type Projekt,
   type Protokoll,
   type ProjektsteuerungDaten,
+  type Teilnehmer,
 } from './types';
 
 export type Ampel = 'erledigt' | 'ueberfaellig' | 'faellig' | 'geplant' | 'ohneTermin';
@@ -81,26 +82,31 @@ export const angemeldetBeteiligt = (d: ProjektsteuerungDaten, projektIds: ID[]):
   projektIds.some((id) => ichImProjekt(d, id).length > 0);
 
 /**
- * Werte von „Verantwortlich“, die die angemeldete Person meinen: Kürzel und
- * Name ihres Eintrags in der Projektbeteiligtenliste und im Protokoll die der
- * Teilnehmenden, die sie ist – verknüpft oder gleichen Namens.
+ * Werte von „Verantwortlich“, die die angemeldete Person meinen: im Protokoll
+ * Kürzel und Name der Teilnehmenden, die sie ist – verknüpft oder gleichen
+ * Namens –, dazu Kürzel und Name ihres Eintrags in der
+ * Projektbeteiligtenliste. Letztere gelten nur, wenn sie im Protokoll niemand
+ * anderes führt: Was dort eine teilnehmende Person nennt, meint sie – sonst
+ * sähe, wer dieselbe Funktion (und damit dasselbe Kürzel) hat, deren Aufgaben
+ * als eigene To-Dos. Ein Kürzel, das im Protokoll mehrere führen (Bestände von
+ * früher; neu Gewähltes nennt dann den Namen, `zuordnung`), zählt für alle,
+ * die es führen – lieber bei zweien als bei niemandem.
  */
 function eigeneZuordnungen(d: ProjektsteuerungDaten, projektId: ID): (p: Protokoll) => Set<string> {
   const ich = norm(d.einstellungen.bearbeiter);
   const personen = ichImProjekt(d, projektId);
   const ids = new Set(personen.map((b) => b.id));
-  const projektweit = personen.flatMap((b) => [kuerzelVon(b, d.funktionen), personName(b)]);
-  return (p) =>
-    new Set(
+  const projektweit = personen.flatMap((b) => [kuerzelVon(b, d.funktionen), personName(b)]).map(norm);
+  const binIch = (t: Teilnehmer) => (!!t.beteiligterId && ids.has(t.beteiligterId)) || norm(t.name) === ich;
+  return (p) => {
+    const andere = new Set(p.teilnehmer.filter((t) => !binIch(t)).flatMap((t) => [t.kuerzel, t.name].map(norm)));
+    return new Set(
       [
-        ...projektweit,
-        ...p.teilnehmer
-          .filter((t) => (t.beteiligterId && ids.has(t.beteiligterId)) || norm(t.name) === ich)
-          .flatMap((t) => [zuordnung(t), t.name]),
-      ]
-        .map(norm)
-        .filter(Boolean),
+        ...projektweit.filter((w) => !andere.has(w)),
+        ...p.teilnehmer.filter(binIch).flatMap((t) => [t.kuerzel, t.name].map(norm)),
+      ].filter(Boolean),
     );
+  };
 }
 
 export function allePunkte(d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[] {

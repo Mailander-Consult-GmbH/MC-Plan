@@ -85,6 +85,15 @@ const jaNein = (frage: string, ja: ID, nein: ID): Entscheidung => ({ frage, antw
  */
 const anmeldeleiche = (id: ID): WorkflowStatus => status(id, 'Anmeldeleiche', 'leiche', keine, [LOESCHEN]);
 
+/**
+ * Ob der Termin eines Status zum Nachhaken dient („Nachgehakt …“, Kennzeichen
+ * „Zum Nachhaken“, Filter unter Termine): wenn er so gekennzeichnet ist – und
+ * immer, wenn seine Terminfrist selbst ein Nachhak-Termin ist. Ein Nachhak-
+ * Termin, der sich nicht als nachgehakt festhalten ließe, bliebe überfällig.
+ */
+export const dientZumNachhaken = (s: Pick<WorkflowStatus, 'nachhaken' | 'frist'>): boolean =>
+  s.nachhaken || s.frist.typ === 'nachhaken';
+
 /** Beschreibungen der Standard-Workflows KM und KKM (auch für die Migration). */
 export const KM_BESCHREIBUNG =
   'Anmeldung im KM für N-2 bzw. N-1, tagesscharf, mit Mitwirkung der BBK. Es gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist, sonst die N-1-Frist. Annahme: Anmeldungen im KM erfolgen immer fristgerecht.';

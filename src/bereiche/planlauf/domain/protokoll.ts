@@ -122,6 +122,15 @@ export function laufAenderungenProtokollieren(
   const anstehend = new Set(aktuelleSchritte(neu).map((s) => s.id));
   const besetzung: string[] = [];
 
+  // Derselbe Funktionswechsel an mehreren Schritten (eine Funktion wurde
+  // umbenannt): ein Eintrag je Lauf statt eines je Schritt
+  const funktionswechsel = (a: RunStep, s: RunStep) => `${a.roleName} → ${s.roleName}`;
+  const wechselZahl = new Map<string, number>();
+  for (const s of neu.steps) {
+    const a = altSchritte.get(s.id);
+    if (a && a.roleName !== s.roleName) wechselZahl.set(funktionswechsel(a, s), (wechselZahl.get(funktionswechsel(a, s)) ?? 0) + 1);
+  }
+
   for (const s of neu.steps) {
     const a = altSchritte.get(s.id);
     if (!a) {
@@ -155,7 +164,14 @@ export function laufAenderungenProtokollieren(
     }
     if (a.fristTage !== s.fristTage) schreibe(`Frist von „${s.name}“ geändert: ${a.fristTage} → ${s.fristTage} Tage`, s.id);
     if (a.name !== s.name) schreibe(`Bezeichnung geändert: „${a.name}“ → „${s.name}“`, s.id);
-    if (a.roleName !== s.roleName) schreibe(`Funktion von „${s.name}“ geändert: ${a.roleName} → ${s.roleName}`, s.id);
+    if (a.roleName !== s.roleName) {
+      const wechsel = funktionswechsel(a, s);
+      const zahl = wechselZahl.get(wechsel) ?? 0;
+      if (zahl === 1) schreibe(`Funktion von „${s.name}“ geändert: ${wechsel}`, s.id);
+      else if (zahl > 1) schreibe(`Funktion von ${zahl} Schritten geändert: ${wechsel}`);
+      // Der Sammeleintrag steht einmal – beim ersten betroffenen Schritt
+      wechselZahl.set(wechsel, 0);
+    }
     if (a.bemerkung !== s.bemerkung) schreibe(`Bemerkung zu „${s.name}“ geändert`, s.id);
     if (a.contactId !== s.contactId || a.contactManuell !== s.contactManuell) {
       if (s.contactManuell) schreibe(`Zuständig für „${s.name}“ von Hand: ${person(a.contactId)} → ${person(s.contactId)}`, s.id);

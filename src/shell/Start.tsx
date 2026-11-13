@@ -41,8 +41,7 @@ export function Start() {
         <p className="start-fuss">
           Die Bereiche arbeiten unabhängig voneinander – jeder mit eigenem Datenbestand. Gemeinsam sind
           „Angemeldet als“ (Name und Farbmodus) und das Projektregister, über das sie sich Projekte und
-          Projektbeteiligte teilen und das das Controlling verwaltet. Daten werden lokal im Browser
-          gespeichert.
+          Projektbeteiligte teilen. Daten werden lokal im Browser gespeichert.
           <span className="start-fassung">Fassung vom {fassungText(FASSUNG)}</span>
         </p>
       </div>

@@ -117,7 +117,8 @@ export function zeitpunktText(iso: string | null | undefined): string {
 /** „E-Mail vorbereitet am 12.03.2026 an Erika Muster“. */
 export function erinnerungText(e: Pick<Erinnerung, 'zeitpunkt' | 'kontaktName' | 'an'>): string {
   const d = new Date(e.zeitpunkt);
-  const datum = Number.isNaN(d.getTime()) ? e.zeitpunkt : d.toLocaleDateString('de-DE');
+  // zweistellig wie überall (formatDate): „05.03.2026“, nicht „5.3.2026“
+  const datum = Number.isNaN(d.getTime()) ? e.zeitpunkt : d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const an = e.kontaktName || e.an;
   return `E-Mail vorbereitet am ${datum}${an ? ` an ${an}` : ''}`;
 }

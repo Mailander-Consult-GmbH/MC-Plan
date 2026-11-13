@@ -11,12 +11,14 @@ import { useState } from 'react';
 import {
   EIGENE_ROLLE,
   UEBERGREIFEND,
+  funktionsName,
   istEigeneFunktion,
   kuerzelAus,
   seiteAusFunktion,
   type Seite,
   type StandardRolle,
 } from '../domain/types';
+import { funktionsSchluessel } from '../../../gemeinsam/register';
 import { SeiteBadge, SeiteFeld } from '../components/SeiteAuswahl';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -31,6 +33,7 @@ import {
   Select,
   TextArea,
   TextInput,
+  alsKlickZeile,
 } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
 import { GewerkDialog, GewerkLoeschenDialog } from '../components/GewerkDialog';
@@ -136,7 +139,8 @@ export function Funktionen() {
               </thead>
               <tbody>
                 {funktionen.map((f) => (
-                  <tr key={f.id} className="clickable" onClick={() => setDialog({ funktion: f })}>
+                  // Tab-Halt: „Funktion bearbeiten“ ist sonst nur mit der Maus erreichbar
+                  <tr key={f.id} className="clickable" {...alsKlickZeile(() => setDialog({ funktion: f }))}>
                     <td>
                       <span className="row wrap" style={{ gap: 8 }}>
                         <span className="dot" style={{ background: f.farbe }} />
@@ -268,7 +272,7 @@ function FunktionsDialog({
   onClose: () => void;
   onAnlegen: (werte: Omit<StandardRolle, 'id'>) => void;
 }) {
-  const { updateStandardRolle } = useStore();
+  const { data, updateStandardRolle } = useStore();
   const toast = useToast();
   const [form, setForm] = useState({
     name: funktion?.name ?? '',
@@ -286,21 +290,48 @@ function FunktionsDialog({
     setForm((f) => ({ ...f, name, seite: seiteVonHand ? f.seite : seiteAusFunktion(name) }));
 
   const speichern = () => {
-    if (!form.name.trim()) {
+    // Ohne Leerzeichen am Rand – die Bezeichnung ist der Schlüssel der Funktion
+    // (Schritte nennen sie beim Namen, Löschvermerk und Register ebenso)
+    const name = form.name.trim();
+    if (!name) {
       toast('Bitte eine Bezeichnung angeben.');
       return;
     }
-    if (istEigeneFunktion({ name: form.name, gewerk: form.gewerk })) {
+    if (istEigeneFunktion({ name, gewerk: form.gewerk })) {
       toast(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person.`);
+      return;
+    }
+    // Je Gewerk gibt es eine Bezeichnung nur einmal: Ein neues Projekt erhielte
+    // sonst beide Funktionen, und die Besetzung der Schritte fände nur die Person
+    // an der ersten. Geprüft wird nur, wenn sich Bezeichnung oder Gewerk ändern –
+    // eine schon doppelt geführte Funktion bleibt bearbeitbar.
+    const schluessel = funktionsSchluessel({ name, gewerk: form.gewerk });
+    const doppelt =
+      funktion && funktionsSchluessel(funktion) === schluessel
+        ? undefined
+        : data.standardRollen.find((r) => r.id !== funktion?.id && funktionsSchluessel(r) === schluessel);
+    if (doppelt) {
+      toast(`Die Funktion „${funktionsName(doppelt)}“ gibt es bereits.`);
       return;
     }
     const werte = {
       ...form,
-      kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
+      name,
+      kuerzel: form.kuerzel.trim() || kuerzelAus(name),
     };
     if (funktion) {
-      updateStandardRolle(funktion.id, werte);
-      toast('Funktion gespeichert.');
+      // Eine Umbenennung zieht die übergreifenden Workflows und die Kopien der Funktion in den
+      // Projekten mit – sonst fänden neue Planläufe dort keine zuständige Person
+      const { workflows, projekte } = updateStandardRolle(funktion.id, werte);
+      const mitgezogen = [
+        workflows > 0 ? `${workflows} ${workflows === 1 ? 'Workflow' : 'Workflows'}` : '',
+        projekte > 0 ? `${projekte} ${projekte === 1 ? 'Projekt' : 'Projekten'}` : '',
+      ].filter(Boolean);
+      toast(
+        mitgezogen.length > 0
+          ? `Funktion gespeichert – sie heißt jetzt auch in ${mitgezogen.join(' und ')} „${werte.name.trim()}“.`
+          : 'Funktion gespeichert.',
+      );
     } else {
       onAnlegen(werte);
     }

@@ -1,8 +1,13 @@
-/** Projekteinstellungen: Fristenrechnung, Erinnerungen und E-Mail-Vorlagen. */
+/**
+ * Projekteinstellungen: Projektdaten, Fristen und Erinnerungen, Export, Archivieren und Löschen.
+ * Die E-Mail-Vorlagen gelten für alle Projekte und stehen auf der Seite „Vorlagen“ – hier nur der Verweis.
+ */
 import { useState } from 'react';
-import { useLoeschHinweis } from '../../../../gemeinsam/ProjektBereiche';
+import { ArchivKnopf, useArchivierbar, useLoeschHinweis } from '../../../../gemeinsam/ProjektBereiche';
 import { type Project } from '../../domain/types';
+import type { Route } from '../../lib/router';
 import { useStore } from '../../store/store';
+import { formatDate } from '../../../../shared/dates';
 import { useToast } from '../../../../shared/toast';
 import { ProjektDialog } from '../Projekte';
 import { ExportDialog } from './ExportDialog';
@@ -16,7 +21,7 @@ import {
 } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 
-export function Einstellungen({ project }: { project: Project }) {
+export function Einstellungen({ project, navigate }: { project: Project; navigate: (r: Route) => void }) {
   const { updateProject, deleteProject } = useStore();
   const toast = useToast();
   const [projektDialog, setProjektDialog] = useState(false);
@@ -24,6 +29,8 @@ export function Einstellungen({ project }: { project: Project }) {
   const [neuerFeiertag, setNeuerFeiertag] = useState('');
   const [exportOffen, setExportOffen] = useState(false);
   const loeschHinweis = useLoeschHinweis('planlauf', project.id);
+  // Die Karte steht nur, wenn es etwas zu archivieren gibt (nicht archiviert, dem Register bekannt)
+  const archivierbar = useArchivierbar('planlauf', project.id);
 
   const s = project.settings;
   const setSettings = (patch: Partial<typeof s>) => updateProject(project.id, { settings: { ...s, ...patch } });
@@ -82,7 +89,7 @@ export function Einstellungen({ project }: { project: Project }) {
                 {s.feiertage.length === 0 ? <span className="tertiary small">keine hinterlegt</span> : null}
                 {s.feiertage.map((f) => (
                   <span key={f} className="badge">
-                    {new Date(f).toLocaleDateString('de-DE')}
+                    {formatDate(f)}
                     <button
                       type="button"
                       className="btn-icon"
@@ -141,6 +148,18 @@ export function Einstellungen({ project }: { project: Project }) {
         </div>
       </Card>
 
+      {!archivierbar ? null : (
+        <Card>
+          <CardHeader
+            titel="Projekt archivieren"
+            sub="Nimmt das Projekt aus Übersicht und Seitenleiste – es bleibt erhalten und lässt sich zurückholen"
+          />
+          <div className="card-pad">
+            <ArchivKnopf bereich="planlauf" lokaleId={project.id} />
+          </div>
+        </Card>
+      )}
+
       <Card>
         <CardHeader titel="Projekt löschen" sub="Entfernt Pläne, Rollen und Planläufe dauerhaft" />
         <div className="card-pad">
@@ -159,7 +178,7 @@ export function Einstellungen({ project }: { project: Project }) {
           onConfirm={() => {
             deleteProject(project.id);
             toast('Projekt gelöscht.');
-            window.location.hash = '#/projekte';
+            navigate({ view: 'projekte' });
           }}
           onClose={() => setLoeschen(false)}
         />

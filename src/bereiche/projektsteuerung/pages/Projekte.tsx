@@ -12,6 +12,7 @@ import {
   FremdeProjekte,
   VerknuepfungsHinweis,
   useArchivierte,
+  useSucheOhneTreffer,
 } from '../../../gemeinsam/ProjektBereiche';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
@@ -32,7 +33,7 @@ export const STATUS_TON: Record<ProjektStatus, '' | 'green' | 'orange'> = {
 };
 
 export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
-  const { data, toggleMarkiert } = useStore();
+  const { data, toggleMarkiert, ladeZustand } = useStore();
   const [suche, setSuche] = useState('');
   const [dialog, setDialog] = useState(false);
 
@@ -42,6 +43,8 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const archiviert = useArchivierte('projektsteuerung');
   const aktive = projekte.filter((p) => !archiviert.has(p.id));
   const archivierte = projekte.filter((p) => archiviert.has(p.id));
+  const nurArchivierte = archivierte.length > 0 && !suche.trim();
+  const ohneTreffer = useSucheOhneTreffer('projektsteuerung', suche, archivierte.length, ladeZustand === 'ok');
 
   const karte = (p: Projekt) => {
     return (
@@ -105,12 +108,23 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
         </button>
       </div>
 
-      {aktive.length === 0 ? (
+      {aktive.length === 0 && suche.trim() ? (
+        // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf; Treffer im Archiv und in anderen
+        // Bereichen stehen darunter, der Text nennt sie (useSucheOhneTreffer)
+        <Card>
+          <EmptyState icon="projekt" titel={ohneTreffer.titel} text={ohneTreffer.text} />
+        </Card>
+      ) : aktive.length === 0 ? (
         <Card>
           <EmptyState
             icon="projekt"
-            titel="Kein Projekt gefunden"
-            text="Legen Sie ein Projekt an oder übernehmen Sie eines aus einem anderen Bereich, um Projektbeteiligte und Protokolle zu führen."
+            // Sind alle Projekte archiviert, liest sich „Kein Projekt gefunden“, als gäbe es keines
+            titel={nurArchivierte ? 'Kein aktives Projekt' : 'Kein Projekt gefunden'}
+            text={
+              nurArchivierte
+                ? 'Alle Projekte dieses Bereichs sind archiviert – sie stehen unten unter „Archiv“.'
+                : 'Legen Sie ein Projekt an oder übernehmen Sie eines aus einem anderen Bereich, um Projektbeteiligte und Protokolle zu führen.'
+            }
             action={
               <button type="button" className="btn btn-primary" onClick={() => setDialog(true)}>
                 <Icon name="plus" size={14} /> Neues Projekt
@@ -123,7 +137,8 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
       )}
 
       <ArchivAbschnitt anzahl={archivierte.length}>{archivierte.map(karte)}</ArchivAbschnitt>
-      <FremdeProjekte bereich="projektsteuerung" suche={suche} />
+      {/* Nur bei geladenem Bestand: Sonst sähe das Register die Übernahme vor, angelegt würde nichts */}
+      {ladeZustand === 'ok' ? <FremdeProjekte bereich="projektsteuerung" suche={suche} /> : null}
 
       {dialog ? <ProjektDialog onClose={() => setDialog(false)} navigate={navigate} /> : null}
     </div>

@@ -5,11 +5,11 @@
  * Angaben werden gekürzt und stehen vollständig im Tooltip.
  */
 import { useState } from 'react';
-import { ArchivHinweis, RegisterBeteiligte, useLoeschHinweis } from '../../../gemeinsam/ProjektBereiche';
+import { ArchivHinweis, ArchivKnopf, RegisterBeteiligte, useLoeschHinweis } from '../../../gemeinsam/ProjektBereiche';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Search } from '../../../shared/ui';
+import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Search, alsKlickZeile } from '../../../shared/ui';
 import { AnmeldungDialog } from '../components/AnmeldungDialog';
 import { AmpelBadge, AmpelPunkt, NachfolgerAuswahl, SachstandKompakt, StatusBadge, TerminKompakt } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
@@ -100,6 +100,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
           <button type="button" className="btn btn-outline" onClick={() => setBearbeiten(true)}>
             <Icon name="bearbeiten" size={14} /> Bearbeiten
           </button>
+          <ArchivKnopf bereich="baubetrieb" lokaleId={projekt.id} />
           <button type="button" className="btn btn-danger" onClick={() => setLoeschen(true)}>
             <Icon name="loeschen" size={14} /> Löschen
           </button>
@@ -335,7 +336,8 @@ function AnmeldungenTabelle({
                     : '';
                 const zeitraum = bauzeitraumText(a, data.workflows);
                 return (
-                  <tr key={a.id} className="clickable" onClick={() => onOeffnen(a)}>
+                  // Tab-Halt: Eine Anmeldung ohne Terminfrist ist sonst nur per Mausklick zu öffnen
+                  <tr key={a.id} className="clickable" {...alsKlickZeile(() => onOeffnen(a))}>
                     <td>
                       <div style={EINZEILIG} title={titel}>
                         {titel !== 'ohne ID' ? <strong>{titel}</strong> : <span className="tertiary">ohne ID</span>}

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
-import { Field, Modal, TextInput } from '../../../shared/ui';
+import { Field, Modal, TextInput, beiEnter } from '../../../shared/ui';
 
 export function GewerkDialog({ onClose, onAngelegt }: { onClose: () => void; onAngelegt?: (name: string) => void }) {
   const { data, addGewerk } = useStore();
@@ -43,7 +43,7 @@ export function GewerkDialog({ onClose, onAngelegt }: { onClose: () => void; onA
     >
       <div className="form-grid">
         <Field label="Bezeichnung" full hint="Kurzform wie KIB, LST oder OLA">
-          <TextInput value={name} onChange={setName} placeholder="z.B. BÜ" onKeyDown={(e) => e.key === 'Enter' && speichern()} />
+          <TextInput value={name} onChange={setName} placeholder="z.B. BÜ" onKeyDown={beiEnter(speichern)} />
         </Field>
       </div>
       <p className="small tertiary" style={{ marginTop: 10 }}>

@@ -9,7 +9,7 @@ import type { BaubetriebDaten, Projekt } from './types';
 
 export function sichtFuerRegister(d: BaubetriebDaten): Sicht {
   return {
-    projekte: d.projekte.map((p) => ({ id: p.id, nummer: p.projektnummer, name: p.name, beschreibung: null, markiert: p.markiert })),
+    projekte: d.projekte.map((p) => ({ id: p.id, nummer: p.projektnummer, name: p.name, beschreibung: null })),
     personen: null,
   };
 }

@@ -111,10 +111,10 @@ export function EmailDialog({
   const [text, setText] = useState(vorbereitet?.text ?? '');
   const [zuletztVorlage, setZuletztVorlage] = useState(templateId);
 
-  // Beim Vorlagenwechsel die Felder neu füllen
+  // Beim Vorlagenwechsel Betreff und Text neu füllen. Der Empfänger hängt nicht an
+  // der Vorlage, sondern an der Person – eine von Hand eingetragene Adresse bleibt stehen.
   if (zuletztVorlage !== templateId && vorbereitet) {
     setZuletztVorlage(templateId);
-    setAn(vorbereitet.an);
     setBetreff(vorbereitet.betreff);
     setText(vorbereitet.text);
   }
@@ -171,11 +171,11 @@ export function EmailDialog({
   }
 
   if (!template) {
+    // E-Mail-Vorlagen gelten für alle Projekte und stehen auf der Seite „Vorlagen“ (wie in SammelErinnern)
     return (
       <Modal titel="Keine E-Mail-Vorlage" onClose={onClose}>
         <Callout ton="warn" icon="!">
-          Für dieses Projekt ist noch keine Vorlage hinterlegt. Legen Sie unter{' '}
-          <strong>Projekt › Einstellungen › E-Mail-Vorlagen</strong> eine Vorlage an.
+          Es ist noch keine E-Mail-Vorlage hinterlegt. Legen Sie unter <strong>Vorlagen › E-Mail-Vorlagen</strong> eine Vorlage an.
         </Callout>
       </Modal>
     );
