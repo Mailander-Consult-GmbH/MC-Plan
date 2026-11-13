@@ -927,6 +927,7 @@ denen eine fachliche Festlegung fehlt oder der Code robuster sein könnte. Jeder
 | P-13 | Beim Duplizieren eines Schritts oder Workflows behalten die E-Mail-Regeln ihre Kennungen (heute folgenlos). | Neue Kennungen vergeben. | ☐ umsetzen · ☐ später |
 | P-14 | Das Gewerk an der Zuordnung Person–Funktion ist eine Kopie ohne Leser (seit dieser Durchsicht wird es beim Ändern der Funktion wenigstens mitgezogen). | Feld auslaufen lassen. | ☐ umsetzen · ☐ später |
 | P-15 | Terminnachweis: Führt eine Antwort ohne Nacharbeit auf einen Schritt, der nicht auf dem Regelweg des Basisplans liegt („anderer Weg“), geht die Rechnung weiterhin nicht auf („Nicht erklärt“). Das Auslassen von Schritten (Abkürzung, Ausstieg nach vorn) ist behoben. | Fachlich festlegen, wem die Zeit eines solchen Schritts zugerechnet wird. | ☐ festlegen · ☐ später |
+| P-16 | Eine umbenannte projektübergreifende Funktion zieht jetzt die übergreifenden Workflows mit; schon angelegte Projekte behalten aber den alten Namen und finden für neue Planläufe aus diesen Workflows keine Funktion, bis die Projektfunktion ebenfalls umbenannt wird (die Kurzmeldung weist darauf hin). | Festlegen: beim Umbenennen anbieten, die Projekte mitzuziehen. | ☐ festlegen · ☐ später |
 
 ### Baubetriebsplanung
 
