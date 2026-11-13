@@ -128,7 +128,12 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
       // „Vorname“. Bliebe „Anna Meier“ dort als Nachname stehen, hieße eine vorhandene Anna Meier nach
       // der Übernahme „Anna Anna Meier“: Erkannt wird sie über den vollen Namen, übernommen werden nur
       // ausgefüllte Angaben, ihr Vorname bliebe also neben dem neuen Nachnamen stehen.
-      if (!vorname) ({ vorname, nachname } = nameTeilen(gesamt));
+      // Führt das Projekt die Person unter diesem vollen Namen schon, behält sie ihre Aufteilung – das
+      // Zerlegen schriebe sonst „von der Heide“ oder „DB InfraGO AG“ (nur Nachname) zu „von der | Heide“
+      // bzw. „DB InfraGO | AG“ um. In einer Liste ohne Spalte „Vorname“ wird wie bisher stets zerlegt.
+      const bekannt = spalten.vorname === undefined ? undefined : imProjekt.find((b) => gleich(personName(b), gesamt));
+      if (!vorname && bekannt) ({ vorname, nachname } = bekannt);
+      else if (!vorname) ({ vorname, nachname } = nameTeilen(gesamt));
       else if (gesamt.includes(',')) {
         const geteilt = nameTeilen(gesamt);
         nachname = geteilt.nachname;
