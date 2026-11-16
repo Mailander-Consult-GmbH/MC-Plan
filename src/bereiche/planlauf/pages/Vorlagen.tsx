@@ -16,14 +16,7 @@ import {
   mailHtml,
   type PlatzhalterKategorie,
 } from '../domain/email';
-import {
-  ROLLEN_HINWEISE,
-  ROLLEN_KOPFZEILE,
-  PLAN_HINWEISE,
-  PLAN_KOPFZEILE,
-  rollenVorlageLaden,
-  planVorlageLaden,
-} from '../domain/importVorlagen';
+import { rollenVorlageLaden, planVorlageLaden } from '../domain/importVorlagen';
 import { newId, useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import {
@@ -40,12 +33,17 @@ import {
 import { Icon } from '../../../shared/icons';
 import {
   BausteinEditor,
-  BausteinText,
   type BausteinEditorGriff,
   type BausteinTon,
   type BausteinVerzeichnis,
 } from '../../../shared/bausteinEditor';
 import './vorlagen.css';
+
+/** Die Excel-Vorlagen der Importe – in der Liste stehen nur Name und Herunterladen. */
+const EXCEL_VORLAGEN: { name: string; laden: () => void }[] = [
+  { name: 'Planliste', laden: planVorlageLaden },
+  { name: 'Funktion', laden: rollenVorlageLaden },
+];
 
 type Seite = 'mail' | 'listen';
 
@@ -75,23 +73,20 @@ export function Vorlagen() {
             <em> Excel-Import</em>.
           </p>
 
-          <ListenKarte
-            titel="Planliste"
-            sub="Pläne, Planverzeichnisse und Planpakete"
-            spalten={PLAN_KOPFZEILE}
-            hinweise={PLAN_HINWEISE}
-            onLaden={planVorlageLaden}
-            text="Planpakete und Planverzeichnisse, die in der Liste genannt, im Projekt aber noch nicht angelegt sind, entstehen beim Import automatisch. Der Planlauf startet beim Import immer – nach dem genannten Workflow, sonst nach dem im Import gewählten."
-          />
-
-          <ListenKarte
-            titel="Funktion"
-            sub="Funktionen eines Projekts samt Besetzung"
-            spalten={ROLLEN_KOPFZEILE}
-            hinweise={ROLLEN_HINWEISE}
-            onLaden={rollenVorlageLaden}
-            text="Je Zeile eine Funktion mit der Person, die sie ausfüllt. Gewerke und Funktionen, die im Projekt noch nicht vorhanden sind, werden beim Import angelegt."
-          />
+          <Card>
+            <CardHeader titel="Excel-Vorlagen" sub={`${EXCEL_VORLAGEN.length} Vorlagen`} />
+            {EXCEL_VORLAGEN.map((v) => (
+              <div className="list-row" key={v.name}>
+                <span className="tertiary" style={{ display: 'flex' }}>
+                  <Icon name="plan" size={17} />
+                </span>
+                <strong style={{ flex: 1, minWidth: 0 }}>{v.name}</strong>
+                <button type="button" className="btn btn-sm btn-outline" onClick={v.laden}>
+                  <Icon name="export" size={13} /> Herunterladen
+                </button>
+              </div>
+            ))}
+          </Card>
         </>
       ) : (
         <>
@@ -123,12 +118,6 @@ export function Vorlagen() {
                     <div className="row wrap" style={{ gap: 8 }}>
                       <strong>{t.name}</strong>
                       <AnlassBadge anlass={t.anlass} />
-                    </div>
-                    <div className="small vl-anriss">
-                      <BausteinText text={t.betreff} bausteine={BAUSTEINE} />
-                    </div>
-                    <div className="small tertiary vl-anriss">
-                      <BausteinText text={t.text.replace(/\s*\n\s*/g, ' ').slice(0, 160).replace(/\{\{[\w.\s]*\}?$/, '')} bausteine={BAUSTEINE} />
                     </div>
                   </div>
                   <button
@@ -176,54 +165,6 @@ export function Vorlagen() {
         />
       ) : null}
     </div>
-  );
-}
-
-function ListenKarte({
-  titel,
-  sub,
-  spalten,
-  hinweise,
-  text,
-  onLaden,
-}: {
-  titel: string;
-  sub: string;
-  spalten: string[];
-  hinweise: [string, string][];
-  text: string;
-  onLaden: () => void;
-}) {
-  return (
-    <Card>
-      <CardHeader
-        titel={titel}
-        sub={sub}
-        actions={
-          <button type="button" className="btn btn-primary btn-sm" onClick={onLaden}>
-            <Icon name="export" size={13} /> Vorlage herunterladen
-          </button>
-        }
-      />
-      <div className="card-pad stack" style={{ gap: 12 }}>
-        <div className="row wrap" style={{ gap: 6 }}>
-          {spalten.map((s) => (
-            <span key={s} className="badge">
-              {s}
-            </span>
-          ))}
-        </div>
-        <dl className="kv kv-breit">
-          {hinweise.map(([spalte, erklaerung]) => (
-            <div key={spalte} style={{ display: 'contents' }}>
-              <dt>{spalte}</dt>
-              <dd>{erklaerung}</dd>
-            </div>
-          ))}
-        </dl>
-        <p className="small muted">{text}</p>
-      </div>
-    </Card>
   );
 }
 
