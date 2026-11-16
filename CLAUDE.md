@@ -13,8 +13,9 @@ Optimierungspotenzial aus dem Vergleich der drei Bereiche: `docs/OPTIMIERUNG.md`
 
 Die Oberfläche folgt dem **Koralle-Design** nach der Vorlage `KoralleDashboard.jsx` im
 Wurzelverzeichnis – gebaut mit Tailwind 4, Framer Motion und Lucide-Icons. Abweichend von der
-Vorlage ist die **Markenfarbe das Blau von Mailänder Consult** (`#24456e`), nicht Koralle, und
-gezeigt werden die **Logos von KaPlan**. Wie das Design anzuwenden ist, steht im Abschnitt
+Vorlage ist die **Markenfarbe das Blau von Mailänder Consult** (`#24456e`), nicht Koralle,
+gezeigt werden die **Logos von KaPlan**, und die **Menüleiste ist im hellen Schema hell**. Wie das
+Design anzuwenden ist, steht im Abschnitt
 [Designregeln](#designregeln-koralle-design); die früheren Gestaltungsregeln (helles
 Apple-Erscheinungsbild) gelten nicht mehr.
 
@@ -62,16 +63,19 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 
 Vorlage ist `KoralleDashboard.jsx` (Wurzelverzeichnis; nur Vorlage, nicht Teil des Builds). Im
 Zweifel gilt ihr Bild: heller Seitengrund, weiße Karten mit großer Rundung und weichem Schatten,
-dunkle Menüleiste, Tinte (fast Schwarz) für Betonung, Schrift Outfit, weiche Bewegungen.
+Tinte (fast Schwarz) für Betonung, Schrift Outfit, weiche Bewegungen.
 
-**Drei bewusste Abweichungen von der Vorlage** – sie gelten vor ihr:
+**Vier bewusste Abweichungen von der Vorlage** – sie gelten vor ihr:
 
 * **Markenfarbe ist Blau**, das Blau von Mailänder Consult (`--marke`, `#24456e`), nicht Koralle.
   Wo die Vorlage Koralle als Akzent zeigt (aktiver Menüpunkt, Balken, Symbolflächen), steht Blau.
 * **Das Rot der Ampel ist ein eigenes, klares Rot** (`--red`, `#e5484d`) – in der Vorlage ist es
   dieselbe Koralle wie der Akzent. Rot bedeutet nur „überfällig“, „fehlt“ und „löschen“.
-* **Logos von KaPlan** (`public/logos/`) statt einer gezeichneten Marke; weil sie für hellen
-  Grund gezeichnet sind, stehen sie auf einer weißen Kachel (`.logo-kachel`).
+* **Die Menüleiste folgt dem Farbschema:** im hellen Schema ist sie weiß mit feiner Linie zum
+  Inhalt, dunkel wie in der Vorlage nur im dunklen Schema (`--bg-sidebar`).
+* **Logos von KaPlan** (`public/logos/`) statt einer gezeichneten Marke – ohne Fläche dahinter.
+  Im dunklen Schema erscheint die Fassung `…_dunkel.png`: Schrift und Grau in Weiß, der blaue
+  Teil des Dreiecks mit feinem weißem Rand.
 
 ### Technik
 
@@ -108,7 +112,7 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
 | Seitengrund | `--bg` | `bg-grund` | `#f2f2f4` | `#121316` |
 | Karte, Dialog | `--bg-elev` | `bg-karte` | `#ffffff` | `#1b1c20` |
 | Füllfläche (Kachel in der Karte, Gruppenzeile) | `--bg-subtle`, `--fill-gruppe` | `bg-flaeche` | `#f7f7f8` | `#232429` |
-| Menüleiste | `--bg-sidebar` | `bg-leiste` | `#17181b` | `#17181b` |
+| Menüleiste | `--bg-sidebar` | `bg-leiste` | `#ffffff` | `#17181b` |
 | Schrift | `--text` | `text-tinte` | `#1b1c20` | `#f2f2f4` |
 | Schrift zweitrangig | `--text-secondary` | `text-zweitrangig` | `#62646d` | `#b1b3bb` |
 | Schrift gedämpft (Beschriftungen) | `--text-tertiary` | `text-gedaempft` | `#8b8d94` | `#8b8d94` |
@@ -124,7 +128,7 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
 
 * **Tinte betont, Blau markiert.** Tinte (`--accent`): Hauptknopf, gewählter Reiter und
   gewähltes Segment, aktueller Schritt, Tastaturfokus (`--fokus`), Kurzmeldung. Blau (`--marke`):
-  aktiver Menüpunkt (in der dunklen Leiste eine Stufe heller, mit Glanz `--marke-glanz`),
+  aktiver Menüpunkt (`--nav-aktiv`, im dunklen Schema eine Stufe heller; mit Glanz `--marke-glanz`),
   Fortschrittsbalken (Verlauf), runde Symbolflächen, Verknüpfungen, aktive Sortier- und
   Filterzeichen. Flächen in der Markenfarbe mit weißer Schrift nehmen `--marke-verlauf` – er ist in
   beiden Schemata gleich dunkel.
@@ -142,8 +146,9 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
   (`@custom-variant dark` in `global.css`). Die Tokens schalten selbst um, `dark:` ist für
   Token-Farben nicht nötig. Kein festes `#fff`/`#000`: Schrift auf einer Farbfläche ist
   `var(--auf-accent)` bzw. `var(--bg-elev)` (Ausnahmen: Weiß auf dem aktiven Menüpunkt und auf
-  den Verläufen `--marke-verlauf` und `--signal-verlauf`; die weiße Kachel der Logos). Die Menüleiste ist in beiden Schemata dunkel und setzt die Tokens für ihren
-  Inhalt selbst (`.sidebar` in `global.css`).
+  den Verläufen `--marke-verlauf` und `--signal-verlauf`). Die Menüleiste folgt dem Schema – im
+  hellen weiß, im dunklen dunkel (`--bg-sidebar`) – und nimmt für ihren Inhalt die Tokens des
+  Schemas; eigene Werte setzt `.sidebar` in `global.css` nicht.
 * **Farbmodus `kontrast`** (`:root[data-farbmodus='kontrast']`, in TSX die Variante `kontrast:`)
   ersetzt Grün/Orange/Rot durch Blaugrün/Bernstein/Magenta und verstärkt Schrift und Linien – in
   beiden Schemata. Signale deshalb nur über die Ampel-Tokens, nie über feste Farben.
@@ -187,9 +192,14 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
 * `.tabs` sind Pillen, die gewählte dunkel; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
   `purple`, `gelb`); Ampelpunkt `.dot`; Stern der Projektmarkierung `Icon name="stern"` in `.stern`.
 * **Logos:** `KaPlanLogo` (`src/shared/logos.tsx`) zeigt die Dateien unter `public/logos/` – auf
-  dem Startbildschirm ohne Zusatz, in den Bereichen mit deren Namen – immer auf der weißen Kachel
-  `.logo-kachel` (oben in der Menüleiste und oben links auf dem Startbildschirm, auch im dunklen
-  Schema). Die App-Symbole liegen unter `public/icons/` (`kaplan-dreieck-*`, `kaplan-app-*`; ein
+  dem Startbildschirm ohne Zusatz, in den Bereichen mit deren Namen (oben in der Menüleiste und
+  oben links auf dem Startbildschirm) – **ohne Kachel oder andere Fläche dahinter**. Je Logo gibt
+  es zwei Dateien: `Logo_<Name>.png` für das helle Schema und `Logo_<Name>_dunkel.png` für das
+  dunkle; `KaPlanLogo` setzt beide ein, sichtbar ist die zum Schema passende
+  (`.kaplan-logo-hell`, `.kaplan-logo-dunkel` in `global.css`). Die dunkle Fassung wird nicht von
+  Hand gezeichnet: Nach dem Austausch eines Logos `python3 werkzeuge/logos_dunkel.py` ausführen
+  (braucht Pillow) und die erzeugten Dateien mit einchecken. Die App-Symbole liegen unter
+  `public/icons/` (`kaplan-dreieck-*`, `kaplan-app-*`; ein
   geändertes Symbol bekommt neue Dateinamen, siehe README, Abschnitt „Logos“). Die Wortmarke
   Mailänder Consult bleibt die Originaldatei; im dunklen Schema erscheint sie weiß
   (`.topbar-logo`, `.logo-hell`).

@@ -22,8 +22,11 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 > * **Neu unter „Angemeldet als“:** das Farbschema (hell, dunkel, wie das Gerät) – wie Name und
 >   Farbmodus für alle Bereiche, aber ohne Spiegel in deren Beständen.
 > * **Markenfarbe und Logos:** Akzent ist wieder das Blau von Mailänder Consult (statt der Koralle
->   der Vorlage), gezeigt werden die Logos von KaPlan auf weißer Kachel; das Rot der Ampel ist ein
->   eigenes Rot.
+>   der Vorlage), gezeigt werden die Logos von KaPlan ohne Fläche dahinter – im dunklen Schema in
+>   einer eigenen, weißen Fassung (`werkzeuge/logos_dunkel.py`); das Rot der Ampel ist ein eigenes
+>   Rot.
+> * **Menüleiste:** im hellen Schema hell, dunkel nur im dunklen Schema – in allen drei Bereichen
+>   gleich (`.sidebar` in `src/shared/global.css`).
 
 Diese Liste beantwortet die Frage: **Wo lösen Planlaufmanagement, Baubetriebsplanung und
 Projektsteuerung dasselbe unterschiedlich – in der Funktion, im Wortlaut, in der Optik oder im

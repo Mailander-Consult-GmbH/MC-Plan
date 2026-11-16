@@ -54,14 +54,26 @@ Name in Roboto Light.
 | `Logo_Planlaufmanagement.png` | Kopf der Menüleiste im Planlaufmanagement |
 | `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
 | `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
+| `Logo_Startseite_dunkel.png`, `Logo_Planlaufmanagement_dunkel.png`, `Logo_Baubetriebsplanung_dunkel.png`, `Logo_Projektsteuerung_dunkel.png` | dieselben Logos für das dunkle Farbschema – erzeugt, nicht gezeichnet (siehe unten) |
 | `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
 | `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug); nach ihm sind die App-Symbole unter `public/icons/` gezeichnet |
 
-Die Logos sind für hellen Grund gezeichnet (dunkle Schrift). Die Oberfläche zeigt sie deshalb
-stets auf einer **weißen Kachel** (`KaPlanLogo` in `src/shared/logos.tsx`, `.logo-kachel` in
-`src/shared/global.css`) – in der dunklen Menüleiste wie auf dem Startbildschirm, auch im dunklen
-Schema. Zum Austauschen genügt es, die Datei unter gleichem Namen zu ersetzen; die Logos werden
-nur über die Breite bzw. Höhe skaliert.
+Die Logos stehen **ohne Fläche dahinter** – in der Menüleiste wie auf dem Startbildschirm
+(`KaPlanLogo` in `src/shared/logos.tsx`). Gezeichnet sind sie für hellen Grund (dunkle Schrift,
+Dreieck in Blau und Grau); so erscheinen sie im hellen Farbschema. Im **dunklen Farbschema** zeigt
+die Oberfläche je Logo die Fassung `Logo_<Name>_dunkel.png`: Schrift und graue Teile des Dreiecks
+in Weiß, der blaue Teil bleibt blau und trägt einen feinen weißen Rand, damit er sich vom dunklen
+Grund abhebt.
+
+Die dunklen Fassungen erzeugt das Skript `werkzeuge/logos_dunkel.py` aus den Logos (Python mit
+Pillow):
+
+```bash
+python3 werkzeuge/logos_dunkel.py
+```
+
+Zum Austauschen eines Logos die Datei unter gleichem Namen ersetzen, das Skript ausführen und
+beide Dateien einchecken; die Logos werden nur über die Breite bzw. Höhe skaliert.
 
 Die Symbole in `public/icons/` zeigen die Marke aus `Logo.png` in der Logofarbe `#21426d`, im
 Browser-Tab und in der Titelleiste des App-Fensters **ohne Hintergrund**, in der Taskleiste, im
@@ -1607,7 +1619,7 @@ src/
                  eigenen Strichzeichnungen für die Druckfassungen
     bewegung.tsx Bewegungen (framer-motion): hoverLift, Zaehler, NavAktiv, BalkenFuellung,
                  Einblenden
-    logos.tsx    Logos KaPlan (public/logos/, auf weißer Kachel) und Wortmarke Mailänder Consult
+    logos.tsx    Logos KaPlan (public/logos/, je Farbschema eine Datei) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
     bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
     bausteinEditor.tsx  Eingabefeld mit farbigen, nicht teilbaren Bausteinen (BausteinEditor,
@@ -1739,15 +1751,20 @@ src/
 Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden
 beim Aufruf auf `#/planlauf/…` umgelenkt und bleiben damit gültig.
 
+Außerhalb von `src/` liegt unter `werkzeuge/` das Skript `logos_dunkel.py`: Es erzeugt die Logos
+für das dunkle Farbschema (siehe [Logos](#logos)) und gehört nicht zum Build.
+
 ## Gestaltung
 
 Die Oberfläche folgt dem **Koralle-Design** nach der Vorlage `KoralleDashboard.jsx` im
 Wurzelverzeichnis (die Datei ist nur Vorlage und gehört nicht zum Build) – mit dem Blau von
-Mailänder Consult statt Koralle als Markenfarbe und mit den Logos von KaPlan:
+Mailänder Consult statt Koralle als Markenfarbe, mit den Logos von KaPlan und mit einer
+Menüleiste, die im hellen Schema hell ist:
 
 * **Flächen:** heller Seitengrund `#f2f2f4`, weiße Karten mit 24 px Rundung und weichem Schatten
-  statt Rahmen, in Karten graue Kacheln; die Menüleiste ist dunkel (`#17181b`), der Seitenkopf
-  steht ohne Balken auf dem Seitengrund – die Unterzeile klein über dem Titel.
+  statt Rahmen, in Karten graue Kacheln; die Menüleiste ist im hellen Schema weiß mit feiner Linie
+  zum Inhalt, im dunklen dunkel (`#17181b`), der Seitenkopf steht ohne Balken auf dem Seitengrund –
+  die Unterzeile klein über dem Titel.
 * **Farben:** Die Markenfarbe ist das Blau von Mailänder Consult (`#24456e`) – aktiver Menüpunkt,
   Fortschrittsbalken, Symbolflächen, Verknüpfungen. Betont wird mit Tinte (fast Schwarz):
   Hauptknopf, gewählter Reiter, gewähltes Segment, aktueller Schritt, Tastaturfokus. Die Ampel
@@ -1764,7 +1781,8 @@ Mailänder Consult statt Koralle als Markenfarbe und mit den Logos von KaPlan:
   aktiven Menüpunkts und des gewählten Segments gleitet zur neuen Wahl, Ansichten blenden ein. Wer
   im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Endzustände ohne Verschiebung.
 * **Hell und dunkel:** Die Vorgabe folgt wie in der Vorlage der Einstellung des Geräts; unter
-  „Angemeldet als“ lässt sich das **Farbschema** fest auf „Hell“ oder „Dunkel“ stellen. Der
+  „Angemeldet als“ lässt sich das **Farbschema** fest auf „Hell“ oder „Dunkel“ stellen. Im
+  dunklen Schema erscheinen die Logos von KaPlan in Weiß (siehe [Logos](#logos)). Der
   **Farbmodus für eine Rot-Grün-Sehschwäche** gilt in beiden Schemata.
 * **Technik:** Tailwind 4 (`@tailwindcss/vite`) mit den Design-Tokens in `src/shared/global.css`;
   die Bausteinklassen aller Bereiche stehen in der Ebene `components`, Tailwind-Utilities gewinnen
