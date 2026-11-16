@@ -27,7 +27,7 @@
 }
 .pli-kaestchen:disabled { cursor: default; opacity: 0.4; }
 /* Gewählte Zeile: Balken am Rand – die Hintergrundfarben (abgeschlossen, angekündigt) bleiben sichtbar */
-.table tr.pli-gewaehlt td.pli-wahl { box-shadow: inset 3px 0 0 var(--koralle); }
+.table tr.pli-gewaehlt td.pli-wahl { box-shadow: inset 3px 0 0 var(--marke); }
 
 /* Aktionsleiste über der Liste, solange etwas gewählt ist */
 .pli-leiste {

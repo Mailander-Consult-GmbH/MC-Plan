@@ -63,7 +63,7 @@
   text-align: left;
   cursor: pointer;
 }
-.gem-umschalter:hover { color: var(--koralle-text); }
+.gem-umschalter:hover { color: var(--marke-text); }
 .gem-pfeil { display: flex; color: var(--text-tertiary); transition: transform 0.14s ease; }
 .gem-pfeil.offen { transform: rotate(90deg); }
 .gem-archiv-liste > .card { background: var(--fill-gruppe); box-shadow: none; }

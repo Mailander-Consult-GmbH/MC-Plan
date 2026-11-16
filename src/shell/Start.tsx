@@ -1,14 +1,14 @@
 /**
  * Startbildschirm: Auswahl des Bereichs, am Fuß die laufende Fassung
  * (src/shared/pwa.ts). Im Koralle-Design mit Tailwind-Utilities gebaut: oben
- * Marke und Wortmarke, darunter Datum und Aufforderung wie der Kopf der
+ * Logo und Wortmarke, darunter Datum und Aufforderung wie der Kopf der
  * Vorlage, dann je Bereich eine Karte, die sich beim Überfahren anhebt. Die
  * Karten stehen ab 768 px dreispaltig, darunter untereinander.
  */
 import { motion } from 'framer-motion';
 import { FEDER, KURVE } from '../shared/bewegung';
 import { Icon } from '../shared/icons';
-import { KaPlanMarke, MailaenderLogo } from '../shared/logos';
+import { KaPlanLogo, MailaenderLogo } from '../shared/logos';
 import { FASSUNG, fassungText } from '../shared/pwa';
 import { BEREICHE } from './bereiche';
 import { zumBereich } from './router';
@@ -20,8 +20,8 @@ export function Start() {
     <div className="start">
       <div className="mx-auto flex min-h-full w-full max-w-[1120px] flex-col px-4 py-5 sm:px-8 sm:py-7">
         <header className="flex items-center justify-between gap-3">
-          <h1>
-            <KaPlanMarke />
+          <h1 className="logo-kachel w-[190px] shadow-karte">
+            <KaPlanLogo variante="Startseite" width="100%" />
           </h1>
           <div className="logo-hell hidden sm:block">
             <MailaenderLogo height={34} />
@@ -45,7 +45,7 @@ export function Start() {
                 whileTap={{ scale: 0.985 }}
               >
                 <span className="flex items-start justify-between gap-3">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-koralle-zart text-koralle transition-colors duration-300 group-hover:bg-koralle group-hover:text-white">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-marke-zart text-marke transition-colors duration-300 group-hover:bg-marke group-hover:text-white">
                     <Icon name={b.icon} size={22} />
                   </span>
                   {b.marke ? (

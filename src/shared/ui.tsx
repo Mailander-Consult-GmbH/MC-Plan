@@ -43,7 +43,7 @@ export function Stat({
   ton?: '' | 'red' | 'orange' | 'green' | 'blue';
   onClick?: () => void;
 }) {
-  // Überfälliges (Ton „red“) steht als Karte im Korallenverlauf; die übrigen Töne
+  // Überfälliges (Ton „red“) steht als Karte im roten Verlauf; die übrigen Töne
   // zeigt ein Ampelpunkt vor der Beschriftung, der Wert bleibt in Tinte.
   const signal = ton === 'red';
   const inhalt = (

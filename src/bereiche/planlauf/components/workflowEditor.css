@@ -644,7 +644,7 @@
 /* In einer Karte: graue Kachel statt Karte in der Karte – wie die Kennzahlen der Vorlage */
 .card .wf-liste-karte { background: var(--bg-subtle); box-shadow: none; border-radius: var(--rund-l); padding: 18px 20px; }
 .card .wf-liste-karte:hover { box-shadow: var(--schatten-hoch); }
-.wf-liste-karte .wf-typ-zeichen { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-elev); color: var(--koralle); }
+.wf-liste-karte .wf-typ-zeichen { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-elev); color: var(--marke); }
 .wf-liste-kopf { display: flex; align-items: flex-start; gap: 12px; }
 .wf-liste-kopf strong { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; }
 .wf-liste-text { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }

@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon, type IconName } from '../../shared/icons';
-import { KaPlanMarke, MailaenderLogo } from '../../shared/logos';
+import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
 import { Einblenden, NavAktiv } from '../../shared/bewegung';
 import { useToast } from '../../shared/toast';
 import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
@@ -82,11 +82,11 @@ export function App() {
       <motion.aside layoutScroll className={`sidebar ${menuOffen ? 'open' : ''}`}>
         <button
           type="button"
-          className="sidebar-brand"
+          className="sidebar-brand logo-kachel"
           onClick={() => gehe({ view: 'uebersicht' })}
           title="Zur Übersicht"
         >
-          <KaPlanMarke bereich="Baubetriebsplanung" />
+          <KaPlanLogo variante="Baubetriebsplanung" width="100%" />
         </button>
 
         <NavItem icon="dashboard" label="Übersicht" aktiv={route.view === 'uebersicht'} onClick={() => gehe({ view: 'uebersicht' })} />

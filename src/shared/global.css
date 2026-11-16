@@ -4,7 +4,9 @@
 /*
  * Vorlage ist KoralleDashboard.jsx (Wurzelverzeichnis): heller Seitengrund,
  * weiße Karten mit großer Rundung und weichem Schatten, dunkle Menüleiste,
- * Koralle als Markenfarbe, Tinte (fast Schwarz) für Betonung, Schrift Outfit.
+ * Tinte (fast Schwarz) für Betonung, Schrift Outfit. Abweichend von der
+ * Vorlage ist die Markenfarbe nicht Koralle, sondern das Blau von Mailänder
+ * Consult (--marke), und das Rot der Ampel ein eigenes Rot.
  * Die Regeln dazu stehen in CLAUDE.md, Abschnitt „Designregeln“.
  *
  * Tailwind durchsucht nur src/ – die Vorlage selbst gehört nicht zum Programm.
@@ -20,7 +22,7 @@
 
 /*
  * Tokens für Tailwind-Utilities (bg-karte, text-gedaempft, border-linie,
- * bg-koralle, shadow-karte …). Die Farben zeigen auf die Variablen unten und
+ * bg-marke, shadow-karte …). Die Farben zeigen auf die Variablen unten und
  * folgen damit von selbst dem dunklen Schema und dem Farbmodus „kontrast“ –
  * `dark:`-Varianten sind für sie nicht nötig.
  */
@@ -40,10 +42,10 @@
   --color-betont: var(--accent);
   --color-auf-betont: var(--auf-accent);
 
-  --color-koralle: var(--koralle);
-  --color-koralle-hell: var(--koralle-2);
-  --color-koralle-zart: var(--koralle-soft);
-  --color-koralle-text: var(--koralle-text);
+  --color-marke: var(--marke);
+  --color-marke-hell: var(--marke-2);
+  --color-marke-zart: var(--marke-soft);
+  --color-marke-text: var(--marke-text);
 
   --color-gruen: var(--green);
   --color-gruen-zart: var(--green-soft);
@@ -96,19 +98,23 @@
   --accent-soft: rgba(27, 28, 32, 0.07);
   --auf-accent: #ffffff;
 
-  /* Marke: Koralle – aktiver Menüpunkt, Fortschritt, Symbolflächen, Fokus, Verknüpfungen */
-  --koralle: #f25f4c;
-  --koralle-2: #ff8a73;
-  --koralle-soft: #ffebe7;
-  /* als Schrift auf hellem Grund etwas dunkler, damit sie lesbar bleibt */
-  --koralle-text: #d9432f;
-  --koralle-glanz: rgba(242, 95, 76, 0.45);
-  --koralle-verlauf: linear-gradient(135deg, var(--koralle), var(--koralle-2));
-  /* Hervorgehobene Kennzahl („Überfällig“) – wie die Karte „Offene Behinderungen“ der Vorlage */
-  --signal-verlauf: linear-gradient(150deg, var(--koralle-2), var(--koralle));
-  --avatar-verlauf: linear-gradient(135deg, #f7b267, var(--koralle));
-  --link: var(--koralle-text);
-  /* Fokus in Tinte, nicht in Koralle: Ein korallenroter Rahmen bedeutet „fehlt“ oder „überfällig“ */
+  /* Marke: das Blau von Mailänder Consult – aktiver Menüpunkt, Fortschritt, Symbolflächen,
+     Verknüpfungen, aktive Sortier- und Filterzeichen */
+  --marke: #24456e;
+  /* heller, für Verläufe */
+  --marke-2: #4a7ab8;
+  --marke-soft: #e8eef6;
+  --marke-text: #24456e;
+  --marke-glanz: rgba(63, 115, 184, 0.45);
+  /* Fläche in der Markenfarbe mit weißer Schrift (Ergebnis des Terminrechners) – in beiden
+     Schemata gleich, damit die Schrift lesbar bleibt */
+  --marke-verlauf: linear-gradient(150deg, #4a7ab8, #24456e);
+  /* Hervorgehobene Kennzahl („Überfällig“) – wie die Karte „Offene Behinderungen“ der Vorlage,
+     im Rot der Ampel */
+  --signal-verlauf: linear-gradient(150deg, #f0787c, #e0444a);
+  --avatar-verlauf: linear-gradient(135deg, #5b8fd1, #24456e);
+  --link: var(--marke-text);
+  /* Fokus in Tinte wie die übrige Betonung (Hauptknopf, gewählter Reiter) */
   --fokus: var(--accent);
 
   /* Ampel und Kennzeichen */
@@ -118,10 +124,10 @@
   --orange: #f2994a;
   --orange-soft: #fdeedd;
   --orange-text: #b25f0e;
-  /* Rot ist die Koralle der Vorlage („Prüfung überfällig“) */
-  --red: #f25f4c;
-  --red-soft: #ffebe7;
-  --rot-text: #d9432f;
+  /* Ein klares Rot – deutlich vom Orange „fällig“ zu unterscheiden */
+  --red: #e5484d;
+  --red-soft: #fdecec;
+  --rot-text: #c62a2f;
   --purple: #9b51e0;
   --purple-soft: #f3eafc;
   --blau: #56ccf2;
@@ -179,8 +185,11 @@
   --accent-soft: rgba(255, 255, 255, 0.09);
   --auf-accent: #1b1c20;
 
-  --koralle-soft: rgba(242, 95, 76, 0.18);
-  --koralle-text: #ff8a73;
+  /* Das dunkle Blau trägt auf dunklem Grund nicht – hier eine hellere Stufe */
+  --marke: #4f86cc;
+  --marke-2: #7eaae4;
+  --marke-soft: rgba(79, 134, 204, 0.2);
+  --marke-text: #93bbee;
 
   --green: #35c283;
   --green-soft: rgba(53, 194, 131, 0.16);
@@ -188,9 +197,9 @@
   --orange: #f2a65e;
   --orange-soft: rgba(242, 153, 74, 0.18);
   --orange-text: #f5b87a;
-  --red: #ff7461;
-  --red-soft: rgba(242, 95, 76, 0.2);
-  --rot-text: #ff8a73;
+  --red: #f2666b;
+  --red-soft: rgba(229, 72, 77, 0.2);
+  --rot-text: #ff8f93;
   --purple: #b98af0;
   --purple-soft: rgba(155, 81, 224, 0.22);
   --blau-soft: rgba(86, 204, 242, 0.16);
@@ -245,7 +254,7 @@
   a { color: var(--link); text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  ::selection { background: var(--koralle-soft); }
+  ::selection { background: var(--marke-soft); }
 
   button:not(:disabled),
   [role='button'] {
@@ -319,24 +328,24 @@
   cursor: pointer;
   border-radius: var(--rund);
 }
-.sidebar-brand:hover { opacity: 0.88; }
+.sidebar-brand:hover { opacity: 0.9; }
 
-/* Marke von KaPlan: Kachel im Korallenverlauf mit dem Dreieck, daneben Name und Bereich */
-.marke { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
-.marke-kachel {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--rund);
-  background: var(--koralle-verlauf);
-  color: #fff;
-  box-shadow: 0 6px 18px var(--koralle-glanz);
+/*
+ * Logos von KaPlan (KaPlanLogo, src/shared/logos.tsx): Die Dateien unter
+ * public/logos/ sind für hellen Grund gezeichnet (dunkle Schrift, Dreieck in
+ * Blau und Grau). Sie stehen deshalb stets auf einer weißen Kachel – in der
+ * dunklen Menüleiste wie auf dem Startbildschirm, auch im dunklen Schema.
+ */
+.logo-kachel {
+  display: block;
+  background: #fff;
+  border-radius: var(--rund-l);
+  padding: 12px 14px 10px;
+  line-height: 0;
 }
-.marke-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.marke-name { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
-.marke-bereich { font-size: 12px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-brand.logo-kachel { margin-bottom: 14px; }
+/* Das Logo des Startbildschirms trägt unter dem Schriftzug keine Zeile – der leere Teil wird beschnitten */
+.logo-ohne-zeile { display: block; overflow: hidden; aspect-ratio: 960 / 262; }
 
 .nav-group-label {
   font-size: 12px;
@@ -369,8 +378,9 @@
   position: absolute;
   inset: 0;
   border-radius: var(--rund);
-  background: var(--koralle);
-  box-shadow: 0 6px 18px var(--koralle-glanz);
+  /* etwas heller als die Markenfarbe, damit sich die Fläche von der dunklen Leiste abhebt */
+  background: linear-gradient(135deg, #2f5d9a, #4a7ab8);
+  box-shadow: 0 6px 18px var(--marke-glanz);
 }
 .nav-item > :not(.nav-aktiv) { position: relative; }
 .nav-item.active .nav-badge { background: rgba(255, 255, 255, 0.24); color: #fff; }
@@ -527,7 +537,7 @@
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
-/* Überfälliges als Karte im Korallenverlauf mit dem Ring der Vorlage */
+/* Überfälliges als Karte im roten Verlauf mit dem Ring der Vorlage */
 .card.stat-signal { position: relative; background: var(--signal-verlauf); color: #fff; }
 .card.stat-signal::after {
   content: '';
@@ -593,7 +603,7 @@
   border: none; background: none; padding: 0;
   font: inherit; color: inherit; text-align: left; cursor: pointer;
 }
-.link-btn:hover { color: var(--koralle-text); }
+.link-btn:hover { color: var(--marke-text); }
 
 .btn-icon {
   display: inline-flex;
@@ -780,8 +790,8 @@
   height: 52px;
   margin: 0 auto 12px;
   border-radius: 50%;
-  background: var(--koralle-soft);
-  color: var(--koralle);
+  background: var(--marke-soft);
+  color: var(--marke);
 }
 .empty h3 { font-size: 15px; margin-bottom: 4px; color: var(--text); }
 .empty p { font-size: 13px; margin-bottom: 14px; color: var(--text-tertiary); }
@@ -803,7 +813,7 @@
 .sort-btn:hover { color: var(--text); }
 .sort-pfeil { display: inline-flex; opacity: 0; font-size: 10px; }
 .sort-btn:hover .sort-pfeil { opacity: 0.5; }
-.sort-pfeil.aktiv { opacity: 1; color: var(--koralle); }
+.sort-pfeil.aktiv { opacity: 1; color: var(--marke); }
 
 /* Filter in der Spaltenüberschrift – gleiche Anmutung wie die Überschrift */
 .th-inhalt { display: inline-flex; align-items: center; gap: 3px; }
@@ -811,8 +821,8 @@
   margin-left: 2px;
   padding: 1px 7px;
   border-radius: 999px;
-  background: var(--koralle-soft);
-  color: var(--koralle-text);
+  background: var(--marke-soft);
+  color: var(--marke-text);
   font-size: 11px;
   font-weight: 500;
 }
@@ -832,7 +842,7 @@
   .filter-btn { opacity: 0.65; }
   .sort-pfeil { opacity: 0.4; }
 }
-.filter-btn.aktiv, .filter-btn.offen { color: var(--koralle); }
+.filter-btn.aktiv, .filter-btn.offen { color: var(--marke); }
 
 
 /* Auswahlmenü an einem Knopf (AufklappMenue, src/shared/menue.tsx): fest
@@ -969,7 +979,7 @@
   width: 32px; height: 32px; border-radius: 50%;
   display: grid; place-items: center;
   font-size: 11.5px; font-weight: 600;
-  background: var(--koralle-soft); color: var(--koralle-text);
+  background: var(--marke-soft); color: var(--marke-text);
   flex: none;
 }
 /* Avatar in der Farbe einer Funktion (Avatar in ui.tsx) */
@@ -978,9 +988,9 @@
   color: var(--chip-farbe);
 }
 
-/* Fortschritt: Füllung im Korallenverlauf; sie wächst beim Erscheinen (Progress in ui.tsx) */
+/* Fortschritt: Füllung im Verlauf der Markenfarbe; sie wächst beim Erscheinen (Progress in ui.tsx) */
 .progress { height: 6px; border-radius: 999px; background: var(--gray-soft); overflow: hidden; min-width: 60px; }
-.progress > div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--koralle), var(--koralle-2)); }
+.progress > div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--marke), var(--marke-2)); }
 
 /* ------------------------------------------------------------------ */
 /* Prozesskette / Zeitstrahl                                           */
@@ -1031,7 +1041,7 @@
 
 /* Gruppenzeile (Planpaket) und ihre Einträge in Übersichtslisten */
 .gruppe-btn { display: flex; align-items: center; gap: 9px; padding: 0; margin: 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
-.gruppe-btn:hover strong { color: var(--koralle-text); }
+.gruppe-btn:hover strong { color: var(--marke-text); }
 .gruppe-btn .chev { color: var(--text-tertiary); display: flex; transition: transform 0.15s ease; }
 .gruppe-btn.offen .chev { transform: rotate(90deg); }
 /* Kleiner Pfeil zum Auf- und Zuklappen einzelner Zeilen */
@@ -1075,7 +1085,7 @@
 .step-row.kompakt { padding-top: 8px; padding-bottom: 8px; }
 .step-row.kompakt .step-num { opacity: 0.75; }
 .step-aufklappen { display: inline-flex; align-items: center; gap: 6px; padding: 0; margin: 0; border: none; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
-.step-aufklappen:hover strong { color: var(--koralle-text); }
+.step-aufklappen:hover strong { color: var(--marke-text); }
 .step-aufklappen .chev { color: var(--text-tertiary); transition: transform 0.15s ease; }
 .step-aufklappen.offen .chev { transform: rotate(90deg); }
 .step-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-secondary); }
@@ -1208,7 +1218,7 @@
   color: var(--text-tertiary); cursor: pointer;
 }
 .tab-plus svg { flex: none; }
-.tab-plus:hover { background: var(--bg-hover); color: var(--koralle-text); border-color: var(--koralle); }
+.tab-plus:hover { background: var(--bg-hover); color: var(--marke-text); border-color: var(--marke); }
 .tabs button:not(.tab-plus) {
   border: none; background: none;
   padding: 7px 15px;
@@ -1232,7 +1242,7 @@
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
   cursor: pointer;
 }
-.drop-zone:hover, .drop-zone.over { border-color: var(--koralle); background: var(--koralle-soft); color: var(--koralle-text); }
+.drop-zone:hover, .drop-zone.over { border-color: var(--marke); background: var(--marke-soft); color: var(--marke-text); }
 
 /* ------------------------------------------------------------------ */
 /* Bereichsauswahl und Bereichswechsel                                 */
@@ -1348,11 +1358,11 @@
 /* Farbmodus für Rot-Grün-Sehschwäche                                  */
 /* ------------------------------------------------------------------ */
 /*
- * Statt Grün/Orange/Koralle treten Blaugrün, Bernstein und Magenta – drei
+ * Statt Grün/Orange/Rot treten Blaugrün, Bernstein und Magenta – drei
  * Farbtöne, die sich auch bei einer Rot-Grün-Sehschwäche (Deuteranopie und
  * Protanopie) in Farbton und Helligkeit unterscheiden. Zusätzlich sind
  * Texte, Trennlinien und Markierungen kontraststärker, und die Markenfarbe
- * ist dunkler, damit weiße Schrift auf ihr gut lesbar ist.
+ * ist kräftiger.
  */
 :root[data-farbmodus='kontrast'] {
   --green: #00786a;
@@ -1381,10 +1391,10 @@
   --gelb-soft-stark: rgba(255, 214, 51, 0.5);
   --gelb-text: #5c4100;
 
-  --koralle: #c63a22;
-  --koralle-2: #de5a43;
-  --koralle-soft: rgba(198, 58, 34, 0.14);
-  --koralle-text: #a82c17;
+  --marke: #1c3859;
+  --marke-2: #34608f;
+  --marke-soft: rgba(36, 69, 110, 0.16);
+  --marke-text: #1c3859;
   --signal-verlauf: linear-gradient(150deg, #cc3f9e, #b0007a);
 }
 
@@ -1415,10 +1425,10 @@
   --gelb-soft-stark: rgba(255, 214, 51, 0.34);
   --gelb-text: #ffe08a;
 
-  --koralle: #d9432f;
-  --koralle-2: #ee6a55;
-  --koralle-soft: rgba(242, 95, 76, 0.26);
-  --koralle-text: #ffa899;
+  --marke: #6fa3e8;
+  --marke-2: #9cc0f2;
+  --marke-soft: rgba(111, 163, 232, 0.26);
+  --marke-text: #b9d4f8;
   --signal-verlauf: linear-gradient(150deg, #d94aaa, #b0007a);
 }
 

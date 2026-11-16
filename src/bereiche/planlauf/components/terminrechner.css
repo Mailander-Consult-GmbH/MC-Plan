@@ -36,11 +36,11 @@
 .tr-nicht-erreicht .tr-szenario-name strong { color: var(--text-tertiary); }
 
 /* Hauptergebnis */
-/* Das Ergebnis als Fläche im Korallenverlauf – die hervorgehobene Karte der Vorlage */
+/* Das Ergebnis als Fläche im Verlauf der Markenfarbe – die hervorgehobene Karte der Vorlage */
 .tr-haupt {
   position: relative;
   overflow: hidden;
-  background: var(--signal-verlauf);
+  background: var(--marke-verlauf);
   color: #fff;
   border-radius: var(--rund-l);
   padding: 16px 18px;
@@ -89,8 +89,8 @@
 /* Zweige paralleler Blöcke eingerückt */
 .tr-zweig .tr-schritt-inhalt { padding-left: 12px; border-left: 2px solid var(--separator-strong); }
 .tr-kritisch .tr-schritt-inhalt strong { font-weight: 600; }
-.tr-spaetestens { font-size: 11.5px; font-weight: 600; color: var(--koralle-text); }
-.tr-kritisch-text { color: var(--koralle-text); font-weight: 600; }
+.tr-spaetestens { font-size: 11.5px; font-weight: 600; color: var(--marke-text); }
+.tr-kritisch-text { color: var(--marke-text); font-weight: 600; }
 .tr-ohne-belang td, .tr-ohne-belang strong { color: var(--text-tertiary); }
 
 /* Bei schmalen Fenstern: jede Zeile als Karte, Werte zweispaltig mit Beschriftung */
