@@ -26,9 +26,6 @@ export const STAMMDATEN_VERSION = 6;
 /* Bearbeiter                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Farbdarstellung der Oberfläche. */
-export type Farbmodus = 'standard' | 'kontrast';
-
 /**
  * Angemeldete Person. Alle Bearbeiter sehen alle Projekte; die angemeldete
  * Person füllt in ihren Projekten stets die Funktion Planlaufmanagement aus –
@@ -41,11 +38,6 @@ export interface Bearbeiter {
    * dafür vorsieht (Dialog „E-Mail senden“).
    */
   mailNachfrage: boolean;
-  /**
-   * „kontrast“ stellt die Oberfläche mit Farben dar, die auch bei einer
-   * Rot-Grün-Sehschwäche unterscheidbar sind, und erhöht die Kontraste.
-   */
-  farbmodus: Farbmodus;
 }
 
 /** Name der angemeldeten Person, solange es keine Anmeldung gibt. */

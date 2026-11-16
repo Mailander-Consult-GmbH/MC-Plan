@@ -211,9 +211,16 @@ bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (
 aus dem Netz geladen – ein unter gleichem Namen ausgetauschtes Logo erscheint also sofort. Der Service Worker ist nur im Produktionsbuild aktiv, in der Entwicklung
 stört er also nicht.
 
-Die Oberfläche ist durchgehend responsiv: Ab etwa 860 px klappt die Seitenleiste in ein Menü (☰),
-das bei jedem Seitenwechsel schließt – auch bei *Zurück* im Browser oder per Zurück-Geste
-(`useSeitenleiste` in `src/shared/seitenleiste.ts`); auf Telefonbreite stehen die Kennzahlen
+Die **Seitenleiste** jedes Bereichs ist eine Karte wie die Kacheln des Inhalts. Der Griff mittig auf
+ihrem rechten Rand klappt sie ein und wieder aus: Es bleibt eine schmale Leiste mit den Symbolen der Menüpunkte (der
+Name steht im Tooltip, Zähler als kleine Marke am Symbol), dem Dreieck von KaPlan, den Initialen
+der angemeldeten Person und dem Bereichswechsel; die markierten Projekte, die Knöpfe der Sicherung
+und die Texte stehen nur in der ausgeklappten Leiste. Ob sie eingeklappt ist, merkt sich der
+Browser (Schlüssel `kaplan-seitenleiste.v1`) – für alle Bereiche.
+
+Die Oberfläche ist durchgehend responsiv: Bis etwa 860 px liegt die Seitenleiste als Menü über dem
+Inhalt – der Knopf „Menü“ links in der Kopfzeile öffnet sie –, und sie schließt bei jedem Seitenwechsel, auch bei *Zurück*
+im Browser oder per Zurück-Geste (`useSeitenleiste` in `src/shared/seitenleiste.tsx`); auf Telefonbreite stehen die Kennzahlen
 zweispaltig, Tabellen scrollen quer bzw. werden – wie die Fristenliste – zu gestapelten Karten,
 damit die Schaltflächen erreichbar bleiben. Ab Tabletbreite
 bleibt die Kopfzeile einer Tabelle beim Blättern stehen, solange die Tabelle in ihre Karte passt;
@@ -892,9 +899,8 @@ Person automatisch das **Planlaufmanagement** und ist damit für dessen Schritte
 
 ### Angemeldet als
 Unten links in der Seitenleiste stehen der eigene Name (bis zur Anmeldung je Person „Max
-Mustermann“), die Nachfrage nach E-Mails und der **Farbmodus für eine Rot-Grün-Sehschwäche**: er
-stellt Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot dar und erhöht die Kontraste.
-Name und Farbmodus gelten in **allen Bereichen** (siehe
+Mustermann“), die Nachfrage nach E-Mails und das **Farbschema** (automatisch, hell oder dunkel).
+Name und Farbschema gelten in **allen Bereichen** (siehe
 [Angemeldet als – für alle Bereiche](#angemeldet-als--für-alle-bereiche)); die E-Mail-Nachfrage gilt
 nur im Planlaufmanagement.
 
@@ -1209,8 +1215,8 @@ lässt den Sachstand stehen). Fassung 10 ersetzt Bf/Strecke und Gewerk/Tätigkei
 nicht aus der alten Maßnahmenart übernommen) und die
 Statuszuordnung des BBPNeo-Imports (Vorgabe). Fassung 11 führt Entscheidungen an Status ein; die
 Status der Standard-Workflows übernehmen die mitgelieferten Entscheidungen, solange ihre Nachfolger
-die Antworten noch enthalten. Name unter „Angemeldet als“ und
-Farbmodus gelten in allen Bereichen; der Name steht im Statusverlauf und ist Hauptbearbeiter neuer
+die Antworten noch enthalten. Der Name unter „Angemeldet als“
+gilt in allen Bereichen; er steht im Statusverlauf und ist Hauptbearbeiter neuer
 Projekte.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
@@ -1374,8 +1380,8 @@ Protokoll seiner Fundstelle („Prot. 2, Pkt. 1.3“ → „aus Prot. 2“), die
 Bis Fassung 4 führte jedes Projekt eine Liste offener Punkte (LOP); sie entfällt beim Laden samt
 den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die frühere Adresse
 `#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Bis Fassung 5 galten für alle
-Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Name unter „Angemeldet als“
-und Farbmodus gelten in allen Bereichen.
+Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Der Name unter „Angemeldet als“
+gilt in allen Bereichen.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
 einwandfrei geladen wurde (`ladeZustand === 'ok'`); vor jeder Umstellung auf eine neue Fassung
@@ -1397,12 +1403,11 @@ anderes Fenster denselben Bereich, lädt der Store dessen Stand nach (`useFremde
 ## Angemeldet als – für alle Bereiche
 
 Unten in der Seitenleiste jedes Bereichs steht **Angemeldet als** mit Name und
-Kürzel. Der Dialog dazu fragt den Namen (Vor- und Nachname), das **Farbschema** und den **Farbmodus
-für eine Rot-Grün-Sehschwäche** ab – alles gilt in allen Bereichen: Wer seinen Namen einmal einträgt, ist
-überall dieselbe Person. Den Farbmodus setzt allein die Hülle (`src/shell/Shell.tsx`), noch vor dem
-ersten Zeichnen eines Bereichs; die Bereichsauswahl zeigt stets die Standardfarben.
+Kürzel. Der Dialog dazu fragt den Namen (Vor- und Nachname) und das **Farbschema** ab – beides
+gilt in allen Bereichen: Wer seinen Namen einmal einträgt, ist überall dieselbe Person. Einen
+eigenen Farbmodus für eine Rot-Grün-Sehschwäche gibt es nicht mehr.
 
-Das **Farbschema** bestimmt, ob KaPlan hell oder dunkel erscheint: **Wie das Gerät** (die Vorgabe –
+Das **Farbschema** bestimmt, ob KaPlan hell oder dunkel erscheint: **Automatisch** (die Vorgabe –
 KaPlan folgt der Einstellung des Betriebssystems und einem Wechsel dort sofort), **Hell** oder
 **Dunkel**. Es gilt auch auf der Bereichsauswahl und schon beim Laden der Seite (ein kleines
 Skript im Kopf der `index.html` liest die Wahl, bevor die Anwendung startet). Das Farbschema gehört
@@ -1410,7 +1415,7 @@ zum Gerät: Es steht nur in `kaplan-benutzer.v1`, nicht im Bestand der Bereiche,
 nicht mit einer Sicherung. Bis zur Anmeldung über SSO ist das eine Angabe ohne Kennwort; sie liegt
 lokal im Browser (Schlüssel `kaplan-benutzer.v1`). Ohne Eintrag gilt „Max Mustermann“; beim ersten
 Start nach dem Umstieg übernimmt KaPlan den ersten selbst eingetragenen Namen der Bereiche
-(Planlaufmanagement, Projektsteuerung, Baubetriebsplanung) samt Farbmodus;
+(Planlaufmanagement, Projektsteuerung, Baubetriebsplanung);
 die Vorgaben und der Demoname „Lena Roth“ der Projektsteuerung zählen dabei nicht als selbst
 eingetragen.
 
@@ -1588,7 +1593,7 @@ Optimierungspotenzial aus dem Vergleich der drei Bereiche in
 
 KaPlan besteht aus drei getrennten Bereichen. Jeder Bereich bringt seinen
 eigenen Datenbestand, seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen
-eigenen Router mit (Name und Farbmodus kommen aus der gemeinsamen Anmeldung); die Bereiche greifen
+eigenen Router mit (der Name kommt aus der gemeinsamen Anmeldung); die Bereiche greifen
 nicht aufeinander zu. Gemeinsam ist ihnen nur das
 Projektregister in `src/gemeinsam/`: Jeder Store gleicht über `useRegisterAbgleich` ab und
 übernimmt Änderungen über sein eigenes `mutate()` (`domain/register.ts` je Bereich). Die Shell
@@ -1601,7 +1606,7 @@ src/
                  damit Regeln der Bereiche gleicher Spezifität gewinnen; MotionConfig
                  (reducedMotion="user") für alle Bewegungen
   shell/         Startbildschirm und Bereichswechsel
-    Shell.tsx    Wählt Bereichsauswahl oder Bereich; setzt Farbmodus und Farbschema (hell/dunkel)
+    Shell.tsx    Wählt Bereichsauswahl oder Bereich; setzt das Farbschema (hell/dunkel)
                  aus „Angemeldet als“
     Start.tsx    Startbildschirm mit Datum, je Bereich einer Karte und der laufenden Fassung
                  (Tailwind-Utilities)
@@ -1626,8 +1631,8 @@ src/
     menue.tsx    Aufklappmenü an einem Knopf (AufklappMenue): Portal, bleibt im Fenster, Tastatur
     tabellen.ts  Breite Tabellen scrollen quer (tabellenBreiteBeobachten, Klasse table-scroll-quer)
     scrollen.ts  Eine neue Seite beginnt oben (useNachObenBeiSeitenwechsel)
-    seitenleiste.ts  Aufklappbare Seitenleiste der schmalen Ansicht, schließt bei jedem
-                 Seitenwechsel (useSeitenleiste)
+    seitenleiste.tsx  Seitenleiste: schmal ein Menü, das bei jedem Seitenwechsel schließt, breit
+                 einklappbar (useSeitenleiste, SeitenleisteKnopf, SeitenleisteGriff)
     speicher.ts  Rohkopien im localStorage: anlegen vor dem Einspielen, bei vollem Speicher
                  einzeln räumen (nachRaeumenSpeichern)
     dates.ts     Fristen- und Datumsrechnung
@@ -1638,7 +1643,7 @@ src/
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers; Fassung des Builds und Prüfung auf eine neuere
     global.css   Koralle-Design: Tailwind (Theme, Utilities), Schrift Outfit, Design-Tokens für
-                 hell, dunkel und den Farbmodus „kontrast“, Bausteinklassen (@layer components)
+                 hell und dunkel, Bausteinklassen (@layer components)
   gemeinsam/     Projektregister – der einzige Bestand, den sich die Bereiche teilen
     register.ts  Datenmodell, Laden/Speichern, gemeinsamer Zustand (useRegister, Ergebnis des
                  Speicherns: useRegisterSpeicherZustand; nicht Gespeichertes übersteht das
@@ -1648,9 +1653,9 @@ src/
                  bereichArchivieren)
     useRegisterAbgleich.ts  Bindet den Store eines Bereichs an das Register
     useFremdeAenderung.ts   Lädt den Bestand nach, wenn ein anderes Fenster ihn speichert
-    benutzer.ts  „Angemeldet als“ für alle Bereiche: Name, Farbmodus und Farbschema (useBenutzer,
+    benutzer.ts  „Angemeldet als“ für alle Bereiche: Name und Farbschema (useBenutzer,
                  istDunkel)
-    useBenutzerAbgleich.ts  Zieht Name und Farbmodus in den Bestand eines Bereichs nach
+    useBenutzerAbgleich.ts  Zieht den Namen in den Bestand eines Bereichs nach
     AngemeldetAls.tsx       Knopf in der Seitenleiste und Dialog „Angemeldet als“
     ProjektBereiche.tsx     Marken „Auch in“, Projekte aus anderen Bereichen, Archiv
                             (Archivieren, Aus dem Archiv holen), Beteiligte
@@ -1758,11 +1763,11 @@ für das dunkle Farbschema (siehe [Logos](#logos)) und gehört nicht zum Build.
 Die Oberfläche folgt dem **Koralle-Design** nach der Vorlage `KoralleDashboard.jsx` im
 Wurzelverzeichnis (die Datei ist nur Vorlage und gehört nicht zum Build) – mit dem Blau von
 Mailänder Consult statt Koralle als Markenfarbe, mit den Logos von KaPlan und mit einer
-Menüleiste, die im hellen Schema hell ist:
+Menüleiste, die selbst eine Karte ist:
 
 * **Flächen:** heller Seitengrund `#f2f2f4`, weiße Karten mit 24 px Rundung und weichem Schatten
-  statt Rahmen, in Karten graue Kacheln; die Menüleiste ist im hellen Schema weiß mit feiner Linie
-  zum Inhalt, im dunklen dunkel (`#17181b`), der Seitenkopf steht ohne Balken auf dem Seitengrund –
+  statt Rahmen, in Karten graue Kacheln; die Menüleiste ist eine solche Karte mit Abstand zum
+  Fensterrand – in beiden Schemata –, der Seitenkopf steht ohne Balken auf dem Seitengrund –
   die Unterzeile klein über dem Titel.
 * **Farben:** Die Markenfarbe ist das Blau von Mailänder Consult (`#24456e`) – aktiver Menüpunkt,
   Fortschrittsbalken, Symbolflächen, Verknüpfungen. Betont wird mit Tinte (fast Schwarz):
@@ -1779,10 +1784,9 @@ Menüleiste, die im hellen Schema hell ist:
   heben sich beim Überfahren an, Kennzahlen zählen hoch, Fortschrittsbalken wachsen, die Fläche des
   aktiven Menüpunkts und des gewählten Segments gleitet zur neuen Wahl, Ansichten blenden ein. Wer
   im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Endzustände ohne Verschiebung.
-* **Hell und dunkel:** Die Vorgabe folgt wie in der Vorlage der Einstellung des Geräts; unter
-  „Angemeldet als“ lässt sich das **Farbschema** fest auf „Hell“ oder „Dunkel“ stellen. Im
-  dunklen Schema erscheinen die Logos von KaPlan in Weiß (siehe [Logos](#logos)). Der
-  **Farbmodus für eine Rot-Grün-Sehschwäche** gilt in beiden Schemata.
+* **Hell und dunkel:** Die Vorgabe „Automatisch“ folgt wie in der Vorlage der Einstellung des
+  Geräts; unter „Angemeldet als“ lässt sich das **Farbschema** fest auf „Hell“ oder „Dunkel“
+  stellen. Im dunklen Schema erscheinen die Logos von KaPlan in Weiß (siehe [Logos](#logos)).
 * **Technik:** Tailwind 4 (`@tailwindcss/vite`) mit den Design-Tokens in `src/shared/global.css`;
   die Bausteinklassen aller Bereiche stehen in der Ebene `components`, Tailwind-Utilities gewinnen
   gegen sie.

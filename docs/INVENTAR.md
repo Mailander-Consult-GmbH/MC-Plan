@@ -221,12 +221,11 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   **Bereich wechseln** zurück zur Bereichsauswahl
   (`src/shell/BereichWechsel.tsx`).
 * **Angemeldet als** (unten links, `AngemeldetAls` aus
-  `src/gemeinsam/AngemeldetAls.tsx`, Abschnitt 10): Name, „Farbschema“
-  (hell, dunkel, wie das Gerät) und Schalter
-  „Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)“ – alles für alle
+  `src/gemeinsam/AngemeldetAls.tsx`, Abschnitt 10): Name und „Farbschema“
+  (automatisch, hell, dunkel) – beides für alle
   Bereiche –, dazu als Einstellung dieses Bereichs „Nachfragen zulassen, wenn
   ein Workflow-Schritt eine E-Mail vorsieht“ (`bearbeiter.mailNachfrage`).
-  `bearbeiter.name` und `bearbeiter.farbmodus` spiegeln die gemeinsame
+  `bearbeiter.name` spiegelt die gemeinsame
   Anmeldung (`useBenutzerAbgleich` in `src/bereiche/planlauf/store/store.tsx`).
 * **Sicherung**: lädt den gesamten Bestand als JSON herunter
   (`exportiereDaten`); nach einem Lade- oder Fassungsfehler stattdessen den
@@ -243,9 +242,9 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   herunterladen“, `rohdatenHerunterladen` – ohne gespeicherten Stand „Es ist
   kein gespeicherter Stand vorhanden, der sich herunterladen ließe.“) und, wenn die Namen abweichen, dem
   Haken „„Angemeldet als“ aus der Sicherung übernehmen“ (vorgewählt, solange
-  der Name `STANDARD_BEARBEITER` ist; mit Haken gelten Name und Farbmodus der
+  der Name `STANDARD_BEARBEITER` ist; mit Haken gilt der Name der
   Sicherung danach in allen Bereichen, `benutzerAendern`); ohne gesetzten Haken
-  bleiben Name, Farbmodus und E-Mail-Nachfrage der Person am Rechner. „Alles ersetzen“ ersetzt den Bestand über
+  bleiben Name und E-Mail-Nachfrage der Person am Rechner. „Alles ersetzen“ ersetzt den Bestand über
   `ersetzeDaten` und wechselt zur Übersicht. Nach einem Ladefehler sagt der
   Dialog „Der gespeicherte Stand ließ sich nicht laden; abgleichen ist deshalb
   nicht möglich. „Alles ersetzen“ überschreibt ihn; eine unveränderte Kopie
@@ -378,10 +377,20 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   eine Größe hat. Eine neue Seite beginnt oben
   (`useNachObenBeiSeitenwechsel` in `src/shared/scrollen.ts`, am Inhaltsbereich jedes
   Bereichs; ein Reiterwechsel scrollt nicht). Dialoge sind auf `100dvh` begrenzt.
-* **Seitenleiste in der schmalen Ansicht** (alle Bereiche): Bis 860 px Breite klappt sie über die
-  Schaltfläche „Menü“ (`.menu-toggle`) auf (`.sidebar.open`). Sie schließt bei jedem
+* **Seitenleiste** (alle Bereiche; `useSeitenleiste`, `SeitenleisteGriff` und `SeitenleisteKnopf` in
+  `src/shared/seitenleiste.tsx`): eine Karte wie die Kacheln des Inhalts (`.sidebar` in
+  `src/shared/global.css`).
+  *Breite Ansicht:* Der Griff mittig auf ihrem rechten Rand (`.leiste-griff`) heißt
+  „Seitenleiste einklappen“ bzw. „Seitenleiste ausklappen“ und setzt
+  `.sidebar.eingeklappt` und `.app.leiste-zu`; eingeklappt bleiben die Symbole der Menüpunkte
+  (Name im Tooltip), `KaPlanZeichen` aus `src/shared/logos.tsx`, die Initialen der angemeldeten
+  Person und der Bereichswechsel – die markierten Projekte (`.nav-projekte`), die Knöpfe der
+  Sicherung und die Texte entfallen. Der Zustand liegt unter dem Schlüssel
+  `kaplan-seitenleiste.v1` im `localStorage` und gilt in allen Bereichen.
+  *Schmale Ansicht* (bis 860 px): Der Griff entfällt; der Knopf „Menü“ links in der Kopfzeile
+  (`.menu-toggle`) klappt die Leiste über dem Inhalt auf (`.sidebar.open`). Sie schließt bei jedem
   Seitenwechsel – auch bei einem, der nicht aus ihr kommt, etwa per Zurück im Browser
-  (`useSeitenleiste` in `src/shared/seitenleiste.ts`, hört auf `hashchange`) – und bei einem
+  (hört auf `hashchange`) – und bei einem
   Klick auf den abgedunkelten Hintergrund.
 * **E-Mail-Dialog** (`src/bereiche/planlauf/components/EmailDialog.tsx`): Vorlage wählen, Betreff
   und Text bearbeiten, „In Outlook öffnen“ (mailto) oder „Abbrechen“. Ein Wechsel der Vorlage füllt
@@ -422,7 +431,7 @@ jeweiligen Browsers, wird also ohnehin nicht geteilt.
 Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
 
 1. **Bearbeiter** (`Bearbeiter` in `src/bereiche/planlauf/domain/types.ts`): Name,
-   `mailNachfrage` und `farbmodus`. Die Funktion der angemeldeten Person ist
+   und `mailNachfrage`. Die Funktion der angemeldeten Person ist
    stets `EIGENE_ROLLE = 'Planlaufmanagement'`; Schritte dieser Funktion gelten
    als eigene To-Dos (`eigeneTodos` in `src/bereiche/planlauf/domain/engine.ts`). In jedem
    markierten Projekt besetzt die Person automatisch das Planlaufmanagement
@@ -709,7 +718,7 @@ N-x und unterjährige Anmeldung.
 * Schlüssel `baubetrieb-planung.data.v1` im `localStorage`
   (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 11`.
   `migriere()` hebt ältere Stände in einem Aufruf Schritt für Schritt: Fassung 1 kannte nur den
-  Farbmodus und erhält die Demodaten; Fassung 2 führte Statusnummern (V0 … Y9),
+  inzwischen entfernten Farbmodus und erhält die Demodaten; Fassung 2 führte Statusnummern (V0 … Y9),
   die `STATUS_AUS_NUMMER` (`src/bereiche/baubetrieb/domain/workflow.ts`) den
   Status der Standard-Workflows zuordnet – in Anmeldungen, Verlauf und
   gespeichertem Vorstand; der bisher eingestellte `nachhakTage` wird zum
@@ -976,7 +985,7 @@ die Übersicht.
   Fristen – ohne archivierte Projekte), Projekte, „Import aus BBPNeo“ und die aufklappbare Gruppe „Einstellungen“ mit
   „Workflows“ und „Fristen“ (wie im Planlaufmanagement; aufgeklappt, sobald
   eine der beiden Seiten offen ist), darunter die markierten Projekte; unten „Angemeldet als“ (gemeinsam für alle Bereiche, Abschnitt 10;
-  `einstellungen.bearbeiter` und `einstellungen.farbmodus` spiegeln sie),
+  `einstellungen.bearbeiter` spiegelt den Namen),
   „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich wechseln“.
 * Sicherung (`exportiereDaten`) lädt `baubetrieb-sicherung-<Datum>.json` mit
   `"bereich": "baubetrieb"` (Datum nach Ortszeit, `today()` aus
@@ -986,8 +995,8 @@ die Übersicht.
   diesem Browser wird ersetzt. Die anderen Bereiche bleiben unberührt.“ –,
   bietet „Aktuellen Stand sichern“ (Titel „Den jetzigen Bestand vorher als
   JSON sichern“) und übernimmt „Angemeldet
-  als“ und Farbmodus – dann für alle Bereiche – nur mit dem Haken „Auch
-  „Angemeldet als“ und Farbmodus aus der Sicherung übernehmen – gilt dann in
+  als“ – dann für alle Bereiche – nur mit dem Haken „Auch
+  „Angemeldet als“ aus der Sicherung übernehmen – gilt dann in
   allen Bereichen“. Nach einem Lade- oder Fassungsfehler heißt der erste Knopf
   „Gespeicherten Stand herunterladen“ (Titel „Gespeicherten Stand unverändert
   herunterladen“, `rohdatenHerunterladen`; ohne gespeicherten Stand „Es ist
@@ -1348,8 +1357,8 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
   einklappbare Gruppe „Einstellungen“ mit „Funktionen“ (aufgeklappt, solange
   die Seite Funktionen offen ist), darunter die markierten Projekte mit ihren
   überfälligen Aufgaben; unten „Angemeldet als“ (gemeinsam für alle Bereiche,
-  Abschnitt 10; `einstellungen.bearbeiter` und `einstellungen.farbmodus`
-  spiegeln sie), „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich
+  Abschnitt 10; `einstellungen.bearbeiter`
+  spiegelt den Namen), „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich
   wechseln“.
 * Ampel (`ampelFuer` in `src/bereiche/projektsteuerung/domain/punkte.ts`, Bezeichnungen in
   `AMPEL_LABEL`): erledigt, überfällig, demnächst fällig (`VORLAUF_TAGE = 7`
@@ -1359,9 +1368,9 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
   (`src/bereiche/projektsteuerung/components/Sicherung.tsx`) fragt „Sicherung einspielen?“ – mit
   „Der gesamte jetzige Bestand der Projektsteuerung in diesem Browser wird ersetzt. Die anderen
   Bereiche bleiben unberührt.“ –, bietet
-  „Aktuellen Stand sichern“ und übernimmt „Angemeldet als“ und Farbmodus –
-  dann für alle Bereiche – nur mit dem Haken „Auch „Angemeldet als“ und
-  Farbmodus aus der Sicherung übernehmen – gilt dann in allen Bereichen“.
+  „Aktuellen Stand sichern“ und übernimmt „Angemeldet als“ –
+  dann für alle Bereiche – nur mit dem Haken „Auch „Angemeldet als“
+  aus der Sicherung übernehmen – gilt dann in allen Bereichen“.
   Wie in der Baubetriebsplanung (7.4) heißt der erste Knopf nach einem Lade-
   oder Fassungsfehler „Gespeicherten Stand herunterladen“
   (`rohdatenHerunterladen`); nach einem Ladefehler warnt der Dialog mit
@@ -1697,22 +1706,23 @@ Inhaltsbereich, in `src/bereiche/baubetrieb/App.tsx` und
 
 ## 10. Angemeldet als – für alle Bereiche
 
-* `src/gemeinsam/benutzer.ts`: `Benutzer` mit `name`, `farbmodus` und
-  `farbschema` (`'geraet'` – die Vorgabe –, `'hell'`, `'dunkel'`), Schlüssel
+* `src/gemeinsam/benutzer.ts`: `Benutzer` mit `name` und
+  `farbschema` (`'geraet'` – die Vorgabe, in der Oberfläche „Automatisch“ –, `'hell'`, `'dunkel'`), Schlüssel
   `kaplan-benutzer.v1` im `localStorage`, Vorgabe `STANDARD_NAME = 'Max
   Mustermann'`. Ohne gespeicherten Stand übernimmt `laden` einmalig den ersten
-  selbst eingetragenen Namen samt Farbmodus aus den Beständen des
+  selbst eingetragenen Namen aus den Beständen des
   Planlaufmanagements, der Projektsteuerung und der Baubetriebsplanung
   (`FRUEHER`; deren Vorgabenamen zählen nicht – auch nicht
   der Demoname „Lena Roth“ der Projektsteuerung).
-  `benutzerAendern` ändert Name, Farbmodus bzw. Farbschema für alle Bereiche, `useBenutzer`
+  `benutzerAendern` ändert Name bzw. Farbschema für alle Bereiche, `useBenutzer`
   liefert sie der Oberfläche; ein anderes Fenster lädt sie bei einer Änderung neu
   (`storage`-Ereignis).
-* Den Farbmodus setzt allein `src/shell/Shell.tsx`: aus `useBenutzer()` in einem
+* Einen Farbmodus für eine Rot-Grün-Sehschwäche gibt es nicht mehr; ein gespeichertes Feld
+  `farbmodus` entfällt beim Laden (Planlaufmanagement: `ohneFarbmodus` in
+  `src/bereiche/planlauf/store/storage.ts`; die beiden anderen Bereiche bereiten ihre
+  Einstellungen bei jedem Laden auf).
+* Hell oder dunkel setzt allein `src/shell/Shell.tsx` – aus `useBenutzer()` in einem
   Layout-Effekt, also vor dem ersten Zeichnen
-  (`document.documentElement.dataset.farbmodus`; auf der Bereichsauswahl stets
-  `'standard'`). Die `App.tsx` der Bereiche setzen ihn nicht.
-* Hell oder dunkel setzt ebenfalls allein `src/shell/Shell.tsx`
   (`document.documentElement.dataset.farbschema` mit `'hell'` oder `'dunkel'`,
   dazu der Inhalt von `meta[name="theme-color"]` aus `SEITENGRUND`): `istDunkel`
   in `src/gemeinsam/benutzer.ts` liefert für `'hell'` und `'dunkel'` die feste
@@ -1727,13 +1737,13 @@ Inhaltsbereich, in `src/bereiche/baubetrieb/App.tsx` und
 * `src/gemeinsam/AngemeldetAls.tsx`: Knopf „Angemeldet als“ unten in der
   Seitenleiste aller Bereiche und Dialog „Angemeldet als“
   (Name, ggf. eine Einstellung des Bereichs als Haken, „Farbschema“ mit den
-  Segmenten „Wie das Gerät“, „Hell“ und „Dunkel“ – Hinweis „Helle oder dunkle
-  Oberfläche. „Wie das Gerät“ folgt der Einstellung des Betriebssystems.“ –,
-  „Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)“, „Übernehmen“) mit dem Hinweis „Gilt in
+  Segmenten „Automatisch“, „Hell“ und „Dunkel“ – Hinweis „Helle oder dunkle
+  Oberfläche. „Automatisch“ folgt der Einstellung des Betriebssystems.“ –,
+  „Übernehmen“) mit dem Hinweis „Gilt in
   allen Bereichen von KaPlan. Bis zur Anmeldung über SSO ist dies eine Angabe
   ohne Kennwort; die Daten liegen lokal in diesem Browser.“ Der Dialog öffnet
   sich über ein Portal auf Seitenebene.
-* `src/gemeinsam/useBenutzerAbgleich.ts`: Jeder Store zieht Name und Farbmodus
+* `src/gemeinsam/useBenutzerAbgleich.ts`: Jeder Store zieht den Namen
   nach jeder Änderung in seinen Bestand nach (Planlaufmanagement:
   `bearbeiter`; Baubetriebsplanung und Projektsteuerung:
   `einstellungen`).

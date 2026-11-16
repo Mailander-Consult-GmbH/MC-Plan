@@ -16,20 +16,12 @@ import { useBereich } from './router';
 export function Shell() {
   const bereich = useBereich();
 
-  const { farbmodus, farbschema } = useBenutzer();
-
-  useLayoutEffect(() => {
-    // Der Farbmodus gilt für alle Bereiche (gemeinsame Anmeldung „Angemeldet
-    // als“, src/gemeinsam/benutzer.ts) und wird nur hier gesetzt; die
-    // Bereichsauswahl selbst zeigt immer die Standardfarben. Als Layout-Effekt,
-    // also vor dem ersten Zeichnen: Sonst erschiene ein Bereich bei „kontrast“
-    // nach jedem Öffnen oder Neuladen kurz in den Standardfarben.
-    document.documentElement.dataset.farbmodus = bereich ? farbmodus : 'standard';
-  }, [bereich, farbmodus]);
+  const { farbschema } = useBenutzer();
 
   useLayoutEffect(() => {
     // Hell oder dunkel gilt überall, auch auf der Bereichsauswahl: fest gewählt
-    // unter „Angemeldet als“ oder – die Vorgabe – wie das Gerät eingestellt ist.
+    // unter „Angemeldet als“ oder – die Vorgabe „Automatisch“ – wie das Gerät
+    // eingestellt ist. Als Layout-Effekt, also vor dem ersten Zeichnen.
     // Gesetzt wird stets das Ergebnis (`hell`/`dunkel`); global.css kennt keine
     // Medienabfrage dafür. Das Skript im Kopf der index.html setzt denselben
     // Wert schon vor dem Start, damit die Seite nicht erst hell aufblitzt.
@@ -40,7 +32,7 @@ export function Shell() {
     };
     setzen();
     if (farbschema !== 'geraet') return;
-    // „Wie das Gerät“: einem Wechsel der Geräteeinstellung sofort folgen
+    // „Automatisch“: einem Wechsel der Geräteeinstellung sofort folgen
     const geraet = window.matchMedia(GERAET_DUNKEL);
     geraet.addEventListener('change', setzen);
     return () => geraet.removeEventListener('change', setzen);

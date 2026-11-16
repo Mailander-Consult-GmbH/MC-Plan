@@ -10,9 +10,9 @@
  *
  * Projekte und Kontakte gleicht der Store nach jeder Änderung mit dem
  * Projektregister ab (`useRegisterAbgleich`, domain/register.ts) – solange der
- * gespeicherte Stand gelesen werden konnte. Name und Farbmodus unter
- * „Angemeldet als“ kommen aus der gemeinsamen Anmeldung aller Bereiche
- * (`useBenutzerAbgleich`, src/gemeinsam/benutzer.ts); `bearbeiter` spiegelt sie.
+ * gespeicherte Stand gelesen werden konnte. Der Name unter
+ * „Angemeldet als“ kommt aus der gemeinsamen Anmeldung aller Bereiche
+ * (`useBenutzerAbgleich`, src/gemeinsam/benutzer.ts); `bearbeiter` spiegelt ihn.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -296,18 +296,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setData((alt) => bestandAendern(alt, fn, { zeitpunkt, heute, protokoll: optionen.protokoll }, newId));
   }, []);
 
-  // Name und Farbmodus aus der gemeinsamen Anmeldung – ohne Änderungsprotokoll
+  // Name aus der gemeinsamen Anmeldung – ohne Änderungsprotokoll
   useBenutzerAbgleich(
     data,
-    (d, b) => d.bearbeiter.name !== b.name || (d.bearbeiter.farbmodus ?? 'standard') !== b.farbmodus,
+    (d, b) => d.bearbeiter.name !== b.name,
     (b) =>
-      mutate(
-        (d) =>
-          d.bearbeiter.name === b.name && (d.bearbeiter.farbmodus ?? 'standard') === b.farbmodus
-            ? d
-            : { ...d, bearbeiter: { ...d.bearbeiter, name: b.name, farbmodus: b.farbmodus } },
-        { protokoll: false },
-      ),
+      mutate((d) => (d.bearbeiter.name === b.name ? d : { ...d, bearbeiter: { ...d.bearbeiter, name: b.name } }), {
+        protokoll: false,
+      }),
   );
 
   // Projekte und Kontakte mit dem Projektregister abgleichen – solange der gespeicherte Stand gelesen werden konnte.

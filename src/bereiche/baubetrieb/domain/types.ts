@@ -26,8 +26,6 @@ export const DATEN_VERSION = 11;
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
 
-export type Farbmodus = 'standard' | 'kontrast';
-
 /* ------------------------------------------------------------------ */
 /* Phasen, Maßnahmenarten, AnnexVII                                    */
 /* ------------------------------------------------------------------ */
@@ -473,7 +471,6 @@ export type BbpPhase = 'km' | 'kkm';
 export type BbpStatusZuordnung = Record<BbpPhase, Record<string, ID | null>>;
 
 export interface Einstellungen {
-  farbmodus: Farbmodus;
   bearbeiter: string;
   /** Ab so vielen Tagen vor der Terminfrist gilt eine Anmeldung als fällig. */
   vorlaufTage: number;

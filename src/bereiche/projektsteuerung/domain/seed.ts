@@ -240,7 +240,7 @@ export function seedDaten(): ProjektsteuerungDaten {
     // Nur ein Spiegel der gemeinsamen Anmeldung: `useBenutzerAbgleich` ersetzt ihn sofort durch den Namen
     // unter „Angemeldet als“ (kaplan-benutzer.v1). Wer dort „Lena Roth“ einträgt, sieht die Aufgaben der
     // Projektsteuerung als eigene To-Dos; „Lena Roth“ zählt in benutzer.ts (`FRUEHER`) als Vorgabe.
-    einstellungen: { bearbeiter: personName(b.ps), farbmodus: 'standard' },
+    einstellungen: { bearbeiter: personName(b.ps) },
     gewerke: [...STANDARD_GEWERKE],
     funktionen: STANDARD_FUNKTIONEN.map((f) => ({ ...f })),
     projekte: [p1, p2],

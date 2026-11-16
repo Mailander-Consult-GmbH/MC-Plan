@@ -6,8 +6,8 @@
  * weiße Karten mit großer Rundung und weichem Schatten, Tinte (fast Schwarz)
  * für Betonung, Schrift Outfit. Abweichend von der Vorlage ist die
  * Markenfarbe nicht Koralle, sondern das Blau von Mailänder Consult
- * (--marke), das Rot der Ampel ein eigenes Rot, und die Menüleiste ist nur im
- * dunklen Schema dunkel – im hellen ist sie hell.
+ * (--marke), das Rot der Ampel ein eigenes Rot, und die Menüleiste ist eine
+ * Karte wie die Kacheln des Inhalts – in beiden Schemata.
  * Die Regeln dazu stehen in CLAUDE.md, Abschnitt „Designregeln“.
  *
  * Tailwind durchsucht nur src/ – die Vorlage selbst gehört nicht zum Programm.
@@ -18,14 +18,12 @@
 
 /* `dark:` folgt dem Farbschema der Anwendung (data-farbschema am <html>), nicht unmittelbar dem Gerät */
 @custom-variant dark (&:where([data-farbschema='dunkel'], [data-farbschema='dunkel'] *));
-/* `kontrast:` – Utilities nur im Farbmodus für Rot-Grün-Sehschwäche */
-@custom-variant kontrast (&:where([data-farbmodus='kontrast'], [data-farbmodus='kontrast'] *));
 
 /*
  * Tokens für Tailwind-Utilities (bg-karte, text-gedaempft, border-linie,
  * bg-marke, shadow-karte …). Die Farben zeigen auf die Variablen unten und
- * folgen damit von selbst dem dunklen Schema und dem Farbmodus „kontrast“ –
- * `dark:`-Varianten sind für sie nicht nötig.
+ * folgen damit von selbst dem dunklen Schema – `dark:`-Varianten sind für sie
+ * nicht nötig.
  */
 @theme inline {
   --font-sans: 'Outfit Variable', 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -34,7 +32,6 @@
   --color-grund: var(--bg);
   --color-karte: var(--bg-elev);
   --color-flaeche: var(--bg-subtle);
-  --color-leiste: var(--bg-sidebar);
   --color-tinte: var(--text);
   --color-zweitrangig: var(--text-secondary);
   --color-gedaempft: var(--text-tertiary);
@@ -82,8 +79,6 @@
   --fill-gruppe: #f7f7f8;
   --bg-hover: rgba(27, 28, 32, 0.045);
   --bg-active: rgba(27, 28, 32, 0.08);
-  /* Menüleiste: im hellen Schema weiß, im dunklen dunkel (siehe unten) */
-  --bg-sidebar: #ffffff;
 
   /* Schrift */
   --text: #1b1c20;
@@ -158,7 +153,9 @@
   /* Schraffur hinter großen Fortschrittsbalken */
   --schraffur: repeating-linear-gradient(-45deg, var(--separator) 0 4px, transparent 4px 9px);
 
-  --sidebar-w: 248px;
+  /* Spalte der Menüleiste samt ihrem Abstand zum Fensterrand: ausgeklappt und eingeklappt */
+  --sidebar-w: 264px;
+  --sidebar-w-zu: 84px;
 }
 
 /*
@@ -188,7 +185,6 @@
   --accent-soft: rgba(255, 255, 255, 0.09);
   --auf-accent: #1b1c20;
 
-  --bg-sidebar: #17181b;
   /* Das dunkle Blau trägt auf dunklem Grund nicht – hier eine hellere Stufe */
   --marke-glanz: rgba(63, 115, 184, 0.45);
   --nav-aktiv: linear-gradient(135deg, #2f5d9a, #4a7ab8);
@@ -290,21 +286,57 @@
   grid-template-columns: var(--sidebar-w) 1fr;
   height: 100%;
   overflow: hidden;
+  transition: grid-template-columns 0.25s var(--ease-koralle);
 }
+/* Eingeklappte Menüleiste (useSeitenleiste, src/shared/seitenleiste.tsx): nur die Spalte der Symbole */
+.app.leiste-zu { grid-template-columns: var(--sidebar-w-zu) 1fr; }
+/* Bezug für den Griff der Menüleiste */
+.app { position: relative; }
 
 /*
- * Menüleiste: im hellen Schema weiß, im dunklen dunkel wie in der Vorlage
- * (--bg-sidebar). Ihr Inhalt nimmt die Tokens des Schemas – eigene Werte
- * braucht sie nicht.
+ * Griff zum Ein- und Ausklappen (SeitenleisteGriff): eine kleine Lasche auf dem
+ * rechten Rand der Menüleiste, auf halber Höhe. Sie steht neben der Leiste in
+ * .app und folgt deren Rand; in der schmalen Ansicht entfällt sie (dort öffnet
+ * der Knopf „Menü“ in der Kopfzeile die Leiste).
+ */
+.leiste-griff {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--sidebar-w) - 11px);
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 44px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid var(--separator);
+  border-radius: 999px;
+  background: var(--bg-elev);
+  box-shadow: var(--schatten);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: left 0.25s var(--ease-koralle), color 0.15s ease, box-shadow 0.15s ease;
+}
+.leiste-griff:hover { color: var(--text); box-shadow: var(--schatten-hoch); }
+.app.leiste-zu .leiste-griff { left: calc(var(--sidebar-w-zu) - 11px); }
+
+/*
+ * Menüleiste: eine Karte wie die Kacheln des Inhalts – Kartengrund, große
+ * Rundung, weicher Schatten, ohne Rahmen – mit Abstand zum Fensterrand. Ihr
+ * Inhalt nimmt die Tokens des Schemas; eigene Farben braucht sie nicht.
  */
 .sidebar {
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--separator);
+  margin: 16px 0 16px 16px;
+  background: var(--bg-elev);
+  border-radius: var(--rund-xl);
+  box-shadow: var(--schatten);
   color: var(--text-secondary);
   display: flex;
   flex-direction: column;
   gap: 3px;
   padding: 16px 12px;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -323,6 +355,10 @@
   border-radius: var(--rund);
 }
 .sidebar-brand:hover { opacity: 0.88; }
+/* Logo mit Schriftzug in der ausgeklappten Leiste, das Dreieck allein in der eingeklappten */
+.marke-voll { display: block; }
+.kaplan-zeichen { display: none; margin: 0 auto; }
+:root[data-farbschema='dunkel'] .kaplan-zeichen { filter: brightness(0) invert(1); opacity: 0.92; }
 
 /*
  * Logos von KaPlan (KaPlanLogo, src/shared/logos.tsx) – ohne Fläche dahinter,
@@ -392,11 +428,44 @@
 .nav-badge.alert { background: var(--red); color: #fff; }
 
 .sidebar-footer { margin-top: auto; padding: 16px 2px 2px; font-size: 11px; color: var(--text-tertiary); }
+.sidebar-hinweis { display: block; }
+/* Die markierten Projekte unter ihrer Überschrift – Abstände wie die übrigen Menüpunkte */
+.nav-projekte { display: flex; flex-direction: column; gap: 3px; flex: none; }
 /* Sicherung und Einspielen nebeneinander, Zurücksetzen darunter über die ganze Breite */
 .sicherung-knoepfe { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; }
 .sicherung-knoepfe .btn { justify-content: center; padding-left: 6px; padding-right: 6px; color: var(--text-secondary); }
 .sicherung-knoepfe .btn:hover:not(:disabled) { color: var(--text); }
 .sicherung-knoepfe .btn:last-child { grid-column: 1 / -1; }
+
+/*
+ * Eingeklappte Menüleiste: Es bleiben die Symbole der Menüpunkte (ihr Name
+ * steht im Tooltip), das Dreieck von KaPlan, die Initialen der angemeldeten
+ * Person und der Bereichswechsel. Die markierten Projekte, die Knöpfe der
+ * Sicherung und die Texte entfallen – sie stehen in der ausgeklappten Leiste.
+ */
+.sidebar.eingeklappt { padding: 16px 10px; }
+.sidebar.eingeklappt .marke-voll,
+.sidebar.eingeklappt .nav-label,
+.sidebar.eingeklappt .nav-pfeil,
+.sidebar.eingeklappt .nav-projekte,
+.sidebar.eingeklappt .sicherung-knoepfe,
+.sidebar.eingeklappt .sidebar-hinweis,
+.sidebar.eingeklappt .gem-angemeldet-text,
+.sidebar.eingeklappt .bereich-wechsel-text { display: none; }
+.sidebar.eingeklappt .kaplan-zeichen { display: block; }
+.sidebar.eingeklappt .sidebar-brand { padding: 6px 0 8px; }
+.sidebar.eingeklappt .nav-item,
+.sidebar.eingeklappt .nav-item.unter { justify-content: center; gap: 0; padding: 8px 0; }
+/* Zähler als kleine Marke an der Ecke des Symbols */
+.sidebar.eingeklappt .nav-badge {
+  position: absolute; top: 3px; right: 3px;
+  min-width: 16px; padding: 0 4px;
+  font-size: 10px; line-height: 16px; text-align: center;
+}
+.sidebar.eingeklappt .sidebar-footer { padding: 16px 0 2px; }
+.sidebar.eingeklappt .bearbeiter { justify-content: center; padding: 6px 0; border-color: transparent; background: none; }
+.sidebar.eingeklappt .bearbeiter:hover { background: var(--bg-hover); }
+.sidebar.eingeklappt .bereich-wechsel { padding: 10px 0; }
 
 .main { display: flex; flex-direction: column; overflow: hidden; }
 
@@ -423,7 +492,8 @@
 .topbar-actions { display: flex; gap: 8px; align-items: center; flex: none; }
 /* Hauslogo in der Kopfzeile */
 .topbar-logo { flex: none; display: flex; align-items: center; padding-left: 12px; }
-/* Menüknopf auf schmalen Bildschirmen: runder weißer Knopf wie die Glocke der Vorlage */
+/* Menüknopf in der Kopfzeile (SeitenleisteKnopf) – nur auf schmalen Bildschirmen: runder weißer Knopf wie die
+   Glocke der Vorlage, öffnet die Leiste */
 .btn-icon.menu-toggle {
   display: grid;
   place-items: center;
@@ -1315,11 +1385,14 @@
 
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
+  .leiste-griff { display: none; }
+  /* Schmal liegt die Leiste als Karte über dem Inhalt – mit etwas Abstand zum Fensterrand */
   .sidebar {
-    position: fixed; inset: 0 auto 0 0;
-    width: var(--sidebar-w);
+    position: fixed; inset: 8px auto 8px 8px;
+    margin: 0;
+    width: min(248px, calc(100vw - 16px));
     z-index: 90;
-    transform: translateX(-100%);
+    transform: translateX(calc(-100% - 16px));
     transition: transform 0.3s var(--ease-koralle);
   }
   .sidebar.open { transform: none; box-shadow: var(--schatten-dialog); }
@@ -1343,96 +1416,4 @@
   background: color-mix(in srgb, var(--chip-farbe) 26%, transparent);
   color: color-mix(in srgb, var(--chip-farbe) 45%, #fff);
 }
-}
-
-/* ------------------------------------------------------------------ */
-/* Farbmodus für Rot-Grün-Sehschwäche                                  */
-/* ------------------------------------------------------------------ */
-/*
- * Statt Grün/Orange/Rot treten Blaugrün, Bernstein und Magenta – drei
- * Farbtöne, die sich auch bei einer Rot-Grün-Sehschwäche (Deuteranopie und
- * Protanopie) in Farbton und Helligkeit unterscheiden. Zusätzlich sind
- * Texte, Trennlinien und Markierungen kontraststärker, und die Markenfarbe
- * ist kräftiger.
- */
-:root[data-farbmodus='kontrast'] {
-  --green: #00786a;
-  --green-soft: rgba(0, 120, 106, 0.16);
-  --gruen-text: #00594c;
-  --orange: #a86800;
-  --orange-soft: rgba(168, 104, 0, 0.18);
-  --orange-text: #7d4d00;
-  --red: #b0007a;
-  --red-soft: rgba(176, 0, 122, 0.14);
-  --rot-text: #8a0060;
-  --purple: #4b3ea8;
-  --purple-soft: rgba(75, 62, 168, 0.16);
-  --blau: #0a6fa8;
-  --blau-soft: rgba(10, 111, 168, 0.14);
-  --blau-text: #07507a;
-
-  --text-secondary: #40424a;
-  --text-tertiary: #54565e;
-  --separator: #c9cad1;
-  --separator-strong: #9fa1aa;
-  --accent-soft: rgba(27, 28, 32, 0.12);
-  --bg-active: rgba(27, 28, 32, 0.16);
-  --gray-soft: rgba(27, 28, 32, 0.12);
-  --gelb-soft: rgba(255, 214, 51, 0.28);
-  --gelb-soft-stark: rgba(255, 214, 51, 0.5);
-  --gelb-text: #5c4100;
-
-  --marke: #1c3859;
-  --marke-2: #34608f;
-  --marke-soft: rgba(36, 69, 110, 0.16);
-  --marke-text: #1c3859;
-  --signal-verlauf: linear-gradient(150deg, #cc3f9e, #b0007a);
-}
-
-:root[data-farbmodus='kontrast'][data-farbschema='dunkel'] {
-  --green: #2fd0bd;
-  --green-soft: rgba(47, 208, 189, 0.2);
-  --gruen-text: #6fe3d4;
-  --orange: #f2b33d;
-  --orange-soft: rgba(242, 179, 61, 0.22);
-  --orange-text: #f7cb78;
-  --red: #ff6bcb;
-  --red-soft: rgba(255, 107, 203, 0.2);
-  --rot-text: #ff9adb;
-  --purple: #a99bff;
-  --purple-soft: rgba(169, 155, 255, 0.22);
-  --blau: #6cc4f5;
-  --blau-soft: rgba(108, 196, 245, 0.2);
-  --blau-text: #9ad8fa;
-
-  --text-secondary: #d3d5db;
-  --text-tertiary: #b6b8c0;
-  --separator: #4a4c55;
-  --separator-strong: #6c6e78;
-  --accent-soft: rgba(255, 255, 255, 0.16);
-  --bg-active: rgba(255, 255, 255, 0.2);
-  --gray-soft: rgba(255, 255, 255, 0.16);
-  --gelb-soft: rgba(255, 214, 51, 0.2);
-  --gelb-soft-stark: rgba(255, 214, 51, 0.34);
-  --gelb-text: #ffe08a;
-
-  --marke: #6fa3e8;
-  --marke-2: #9cc0f2;
-  --marke-soft: rgba(111, 163, 232, 0.26);
-  --marke-text: #b9d4f8;
-  --signal-verlauf: linear-gradient(150deg, #d94aaa, #b0007a);
-}
-
-@layer components {
-/* Status wird zusätzlich durch Rahmen und kräftigere Schrift unterscheidbar */
-:root[data-farbmodus='kontrast'] .badge { border: 1px solid currentColor; font-weight: 600; }
-:root[data-farbmodus='kontrast'] .dot { box-shadow: 0 0 0 1px var(--separator-strong); }
-:root[data-farbmodus='kontrast'] .chain-node.late { border-color: var(--red); }
-:root[data-farbmodus='kontrast'] .chain-node.done { border-color: var(--green); }
-:root[data-farbmodus='kontrast'] .progress { background: var(--separator); }
-:root[data-farbmodus='kontrast'] .stern.aktiv { color: var(--text); }
-:root[data-farbmodus='kontrast'] .input,
-:root[data-farbmodus='kontrast'] .select,
-:root[data-farbmodus='kontrast'] .textarea,
-:root[data-farbmodus='kontrast'] .btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger) { border-color: var(--separator-strong); }
 }

@@ -1,8 +1,8 @@
 /**
  * „Angemeldet als“ – unten in der Seitenleiste jedes Bereichs: Name und
  * Kürzel der angemeldeten Person, ein Klick öffnet den Dialog mit Name,
- * Farbschema (hell, dunkel, wie das Gerät) und Farbmodus. Was hier
- * eingetragen wird, gilt in allen Bereichen (benutzer.ts).
+ * Farbschema (automatisch, hell, dunkel). Was hier eingetragen wird, gilt in
+ * allen Bereichen (benutzer.ts).
  *
  * Ein Bereich kann einen Hinweis zum Namen mitgeben (was er damit tut) und
  * eine eigene Einstellung als Haken (`zusatz`, etwa die E-Mail-Nachfrage des
@@ -24,7 +24,7 @@ export interface AnmeldungZusatz {
 
 /** Wahl des Farbschemas im Dialog. */
 const FARBSCHEMATA: { value: Farbschema; label: string }[] = [
-  { value: 'geraet', label: 'Wie das Gerät' },
+  { value: 'geraet', label: 'Automatisch' },
   { value: 'hell', label: 'Hell' },
   { value: 'dunkel', label: 'Dunkel' },
 ];
@@ -42,7 +42,7 @@ export function AngemeldetAls({ hinweis, zusatz }: { hinweis?: string; zusatz?: 
         type="button"
         className="bearbeiter gem-angemeldet"
         onClick={() => setOffen(true)}
-        title="Name und Farbmodus – gelten in allen Bereichen"
+        title="Name und Farbschema – gelten in allen Bereichen"
       >
         <span className="avatar">
           {initialen(benutzer.name)}
@@ -60,7 +60,7 @@ export function AngemeldetAls({ hinweis, zusatz }: { hinweis?: string; zusatz?: 
   );
 }
 
-/** Dialog „Angemeldet als“: Name, Farbschema und Farbmodus für alle Bereiche, dazu die Einstellung des Bereichs. */
+/** Dialog „Angemeldet als“: Name und Farbschema für alle Bereiche, dazu die Einstellung des Bereichs. */
 export function BenutzerDialog({
   hinweis,
   zusatz,
@@ -72,12 +72,11 @@ export function BenutzerDialog({
 }) {
   const benutzer = useBenutzer();
   const [name, setName] = useState(benutzer.name);
-  const [kontrast, setKontrast] = useState(benutzer.farbmodus === 'kontrast');
   const [farbschema, setFarbschema] = useState<Farbschema>(benutzer.farbschema);
   const [zusatzWert, setZusatzWert] = useState(zusatz?.wert ?? false);
 
   const uebernehmen = () => {
-    benutzerAendern({ name, farbmodus: kontrast ? 'kontrast' : 'standard', farbschema });
+    benutzerAendern({ name, farbschema });
     if (zusatz && zusatzWert !== zusatz.wert) zusatz.uebernehmen(zusatzWert);
     onClose();
   };
@@ -120,19 +119,9 @@ export function BenutzerDialog({
         <Field
           label="Farbschema"
           full
-          hint="Helle oder dunkle Oberfläche. „Wie das Gerät“ folgt der Einstellung des Betriebssystems."
+          hint="Helle oder dunkle Oberfläche. „Automatisch“ folgt der Einstellung des Betriebssystems."
         >
           <Segmented value={farbschema} onChange={setFarbschema} options={FARBSCHEMATA} />
-        </Field>
-        <Field
-          label="Darstellung"
-          full
-          hint="Farben für eine Rot-Grün-Sehschwäche: Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot – zusätzlich mit stärkeren Kontrasten."
-        >
-          <label className="checkbox">
-            <input type="checkbox" checked={kontrast} onChange={(e) => setKontrast(e.target.checked)} />
-            Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)
-          </label>
         </Field>
       </div>
       <p className="small tertiary" style={{ marginTop: 12 }}>

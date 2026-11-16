@@ -66,7 +66,7 @@ export function Start() {
 
         <p className="mx-auto max-w-[760px] pt-4 text-center text-xs leading-relaxed text-gedaempft max-md:text-left">
           Die Bereiche arbeiten unabhängig voneinander – jeder mit eigenem Datenbestand. Gemeinsam sind
-          „Angemeldet als“ (Name und Farbmodus) und das Projektregister, über das sie sich Projekte und
+          „Angemeldet als“ (Name und Farbschema) und das Projektregister, über das sie sich Projekte und
           Projektbeteiligte teilen. Daten werden lokal im Browser gespeichert.
           <span className="mt-1.5 block">Fassung vom {fassungText(FASSUNG)}</span>
         </p>

@@ -14,7 +14,7 @@ Optimierungspotenzial aus dem Vergleich der drei Bereiche: `docs/OPTIMIERUNG.md`
 Die Oberfläche folgt dem **Koralle-Design** nach der Vorlage `KoralleDashboard.jsx` im
 Wurzelverzeichnis – gebaut mit Tailwind 4, Framer Motion und Lucide-Icons. Abweichend von der
 Vorlage ist die **Markenfarbe das Blau von Mailänder Consult** (`#24456e`), nicht Koralle,
-gezeigt werden die **Logos von KaPlan**, und die **Menüleiste ist im hellen Schema hell**. Wie das
+gezeigt werden die **Logos von KaPlan**, und die **Menüleiste ist eine Karte wie die Kacheln**. Wie das
 Design anzuwenden ist, steht im Abschnitt
 [Designregeln](#designregeln-koralle-design); die früheren Gestaltungsregeln (helles
 Apple-Erscheinungsbild) gelten nicht mehr.
@@ -71,8 +71,9 @@ Tinte (fast Schwarz) für Betonung, Schrift Outfit, weiche Bewegungen.
   Wo die Vorlage Koralle als Akzent zeigt (aktiver Menüpunkt, Balken, Symbolflächen), steht Blau.
 * **Das Rot der Ampel ist ein eigenes, klares Rot** (`--red`, `#e5484d`) – in der Vorlage ist es
   dieselbe Koralle wie der Akzent. Rot bedeutet nur „überfällig“, „fehlt“ und „löschen“.
-* **Die Menüleiste folgt dem Farbschema:** im hellen Schema ist sie weiß mit feiner Linie zum
-  Inhalt, dunkel wie in der Vorlage nur im dunklen Schema (`--bg-sidebar`).
+* **Die Menüleiste ist eine Karte wie die Kacheln des Inhalts** – Kartengrund (`--bg-elev`),
+  24 px Rundung, weicher Schatten, ohne Linie zum Inhalt, mit 16 px Abstand zum Fensterrand; in
+  der Vorlage ist sie eine dunkle Fläche am Rand. Sie lässt sich einklappen (siehe Bausteine).
 * **Logos von KaPlan** (`public/logos/`) statt einer gezeichneten Marke – ohne Fläche dahinter.
   Im dunklen Schema erscheint die Fassung `…_dunkel.png`: Schrift und Grau in Weiß, der blaue
   Teil des Dreiecks unverändert – ohne Rand.
@@ -112,7 +113,6 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
 | Seitengrund | `--bg` | `bg-grund` | `#f2f2f4` | `#121316` |
 | Karte, Dialog | `--bg-elev` | `bg-karte` | `#ffffff` | `#1b1c20` |
 | Füllfläche (Kachel in der Karte, Gruppenzeile) | `--bg-subtle`, `--fill-gruppe` | `bg-flaeche` | `#f7f7f8` | `#232429` |
-| Menüleiste | `--bg-sidebar` | `bg-leiste` | `#ffffff` | `#17181b` |
 | Schrift | `--text` | `text-tinte` | `#1b1c20` | `#f2f2f4` |
 | Schrift zweitrangig | `--text-secondary` | `text-zweitrangig` | `#62646d` | `#b1b3bb` |
 | Schrift gedämpft (Beschriftungen) | `--text-tertiary` | `text-gedaempft` | `#8b8d94` | `#8b8d94` |
@@ -138,7 +138,7 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
   `--orange-text`, `--gruen-text`, `--blau-text`), nicht mit den Flächentönen – die sind auf Weiß
   zu blass.
 * **Helles und dunkles Schema:** Welches gilt, wählt die Person unter „Angemeldet als“
-  (**Farbschema**: „Wie das Gerät“ – die Vorgabe, wie in der Vorlage –, „Hell“ oder „Dunkel“). Am
+  (**Farbschema**: „Automatisch“ – die Vorgabe: wie das Gerät eingestellt ist –, „Hell“ oder „Dunkel“). Am
   `<html>` steht stets das Ergebnis als `data-farbschema="hell"` bzw. `"dunkel"`; gesetzt wird es
   vom Skript im Kopf der `index.html` (vor dem Start, damit nichts hell aufblitzt) und danach von
   der Hülle. **In CSS deshalb keine Medienabfrage `prefers-color-scheme`**, sondern
@@ -146,12 +146,11 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
   (`@custom-variant dark` in `global.css`). Die Tokens schalten selbst um, `dark:` ist für
   Token-Farben nicht nötig. Kein festes `#fff`/`#000`: Schrift auf einer Farbfläche ist
   `var(--auf-accent)` bzw. `var(--bg-elev)` (Ausnahmen: Weiß auf dem aktiven Menüpunkt und auf
-  den Verläufen `--marke-verlauf` und `--signal-verlauf`). Die Menüleiste folgt dem Schema – im
-  hellen weiß, im dunklen dunkel (`--bg-sidebar`) – und nimmt für ihren Inhalt die Tokens des
-  Schemas; eigene Werte setzt `.sidebar` in `global.css` nicht.
-* **Farbmodus `kontrast`** (`:root[data-farbmodus='kontrast']`, in TSX die Variante `kontrast:`)
-  ersetzt Grün/Orange/Rot durch Blaugrün/Bernstein/Magenta und verstärkt Schrift und Linien – in
-  beiden Schemata. Signale deshalb nur über die Ampel-Tokens, nie über feste Farben.
+  den Verläufen `--marke-verlauf` und `--signal-verlauf`). Die Menüleiste nimmt für Grund und
+  Inhalt die Tokens des Schemas; eigene Farben setzt `.sidebar` in `global.css` nicht.
+* **Signale nur über die Ampel-Tokens**, nie über feste Farben. Einen eigenen Farbmodus für eine
+  Rot-Grün-Sehschwäche gibt es nicht mehr (früher `data-farbmodus='kontrast'`, Variante
+  `kontrast:`) – nicht wieder einführen, ohne dass es verlangt wird.
 * **Funktionsfarben** sind Daten der Nutzer: als `--chip-farbe` an `.role-chip` bzw. über `Avatar`
   übergeben – `global.css` hellt sie im dunklen Schema auf.
 
@@ -189,6 +188,11 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   je Ansicht –, `.btn-ghost`, `.btn-outline`, `.btn-icon` (rund). Löschen: der Auslöser ist
   `.btn-danger` (rote Schrift), die Bestätigung `.btn-primary.btn-rot` (rot gefüllt) – nicht per
   Inline-Farbe.
+* **Seitenleiste:** eine Karte (`.sidebar`), einklappbar über `SeitenleisteGriff` – eine Lasche
+  mittig auf ihrem rechten Rand (`.leiste-griff`, `src/shared/seitenleiste.tsx`); der Knopf
+  „Menü“ in der Kopfzeile (`SeitenleisteKnopf`) erscheint nur in der schmalen Ansicht. Eingeklappt bleiben Symbole (Name im Tooltip, Zähler als Marke
+  am Symbol), `KaPlanZeichen` (das Dreieck allein), die Initialen der angemeldeten Person und der
+  Bereichswechsel; markierte Projekte, Sicherungsknöpfe und Texte entfallen.
 * `.tabs` sind Pillen, die gewählte dunkel; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
   `purple`, `gelb`); Ampelpunkt `.dot`; Stern der Projektmarkierung `Icon name="stern"` in `.stern`.
 * **Logos:** `KaPlanLogo` (`src/shared/logos.tsx`) zeigt die Dateien unter `public/logos/` – auf
@@ -223,8 +227,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
 * Druck- und PDF-Fassungen (`src/shared/print.ts`, `domain/druck.ts`, `domain/export.ts`) und das
   Blatt der Druckansicht (`.ps-blatt`) sind Dokumente mit eigener, fester Gestaltung – sie gehören
   nicht zum Koralle-Design und bleiben hell.
-* Jede Änderung an der Oberfläche in vier Darstellungen ansehen: hell, dunkel, Farbmodus
-  `kontrast` und 400 px Breite.
+* Jede Änderung an der Oberfläche in vier Darstellungen ansehen: hell, dunkel, 400 px Breite
+  und mit eingeklappter Seitenleiste.
 
 ## Aufbau
 
@@ -239,12 +243,13 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   je Bereich eine Karte – ab 768 px dreispaltig, darunter untereinander (Tailwind-Utilities in
   `src/shell/Start.tsx`; in `global.css` steht nur der Scrollrahmen `.start`). In jeder `App.tsx`
   ist die Seitenleiste ein `motion.aside` mit `layoutScroll`, der aktive Menüpunkt trägt `NavAktiv`,
-  und die Ansichten stehen in `Einblenden` (Schlüssel `route.view`).
-  Den **Farbmodus** setzt allein `src/shell/Shell.tsx` – aus `useBenutzer()` in einem
-  Layout-Effekt, also vor dem ersten Zeichnen (`document.documentElement.dataset.farbmodus`; auf
-  der Bereichsauswahl stets `standard`). Ebenso das **Farbschema** (`dataset.farbschema`, `hell`
-  oder `dunkel` nach `istDunkel`; es gilt auch auf der Bereichsauswahl, bei „Wie das Gerät“ folgt
-  die Hülle einem Wechsel der Geräteeinstellung sofort) samt der Farbe der Fensterleiste
+  und die Ansichten stehen in `Einblenden` (Schlüssel `route.view`). Links in der Kopfzeile steht
+  `SeitenleisteKnopf` (nur schmal sichtbar), nach der Leiste `SeitenleisteGriff`; die Klassen `leiste-zu` (an `.app`) und `eingeklappt` (an `.sidebar`)
+  setzt jede `App.tsx` aus `useSeitenleiste()`.
+  Das **Farbschema** setzt allein `src/shell/Shell.tsx` – aus `useBenutzer()` in einem
+  Layout-Effekt, also vor dem ersten Zeichnen (`document.documentElement.dataset.farbschema`,
+  `hell` oder `dunkel` nach `istDunkel`; es gilt auch auf der Bereichsauswahl, bei „Automatisch“
+  folgt die Hülle einem Wechsel der Geräteeinstellung sofort) samt der Farbe der Fensterleiste
   (`theme-color`).
 * `src/gemeinsam/` – das **Projektregister**, der einzige Bestand, den sich die Bereiche teilen
   (Schlüssel `kaplan-projektregister.v1`): Projekte (Nummer, Bezeichnung, Beschreibung), ihre
@@ -307,7 +312,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   „Erneut speichern“ (gelingt es wieder: „Projektregister gespeichert.“, ein verlorener Fokus geht
   an die Stelle des Hinweises, `.gem-registeranker`; ist der Stand eines anderen Fensters
   unlesbar, meldet er das Verwerfen). Dazu **„Angemeldet als“ für alle Bereiche**:
-  `benutzer.ts` (Name, Farbmodus und Farbschema, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
+  `benutzer.ts` (Name und Farbschema, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
   `benutzerAendern`, `istDunkel`), `AngemeldetAls.tsx` (Knopf und Dialog in jeder Seitenleiste; eine eigene
   Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`.
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
@@ -318,8 +323,14 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   (`menue.tsx`: Portal, bleibt im Fenster, Tastatur; eigene Menüs werden von `.card`/`.table-scroll`
   abgeschnitten); `tabellen.ts` (`tabellenBreiteBeobachten`, in `main.tsx`) lässt überbreite
   Tabellen quer scrollen (`table-scroll-quer`); `scrollen.ts` (`useNachObenBeiSeitenwechsel`)
-  hängt am `.content` jedes Bereichs; `seitenleiste.ts` (`useSeitenleiste`) hält in jeder
-  `App.tsx` die aufklappbare Seitenleiste und schließt sie bei jedem Seitenwechsel (`hashchange`). Dialoge immer über `Modal` (`ui.tsx`: Fokus beim Öffnen,
+  hängt am `.content` jedes Bereichs; `seitenleiste.tsx` (`useSeitenleiste`, `SeitenleisteKnopf`, `SeitenleisteGriff`)
+  hält in jeder `App.tsx` die Seitenleiste: in der schmalen Ansicht (bis 860 px) liegt sie über
+  dem Inhalt und schließt bei jedem Seitenwechsel (`hashchange`), in der breiten lässt sie sich
+  auf eine Leiste mit Symbolen einklappen – der Zustand gehört zum Gerät (Schlüssel
+  `kaplan-seitenleiste.v1`), nicht in den Bestand eines Bereichs. Schmal öffnet sie der
+  Knopf „Menü“ in der Kopfzeile, breit klappt sie der Griff an ihrem rechten Rand ein und aus
+  (er steht neben der Leiste in `.app`, weil ihr Scrollbereich ihn abschnitte). Was eingeklappt entfällt, regelt allein `global.css` (`.sidebar.eingeklappt`);
+  ein neues Element der Leiste braucht dort eine Zeile, wenn es Text zeigt. Dialoge immer über `Modal` (`ui.tsx`: Fokus beim Öffnen,
   Tab bleibt im Dialog, Escape schließt nur den obersten, Fokus zurück an den Öffner; wo ein Klick
   daneben nicht schließen soll, `klickDanebenSchliesst={false}`, kein eigenes Overlay); Elemente,
   die nur auf Klicks hören (Ablageflächen `.drop-zone`), mit `alsKnopf` tastaturbedienbar machen;
@@ -462,15 +473,14 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
 * `src/shared/` enthält nur Bausteine ohne fachlichen Bezug und importiert nichts aus
   `src/bereiche/`. Die Bereiche greifen nicht aufeinander zu; gemeinsam nutzen sie nur
   `src/gemeinsam/` (importiert nichts aus `src/bereiche/`).
-* **Angemeldet als** gilt für alle Bereiche: Name, Farbmodus und Farbschema ändert nur
-  `benutzerAendern` (`src/gemeinsam/benutzer.ts`); Name und Farbmodus führen die Bereiche in ihrem
-  Bestand nur als Spiegel (`bearbeiter` bzw. `einstellungen`) und ziehen sie mit
-  `useBenutzerAbgleich` nach. Das Farbschema (hell, dunkel, wie das Gerät) steht **nur** in
+* **Angemeldet als** gilt für alle Bereiche: Name und Farbschema ändert nur
+  `benutzerAendern` (`src/gemeinsam/benutzer.ts`); den Namen führen die Bereiche in ihrem
+  Bestand nur als Spiegel (`bearbeiter` bzw. `einstellungen`) und ziehen ihn mit
+  `useBenutzerAbgleich` nach. Das Farbschema (automatisch, hell, dunkel) steht **nur** in
   `kaplan-benutzer.v1` – es gehört zum Gerät, nicht in den Bestand eines Bereichs und nicht in
   eine Sicherung. Keine eigenen Dialoge „Angemeldet als“ in den Bereichen – `AngemeldetAls`
-  verwenden. Farbmodus und Farbschema setzt nur die Hülle (`src/shell/Shell.tsx`, aus
-  `useBenutzer()`) – kein eigener Effekt auf `dataset.farbmodus` oder `dataset.farbschema` in
-  einer `App.tsx`.
+  verwenden. Das Farbschema setzt nur die Hülle (`src/shell/Shell.tsx`, aus
+  `useBenutzer()`) – kein eigener Effekt auf `dataset.farbschema` in einer `App.tsx`.
 * **Projektregister:** Ein Bereich schreibt seinen eigenen Bestand nur über sein `mutate()` –
   auch, was aus dem Register kommt (`registerPlanAnwenden` in `domain/register.ts`, reine
   Funktion, liefert ohne Änderung denselben Bestand zurück, damit der Abgleich zur Ruhe kommt).
@@ -543,8 +553,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   und die Schrift `@fontsource-variable/outfit` sind Entwicklungsabhängigkeiten, die in den Build
   eingehen.
 * Gestaltung nach den [Designregeln](#designregeln-koralle-design); die Oberfläche bleibt bis etwa
-  400 px Breite bedienbar, das dunkle Schema und der Farbmodus `kontrast` müssen weiter
-  funktionieren. Knopfleisten über
+  400 px Breite bedienbar, das dunkle Schema muss weiter funktionieren. Knopfleisten über
   Listen brechen um (`row wrap`). Eine Suche ohne Treffer ist kein leerer Bestand: eigener
   Leerzustand ohne Anlegen-Knopf („Keine Funktion gefunden“ / „Für diese Suche gibt es keinen
   Treffer.“). Ein volles Datum erscheint zweistellig als TT.MM.JJJJ (`formatDate` aus
@@ -557,7 +566,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   länger als 1,5 Sekunden, wechselt der Notausgang der `index.html` auf den eingecheckten Build
   unter `app/` – man sieht dann den Stand von `main`, nicht den eigenen. Die Adresse ohne `app/`
   noch einmal aufrufen.
-* Hell oder dunkel: Mit der Vorgabe „Wie das Gerät“ genügt in Playwright `colorScheme: 'dark'`
+* Hell oder dunkel: Mit der Vorgabe „Automatisch“ genügt in Playwright `colorScheme: 'dark'`
   im Kontext; fest wählt man es über `farbschema` (`hell`/`dunkel`) in `kaplan-benutzer.v1` oder im
   Dialog „Angemeldet als“.
 

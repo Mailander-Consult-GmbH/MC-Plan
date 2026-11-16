@@ -572,13 +572,6 @@
 .bb-wf-liste-zahlen b { color: var(--text); font-variant-numeric: tabular-nums; }
 .bb-wf-liste-fuss { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; border-top: 1px solid var(--separator); padding-top: 10px; }
 
-/* Kontrastmodus ------------------------------------------------------- */
-:root[data-farbmodus='kontrast'] .bb-wf-karte { border-color: var(--separator-strong); }
-:root[data-farbmodus='kontrast'] .bb-wf-karte.abweichung { border-color: var(--orange); }
-:root[data-farbmodus='kontrast'] .bb-wf-karte.aktiv { border-color: var(--accent); border-width: 2px; }
-:root[data-farbmodus='kontrast'] .bb-wf-kante-linie { stroke-width: 2; }
-:root[data-farbmodus='kontrast'] .bb-wf-antwort { font-weight: 700; }
-
 /* Schmale Bildschirme ------------------------------------------------- */
 @media (max-width: 820px) {
   .bb-wf-overlay { padding: 0; }

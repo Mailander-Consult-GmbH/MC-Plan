@@ -2,32 +2,28 @@
  * Angemeldete Person – in allen Bereichen dieselbe („Angemeldet als“).
  *
  * Übergangslösung bis zur Anmeldung über SSO: Die Person gibt ihren Namen
- * ein, dazu den Farbmodus und das Farbschema (hell, dunkel oder wie das
- * Gerät); ein Kennwort gibt es nicht. Alles liegt unter einem eigenen
- * Schlüssel im Browser und gilt für jeden Bereich. Die Bereiche führen Name
- * und Farbmodus weiter in ihrem Bestand (etwa für Änderungsprotokolle oder
- * die eigene Funktion im Planlaufmanagement) – als Spiegel: Ihr Store zieht
- * sie nach jeder Änderung hier nach, geändert werden sie nur hier. Das
- * Farbschema steht allein hier: Es gehört zum Gerät, nicht zum Bestand, und
- * kommt deshalb auch nicht mit einer Sicherung.
+ * ein, dazu das Farbschema (hell, dunkel oder automatisch nach dem Gerät);
+ * ein Kennwort gibt es nicht. Alles liegt unter einem eigenen Schlüssel im
+ * Browser und gilt für jeden Bereich. Die Bereiche führen den Namen weiter in
+ * ihrem Bestand (etwa für Änderungsprotokolle oder die eigene Funktion im
+ * Planlaufmanagement) – als Spiegel: Ihr Store zieht ihn nach jeder Änderung
+ * hier nach, geändert wird er nur hier. Das Farbschema steht allein hier: Es
+ * gehört zum Gerät, nicht zum Bestand, und kommt deshalb auch nicht mit einer
+ * Sicherung.
  *
  * Gibt es noch keinen gemeinsamen Stand, übernimmt `laden` einmalig den
  * ersten selbst eingetragenen Namen der Bereiche (Planlaufmanagement,
- * Projektsteuerung, Baubetriebsplanung) samt Farbmodus; ihre Vorgabenamen und
- * die Namen aus ihren Demodaten zählen nicht.
+ * Projektsteuerung, Baubetriebsplanung); ihre Vorgabenamen und die Namen aus
+ * ihren Demodaten zählen nicht.
  */
 import { useSyncExternalStore } from 'react';
 
-export type Farbmodus = 'standard' | 'kontrast';
-
-/** Hell oder dunkel: fest gewählt oder – die Vorgabe – wie das Gerät eingestellt ist. */
+/** Hell oder dunkel: fest gewählt oder – die Vorgabe „Automatisch“ – wie das Gerät eingestellt ist. */
 export type Farbschema = 'geraet' | 'hell' | 'dunkel';
 
 export interface Benutzer {
   /** Vor- und Nachname. */
   name: string;
-  /** „kontrast“: Farben für eine Rot-Grün-Sehschwäche mit stärkeren Kontrasten. */
-  farbmodus: Farbmodus;
   /** Helle oder dunkle Darstellung; „geraet“ folgt der Einstellung des Betriebssystems. */
   farbschema: Farbschema;
 }
@@ -40,7 +36,6 @@ const KEY = 'kaplan-benutzer.v1';
 type Roh = Record<string, unknown>;
 const objekt = (w: unknown): Roh | null => (w && typeof w === 'object' ? (w as Roh) : null);
 const text = (w: unknown) => (typeof w === 'string' ? w.trim() : '');
-const farbmodusVon = (w: unknown): Farbmodus => (w === 'kontrast' ? 'kontrast' : 'standard');
 const farbschemaVon = (w: unknown): Farbschema => (w === 'hell' || w === 'dunkel' ? w : 'geraet');
 
 /**
@@ -49,39 +44,38 @@ const farbschemaVon = (w: unknown): Farbschema => (w === 'hell' || w === 'dunkel
  * den die Demodaten der Projektsteuerung eintragen („Lena Roth“): Ein
  * gespeicherter Demobestand soll niemanden als Demoperson anmelden.
  */
-const FRUEHER: { key: string; lesen: (d: Roh) => { name: unknown; farbmodus: unknown }; vorgaben: string[] }[] = [
+const FRUEHER: { key: string; lesen: (d: Roh) => unknown; vorgaben: string[] }[] = [
   {
     key: 'planlauf-management.data.v1',
-    lesen: (d) => ({ name: objekt(d.bearbeiter)?.name, farbmodus: objekt(d.bearbeiter)?.farbmodus }),
+    lesen: (d) => objekt(d.bearbeiter)?.name,
     vorgaben: ['Max Mustermann', 'PLM'],
   },
   {
     key: 'projektsteuerung.data.v1',
-    lesen: (d) => ({ name: objekt(d.einstellungen)?.bearbeiter, farbmodus: objekt(d.einstellungen)?.farbmodus }),
+    lesen: (d) => objekt(d.einstellungen)?.bearbeiter,
     vorgaben: ['Projektsteuerung MIC', 'Lena Roth'],
   },
   {
     key: 'baubetrieb-planung.data.v1',
-    lesen: (d) => ({ name: objekt(d.einstellungen)?.bearbeiter, farbmodus: objekt(d.einstellungen)?.farbmodus }),
+    lesen: (d) => objekt(d.einstellungen)?.bearbeiter,
     vorgaben: ['Bearbeitung MIC'],
   },
 ];
 
-/** Erster selbst eingetragener Name eines Bereichs samt Farbmodus, sonst die Vorgabe. */
+/** Erster selbst eingetragener Name eines Bereichs, sonst die Vorgabe. */
 function ausFrueherenAngaben(): Benutzer {
   for (const q of FRUEHER) {
     try {
       const roh = localStorage.getItem(q.key);
       const d = roh ? objekt(JSON.parse(roh)) : null;
       if (!d) continue;
-      const { name, farbmodus } = q.lesen(d);
-      const n = text(name);
-      if (n && !q.vorgaben.includes(n)) return { name: n, farbmodus: farbmodusVon(farbmodus), farbschema: 'geraet' };
+      const n = text(q.lesen(d));
+      if (n && !q.vorgaben.includes(n)) return { name: n, farbschema: 'geraet' };
     } catch {
       /* unlesbarer Bestand – nächster Bereich */
     }
   }
-  return { name: STANDARD_NAME, farbmodus: 'standard', farbschema: 'geraet' };
+  return { name: STANDARD_NAME, farbschema: 'geraet' };
 }
 
 function speichern(b: Benutzer): void {
@@ -96,8 +90,8 @@ function laden(): Benutzer {
   try {
     const roh = localStorage.getItem(KEY);
     const d = roh ? objekt(JSON.parse(roh)) : null;
-    // Stände ohne Farbschema (vor dessen Einführung) folgen dem Gerät
-    if (d) return { name: text(d.name) || STANDARD_NAME, farbmodus: farbmodusVon(d.farbmodus), farbschema: farbschemaVon(d.farbschema) };
+    // Stände ohne Farbschema (vor dessen Einführung) folgen dem Gerät; der frühere Farbmodus entfällt
+    if (d) return { name: text(d.name) || STANDARD_NAME, farbschema: farbschemaVon(d.farbschema) };
   } catch {
     /* unlesbar – wie ohne Stand */
   }
@@ -118,15 +112,14 @@ export function benutzerLesen(): Benutzer {
   return stand;
 }
 
-/** Ändert Name, Farbmodus bzw. Farbschema – für alle Bereiche. Ein leerer Name wird zur Vorgabe. */
+/** Ändert Name bzw. Farbschema – für alle Bereiche. Ein leerer Name wird zur Vorgabe. */
 export function benutzerAendern(patch: Partial<Benutzer>): void {
   const alt = benutzerLesen();
   const neu: Benutzer = {
     name: patch.name !== undefined ? patch.name.trim() || STANDARD_NAME : alt.name,
-    farbmodus: patch.farbmodus ?? alt.farbmodus,
     farbschema: patch.farbschema ?? alt.farbschema,
   };
-  if (neu.name === alt.name && neu.farbmodus === alt.farbmodus && neu.farbschema === alt.farbschema) return;
+  if (neu.name === alt.name && neu.farbschema === alt.farbschema) return;
   stand = neu;
   speichern(neu);
   hoerer.forEach((h) => h());

@@ -240,7 +240,6 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
     version: DATEN_VERSION,
     einstellungen: {
       bearbeiter: text(e.bearbeiter).trim() || STANDARD_BEARBEITER,
-      farbmodus: e.farbmodus === 'kontrast' ? 'kontrast' : 'standard',
     },
     gewerke,
     funktionen,
