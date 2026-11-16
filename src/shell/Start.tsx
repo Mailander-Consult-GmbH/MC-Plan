@@ -1,11 +1,17 @@
 /**
  * Startbildschirm: Auswahl des Bereichs, am Fuß die laufende Fassung
  * (src/shared/pwa.ts). Im Koralle-Design mit Tailwind-Utilities gebaut: oben
- * Logo und Wortmarke, darunter Datum und Aufforderung wie der Kopf der
- * Vorlage, dann je Bereich eine Karte, die sich beim Überfahren anhebt. Die
- * Karten stehen ab 768 px dreispaltig, darunter untereinander.
+ * Logo und Wortmarke, darunter Datum, Begrüßung und Aufforderung wie der Kopf
+ * der Vorlage, dann je Bereich eine Karte, die sich beim Überfahren anhebt.
+ * Die Karten stehen ab 768 px dreispaltig, darunter untereinander.
+ *
+ * Begrüßt wird nach der Tageszeit und mit dem Vornamen aus „Angemeldet als“
+ * (src/gemeinsam/benutzer.ts) – ohne Namen, solange dort keiner eingetragen
+ * ist.
  */
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useBenutzer, vornameVon } from '../gemeinsam/benutzer';
 import { FEDER, KURVE } from '../shared/bewegung';
 import { Icon } from '../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../shared/logos';
@@ -13,8 +19,27 @@ import { FASSUNG, fassungText } from '../shared/pwa';
 import { BEREICHE } from './bereiche';
 import { zumBereich } from './router';
 
+/** Gruß nach der Tageszeit: von 5 bis 11 Uhr „Guten Morgen“, ab 18 Uhr „Guten Abend“, dazwischen „Hallo“. */
+function gruss(stunde: number): string {
+  if (stunde >= 5 && stunde < 11) return 'Guten Morgen';
+  if (stunde >= 18 || stunde < 5) return 'Guten Abend';
+  return 'Hallo';
+}
+
+/** Die Uhrzeit – jede Minute neu, damit Gruß und Datum in einem offenen Fenster nicht stehen bleiben. */
+function useJetzt(): Date {
+  const [jetzt, setJetzt] = useState(() => new Date());
+  useEffect(() => {
+    const takt = window.setInterval(() => setJetzt(new Date()), 60_000);
+    return () => window.clearInterval(takt);
+  }, []);
+  return jetzt;
+}
+
 export function Start() {
-  const heute = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const jetzt = useJetzt();
+  const heute = jetzt.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const vorname = vornameVon(useBenutzer().name);
 
   return (
     <div className="start">
@@ -30,7 +55,11 @@ export function Start() {
 
         <div className="flex flex-1 flex-col justify-center py-10">
           <p className="text-sm text-gedaempft">{heute}</p>
-          <p className="mt-1 text-2xl font-medium tracking-tight sm:text-3xl">Bitte einen Bereich wählen.</p>
+          <h2 className="mt-1 text-3xl font-medium tracking-tight sm:text-4xl">
+            {gruss(jetzt.getHours())}
+            {vorname ? `, ${vorname}` : ''}
+          </h2>
+          <p className="mt-2 text-base text-zweitrangig">Bitte einen Bereich wählen.</p>
 
           <div className="mt-7 grid gap-4 md:grid-cols-3">
             {BEREICHE.map((b, i) => (
