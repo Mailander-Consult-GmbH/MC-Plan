@@ -955,8 +955,8 @@ nur als Ganzes löschen (Rücktaste/Entf), Eingefügtes kommt als reiner Text an
 `{{…}}` werden zu Bausteinen), unbekannte Platzhalter erscheinen grau als „unbekannt: …“. Daneben
 zeigt eine Vorschau Betreff und Text mit Beispielwerten (Links anklickbar, „ORDNERNAME EINFÜGEN“
 rot und fett); auf schmalen Bildschirmen wechselt man zwischen „Bearbeiten“ und „Vorschau“. Die
-Vorlagenliste zeigt den Anlass als farbiges Abzeichen und den Anfang von Betreff und Text mit
-Bausteinen.
+Vorlagenliste zeigt je Vorlage nur den Namen und den Anlass als farbiges Abzeichen – ohne Anriss
+von Betreff und Text.
 
 ## Baubetriebsplanung
 
