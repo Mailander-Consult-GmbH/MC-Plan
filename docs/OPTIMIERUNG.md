@@ -19,6 +19,8 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 >   Schrift Outfit.
 > * **Abschnitt 10** (unbenutzte Klassen in `global.css`): Die Klassen des Startbildschirms
 >   (`.start-kacheln`, `.bereich-kachel…`) sind entfallen, er ist mit Tailwind-Utilities gebaut.
+> * **Neu unter „Angemeldet als“:** das Farbschema (hell, dunkel, wie das Gerät) – wie Name und
+>   Farbmodus für alle Bereiche, aber ohne Spiegel in deren Beständen.
 
 Diese Liste beantwortet die Frage: **Wo lösen Planlaufmanagement, Baubetriebsplanung und
 Projektsteuerung dasselbe unterschiedlich – in der Funktion, im Wortlaut, in der Optik oder im

@@ -59,20 +59,19 @@ Die Logodateien liegen weiter unter `public/logos/`:
 Die Drucklogos lassen sich austauschen, indem die Datei unter gleichem Namen ersetzt wird; sie
 werden nur über die Höhe skaliert.
 
-Die Symbole in `public/icons/` zeigen die Marke aus `Logo.png` in der Logofarbe `#21426d`, im
-Browser-Tab und in der Titelleiste des App-Fensters **ohne Hintergrund**, in der Taskleiste, im
-Startmenü und als Desktop-Verknüpfung auf einer **hellen Kachel**
-(`#f5f5f7`, mit feiner Randlinie) – das dünne Dreieck allein war in der Windows-Taskleiste
-kaum zu sehen. Die App-Symbole sind mit dem Koralle-Design nicht neu gezeichnet worden. Die Marke ist vektoriell nachgezeichnet, je Größe gerastert und steht genau mittig
+Die Symbole in `public/icons/` zeigen dasselbe Bild wie die Marke in der Oberfläche: das Dreieck
+aus `Logo.png` in **Weiß auf einer Kachel im Korallenverlauf** (`#f25f4c` → `#ff8a73`, von links
+oben nach rechts unten) – im Browser-Tab, in der Titelleiste des App-Fensters, in der Taskleiste,
+im Startmenü und als Desktop-Verknüpfung. Die Marke ist vektoriell nachgezeichnet, je Größe gerastert und steht genau mittig
 (gleicher Abstand oben und unten bzw. links und rechts); bis 64 px ist sie größer und kräftiger
 gezeichnet:
 
 | Datei | Verwendung |
 | --- | --- |
-| `kaplan-dreieck-32/64/192.png` | Browser-Tab und Titelleiste des App-Fensters (`index.html`) – nur das Dreieck |
-| `kaplan-app-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Startmenü, Desktop-Verknüpfung, Android-Browser ohne maskierbare Symbole) |
-| `kaplan-app-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
-| `kaplan-app-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
+| `kaplan-koralle-32/64/192.png` | Browser-Tab und Titelleiste des App-Fensters (`index.html`) – Kachel mit runden Ecken |
+| `kaplan-koralle-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Startmenü, Desktop-Verknüpfung, Android-Browser ohne maskierbare Symbole) |
+| `kaplan-koralle-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
+| `kaplan-koralle-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
 
 Ein neues Symbol bekommt **neue Dateinamen** (Verweise in `index.html`, `public/manifest.webmanifest`
 und `SHELL` in `public/sw.js` anpassen), und der Cache-Name in `public/sw.js` wird hochgezählt –
@@ -188,7 +187,7 @@ Entfernen einer installierten App deshalb in jedem genutzten Bereich eine Sicher
 herunterladen**; Android und Desktop fragen beim Entfernen, ob auch die Daten gelöscht werden
 sollen.
 
-Enthalten sind `manifest.webmanifest`, App-Symbole auf einer hellen Kachel (`public/icons/`, siehe
+Enthalten sind `manifest.webmanifest`, App-Symbole auf einer Kachel im Korallenverlauf (`public/icons/`, siehe
 [Logos](#logos): 48–512 px, maskierbar für Android und Apple-Touch-Icon für iOS) sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
 gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (gehashte Namen unter
@@ -1382,10 +1381,17 @@ anderes Fenster denselben Bereich, lädt der Store dessen Stand nach (`useFremde
 ## Angemeldet als – für alle Bereiche
 
 Unten in der Seitenleiste jedes Bereichs steht **Angemeldet als** mit Name und
-Kürzel. Der Dialog dazu fragt den Namen (Vor- und Nachname) und den **Farbmodus für eine
-Rot-Grün-Sehschwäche** ab – beides gilt in allen Bereichen: Wer seinen Namen einmal einträgt, ist
+Kürzel. Der Dialog dazu fragt den Namen (Vor- und Nachname), das **Farbschema** und den **Farbmodus
+für eine Rot-Grün-Sehschwäche** ab – alles gilt in allen Bereichen: Wer seinen Namen einmal einträgt, ist
 überall dieselbe Person. Den Farbmodus setzt allein die Hülle (`src/shell/Shell.tsx`), noch vor dem
-ersten Zeichnen eines Bereichs; die Bereichsauswahl zeigt stets die Standardfarben. Bis zur Anmeldung über SSO ist das eine Angabe ohne Kennwort; sie liegt
+ersten Zeichnen eines Bereichs; die Bereichsauswahl zeigt stets die Standardfarben.
+
+Das **Farbschema** bestimmt, ob KaPlan hell oder dunkel erscheint: **Wie das Gerät** (die Vorgabe –
+KaPlan folgt der Einstellung des Betriebssystems und einem Wechsel dort sofort), **Hell** oder
+**Dunkel**. Es gilt auch auf der Bereichsauswahl und schon beim Laden der Seite (ein kleines
+Skript im Kopf der `index.html` liest die Wahl, bevor die Anwendung startet). Das Farbschema gehört
+zum Gerät: Es steht nur in `kaplan-benutzer.v1`, nicht im Bestand der Bereiche, und kommt deshalb
+nicht mit einer Sicherung. Bis zur Anmeldung über SSO ist das eine Angabe ohne Kennwort; sie liegt
 lokal im Browser (Schlüssel `kaplan-benutzer.v1`). Ohne Eintrag gilt „Max Mustermann“; beim ersten
 Start nach dem Umstieg übernimmt KaPlan den ersten selbst eingetragenen Namen der Bereiche
 (Planlaufmanagement, Projektsteuerung, Baubetriebsplanung) samt Farbmodus;
@@ -1579,7 +1585,8 @@ src/
                  damit Regeln der Bereiche gleicher Spezifität gewinnen; MotionConfig
                  (reducedMotion="user") für alle Bewegungen
   shell/         Startbildschirm und Bereichswechsel
-    Shell.tsx    Wählt Bereichsauswahl oder Bereich; setzt den Farbmodus aus „Angemeldet als“
+    Shell.tsx    Wählt Bereichsauswahl oder Bereich; setzt Farbmodus und Farbschema (hell/dunkel)
+                 aus „Angemeldet als“
     Start.tsx    Startbildschirm mit Datum, je Bereich einer Karte und der laufenden Fassung
                  (Tailwind-Utilities)
     NeueFassung.tsx  Hinweis „Neue Fassung von KaPlan verfügbar“ über allen Bereichen
@@ -1625,7 +1632,8 @@ src/
                  bereichArchivieren)
     useRegisterAbgleich.ts  Bindet den Store eines Bereichs an das Register
     useFremdeAenderung.ts   Lädt den Bestand nach, wenn ein anderes Fenster ihn speichert
-    benutzer.ts  „Angemeldet als“ für alle Bereiche: Name und Farbmodus (useBenutzer)
+    benutzer.ts  „Angemeldet als“ für alle Bereiche: Name, Farbmodus und Farbschema (useBenutzer,
+                 istDunkel)
     useBenutzerAbgleich.ts  Zieht Name und Farbmodus in den Bestand eines Bereichs nach
     AngemeldetAls.tsx       Knopf in der Seitenleiste und Dialog „Angemeldet als“
     ProjektBereiche.tsx     Marken „Auch in“, Projekte aus anderen Bereichen, Archiv
@@ -1748,9 +1756,9 @@ Wurzelverzeichnis (die Datei ist nur Vorlage und gehört nicht zum Build):
   heben sich beim Überfahren an, Kennzahlen zählen hoch, Fortschrittsbalken wachsen, die Fläche des
   aktiven Menüpunkts und des gewählten Segments gleitet zur neuen Wahl, Ansichten blenden ein. Wer
   im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Endzustände ohne Verschiebung.
-* **Dunkles Schema:** folgt wie in der Vorlage der Einstellung des Geräts (`prefers-color-scheme`);
-  eine eigene Umschaltung gibt es nicht. Der **Farbmodus für eine Rot-Grün-Sehschwäche**
-  („Angemeldet als“) gilt in beiden Schemata.
+* **Hell und dunkel:** Die Vorgabe folgt wie in der Vorlage der Einstellung des Geräts; unter
+  „Angemeldet als“ lässt sich das **Farbschema** fest auf „Hell“ oder „Dunkel“ stellen. Der
+  **Farbmodus für eine Rot-Grün-Sehschwäche** gilt in beiden Schemata.
 * **Technik:** Tailwind 4 (`@tailwindcss/vite`) mit den Design-Tokens in `src/shared/global.css`;
   die Bausteinklassen aller Bereiche stehen in der Ebene `components`, Tailwind-Utilities gewinnen
   gegen sie.

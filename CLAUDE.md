@@ -25,7 +25,9 @@ Eine Änderung ist erst fertig, wenn alle betroffenen Dateien zum Code passen:
    dass jeder genannte Pfad existiert und jeder zitierte Oberflächentext wörtlich im Code steht.
 3. **Weitere relevante Dateien**, insbesondere:
    * Code-Kommentare, die das geänderte Verhalten beschreiben,
-   * der Hinweistext in `index.html` (erscheint, wenn der Quellcode statt des Builds ausgeliefert wird),
+   * der Hinweistext in `index.html` (erscheint, wenn der Quellcode statt des Builds ausgeliefert wird)
+     und das Skript in ihrem Kopf, das hell oder dunkel schon vor dem Start setzt – es muss dieselbe
+     Regel haben wie `istDunkel` in `src/gemeinsam/benutzer.ts`,
    * `public/sw.js`: Cache-Namen hochzählen, wenn sich die Hülle ändert (Titel, Symbole, Manifest),
    * die Designregeln unten, wenn ein Token, ein Baustein oder eine Bewegung hinzukommt oder sich
      ändert.
@@ -120,11 +122,17 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
 * **Farbe als Schrift** immer mit den Schrifttönen (`--koralle-text`, `--rot-text`,
   `--orange-text`, `--gruen-text`, `--blau-text`), nicht mit den Flächentönen – die sind auf Weiß
   zu blass.
-* **Dunkles Schema** folgt wie in der Vorlage dem Gerät (`prefers-color-scheme`); die Tokens
-  schalten selbst um, `dark:`-Varianten sind für Token-Farben nicht nötig. Deshalb kein festes
-  `#fff`/`#000`: Schrift auf einer Farbfläche ist `var(--auf-accent)` bzw. `var(--bg-elev)`
-  (Ausnahme: Weiß auf Koralle und auf dem Signalverlauf). Die Menüleiste ist in beiden Schemata
-  dunkel und setzt die Tokens für ihren Inhalt selbst (`.sidebar` in `global.css`).
+* **Helles und dunkles Schema:** Welches gilt, wählt die Person unter „Angemeldet als“
+  (**Farbschema**: „Wie das Gerät“ – die Vorgabe, wie in der Vorlage –, „Hell“ oder „Dunkel“). Am
+  `<html>` steht stets das Ergebnis als `data-farbschema="hell"` bzw. `"dunkel"`; gesetzt wird es
+  vom Skript im Kopf der `index.html` (vor dem Start, damit nichts hell aufblitzt) und danach von
+  der Hülle. **In CSS deshalb keine Medienabfrage `prefers-color-scheme`**, sondern
+  `:root[data-farbschema='dunkel']`; die Tailwind-Variante `dark:` ist daran gebunden
+  (`@custom-variant dark` in `global.css`). Die Tokens schalten selbst um, `dark:` ist für
+  Token-Farben nicht nötig. Kein festes `#fff`/`#000`: Schrift auf einer Farbfläche ist
+  `var(--auf-accent)` bzw. `var(--bg-elev)` (Ausnahme: Weiß auf Koralle und auf dem
+  Signalverlauf). Die Menüleiste ist in beiden Schemata dunkel und setzt die Tokens für ihren
+  Inhalt selbst (`.sidebar` in `global.css`).
 * **Farbmodus `kontrast`** (`:root[data-farbmodus='kontrast']`, in TSX die Variante `kontrast:`)
   ersetzt Grün/Orange/Rot durch Blaugrün/Bernstein/Magenta und verstärkt Schrift und Linien – in
   beiden Schemata. Signale deshalb nur über die Ampel-Tokens, nie über `--koralle`.
@@ -167,7 +175,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
 * `.tabs` sind Pillen, die gewählte dunkel; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
   `purple`, `gelb`); Ampelpunkt `.dot`; Stern der Projektmarkierung `Icon name="stern"` in `.stern`.
 * **Marke:** `KaPlanMarke` (`src/shared/logos.tsx`) – Kachel im Korallenverlauf mit weißem
-  Dreieck, daneben Name und Bereich. Die Wortmarke Mailänder Consult bleibt die Originaldatei; im
+  Dreieck, daneben Name und Bereich. Dasselbe Bild zeigen die App-Symbole
+  (`public/icons/kaplan-koralle-*.png`; ein geändertes Symbol bekommt neue Dateinamen, siehe
+  README, Abschnitt „Logos“). Die Wortmarke Mailänder Consult bleibt die Originaldatei; im
   dunklen Schema erscheint sie weiß (`.topbar-logo`, `.logo-hell`).
 
 ### Bewegung
@@ -208,7 +218,10 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   und die Ansichten stehen in `Einblenden` (Schlüssel `route.view`).
   Den **Farbmodus** setzt allein `src/shell/Shell.tsx` – aus `useBenutzer()` in einem
   Layout-Effekt, also vor dem ersten Zeichnen (`document.documentElement.dataset.farbmodus`; auf
-  der Bereichsauswahl stets `standard`).
+  der Bereichsauswahl stets `standard`). Ebenso das **Farbschema** (`dataset.farbschema`, `hell`
+  oder `dunkel` nach `istDunkel`; es gilt auch auf der Bereichsauswahl, bei „Wie das Gerät“ folgt
+  die Hülle einem Wechsel der Geräteeinstellung sofort) samt der Farbe der Fensterleiste
+  (`theme-color`).
 * `src/gemeinsam/` – das **Projektregister**, der einzige Bestand, den sich die Bereiche teilen
   (Schlüssel `kaplan-projektregister.v1`): Projekte (Nummer, Bezeichnung, Beschreibung), ihre
   Zugehörigkeit je Bereich mit lokaler Kennung und Archivstand (`Mitgliedschaft`, `offen` =
@@ -270,8 +283,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   „Erneut speichern“ (gelingt es wieder: „Projektregister gespeichert.“, ein verlorener Fokus geht
   an die Stelle des Hinweises, `.gem-registeranker`; ist der Stand eines anderen Fensters
   unlesbar, meldet er das Verwerfen). Dazu **„Angemeldet als“ für alle Bereiche**:
-  `benutzer.ts` (Name und Farbmodus, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
-  `benutzerAendern`), `AngemeldetAls.tsx` (Knopf und Dialog in jeder Seitenleiste; eine eigene
+  `benutzer.ts` (Name, Farbmodus und Farbschema, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
+  `benutzerAendern`, `istDunkel`), `AngemeldetAls.tsx` (Knopf und Dialog in jeder Seitenleiste; eine eigene
   Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`.
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
   `localStorage`-Schlüssel, eigenen Einstellungen und eigenem Router.
@@ -425,12 +438,15 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
 * `src/shared/` enthält nur Bausteine ohne fachlichen Bezug und importiert nichts aus
   `src/bereiche/`. Die Bereiche greifen nicht aufeinander zu; gemeinsam nutzen sie nur
   `src/gemeinsam/` (importiert nichts aus `src/bereiche/`).
-* **Angemeldet als** gilt für alle Bereiche: Name und Farbmodus ändert nur `benutzerAendern`
-  (`src/gemeinsam/benutzer.ts`); die Bereiche führen sie in ihrem Bestand nur als Spiegel
-  (`bearbeiter` bzw. `einstellungen`) und ziehen sie mit `useBenutzerAbgleich` nach. Keine eigenen
-  Dialoge „Angemeldet als“ in den Bereichen – `AngemeldetAls` verwenden. Den Farbmodus setzt nur
-  die Hülle (`src/shell/Shell.tsx`, aus `useBenutzer()`) – kein eigener Effekt auf
-  `dataset.farbmodus` in einer `App.tsx`.
+* **Angemeldet als** gilt für alle Bereiche: Name, Farbmodus und Farbschema ändert nur
+  `benutzerAendern` (`src/gemeinsam/benutzer.ts`); Name und Farbmodus führen die Bereiche in ihrem
+  Bestand nur als Spiegel (`bearbeiter` bzw. `einstellungen`) und ziehen sie mit
+  `useBenutzerAbgleich` nach. Das Farbschema (hell, dunkel, wie das Gerät) steht **nur** in
+  `kaplan-benutzer.v1` – es gehört zum Gerät, nicht in den Bestand eines Bereichs und nicht in
+  eine Sicherung. Keine eigenen Dialoge „Angemeldet als“ in den Bereichen – `AngemeldetAls`
+  verwenden. Farbmodus und Farbschema setzt nur die Hülle (`src/shell/Shell.tsx`, aus
+  `useBenutzer()`) – kein eigener Effekt auf `dataset.farbmodus` oder `dataset.farbschema` in
+  einer `App.tsx`.
 * **Projektregister:** Ein Bereich schreibt seinen eigenen Bestand nur über sein `mutate()` –
   auch, was aus dem Register kommt (`registerPlanAnwenden` in `domain/register.ts`, reine
   Funktion, liefert ohne Änderung denselben Bestand zurück, damit der Abgleich zur Ruhe kommt).
@@ -517,7 +533,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   länger als 1,5 Sekunden, wechselt der Notausgang der `index.html` auf den eingecheckten Build
   unter `app/` – man sieht dann den Stand von `main`, nicht den eigenen. Die Adresse ohne `app/`
   noch einmal aufrufen.
-* Das dunkle Schema folgt dem Gerät – in Playwright `colorScheme: 'dark'` im Kontext setzen.
+* Hell oder dunkel: Mit der Vorgabe „Wie das Gerät“ genügt in Playwright `colorScheme: 'dark'`
+  im Kontext; fest wählt man es über `farbschema` (`hell`/`dunkel`) in `kaplan-benutzer.v1` oder im
+  Dialog „Angemeldet als“.
 
 * Die anstehenden Schritte eines Laufs folgen dem Verlauf (`aktuelleSchritte`, `verfolgen` in
   `domain/ablauf.ts`), nicht der Reihenfolge im Array – in parallelen Zweigen stehen mehrere an.

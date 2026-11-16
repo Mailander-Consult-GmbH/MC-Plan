@@ -221,8 +221,9 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   **Bereich wechseln** zurück zur Bereichsauswahl
   (`src/shell/BereichWechsel.tsx`).
 * **Angemeldet als** (unten links, `AngemeldetAls` aus
-  `src/gemeinsam/AngemeldetAls.tsx`, Abschnitt 10): Name und Schalter
-  „Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)“ – beides für alle
+  `src/gemeinsam/AngemeldetAls.tsx`, Abschnitt 10): Name, „Farbschema“
+  (hell, dunkel, wie das Gerät) und Schalter
+  „Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)“ – alles für alle
   Bereiche –, dazu als Einstellung dieses Bereichs „Nachfragen zulassen, wenn
   ein Workflow-Schritt eine E-Mail vorsieht“ (`bearbeiter.mailNachfrage`).
   `bearbeiter.name` und `bearbeiter.farbmodus` spiegeln die gemeinsame
@@ -1696,24 +1697,39 @@ Inhaltsbereich, in `src/bereiche/baubetrieb/App.tsx` und
 
 ## 10. Angemeldet als – für alle Bereiche
 
-* `src/gemeinsam/benutzer.ts`: `Benutzer` mit `name` und `farbmodus`, Schlüssel
+* `src/gemeinsam/benutzer.ts`: `Benutzer` mit `name`, `farbmodus` und
+  `farbschema` (`'geraet'` – die Vorgabe –, `'hell'`, `'dunkel'`), Schlüssel
   `kaplan-benutzer.v1` im `localStorage`, Vorgabe `STANDARD_NAME = 'Max
   Mustermann'`. Ohne gespeicherten Stand übernimmt `laden` einmalig den ersten
   selbst eingetragenen Namen samt Farbmodus aus den Beständen des
   Planlaufmanagements, der Projektsteuerung und der Baubetriebsplanung
   (`FRUEHER`; deren Vorgabenamen zählen nicht – auch nicht
   der Demoname „Lena Roth“ der Projektsteuerung).
-  `benutzerAendern` ändert Name bzw. Farbmodus für alle Bereiche, `useBenutzer`
+  `benutzerAendern` ändert Name, Farbmodus bzw. Farbschema für alle Bereiche, `useBenutzer`
   liefert sie der Oberfläche; ein anderes Fenster lädt sie bei einer Änderung neu
   (`storage`-Ereignis).
 * Den Farbmodus setzt allein `src/shell/Shell.tsx`: aus `useBenutzer()` in einem
   Layout-Effekt, also vor dem ersten Zeichnen
   (`document.documentElement.dataset.farbmodus`; auf der Bereichsauswahl stets
   `'standard'`). Die `App.tsx` der Bereiche setzen ihn nicht.
+* Hell oder dunkel setzt ebenfalls allein `src/shell/Shell.tsx`
+  (`document.documentElement.dataset.farbschema` mit `'hell'` oder `'dunkel'`,
+  dazu der Inhalt von `meta[name="theme-color"]` aus `SEITENGRUND`): `istDunkel`
+  in `src/gemeinsam/benutzer.ts` liefert für `'hell'` und `'dunkel'` die feste
+  Wahl, für `'geraet'` die Medienabfrage `GERAET_DUNKEL`
+  (`(prefers-color-scheme: dark)`); bei `'geraet'` hört die Hülle auf deren
+  Änderung. Das gilt auch auf der Bereichsauswahl. Ein Skript im Kopf der
+  `index.html` setzt denselben Wert schon vor dem Start der Anwendung.
+  `src/shared/global.css` kennt dafür keine Medienabfrage, sondern
+  `:root[data-farbschema='dunkel']`. Das Farbschema steht nur in
+  `kaplan-benutzer.v1`; `useBenutzerAbgleich` zieht es nicht in die Bestände der
+  Bereiche nach.
 * `src/gemeinsam/AngemeldetAls.tsx`: Knopf „Angemeldet als“ unten in der
   Seitenleiste aller Bereiche und Dialog „Angemeldet als“
-  (Name, „Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)“, ggf. eine
-  Einstellung des Bereichs als Haken, „Übernehmen“) mit dem Hinweis „Gilt in
+  (Name, ggf. eine Einstellung des Bereichs als Haken, „Farbschema“ mit den
+  Segmenten „Wie das Gerät“, „Hell“ und „Dunkel“ – Hinweis „Helle oder dunkle
+  Oberfläche. „Wie das Gerät“ folgt der Einstellung des Betriebssystems.“ –,
+  „Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)“, „Übernehmen“) mit dem Hinweis „Gilt in
   allen Bereichen von KaPlan. Bis zur Anmeldung über SSO ist dies eine Angabe
   ohne Kennwort; die Daten liegen lokal in diesem Browser.“ Der Dialog öffnet
   sich über ein Portal auf Seitenebene.
