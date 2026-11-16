@@ -240,7 +240,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                       </td>
                       <td className="small">{kuenftig[0] ? formatDate(kuenftig[0]) : <span className="tertiary">–</span>}</td>
                       <td className={`zahl ${punkte.length ? '' : 'leer'}`}>{punkte.length}</td>
-                      <td className={`zahl ${spaet ? '' : 'leer'}`} style={{ color: spaet ? 'var(--red)' : undefined }}>
+                      <td className={`zahl ${spaet ? '' : 'leer'}`} style={{ color: spaet ? 'var(--rot-text)' : undefined }}>
                         {spaet}
                       </td>
                       <td className="actions">

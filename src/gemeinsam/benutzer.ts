@@ -2,11 +2,14 @@
  * Angemeldete Person – in allen Bereichen dieselbe („Angemeldet als“).
  *
  * Übergangslösung bis zur Anmeldung über SSO: Die Person gibt ihren Namen
- * ein, dazu den Farbmodus; ein Kennwort gibt es nicht. Beides liegt unter
- * einem eigenen Schlüssel im Browser und gilt für jeden Bereich. Die Bereiche
- * führen den Namen weiter in ihrem Bestand (etwa für Änderungsprotokolle oder
+ * ein, dazu den Farbmodus und das Farbschema (hell, dunkel oder wie das
+ * Gerät); ein Kennwort gibt es nicht. Alles liegt unter einem eigenen
+ * Schlüssel im Browser und gilt für jeden Bereich. Die Bereiche führen Name
+ * und Farbmodus weiter in ihrem Bestand (etwa für Änderungsprotokolle oder
  * die eigene Funktion im Planlaufmanagement) – als Spiegel: Ihr Store zieht
- * ihn nach jeder Änderung hier nach, geändert wird er nur hier.
+ * sie nach jeder Änderung hier nach, geändert werden sie nur hier. Das
+ * Farbschema steht allein hier: Es gehört zum Gerät, nicht zum Bestand, und
+ * kommt deshalb auch nicht mit einer Sicherung.
  *
  * Gibt es noch keinen gemeinsamen Stand, übernimmt `laden` einmalig den
  * ersten selbst eingetragenen Namen der Bereiche (Planlaufmanagement,
@@ -17,11 +20,16 @@ import { useSyncExternalStore } from 'react';
 
 export type Farbmodus = 'standard' | 'kontrast';
 
+/** Hell oder dunkel: fest gewählt oder – die Vorgabe – wie das Gerät eingestellt ist. */
+export type Farbschema = 'geraet' | 'hell' | 'dunkel';
+
 export interface Benutzer {
   /** Vor- und Nachname. */
   name: string;
   /** „kontrast“: Farben für eine Rot-Grün-Sehschwäche mit stärkeren Kontrasten. */
   farbmodus: Farbmodus;
+  /** Helle oder dunkle Darstellung; „geraet“ folgt der Einstellung des Betriebssystems. */
+  farbschema: Farbschema;
 }
 
 /** Name, solange niemand einen eingetragen hat. */
@@ -33,6 +41,7 @@ type Roh = Record<string, unknown>;
 const objekt = (w: unknown): Roh | null => (w && typeof w === 'object' ? (w as Roh) : null);
 const text = (w: unknown) => (typeof w === 'string' ? w.trim() : '');
 const farbmodusVon = (w: unknown): Farbmodus => (w === 'kontrast' ? 'kontrast' : 'standard');
+const farbschemaVon = (w: unknown): Farbschema => (w === 'hell' || w === 'dunkel' ? w : 'geraet');
 
 /**
  * Frühere Angaben der Bereiche (je Bereich eigenes „Angemeldet als“) mit
@@ -67,12 +76,12 @@ function ausFrueherenAngaben(): Benutzer {
       if (!d) continue;
       const { name, farbmodus } = q.lesen(d);
       const n = text(name);
-      if (n && !q.vorgaben.includes(n)) return { name: n, farbmodus: farbmodusVon(farbmodus) };
+      if (n && !q.vorgaben.includes(n)) return { name: n, farbmodus: farbmodusVon(farbmodus), farbschema: 'geraet' };
     } catch {
       /* unlesbarer Bestand – nächster Bereich */
     }
   }
-  return { name: STANDARD_NAME, farbmodus: 'standard' };
+  return { name: STANDARD_NAME, farbmodus: 'standard', farbschema: 'geraet' };
 }
 
 function speichern(b: Benutzer): void {
@@ -87,7 +96,8 @@ function laden(): Benutzer {
   try {
     const roh = localStorage.getItem(KEY);
     const d = roh ? objekt(JSON.parse(roh)) : null;
-    if (d) return { name: text(d.name) || STANDARD_NAME, farbmodus: farbmodusVon(d.farbmodus) };
+    // Stände ohne Farbschema (vor dessen Einführung) folgen dem Gerät
+    if (d) return { name: text(d.name) || STANDARD_NAME, farbmodus: farbmodusVon(d.farbmodus), farbschema: farbschemaVon(d.farbschema) };
   } catch {
     /* unlesbar – wie ohne Stand */
   }
@@ -108,14 +118,15 @@ export function benutzerLesen(): Benutzer {
   return stand;
 }
 
-/** Ändert Name bzw. Farbmodus – für alle Bereiche. Ein leerer Name wird zur Vorgabe. */
+/** Ändert Name, Farbmodus bzw. Farbschema – für alle Bereiche. Ein leerer Name wird zur Vorgabe. */
 export function benutzerAendern(patch: Partial<Benutzer>): void {
   const alt = benutzerLesen();
   const neu: Benutzer = {
     name: patch.name !== undefined ? patch.name.trim() || STANDARD_NAME : alt.name,
     farbmodus: patch.farbmodus ?? alt.farbmodus,
+    farbschema: patch.farbschema ?? alt.farbschema,
   };
-  if (neu.name === alt.name && neu.farbmodus === alt.farbmodus) return;
+  if (neu.name === alt.name && neu.farbmodus === alt.farbmodus && neu.farbschema === alt.farbschema) return;
   stand = neu;
   speichern(neu);
   hoerer.forEach((h) => h());
@@ -133,6 +144,23 @@ if (typeof window !== 'undefined') {
     stand = null;
     hoerer.forEach((h) => h());
   });
+}
+
+/** Medienabfrage für die dunkle Einstellung des Geräts. */
+export const GERAET_DUNKEL = '(prefers-color-scheme: dark)';
+
+/** Seitengrund je Schema – für die Farbe der Fensterleiste (`theme-color`). */
+export const SEITENGRUND = { hell: '#f2f2f4', dunkel: '#121316' } as const;
+
+/**
+ * Ob die Oberfläche dunkel erscheint: fest gewählt oder nach der Einstellung
+ * des Geräts. Dieselbe Regel steht als kleines Skript im Kopf der
+ * `index.html`, damit die Seite schon vor dem Start der Anwendung richtig
+ * erscheint – beide Stellen gemeinsam ändern.
+ */
+export function istDunkel(farbschema: Farbschema): boolean {
+  if (farbschema !== 'geraet') return farbschema === 'dunkel';
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(GERAET_DUNKEL).matches;
 }
 
 /** Die angemeldete Person – rendert neu, sobald sie sich ändert. */

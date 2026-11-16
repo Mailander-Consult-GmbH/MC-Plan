@@ -1,7 +1,9 @@
 /** Rahmen der Projektsteuerung: Seitenleiste, Kopfzeile und Auswahl der Ansicht. */
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Icon, type IconName } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
+import { Einblenden, NavAktiv } from '../../shared/bewegung';
 import { useToast } from '../../shared/toast';
 import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
@@ -65,7 +67,8 @@ export function App() {
 
   return (
     <div className="app">
-      <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
+      {/* layoutScroll: Die Fläche des aktiven Menüpunkts (NavAktiv) gleitet auch in der gescrollten Leiste an die richtige Stelle */}
+      <motion.aside layoutScroll className={`sidebar ${menuOffen ? 'open' : ''}`}>
         <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'uebersicht' })} title="Zur Übersicht">
           <KaPlanLogo variante="Projektsteuerung" width="100%" />
         </button>
@@ -156,7 +159,7 @@ export function App() {
           Daten werden lokal im Browser gespeichert.
           <BereichWechsel />
         </div>
-      </aside>
+      </motion.aside>
 
       <main className="main">
         <header className="topbar">
@@ -176,23 +179,25 @@ export function App() {
           <div className="content-inner">
             <Hinweisleisten />
             <RegisterHinweis />
-            {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
-            {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
-            {route.view === 'funktionen' ? <Funktionen /> : null}
-            {route.view === 'projekt' ? (
-              projekt ? (
-                <ProjektDetail projekt={projekt} tab={route.tab} navigate={gehe} />
-              ) : (
-                <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
-              )
-            ) : null}
-            {route.view === 'protokoll' ? (
-              projekt && protokoll ? (
-                <ProtokollEditor key={protokoll.id} projekt={projekt} protokoll={protokoll} navigate={gehe} />
-              ) : (
-                <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
-              )
-            ) : null}
+            <Einblenden schluessel={route.view}>
+              {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
+              {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
+              {route.view === 'funktionen' ? <Funktionen /> : null}
+              {route.view === 'projekt' ? (
+                projekt ? (
+                  <ProjektDetail projekt={projekt} tab={route.tab} navigate={gehe} />
+                ) : (
+                  <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
+                )
+              ) : null}
+              {route.view === 'protokoll' ? (
+                projekt && protokoll ? (
+                  <ProtokollEditor key={protokoll.id} projekt={projekt} protokoll={protokoll} navigate={gehe} />
+                ) : (
+                  <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
+                )
+              ) : null}
+            </Einblenden>
           </div>
         </div>
       </main>
@@ -256,8 +261,9 @@ function NavItem({
       title={label}
       aria-expanded={offen}
     >
+      {aktiv ? <NavAktiv /> : null}
       <span className="nav-icon">
-        <Icon name={icon} size={16} />
+        <Icon name={icon} size={17} />
       </span>
       <span className="nav-label">{label}</span>
       {badge ? <span className={`nav-badge ${badgeAlarm ? 'alert' : ''}`}>{badge}</span> : null}

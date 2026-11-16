@@ -1,5 +1,5 @@
 /** Fachliche Anzeige-Bausteine, die in mehreren Ansichten gebraucht werden. */
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { AMPEL_LABEL, type Ampel } from '../domain/engine';
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import {
@@ -73,7 +73,7 @@ export function RollenChips({ roles }: { roles: Role[] }) {
   return (
     <span className="row wrap" style={{ gap: 5 }}>
       {roles.map((r) => (
-        <span key={r.id} className="role-chip" style={{ color: r.farbe }}>
+        <span key={r.id} className="role-chip" style={{ '--chip-farbe': r.farbe } as CSSProperties}>
           {r.name}
         </span>
       ))}

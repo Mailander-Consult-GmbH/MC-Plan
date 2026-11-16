@@ -4,12 +4,18 @@ import { useState } from 'react';
  * Bildmarken der Anwendung.
  *
  * Die Logos von KaPlan liegen als PNG unter `public/logos/` (je Bereich
- * eines, dazu das Logo der Startseite und das Symbol `Logo.png`). Die Wortmarke
- * Mailänder Consult stammt aus der Originaldatei `public/mailaender-consult.svg`
- * und wird nur über die Höhe skaliert.
+ * eines, dazu das Logo der Startseite und das Symbol `Logo.png`). Gezeichnet
+ * sind sie für hellen Grund – dunkle Schrift, Dreieck in Blau und Grau. Für
+ * das dunkle Schema gibt es je Logo die Fassung `…_dunkel.png`: Schrift und
+ * Grau in Weiß, der blaue Teil des Dreiecks unverändert
+ * (`werkzeuge/logos_dunkel.py` erzeugt sie aus dem Logo). Beide stehen ohne
+ * Fläche dahinter; welche zu sehen ist, entscheidet das Farbschema
+ * (`.kaplan-logo-hell`/`.kaplan-logo-dunkel` in global.css). Die
+ * Wortmarke Mailänder Consult stammt aus der Originaldatei
+ * `public/mailaender-consult.svg` und wird nur über die Höhe skaliert.
  */
 
-/** Hausfarbe nach dem Logo Mailänder Consult. */
+/** Hausfarbe nach dem Logo Mailänder Consult – auch die Markenfarbe der Oberfläche (`--marke`). */
 export const MARKE_BLAU = '#24456e';
 
 /** Logos von KaPlan unter `public/logos/`. */
@@ -29,7 +35,9 @@ const KAPLAN_TEXT: Record<KaPlanLogo, string> = {
 /**
  * Logo von KaPlan: auf dem Startbildschirm ohne Zusatz, in den Bereichen mit
  * dem Namen des Bereichs. Skaliert wird über die Breite oder die Höhe, das
- * Seitenverhältnis bleibt unverändert.
+ * Seitenverhältnis bleibt unverändert. Das Logo der Startseite trägt unter
+ * dem Schriftzug keine Zeile; sein leerer unterer Teil wird beschnitten
+ * (`.logo-ohne-zeile`).
  */
 export function KaPlanLogo({
   variante,
@@ -40,13 +48,25 @@ export function KaPlanLogo({
   width?: number | string;
   height?: number;
 }) {
-  return (
-    <img
-      src={`${import.meta.env.BASE_URL}logos/Logo_${variante}.png`}
-      alt={KAPLAN_TEXT[variante]}
-      style={{ display: 'block', width: width ?? 'auto', height: height ?? 'auto', maxWidth: '100%' }}
-    />
+  // Kein `display` im Stil: Welche der beiden Dateien zu sehen ist, schaltet global.css am Farbschema
+  const stil = { width: width ?? 'auto', height: height ?? 'auto' };
+  const bild = (
+    <>
+      <img
+        className="kaplan-logo-hell"
+        src={`${import.meta.env.BASE_URL}logos/Logo_${variante}.png`}
+        alt={KAPLAN_TEXT[variante]}
+        style={stil}
+      />
+      <img
+        className="kaplan-logo-dunkel"
+        src={`${import.meta.env.BASE_URL}logos/Logo_${variante}_dunkel.png`}
+        alt={KAPLAN_TEXT[variante]}
+        style={stil}
+      />
+    </>
   );
+  return variante === 'Startseite' ? <span className="logo-ohne-zeile">{bild}</span> : bild;
 }
 
 /** Dateiname der Originalmarke unter `public/`. */

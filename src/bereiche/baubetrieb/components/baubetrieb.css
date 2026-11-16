@@ -1,3 +1,5 @@
+/* Ebene „components“ wie global.css: Tailwind-Utilities gewinnen, die Reihenfolge der Bausteinregeln bleibt. */
+@layer components {
 /*
  * Gestaltung der Baubetriebsplanung (Präfix bb-, nur Design-Tokens aus
  * src/shared/global.css).
@@ -25,8 +27,8 @@
    der Zeile und führt ihn darum selbst weiter – oben, unten und rechts. */
 .table-scroll-quer > .bb-anmeldungen tr.clickable:focus-visible td.actions {
   background: linear-gradient(var(--bg-active), var(--bg-active)), var(--bg-elev);
-  box-shadow: inset 1px 0 0 var(--separator), inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent),
-    inset -2px 0 0 var(--accent);
+  box-shadow: inset 1px 0 0 var(--separator), inset 0 2px 0 var(--fokus), inset 0 -2px 0 var(--fokus),
+    inset -2px 0 0 var(--fokus);
 }
 
 /* Import aus BBPNeo (pages/BbpImport.tsx) */
@@ -36,5 +38,6 @@
 .bb-imp-titel { font-size: 14px; margin: 0 0 2px; }
 .bb-imp-text { margin: 0 0 8px; }
 .bb-imp-details summary { cursor: pointer; color: var(--text-secondary); }
-.bb-imp-details ul { margin: 6px 0 0; padding-left: 18px; }
+.bb-imp-details ul { margin: 6px 0 0; padding-left: 18px; list-style: disc; }
 .bb-imp-details li { overflow-wrap: anywhere; }
+}

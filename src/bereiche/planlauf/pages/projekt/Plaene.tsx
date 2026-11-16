@@ -264,7 +264,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
       <button type="button" className="sort-btn" onClick={() => sortieren(feld)}>
         {inhalt}
         <span className={`sort-pfeil ${sortFeld === feld ? 'aktiv' : ''}`}>
-          {sortFeld === feld ? (absteigend ? '▾' : '▴') : '▴'}
+          <Icon name={sortFeld === feld && absteigend ? 'runter' : 'hoch'} size={11} strokeWidth={2.2} />
         </span>
       </button>
     </th>

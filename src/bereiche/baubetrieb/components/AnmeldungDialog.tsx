@@ -276,7 +276,7 @@ export function AnmeldungDialog({
               <button
                 type="button"
                 className="link-btn"
-                style={{ fontSize: 'inherit', color: 'var(--accent)' }}
+                style={{ fontSize: 'inherit', color: 'var(--link)' }}
                 onClick={() => setForm((f) => ({ ...f, vorhaben: f.anmeldeId.trim(), anmeldeId: '' }))}
               >
                 als Vorhabenname übernehmen

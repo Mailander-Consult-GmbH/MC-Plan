@@ -822,7 +822,7 @@ export function PlanlaufDetail({
           <div className="step-row">
             <div className="step-marker">
               <div className="step-num" title="Rücksprung">
-                ↺
+                <Icon name="schleife" size={12} />
               </div>
             </div>
             <div className="step-body">
@@ -1352,8 +1352,7 @@ function AbbruchDialog({
           </button>
           <button
             type="button"
-            className="btn btn-primary"
-            style={{ background: 'var(--red)' }}
+            className="btn btn-primary btn-rot"
             onClick={() => {
               if (!grund.trim()) {
                 toast('Bitte einen Grund angeben.');

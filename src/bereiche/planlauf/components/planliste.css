@@ -1,3 +1,5 @@
+/* Ebene „components“ wie global.css: Tailwind-Utilities gewinnen, die Reihenfolge der Bausteinregeln bleibt. */
+@layer components {
 /*
  * Planliste (pages/projekt/Plaene.tsx) – Mehrfachauswahl und Sammelaktionen.
  * Klassen mit Präfix pli-, nur Design-Tokens aus src/shared/global.css.
@@ -6,8 +8,8 @@
 /* Schmale Kästchen-Spalte vor der laufenden Nummer */
 .table th.pli-wahl,
 .table td.pli-wahl {
-  width: 34px;
-  padding-left: 12px;
+  width: 46px;
+  padding-left: var(--tabellen-rand, 14px);
   padding-right: 0;
 }
 .pli-flaeche {
@@ -25,7 +27,7 @@
 }
 .pli-kaestchen:disabled { cursor: default; opacity: 0.4; }
 /* Gewählte Zeile: Balken am Rand – die Hintergrundfarben (abgeschlossen, angekündigt) bleiben sichtbar */
-.table tr.pli-gewaehlt td.pli-wahl { box-shadow: inset 3px 0 0 var(--accent); }
+.table tr.pli-gewaehlt td.pli-wahl { box-shadow: inset 3px 0 0 var(--marke); }
 
 /* Aktionsleiste über der Liste, solange etwas gewählt ist */
 .pli-leiste {
@@ -33,9 +35,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 12px 24px;
   border-bottom: 1px solid var(--separator);
-  background: var(--accent-soft);
+  background: var(--bg-subtle);
 }
 .pli-leiste .pli-anzahl {
   font-weight: 600;
@@ -46,14 +48,16 @@
 .pli-liste {
   margin: 0;
   padding-left: 18px;
+  list-style: disc;
   font-size: 13px;
 }
 .pli-liste li + li { margin-top: 3px; }
 .btn.btn-primary.pli-rot,
-.btn.btn-primary.pli-rot:hover { background: var(--red); }
+.btn.btn-primary.pli-rot:hover { background: var(--red); color: #fff; }
 
 :root[data-farbmodus='kontrast'] .pli-leiste { border-bottom-color: var(--separator-strong); }
 
 @media (max-width: 640px) {
   .pli-leiste .btn { flex: 1 1 auto; }
+}
 }

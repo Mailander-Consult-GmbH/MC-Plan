@@ -1,3 +1,5 @@
+/* Ebene „components“ wie global.css: Tailwind-Utilities gewinnen, die Reihenfolge der Bausteinregeln bleibt. */
+@layer components {
 /*
  * Mehrfachauswahl im Reiter „Planläufe“: Kästchen-Spalte, Aktionsleiste,
  * Anzeige paralleler Schritte und die Sammeldialoge (Schritte erledigen,
@@ -7,8 +9,8 @@
 /* Schmale Kästchen-Spalte vor der Bezeichnung */
 .table.planlauf-tabelle th.pll-wahl,
 .table.planlauf-tabelle td.pll-wahl {
-  width: 30px;
-  padding-left: 12px;
+  width: 42px;
+  padding-left: var(--tabellen-rand, 14px);
   padding-right: 0;
 }
 .pll-wahl input,
@@ -27,14 +29,14 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  background: var(--bg-active);
+  padding: 12px 24px;
+  background: var(--bg-subtle);
   border-bottom: 1px solid var(--separator);
 }
 .pll-leiste .pll-anzahl {
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--text);
   margin-right: 6px;
 }
 .pll-leiste .pll-leiste-rest { flex: 1; }
@@ -45,8 +47,8 @@
   margin-left: 6px;
   padding: 0 6px;
   border-radius: 99px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--gray-soft);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
@@ -73,7 +75,7 @@
 
 .pll-gruppen {
   border: 1px solid var(--separator);
-  border-radius: var(--radius-sm);
+  border-radius: var(--rund-s);
   overflow: hidden;
 }
 .pll-gruppe {
@@ -92,7 +94,7 @@
   max-height: 46vh;
   overflow-y: auto;
   border: 1px solid var(--separator);
-  border-radius: var(--radius-sm);
+  border-radius: var(--rund-s);
 }
 .pll-lauf { border-bottom: 1px solid var(--separator); }
 .pll-lauf:last-child { border-bottom: none; }
@@ -120,7 +122,7 @@
 
 .pll-warnung { color: var(--orange-text); font-size: 12px; }
 .pll-fehlt { color: var(--rot-text); font-size: 12px; }
-.pll-vorschau { color: var(--accent); font-size: 12px; }
+.pll-vorschau { color: var(--blau-text); font-size: 12px; }
 
 /* Ergebnis eines Sammelabschlusses */
 .pll-zahlen {
@@ -129,9 +131,9 @@
   gap: 10px;
 }
 .pll-zahl {
-  padding: 10px 12px;
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  border-radius: var(--rund-l);
+  background: var(--bg-subtle);
 }
 .pll-zahl b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
 .pll-zahl span { font-size: 12px; color: var(--text-secondary); }
@@ -160,6 +162,7 @@
   font-size: 12px;
   background: var(--bg-subtle);
   border: 1px solid var(--separator);
-  border-radius: var(--radius-sm);
+  border-radius: var(--rund-s);
 }
 .pll-person.pll-vermerkt .pll-person-name strong { color: var(--gruen-text); }
+}

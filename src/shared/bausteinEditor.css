@@ -1,13 +1,15 @@
+/* Ebene „components“ wie global.css: Tailwind-Utilities gewinnen, die Reihenfolge der Bausteinregeln bleibt. */
+@layer components {
 /*
  * Baustein-Editor (bausteinEditor.tsx): Eingabefeld mit farbigen,
  * nicht teilbaren Bausteinen und Knöpfe zum Einfügen. Klassen mit Präfix
- * bst-, nur Design-Tokens aus global.css.
+ * bst-, nur Design-Tokens aus global.css (Koralle-Design).
  */
 
 .bst-feld {
   width: 100%;
-  padding: 9px 11px;
-  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  border-radius: var(--rund);
   border: 1px solid var(--separator-strong);
   background: var(--bg-elev);
   font-size: 13.5px;
@@ -19,7 +21,7 @@
 }
 .bst-feld:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--fokus);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .bst-feld.bst-einzeilig { min-height: calc(1.55em + 20px); }
@@ -39,7 +41,7 @@
   vertical-align: baseline;
   cursor: default;
 }
-.bst-ton-blau { background: var(--accent-soft); color: var(--accent); }
+.bst-ton-blau { background: var(--blau-soft); color: var(--blau-text); }
 .bst-ton-gruen { background: var(--green-soft); color: var(--gruen-text); }
 .bst-ton-orange { background: var(--orange-soft); color: var(--orange-text); }
 .bst-ton-lila { background: var(--purple-soft); color: var(--purple); }
@@ -64,8 +66,9 @@
 .bst-knopf::before { content: '+'; font-weight: 700; opacity: 0.7; }
 .bst-knopf:hover { box-shadow: inset 0 0 0 1px currentColor; }
 .bst-knopf:active { transform: scale(0.97); }
-.bst-knopf:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bst-knopf:focus-visible { outline: 2px solid var(--fokus); outline-offset: 2px; }
 
 /* Kontrast: Bausteine und Knöpfe zusätzlich mit Rahmen */
 :root[data-farbmodus='kontrast'] .bst-baustein:not(.bst-ton-unbekannt),
 :root[data-farbmodus='kontrast'] .bst-knopf { border-color: currentColor; }
+}

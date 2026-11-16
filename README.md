@@ -18,7 +18,7 @@ Browser, eigene Einstellungen, eigener Router. **Projekte und Projektbeteiligte 
 über das Projektregister: Ein Projekt kann in mehreren Bereichen geführt werden, Kontaktdaten und
 Funktionen seiner Beteiligten gelten dann überall (siehe
 [**Gemeinsame Projekte**](#gemeinsame-projekte)). Der
-Startbildschirm zeigt die Bereiche als Kacheln mit Titel und Untertitel; in einem Bereich führt **Bereich wechseln** unten
+Startbildschirm zeigt die Bereiche als Karten mit Symbol, Titel und Untertitel; in einem Bereich führt **Bereich wechseln** unten
 in der Seitenleiste zurück. Der Abschnitt **Funktionsumfang** beschreibt das Planlaufmanagement,
 die Abschnitte [**Baubetriebsplanung**](#baubetriebsplanung) und
 [**Projektsteuerung**](#projektsteuerung) die übrigen Bereiche.
@@ -54,16 +54,30 @@ Name in Roboto Light.
 | `Logo_Planlaufmanagement.png` | Kopf der Menüleiste im Planlaufmanagement |
 | `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
 | `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
+| `Logo_Startseite_dunkel.png`, `Logo_Planlaufmanagement_dunkel.png`, `Logo_Baubetriebsplanung_dunkel.png`, `Logo_Projektsteuerung_dunkel.png` | dieselben Logos für das dunkle Farbschema – erzeugt, nicht gezeichnet (siehe unten) |
 | `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
 | `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug); nach ihm sind die App-Symbole unter `public/icons/` gezeichnet |
 
-Zum Austauschen genügt es, die Datei unter gleichem Namen zu ersetzen; die Logos werden nur über
-die Breite bzw. Höhe skaliert.
+Die Logos stehen **ohne Fläche dahinter** – in der Menüleiste wie auf dem Startbildschirm
+(`KaPlanLogo` in `src/shared/logos.tsx`). Gezeichnet sind sie für hellen Grund (dunkle Schrift,
+Dreieck in Blau und Grau); so erscheinen sie im hellen Farbschema. Im **dunklen Farbschema** zeigt
+die Oberfläche je Logo die Fassung `Logo_<Name>_dunkel.png`: Schrift und graue Teile des Dreiecks
+in Weiß, der blaue Teil bleibt unverändert blau (ohne Rand).
+
+Die dunklen Fassungen erzeugt das Skript `werkzeuge/logos_dunkel.py` aus den Logos (Python mit
+Pillow):
+
+```bash
+python3 werkzeuge/logos_dunkel.py
+```
+
+Zum Austauschen eines Logos die Datei unter gleichem Namen ersetzen, das Skript ausführen und
+beide Dateien einchecken; die Logos werden nur über die Breite bzw. Höhe skaliert.
 
 Die Symbole in `public/icons/` zeigen die Marke aus `Logo.png` in der Logofarbe `#21426d`, im
 Browser-Tab und in der Titelleiste des App-Fensters **ohne Hintergrund**, in der Taskleiste, im
-Startmenü und als Desktop-Verknüpfung auf einer **Kachel in der Hintergrundfarbe der Anwendung**
-(`#f5f5f7`, `--bg`, mit feiner Randlinie) – das dünne Dreieck allein war in der Windows-Taskleiste
+Startmenü und als Desktop-Verknüpfung auf einer **hellen Kachel**
+(`#f5f5f7`, mit feiner Randlinie) – das dünne Dreieck allein war in der Windows-Taskleiste
 kaum zu sehen. Die Marke ist vektoriell nachgezeichnet, je Größe gerastert und steht genau mittig
 (gleicher Abstand oben und unten bzw. links und rechts); bis 64 px ist sie größer und kräftiger
 gezeichnet:
@@ -79,7 +93,7 @@ Ein neues Symbol bekommt **neue Dateinamen** (Verweise in `index.html`, `public/
 und `SHELL` in `public/sw.js` anpassen), und der Cache-Name in `public/sw.js` wird hochgezählt –
 Browser, Taskleiste und Handy halten Symbole sonst unter dem alten Namen fest.
 
-Die Wortmarke Mailänder Consult in der Kopfzeile stammt aus der Datei `public/mailaender-consult.svg`. Die derzeit
+Die Wortmarke Mailänder Consult in der Kopfzeile (im dunklen Schema weiß dargestellt) stammt aus der Datei `public/mailaender-consult.svg`. Die derzeit
 hinterlegte Fassung ist mit der Systemschrift nachgezeichnet. Um das Original zu verwenden, genügt
 es, diese Datei durch die Originaldatei zu **ersetzen** – gleicher Name, gleicher Ort; eine
 PNG-Datei funktioniert ebenso (`public/mailaender-consult.png`, dann in
@@ -189,7 +203,7 @@ Entfernen einer installierten App deshalb in jedem genutzten Bereich eine Sicher
 herunterladen**; Android und Desktop fragen beim Entfernen, ob auch die Daten gelöscht werden
 sollen.
 
-Enthalten sind `manifest.webmanifest`, App-Symbole auf einer Kachel in Programmfarbe (`public/icons/`, siehe
+Enthalten sind `manifest.webmanifest`, App-Symbole auf einer hellen Kachel (`public/icons/`, siehe
 [Logos](#logos): 48–512 px, maskierbar für Android und Apple-Touch-Icon für iOS) sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
 gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (gehashte Namen unter
@@ -1383,10 +1397,17 @@ anderes Fenster denselben Bereich, lädt der Store dessen Stand nach (`useFremde
 ## Angemeldet als – für alle Bereiche
 
 Unten in der Seitenleiste jedes Bereichs steht **Angemeldet als** mit Name und
-Kürzel. Der Dialog dazu fragt den Namen (Vor- und Nachname) und den **Farbmodus für eine
-Rot-Grün-Sehschwäche** ab – beides gilt in allen Bereichen: Wer seinen Namen einmal einträgt, ist
+Kürzel. Der Dialog dazu fragt den Namen (Vor- und Nachname), das **Farbschema** und den **Farbmodus
+für eine Rot-Grün-Sehschwäche** ab – alles gilt in allen Bereichen: Wer seinen Namen einmal einträgt, ist
 überall dieselbe Person. Den Farbmodus setzt allein die Hülle (`src/shell/Shell.tsx`), noch vor dem
-ersten Zeichnen eines Bereichs; die Bereichsauswahl zeigt stets die Standardfarben. Bis zur Anmeldung über SSO ist das eine Angabe ohne Kennwort; sie liegt
+ersten Zeichnen eines Bereichs; die Bereichsauswahl zeigt stets die Standardfarben.
+
+Das **Farbschema** bestimmt, ob KaPlan hell oder dunkel erscheint: **Wie das Gerät** (die Vorgabe –
+KaPlan folgt der Einstellung des Betriebssystems und einem Wechsel dort sofort), **Hell** oder
+**Dunkel**. Es gilt auch auf der Bereichsauswahl und schon beim Laden der Seite (ein kleines
+Skript im Kopf der `index.html` liest die Wahl, bevor die Anwendung startet). Das Farbschema gehört
+zum Gerät: Es steht nur in `kaplan-benutzer.v1`, nicht im Bestand der Bereiche, und kommt deshalb
+nicht mit einer Sicherung. Bis zur Anmeldung über SSO ist das eine Angabe ohne Kennwort; sie liegt
 lokal im Browser (Schlüssel `kaplan-benutzer.v1`). Ohne Eintrag gilt „Max Mustermann“; beim ersten
 Start nach dem Umstieg übernimmt KaPlan den ersten selbst eingetragenen Namen der Bereiche
 (Planlaufmanagement, Projektsteuerung, Baubetriebsplanung) samt Farbmodus;
@@ -1577,10 +1598,13 @@ beim Betreten ein.
 ```
 src/
   main.tsx       Start der Anwendung, Umlenkung alter Lesezeichen; lädt global.css vor der Shell,
-                 damit Regeln der Bereiche gleicher Spezifität gewinnen
+                 damit Regeln der Bereiche gleicher Spezifität gewinnen; MotionConfig
+                 (reducedMotion="user") für alle Bewegungen
   shell/         Startbildschirm und Bereichswechsel
-    Shell.tsx    Wählt Bereichsauswahl oder Bereich; setzt den Farbmodus aus „Angemeldet als“
-    Start.tsx    Startbildschirm mit den Bereichskacheln und der laufenden Fassung
+    Shell.tsx    Wählt Bereichsauswahl oder Bereich; setzt Farbmodus und Farbschema (hell/dunkel)
+                 aus „Angemeldet als“
+    Start.tsx    Startbildschirm mit Datum, je Bereich einer Karte und der laufenden Fassung
+                 (Tailwind-Utilities)
     NeueFassung.tsx  Hinweis „Neue Fassung von KaPlan verfügbar“ über allen Bereichen
     bereiche.ts  Verzeichnis der Bereiche
     router.ts    #/ · #/planlauf/… · #/baubetrieb/… · #/projektsteuerung/…; Adressen der früheren
@@ -1590,8 +1614,11 @@ src/
     ui.tsx       Karten, Felder, Dialoge (Modal: Fokus, Tab, Escape, Fokus zurück), Segmented
                  Controls (die gewählte Option mit aria-pressed), alsKnopf, alsKlickZeile
                  (anklickbare Zeilen als Tab-Halt), beiEnter (Eingabetaste im Dialogfeld) …
-    icons.tsx    Strichsymbole
-    logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
+    icons.tsx    Symbole (Lucide) unter den fachlichen Namen der Anwendung (Icon); iconSvg mit
+                 eigenen Strichzeichnungen für die Druckfassungen
+    bewegung.tsx Bewegungen (framer-motion): hoverLift, Zaehler, NavAktiv, BalkenFuellung,
+                 Einblenden
+    logos.tsx    Logos KaPlan (public/logos/, je Farbschema eine Datei) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
     bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
     bausteinEditor.tsx  Eingabefeld mit farbigen, nicht teilbaren Bausteinen (BausteinEditor,
@@ -1610,7 +1637,8 @@ src/
                  über die Nummer im Dateinamen; Zellen ohne Zellbezug folgen auf die vorige)
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers; Fassung des Builds und Prüfung auf eine neuere
-    global.css   Design-Tokens im hellen Apple-Erscheinungsbild
+    global.css   Koralle-Design: Tailwind (Theme, Utilities), Schrift Outfit, Design-Tokens für
+                 hell, dunkel und den Farbmodus „kontrast“, Bausteinklassen (@layer components)
   gemeinsam/     Projektregister – der einzige Bestand, den sich die Bereiche teilen
     register.ts  Datenmodell, Laden/Speichern, gemeinsamer Zustand (useRegister, Ergebnis des
                  Speicherns: useRegisterSpeicherZustand; nicht Gespeichertes übersteht das
@@ -1620,7 +1648,8 @@ src/
                  bereichArchivieren)
     useRegisterAbgleich.ts  Bindet den Store eines Bereichs an das Register
     useFremdeAenderung.ts   Lädt den Bestand nach, wenn ein anderes Fenster ihn speichert
-    benutzer.ts  „Angemeldet als“ für alle Bereiche: Name und Farbmodus (useBenutzer)
+    benutzer.ts  „Angemeldet als“ für alle Bereiche: Name, Farbmodus und Farbschema (useBenutzer,
+                 istDunkel)
     useBenutzerAbgleich.ts  Zieht Name und Farbmodus in den Bestand eines Bereichs nach
     AngemeldetAls.tsx       Knopf in der Seitenleiste und Dialog „Angemeldet als“
     ProjektBereiche.tsx     Marken „Auch in“, Projekte aus anderen Bereichen, Archiv
@@ -1721,12 +1750,47 @@ src/
 Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden
 beim Aufruf auf `#/planlauf/…` umgelenkt und bleiben damit gültig.
 
+Außerhalb von `src/` liegt unter `werkzeuge/` das Skript `logos_dunkel.py`: Es erzeugt die Logos
+für das dunkle Farbschema (siehe [Logos](#logos)) und gehört nicht zum Build.
+
 ## Gestaltung
 
-Helles Erscheinungsbild in Anlehnung an Apple: Systemschriftart (SF Pro / `-apple-system`),
-zurückhaltende Flächen auf `#f5f5f7`, weiße Karten mit weichen Radien und feinen Schatten, die
-Hausfarbe von Mailänder Consult `#24456e` als Akzent (auch für alle Fortschrittsbalken),
-transluzente Seitenleiste und Kopfzeile, Segmented Controls und Pill-Buttons. Die Oberfläche ist bis auf Telefonbreite (~400 px) nutzbar.
+Die Oberfläche folgt dem **Koralle-Design** nach der Vorlage `KoralleDashboard.jsx` im
+Wurzelverzeichnis (die Datei ist nur Vorlage und gehört nicht zum Build) – mit dem Blau von
+Mailänder Consult statt Koralle als Markenfarbe, mit den Logos von KaPlan und mit einer
+Menüleiste, die im hellen Schema hell ist:
+
+* **Flächen:** heller Seitengrund `#f2f2f4`, weiße Karten mit 24 px Rundung und weichem Schatten
+  statt Rahmen, in Karten graue Kacheln; die Menüleiste ist im hellen Schema weiß mit feiner Linie
+  zum Inhalt, im dunklen dunkel (`#17181b`), der Seitenkopf steht ohne Balken auf dem Seitengrund –
+  die Unterzeile klein über dem Titel.
+* **Farben:** Die Markenfarbe ist das Blau von Mailänder Consult (`#24456e`) – aktiver Menüpunkt,
+  Fortschrittsbalken, Symbolflächen, Verknüpfungen. Betont wird mit Tinte (fast Schwarz):
+  Hauptknopf, gewählter Reiter, gewähltes Segment, aktueller Schritt, Tastaturfokus. Die Ampel
+  zeigt Grün (erledigt), Orange (fällig) und ein klares Rot (überfällig); überfällige Kennzahlen
+  stehen als Karte im roten Verlauf. Blau-Türkis und Violett kennzeichnen laufend und
+  Entscheidungen.
+* **Schrift:** Outfit (in den Build gebündelt, es wird nichts von fremden Servern geladen);
+  Überschriften in mittlerer Stärke, Beschriftungen klein und gedämpft, keine Versalien.
+* **Formen:** Knöpfe, Kennzeichen, Suchfeld, Reiter und Segmente sind Pillen; Felder haben 12 px
+  Rundung.
+* **Symbole:** Lucide-Icons (`lucide-react`) über `Icon` in `src/shared/icons.tsx`.
+* **Bewegung** (`framer-motion`, `src/shared/bewegung.tsx`): Anklickbare Karten und Kennzahlen
+  heben sich beim Überfahren an, Kennzahlen zählen hoch, Fortschrittsbalken wachsen, die Fläche des
+  aktiven Menüpunkts und des gewählten Segments gleitet zur neuen Wahl, Ansichten blenden ein. Wer
+  im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Endzustände ohne Verschiebung.
+* **Hell und dunkel:** Die Vorgabe folgt wie in der Vorlage der Einstellung des Geräts; unter
+  „Angemeldet als“ lässt sich das **Farbschema** fest auf „Hell“ oder „Dunkel“ stellen. Im
+  dunklen Schema erscheinen die Logos von KaPlan in Weiß (siehe [Logos](#logos)). Der
+  **Farbmodus für eine Rot-Grün-Sehschwäche** gilt in beiden Schemata.
+* **Technik:** Tailwind 4 (`@tailwindcss/vite`) mit den Design-Tokens in `src/shared/global.css`;
+  die Bausteinklassen aller Bereiche stehen in der Ebene `components`, Tailwind-Utilities gewinnen
+  gegen sie.
+
+Druck- und PDF-Fassungen (Planlauf-Export, Protokoll, Beteiligtenliste) sind Dokumente mit eigener
+Gestaltung und vom Koralle-Design nicht berührt; die Druckansicht eines Protokolls bleibt ein
+weißes Blatt. Die Oberfläche ist bis auf Telefonbreite (~400 px) nutzbar. Die Regeln für die
+weitere Arbeit stehen in [`CLAUDE.md`](CLAUDE.md), Abschnitt „Designregeln“.
 
 ## Nächste Schritte (Ausblick)
 

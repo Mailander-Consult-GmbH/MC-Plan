@@ -546,7 +546,7 @@ export function WorkflowEditor({ workflow, onClose }: { workflow?: Workflow; onC
               />
             ) : null}
             <button type="button" className="btn-icon bb-wf-zu" onClick={schliessen} aria-label="Schließen">
-              ✕
+              <Icon name="schliessen" size={15} />
             </button>
           </div>
         </header>
@@ -1380,7 +1380,7 @@ function StatusDetails({
             aria-label="Details schließen"
             title="Schließen"
           >
-            ✕
+            <Icon name="schliessen" size={15} />
           </button>
         </span>
       </div>
@@ -1552,7 +1552,7 @@ function StatusDetails({
                       title="Antwort entfernen"
                       onClick={() => onListeAendern((alle) => nachfolgerEntfernen(alle, s.id, z))}
                     >
-                      ✕
+                      <Icon name="schliessen" size={15} />
                     </button>
                   </div>
                 ) : null}
@@ -1579,7 +1579,7 @@ function StatusDetails({
                       title="Nachfolger entfernen"
                       onClick={() => onListeAendern((alle) => nachfolgerEntfernen(alle, s.id, z))}
                     >
-                      ✕
+                      <Icon name="schliessen" size={15} />
                     </button>
                   )}
                 </div>
@@ -1876,7 +1876,7 @@ function Uebersicht({
         <span>Übersicht</span>
         {onSchliessen ? (
           <button type="button" className="btn-icon" onClick={onSchliessen} aria-label="Übersicht schließen">
-            ✕
+            <Icon name="schliessen" size={15} />
           </button>
         ) : null}
       </div>

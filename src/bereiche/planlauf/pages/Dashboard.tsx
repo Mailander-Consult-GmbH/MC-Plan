@@ -201,10 +201,10 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                       </td>
                       <td className={`zahl ${eintraege.length ? '' : 'leer'}`}>{eintraege.length}</td>
                       <td className={`zahl ${laufendeLaeufe.length ? '' : 'leer'}`}>{laufendeLaeufe.length}</td>
-                      <td className={`zahl ${bald ? '' : 'leer'}`} style={{ color: bald ? 'var(--orange)' : undefined }}>
+                      <td className={`zahl ${bald ? '' : 'leer'}`} style={{ color: bald ? 'var(--orange-text)' : undefined }}>
                         {bald}
                       </td>
-                      <td className={`zahl ${spaet ? '' : 'leer'}`} style={{ color: spaet ? 'var(--red)' : undefined }}>
+                      <td className={`zahl ${spaet ? '' : 'leer'}`} style={{ color: spaet ? 'var(--rot-text)' : undefined }}>
                         {spaet}
                       </td>
                       <td>

@@ -179,8 +179,7 @@ export function StatusWechselDialog({
           </button>
           <button
             type="button"
-            className="btn btn-primary"
-            style={loeschen ? { background: 'var(--red)' } : undefined}
+            className={loeschen ? 'btn btn-primary btn-rot' : 'btn btn-primary'}
             onClick={ausfuehren}
           >
             {loeschen ? 'Löschen' : uebernahme ? 'Übernehmen' : 'Status setzen'}

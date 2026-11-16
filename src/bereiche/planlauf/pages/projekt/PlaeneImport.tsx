@@ -447,7 +447,7 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
                           <div className="tertiary small">untergeordnet: {z.parentNummer}</div>
                         ) : null}
                       </td>
-                      <td className="small" style={{ color: z.hinweis ? 'var(--orange)' : undefined }}>
+                      <td className="small" style={{ color: z.hinweis ? 'var(--orange-text)' : undefined }}>
                         {z.hinweis || '–'}
                       </td>
                     </tr>

@@ -119,11 +119,11 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
               <button
                 type="button"
                 className={`stern ${projekt.markiert ? 'aktiv' : ''}`}
-                style={{ border: 'none', background: 'none', padding: 0 }}
+                style={{ border: 'none', background: 'none' }}
                 title={projekt.markiert ? 'Markierung aufheben' : 'Markieren'}
                 onClick={() => toggleMarkiert(projekt.id)}
               >
-                {projekt.markiert ? '★' : '☆'}
+                <Icon name="stern" size={16} />
               </button>
             </>
           }

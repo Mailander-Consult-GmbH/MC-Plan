@@ -206,7 +206,7 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
                         {z.person.firma ? <div className="tertiary small">{z.person.firma}</div> : null}
                       </td>
                       <td className="small muted">{z.person.email || z.person.telefon || '–'}</td>
-                      <td className="small" style={{ color: z.hinweise.length ? 'var(--accent)' : undefined }}>
+                      <td className="small" style={{ color: z.hinweise.length ? 'var(--blau-text)' : undefined }}>
                         {z.hinweise.join(' · ') || 'neu'}
                       </td>
                     </tr>

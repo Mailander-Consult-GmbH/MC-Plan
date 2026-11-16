@@ -1,3 +1,5 @@
+/* Ebene „components“ wie global.css: Tailwind-Utilities gewinnen, die Reihenfolge der Bausteinregeln bleibt. */
+@layer components {
 /* Abgleich mit einer Sicherung und Hinweisleisten – Präfix ab-, nur Design-Tokens. */
 
 /* „Sicherung abgleichen“: breiter als .modal.wide (Modal mit klasse="ab-modal", schließt nicht per Klick daneben) */
@@ -17,7 +19,7 @@
 .ab-wahl-option {
   padding: 11px 14px;
   border: 1px solid var(--separator);
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   background: var(--bg-subtle);
   font-size: 13px;
   line-height: 1.5;
@@ -46,16 +48,14 @@
 }
 .ab-abschnitt-titel {
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  color: var(--text-tertiary);
   margin-bottom: 6px;
 }
 .ab-projekt {
   border: 1px solid var(--separator);
-  border-radius: var(--radius-lg);
-  padding: 4px 12px 10px;
+  border-radius: var(--rund-l);
+  padding: 6px 14px 12px;
   margin-bottom: 14px;
   background: var(--bg-elev);
 }
@@ -164,39 +164,36 @@
 .ab-fehler {
   margin: 6px 0 0;
   padding-left: 18px;
+  list-style: disc;
 }
 
-/* Hinweisleisten über dem Inhalt */
+/* Hinweisleisten über dem Inhalt – wie der Kopf ohne Balken auf dem Seitengrund */
 .ab-leisten {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 28px;
-  border-bottom: 1px solid var(--separator);
-  background: var(--bg-elev);
+  padding: 8px 32px 4px;
 }
 .ab-leiste {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 14px;
-  padding: 9px 14px;
-  border-radius: var(--radius);
+  padding: 12px 16px;
+  border-radius: var(--rund-l);
   font-size: 12.5px;
   line-height: 1.5;
-  background: var(--accent-soft);
+  background: var(--bg-elev);
+  box-shadow: var(--schatten);
   color: var(--text);
 }
 .ab-leiste.fehler {
   background: var(--red-soft);
-  border-left: 3px solid var(--red);
+  box-shadow: none;
 }
 .ab-leiste.warnung {
   background: var(--orange-soft);
-  border-left: 3px solid var(--orange);
-}
-.ab-leiste.info {
-  border-left: 3px solid var(--accent);
+  box-shadow: none;
 }
 .ab-leiste-text {
   flex: 1 1 320px;
@@ -210,7 +207,7 @@
 
 @media (max-width: 760px) {
   .ab-leisten {
-    padding: 8px 14px;
+    padding: 6px 16px 2px;
   }
   .ab-projekt {
     padding: 4px 8px 8px;
@@ -218,4 +215,5 @@
   .ab-details {
     padding-left: 0;
   }
+}
 }

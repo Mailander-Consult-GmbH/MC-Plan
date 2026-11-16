@@ -588,7 +588,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
                           <div className="tertiary small">{z.person.anschrift.replace(/\n/g, ', ')}</div>
                         ) : null}
                       </td>
-                      <td className="small" style={{ color: z.hinweis ? 'var(--accent)' : undefined }}>
+                      <td className="small" style={{ color: z.hinweis ? 'var(--blau-text)' : undefined }}>
                         {z.hinweis || '–'}
                       </td>
                     </tr>

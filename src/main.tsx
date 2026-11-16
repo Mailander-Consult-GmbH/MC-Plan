@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MotionConfig } from 'framer-motion';
 // Zuerst die gemeinsame Gestaltung: Die Bereichs-CSS kommen mit der Shell und
 // müssen danach stehen, damit ihre Regeln gleicher Spezifität gewinnen.
 import './shared/global.css';
@@ -23,9 +24,12 @@ alteLesezeichenUmlenken();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ToastProvider>
-      <Shell />
-    </ToastProvider>
+    {/* Wer im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Oberfläche ohne Verschiebungen */}
+    <MotionConfig reducedMotion="user">
+      <ToastProvider>
+        <Shell />
+      </ToastProvider>
+    </MotionConfig>
   </StrictMode>,
 );
 

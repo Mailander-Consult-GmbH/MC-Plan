@@ -1,5 +1,6 @@
 /** Anwendungsrahmen: Seitenleiste, Kopfzeile und Auswahl der Ansicht. */
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { eigeneTodos, offeneFristen } from './domain/engine';
 import { exportiereDaten, rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
@@ -18,6 +19,7 @@ import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
 import { EIGENE_ROLLE } from './domain/types';
 import { Icon } from '../../shared/icons';
 import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
+import { Einblenden, NavAktiv } from '../../shared/bewegung';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/SicherungEinspielen';
 import { Hinweisleisten } from './components/Hinweisleisten';
@@ -64,7 +66,8 @@ export function App() {
 
   return (
     <div className="app">
-      <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
+      {/* layoutScroll: Die Fläche des aktiven Menüpunkts (NavAktiv) gleitet auch in der gescrollten Leiste an die richtige Stelle */}
+      <motion.aside layoutScroll className={`sidebar ${menuOffen ? 'open' : ''}`}>
         <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'dashboard' })} title="Zur Übersicht">
           <KaPlanLogo variante="Planlaufmanagement" width="100%" />
         </button>
@@ -165,7 +168,7 @@ export function App() {
           Daten werden lokal im Browser gespeichert.
           <BereichWechsel />
         </div>
-      </aside>
+      </motion.aside>
 
       <main className="main">
         <header className="topbar">
@@ -186,32 +189,34 @@ export function App() {
         <div className="content" ref={inhalt}>
           <div className="content-inner">
             <RegisterHinweis />
-            {route.view === 'dashboard' ? <Dashboard navigate={gehe} /> : null}
-            {route.view === 'fristen' ? <Fristen navigate={gehe} /> : null}
-            {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
-            {route.view === 'ketten' ? <Workflows /> : null}
-            {route.view === 'rollen' ? <Funktionen /> : null}
-            {route.view === 'vorlagen' ? <Vorlagen /> : null}
-            {route.view === 'terminrechner' ? <Terminrechner /> : null}
-            {route.view === 'projekt' ? (
-              projekt ? (
-                <ProjektDetail project={projekt} tab={route.tab} navigate={gehe} />
-              ) : (
-                <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
-              )
-            ) : null}
-            {route.view === 'planlauf' ? (
-              projekt && lauf ? (
-                <PlanlaufDetail
-                  project={projekt}
-                  run={lauf}
-                  onZurueck={() => gehe({ view: 'projekt', projectId: projekt.id, tab: 'uebersicht' })}
-                  oeffneLauf={(runId) => gehe({ view: 'planlauf', projectId: projekt.id, runId })}
-                />
-              ) : (
-                <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
-              )
-            ) : null}
+            <Einblenden schluessel={route.view}>
+              {route.view === 'dashboard' ? <Dashboard navigate={gehe} /> : null}
+              {route.view === 'fristen' ? <Fristen navigate={gehe} /> : null}
+              {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
+              {route.view === 'ketten' ? <Workflows /> : null}
+              {route.view === 'rollen' ? <Funktionen /> : null}
+              {route.view === 'vorlagen' ? <Vorlagen /> : null}
+              {route.view === 'terminrechner' ? <Terminrechner /> : null}
+              {route.view === 'projekt' ? (
+                projekt ? (
+                  <ProjektDetail project={projekt} tab={route.tab} navigate={gehe} />
+                ) : (
+                  <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
+                )
+              ) : null}
+              {route.view === 'planlauf' ? (
+                projekt && lauf ? (
+                  <PlanlaufDetail
+                    project={projekt}
+                    run={lauf}
+                    onZurueck={() => gehe({ view: 'projekt', projectId: projekt.id, tab: 'uebersicht' })}
+                    oeffneLauf={(runId) => gehe({ view: 'planlauf', projectId: projekt.id, runId })}
+                  />
+                ) : (
+                  <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
+                )
+              ) : null}
+            </Einblenden>
           </div>
         </div>
       </main>
@@ -279,8 +284,9 @@ function NavItem({
       title={label}
       aria-expanded={offen}
     >
+      {aktiv ? <NavAktiv /> : null}
       <span className="nav-icon">
-        <Icon name={icon} size={16} />
+        <Icon name={icon} size={17} />
       </span>
       <span className="nav-label">{label}</span>
       {badge ? <span className={`nav-badge ${badgeAlarm ? 'alert' : ''}`}>{badge}</span> : null}
