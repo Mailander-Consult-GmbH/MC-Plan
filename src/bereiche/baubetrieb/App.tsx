@@ -82,7 +82,7 @@ export function App() {
       <motion.aside layoutScroll className={`sidebar ${menuOffen ? 'open' : ''}`}>
         <button
           type="button"
-          className="sidebar-brand logo-kachel"
+          className="sidebar-brand"
           onClick={() => gehe({ view: 'uebersicht' })}
           title="Zur Übersicht"
         >

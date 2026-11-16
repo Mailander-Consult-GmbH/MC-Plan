@@ -69,7 +69,7 @@ export function App() {
     <div className="app">
       {/* layoutScroll: Die Fläche des aktiven Menüpunkts (NavAktiv) gleitet auch in der gescrollten Leiste an die richtige Stelle */}
       <motion.aside layoutScroll className={`sidebar ${menuOffen ? 'open' : ''}`}>
-        <button type="button" className="sidebar-brand logo-kachel" onClick={() => gehe({ view: 'uebersicht' })} title="Zur Übersicht">
+        <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'uebersicht' })} title="Zur Übersicht">
           <KaPlanLogo variante="Projektsteuerung" width="100%" />
         </button>
 

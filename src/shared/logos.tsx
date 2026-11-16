@@ -4,10 +4,13 @@ import { useState } from 'react';
  * Bildmarken der Anwendung.
  *
  * Die Logos von KaPlan liegen als PNG unter `public/logos/` (je Bereich
- * eines, dazu das Logo der Startseite und das Symbol `Logo.png`). Sie sind
- * für hellen Grund gezeichnet – dunkle Schrift, Dreieck in Blau und Grau – und
- * stehen deshalb in der Oberfläche auf einer weißen Kachel (`.logo-kachel` in
- * global.css): in der dunklen Menüleiste wie auf dem Startbildschirm. Die
+ * eines, dazu das Logo der Startseite und das Symbol `Logo.png`). Gezeichnet
+ * sind sie für hellen Grund – dunkle Schrift, Dreieck in Blau und Grau. Für
+ * das dunkle Schema gibt es je Logo die Fassung `…_dunkel.png`: Schrift und
+ * Grau in Weiß, der blaue Teil des Dreiecks mit feinem weißem Rand
+ * (`werkzeuge/logos_dunkel.py` erzeugt sie aus dem Logo). Beide stehen ohne
+ * Fläche dahinter; welche zu sehen ist, entscheidet das Farbschema
+ * (`.kaplan-logo-hell`/`.kaplan-logo-dunkel` in global.css). Die
  * Wortmarke Mailänder Consult stammt aus der Originaldatei
  * `public/mailaender-consult.svg` und wird nur über die Höhe skaliert.
  */
@@ -34,7 +37,7 @@ const KAPLAN_TEXT: Record<KaPlanLogo, string> = {
  * dem Namen des Bereichs. Skaliert wird über die Breite oder die Höhe, das
  * Seitenverhältnis bleibt unverändert. Das Logo der Startseite trägt unter
  * dem Schriftzug keine Zeile; sein leerer unterer Teil wird beschnitten
- * (`.logo-ohne-zeile`), damit es mittig in seiner Kachel steht.
+ * (`.logo-ohne-zeile`).
  */
 export function KaPlanLogo({
   variante,
@@ -45,12 +48,23 @@ export function KaPlanLogo({
   width?: number | string;
   height?: number;
 }) {
+  // Kein `display` im Stil: Welche der beiden Dateien zu sehen ist, schaltet global.css am Farbschema
+  const stil = { width: width ?? 'auto', height: height ?? 'auto' };
   const bild = (
-    <img
-      src={`${import.meta.env.BASE_URL}logos/Logo_${variante}.png`}
-      alt={KAPLAN_TEXT[variante]}
-      style={{ display: 'block', width: width ?? 'auto', height: height ?? 'auto', maxWidth: '100%' }}
-    />
+    <>
+      <img
+        className="kaplan-logo-hell"
+        src={`${import.meta.env.BASE_URL}logos/Logo_${variante}.png`}
+        alt={KAPLAN_TEXT[variante]}
+        style={stil}
+      />
+      <img
+        className="kaplan-logo-dunkel"
+        src={`${import.meta.env.BASE_URL}logos/Logo_${variante}_dunkel.png`}
+        alt={KAPLAN_TEXT[variante]}
+        style={stil}
+      />
+    </>
   );
   return variante === 'Startseite' ? <span className="logo-ohne-zeile">{bild}</span> : bild;
 }

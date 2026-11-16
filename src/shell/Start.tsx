@@ -20,7 +20,7 @@ export function Start() {
     <div className="start">
       <div className="mx-auto flex min-h-full w-full max-w-[1120px] flex-col px-4 py-5 sm:px-8 sm:py-7">
         <header className="flex items-center justify-between gap-3">
-          <h1 className="logo-kachel w-[190px] shadow-karte">
+          <h1 className="w-[190px]">
             <KaPlanLogo variante="Startseite" width="100%" />
           </h1>
           <div className="logo-hell hidden sm:block">

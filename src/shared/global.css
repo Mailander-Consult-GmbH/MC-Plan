@@ -3,10 +3,11 @@
 /* ------------------------------------------------------------------ */
 /*
  * Vorlage ist KoralleDashboard.jsx (Wurzelverzeichnis): heller Seitengrund,
- * weiße Karten mit großer Rundung und weichem Schatten, dunkle Menüleiste,
- * Tinte (fast Schwarz) für Betonung, Schrift Outfit. Abweichend von der
- * Vorlage ist die Markenfarbe nicht Koralle, sondern das Blau von Mailänder
- * Consult (--marke), und das Rot der Ampel ein eigenes Rot.
+ * weiße Karten mit großer Rundung und weichem Schatten, Tinte (fast Schwarz)
+ * für Betonung, Schrift Outfit. Abweichend von der Vorlage ist die
+ * Markenfarbe nicht Koralle, sondern das Blau von Mailänder Consult
+ * (--marke), das Rot der Ampel ein eigenes Rot, und die Menüleiste ist nur im
+ * dunklen Schema dunkel – im hellen ist sie hell.
  * Die Regeln dazu stehen in CLAUDE.md, Abschnitt „Designregeln“.
  *
  * Tailwind durchsucht nur src/ – die Vorlage selbst gehört nicht zum Programm.
@@ -81,8 +82,8 @@
   --fill-gruppe: #f7f7f8;
   --bg-hover: rgba(27, 28, 32, 0.045);
   --bg-active: rgba(27, 28, 32, 0.08);
-  /* Menüleiste: in beiden Schemata dunkel */
-  --bg-sidebar: #17181b;
+  /* Menüleiste: im hellen Schema weiß, im dunklen dunkel (siehe unten) */
+  --bg-sidebar: #ffffff;
 
   /* Schrift */
   --text: #1b1c20;
@@ -105,7 +106,9 @@
   --marke-2: #4a7ab8;
   --marke-soft: #e8eef6;
   --marke-text: #24456e;
-  --marke-glanz: rgba(63, 115, 184, 0.45);
+  --marke-glanz: rgba(36, 69, 110, 0.3);
+  /* Fläche des aktiven Menüpunkts (weiße Schrift) */
+  --nav-aktiv: linear-gradient(135deg, #24456e, #3a6aa6);
   /* Fläche in der Markenfarbe mit weißer Schrift (Ergebnis des Terminrechners) – in beiden
      Schemata gleich, damit die Schrift lesbar bleibt */
   --marke-verlauf: linear-gradient(150deg, #4a7ab8, #24456e);
@@ -185,7 +188,10 @@
   --accent-soft: rgba(255, 255, 255, 0.09);
   --auf-accent: #1b1c20;
 
+  --bg-sidebar: #17181b;
   /* Das dunkle Blau trägt auf dunklem Grund nicht – hier eine hellere Stufe */
+  --marke-glanz: rgba(63, 115, 184, 0.45);
+  --nav-aktiv: linear-gradient(135deg, #2f5d9a, #4a7ab8);
   --marke: #4f86cc;
   --marke-2: #7eaae4;
   --marke-soft: rgba(79, 134, 204, 0.2);
@@ -287,24 +293,13 @@
 }
 
 /*
- * Dunkle Menüleiste der Vorlage. Sie setzt die Tokens für ihren Inhalt auf die
- * dunklen Werte – Knöpfe, Trennlinien und Texte in ihr brauchen damit keine
- * eigenen Regeln.
+ * Menüleiste: im hellen Schema weiß, im dunklen dunkel wie in der Vorlage
+ * (--bg-sidebar). Ihr Inhalt nimmt die Tokens des Schemas – eigene Werte
+ * braucht sie nicht.
  */
 .sidebar {
-  --text: #f2f2f4;
-  --text-secondary: #a6a8af;
-  --text-tertiary: #8e9097;
-  --separator: #2c2d33;
-  --separator-strong: #3a3b42;
-  --bg-elev: #232429;
-  --bg-subtle: #1f2024;
-  --bg-hover: rgba(255, 255, 255, 0.07);
-  --gray-soft: rgba(255, 255, 255, 0.1);
-  --accent: #f2f2f4;
-  --auf-accent: #1b1c20;
-
   background: var(--bg-sidebar);
+  border-right: 1px solid var(--separator);
   color: var(--text-secondary);
   display: flex;
   flex-direction: column;
@@ -314,36 +309,32 @@
 }
 
 .sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: block;
   width: 100%;
-  margin-bottom: 14px;
-  padding: 2px 6px;
+  margin-bottom: 12px;
+  padding: 4px 10px 6px;
   border: none;
   background: none;
   font: inherit;
   color: inherit;
   text-align: left;
+  line-height: 0;
   cursor: pointer;
   border-radius: var(--rund);
 }
-.sidebar-brand:hover { opacity: 0.9; }
+.sidebar-brand:hover { opacity: 0.88; }
 
 /*
- * Logos von KaPlan (KaPlanLogo, src/shared/logos.tsx): Die Dateien unter
- * public/logos/ sind für hellen Grund gezeichnet (dunkle Schrift, Dreieck in
- * Blau und Grau). Sie stehen deshalb stets auf einer weißen Kachel – in der
- * dunklen Menüleiste wie auf dem Startbildschirm, auch im dunklen Schema.
+ * Logos von KaPlan (KaPlanLogo, src/shared/logos.tsx) – ohne Fläche dahinter,
+ * je Farbschema eine eigene Datei unter public/logos/: im hellen das Logo wie
+ * gezeichnet (dunkle Schrift, Dreieck in Blau und Grau), im dunklen die
+ * Fassung „…_dunkel“ (Schrift und Grau in Weiß, der blaue Teil des Dreiecks
+ * mit feinem weißem Rand; erzeugt mit werkzeuge/logos_dunkel.py).
  */
-.logo-kachel {
-  display: block;
-  background: #fff;
-  border-radius: var(--rund-l);
-  padding: 12px 14px 10px;
-  line-height: 0;
-}
-.sidebar-brand.logo-kachel { margin-bottom: 14px; }
+.kaplan-logo-hell, .kaplan-logo-dunkel { display: block; max-width: 100%; }
+.kaplan-logo-dunkel { display: none; }
+:root[data-farbschema='dunkel'] .kaplan-logo-hell { display: none; }
+:root[data-farbschema='dunkel'] .kaplan-logo-dunkel { display: block; }
 /* Das Logo des Startbildschirms trägt unter dem Schriftzug keine Zeile – der leere Teil wird beschnitten */
 .logo-ohne-zeile { display: block; overflow: hidden; aspect-ratio: 960 / 262; }
 
@@ -371,15 +362,15 @@
   color: var(--text-secondary);
   transition: color 0.15s ease, background 0.15s ease;
 }
-.nav-item:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
-.nav-item.active { color: #fff; font-weight: 500; background: none; }
+.nav-item:hover { color: var(--text); background: var(--bg-hover); }
+.nav-item.active, .nav-item.active:hover { color: #fff; font-weight: 500; background: none; }
 /* Fläche des aktiven Punkts: gleitet beim Wechsel zum neuen (NavAktiv, src/shared/bewegung.tsx) */
 .nav-aktiv {
   position: absolute;
   inset: 0;
   border-radius: var(--rund);
-  /* etwas heller als die Markenfarbe, damit sich die Fläche von der dunklen Leiste abhebt */
-  background: linear-gradient(135deg, #2f5d9a, #4a7ab8);
+  /* im dunklen Schema etwas heller als die Markenfarbe, damit sich die Fläche von der Leiste abhebt */
+  background: var(--nav-aktiv);
   box-shadow: 0 6px 18px var(--marke-glanz);
 }
 .nav-item > :not(.nav-aktiv) { position: relative; }
@@ -395,8 +386,8 @@
   font-weight: 600;
   padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--text);
+  background: var(--gray-soft);
+  color: var(--text-secondary);
 }
 .nav-badge.alert { background: var(--red); color: #fff; }
 
@@ -924,14 +915,14 @@
   padding: 8px 10px;
   border: 1px solid var(--separator);
   border-radius: var(--rund-l);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-subtle);
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
   font-size: 12.5px;
   transition: background 0.15s ease;
 }
-.bearbeiter:hover { background: rgba(255, 255, 255, 0.09); }
+.bearbeiter:hover { background: var(--bg-active); }
 .bearbeiter strong { display: block; font-size: 13px; font-weight: 500; color: var(--text); }
 /* Initialen im Verlauf wie das Kürzel oben rechts in der Vorlage */
 .bearbeiter .avatar { background: var(--avatar-verlauf); color: #fff; }
@@ -1440,7 +1431,6 @@
 :root[data-farbmodus='kontrast'] .chain-node.done { border-color: var(--green); }
 :root[data-farbmodus='kontrast'] .progress { background: var(--separator); }
 :root[data-farbmodus='kontrast'] .stern.aktiv { color: var(--text); }
-:root[data-farbmodus='kontrast'] .sidebar { --text-secondary: #d3d5db; --text-tertiary: #b6b8c0; --separator-strong: #6c6e78; }
 :root[data-farbmodus='kontrast'] .input,
 :root[data-farbmodus='kontrast'] .select,
 :root[data-farbmodus='kontrast'] .textarea,
