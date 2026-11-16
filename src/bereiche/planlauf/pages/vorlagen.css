@@ -6,10 +6,6 @@
  * Präfix vl-, nur Design-Tokens. Bausteine und Knöpfe: shared/bausteinEditor.css.
  */
 
-/* Anriss in der Liste: eine Zeile, Bausteine bleiben ganz */
-.vl-anriss { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
-.vl-anriss .bst-baustein { font-size: 0.9em; padding: 0 6px; }
-
 .modal.vl-dialog { width: min(1180px, 100%); }
 
 .vl-editor {

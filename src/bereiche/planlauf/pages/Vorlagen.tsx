@@ -40,7 +40,6 @@ import {
 import { Icon } from '../../../shared/icons';
 import {
   BausteinEditor,
-  BausteinText,
   type BausteinEditorGriff,
   type BausteinTon,
   type BausteinVerzeichnis,
@@ -123,12 +122,6 @@ export function Vorlagen() {
                     <div className="row wrap" style={{ gap: 8 }}>
                       <strong>{t.name}</strong>
                       <AnlassBadge anlass={t.anlass} />
-                    </div>
-                    <div className="small vl-anriss">
-                      <BausteinText text={t.betreff} bausteine={BAUSTEINE} />
-                    </div>
-                    <div className="small tertiary vl-anriss">
-                      <BausteinText text={t.text.replace(/\s*\n\s*/g, ' ').slice(0, 160).replace(/\{\{[\w.\s]*\}?$/, '')} bausteine={BAUSTEINE} />
                     </div>
                   </div>
                   <button
