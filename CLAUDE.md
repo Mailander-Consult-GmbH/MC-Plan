@@ -248,8 +248,10 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   braucht einen Eintrag in `BereichId`/`BEREICHE`
   (`src/shell/bereiche.ts`) und in `src/shell/Shell.tsx`; führt er Projekte, zusätzlich einen in
   `ProjektBereich`/`PROJEKT_BEREICHE` (`src/gemeinsam/register.ts`), ein `domain/register.ts`,
-  `useRegisterAbgleich` im Store und `RegisterHinweis` in seiner `App.tsx`. Die Startseite zeigt
-  je Bereich eine Karte – ab 768 px dreispaltig, darunter untereinander (Tailwind-Utilities in
+  `useRegisterAbgleich` im Store und `RegisterHinweis` in seiner `App.tsx`. Die Startseite begrüßt
+  nach der Tageszeit mit dem Vornamen aus „Angemeldet als“ (`gruss` in `src/shell/Start.tsx`,
+  `vornameVon` in `src/gemeinsam/benutzer.ts` – leer beim Vorgabenamen, dann steht der Gruß
+  allein) und zeigt je Bereich eine Karte – ab 768 px dreispaltig, darunter untereinander (Tailwind-Utilities in
   `src/shell/Start.tsx`; in `global.css` steht nur der Scrollrahmen `.start`). In jeder `App.tsx`
   ist die Seitenleiste ein `motion.aside` mit `layoutScroll`, der aktive Menüpunkt trägt `NavAktiv`,
   und die Ansichten stehen in `Einblenden` (Schlüssel `route.view`). Links in der Kopfzeile steht
