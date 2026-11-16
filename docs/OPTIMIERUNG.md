@@ -19,8 +19,14 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 >   Schrift Outfit.
 > * **Abschnitt 10** (unbenutzte Klassen in `global.css`): Die Klassen des Startbildschirms
 >   (`.start-kacheln`, `.bereich-kachel…`) sind entfallen, er ist mit Tailwind-Utilities gebaut.
-> * **Neu unter „Angemeldet als“:** das Farbschema (hell, dunkel, wie das Gerät) – wie Name und
->   Farbmodus für alle Bereiche, aber ohne Spiegel in deren Beständen.
+> * **Neu unter „Angemeldet als“:** das Farbschema (automatisch, hell, dunkel) – wie der Name
+>   für alle Bereiche, aber ohne Spiegel in deren Beständen.
+> * **Entfernt:** der Farbmodus für eine Rot-Grün-Sehschwäche („kontrast“) samt seinem Spiegel in
+>   den Beständen der Bereiche. Wo unten vom Farbmodus die Rede ist, gilt das für den Stand der
+>   Durchsicht.
+> * **Seitenleiste:** jetzt eine Karte wie die Kacheln und über einen Knopf in der Kopfzeile
+>   einklappbar (`src/shared/seitenleiste.tsx`) – der Knopf und der Zustand sind gemeinsam, die
+>   Leiste selbst steht weiter dreimal im Code (R-1).
 > * **Markenfarbe und Logos:** Akzent ist wieder das Blau von Mailänder Consult (statt der Koralle
 >   der Vorlage), gezeigt werden die Logos von KaPlan ohne Fläche dahinter – im dunklen Schema in
 >   einer eigenen, weißen Fassung (`werkzeuge/logos_dunkel.py`); das Rot der Ampel ist ein eigenes
@@ -306,8 +312,8 @@ bestätigen oder anders entscheiden.
   Plätze für Fuß und Hinweise) samt `NavItem`, `NichtGefunden` und den Sicherungsknöpfen. In den
   Bereichen bleiben die Menüdefinition und die Zuordnung Adresse → Seite. In zwei Schritten: erst
   die kleinen Bausteine, dann der ganze Rahmen.
-* **Risiko:** gering bis mittel – nachzuprüfen sind 400 px Breite, Farbmodus „kontrast“ und die
-  Fokus-Rückgabe der Dialoge.
+* **Risiko:** gering bis mittel – nachzuprüfen sind 400 px Breite, das dunkle Schema, die eingeklappte
+  Seitenleiste und die Fokus-Rückgabe der Dialoge.
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
 
 ### R-2 · Warnung „… wird nichts gespeichert“: gleicher Text, andere Stelle, anderes Aussehen
@@ -366,7 +372,7 @@ bestätigen oder anders entscheiden.
 ### R-7 · Laden, Speichern und Herunterladen stehen dreimal fast gleich im Code
 * **Art:** Code-Doppelung · **Aufwand:** mittel · **Nutzen:** mittel
 * **Heute:** Je Bereich rund 70 gleiche Zeilen in `store/storage.ts` (Zustände, Speichern mit
-  Nachräumen, Rohkopien, Download); der Typ `Farbmodus` ist viermal definiert.
+  Nachräumen, Rohkopien, Download).
 * **Vorschlag:** die fachfreien Teile nach `src/shared/speicher.ts`; in den Bereichen bleiben
   Schlüssel, Gültigkeitsprüfung und Umstellung alter Fassungen.
 * **Risiko:** Speichern ist die empfindlichste Stelle – Verhalten nicht ändern, alle Fehlerlagen
@@ -650,8 +656,7 @@ bestätigen oder anders entscheiden.
   Planlaufmanagements ist die endgültige Bestätigung nur rote Schrift (sieht aus wie ein
   Nebenknopf), derselbe Dialog der Projektsteuerung ist rot gefüllt. Die fest eingetragene Farbe
   überschreibt außerdem den Hover-Zustand.
-* **Vorschlag:** eine Klasse für „rot gefüllt“ in `src/shared/global.css` (mit Hover und
-  Kontrast-Variante); Regel: Auslöser = rote Schrift, Bestätigung = rot gefüllt.
+* **Vorschlag:** eine Klasse für „rot gefüllt“ in `src/shared/global.css` (mit Hover); Regel: Auslöser = rote Schrift, Bestätigung = rot gefüllt.
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
 
 ### M-6 · „Lässt sich nicht löschen“ wird auf drei Arten gesagt
@@ -793,7 +798,7 @@ Aktionen, Anlegen-Dialoge, Einstellungsseiten) und in den CSS-Dateien.
 ### O-5 · Projektsteuerung: fest eingetragene Farben und eigene Klassen für Vorhandenes
 * **Art:** Optik · **Aufwand:** klein · **Nutzen:** niedrig
 * **Heute:** Nur `projektsteuerung.css` trägt feste Farbwerte (sieben Stellen) statt der
-  gemeinsamen Design-Tokens – im Farbmodus „kontrast“ bleiben sie unverändert. Den kleinen
+  gemeinsamen Design-Tokens – im dunklen Schema bleiben sie unverändert. Den kleinen
   Verknüpfungsknopf gibt es dreimal (global, Planlaufmanagement, Projektsteuerung) mit je anderer
   Größe und Unterstreichung; Ankreuzfelder sind in der Projektsteuerung 1 px größer.
 * **Vorschlag:** Tokens statt fester Werte, eine Klasse für den Verknüpfungsknopf, Ankreuzfelder
@@ -954,7 +959,7 @@ Ampelpunkt und -marke unter U-1 und U-10, der Haken-Knopf unter O-2.
   gleichnamigen Funktionen gebildet, die Verschiedenes liefern („Bau-Überwachung“: „BAU“ gegen
   „BÜ“) – legt der Abgleich dieselbe Funktion in beiden Bereichen neu an, trägt sie verschiedene
   Kürzel. Der Anzeigename einer Person ohne Namen ist im Register die Firma, in der
-  Projektsteuerung leer. Grundtypen (Kennung, Datum, Farbmodus) sind bis zu viermal definiert.
+  Projektsteuerung leer. Grundtypen (Kennung, Datum) sind bis zu viermal definiert.
 * **Vorschlag:** je eine Fassung in `src/gemeinsam/` bzw. `src/shared/`.
 * **Entscheidung:** ☐ umsetzen · ☐ später · ☐ nicht umsetzen
 
