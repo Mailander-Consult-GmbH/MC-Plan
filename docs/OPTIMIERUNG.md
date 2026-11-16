@@ -24,8 +24,8 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 > * **Entfernt:** der Farbmodus für eine Rot-Grün-Sehschwäche („kontrast“) samt seinem Spiegel in
 >   den Beständen der Bereiche. Wo unten vom Farbmodus die Rede ist, gilt das für den Stand der
 >   Durchsicht.
-> * **Seitenleiste:** jetzt eine Karte wie die Kacheln und über einen Knopf in der Kopfzeile
->   einklappbar (`src/shared/seitenleiste.tsx`) – der Knopf und der Zustand sind gemeinsam, die
+> * **Seitenleiste:** jetzt eine Karte wie die Kacheln und über einen Griff an ihrem rechten Rand
+>   einklappbar (`src/shared/seitenleiste.tsx`) – Griff und Zustand sind gemeinsam, die
 >   Leiste selbst steht weiter dreimal im Code (R-1).
 > * **Markenfarbe und Logos:** Akzent ist wieder das Blau von Mailänder Consult (statt der Koralle
 >   der Vorlage), gezeigt werden die Logos von KaPlan ohne Fläche dahinter – im dunklen Schema in

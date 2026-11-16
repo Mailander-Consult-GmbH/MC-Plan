@@ -188,8 +188,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   je Ansicht –, `.btn-ghost`, `.btn-outline`, `.btn-icon` (rund). Löschen: der Auslöser ist
   `.btn-danger` (rote Schrift), die Bestätigung `.btn-primary.btn-rot` (rot gefüllt) – nicht per
   Inline-Farbe.
-* **Seitenleiste:** eine Karte (`.sidebar`), einklappbar über `SeitenleisteKnopf` in der Kopfzeile
-  (`src/shared/seitenleiste.tsx`). Eingeklappt bleiben Symbole (Name im Tooltip, Zähler als Marke
+* **Seitenleiste:** eine Karte (`.sidebar`), einklappbar über `SeitenleisteGriff` – eine Lasche
+  mittig auf ihrem rechten Rand (`.leiste-griff`, `src/shared/seitenleiste.tsx`); der Knopf
+  „Menü“ in der Kopfzeile (`SeitenleisteKnopf`) erscheint nur in der schmalen Ansicht. Eingeklappt bleiben Symbole (Name im Tooltip, Zähler als Marke
   am Symbol), `KaPlanZeichen` (das Dreieck allein), die Initialen der angemeldeten Person und der
   Bereichswechsel; markierte Projekte, Sicherungsknöpfe und Texte entfallen.
 * `.tabs` sind Pillen, die gewählte dunkel; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
@@ -243,7 +244,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   `src/shell/Start.tsx`; in `global.css` steht nur der Scrollrahmen `.start`). In jeder `App.tsx`
   ist die Seitenleiste ein `motion.aside` mit `layoutScroll`, der aktive Menüpunkt trägt `NavAktiv`,
   und die Ansichten stehen in `Einblenden` (Schlüssel `route.view`). Links in der Kopfzeile steht
-  `SeitenleisteKnopf`; die Klassen `leiste-zu` (an `.app`) und `eingeklappt` (an `.sidebar`)
+  `SeitenleisteKnopf` (nur schmal sichtbar), nach der Leiste `SeitenleisteGriff`; die Klassen `leiste-zu` (an `.app`) und `eingeklappt` (an `.sidebar`)
   setzt jede `App.tsx` aus `useSeitenleiste()`.
   Das **Farbschema** setzt allein `src/shell/Shell.tsx` – aus `useBenutzer()` in einem
   Layout-Effekt, also vor dem ersten Zeichnen (`document.documentElement.dataset.farbschema`,
@@ -322,12 +323,13 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   (`menue.tsx`: Portal, bleibt im Fenster, Tastatur; eigene Menüs werden von `.card`/`.table-scroll`
   abgeschnitten); `tabellen.ts` (`tabellenBreiteBeobachten`, in `main.tsx`) lässt überbreite
   Tabellen quer scrollen (`table-scroll-quer`); `scrollen.ts` (`useNachObenBeiSeitenwechsel`)
-  hängt am `.content` jedes Bereichs; `seitenleiste.tsx` (`useSeitenleiste`, `SeitenleisteKnopf`)
+  hängt am `.content` jedes Bereichs; `seitenleiste.tsx` (`useSeitenleiste`, `SeitenleisteKnopf`, `SeitenleisteGriff`)
   hält in jeder `App.tsx` die Seitenleiste: in der schmalen Ansicht (bis 860 px) liegt sie über
   dem Inhalt und schließt bei jedem Seitenwechsel (`hashchange`), in der breiten lässt sie sich
   auf eine Leiste mit Symbolen einklappen – der Zustand gehört zum Gerät (Schlüssel
-  `kaplan-seitenleiste.v1`), nicht in den Bestand eines Bereichs. Ein Knopf in der Kopfzeile
-  bedient beides. Was eingeklappt entfällt, regelt allein `global.css` (`.sidebar.eingeklappt`);
+  `kaplan-seitenleiste.v1`), nicht in den Bestand eines Bereichs. Schmal öffnet sie der
+  Knopf „Menü“ in der Kopfzeile, breit klappt sie der Griff an ihrem rechten Rand ein und aus
+  (er steht neben der Leiste in `.app`, weil ihr Scrollbereich ihn abschnitte). Was eingeklappt entfällt, regelt allein `global.css` (`.sidebar.eingeklappt`);
   ein neues Element der Leiste braucht dort eine Zeile, wenn es Text zeigt. Dialoge immer über `Modal` (`ui.tsx`: Fokus beim Öffnen,
   Tab bleibt im Dialog, Escape schließt nur den obersten, Fokus zurück an den Öffner; wo ein Klick
   daneben nicht schließen soll, `klickDanebenSchliesst={false}`, kein eigenes Overlay); Elemente,

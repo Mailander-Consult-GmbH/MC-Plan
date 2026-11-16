@@ -377,17 +377,18 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   eine Größe hat. Eine neue Seite beginnt oben
   (`useNachObenBeiSeitenwechsel` in `src/shared/scrollen.ts`, am Inhaltsbereich jedes
   Bereichs; ein Reiterwechsel scrollt nicht). Dialoge sind auf `100dvh` begrenzt.
-* **Seitenleiste** (alle Bereiche; `useSeitenleiste` und `SeitenleisteKnopf` in
+* **Seitenleiste** (alle Bereiche; `useSeitenleiste`, `SeitenleisteGriff` und `SeitenleisteKnopf` in
   `src/shared/seitenleiste.tsx`): eine Karte wie die Kacheln des Inhalts (`.sidebar` in
-  `src/shared/global.css`). Der Knopf links in der Kopfzeile (`.menu-toggle`) bedient sie.
-  *Breite Ansicht:* Er heißt „Seitenleiste einklappen“ bzw. „Seitenleiste ausklappen“ und setzt
+  `src/shared/global.css`).
+  *Breite Ansicht:* Der Griff mittig auf ihrem rechten Rand (`.leiste-griff`) heißt
+  „Seitenleiste einklappen“ bzw. „Seitenleiste ausklappen“ und setzt
   `.sidebar.eingeklappt` und `.app.leiste-zu`; eingeklappt bleiben die Symbole der Menüpunkte
   (Name im Tooltip), `KaPlanZeichen` aus `src/shared/logos.tsx`, die Initialen der angemeldeten
   Person und der Bereichswechsel – die markierten Projekte (`.nav-projekte`), die Knöpfe der
   Sicherung und die Texte entfallen. Der Zustand liegt unter dem Schlüssel
   `kaplan-seitenleiste.v1` im `localStorage` und gilt in allen Bereichen.
-  *Schmale Ansicht* (bis 860 px): Der Knopf heißt „Menü“ und klappt die Leiste über dem Inhalt
-  auf (`.sidebar.open`). Sie schließt bei jedem
+  *Schmale Ansicht* (bis 860 px): Der Griff entfällt; der Knopf „Menü“ links in der Kopfzeile
+  (`.menu-toggle`) klappt die Leiste über dem Inhalt auf (`.sidebar.open`). Sie schließt bei jedem
   Seitenwechsel – auch bei einem, der nicht aus ihr kommt, etwa per Zurück im Browser
   (hört auf `hashchange`) – und bei einem
   Klick auf den abgedunkelten Hintergrund.

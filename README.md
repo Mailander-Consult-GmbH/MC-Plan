@@ -211,15 +211,15 @@ bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (
 aus dem Netz geladen – ein unter gleichem Namen ausgetauschtes Logo erscheint also sofort. Der Service Worker ist nur im Produktionsbuild aktiv, in der Entwicklung
 stört er also nicht.
 
-Die **Seitenleiste** jedes Bereichs ist eine Karte wie die Kacheln des Inhalts. Der Knopf links in
-der Kopfzeile klappt sie ein: Es bleibt eine schmale Leiste mit den Symbolen der Menüpunkte (der
+Die **Seitenleiste** jedes Bereichs ist eine Karte wie die Kacheln des Inhalts. Der Griff mittig auf
+ihrem rechten Rand klappt sie ein und wieder aus: Es bleibt eine schmale Leiste mit den Symbolen der Menüpunkte (der
 Name steht im Tooltip, Zähler als kleine Marke am Symbol), dem Dreieck von KaPlan, den Initialen
 der angemeldeten Person und dem Bereichswechsel; die markierten Projekte, die Knöpfe der Sicherung
 und die Texte stehen nur in der ausgeklappten Leiste. Ob sie eingeklappt ist, merkt sich der
 Browser (Schlüssel `kaplan-seitenleiste.v1`) – für alle Bereiche.
 
 Die Oberfläche ist durchgehend responsiv: Bis etwa 860 px liegt die Seitenleiste als Menü über dem
-Inhalt – derselbe Knopf öffnet sie –, und sie schließt bei jedem Seitenwechsel, auch bei *Zurück*
+Inhalt – der Knopf „Menü“ links in der Kopfzeile öffnet sie –, und sie schließt bei jedem Seitenwechsel, auch bei *Zurück*
 im Browser oder per Zurück-Geste (`useSeitenleiste` in `src/shared/seitenleiste.tsx`); auf Telefonbreite stehen die Kennzahlen
 zweispaltig, Tabellen scrollen quer bzw. werden – wie die Fristenliste – zu gestapelten Karten,
 damit die Schaltflächen erreichbar bleiben. Ab Tabletbreite
@@ -1632,7 +1632,7 @@ src/
     tabellen.ts  Breite Tabellen scrollen quer (tabellenBreiteBeobachten, Klasse table-scroll-quer)
     scrollen.ts  Eine neue Seite beginnt oben (useNachObenBeiSeitenwechsel)
     seitenleiste.tsx  Seitenleiste: schmal ein Menü, das bei jedem Seitenwechsel schließt, breit
-                 einklappbar (useSeitenleiste, SeitenleisteKnopf)
+                 einklappbar (useSeitenleiste, SeitenleisteKnopf, SeitenleisteGriff)
     speicher.ts  Rohkopien im localStorage: anlegen vor dem Einspielen, bei vollem Speicher
                  einzeln räumen (nachRaeumenSpeichern)
     dates.ts     Fristen- und Datumsrechnung
