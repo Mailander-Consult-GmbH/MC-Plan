@@ -115,7 +115,7 @@
   height: 30px;
   border-radius: var(--rund);
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--marke-text);
 }
 .wf-typ-zeichen.entscheidung { background: var(--purple-soft); color: var(--purple); }
 
@@ -261,7 +261,7 @@
 }
 .wf-verbinder:hover .wf-einfuegen,
 .wf-einfuegen:focus-visible { opacity: 1; transform: none; }
-.wf-einfuegen:hover { background: var(--accent); border-color: var(--accent); color: var(--bg-elev); }
+.wf-einfuegen:hover { background: var(--accent); border-color: var(--accent); color: var(--auf-accent); }
 @media (hover: none) {
   .wf-einfuegen { opacity: 0.85; transform: none; }
 }
@@ -284,7 +284,7 @@
   border: 1px solid var(--separator-strong);
   color: var(--text-secondary);
 }
-.wf-antwort.standard { color: var(--accent); border-color: var(--accent-soft); background: var(--bg-elev); }
+.wf-antwort.standard { color: var(--marke-text); border-color: var(--accent-soft); background: var(--bg-elev); }
 .wf-antwort.abw { color: var(--orange-text); border-color: var(--orange); }
 .wf-antwort.rueck { color: var(--purple); border-color: var(--purple); }
 .wf-antwort.aktiv { box-shadow: 0 0 0 2px var(--accent-soft); }
@@ -365,7 +365,7 @@
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--marke-text);
 }
 .wf-zweige { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--separator); padding-top: 6px; }
 .wf-zweig { font-size: 11.5px; color: var(--orange-text); }

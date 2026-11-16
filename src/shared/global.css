@@ -88,10 +88,11 @@
   --separator: #ececef;
   --separator-strong: #dddde2;
 
-  /* Betonung: Tinte – Hauptknopf, gewählte Reiter und Segmente, aktueller Schritt */
-  --accent: #1b1c20;
-  --accent-hover: #2e3037;
-  --accent-soft: rgba(27, 28, 32, 0.07);
+  /* Betonung: das Blau von Mailänder Consult, wie der aktive Menüpunkt – Hauptknopf, gewählte
+     Reiter und Segmente, aktueller Schritt. `--accent` ist der Ton für Rahmen, Punkte und
+     Kästchen; Flächen mit Schrift nehmen den Verlauf `--accent-verlauf`. */
+  --accent: #24456e;
+  --accent-soft: rgba(36, 69, 110, 0.1);
   --auf-accent: #ffffff;
 
   /* Marke: das Blau von Mailänder Consult – aktiver Menüpunkt, Fortschritt, Symbolflächen,
@@ -112,8 +113,10 @@
   --signal-verlauf: linear-gradient(150deg, #f0787c, #e0444a);
   --avatar-verlauf: linear-gradient(135deg, #5b8fd1, #24456e);
   --link: var(--marke-text);
-  /* Fokus in Tinte wie die übrige Betonung (Hauptknopf, gewählter Reiter) */
-  --fokus: var(--accent);
+  /* Fläche der Betonung – derselbe Verlauf wie der aktive Menüpunkt (weiße Schrift) */
+  --accent-verlauf: var(--nav-aktiv);
+  /* Fokus in der Markenfarbe wie die übrige Betonung (Hauptknopf, gewählter Reiter) */
+  --fokus: var(--marke);
 
   /* Ampel und Kennzeichen */
   --green: #1f9d61;
@@ -180,10 +183,10 @@
   --separator: #2c2d33;
   --separator-strong: #3c3d45;
 
-  --accent: #f2f2f4;
-  --accent-hover: #ffffff;
-  --accent-soft: rgba(255, 255, 255, 0.09);
-  --auf-accent: #1b1c20;
+  /* Betonung: eine Stufe heller als im hellen Schema – mitten im Verlauf des aktiven Menüpunkts */
+  --accent: #3d6cab;
+  --accent-soft: rgba(79, 134, 204, 0.22);
+  --auf-accent: #ffffff;
 
   /* Das dunkle Blau trägt auf dunklem Grund nicht – hier eine hellere Stufe */
   --marke-glanz: rgba(63, 115, 184, 0.45);
@@ -270,7 +273,7 @@
     accent-color: var(--accent);
   }
 
-  /* Tastaturfokus überall gleich: ein Rahmen in Tinte (--fokus) */
+  /* Tastaturfokus überall gleich: ein Rahmen in der Markenfarbe (--fokus) */
   :focus-visible {
     outline: 2px solid var(--fokus);
     outline-offset: 2px;
@@ -639,9 +642,9 @@
 .btn:active { transform: scale(0.97); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-/* Hauptknopf: dunkle Pille der Vorlage („Neue Aufgabe“) */
-.btn-primary { background: var(--accent); border-color: transparent; color: var(--auf-accent); }
-.btn-primary:hover { background: var(--accent-hover); border-color: transparent; transform: translateY(-1px); }
+/* Hauptknopf: Pille im Blau des aktiven Menüpunkts (in der Vorlage ist sie dunkel) */
+.btn-primary { background: var(--accent-verlauf); border-color: transparent; color: var(--auf-accent); }
+.btn-primary:hover { background: var(--accent-verlauf); border-color: transparent; filter: brightness(1.12); transform: translateY(-1px); }
 .btn-primary:active { transform: scale(0.97); }
 .btn-primary:disabled { transform: none; }
 
@@ -706,11 +709,11 @@
 }
 .segmented button:hover { color: var(--text); }
 .segmented button.active { color: var(--auf-accent); }
-/* Die dunkle Fläche gleitet zur neuen Wahl (Segmented in ui.tsx); von Hand gebaute
+/* Die blaue Fläche gleitet zur neuen Wahl (Segmented in ui.tsx); von Hand gebaute
    Segmente ohne sie färben den Knopf selbst */
-.segmented-aktiv { position: absolute; inset: 0; border-radius: 999px; background: var(--accent); }
+.segmented-aktiv { position: absolute; inset: 0; border-radius: 999px; background: var(--accent-verlauf); }
 .segmented-text { position: relative; }
-.segmented button.active:not(:has(.segmented-aktiv)) { background: var(--accent); }
+.segmented button.active:not(:has(.segmented-aktiv)) { background: var(--accent-verlauf); }
 
 /* ------------------------------------------------------------------ */
 /* Formulare                                                           */
@@ -1089,7 +1092,7 @@
 }
 .step-num.done { background: var(--green); color: #fff; }
 .step-num.late { background: var(--red); color: #fff; }
-.step-num.current { background: var(--accent); color: var(--auf-accent); }
+.step-num.current { background: var(--accent-verlauf); color: var(--auf-accent); }
 .step-line { flex: 1; width: 2px; background: var(--separator); border-radius: 2px; min-height: 6px; }
 .step-body { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .step-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -1233,10 +1236,11 @@
   display: flex; flex-direction: column; gap: 8px;
   width: max-content; max-width: min(640px, calc(100vw - 32px));
 }
-/* Dunkle Pille wie das Schild „Prognose“ der Vorlage */
+/* Dunkle Pille wie das Schild „Prognose“ der Vorlage – in Tinte, nicht im Blau der Betonung:
+   Eine Meldung ist keine Schaltfläche */
 .toast {
-  background: var(--accent);
-  color: var(--auf-accent);
+  background: var(--text);
+  color: var(--bg-elev);
   padding: 10px 20px;
   border-radius: 20px;
   font-size: 13px;
@@ -1291,7 +1295,7 @@
   transition: color 0.15s ease, background 0.15s ease;
 }
 .tabs button:not(.tab-plus):hover { color: var(--text); background: var(--bg-hover); }
-.tabs button.active:not(.tab-plus), .tabs button.active:not(.tab-plus):hover { color: var(--auf-accent); background: var(--accent); }
+.tabs button.active:not(.tab-plus), .tabs button.active:not(.tab-plus):hover { color: var(--auf-accent); background: var(--accent-verlauf); }
 
 .drop-zone {
   border: 1.5px dashed var(--separator-strong);
