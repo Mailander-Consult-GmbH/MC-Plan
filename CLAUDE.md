@@ -12,9 +12,11 @@ Funktionen: `README.md`; belegtes Inventar aller Routen, Aktionen und Meldungen:
 Optimierungspotenzial aus dem Vergleich der drei Bereiche: `docs/OPTIMIERUNG.md`.
 
 Die Oberfläche folgt dem **Koralle-Design** nach der Vorlage `KoralleDashboard.jsx` im
-Wurzelverzeichnis – gebaut mit Tailwind 4, Framer Motion und Lucide-Icons. Wie es anzuwenden ist,
-steht im Abschnitt [Designregeln](#designregeln-koralle-design); frühere Gestaltungsregeln
-(helles Apple-Erscheinungsbild, Hausfarbe Blau als Akzent) gelten nicht mehr.
+Wurzelverzeichnis – gebaut mit Tailwind 4, Framer Motion und Lucide-Icons. Abweichend von der
+Vorlage ist die **Markenfarbe das Blau von Mailänder Consult** (`#24456e`), nicht Koralle, und
+gezeigt werden die **Logos von KaPlan**. Wie das Design anzuwenden ist, steht im Abschnitt
+[Designregeln](#designregeln-koralle-design); die früheren Gestaltungsregeln (helles
+Apple-Erscheinungsbild) gelten nicht mehr.
 
 ## Nach jeder Änderung nachziehen
 
@@ -60,8 +62,16 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 
 Vorlage ist `KoralleDashboard.jsx` (Wurzelverzeichnis; nur Vorlage, nicht Teil des Builds). Im
 Zweifel gilt ihr Bild: heller Seitengrund, weiße Karten mit großer Rundung und weichem Schatten,
-dunkle Menüleiste, Koralle als Markenfarbe, Tinte (fast Schwarz) für Betonung, Schrift Outfit,
-weiche Bewegungen.
+dunkle Menüleiste, Tinte (fast Schwarz) für Betonung, Schrift Outfit, weiche Bewegungen.
+
+**Drei bewusste Abweichungen von der Vorlage** – sie gelten vor ihr:
+
+* **Markenfarbe ist Blau**, das Blau von Mailänder Consult (`--marke`, `#24456e`), nicht Koralle.
+  Wo die Vorlage Koralle als Akzent zeigt (aktiver Menüpunkt, Balken, Symbolflächen), steht Blau.
+* **Das Rot der Ampel ist ein eigenes, klares Rot** (`--red`, `#e5484d`) – in der Vorlage ist es
+  dieselbe Koralle wie der Akzent. Rot bedeutet nur „überfällig“, „fehlt“ und „löschen“.
+* **Logos von KaPlan** (`public/logos/`) statt einer gezeichneten Marke; weil sie für hellen
+  Grund gezeichnet sind, stehen sie auf einer weißen Kachel (`.logo-kachel`).
 
 ### Technik
 
@@ -104,22 +114,23 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
 | Schrift gedämpft (Beschriftungen) | `--text-tertiary` | `text-gedaempft` | `#8b8d94` | `#8b8d94` |
 | Linie | `--separator`, `--separator-strong` | `border-linie`, `border-linie-stark` | `#ececef`, `#dddde2` | `#2c2d33`, `#3c3d45` |
 | Betonung (Tinte) | `--accent`, darauf `--auf-accent` | `bg-betont`, `text-auf-betont` | `#1b1c20` / weiß | `#f2f2f4` / `#1b1c20` |
-| Marke (Koralle) | `--koralle`, `--koralle-2`, `--koralle-soft` | `bg-koralle`, `bg-koralle-hell`, `bg-koralle-zart` | `#f25f4c`, `#ff8a73`, `#ffebe7` | gleich, zart durchscheinend |
-| Koralle als Schrift | `--koralle-text`, `--link` | `text-koralle-text` | `#d9432f` | `#ff8a73` |
+| Marke (Blau) | `--marke`, `--marke-2`, `--marke-soft` | `bg-marke`, `bg-marke-hell`, `bg-marke-zart` | `#24456e`, `#4a7ab8`, `#e8eef6` | `#4f86cc`, `#7eaae4`, zart durchscheinend |
+| Marke als Schrift | `--marke-text`, `--link` | `text-marke-text` | `#24456e` | `#93bbee` |
 | Ampel Grün | `--green`, `--green-soft`, `--gruen-text` | `bg-gruen`, `bg-gruen-zart`, `text-gruen-text` | `#1f9d61`, `#e3f6ec` | aufgehellt |
 | Ampel Orange | `--orange`, `--orange-soft`, `--orange-text` | `bg-orange`, `bg-orange-zart`, `text-orange-text` | `#f2994a` | aufgehellt |
-| Ampel Rot (= Koralle) | `--red`, `--red-soft`, `--rot-text` | `bg-rot`, `bg-rot-zart`, `text-rot-text` | `#f25f4c`, `#ffebe7` | aufgehellt |
+| Ampel Rot | `--red`, `--red-soft`, `--rot-text` | `bg-rot`, `bg-rot-zart`, `text-rot-text` | `#e5484d`, `#fdecec` | aufgehellt |
 | Blau (laufend, im Plan, Hinweis) | `--blau`, `--blau-soft`, `--blau-text` | `bg-blau`, `bg-blau-zart`, `text-blau-text` | `#56ccf2` | gleich |
 | Violett (Entscheidung, Rücksprung) | `--purple`, `--purple-soft` | `bg-violett`, `bg-violett-zart` | `#9b51e0` | aufgehellt |
 
-* **Tinte betont, Koralle markiert.** Tinte (`--accent`): Hauptknopf, gewählter Reiter und
-  gewähltes Segment, aktueller Schritt, Tastaturfokus (`--fokus`), Kurzmeldung. Koralle: aktiver
-  Menüpunkt (mit Glanz `--koralle-glanz`), Fortschrittsbalken (Verlauf), runde Symbolflächen,
-  Verknüpfungen, aktive Sortier- und Filterzeichen – und als Rot der Ampel alles Überfällige und
-  Fehlende.
-* **Koralle nie für Fokus oder Auswahl:** Ein korallenroter Rahmen heißt „fehlt“ oder
-  „überfällig“.
-* **Farbe als Schrift** immer mit den Schrifttönen (`--koralle-text`, `--rot-text`,
+* **Tinte betont, Blau markiert.** Tinte (`--accent`): Hauptknopf, gewählter Reiter und
+  gewähltes Segment, aktueller Schritt, Tastaturfokus (`--fokus`), Kurzmeldung. Blau (`--marke`):
+  aktiver Menüpunkt (in der dunklen Leiste eine Stufe heller, mit Glanz `--marke-glanz`),
+  Fortschrittsbalken (Verlauf), runde Symbolflächen, Verknüpfungen, aktive Sortier- und
+  Filterzeichen. Flächen in der Markenfarbe mit weißer Schrift nehmen `--marke-verlauf` – er ist in
+  beiden Schemata gleich dunkel.
+* **Rot nur als Signal:** überfällig, fehlend, löschen (`--red`, `--rot-text`) – nie als Schmuck
+  und nie für Fokus oder Auswahl. Es ist bewusst klar vom Orange „fällig“ abgesetzt.
+* **Farbe als Schrift** immer mit den Schrifttönen (`--marke-text`, `--rot-text`,
   `--orange-text`, `--gruen-text`, `--blau-text`), nicht mit den Flächentönen – die sind auf Weiß
   zu blass.
 * **Helles und dunkles Schema:** Welches gilt, wählt die Person unter „Angemeldet als“
@@ -130,12 +141,12 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
   `:root[data-farbschema='dunkel']`; die Tailwind-Variante `dark:` ist daran gebunden
   (`@custom-variant dark` in `global.css`). Die Tokens schalten selbst um, `dark:` ist für
   Token-Farben nicht nötig. Kein festes `#fff`/`#000`: Schrift auf einer Farbfläche ist
-  `var(--auf-accent)` bzw. `var(--bg-elev)` (Ausnahme: Weiß auf Koralle und auf dem
-  Signalverlauf). Die Menüleiste ist in beiden Schemata dunkel und setzt die Tokens für ihren
+  `var(--auf-accent)` bzw. `var(--bg-elev)` (Ausnahmen: Weiß auf dem aktiven Menüpunkt und auf
+  den Verläufen `--marke-verlauf` und `--signal-verlauf`; die weiße Kachel der Logos). Die Menüleiste ist in beiden Schemata dunkel und setzt die Tokens für ihren
   Inhalt selbst (`.sidebar` in `global.css`).
 * **Farbmodus `kontrast`** (`:root[data-farbmodus='kontrast']`, in TSX die Variante `kontrast:`)
   ersetzt Grün/Orange/Rot durch Blaugrün/Bernstein/Magenta und verstärkt Schrift und Linien – in
-  beiden Schemata. Signale deshalb nur über die Ampel-Tokens, nie über `--koralle`.
+  beiden Schemata. Signale deshalb nur über die Ampel-Tokens, nie über feste Farben.
 * **Funktionsfarben** sind Daten der Nutzer: als `--chip-farbe` an `.role-chip` bzw. über `Avatar`
   übergeben – `global.css` hellt sie im dunklen Schema auf.
 
@@ -157,8 +168,9 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
   klein (12–12,5 px) und gedämpft, **keine Versalien**, keine Festbreitenschrift für Nummern
   (`.mono`, `.num` sind Outfit mit gleich breiten Ziffern). Im Seitenkopf steht die Unterzeile
   klein und gedämpft **über** dem Titel.
-* **Hervorhebung:** Eine Fläche im Korallenverlauf mit Ring (`--signal-verlauf`: `Stat` mit Ton
-  `red`, Ergebnis des Terminrechners) – höchstens eine je Ansicht.
+* **Hervorhebung:** Eine Fläche im Verlauf mit Ring – rot für Überfälliges (`--signal-verlauf`:
+  `Stat` mit Ton `red`), blau für ein Hauptergebnis (`--marke-verlauf`: Ergebnis des
+  Terminrechners) – höchstens eine je Ansicht.
 
 ### Bausteine
 
@@ -166,7 +178,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
 
 * `Card`/`CardHeader` (Kopf ohne Linie), `Stat` (Beschriftung klein oben, Wert groß darunter; die
   Töne zeigt ein Ampelpunkt, `red` die Verlaufskarte), `Progress`, `Badge`, `Avatar`, `Callout`
-  (Symbol aus dem `icon`-Zeichen: „i“, „!“, „✓“), `EmptyState` (Symbol in runder, koralle-zarter
+  (Symbol aus dem `icon`-Zeichen: „i“, „!“, „✓“), `EmptyState` (Symbol in runder, zart blauer
   Fläche), `Search` (Pille), `Segmented` (dunkle Fläche gleitet), `Modal`, `ConfirmDialog`.
 * **Knöpfe:** `.btn` weiße Pille mit feiner Linie, `.btn-primary` dunkle Pille – **ein** Hauptknopf
   je Ansicht –, `.btn-ghost`, `.btn-outline`, `.btn-icon` (rund). Löschen: der Auslöser ist
@@ -174,11 +186,13 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Inline-Farbe.
 * `.tabs` sind Pillen, die gewählte dunkel; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
   `purple`, `gelb`); Ampelpunkt `.dot`; Stern der Projektmarkierung `Icon name="stern"` in `.stern`.
-* **Marke:** `KaPlanMarke` (`src/shared/logos.tsx`) – Kachel im Korallenverlauf mit weißem
-  Dreieck, daneben Name und Bereich. Dasselbe Bild zeigen die App-Symbole
-  (`public/icons/kaplan-koralle-*.png`; ein geändertes Symbol bekommt neue Dateinamen, siehe
-  README, Abschnitt „Logos“). Die Wortmarke Mailänder Consult bleibt die Originaldatei; im
-  dunklen Schema erscheint sie weiß (`.topbar-logo`, `.logo-hell`).
+* **Logos:** `KaPlanLogo` (`src/shared/logos.tsx`) zeigt die Dateien unter `public/logos/` – auf
+  dem Startbildschirm ohne Zusatz, in den Bereichen mit deren Namen – immer auf der weißen Kachel
+  `.logo-kachel` (oben in der Menüleiste und oben links auf dem Startbildschirm, auch im dunklen
+  Schema). Die App-Symbole liegen unter `public/icons/` (`kaplan-dreieck-*`, `kaplan-app-*`; ein
+  geändertes Symbol bekommt neue Dateinamen, siehe README, Abschnitt „Logos“). Die Wortmarke
+  Mailänder Consult bleibt die Originaldatei; im dunklen Schema erscheint sie weiß
+  (`.topbar-logo`, `.logo-hell`).
 
 ### Bewegung
 

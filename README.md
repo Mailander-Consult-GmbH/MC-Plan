@@ -43,35 +43,40 @@ der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
 
 ## Logos
 
-In der Oberfläche erscheint KaPlan seit dem Koralle-Design als **Marke**: eine Kachel im
-Korallenverlauf mit dem Dreieck in Weiß, daneben „KaPlan“ und – in einem Bereich – dessen Name
-(`KaPlanMarke` in `src/shared/logos.tsx`; das Dreieck ist dort nach `Logo.png` nachgezeichnet). Sie
-steht oben in der dunklen Menüleiste jedes Bereichs und oben links auf dem Startbildschirm.
-
-Die Logodateien liegen weiter unter `public/logos/`:
+Die Logos von KaPlan liegen unter `public/logos/`. Die Logos der Bereiche folgen einem Muster: das
+Dreieck mit je eigener Verteilung von Blau und Grau (Planlaufmanagement oben blau,
+Baubetriebsplanung links, Projektsteuerung rechts), daneben „KaPlan“ und darunter rechtsbündig der
+Name in Roboto Light.
 
 | Datei | Verwendung |
 | --- | --- |
-| `Logo_Startseite.png`, `Logo_Planlaufmanagement.png`, `Logo_Baubetriebsplanung.png`, `Logo_Projektsteuerung.png` | Frühere Logos der Oberfläche (dunkle Schrift für hellen Grund: Dreieck in Blau und Grau, „KaPlan“, darunter der Name des Bereichs). Die Oberfläche zeigt sie nicht mehr; sie bleiben für Unterlagen außerhalb des Programms liegen |
+| `Logo_Startseite.png` | Startbildschirm (Bereichsauswahl), oben links |
+| `Logo_Planlaufmanagement.png` | Kopf der Menüleiste im Planlaufmanagement |
+| `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
+| `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
 | `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
-| `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug); nach ihm sind die App-Symbole unter `public/icons/` und das Dreieck der Marke gezeichnet |
+| `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug); nach ihm sind die App-Symbole unter `public/icons/` gezeichnet |
 
-Die Drucklogos lassen sich austauschen, indem die Datei unter gleichem Namen ersetzt wird; sie
-werden nur über die Höhe skaliert.
+Die Logos sind für hellen Grund gezeichnet (dunkle Schrift). Die Oberfläche zeigt sie deshalb
+stets auf einer **weißen Kachel** (`KaPlanLogo` in `src/shared/logos.tsx`, `.logo-kachel` in
+`src/shared/global.css`) – in der dunklen Menüleiste wie auf dem Startbildschirm, auch im dunklen
+Schema. Zum Austauschen genügt es, die Datei unter gleichem Namen zu ersetzen; die Logos werden
+nur über die Breite bzw. Höhe skaliert.
 
-Die Symbole in `public/icons/` zeigen dasselbe Bild wie die Marke in der Oberfläche: das Dreieck
-aus `Logo.png` in **Weiß auf einer Kachel im Korallenverlauf** (`#f25f4c` → `#ff8a73`, von links
-oben nach rechts unten) – im Browser-Tab, in der Titelleiste des App-Fensters, in der Taskleiste,
-im Startmenü und als Desktop-Verknüpfung. Die Marke ist vektoriell nachgezeichnet, je Größe gerastert und steht genau mittig
+Die Symbole in `public/icons/` zeigen die Marke aus `Logo.png` in der Logofarbe `#21426d`, im
+Browser-Tab und in der Titelleiste des App-Fensters **ohne Hintergrund**, in der Taskleiste, im
+Startmenü und als Desktop-Verknüpfung auf einer **hellen Kachel**
+(`#f5f5f7`, mit feiner Randlinie) – das dünne Dreieck allein war in der Windows-Taskleiste
+kaum zu sehen. Die Marke ist vektoriell nachgezeichnet, je Größe gerastert und steht genau mittig
 (gleicher Abstand oben und unten bzw. links und rechts); bis 64 px ist sie größer und kräftiger
 gezeichnet:
 
 | Datei | Verwendung |
 | --- | --- |
-| `kaplan-koralle-32/64/192.png` | Browser-Tab und Titelleiste des App-Fensters (`index.html`) – Kachel mit runden Ecken |
-| `kaplan-koralle-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Startmenü, Desktop-Verknüpfung, Android-Browser ohne maskierbare Symbole) |
-| `kaplan-koralle-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
-| `kaplan-koralle-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
+| `kaplan-dreieck-32/64/192.png` | Browser-Tab und Titelleiste des App-Fensters (`index.html`) – nur das Dreieck |
+| `kaplan-app-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Startmenü, Desktop-Verknüpfung, Android-Browser ohne maskierbare Symbole) |
+| `kaplan-app-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
+| `kaplan-app-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
 
 Ein neues Symbol bekommt **neue Dateinamen** (Verweise in `index.html`, `public/manifest.webmanifest`
 und `SHELL` in `public/sw.js` anpassen), und der Cache-Name in `public/sw.js` wird hochgezählt –
@@ -187,7 +192,7 @@ Entfernen einer installierten App deshalb in jedem genutzten Bereich eine Sicher
 herunterladen**; Android und Desktop fragen beim Entfernen, ob auch die Daten gelöscht werden
 sollen.
 
-Enthalten sind `manifest.webmanifest`, App-Symbole auf einer Kachel im Korallenverlauf (`public/icons/`, siehe
+Enthalten sind `manifest.webmanifest`, App-Symbole auf einer hellen Kachel (`public/icons/`, siehe
 [Logos](#logos): 48–512 px, maskierbar für Android und Apple-Touch-Icon für iOS) sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
 gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (gehashte Namen unter
@@ -1602,7 +1607,7 @@ src/
                  eigenen Strichzeichnungen für die Druckfassungen
     bewegung.tsx Bewegungen (framer-motion): hoverLift, Zaehler, NavAktiv, BalkenFuellung,
                  Einblenden
-    logos.tsx    Marke von KaPlan (KaPlanMarke, KaPlanZeichen) und Wortmarke Mailänder Consult
+    logos.tsx    Logos KaPlan (public/logos/, auf weißer Kachel) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
     bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
     bausteinEditor.tsx  Eingabefeld mit farbigen, nicht teilbaren Bausteinen (BausteinEditor,
@@ -1737,16 +1742,18 @@ beim Aufruf auf `#/planlauf/…` umgelenkt und bleiben damit gültig.
 ## Gestaltung
 
 Die Oberfläche folgt dem **Koralle-Design** nach der Vorlage `KoralleDashboard.jsx` im
-Wurzelverzeichnis (die Datei ist nur Vorlage und gehört nicht zum Build):
+Wurzelverzeichnis (die Datei ist nur Vorlage und gehört nicht zum Build) – mit dem Blau von
+Mailänder Consult statt Koralle als Markenfarbe und mit den Logos von KaPlan:
 
 * **Flächen:** heller Seitengrund `#f2f2f4`, weiße Karten mit 24 px Rundung und weichem Schatten
   statt Rahmen, in Karten graue Kacheln; die Menüleiste ist dunkel (`#17181b`), der Seitenkopf
   steht ohne Balken auf dem Seitengrund – die Unterzeile klein über dem Titel.
-* **Farben:** Koralle (`#f25f4c`) ist die Markenfarbe – aktiver Menüpunkt, Fortschrittsbalken,
-  Symbolflächen, Verknüpfungen – und zugleich das Rot der Ampel („überfällig“); überfällige
-  Kennzahlen stehen als Karte im Korallenverlauf. Betont wird mit Tinte (fast Schwarz): Hauptknopf,
-  gewählter Reiter, gewähltes Segment, aktueller Schritt, Tastaturfokus. Grün, Orange, Blau und
-  Violett kennzeichnen wie bisher erledigt, fällig, laufend und Entscheidungen.
+* **Farben:** Die Markenfarbe ist das Blau von Mailänder Consult (`#24456e`) – aktiver Menüpunkt,
+  Fortschrittsbalken, Symbolflächen, Verknüpfungen. Betont wird mit Tinte (fast Schwarz):
+  Hauptknopf, gewählter Reiter, gewähltes Segment, aktueller Schritt, Tastaturfokus. Die Ampel
+  zeigt Grün (erledigt), Orange (fällig) und ein klares Rot (überfällig); überfällige Kennzahlen
+  stehen als Karte im roten Verlauf. Blau-Türkis und Violett kennzeichnen laufend und
+  Entscheidungen.
 * **Schrift:** Outfit (in den Build gebündelt, es wird nichts von fremden Servern geladen);
   Überschriften in mittlerer Stärke, Beschriftungen klein und gedämpft, keine Versalien.
 * **Formen:** Knöpfe, Kennzeichen, Suchfeld, Reiter und Segmente sind Pillen; Felder haben 12 px
