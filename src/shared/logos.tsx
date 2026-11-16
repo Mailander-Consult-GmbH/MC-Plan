@@ -7,7 +7,7 @@ import { useState } from 'react';
  * eines, dazu das Logo der Startseite und das Symbol `Logo.png`). Gezeichnet
  * sind sie für hellen Grund – dunkle Schrift, Dreieck in Blau und Grau. Für
  * das dunkle Schema gibt es je Logo die Fassung `…_dunkel.png`: Schrift und
- * Grau in Weiß, der blaue Teil des Dreiecks mit feinem weißem Rand
+ * Grau in Weiß, der blaue Teil des Dreiecks unverändert
  * (`werkzeuge/logos_dunkel.py` erzeugt sie aus dem Logo). Beide stehen ohne
  * Fläche dahinter; welche zu sehen ist, entscheidet das Farbschema
  * (`.kaplan-logo-hell`/`.kaplan-logo-dunkel` in global.css). Die

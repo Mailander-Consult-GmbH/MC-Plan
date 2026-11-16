@@ -329,7 +329,7 @@
  * je Farbschema eine eigene Datei unter public/logos/: im hellen das Logo wie
  * gezeichnet (dunkle Schrift, Dreieck in Blau und Grau), im dunklen die
  * Fassung „…_dunkel“ (Schrift und Grau in Weiß, der blaue Teil des Dreiecks
- * mit feinem weißem Rand; erzeugt mit werkzeuge/logos_dunkel.py).
+ * unverändert; erzeugt mit werkzeuge/logos_dunkel.py).
  */
 .kaplan-logo-hell, .kaplan-logo-dunkel { display: block; max-width: 100%; }
 .kaplan-logo-dunkel { display: none; }
