@@ -12,7 +12,7 @@ import { Einblenden, NavAktiv } from '../../shared/bewegung';
 import { useToast } from '../../shared/toast';
 import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
-import { SeitenleisteKnopf, useSeitenleiste } from '../../shared/seitenleiste';
+import { SeitenleisteGriff, SeitenleisteKnopf, useSeitenleiste } from '../../shared/seitenleiste';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { Hinweisleisten } from './components/Hinweisleisten';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
@@ -187,6 +187,7 @@ export function App() {
           <BereichWechsel />
         </div>
       </motion.aside>
+      <SeitenleisteGriff leiste={leiste} />
 
       <main className="main">
         <header className="topbar">

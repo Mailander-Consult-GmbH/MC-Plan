@@ -12,8 +12,9 @@
  * Zustand gehört zum Gerät und liegt unter einem eigenen Schlüssel im
  * Browser, nicht im Bestand eines Bereichs; er gilt in allen Bereichen.
  *
- * Ein Knopf in der Kopfzeile (`SeitenleisteKnopf`) bedient beides: schmal
- * öffnet er die Leiste, breit klappt er sie ein und aus.
+ * Bedient wird sie schmal über den Knopf „Menü“ in der Kopfzeile
+ * (`SeitenleisteKnopf`), breit über den Griff am rechten Rand der Leiste auf
+ * halber Höhe (`SeitenleisteGriff`).
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Icon } from './icons';
@@ -78,22 +79,38 @@ export function useSeitenleiste() {
   return [offen, setOffen, leiste] as const;
 }
 
-/**
- * Knopf links in der Kopfzeile: öffnet in der schmalen Ansicht die Leiste
- * („Menü“) und klappt sie in der breiten ein bzw. aus.
- */
+/** Knopf „Menü“ links in der Kopfzeile – nur in der schmalen Ansicht zu sehen (global.css): öffnet die Leiste. */
 export function SeitenleisteKnopf({ leiste, offen }: { leiste: Seitenleiste; offen: boolean }) {
-  const text = leiste.schmal ? 'Menü' : leiste.eingeklappt ? 'Seitenleiste ausklappen' : 'Seitenleiste einklappen';
   return (
     <button
       type="button"
       className="btn-icon menu-toggle"
       onClick={leiste.umschalten}
+      aria-label="Menü"
+      aria-expanded={offen}
+    >
+      <Icon name="menu" size={18} />
+    </button>
+  );
+}
+
+/**
+ * Griff am rechten Rand der Seitenleiste, auf halber Höhe – nur in der breiten
+ * Ansicht zu sehen: klappt die Leiste ein bzw. aus. Er steht neben der Leiste
+ * in `.app`, nicht in ihr: Die Leiste scrollt und schnitte ihn am Rand ab.
+ */
+export function SeitenleisteGriff({ leiste }: { leiste: Seitenleiste }) {
+  const text = leiste.eingeklappt ? 'Seitenleiste ausklappen' : 'Seitenleiste einklappen';
+  return (
+    <button
+      type="button"
+      className="leiste-griff"
+      onClick={leiste.umschalten}
       aria-label={text}
       title={text}
-      aria-expanded={leiste.schmal ? offen : !leiste.eingeklappt}
+      aria-expanded={!leiste.eingeklappt}
     >
-      <Icon name={leiste.schmal ? 'menu' : leiste.eingeklappt ? 'leisteAuf' : 'leisteZu'} size={18} />
+      <Icon name={leiste.eingeklappt ? 'chevron' : 'zurueck'} size={14} />
     </button>
   );
 }

@@ -28,7 +28,7 @@ import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import { RegisterHinweis } from '../../gemeinsam/RegisterHinweis';
 import type { IconName } from '../../shared/icons';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
-import { SeitenleisteKnopf, useSeitenleiste } from '../../shared/seitenleiste';
+import { SeitenleisteGriff, SeitenleisteKnopf, useSeitenleiste } from '../../shared/seitenleiste';
 
 export function App() {
   const { data, zuruecksetzen, ladeZustand, setBearbeiter } = useStore();
@@ -175,6 +175,7 @@ export function App() {
           <BereichWechsel />
         </div>
       </motion.aside>
+      <SeitenleisteGriff leiste={leiste} />
 
       <main className="main">
         <header className="topbar">

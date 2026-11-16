@@ -290,6 +290,36 @@
 }
 /* Eingeklappte Menüleiste (useSeitenleiste, src/shared/seitenleiste.tsx): nur die Spalte der Symbole */
 .app.leiste-zu { grid-template-columns: var(--sidebar-w-zu) 1fr; }
+/* Bezug für den Griff der Menüleiste */
+.app { position: relative; }
+
+/*
+ * Griff zum Ein- und Ausklappen (SeitenleisteGriff): eine kleine Lasche auf dem
+ * rechten Rand der Menüleiste, auf halber Höhe. Sie steht neben der Leiste in
+ * .app und folgt deren Rand; in der schmalen Ansicht entfällt sie (dort öffnet
+ * der Knopf „Menü“ in der Kopfzeile die Leiste).
+ */
+.leiste-griff {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--sidebar-w) - 11px);
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 44px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid var(--separator);
+  border-radius: 999px;
+  background: var(--bg-elev);
+  box-shadow: var(--schatten);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: left 0.25s var(--ease-koralle), color 0.15s ease, box-shadow 0.15s ease;
+}
+.leiste-griff:hover { color: var(--text); box-shadow: var(--schatten-hoch); }
+.app.leiste-zu .leiste-griff { left: calc(var(--sidebar-w-zu) - 11px); }
 
 /*
  * Menüleiste: eine Karte wie die Kacheln des Inhalts – Kartengrund, große
@@ -462,8 +492,8 @@
 .topbar-actions { display: flex; gap: 8px; align-items: center; flex: none; }
 /* Hauslogo in der Kopfzeile */
 .topbar-logo { flex: none; display: flex; align-items: center; padding-left: 12px; }
-/* Knopf der Menüleiste in der Kopfzeile (SeitenleisteKnopf): runder weißer Knopf wie die Glocke der Vorlage –
-   öffnet schmal die Leiste und klappt sie breit ein bzw. aus */
+/* Menüknopf in der Kopfzeile (SeitenleisteKnopf) – nur auf schmalen Bildschirmen: runder weißer Knopf wie die
+   Glocke der Vorlage, öffnet die Leiste */
 .btn-icon.menu-toggle {
   display: grid;
   place-items: center;
@@ -1355,6 +1385,7 @@
 
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
+  .leiste-griff { display: none; }
   /* Schmal liegt die Leiste als Karte über dem Inhalt – mit etwas Abstand zum Fensterrand */
   .sidebar {
     position: fixed; inset: 8px auto 8px 8px;
@@ -1374,6 +1405,7 @@
   .kv { grid-template-columns: 1fr; gap: 2px 0; }
   .kv dd { margin-bottom: 8px; }
 }
+@media (min-width: 861px) { .btn-icon.menu-toggle { display: none; } }
 
 /* Im dunklen Schema erscheint die blaue Wortmarke weiß */
 :root[data-farbschema='dunkel'] .topbar-logo img,
