@@ -62,8 +62,7 @@ Die Logos stehen **ohne Fläche dahinter** – in der Menüleiste wie auf dem St
 (`KaPlanLogo` in `src/shared/logos.tsx`). Gezeichnet sind sie für hellen Grund (dunkle Schrift,
 Dreieck in Blau und Grau); so erscheinen sie im hellen Farbschema. Im **dunklen Farbschema** zeigt
 die Oberfläche je Logo die Fassung `Logo_<Name>_dunkel.png`: Schrift und graue Teile des Dreiecks
-in Weiß, der blaue Teil bleibt blau und trägt einen feinen weißen Rand, damit er sich vom dunklen
-Grund abhebt.
+in Weiß, der blaue Teil bleibt unverändert blau (ohne Rand).
 
 Die dunklen Fassungen erzeugt das Skript `werkzeuge/logos_dunkel.py` aus den Logos (Python mit
 Pillow):

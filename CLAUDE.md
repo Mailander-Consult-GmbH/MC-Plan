@@ -75,7 +75,7 @@ Tinte (fast Schwarz) für Betonung, Schrift Outfit, weiche Bewegungen.
   Inhalt, dunkel wie in der Vorlage nur im dunklen Schema (`--bg-sidebar`).
 * **Logos von KaPlan** (`public/logos/`) statt einer gezeichneten Marke – ohne Fläche dahinter.
   Im dunklen Schema erscheint die Fassung `…_dunkel.png`: Schrift und Grau in Weiß, der blaue
-  Teil des Dreiecks mit feinem weißem Rand.
+  Teil des Dreiecks unverändert – ohne Rand.
 
 ### Technik
 
