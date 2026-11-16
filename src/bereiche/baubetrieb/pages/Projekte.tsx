@@ -90,7 +90,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
                   }
                 }}
               >
-                {p.markiert ? '★' : '☆'}
+                <Icon name="stern" size={16} />
               </span>
             </span>
           </div>
@@ -299,7 +299,7 @@ export function ProjektDialog({
                     <button
                       type="button"
                       className="link-btn"
-                      style={{ fontSize: 'inherit', color: 'var(--accent)' }}
+                      style={{ fontSize: 'inherit', color: 'var(--link)' }}
                       onClick={() => set('ersterAnmeldetermin', vorschlag)}
                     >
                       übernehmen

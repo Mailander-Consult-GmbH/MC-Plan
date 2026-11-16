@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
   // Kennung dieses Builds: Commit (im Workflow `GITHUB_SHA`) und Bauzeit. Die
@@ -18,6 +19,8 @@ export default defineConfig(({ mode }) => {
     define: { __FASSUNG__: JSON.stringify(fassung) },
     plugins: [
       react(),
+      // Tailwind 4: Design-Tokens und Utilities, eingebunden in src/shared/global.css
+      tailwindcss(),
       {
         name: 'kaplan-fassung',
         apply: 'build',

@@ -85,7 +85,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
                   }
                 }}
               >
-                {p.markiert ? '★' : '☆'}
+                <Icon name="stern" size={16} />
               </span>
             </span>
           </div>

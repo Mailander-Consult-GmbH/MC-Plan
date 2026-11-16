@@ -6,7 +6,7 @@
  * Gewerk –, die noch Projektbeteiligten zugeordnet ist, lässt sich nicht
  * löschen.
  */
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Modal, Search } from '../../../shared/ui';
@@ -236,7 +236,7 @@ export function Funktionen() {
                 key={f.id}
                 type="button"
                 className="role-chip"
-                style={{ color: f.farbe, cursor: 'pointer', padding: '4px 11px' }}
+                style={{ '--chip-farbe': f.farbe, cursor: 'pointer', padding: '4px 11px' } as CSSProperties}
                 onClick={() => {
                   addFunktion({
                     name: f.name,

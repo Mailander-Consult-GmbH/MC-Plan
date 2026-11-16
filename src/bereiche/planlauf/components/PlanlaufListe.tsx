@@ -365,7 +365,7 @@ export function PlanlaufListe({
             {children}
             {gewaehlt ? <span className="th-wert">{gewaehlt.label}</span> : null}
             <span className={`sort-pfeil ${sortFeld === feld ? 'aktiv' : ''}`}>
-              {sortFeld === feld ? (absteigend ? '▾' : '▴') : '▴'}
+              <Icon name={sortFeld === feld && absteigend ? 'runter' : 'hoch'} size={11} strokeWidth={2.2} />
             </span>
           </button>
           {optionen && optionen.length > 0 ? (

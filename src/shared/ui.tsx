@@ -1,7 +1,12 @@
-/** Wiederverwendbare Oberflächenbausteine im hellen Apple-Stil. */
+/**
+ * Wiederverwendbare Oberflächenbausteine im Koralle-Design (Vorlage
+ * KoralleDashboard.jsx): Gestaltung in global.css, Bewegung in bewegung.tsx.
+ */
 import { useEffect, useId, useRef, useState } from 'react';
-import type { ChangeEvent, ReactNode } from 'react';
-import { Icon } from './icons';
+import type { ChangeEvent, CSSProperties, ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import { BalkenFuellung, FEDER_STRAFF, Zaehler, hoverLift } from './bewegung';
+import { Icon, type IconName } from './icons';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`card ${className}`}>{children}</div>;
@@ -38,20 +43,31 @@ export function Stat({
   ton?: '' | 'red' | 'orange' | 'green' | 'blue';
   onClick?: () => void;
 }) {
+  // Überfälliges (Ton „red“) steht als Karte im Korallenverlauf; die übrigen Töne
+  // zeigt ein Ampelpunkt vor der Beschriftung, der Wert bleibt in Tinte.
+  const signal = ton === 'red';
   const inhalt = (
     <div className={`stat ${ton}`}>
-      <div className="stat-value">{wert}</div>
-      <div className="stat-label">{label}</div>
+      <div className="stat-label">
+        {ton && !signal ? <span className={`dot ${ton}`} aria-hidden="true" /> : null}
+        {label}
+      </div>
+      <div className="stat-value">{typeof wert === 'number' ? <Zaehler wert={wert} /> : wert}</div>
     </div>
   );
+  const klasse = `card stat-karte ${signal ? 'stat-signal' : ''}`;
   if (onClick) {
     return (
-      <button type="button" className="card card-click" onClick={onClick}>
+      <motion.button type="button" className={`${klasse} card-click bewegt`} onClick={onClick} {...hoverLift}>
         {inhalt}
-      </button>
+      </motion.button>
     );
   }
-  return <div className="card">{inhalt}</div>;
+  return (
+    <motion.div className={`${klasse} bewegt`} {...hoverLift}>
+      {inhalt}
+    </motion.div>
+  );
 }
 
 export function Badge({
@@ -158,6 +174,8 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
 }) {
+  // Eigene Kennung je Gruppe: Die dunkle Fläche gleitet nur innerhalb dieser Segmente
+  const flaeche = useId();
   return (
     <div className="segmented">
       {options.map((o) => (
@@ -169,7 +187,8 @@ export function Segmented<T extends string>({
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
         >
-          {o.label}
+          {o.value === value ? <motion.span layoutId={flaeche} className="segmented-aktiv" transition={FEDER_STRAFF} /> : null}
+          <span className="segmented-text">{o.label}</span>
         </button>
       ))}
     </div>
@@ -236,13 +255,13 @@ export function Search({
 }) {
   return (
     <div className="search">
-      <span style={{ display: 'flex', color: 'var(--text-tertiary)' }}>
-        <Icon name="suche" size={14} />
+      <span style={{ display: 'flex' }}>
+        <Icon name="suche" size={15} />
       </span>
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
       {value ? (
         <button type="button" className="btn-icon" onClick={() => onChange('')} aria-label="Suche leeren">
-          ✕
+          <Icon name="schliessen" size={14} />
         </button>
       ) : null}
     </div>
@@ -517,7 +536,7 @@ export function Modal({
             {sub ? <div className="sub">{sub}</div> : null}
           </div>
           <button type="button" className="btn-icon" onClick={onClose} aria-label="Schließen">
-            ✕
+            <Icon name="schliessen" size={17} />
           </button>
         </div>
         <div className="modal-body">{children}</div>
@@ -540,8 +559,8 @@ export function EmptyState({
 }) {
   return (
     <div className="empty">
-      <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center' }}>
-        <Icon name={icon} size={30} strokeWidth={1.3} />
+      <div className="empty-icon">
+        <Icon name={icon} size={22} />
       </div>
       <h3>{titel}</h3>
       {text ? <p>{text}</p> : null}
@@ -550,11 +569,11 @@ export function EmptyState({
   );
 }
 
-/** Fortschrittsbalken. Immer in der Hausfarbe – der Status steht daneben. */
+/** Fortschrittsbalken. Immer in der Markenfarbe – der Status steht daneben. */
 export function Progress({ wert }: { wert: number }) {
   return (
     <div className="progress" title={`${wert}%`}>
-      <div style={{ width: `${Math.min(100, Math.max(0, wert))}%` }} />
+      <BalkenFuellung prozent={wert} />
     </div>
   );
 }
@@ -568,14 +587,24 @@ export function Avatar({ name, farbe }: { name: string; farbe?: string }) {
     .join('');
   return (
     <div
-      className="avatar"
-      style={farbe ? { background: `${farbe}1f`, color: farbe } : undefined}
+      className={farbe ? 'avatar avatar-farbe' : 'avatar'}
+      // Die Farbe der Funktion als Variable: global.css hellt sie im dunklen Schema auf
+      style={farbe ? ({ '--chip-farbe': farbe } as CSSProperties) : undefined}
       title={name}
     >
       {initialen || '?'}
     </div>
   );
 }
+
+/** Zeichen, die Hinweise als `icon` mitgeben, und ihr Symbol; anderes erscheint als Text. */
+const HINWEIS_SYMBOL: Record<string, IconName> = {
+  'ℹ︎': 'info',
+  i: 'info',
+  '!': 'warnung',
+  '✓': 'check',
+  '🗄': 'archiv',
+};
 
 export function Callout({
   ton = '',
@@ -591,7 +620,9 @@ export function Callout({
 }) {
   return (
     <div className={`callout ${ton}`} role={role}>
-      <span className="callout-icon">{icon}</span>
+      <span className="callout-icon" aria-hidden="true">
+        {HINWEIS_SYMBOL[icon] ? <Icon name={HINWEIS_SYMBOL[icon]} size={16} /> : icon}
+      </span>
       <div>{children}</div>
     </div>
   );
@@ -626,8 +657,7 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
-            className="btn btn-primary"
-            style={ton === 'rot' ? { background: 'var(--red)' } : undefined}
+            className={ton === 'rot' ? 'btn btn-primary btn-rot' : 'btn btn-primary'}
             onClick={() => {
               onConfirm();
               onClose();

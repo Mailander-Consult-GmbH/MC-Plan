@@ -168,8 +168,7 @@ export function SicherungEinspielenDialog({
           </button>
           <button
             type="button"
-            className="btn btn-primary"
-            style={{ background: 'var(--red)' }}
+            className="btn btn-primary btn-rot"
             disabled={neuereFassung}
             onClick={einspielen}
           >

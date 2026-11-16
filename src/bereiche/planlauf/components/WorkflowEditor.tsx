@@ -570,7 +570,7 @@ export function WorkflowEditor({
               ) : null}
             </div>
             <button type="button" className="btn-icon wf-zu" onClick={schliessen} aria-label="Schließen">
-              ✕
+              <Icon name="schliessen" size={15} />
             </button>
           </div>
         </header>
@@ -1601,7 +1601,7 @@ function SchrittDetails({
             <Icon name="chevron" size={14} />
           </button>
           <button type="button" className="btn-icon" onClick={onSchliessen} aria-label="Details schließen" title="Schließen">
-            ✕
+            <Icon name="schliessen" size={15} />
           </button>
         </span>
       </div>
@@ -1743,7 +1743,7 @@ function SchrittDetails({
                         onSchrittAendern(step.id, (s) => ({ ...s, antworten: s.antworten.filter((x) => x.id !== a.id) }))
                       }
                     >
-                      ✕
+                      <Icon name="schliessen" size={15} />
                     </button>
                   </div>
                   <div className="wf-weiter">
@@ -1899,7 +1899,7 @@ function SchrittDetails({
                       title="E-Mail entfernen"
                       onClick={() => onSchrittAendern(step.id, (s) => regelEntfernen(s, regel.id))}
                     >
-                      ✕
+                      <Icon name="schliessen" size={15} />
                     </button>
                   </div>
                   <label className="wf-feld">
@@ -2093,7 +2093,7 @@ function Uebersicht({
         <span>Übersicht</span>
         {onSchliessen ? (
           <button type="button" className="btn-icon" onClick={onSchliessen} aria-label="Übersicht schließen">
-            ✕
+            <Icon name="schliessen" size={15} />
           </button>
         ) : null}
       </div>

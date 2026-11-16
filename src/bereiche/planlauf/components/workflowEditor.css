@@ -1,3 +1,5 @@
+/* Ebene „components“ wie global.css: Tailwind-Utilities gewinnen, die Reihenfolge der Bausteinregeln bleibt. */
+@layer components {
 /* ------------------------------------------------------------------ */
 /* Workflow-Editor (WorkflowEditor.tsx) – Klassen mit Präfix „wf-“,     */
 /* Farben aus den Design-Tokens in src/shared/global.css                */
@@ -18,10 +20,10 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--bg);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--rund-xl);
+  box-shadow: var(--schatten-dialog);
   overflow: hidden;
-  animation: pop 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: pop 0.26s var(--ease-koralle);
 }
 
 /* Kopf ---------------------------------------------------------------- */
@@ -35,35 +37,31 @@
 }
 .wf-kopf-titel { flex: 1; min-width: 0; }
 .wf-kopf-oben {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
   color: var(--text-tertiary);
 }
 .wf-kopf-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 1px; }
 .wf-kopf-titel:not(:has(.wf-name)) .wf-kopf-oben {
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 500;
   letter-spacing: -0.02em;
-  text-transform: none;
   color: var(--text);
 }
 .wf-name {
   display: block;
   width: min(520px, 100%);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--rund-s);
   background: transparent;
   padding: 1px 6px;
   margin-left: -7px;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 500;
   letter-spacing: -0.02em;
   outline: none;
 }
 .wf-name:hover { border-color: var(--separator); }
-.wf-name:focus { border-color: var(--accent); background: var(--bg-elev); box-shadow: 0 0 0 3px var(--accent-soft); }
+.wf-name:focus { border-color: var(--fokus); background: var(--bg-elev); box-shadow: 0 0 0 3px var(--accent-soft); }
 .wf-pflicht { border-color: var(--red) !important; }
 
 .wf-werkzeuge { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
@@ -72,7 +70,7 @@
   display: flex;
   gap: 2px;
   padding: 2px;
-  border-radius: var(--radius);
+  border-radius: 999px;
   border: 1px solid var(--separator);
 }
 .wf-zu { font-size: 15px; }
@@ -88,8 +86,8 @@
   width: 290px;
   padding: 6px;
   background: var(--bg-elev);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--rund-l);
+  box-shadow: var(--schatten-dialog);
   animation: pop 0.14s ease;
 }
 .wf-menu-hinweis { font-size: 11.5px; color: var(--text-tertiary); padding: 6px 10px 4px; }
@@ -102,7 +100,7 @@
   background: transparent;
   text-align: left;
   padding: 9px 10px;
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   cursor: pointer;
 }
 .wf-menu button:hover { background: var(--bg-hover); }
@@ -115,7 +113,7 @@
   place-items: center;
   width: 30px;
   height: 30px;
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -132,7 +130,7 @@
   bottom: 0;
   z-index: 4;
   width: min(380px, 100%);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--schatten-dialog);
   animation: pop 0.16s ease;
 }
 .wf-panel:focus { outline: none; }
@@ -150,7 +148,7 @@
 .wf-banner {
   font-size: 12.5px;
   background: linear-gradient(var(--orange-soft), var(--orange-soft)), var(--bg-elev);
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   padding: 9px 12px;
   margin-bottom: 14px;
 }
@@ -183,10 +181,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-tertiary);
   padding-bottom: 14px;
 }
@@ -278,7 +274,7 @@
   font-weight: 600;
   line-height: 1;
   padding: 3px 7px;
-  border-radius: 6px;
+  border-radius: 999px;
   white-space: nowrap;
   max-width: 104px;
   overflow: hidden;
@@ -304,16 +300,16 @@
   padding: 12px 14px 12px;
   background: var(--bg-elev);
   border: 1px solid var(--separator);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--rund-l);
+  box-shadow: var(--schatten);
   cursor: pointer;
   transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
-.wf-karte:hover { border-color: var(--separator-strong); box-shadow: var(--shadow); }
+.wf-karte:hover { border-color: var(--separator-strong); box-shadow: var(--schatten-hoch); }
 .wf-karte.hervor { border-color: var(--separator-strong); }
-.wf-karte.aktiv { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+.wf-karte.aktiv { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--schatten-hoch); }
 .wf-karte.fehlt { border-color: var(--red); border-style: dashed; }
-.wf-karte:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wf-karte:focus-visible { outline: 2px solid var(--fokus); outline-offset: 2px; }
 .wf-karte.abweichung::before {
   content: '';
   position: absolute;
@@ -333,11 +329,9 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 .wf-typ.entscheidung { color: var(--purple); }
 .wf-nr { font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--text-tertiary); }
@@ -356,7 +350,6 @@
   flex: none;
   font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.02em;
   padding: 2px 5px;
   border-radius: 5px;
   background: var(--gray-soft);
@@ -386,7 +379,7 @@
   font-size: 12px;
   color: var(--text-tertiary);
   border: 1px dashed var(--separator-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--rund-l);
   padding: 14px;
   background: var(--bg-elev);
 }
@@ -471,11 +464,11 @@
   flex-direction: column;
   gap: 7px;
   padding: 10px;
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   border: 1px solid var(--separator);
   background: var(--bg-subtle);
 }
-.wf-antwort-karte.standard { border-color: var(--accent-soft); background: var(--bg-elev); box-shadow: var(--shadow-sm); }
+.wf-antwort-karte.standard { border-color: var(--accent-soft); background: var(--bg-elev); box-shadow: var(--schatten); }
 .wf-antwort-zeile { display: flex; align-items: center; gap: 7px; }
 .wf-punkt { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--orange); }
 .wf-antwort-karte.standard .wf-punkt { background: var(--accent); }
@@ -484,11 +477,9 @@
 .wf-standard-marke {
   align-self: flex-start;
   margin-left: 15px;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--accent);
+  color: var(--text-secondary);
 }
 .wf-als-standard { align-self: flex-start; margin-left: 9px; }
 
@@ -503,7 +494,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   background: var(--fill-gruppe);
 }
 .wf-kacheln b { font-size: 20px; letter-spacing: -0.02em; }
@@ -515,7 +506,7 @@
   flex-direction: column;
   gap: 7px;
   padding: 10px;
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   border: 1px solid var(--separator);
   background: var(--bg-elev);
 }
@@ -537,7 +528,7 @@
   text-align: left;
   font-size: 12px;
   border: 1px solid var(--separator);
-  border-radius: var(--radius-sm);
+  border-radius: var(--rund-s);
   padding: 7px 9px;
   background: var(--bg-elev);
   color: var(--text-secondary);
@@ -551,7 +542,7 @@
   text-align: left;
   font-size: 12px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--rund-s);
   padding: 7px 9px;
   background: var(--orange-soft);
   cursor: pointer;
@@ -626,7 +617,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 14px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--rund-l);
   border: 1px solid var(--separator);
   background: var(--bg-subtle);
 }
@@ -634,24 +625,28 @@
 .wf-lauf-kopf strong { font-size: 14px; }
 
 /* Workflow-Liste (Workflows.tsx) -------------------------------------- */
-.wf-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; }
+.wf-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 16px; }
 .wf-liste-karte {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px 18px;
+  padding: 22px 24px;
   background: var(--bg-elev);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  border-radius: var(--rund-xl);
+  box-shadow: var(--schatten);
   cursor: pointer;
   text-align: left;
-  border: 1px solid transparent;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  border: none;
+  transition: transform 0.3s var(--ease-koralle), box-shadow 0.3s var(--ease-koralle);
 }
-.wf-liste-karte:hover { border-color: var(--separator-strong); }
-.wf-liste-karte:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
-.wf-liste-kopf { display: flex; align-items: flex-start; gap: 10px; }
-.wf-liste-kopf strong { font-size: 15px; letter-spacing: -0.01em; }
+.wf-liste-karte:hover { transform: translateY(-4px); box-shadow: var(--schatten-hoch); }
+.wf-liste-karte:focus-visible { outline: 2px solid var(--fokus); outline-offset: 2px; }
+/* In einer Karte: graue Kachel statt Karte in der Karte – wie die Kennzahlen der Vorlage */
+.card .wf-liste-karte { background: var(--bg-subtle); box-shadow: none; border-radius: var(--rund-l); padding: 18px 20px; }
+.card .wf-liste-karte:hover { box-shadow: var(--schatten-hoch); }
+.wf-liste-karte .wf-typ-zeichen { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-elev); color: var(--koralle); }
+.wf-liste-kopf { display: flex; align-items: flex-start; gap: 12px; }
+.wf-liste-kopf strong { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; }
 .wf-liste-text { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
 .wf-liste-zahlen { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-secondary); }
 .wf-liste-zahlen b { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -668,14 +663,14 @@
   flex-direction: column;
   padding: 10px 12px;
   border: 1px solid var(--green);
-  border-radius: var(--radius-xl);
+  border-radius: var(--rund-xl);
   background: var(--bg-subtle);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--schatten);
 }
 .wf-raster > .wf-zelle > .wf-parallel { align-self: center; }
 .wf-parallel-gestapelt { width: 100%; }
 .wf-raster > .wf-zelle > .wf-parallel-gestapelt { max-width: 360px; }
-.wf-parallel-aktiv { box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-sm); }
+.wf-parallel-aktiv { box-shadow: 0 0 0 3px var(--accent-soft), var(--schatten); }
 .wf-parallel-abweichung { border-style: dashed; border-color: var(--orange); }
 .wf-parallel-unerreichbar { border-style: dashed; border-color: var(--separator-strong); opacity: 0.85; }
 .wf-parallel-kopf {
@@ -684,13 +679,11 @@
   flex-wrap: wrap;
   gap: 4px 6px;
   padding: 0 2px 8px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 600;
   color: var(--gruen-text);
 }
-.wf-parallel-kopf-text { font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-tertiary); }
+.wf-parallel-kopf-text { font-size: 11px; font-weight: 500; color: var(--text-tertiary); }
 /* Der Kopf ist eine Schaltfläche: wählt den ersten Schritt des Blocks und öffnet „Name des Blocks“ */
 button.wf-parallel-kopf {
   width: 100%;
@@ -717,10 +710,8 @@ button.wf-parallel-kopf:hover .wf-parallel-titel { text-decoration: underline; t
 .wf-parallel-zweig { position: relative; display: flex; flex-direction: column; align-items: stretch; min-width: 0; }
 .wf-parallel-gestapelt .wf-parallel-zweig { padding: 2px 0 4px 10px; border-left: 3px solid var(--green); }
 .wf-parallel-zweig-kopf {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--text-tertiary);
 }
 .wf-parallel-zweig-kopf { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -751,10 +742,10 @@ button.wf-parallel-kopf:hover .wf-parallel-titel { text-decoration: underline; t
   margin: 8px 0 10px;
   padding: 8px;
   border: 1px dashed var(--orange);
-  border-radius: var(--radius-lg);
+  border-radius: var(--rund-l);
 }
 .wf-parallel-abw.wf-parallel-weg { border-color: var(--separator-strong); }
-.wf-parallel-abw-kopf { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange-text); }
+.wf-parallel-abw-kopf { font-size: 11px; font-weight: 500; color: var(--orange-text); }
 .wf-parallel-weg .wf-parallel-abw-kopf { color: var(--text-tertiary); }
 .wf-karte.wf-parallel-gestrichelt { border-style: dashed; border-color: var(--orange); }
 .wf-karte.wf-parallel-gestrichelt.aktiv { border-color: var(--accent); }
@@ -796,11 +787,12 @@ button.wf-parallel-kopf:hover .wf-parallel-titel { text-decoration: underline; t
     z-index: 4;
     max-height: 78vh;
     border-left: none;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    box-shadow: var(--shadow-lg);
+    border-radius: var(--rund-xl) var(--rund-xl) 0 0;
+    box-shadow: var(--schatten-dialog);
     animation: pop 0.18s ease;
   }
   .wf-fuss { flex-wrap: wrap; }
   .wf-fuss-info { flex-basis: 100%; }
   .wf-fuss .btn { flex: 1; }
+}
 }

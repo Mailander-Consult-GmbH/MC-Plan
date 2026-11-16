@@ -36,7 +36,7 @@ export function AngemeldetAls({ hinweis, zusatz }: { hinweis?: string; zusatz?: 
         onClick={() => setOffen(true)}
         title="Name und Farbmodus – gelten in allen Bereichen"
       >
-        <span className="avatar" style={{ width: 26, height: 26 }}>
+        <span className="avatar">
           {initialen(benutzer.name)}
         </span>
         <span className="gem-angemeldet-text">

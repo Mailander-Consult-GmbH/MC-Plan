@@ -3,49 +3,49 @@ import { useState } from 'react';
 /**
  * Bildmarken der Anwendung.
  *
- * Die Logos von KaPlan liegen als PNG unter `public/logos/` (je Bereich
- * eines, dazu das Logo der Startseite und das Symbol `Logo.png`). Die Wortmarke
- * Mailänder Consult stammt aus der Originaldatei `public/mailaender-consult.svg`
- * und wird nur über die Höhe skaliert.
+ * KaPlan erscheint im Koralle-Design als Kachel im Korallenverlauf mit dem
+ * Dreieck der Marke in Weiß, daneben der Name und – in einem Bereich – dessen
+ * Bezeichnung (`KaPlanMarke`). Die früheren Logodateien unter `public/logos/`
+ * (dunkle Schrift, für hellen Grund) werden in der Oberfläche nicht mehr
+ * gezeigt. Die Wortmarke Mailänder Consult stammt aus der Originaldatei
+ * `public/mailaender-consult.svg` und wird nur über die Höhe skaliert.
  */
 
-/** Hausfarbe nach dem Logo Mailänder Consult. */
+/** Hausfarbe nach dem Logo Mailänder Consult – nur für die Ersatzzeichnung der Wortmarke. */
 export const MARKE_BLAU = '#24456e';
 
-/** Logos von KaPlan unter `public/logos/`. */
-export type KaPlanLogo =
-  | 'Startseite'
-  | 'Planlaufmanagement'
-  | 'Baubetriebsplanung'
-  | 'Projektsteuerung';
-
-const KAPLAN_TEXT: Record<KaPlanLogo, string> = {
-  Startseite: 'KaPlan',
-  Planlaufmanagement: 'KaPlan – Planlaufmanagement',
-  Baubetriebsplanung: 'KaPlan – Baubetriebsplanung',
-  Projektsteuerung: 'KaPlan – Projektsteuerung',
-};
+/** Bereiche, deren Namen die Marke tragen kann. */
+export type KaPlanBereich = 'Planlaufmanagement' | 'Baubetriebsplanung' | 'Projektsteuerung';
 
 /**
- * Logo von KaPlan: auf dem Startbildschirm ohne Zusatz, in den Bereichen mit
- * dem Namen des Bereichs. Skaliert wird über die Breite oder die Höhe, das
- * Seitenverhältnis bleibt unverändert.
+ * Das Dreieck von KaPlan (drei offene Ecken), nachgezeichnet nach
+ * `public/logos/Logo.png`; es nimmt die Schriftfarbe an.
  */
-export function KaPlanLogo({
-  variante,
-  width,
-  height,
-}: {
-  variante: KaPlanLogo;
-  width?: number | string;
-  height?: number;
-}) {
+export function KaPlanZeichen({ size = 25 }: { size?: number }) {
   return (
-    <img
-      src={`${import.meta.env.BASE_URL}logos/Logo_${variante}.png`}
-      alt={KAPLAN_TEXT[variante]}
-      style={{ display: 'block', width: width ?? 'auto', height: height ?? 'auto', maxWidth: '100%' }}
-    />
+    <svg width={size} height={size} viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
+      <path d="M255.5 57 349.5 219.5H324L255.5 100 187 219.5h-25z" />
+      <path d="M114 302h24.5L63 433.5h140.5v22H26z" />
+      <path d="M397.5 302H373l75.5 131.5H308v22h177.5z" />
+    </svg>
+  );
+}
+
+/**
+ * Marke von KaPlan: auf dem Startbildschirm ohne Zusatz, in den Bereichen mit
+ * dem Namen des Bereichs. Für Bildschirmleser ein Bild mit dem vollen Namen.
+ */
+export function KaPlanMarke({ bereich }: { bereich?: KaPlanBereich }) {
+  return (
+    <span className="marke" role="img" aria-label={bereich ? `KaPlan – ${bereich}` : 'KaPlan'}>
+      <span className="marke-kachel">
+        <KaPlanZeichen />
+      </span>
+      <span className="marke-text" aria-hidden="true">
+        <span className="marke-name">KaPlan</span>
+        {bereich ? <span className="marke-bereich">{bereich}</span> : null}
+      </span>
+    </span>
   );
 }
 

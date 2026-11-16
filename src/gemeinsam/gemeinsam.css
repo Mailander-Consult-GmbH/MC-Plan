@@ -1,8 +1,10 @@
+/* Ebene „components“ wie global.css: Tailwind-Utilities gewinnen, die Reihenfolge der Bausteinregeln bleibt. */
+@layer components {
 /*
  * Bausteine zum Projektregister (ProjektBereiche.tsx, RegisterHinweis.tsx):
  * Bereichsmarken in der Projektkachel, grau hinterlegte Projekte aus anderen
  * Bereichen, Archiv, Hinweis bei nicht lesbarem bzw. nicht gespeichertem
- * Register. Nur Design-Tokens aus src/shared/global.css.
+ * Register. Nur Design-Tokens aus src/shared/global.css (Koralle-Design).
  */
 
 /* Marken unten in der Kachel: „Auch in Planlaufmanagement …“ */
@@ -29,7 +31,7 @@
   align-items: baseline;
   gap: 4px 12px;
 }
-.gem-abschnitt-kopf h2 { margin: 0; font-size: 15px; }
+.gem-abschnitt-kopf h2 { margin: 0; font-size: 16px; }
 
 /* Projekte aus anderen Bereichen: grau hinterlegt */
 .card.gem-fremd {
@@ -54,13 +56,14 @@
   border: none;
   background: none;
   font: inherit;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   color: var(--text);
   text-align: left;
   cursor: pointer;
 }
-.gem-umschalter:hover { color: var(--accent); }
+.gem-umschalter:hover { color: var(--koralle-text); }
 .gem-pfeil { display: flex; color: var(--text-tertiary); transition: transform 0.14s ease; }
 .gem-pfeil.offen { transform: rotate(90deg); }
 .gem-archiv-liste > .card { background: var(--fill-gruppe); box-shadow: none; }
@@ -72,7 +75,6 @@
 .gem-registerhinweis { display: grid; gap: 10px; margin-bottom: 18px; }
 /* Der Anker nimmt nur einen sonst verlorenen Fokus auf – ohne Rahmen, auch wenn der Hinweis schon weg ist */
 .gem-registeranker:focus { outline: none; }
-.gem-registerhinweis .callout.error { box-shadow: inset 3px 0 0 var(--red); }
 .gem-registerhinweis-knoepfe { gap: 6px; margin-top: 8px; }
 
 /* Projektkacheln der Bereiche (Schaltflächen): Inhalt oben, auch wenn die Nachbarkachel höher ist */
@@ -84,3 +86,4 @@
 .gem-angemeldet-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
 .gem-angemeldet-text strong { max-width: 100%; }
 .gem-angemeldet-label { font-size: 11px; color: var(--text-tertiary); }
+}

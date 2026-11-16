@@ -271,7 +271,7 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                       })}
                       <td
                         className={`zahl ${spaet ? '' : 'leer'}`}
-                        style={{ color: spaet ? 'var(--red)' : undefined }}
+                        style={{ color: spaet ? 'var(--rot-text)' : undefined }}
                       >
                         {spaet}
                       </td>

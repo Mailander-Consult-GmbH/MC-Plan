@@ -7,7 +7,7 @@
  * Die eigene Funktion Planlaufmanagement ist fest vorgegeben und erscheint
  * hier nicht – sie füllt stets die angemeldete Person aus.
  */
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import {
   EIGENE_ROLLE,
   UEBERGREIFEND,
@@ -204,7 +204,7 @@ export function Funktionen() {
                 key={f.id}
                 type="button"
                 className="role-chip"
-                style={{ color: f.farbe, cursor: 'pointer', padding: '4px 11px' }}
+                style={{ '--chip-farbe': f.farbe, cursor: 'pointer', padding: '4px 11px' } as CSSProperties}
                 onClick={() => {
                   const { id: _id, ...werte } = f;
                   addStandardRolle({ ...werte, gewerk: seite });

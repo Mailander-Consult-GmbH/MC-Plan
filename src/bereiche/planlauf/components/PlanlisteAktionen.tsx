@@ -326,7 +326,7 @@ export function EintraegeLoeschenDialog({
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
-          <button type="button" className="btn btn-primary pli-rot" onClick={loeschen} disabled={docs.length === 0}>
+          <button type="button" className="btn btn-primary btn-rot" onClick={loeschen} disabled={docs.length === 0}>
             <Icon name="loeschen" size={14} /> {eintraege(docs.length)} löschen
           </button>
         </>

@@ -89,7 +89,7 @@ export function AnmeldungDetail({
   const uebernahmen = nachfolger.filter((n) => istUebernahme(data.workflows, anmeldung.statusId, n));
   const loeschbar = nachfolger.includes(LOESCHEN);
   // Der Wechsel in eine Anmeldeleiche ist rot hervorgehoben.
-  const rot = (n: StatusZiel) => (istLeiche(data.workflows, n) ? { color: 'var(--red)' } : undefined);
+  const rot = (n: StatusZiel) => (istLeiche(data.workflows, n) ? { color: 'var(--rot-text)' } : undefined);
 
   return (
     <div className="stack">
@@ -194,7 +194,7 @@ export function AnmeldungDetail({
                     </div>
                     <p className="small tertiary">{frist.erlaeuterung}</p>
                     {frist.platzhalter ? (
-                      <p className="small" style={{ color: 'var(--orange)' }}>
+                      <p className="small" style={{ color: 'var(--orange-text)' }}>
                         Berechnet aus einem Platzhalterwert – Richtlinienfrist unter „Fristen“ prüfen.
                       </p>
                     ) : null}
@@ -228,7 +228,7 @@ export function AnmeldungDetail({
                         <button
                           type="button"
                           className="antwort-chip"
-                          style={{ color: 'var(--red)' }}
+                          style={{ color: 'var(--rot-text)' }}
                           onClick={() => setWechsel(LOESCHEN)}
                         >
                           {nachfolgerText(data.workflows, anmeldung.statusId, LOESCHEN)}

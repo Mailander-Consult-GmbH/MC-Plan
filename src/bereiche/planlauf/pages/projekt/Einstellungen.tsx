@@ -97,7 +97,7 @@ export function Einstellungen({ project, navigate }: { project: Project; navigat
                       onClick={() => setSettings({ feiertage: s.feiertage.filter((x) => x !== f) })}
                       aria-label="Feiertag entfernen"
                     >
-                      ✕
+                      <Icon name="schliessen" size={12} />
                     </button>
                   </span>
                 ))}

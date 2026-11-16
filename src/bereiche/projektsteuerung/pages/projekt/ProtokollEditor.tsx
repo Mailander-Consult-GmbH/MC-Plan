@@ -1229,8 +1229,7 @@ function LoeschenDialog({ auftrag, onClose }: { auftrag: Loeschen; onClose: () =
         <>
           <button
             type="button"
-            className={schonGestrichen ? 'btn btn-primary' : 'btn btn-danger'}
-            style={schonGestrichen ? { background: 'var(--red)' } : undefined}
+            className={schonGestrichen ? 'btn btn-primary btn-rot' : 'btn btn-danger'}
             onClick={() => {
               auftrag.sofort();
               onClose();

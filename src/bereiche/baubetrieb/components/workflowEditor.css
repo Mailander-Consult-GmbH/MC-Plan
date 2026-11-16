@@ -1,3 +1,5 @@
+/* Ebene „components“ wie global.css: Tailwind-Utilities gewinnen, die Reihenfolge der Bausteinregeln bleibt. */
+@layer components {
 /* ------------------------------------------------------------------ */
 /* Workflow-Editor der Baubetriebsplanung (WorkflowEditor.tsx) und     */
 /* Workflow-Liste – Gestaltung wie der Editor im Planlaufmanagement,   */
@@ -19,10 +21,10 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--bg);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--rund-xl);
+  box-shadow: var(--schatten-dialog);
   overflow: hidden;
-  animation: pop 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: pop 0.26s var(--ease-koralle);
 }
 .bb-wf-dialog:focus { outline: none; }
 
@@ -37,10 +39,7 @@
 }
 .bb-wf-kopf-titel { flex: 1; min-width: 0; }
 .bb-wf-kopf-oben {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
   color: var(--text-tertiary);
 }
 .bb-wf-kopf-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 1px; }
@@ -48,18 +47,18 @@
   display: block;
   width: min(520px, 100%);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--rund-s);
   background: transparent;
   padding: 1px 6px;
   margin-left: -7px;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 500;
   letter-spacing: -0.02em;
   color: var(--text);
   outline: none;
 }
 .bb-wf-name:hover { border-color: var(--separator); }
-.bb-wf-name:focus { border-color: var(--accent); background: var(--bg-elev); box-shadow: 0 0 0 3px var(--accent-soft); }
+.bb-wf-name:focus { border-color: var(--fokus); background: var(--bg-elev); box-shadow: 0 0 0 3px var(--accent-soft); }
 .bb-wf-pflicht { border-color: var(--red) !important; }
 
 .bb-wf-werkzeuge { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
@@ -68,7 +67,7 @@
   display: flex;
   gap: 2px;
   padding: 2px;
-  border-radius: var(--radius);
+  border-radius: 999px;
   border: 1px solid var(--separator);
 }
 .bb-wf-zu { font-size: 15px; }
@@ -80,11 +79,11 @@
   place-items: center;
   width: 30px;
   height: 30px;
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   background: var(--gray-soft);
   color: var(--text-secondary);
 }
-.bb-wf-art-zeichen.ton-blue { background: var(--accent-soft); color: var(--accent); }
+.bb-wf-art-zeichen.ton-blue { background: var(--blau-soft); color: var(--blau-text); }
 .bb-wf-art-zeichen.ton-green { background: var(--green-soft); color: var(--gruen-text); }
 .bb-wf-art-zeichen.ton-orange { background: var(--orange-soft); color: var(--orange-text); }
 .bb-wf-art-zeichen.ton-red { background: var(--red-soft); color: var(--rot-text); }
@@ -102,7 +101,7 @@
   bottom: 0;
   z-index: 4;
   width: min(380px, 100%);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--schatten-dialog);
   animation: pop 0.16s ease;
 }
 .bb-wf-panel:focus { outline: none; }
@@ -119,7 +118,7 @@
 .bb-wf-banner {
   font-size: 12.5px;
   background: linear-gradient(var(--orange-soft), var(--orange-soft)), var(--bg-elev);
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   padding: 9px 12px;
   margin-bottom: 14px;
 }
@@ -150,10 +149,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-tertiary);
   padding-bottom: 14px;
 }
@@ -246,18 +243,18 @@
   padding: 12px 14px;
   background: var(--bg-elev);
   border: 1px solid var(--separator);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--rund-l);
+  box-shadow: var(--schatten);
   cursor: pointer;
   color: var(--text);
   font: inherit;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
-.bb-wf-karte:hover { border-color: var(--separator-strong); box-shadow: var(--shadow); }
+.bb-wf-karte:hover { border-color: var(--separator-strong); box-shadow: var(--schatten-hoch); }
 .bb-wf-karte.hervor { border-color: var(--separator-strong); }
-.bb-wf-karte.aktiv { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+.bb-wf-karte.aktiv { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--schatten-hoch); }
 .bb-wf-karte.fehlt { border-color: var(--red); border-style: dashed; }
-.bb-wf-karte:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bb-wf-karte:focus-visible { outline: 2px solid var(--fokus); outline-offset: 2px; }
 .bb-wf-karte.abweichung::before {
   content: '';
   position: absolute;
@@ -277,13 +274,11 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 600;
   color: var(--text-secondary);
 }
-.bb-wf-art.ton-blue { color: var(--accent); }
+.bb-wf-art.ton-blue { color: var(--blau-text); }
 .bb-wf-art.ton-green { color: var(--gruen-text); }
 .bb-wf-art.ton-orange { color: var(--orange-text); }
 .bb-wf-art.ton-red { color: var(--rot-text); }
@@ -305,7 +300,6 @@
   flex: none;
   font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.02em;
   padding: 2px 5px;
   border-radius: 5px;
   background: var(--gray-soft);
@@ -339,7 +333,7 @@
   font-weight: 600;
   line-height: 1;
   padding: 3px 7px;
-  border-radius: 6px;
+  border-radius: 999px;
   white-space: nowrap;
   max-width: 104px;
   overflow: hidden;
@@ -372,7 +366,7 @@
   font-size: 12px;
   color: var(--text-tertiary);
   border: 1px dashed var(--separator-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--rund-l);
   padding: 14px;
   background: var(--bg-elev);
 }
@@ -447,11 +441,11 @@
   flex-direction: column;
   gap: 7px;
   padding: 10px;
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   border: 1px solid var(--separator);
   background: var(--bg-subtle);
 }
-.bb-wf-nachfolger-karte.standard { border-color: var(--accent-soft); background: var(--bg-elev); box-shadow: var(--shadow-sm); }
+.bb-wf-nachfolger-karte.standard { border-color: var(--accent-soft); background: var(--bg-elev); box-shadow: var(--schatten); }
 .bb-wf-nachfolger-zeile { display: flex; align-items: center; gap: 7px; }
 .bb-wf-nachfolger-zeile .select { flex: 1; min-width: 0; }
 .bb-wf-punkt { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--orange); }
@@ -459,11 +453,9 @@
 .bb-wf-standard-marke {
   align-self: flex-start;
   margin-left: 15px;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--accent);
+  color: var(--text-secondary);
 }
 .bb-wf-als-standard { align-self: flex-start; margin-left: 9px; }
 
@@ -478,7 +470,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: var(--radius);
+  border-radius: var(--rund);
   background: var(--fill-gruppe);
 }
 .bb-wf-kacheln b { font-size: 20px; letter-spacing: -0.02em; }
@@ -489,7 +481,7 @@
   text-align: left;
   font-size: 12px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--rund-s);
   padding: 7px 9px;
   background: var(--orange-soft);
   color: var(--text);
@@ -531,7 +523,7 @@
 /* Ablauf-Vorschau in der Workflow-Liste (AblaufVorschau) -------------- */
 .bb-wf-vorschau { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; min-width: 0; }
 .bb-wf-vorschau-knoten { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--text-tertiary); opacity: 0.9; }
-.bb-wf-vorschau-knoten.ton-blue { background: var(--accent); }
+.bb-wf-vorschau-knoten.ton-blue { background: var(--blau); }
 .bb-wf-vorschau-knoten.ton-green { background: var(--green); }
 .bb-wf-vorschau-knoten.ton-orange { background: var(--orange); }
 .bb-wf-vorschau-knoten.ton-red { background: var(--red); }
@@ -543,32 +535,37 @@
 .bb-wf-vorschau-zusatz { margin-left: 10px; font-size: 11.5px; color: var(--orange-text); white-space: nowrap; }
 
 /* Workflow-Liste (pages/Workflows.tsx) ------------------------------- */
-.bb-wf-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; }
+.bb-wf-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 16px; }
 .bb-wf-liste-karte {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px 18px;
+  padding: 22px 24px;
   background: var(--bg-elev);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  border-radius: var(--rund-xl);
+  box-shadow: var(--schatten);
   cursor: pointer;
   text-align: left;
-  border: 1px solid transparent;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  border: none;
+  transition: transform 0.3s var(--ease-koralle), box-shadow 0.3s var(--ease-koralle);
 }
-.bb-wf-liste-karte:hover { border-color: var(--separator-strong); }
-.bb-wf-liste-kopf { display: flex; align-items: flex-start; gap: 10px; }
-.bb-wf-liste-kopf strong { font-size: 15px; letter-spacing: -0.01em; }
+.bb-wf-liste-karte:hover { transform: translateY(-4px); box-shadow: var(--schatten-hoch); }
+.bb-wf-liste-karte:focus-visible { outline: 2px solid var(--fokus); outline-offset: 2px; }
+/* In einer Karte: graue Kachel statt Karte in der Karte – wie die Kennzahlen der Vorlage */
+.card .bb-wf-liste-karte { background: var(--bg-subtle); box-shadow: none; border-radius: var(--rund-l); padding: 18px 20px; }
+.card .bb-wf-liste-karte:hover { box-shadow: var(--schatten-hoch); }
+.card .bb-wf-liste-karte .bb-wf-liste-zeichen { background: var(--bg-elev); }
+.bb-wf-liste-kopf { display: flex; align-items: flex-start; gap: 12px; }
+.bb-wf-liste-kopf strong { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; }
 .bb-wf-liste-zeichen {
   flex: none;
   display: inline-grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius);
-  background: var(--accent-soft);
-  color: var(--accent);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--koralle-soft);
+  color: var(--koralle);
 }
 .bb-wf-liste-text { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; margin: 0; }
 .bb-wf-liste-zahlen { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-secondary); }
@@ -602,12 +599,13 @@
     z-index: 4;
     max-height: 78vh;
     border-left: none;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    box-shadow: var(--shadow-lg);
+    border-radius: var(--rund-xl) var(--rund-xl) 0 0;
+    box-shadow: var(--schatten-dialog);
     animation: pop 0.18s ease;
   }
   .bb-wf-fuss { flex-wrap: wrap; }
   .bb-wf-fuss-info { flex-basis: 100%; }
   .bb-wf-fuss .btn { flex: 1; }
   .bb-wf-feld-reihe { grid-template-columns: minmax(0, 1fr); }
+}
 }

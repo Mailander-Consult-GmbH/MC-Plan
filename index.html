@@ -5,8 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KaPlan</title>
     <meta name="description" content="KaPlan – Planlaufmanagement, Baubetriebsplanung und Projektsteuerung" />
-    <meta name="theme-color" content="#f5f5f7" />
-    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f2f2f4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121316" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      /* Seitengrund des Koralle-Designs schon vor dem Laden – hell und dunkel wie die Anwendung */
+      html { background: #f2f2f4; color: #1b1c20; }
+      .lade-hinweis { color: #1b1c20; }
+      .lade-hinweis p { color: #62646d; }
+      .lade-hinweis code { background: #ffffff; padding: .1rem .4rem; border-radius: 8px; }
+      @media (prefers-color-scheme: dark) {
+        html { background: #121316; color: #f2f2f4; }
+        .lade-hinweis { color: #f2f2f4; }
+        .lade-hinweis p { color: #b1b3bb; }
+        .lade-hinweis code { background: #232429; }
+      }
+    </style>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="icons/kaplan-dreieck-32.png" />
     <link rel="icon" type="image/png" sizes="64x64" href="icons/kaplan-dreieck-64.png" />
@@ -29,17 +43,17 @@
         und wird vom Workflow nach jedem Push auf main erneuert (siehe README,
         Abschnitt „Veröffentlichen“). Fehlt er, bleibt der Hinweis stehen.
       -->
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 40rem; margin: 12vh auto; padding: 0 1.5rem; color: #1d1d1f; line-height: 1.5;">
-        <h1 style="font-size: 1.3rem; margin: 0 0 .75rem;">KaPlan wird geladen …</h1>
-        <p style="margin: 0 0 1rem; color: #6e6e73;">
+      <div class="lade-hinweis" style="font-family: Outfit, system-ui, -apple-system, 'Segoe UI', sans-serif; max-width: 40rem; margin: 12vh auto; padding: 0 1.5rem; line-height: 1.5;">
+        <h1 style="font-size: 1.4rem; font-weight: 500; letter-spacing: -0.02em; margin: 0 0 .75rem;">KaPlan wird geladen …</h1>
+        <p style="margin: 0 0 1rem;">
           Falls diese Meldung stehen bleibt, fehlt die gebaute Anwendung im Ordner
-          <strong>app/</strong>. Sie entsteht mit <code style="background: #f5f5f7; padding: .1rem .35rem; border-radius: 4px;">npm run build</code>
-          und wird aus <code style="background: #f5f5f7; padding: .1rem .35rem; border-radius: 4px;">dist/</code> nach
-          <code style="background: #f5f5f7; padding: .1rem .35rem; border-radius: 4px;">app/</code> übernommen.
+          <strong>app/</strong>. Sie entsteht mit <code>npm run build</code>
+          und wird aus <code>dist/</code> nach
+          <code>app/</code> übernommen.
         </p>
-        <p style="margin: 0; color: #6e6e73;">
-          Lokal wird die Anwendung mit <code style="background: #f5f5f7; padding: .1rem .35rem; border-radius: 4px;">npm run dev</code>
-          gestartet oder mit <code style="background: #f5f5f7; padding: .1rem .35rem; border-radius: 4px;">npm run build</code> gebaut.
+        <p style="margin: 0;">
+          Lokal wird die Anwendung mit <code>npm run dev</code>
+          gestartet oder mit <code>npm run build</code> gebaut.
         </p>
       </div>
     </div>
