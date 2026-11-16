@@ -13,6 +13,8 @@
 @import '@fontsource-variable/outfit';
 @source '../';
 
+/* `dark:` folgt dem Farbschema der Anwendung (data-farbschema am <html>), nicht unmittelbar dem Gerät */
+@custom-variant dark (&:where([data-farbschema='dunkel'], [data-farbschema='dunkel'] *));
 /* `kontrast:` – Utilities nur im Farbmodus für Rot-Grün-Sehschwäche */
 @custom-variant kontrast (&:where([data-farbmodus='kontrast'], [data-farbmodus='kontrast'] *));
 
@@ -67,7 +69,8 @@
 }
 
 :root {
-  color-scheme: light dark;
+  /* Eingabefelder und Rollbalken des Browsers folgen dem Schema (dunkel: siehe unten) */
+  color-scheme: light;
 
   /* Flächen */
   --bg: #f2f2f4;
@@ -149,54 +152,58 @@
   --sidebar-w: 248px;
 }
 
-/* Dunkles Schema – folgt wie in der Vorlage der Einstellung des Geräts */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121316;
-    --bg-elev: #1b1c20;
-    --bg-subtle: #232429;
-    --fill-gruppe: #232429;
-    --bg-hover: rgba(255, 255, 255, 0.06);
-    --bg-active: rgba(255, 255, 255, 0.11);
+/*
+ * Dunkles Schema. Ob es gilt, steht als `data-farbschema` am <html>: Die Hülle
+ * (src/shell/Shell.tsx) setzt `hell` oder `dunkel` aus dem Farbschema unter
+ * „Angemeldet als“ – fest gewählt oder, als Vorgabe, wie das Gerät eingestellt
+ * ist. Deshalb steht hier keine Medienabfrage `prefers-color-scheme`.
+ */
+:root[data-farbschema='dunkel'] {
+  color-scheme: dark;
+  --bg: #121316;
+  --bg-elev: #1b1c20;
+  --bg-subtle: #232429;
+  --fill-gruppe: #232429;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-active: rgba(255, 255, 255, 0.11);
 
-    --text: #f2f2f4;
-    --text-secondary: #b1b3bb;
-    --text-tertiary: #8b8d94;
+  --text: #f2f2f4;
+  --text-secondary: #b1b3bb;
+  --text-tertiary: #8b8d94;
 
-    --separator: #2c2d33;
-    --separator-strong: #3c3d45;
+  --separator: #2c2d33;
+  --separator-strong: #3c3d45;
 
-    --accent: #f2f2f4;
-    --accent-hover: #ffffff;
-    --accent-soft: rgba(255, 255, 255, 0.09);
-    --auf-accent: #1b1c20;
+  --accent: #f2f2f4;
+  --accent-hover: #ffffff;
+  --accent-soft: rgba(255, 255, 255, 0.09);
+  --auf-accent: #1b1c20;
 
-    --koralle-soft: rgba(242, 95, 76, 0.18);
-    --koralle-text: #ff8a73;
+  --koralle-soft: rgba(242, 95, 76, 0.18);
+  --koralle-text: #ff8a73;
 
-    --green: #35c283;
-    --green-soft: rgba(53, 194, 131, 0.16);
-    --gruen-text: #5ad49c;
-    --orange: #f2a65e;
-    --orange-soft: rgba(242, 153, 74, 0.18);
-    --orange-text: #f5b87a;
-    --red: #ff7461;
-    --red-soft: rgba(242, 95, 76, 0.2);
-    --rot-text: #ff8a73;
-    --purple: #b98af0;
-    --purple-soft: rgba(155, 81, 224, 0.22);
-    --blau-soft: rgba(86, 204, 242, 0.16);
-    --blau-text: #7dd8f6;
-    --gray-soft: rgba(255, 255, 255, 0.08);
-    --gelb-soft: rgba(255, 204, 0, 0.12);
-    --gelb-soft-stark: rgba(255, 204, 0, 0.24);
-    --gelb-text: #f0cb5b;
-    --schleier: rgba(0, 0, 0, 0.6);
+  --green: #35c283;
+  --green-soft: rgba(53, 194, 131, 0.16);
+  --gruen-text: #5ad49c;
+  --orange: #f2a65e;
+  --orange-soft: rgba(242, 153, 74, 0.18);
+  --orange-text: #f5b87a;
+  --red: #ff7461;
+  --red-soft: rgba(242, 95, 76, 0.2);
+  --rot-text: #ff8a73;
+  --purple: #b98af0;
+  --purple-soft: rgba(155, 81, 224, 0.22);
+  --blau-soft: rgba(86, 204, 242, 0.16);
+  --blau-text: #7dd8f6;
+  --gray-soft: rgba(255, 255, 255, 0.08);
+  --gelb-soft: rgba(255, 204, 0, 0.12);
+  --gelb-soft-stark: rgba(255, 204, 0, 0.24);
+  --gelb-text: #f0cb5b;
+  --schleier: rgba(0, 0, 0, 0.6);
 
-    --schatten: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.22);
-    --schatten-hoch: 0 18px 40px rgba(0, 0, 0, 0.45);
-    --schatten-dialog: 0 28px 70px rgba(0, 0, 0, 0.6);
-  }
+  --schatten: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.22);
+  --schatten-hoch: 0 18px 40px rgba(0, 0, 0, 0.45);
+  --schatten-dialog: 0 28px 70px rgba(0, 0, 0, 0.6);
 }
 
 /* ------------------------------------------------------------------ */
@@ -640,6 +647,8 @@
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field label { font-size: 12.5px; font-weight: 500; color: var(--text-secondary); }
 .field .hint { font-size: 11.5px; color: var(--text-tertiary); }
+/* Segmente in einem Feld sind nur so breit wie ihr Inhalt */
+.field > .segmented { align-self: flex-start; max-width: 100%; }
 
 .input, .select, .textarea {
   width: 100%;
@@ -1325,14 +1334,13 @@
 @media (min-width: 861px) { .btn-icon.menu-toggle { display: none; } }
 
 /* Im dunklen Schema erscheint die blaue Wortmarke weiß */
-@media (prefers-color-scheme: dark) {
-  .topbar-logo img, .logo-hell img { filter: brightness(0) invert(1); opacity: 0.92; }
-  /* Funktionsfarben aufhellen, damit sie auf dunklem Grund lesbar bleiben */
-  .role-chip { color: color-mix(in srgb, var(--chip-farbe, currentColor) 55%, #fff); }
-  .avatar.avatar-farbe {
-    background: color-mix(in srgb, var(--chip-farbe) 26%, transparent);
-    color: color-mix(in srgb, var(--chip-farbe) 45%, #fff);
-  }
+:root[data-farbschema='dunkel'] .topbar-logo img,
+:root[data-farbschema='dunkel'] .logo-hell img { filter: brightness(0) invert(1); opacity: 0.92; }
+/* Funktionsfarben aufhellen, damit sie auf dunklem Grund lesbar bleiben */
+:root[data-farbschema='dunkel'] .role-chip { color: color-mix(in srgb, var(--chip-farbe, currentColor) 55%, #fff); }
+:root[data-farbschema='dunkel'] .avatar.avatar-farbe {
+  background: color-mix(in srgb, var(--chip-farbe) 26%, transparent);
+  color: color-mix(in srgb, var(--chip-farbe) 45%, #fff);
 }
 }
 
@@ -1380,40 +1388,38 @@
   --signal-verlauf: linear-gradient(150deg, #cc3f9e, #b0007a);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root[data-farbmodus='kontrast'] {
-    --green: #2fd0bd;
-    --green-soft: rgba(47, 208, 189, 0.2);
-    --gruen-text: #6fe3d4;
-    --orange: #f2b33d;
-    --orange-soft: rgba(242, 179, 61, 0.22);
-    --orange-text: #f7cb78;
-    --red: #ff6bcb;
-    --red-soft: rgba(255, 107, 203, 0.2);
-    --rot-text: #ff9adb;
-    --purple: #a99bff;
-    --purple-soft: rgba(169, 155, 255, 0.22);
-    --blau: #6cc4f5;
-    --blau-soft: rgba(108, 196, 245, 0.2);
-    --blau-text: #9ad8fa;
+:root[data-farbmodus='kontrast'][data-farbschema='dunkel'] {
+  --green: #2fd0bd;
+  --green-soft: rgba(47, 208, 189, 0.2);
+  --gruen-text: #6fe3d4;
+  --orange: #f2b33d;
+  --orange-soft: rgba(242, 179, 61, 0.22);
+  --orange-text: #f7cb78;
+  --red: #ff6bcb;
+  --red-soft: rgba(255, 107, 203, 0.2);
+  --rot-text: #ff9adb;
+  --purple: #a99bff;
+  --purple-soft: rgba(169, 155, 255, 0.22);
+  --blau: #6cc4f5;
+  --blau-soft: rgba(108, 196, 245, 0.2);
+  --blau-text: #9ad8fa;
 
-    --text-secondary: #d3d5db;
-    --text-tertiary: #b6b8c0;
-    --separator: #4a4c55;
-    --separator-strong: #6c6e78;
-    --accent-soft: rgba(255, 255, 255, 0.16);
-    --bg-active: rgba(255, 255, 255, 0.2);
-    --gray-soft: rgba(255, 255, 255, 0.16);
-    --gelb-soft: rgba(255, 214, 51, 0.2);
-    --gelb-soft-stark: rgba(255, 214, 51, 0.34);
-    --gelb-text: #ffe08a;
+  --text-secondary: #d3d5db;
+  --text-tertiary: #b6b8c0;
+  --separator: #4a4c55;
+  --separator-strong: #6c6e78;
+  --accent-soft: rgba(255, 255, 255, 0.16);
+  --bg-active: rgba(255, 255, 255, 0.2);
+  --gray-soft: rgba(255, 255, 255, 0.16);
+  --gelb-soft: rgba(255, 214, 51, 0.2);
+  --gelb-soft-stark: rgba(255, 214, 51, 0.34);
+  --gelb-text: #ffe08a;
 
-    --koralle: #d9432f;
-    --koralle-2: #ee6a55;
-    --koralle-soft: rgba(242, 95, 76, 0.26);
-    --koralle-text: #ffa899;
-    --signal-verlauf: linear-gradient(150deg, #d94aaa, #b0007a);
-  }
+  --koralle: #d9432f;
+  --koralle-2: #ee6a55;
+  --koralle-soft: rgba(242, 95, 76, 0.26);
+  --koralle-text: #ffa899;
+  --signal-verlauf: linear-gradient(150deg, #d94aaa, #b0007a);
 }
 
 @layer components {

@@ -5,27 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KaPlan</title>
     <meta name="description" content="KaPlan – Planlaufmanagement, Baubetriebsplanung und Projektsteuerung" />
-    <meta name="theme-color" content="#f2f2f4" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#121316" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f2f2f4" />
     <meta name="color-scheme" content="light dark" />
+    <script>
+      /*
+        Hell oder dunkel schon vor dem Start der Anwendung: fest gewählt unter
+        „Angemeldet als“ (Farbschema „hell“ bzw. „dunkel“) oder – die Vorgabe –
+        wie das Gerät eingestellt ist. Dieselbe Regel wie `istDunkel` in
+        src/gemeinsam/benutzer.ts; die Hülle (src/shell/Shell.tsx) setzt den
+        Wert nach dem Start erneut und folgt Änderungen. Ohne dieses Skript
+        blitzte die Seite bei jedem Laden erst hell auf.
+      */
+      (function () {
+        var schema = 'geraet';
+        try {
+          schema = (JSON.parse(localStorage.getItem('kaplan-benutzer.v1') || '{}') || {}).farbschema;
+        } catch (e) {
+          /* unlesbar – wie das Gerät */
+        }
+        var dunkel =
+          schema === 'dunkel' ||
+          (schema !== 'hell' && typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-farbschema', dunkel ? 'dunkel' : 'hell');
+        var farbe = document.querySelector('meta[name="theme-color"]');
+        if (farbe) farbe.setAttribute('content', dunkel ? '#121316' : '#f2f2f4');
+      })();
+    </script>
     <style>
       /* Seitengrund des Koralle-Designs schon vor dem Laden – hell und dunkel wie die Anwendung */
       html { background: #f2f2f4; color: #1b1c20; }
       .lade-hinweis { color: #1b1c20; }
       .lade-hinweis p { color: #62646d; }
       .lade-hinweis code { background: #ffffff; padding: .1rem .4rem; border-radius: 8px; }
-      @media (prefers-color-scheme: dark) {
-        html { background: #121316; color: #f2f2f4; }
-        .lade-hinweis { color: #f2f2f4; }
-        .lade-hinweis p { color: #b1b3bb; }
-        .lade-hinweis code { background: #232429; }
-      }
+      html[data-farbschema='dunkel'] { background: #121316; color: #f2f2f4; }
+      html[data-farbschema='dunkel'] .lade-hinweis { color: #f2f2f4; }
+      html[data-farbschema='dunkel'] .lade-hinweis p { color: #b1b3bb; }
+      html[data-farbschema='dunkel'] .lade-hinweis code { background: #232429; }
     </style>
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="icon" type="image/png" sizes="32x32" href="icons/kaplan-dreieck-32.png" />
-    <link rel="icon" type="image/png" sizes="64x64" href="icons/kaplan-dreieck-64.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/kaplan-dreieck-192.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/kaplan-app-apple-180.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/kaplan-koralle-32.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="icons/kaplan-koralle-64.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/kaplan-koralle-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/kaplan-koralle-apple-180.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="KaPlan" />

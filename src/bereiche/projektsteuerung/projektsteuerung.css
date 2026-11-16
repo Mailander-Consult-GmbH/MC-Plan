@@ -14,9 +14,7 @@
 .ps-typ-A { --ps-typ: var(--orange-text); }
 /* Ergänzungen dieses Protokolls stehen wie im Druck in Blau */
 :root { --ps-ergaenzung: #1846c4; }
-@media (prefers-color-scheme: dark) {
-  :root { --ps-ergaenzung: #8aa5ff; }
-}
+:root[data-farbschema='dunkel'] { --ps-ergaenzung: #8aa5ff; }
 
 /* Kopfzeile eines Projekts über den Reitern */
 .ps-projektkopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

@@ -8,7 +8,7 @@ import { useLayoutEffect } from 'react';
 import { BereichBaubetrieb } from '../bereiche/baubetrieb';
 import { BereichPlanlauf } from '../bereiche/planlauf';
 import { BereichProjektsteuerung } from '../bereiche/projektsteuerung';
-import { useBenutzer } from '../gemeinsam/benutzer';
+import { GERAET_DUNKEL, SEITENGRUND, istDunkel, useBenutzer } from '../gemeinsam/benutzer';
 import { NeueFassungHinweis } from './NeueFassung';
 import { Start } from './Start';
 import { useBereich } from './router';
@@ -16,7 +16,7 @@ import { useBereich } from './router';
 export function Shell() {
   const bereich = useBereich();
 
-  const { farbmodus } = useBenutzer();
+  const { farbmodus, farbschema } = useBenutzer();
 
   useLayoutEffect(() => {
     // Der Farbmodus gilt für alle Bereiche (gemeinsame Anmeldung „Angemeldet
@@ -26,6 +26,25 @@ export function Shell() {
     // nach jedem Öffnen oder Neuladen kurz in den Standardfarben.
     document.documentElement.dataset.farbmodus = bereich ? farbmodus : 'standard';
   }, [bereich, farbmodus]);
+
+  useLayoutEffect(() => {
+    // Hell oder dunkel gilt überall, auch auf der Bereichsauswahl: fest gewählt
+    // unter „Angemeldet als“ oder – die Vorgabe – wie das Gerät eingestellt ist.
+    // Gesetzt wird stets das Ergebnis (`hell`/`dunkel`); global.css kennt keine
+    // Medienabfrage dafür. Das Skript im Kopf der index.html setzt denselben
+    // Wert schon vor dem Start, damit die Seite nicht erst hell aufblitzt.
+    const setzen = () => {
+      const schema = istDunkel(farbschema) ? 'dunkel' : 'hell';
+      document.documentElement.dataset.farbschema = schema;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', SEITENGRUND[schema]);
+    };
+    setzen();
+    if (farbschema !== 'geraet') return;
+    // „Wie das Gerät“: einem Wechsel der Geräteeinstellung sofort folgen
+    const geraet = window.matchMedia(GERAET_DUNKEL);
+    geraet.addEventListener('change', setzen);
+    return () => geraet.removeEventListener('change', setzen);
+  }, [farbschema]);
 
   return (
     <>
