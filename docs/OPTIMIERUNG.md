@@ -7,8 +7,9 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 > Die Liste unten ist nicht neu durchgesehen; „Heute“ beschreibt weiter den Stand vom 12.11.2026.
 > Berührt sind diese Punkte:
 >
-> * **Wo „blau“ steht** (blauer Hauptknopf, blauer Knopf, O-2, O-3), ist heute die dunkle Pille
->   (`.btn-primary`, Tinte) gemeint; die Fragen dahinter gelten unverändert.
+> * **Wo „blau“ steht** (blauer Hauptknopf, blauer Knopf, O-2, O-3), ist die Pille
+>   `.btn-primary` gemeint – nach der Umstellung zunächst in Tinte, inzwischen wieder blau wie der aktive Menüpunkt; die Fragen
+>   dahinter gelten unverändert.
 > * **M-5** (roter „Löschen“-Knopf): Die Klasse für „rot gefüllt“ gibt es jetzt – `.btn-rot` in
 >   `src/shared/global.css`, verwendet an allen Stellen, die die Farbe bisher fest eintrugen. Offen
 >   ist weiter der Gewerk-Dialog des Planlaufmanagements (Bestätigung nur als rote Schrift).

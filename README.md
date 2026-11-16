@@ -1779,8 +1779,10 @@ Menüleiste, die selbst eine Karte ist:
   Fensterrand – in beiden Schemata –, der Seitenkopf steht ohne Balken auf dem Seitengrund –
   die Unterzeile klein über dem Titel.
 * **Farben:** Die Markenfarbe ist das Blau von Mailänder Consult (`#24456e`) – aktiver Menüpunkt,
-  Fortschrittsbalken, Symbolflächen, Verknüpfungen. Betont wird mit Tinte (fast Schwarz):
-  Hauptknopf, gewählter Reiter, gewähltes Segment, aktueller Schritt, Tastaturfokus. Die Ampel
+  Fortschrittsbalken, Symbolflächen, Verknüpfungen. Betont wird im selben Blau – abweichend von
+  der Vorlage, die dafür Tinte (fast Schwarz) nimmt: Hauptknopf, gewählter Reiter, gewähltes
+  Segment und aktueller Schritt haben die Fläche des aktiven Menüpunkts, der Tastaturfokus einen
+  blauen Rahmen. In Tinte stehen die Schrift und die Kurzmeldungen. Die Ampel
   zeigt Grün (erledigt), Orange (fällig) und ein klares Rot (überfällig); überfällige Kennzahlen
   stehen als Karte im roten Verlauf. Blau-Türkis und Violett kennzeichnen laufend und
   Entscheidungen.

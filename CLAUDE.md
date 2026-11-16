@@ -63,12 +63,15 @@ von KaPlan verfügbar“ (`useNeueFassung` in `src/shared/pwa.ts`, `src/shell/Ne
 
 Vorlage ist `KoralleDashboard.jsx` (Wurzelverzeichnis; nur Vorlage, nicht Teil des Builds). Im
 Zweifel gilt ihr Bild: heller Seitengrund, weiße Karten mit großer Rundung und weichem Schatten,
-Tinte (fast Schwarz) für Betonung, Schrift Outfit, weiche Bewegungen.
+Schrift Outfit, weiche Bewegungen.
 
-**Vier bewusste Abweichungen von der Vorlage** – sie gelten vor ihr:
+**Fünf bewusste Abweichungen von der Vorlage** – sie gelten vor ihr:
 
 * **Markenfarbe ist Blau**, das Blau von Mailänder Consult (`--marke`, `#24456e`), nicht Koralle.
   Wo die Vorlage Koralle als Akzent zeigt (aktiver Menüpunkt, Balken, Symbolflächen), steht Blau.
+* **Betont wird in Blau, nicht in Tinte:** Hauptknopf, gewählter Reiter und gewähltes Segment
+  haben dasselbe Blau wie der aktive Menüpunkt (`--accent`, `--accent-verlauf`); in der Vorlage
+  sind sie fast schwarz. Tinte bleibt die Farbe der Schrift und der Kurzmeldung.
 * **Das Rot der Ampel ist ein eigenes, klares Rot** (`--red`, `#e5484d`) – in der Vorlage ist es
   dieselbe Koralle wie der Akzent. Rot bedeutet nur „überfällig“, „fehlt“ und „löschen“.
 * **Die Menüleiste ist eine Karte wie die Kacheln des Inhalts** – Kartengrund (`--bg-elev`),
@@ -117,7 +120,7 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
 | Schrift zweitrangig | `--text-secondary` | `text-zweitrangig` | `#62646d` | `#b1b3bb` |
 | Schrift gedämpft (Beschriftungen) | `--text-tertiary` | `text-gedaempft` | `#8b8d94` | `#8b8d94` |
 | Linie | `--separator`, `--separator-strong` | `border-linie`, `border-linie-stark` | `#ececef`, `#dddde2` | `#2c2d33`, `#3c3d45` |
-| Betonung (Tinte) | `--accent`, darauf `--auf-accent` | `bg-betont`, `text-auf-betont` | `#1b1c20` / weiß | `#f2f2f4` / `#1b1c20` |
+| Betonung (Blau wie der aktive Menüpunkt) | `--accent`, als Fläche `--accent-verlauf`, darauf `--auf-accent` | `bg-betont`, `text-auf-betont` | `#24456e` / weiß | `#3d6cab` / weiß |
 | Marke (Blau) | `--marke`, `--marke-2`, `--marke-soft` | `bg-marke`, `bg-marke-hell`, `bg-marke-zart` | `#24456e`, `#4a7ab8`, `#e8eef6` | `#4f86cc`, `#7eaae4`, zart durchscheinend |
 | Marke als Schrift | `--marke-text`, `--link` | `text-marke-text` | `#24456e` | `#93bbee` |
 | Ampel Grün | `--green`, `--green-soft`, `--gruen-text` | `bg-gruen`, `bg-gruen-zart`, `text-gruen-text` | `#1f9d61`, `#e3f6ec` | aufgehellt |
@@ -126,12 +129,16 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
 | Blau (laufend, im Plan, Hinweis) | `--blau`, `--blau-soft`, `--blau-text` | `bg-blau`, `bg-blau-zart`, `text-blau-text` | `#56ccf2` | gleich |
 | Violett (Entscheidung, Rücksprung) | `--purple`, `--purple-soft` | `bg-violett`, `bg-violett-zart` | `#9b51e0` | aufgehellt |
 
-* **Tinte betont, Blau markiert.** Tinte (`--accent`): Hauptknopf, gewählter Reiter und
-  gewähltes Segment, aktueller Schritt, Tastaturfokus (`--fokus`), Kurzmeldung. Blau (`--marke`):
-  aktiver Menüpunkt (`--nav-aktiv`, im dunklen Schema eine Stufe heller; mit Glanz `--marke-glanz`),
+* **Blau betont und markiert.** Betonung: Hauptknopf, gewählter Reiter und gewähltes Segment,
+  aktueller Schritt – als Fläche mit weißer Schrift im Verlauf des aktiven Menüpunkts
+  (`--accent-verlauf`, gleich `--nav-aktiv`), als Rahmen, Punkt oder Kästchen im Ton `--accent`;
+  Schrift in der Betonung ist `--marke-text`, nicht `--accent` (im dunklen Schema zu dunkel).
+  Der Tastaturfokus (`--fokus`) nimmt `--marke`. Marke (`--marke`): aktiver Menüpunkt
+  (`--nav-aktiv`, im dunklen Schema eine Stufe heller; mit Glanz `--marke-glanz`),
   Fortschrittsbalken (Verlauf), runde Symbolflächen, Verknüpfungen, aktive Sortier- und
   Filterzeichen. Flächen in der Markenfarbe mit weißer Schrift nehmen `--marke-verlauf` – er ist in
-  beiden Schemata gleich dunkel.
+  beiden Schemata gleich dunkel. **Tinte** ist die Farbe der Schrift und der Kurzmeldung
+  (`--text` mit `--bg-elev` als Schrift) – keine Schaltfläche ist schwarz.
 * **Rot nur als Signal:** überfällig, fehlend, löschen (`--red`, `--rot-text`) – nie als Schmuck
   und nie für Fokus oder Auswahl. Es ist bewusst klar vom Orange „fällig“ abgesetzt.
 * **Farbe als Schrift** immer mit den Schrifttönen (`--marke-text`, `--rot-text`,
@@ -183,8 +190,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
 * `Card`/`CardHeader` (Kopf ohne Linie), `Stat` (Beschriftung klein oben, Wert groß darunter; die
   Töne zeigt ein Ampelpunkt, `red` die Verlaufskarte), `Progress`, `Badge`, `Avatar`, `Callout`
   (Symbol aus dem `icon`-Zeichen: „i“, „!“, „✓“), `EmptyState` (Symbol in runder, zart blauer
-  Fläche), `Search` (Pille), `Segmented` (dunkle Fläche gleitet), `Modal`, `ConfirmDialog`.
-* **Knöpfe:** `.btn` weiße Pille mit feiner Linie, `.btn-primary` dunkle Pille – **ein** Hauptknopf
+  Fläche), `Search` (Pille), `Segmented` (blaue Fläche gleitet), `Modal`, `ConfirmDialog`.
+* **Knöpfe:** `.btn` weiße Pille mit feiner Linie, `.btn-primary` blaue Pille – **ein** Hauptknopf
   je Ansicht –, `.btn-ghost`, `.btn-outline`, `.btn-icon` (rund). Löschen: der Auslöser ist
   `.btn-danger` (rote Schrift), die Bestätigung `.btn-primary.btn-rot` (rot gefüllt) – nicht per
   Inline-Farbe.
@@ -193,7 +200,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   „Menü“ in der Kopfzeile (`SeitenleisteKnopf`) erscheint nur in der schmalen Ansicht. Eingeklappt bleiben Symbole (Name im Tooltip, Zähler als Marke
   am Symbol), `KaPlanZeichen` (das Dreieck allein), die Initialen der angemeldeten Person und der
   Bereichswechsel; markierte Projekte, Sicherungsknöpfe und Texte entfallen.
-* `.tabs` sind Pillen, die gewählte dunkel; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
+* `.tabs` sind Pillen, die gewählte blau; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
   `purple`, `gelb`); Ampelpunkt `.dot`; Stern der Projektmarkierung `Icon name="stern"` in `.stern`.
 * **Logos:** `KaPlanLogo` (`src/shared/logos.tsx`) zeigt die Dateien unter `public/logos/` – auf
   dem Startbildschirm ohne Zusatz, in den Bereichen mit deren Namen (oben in der Menüleiste und

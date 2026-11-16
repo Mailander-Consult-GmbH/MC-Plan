@@ -174,7 +174,7 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
 }) {
-  // Eigene Kennung je Gruppe: Die dunkle Fläche gleitet nur innerhalb dieser Segmente
+  // Eigene Kennung je Gruppe: Die blaue Fläche gleitet nur innerhalb dieser Segmente
   const flaeche = useId();
   return (
     <div className="segmented">
