@@ -2,6 +2,24 @@
 
 Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Controlling.
 
+> **Nachtrag 16.11.2026 – Koralle-Design.** Die Oberfläche ist seither auf das Koralle-Design
+> umgestellt (Vorlage `KoralleDashboard.jsx`, Regeln in `CLAUDE.md`, Abschnitt „Designregeln“).
+> Die Liste unten ist nicht neu durchgesehen; „Heute“ beschreibt weiter den Stand vom 12.11.2026.
+> Berührt sind diese Punkte:
+>
+> * **Wo „blau“ steht** (blauer Hauptknopf, blauer Knopf, O-2, O-3), ist heute die dunkle Pille
+>   (`.btn-primary`, Tinte) gemeint; die Fragen dahinter gelten unverändert.
+> * **M-5** (roter „Löschen“-Knopf): Die Klasse für „rot gefüllt“ gibt es jetzt – `.btn-rot` in
+>   `src/shared/global.css`, verwendet an allen Stellen, die die Farbe bisher fest eintrugen. Offen
+>   ist weiter der Gewerk-Dialog des Planlaufmanagements (Bestätigung nur als rote Schrift).
+> * **O-5** (feste Farben in `projektsteuerung.css`): bis auf das weiße Blatt der Druckansicht und
+>   die weißen Logo-Kacheln durch Tokens ersetzt; Verknüpfungsknopf und Ankreuzfelder sind offen.
+> * **Randbedingung „keine neuen Laufzeitabhängigkeiten“:** Hinzugekommen sind auf ausdrücklichen
+>   Wunsch `framer-motion` und `lucide-react`, als Entwicklungsabhängigkeiten Tailwind und die
+>   Schrift Outfit.
+> * **Abschnitt 10** (unbenutzte Klassen in `global.css`): Die Klassen des Startbildschirms
+>   (`.start-kacheln`, `.bereich-kachel…`) sind entfallen, er ist mit Tailwind-Utilities gebaut.
+
 Diese Liste beantwortet die Frage: **Wo lösen Planlaufmanagement, Baubetriebsplanung und
 Projektsteuerung dasselbe unterschiedlich – in der Funktion, im Wortlaut, in der Optik oder im
 Code?** Sie ist zum Durchgehen gedacht: Jeder Punkt hat eine Kennung, eine Einschätzung und eine

@@ -18,7 +18,7 @@ Browser, eigene Einstellungen, eigener Router. **Projekte und Projektbeteiligte 
 über das Projektregister: Ein Projekt kann in mehreren Bereichen geführt werden, Kontaktdaten und
 Funktionen seiner Beteiligten gelten dann überall (siehe
 [**Gemeinsame Projekte**](#gemeinsame-projekte)). Der
-Startbildschirm zeigt die Bereiche als Kacheln mit Titel und Untertitel; in einem Bereich führt **Bereich wechseln** unten
+Startbildschirm zeigt die Bereiche als Karten mit Symbol, Titel und Untertitel; in einem Bereich führt **Bereich wechseln** unten
 in der Seitenleiste zurück. Der Abschnitt **Funktionsumfang** beschreibt das Planlaufmanagement,
 die Abschnitte [**Baubetriebsplanung**](#baubetriebsplanung) und
 [**Projektsteuerung**](#projektsteuerung) die übrigen Bereiche.
@@ -43,28 +43,27 @@ der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
 
 ## Logos
 
-Die Logos von KaPlan liegen unter `public/logos/`. Die Logos der Bereiche folgen einem Muster: das
-Dreieck mit je eigener Verteilung von Blau und Grau (Planlaufmanagement oben blau,
-Baubetriebsplanung links, Projektsteuerung rechts), daneben „KaPlan“ und darunter rechtsbündig der
-Name in Roboto Light.
+In der Oberfläche erscheint KaPlan seit dem Koralle-Design als **Marke**: eine Kachel im
+Korallenverlauf mit dem Dreieck in Weiß, daneben „KaPlan“ und – in einem Bereich – dessen Name
+(`KaPlanMarke` in `src/shared/logos.tsx`; das Dreieck ist dort nach `Logo.png` nachgezeichnet). Sie
+steht oben in der dunklen Menüleiste jedes Bereichs und oben links auf dem Startbildschirm.
+
+Die Logodateien liegen weiter unter `public/logos/`:
 
 | Datei | Verwendung |
 | --- | --- |
-| `Logo_Startseite.png` | Startbildschirm (Bereichsauswahl), oben links |
-| `Logo_Planlaufmanagement.png` | Kopf der Menüleiste im Planlaufmanagement |
-| `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
-| `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
+| `Logo_Startseite.png`, `Logo_Planlaufmanagement.png`, `Logo_Baubetriebsplanung.png`, `Logo_Projektsteuerung.png` | Frühere Logos der Oberfläche (dunkle Schrift für hellen Grund: Dreieck in Blau und Grau, „KaPlan“, darunter der Name des Bereichs). Die Oberfläche zeigt sie nicht mehr; sie bleiben für Unterlagen außerhalb des Programms liegen |
 | `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
-| `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug); nach ihm sind die App-Symbole unter `public/icons/` gezeichnet |
+| `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug); nach ihm sind die App-Symbole unter `public/icons/` und das Dreieck der Marke gezeichnet |
 
-Zum Austauschen genügt es, die Datei unter gleichem Namen zu ersetzen; die Logos werden nur über
-die Breite bzw. Höhe skaliert.
+Die Drucklogos lassen sich austauschen, indem die Datei unter gleichem Namen ersetzt wird; sie
+werden nur über die Höhe skaliert.
 
 Die Symbole in `public/icons/` zeigen die Marke aus `Logo.png` in der Logofarbe `#21426d`, im
 Browser-Tab und in der Titelleiste des App-Fensters **ohne Hintergrund**, in der Taskleiste, im
-Startmenü und als Desktop-Verknüpfung auf einer **Kachel in der Hintergrundfarbe der Anwendung**
-(`#f5f5f7`, `--bg`, mit feiner Randlinie) – das dünne Dreieck allein war in der Windows-Taskleiste
-kaum zu sehen. Die Marke ist vektoriell nachgezeichnet, je Größe gerastert und steht genau mittig
+Startmenü und als Desktop-Verknüpfung auf einer **hellen Kachel**
+(`#f5f5f7`, mit feiner Randlinie) – das dünne Dreieck allein war in der Windows-Taskleiste
+kaum zu sehen. Die App-Symbole sind mit dem Koralle-Design nicht neu gezeichnet worden. Die Marke ist vektoriell nachgezeichnet, je Größe gerastert und steht genau mittig
 (gleicher Abstand oben und unten bzw. links und rechts); bis 64 px ist sie größer und kräftiger
 gezeichnet:
 
@@ -79,7 +78,7 @@ Ein neues Symbol bekommt **neue Dateinamen** (Verweise in `index.html`, `public/
 und `SHELL` in `public/sw.js` anpassen), und der Cache-Name in `public/sw.js` wird hochgezählt –
 Browser, Taskleiste und Handy halten Symbole sonst unter dem alten Namen fest.
 
-Die Wortmarke Mailänder Consult in der Kopfzeile stammt aus der Datei `public/mailaender-consult.svg`. Die derzeit
+Die Wortmarke Mailänder Consult in der Kopfzeile (im dunklen Schema weiß dargestellt) stammt aus der Datei `public/mailaender-consult.svg`. Die derzeit
 hinterlegte Fassung ist mit der Systemschrift nachgezeichnet. Um das Original zu verwenden, genügt
 es, diese Datei durch die Originaldatei zu **ersetzen** – gleicher Name, gleicher Ort; eine
 PNG-Datei funktioniert ebenso (`public/mailaender-consult.png`, dann in
@@ -189,7 +188,7 @@ Entfernen einer installierten App deshalb in jedem genutzten Bereich eine Sicher
 herunterladen**; Android und Desktop fragen beim Entfernen, ob auch die Daten gelöscht werden
 sollen.
 
-Enthalten sind `manifest.webmanifest`, App-Symbole auf einer Kachel in Programmfarbe (`public/icons/`, siehe
+Enthalten sind `manifest.webmanifest`, App-Symbole auf einer hellen Kachel (`public/icons/`, siehe
 [Logos](#logos): 48–512 px, maskierbar für Android und Apple-Touch-Icon für iOS) sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
 gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (gehashte Namen unter
@@ -1577,10 +1576,12 @@ beim Betreten ein.
 ```
 src/
   main.tsx       Start der Anwendung, Umlenkung alter Lesezeichen; lädt global.css vor der Shell,
-                 damit Regeln der Bereiche gleicher Spezifität gewinnen
+                 damit Regeln der Bereiche gleicher Spezifität gewinnen; MotionConfig
+                 (reducedMotion="user") für alle Bewegungen
   shell/         Startbildschirm und Bereichswechsel
     Shell.tsx    Wählt Bereichsauswahl oder Bereich; setzt den Farbmodus aus „Angemeldet als“
-    Start.tsx    Startbildschirm mit den Bereichskacheln und der laufenden Fassung
+    Start.tsx    Startbildschirm mit Datum, je Bereich einer Karte und der laufenden Fassung
+                 (Tailwind-Utilities)
     NeueFassung.tsx  Hinweis „Neue Fassung von KaPlan verfügbar“ über allen Bereichen
     bereiche.ts  Verzeichnis der Bereiche
     router.ts    #/ · #/planlauf/… · #/baubetrieb/… · #/projektsteuerung/…; Adressen der früheren
@@ -1590,8 +1591,11 @@ src/
     ui.tsx       Karten, Felder, Dialoge (Modal: Fokus, Tab, Escape, Fokus zurück), Segmented
                  Controls (die gewählte Option mit aria-pressed), alsKnopf, alsKlickZeile
                  (anklickbare Zeilen als Tab-Halt), beiEnter (Eingabetaste im Dialogfeld) …
-    icons.tsx    Strichsymbole
-    logos.tsx    Logos KaPlan (public/logos/) und Wortmarke Mailänder Consult
+    icons.tsx    Symbole (Lucide) unter den fachlichen Namen der Anwendung (Icon); iconSvg mit
+                 eigenen Strichzeichnungen für die Druckfassungen
+    bewegung.tsx Bewegungen (framer-motion): hoverLift, Zaehler, NavAktiv, BalkenFuellung,
+                 Einblenden
+    logos.tsx    Marke von KaPlan (KaPlanMarke, KaPlanZeichen) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
     bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
     bausteinEditor.tsx  Eingabefeld mit farbigen, nicht teilbaren Bausteinen (BausteinEditor,
@@ -1610,7 +1614,8 @@ src/
                  über die Nummer im Dateinamen; Zellen ohne Zellbezug folgen auf die vorige)
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     pwa.ts       Registrierung des Service Workers; Fassung des Builds und Prüfung auf eine neuere
-    global.css   Design-Tokens im hellen Apple-Erscheinungsbild
+    global.css   Koralle-Design: Tailwind (Theme, Utilities), Schrift Outfit, Design-Tokens für
+                 hell, dunkel und den Farbmodus „kontrast“, Bausteinklassen (@layer components)
   gemeinsam/     Projektregister – der einzige Bestand, den sich die Bereiche teilen
     register.ts  Datenmodell, Laden/Speichern, gemeinsamer Zustand (useRegister, Ergebnis des
                  Speicherns: useRegisterSpeicherZustand; nicht Gespeichertes übersteht das
@@ -1723,10 +1728,37 @@ beim Aufruf auf `#/planlauf/…` umgelenkt und bleiben damit gültig.
 
 ## Gestaltung
 
-Helles Erscheinungsbild in Anlehnung an Apple: Systemschriftart (SF Pro / `-apple-system`),
-zurückhaltende Flächen auf `#f5f5f7`, weiße Karten mit weichen Radien und feinen Schatten, die
-Hausfarbe von Mailänder Consult `#24456e` als Akzent (auch für alle Fortschrittsbalken),
-transluzente Seitenleiste und Kopfzeile, Segmented Controls und Pill-Buttons. Die Oberfläche ist bis auf Telefonbreite (~400 px) nutzbar.
+Die Oberfläche folgt dem **Koralle-Design** nach der Vorlage `KoralleDashboard.jsx` im
+Wurzelverzeichnis (die Datei ist nur Vorlage und gehört nicht zum Build):
+
+* **Flächen:** heller Seitengrund `#f2f2f4`, weiße Karten mit 24 px Rundung und weichem Schatten
+  statt Rahmen, in Karten graue Kacheln; die Menüleiste ist dunkel (`#17181b`), der Seitenkopf
+  steht ohne Balken auf dem Seitengrund – die Unterzeile klein über dem Titel.
+* **Farben:** Koralle (`#f25f4c`) ist die Markenfarbe – aktiver Menüpunkt, Fortschrittsbalken,
+  Symbolflächen, Verknüpfungen – und zugleich das Rot der Ampel („überfällig“); überfällige
+  Kennzahlen stehen als Karte im Korallenverlauf. Betont wird mit Tinte (fast Schwarz): Hauptknopf,
+  gewählter Reiter, gewähltes Segment, aktueller Schritt, Tastaturfokus. Grün, Orange, Blau und
+  Violett kennzeichnen wie bisher erledigt, fällig, laufend und Entscheidungen.
+* **Schrift:** Outfit (in den Build gebündelt, es wird nichts von fremden Servern geladen);
+  Überschriften in mittlerer Stärke, Beschriftungen klein und gedämpft, keine Versalien.
+* **Formen:** Knöpfe, Kennzeichen, Suchfeld, Reiter und Segmente sind Pillen; Felder haben 12 px
+  Rundung.
+* **Symbole:** Lucide-Icons (`lucide-react`) über `Icon` in `src/shared/icons.tsx`.
+* **Bewegung** (`framer-motion`, `src/shared/bewegung.tsx`): Anklickbare Karten und Kennzahlen
+  heben sich beim Überfahren an, Kennzahlen zählen hoch, Fortschrittsbalken wachsen, die Fläche des
+  aktiven Menüpunkts und des gewählten Segments gleitet zur neuen Wahl, Ansichten blenden ein. Wer
+  im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Endzustände ohne Verschiebung.
+* **Dunkles Schema:** folgt wie in der Vorlage der Einstellung des Geräts (`prefers-color-scheme`);
+  eine eigene Umschaltung gibt es nicht. Der **Farbmodus für eine Rot-Grün-Sehschwäche**
+  („Angemeldet als“) gilt in beiden Schemata.
+* **Technik:** Tailwind 4 (`@tailwindcss/vite`) mit den Design-Tokens in `src/shared/global.css`;
+  die Bausteinklassen aller Bereiche stehen in der Ebene `components`, Tailwind-Utilities gewinnen
+  gegen sie.
+
+Druck- und PDF-Fassungen (Planlauf-Export, Protokoll, Beteiligtenliste) sind Dokumente mit eigener
+Gestaltung und vom Koralle-Design nicht berührt; die Druckansicht eines Protokolls bleibt ein
+weißes Blatt. Die Oberfläche ist bis auf Telefonbreite (~400 px) nutzbar. Die Regeln für die
+weitere Arbeit stehen in [`CLAUDE.md`](CLAUDE.md), Abschnitt „Designregeln“.
 
 ## Nächste Schritte (Ausblick)
 
