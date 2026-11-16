@@ -3,11 +3,12 @@
 /* ------------------------------------------------------------------ */
 /*
  * Vorlage ist KoralleDashboard.jsx (Wurzelverzeichnis): heller Seitengrund,
- * weiße Karten mit großer Rundung und weichem Schatten, Tinte (fast Schwarz)
- * für Betonung, Schrift Outfit. Abweichend von der Vorlage ist die
- * Markenfarbe nicht Koralle, sondern das Blau von Mailänder Consult
- * (--marke), das Rot der Ampel ein eigenes Rot, und die Menüleiste ist eine
- * Karte wie die Kacheln des Inhalts – in beiden Schemata.
+ * weiße Karten mit großer Rundung und weichem Schatten, Schrift Outfit.
+ * Abweichend von der Vorlage ist die Markenfarbe nicht Koralle, sondern das
+ * Blau von Mailänder Consult (--marke); betont wird im selben Blau statt in
+ * Tinte (--accent, --accent-verlauf), das Rot der Ampel ist ein eigenes Rot,
+ * und die Menüleiste ist eine Karte wie die Kacheln des Inhalts – in beiden
+ * Schemata.
  * Die Regeln dazu stehen in CLAUDE.md, Abschnitt „Designregeln“.
  *
  * Tailwind durchsucht nur src/ – die Vorlage selbst gehört nicht zum Programm.
@@ -1272,7 +1273,7 @@
 .kv-breit { grid-template-columns: 190px 1fr; }
 .mail-vorschau { white-space: pre-wrap; font-family: inherit; font-size: 13.5px; margin: 10px 0 0; color: var(--text-secondary); }
 
-/* Seitenauswahl als Pillen: die gewählte dunkel wie der gewählte Tag der Vorlage.
+/* Seitenauswahl als Pillen: die gewählte blau (in der Vorlage ist der gewählte Tag dunkel).
    Umbricht bei Platzmangel, statt zu scrollen */
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
 /* „+“ am Ende der Reiter, z.B. für ein weiteres Gewerk */
