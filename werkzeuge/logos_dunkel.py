@@ -8,7 +8,9 @@ das dunkle Schema entsteht daraus je Logo eine Datei Logo_<Name>_dunkel.png:
   * Schrift und graue Teile des Dreiecks werden weiß,
   * der blaue Teil des Dreiecks bleibt, wie er ist.
 
-Nach dem Austausch eines Logos neu ausführen (braucht Python mit Pillow):
+Die Logos selbst zeichnet werkzeuge/logos_zeichnen.py – es ruft `dunkle_fassung`
+für jedes Logo gleich mit auf. Für sich allein wird dieses Skript nur gebraucht,
+wenn ein Logo von Hand ausgetauscht wurde (braucht Python mit Pillow):
 
     python3 werkzeuge/logos_dunkel.py
 

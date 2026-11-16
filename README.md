@@ -46,7 +46,10 @@ der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
 Die Logos von KaPlan liegen unter `public/logos/`. Die Logos der Bereiche folgen einem Muster: das
 Dreieck mit je eigener Verteilung von Blau und Grau (Planlaufmanagement oben blau,
 Baubetriebsplanung links, Projektsteuerung rechts), daneben „KaPlan“ und darunter rechtsbündig der
-Name in Roboto Light.
+Name. Schriftzug und Unterzeile sind in Outfit gesetzt, der Schrift der Oberfläche – „KaPlan“
+kräftig, die Unterzeile leicht. Die Strichstärken folgen der Marke von Mailänder Consult, jeweils im
+Verhältnis zur Größe: die Linien des Dreiecks wie die Linien ihres Zeichens (0,089 der Höhe),
+„KaPlan“ nahe an ihrer Wortmarke, eine Stufe leichter (Stamm zu Versalhöhe rund 0,20).
 
 | Datei | Verwendung |
 | --- | --- |
@@ -56,7 +59,7 @@ Name in Roboto Light.
 | `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
 | `Logo_Startseite_dunkel.png`, `Logo_Planlaufmanagement_dunkel.png`, `Logo_Baubetriebsplanung_dunkel.png`, `Logo_Projektsteuerung_dunkel.png` | dieselben Logos für das dunkle Farbschema – erzeugt, nicht gezeichnet (siehe unten) |
 | `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
-| `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug); nach ihm sind die App-Symbole unter `public/icons/` gezeichnet |
+| `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug, ganz blau) – dieselbe Marke wie in den App-Symbolen unter `public/icons/` |
 
 Die Logos stehen **ohne Fläche dahinter** – in der Menüleiste wie auf dem Startbildschirm
 (`KaPlanLogo` in `src/shared/logos.tsx`). Gezeichnet sind sie für hellen Grund (dunkle Schrift,
@@ -64,30 +67,35 @@ Dreieck in Blau und Grau); so erscheinen sie im hellen Farbschema. Im **dunklen 
 die Oberfläche je Logo die Fassung `Logo_<Name>_dunkel.png`: Schrift und graue Teile des Dreiecks
 in Weiß, der blaue Teil bleibt unverändert blau (ohne Rand).
 
-Die dunklen Fassungen erzeugt das Skript `werkzeuge/logos_dunkel.py` aus den Logos (Python mit
-Pillow):
+Logos, dunkle Fassungen, `Logo.png` und die App-Symbole **zeichnet das Skript
+`werkzeuge/logos_zeichnen.py`** – Maße, Farben, Schriftschnitte und die Verteilung von Blau und Grau
+stehen dort als Konstanten. Es braucht Python mit Pillow (samt WOFF2-Unterstützung) und die mit
+`npm ci` installierte Schrift Outfit:
 
 ```bash
-python3 werkzeuge/logos_dunkel.py
+python3 werkzeuge/logos_zeichnen.py
 ```
 
-Zum Austauschen eines Logos die Datei unter gleichem Namen ersetzen, das Skript ausführen und
-beide Dateien einchecken; die Logos werden nur über die Breite bzw. Höhe skaliert.
+Wer ein Logo ändern will, ändert das Skript, führt es aus und checkt alle erzeugten Dateien mit
+ein; die Logos werden in der Oberfläche nur über die Breite bzw. Höhe skaliert. Die dunklen
+Fassungen entstehen dabei über `werkzeuge/logos_dunkel.py` (für sich allein nur nötig, wenn ein
+Logo von Hand ausgetauscht wurde).
 
-Die Symbole in `public/icons/` zeigen die Marke aus `Logo.png` in der Logofarbe `#21426d`, im
+Die Symbole in `public/icons/` zeigen die Marke aus `Logo.png` in der Logofarbe `#21426d` – mit
+denselben kräftigen Linien wie in den Logos –, im
 Browser-Tab und in der Titelleiste des App-Fensters **ohne Hintergrund**, in der Taskleiste, im
 Startmenü und als Desktop-Verknüpfung auf einer **hellen Kachel**
 (`#f5f5f7`, mit feiner Randlinie) – das dünne Dreieck allein war in der Windows-Taskleiste
-kaum zu sehen. Die Marke ist vektoriell nachgezeichnet, je Größe gerastert und steht genau mittig
-(gleicher Abstand oben und unten bzw. links und rechts); bis 64 px ist sie größer und kräftiger
-gezeichnet:
+kaum zu sehen. Die Marke wird je Größe eigens gerastert und steht genau mittig
+(gleicher Abstand oben und unten bzw. links und rechts); sehr kleine Symbole (Marke unter 45 px
+hoch) sind noch etwas kräftiger gezeichnet:
 
 | Datei | Verwendung |
 | --- | --- |
-| `kaplan-dreieck-32/64/192.png` | Browser-Tab und Titelleiste des App-Fensters (`index.html`) – nur das Dreieck |
-| `kaplan-app-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Startmenü, Desktop-Verknüpfung, Android-Browser ohne maskierbare Symbole) |
-| `kaplan-app-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
-| `kaplan-app-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
+| `kaplan-zeichen-32/64/192.png` | Browser-Tab und Titelleiste des App-Fensters (`index.html`) – nur das Dreieck; die 64er-Datei steht auch in der eingeklappten Seitenleiste (`KaPlanZeichen`) |
+| `kaplan-kachel-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Startmenü, Desktop-Verknüpfung, Android-Browser ohne maskierbare Symbole) |
+| `kaplan-kachel-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
+| `kaplan-kachel-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
 
 Ein neues Symbol bekommt **neue Dateinamen** (Verweise in `index.html`, `public/manifest.webmanifest`
 und `SHELL` in `public/sw.js` anpassen), und der Cache-Name in `public/sw.js` wird hochgezählt –
@@ -1755,8 +1763,9 @@ src/
 Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden
 beim Aufruf auf `#/planlauf/…` umgelenkt und bleiben damit gültig.
 
-Außerhalb von `src/` liegt unter `werkzeuge/` das Skript `logos_dunkel.py`: Es erzeugt die Logos
-für das dunkle Farbschema (siehe [Logos](#logos)) und gehört nicht zum Build.
+Außerhalb von `src/` liegen unter `werkzeuge/` die Skripte `logos_zeichnen.py` – es zeichnet Logos
+und App-Symbole – und `logos_dunkel.py` für die Fassungen im dunklen Farbschema (siehe
+[Logos](#logos)); beide gehören nicht zum Build.
 
 ## Gestaltung
 

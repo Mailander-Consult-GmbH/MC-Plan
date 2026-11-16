@@ -4,11 +4,12 @@ import { useState } from 'react';
  * Bildmarken der Anwendung.
  *
  * Die Logos von KaPlan liegen als PNG unter `public/logos/` (je Bereich
- * eines, dazu das Logo der Startseite und das Symbol `Logo.png`). Gezeichnet
- * sind sie für hellen Grund – dunkle Schrift, Dreieck in Blau und Grau. Für
- * das dunkle Schema gibt es je Logo die Fassung `…_dunkel.png`: Schrift und
- * Grau in Weiß, der blaue Teil des Dreiecks unverändert
- * (`werkzeuge/logos_dunkel.py` erzeugt sie aus dem Logo). Beide stehen ohne
+ * eines, dazu das Logo der Startseite und das Symbol `Logo.png`) – gezeichnet
+ * von `werkzeuge/logos_zeichnen.py`: das Dreieck, „KaPlan“ und die Unterzeile
+ * in Outfit, der Schrift der Oberfläche. Sie sind für hellen Grund angelegt –
+ * dunkle Schrift, Dreieck in Blau und Grau. Für das dunkle Schema gibt es je
+ * Logo die Fassung `…_dunkel.png`: Schrift und Grau in Weiß, der blaue Teil
+ * des Dreiecks unverändert (`werkzeuge/logos_dunkel.py`). Beide stehen ohne
  * Fläche dahinter; welche zu sehen ist, entscheidet das Farbschema
  * (`.kaplan-logo-hell`/`.kaplan-logo-dunkel` in global.css). Die
  * Wortmarke Mailänder Consult stammt aus der Originaldatei
@@ -79,7 +80,7 @@ export function KaPlanZeichen({ size = 32 }: { size?: number }) {
   return (
     <img
       className="kaplan-zeichen"
-      src={`${import.meta.env.BASE_URL}icons/kaplan-dreieck-64.png`}
+      src={`${import.meta.env.BASE_URL}icons/kaplan-zeichen-64.png`}
       alt="KaPlan"
       width={size}
       height={size}

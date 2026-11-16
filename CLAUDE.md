@@ -200,10 +200,12 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   oben links auf dem Startbildschirm) – **ohne Kachel oder andere Fläche dahinter**. Je Logo gibt
   es zwei Dateien: `Logo_<Name>.png` für das helle Schema und `Logo_<Name>_dunkel.png` für das
   dunkle; `KaPlanLogo` setzt beide ein, sichtbar ist die zum Schema passende
-  (`.kaplan-logo-hell`, `.kaplan-logo-dunkel` in `global.css`). Die dunkle Fassung wird nicht von
-  Hand gezeichnet: Nach dem Austausch eines Logos `python3 werkzeuge/logos_dunkel.py` ausführen
-  (braucht Pillow) und die erzeugten Dateien mit einchecken. Die App-Symbole liegen unter
-  `public/icons/` (`kaplan-dreieck-*`, `kaplan-app-*`; ein
+  (`.kaplan-logo-hell`, `.kaplan-logo-dunkel` in `global.css`). Logos, dunkle Fassungen
+  und App-Symbole werden nicht von Hand gezeichnet: `python3 werkzeuge/logos_zeichnen.py` erzeugt
+  sie (braucht Pillow und die mit `npm ci` installierte Schrift) – das Dreieck mit kräftigen
+  Linien, „KaPlan“ und die Unterzeile in Outfit; welcher Winkel blau ist, unterscheidet die
+  Bereiche. Wer ein Logo ändert, ändert das Skript und checkt alle erzeugten Dateien mit ein. Die
+  App-Symbole liegen unter `public/icons/` (`kaplan-zeichen-*`, `kaplan-kachel-*`; ein
   geändertes Symbol bekommt neue Dateinamen, siehe README, Abschnitt „Logos“). Die Wortmarke
   Mailänder Consult bleibt die Originaldatei; im dunklen Schema erscheint sie weiß
   (`.topbar-logo`, `.logo-hell`).
