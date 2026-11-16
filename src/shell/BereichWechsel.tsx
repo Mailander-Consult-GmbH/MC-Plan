@@ -6,7 +6,7 @@ export function BereichWechsel() {
   return (
     <button type="button" className="bereich-wechsel" onClick={zurBereichsauswahl} title="Zur Bereichsauswahl">
       <Icon name="zurueck" size={12} />
-      Bereich wechseln
+      <span className="bereich-wechsel-text">Bereich wechseln</span>
     </button>
   );
 }

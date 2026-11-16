@@ -31,6 +31,8 @@ import {
   Mail,
   Menu,
   Package,
+  PanelLeftClose,
+  PanelLeftOpen,
   Pencil,
   Plus,
   Redo2,
@@ -74,6 +76,9 @@ const symbole = {
   filter: Funnel,
   kalender: CalendarDays,
   menu: Menu,
+  // Seitenleiste ein- und ausklappen (Knopf in der Kopfzeile)
+  leisteZu: PanelLeftClose,
+  leisteAuf: PanelLeftOpen,
   person: User,
   hoch: ArrowUp,
   runter: ArrowDown,

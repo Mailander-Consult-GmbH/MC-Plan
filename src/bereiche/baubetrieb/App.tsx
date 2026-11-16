@@ -7,12 +7,12 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon, type IconName } from '../../shared/icons';
-import { KaPlanLogo, MailaenderLogo } from '../../shared/logos';
+import { KaPlanLogo, KaPlanZeichen, MailaenderLogo } from '../../shared/logos';
 import { Einblenden, NavAktiv } from '../../shared/bewegung';
 import { useToast } from '../../shared/toast';
 import { Card, ConfirmDialog, EmptyState } from '../../shared/ui';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
-import { useSeitenleiste } from '../../shared/seitenleiste';
+import { SeitenleisteKnopf, useSeitenleiste } from '../../shared/seitenleiste';
 import { BereichWechsel } from '../../shell/BereichWechsel';
 import { Hinweisleisten } from './components/Hinweisleisten';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
@@ -42,7 +42,7 @@ export function App() {
   const [route, navigate] = useRoute();
   // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
   const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projektId}` : route.view === 'anmeldung' ? `anmeldung/${route.anmeldungId}` : route.view);
-  const [menuOffen, setMenuOffen] = useSeitenleiste();
+  const [menuOffen, setMenuOffen, leiste] = useSeitenleiste();
   const inEinstellungen = route.view === 'workflows' || route.view === 'fristen';
   const [einstellungenOffen, setEinstellungenOffen] = useState(inEinstellungen);
   // Wer eine der Seiten unter „Einstellungen“ aufruft, sieht die Gruppe aufgeklappt
@@ -77,16 +77,19 @@ export function App() {
   const kopf = kopfzeile(route, projekt?.name, anmeldung ? anmeldungBezeichnung(anmeldung) : undefined);
 
   return (
-    <div className="app">
+    <div className={`app ${leiste.eingeklappt ? 'leiste-zu' : ''}`}>
       {/* layoutScroll: Die Fläche des aktiven Menüpunkts (NavAktiv) gleitet auch in der gescrollten Leiste an die richtige Stelle */}
-      <motion.aside layoutScroll className={`sidebar ${menuOffen ? 'open' : ''}`}>
+      <motion.aside layoutScroll className={`sidebar ${menuOffen ? 'open' : ''} ${leiste.eingeklappt ? 'eingeklappt' : ''}`}>
         <button
           type="button"
           className="sidebar-brand"
           onClick={() => gehe({ view: 'uebersicht' })}
           title="Zur Übersicht"
         >
-          <KaPlanLogo variante="Baubetriebsplanung" width="100%" />
+          <span className="marke-voll">
+            <KaPlanLogo variante="Baubetriebsplanung" width="100%" />
+          </span>
+          <KaPlanZeichen />
         </button>
 
         <NavItem icon="dashboard" label="Übersicht" aktiv={route.view === 'uebersicht'} onClick={() => gehe({ view: 'uebersicht' })} />
@@ -120,24 +123,27 @@ export function App() {
           </>
         ) : null}
 
-        <div className="nav-group-label">
-          Projekte
-          {markierte.length < aktiveAnzahl ? <span className="tertiary"> (markierte)</span> : null}
+        {/* Die markierten Projekte – in der eingeklappten Leiste entfallen sie: gleiche Symbole ohne Namen sagten nichts */}
+        <div className="nav-projekte">
+          <div className="nav-group-label">
+            Projekte
+            {markierte.length < aktiveAnzahl ? <span className="tertiary"> (markierte)</span> : null}
+          </div>
+          {markierte.map((p) => {
+            const spaet = ueberfaellig.filter((t) => t.projekt.id === p.id).length;
+            return (
+              <NavItem
+                key={p.id}
+                icon="projekt"
+                label={p.name}
+                aktiv={projekt?.id === p.id}
+                badge={spaet > 0 ? String(spaet) : undefined}
+                badgeAlarm
+                onClick={() => gehe({ view: 'projekt', projektId: p.id })}
+              />
+            );
+          })}
         </div>
-        {markierte.map((p) => {
-          const spaet = ueberfaellig.filter((t) => t.projekt.id === p.id).length;
-          return (
-            <NavItem
-              key={p.id}
-              icon="projekt"
-              label={p.name}
-              aktiv={projekt?.id === p.id}
-              badge={spaet > 0 ? String(spaet) : undefined}
-              badgeAlarm
-              onClick={() => gehe({ view: 'projekt', projektId: p.id })}
-            />
-          );
-        })}
 
         <div className="sidebar-footer">
           <AngemeldetAls hinweis="Erscheint im Statusverlauf jeder Anmeldung bei den Wechseln, die Sie erfassen, und als Hauptbearbeiter neuer Projekte." />
@@ -177,16 +183,14 @@ export function App() {
               Zurücksetzen
             </button>
           </div>
-          Daten werden lokal im Browser gespeichert.
+          <span className="sidebar-hinweis">Daten werden lokal im Browser gespeichert.</span>
           <BereichWechsel />
         </div>
       </motion.aside>
 
       <main className="main">
         <header className="topbar">
-          <button type="button" className="btn-icon menu-toggle" onClick={() => setMenuOffen((o) => !o)} aria-label="Menü">
-            <Icon name="menu" size={18} />
-          </button>
+          <SeitenleisteKnopf leiste={leiste} offen={menuOffen} />
           <div className="topbar-title">
             <h1>{kopf.titel}</h1>
             {kopf.sub ? <div className="sub">{kopf.sub}</div> : null}

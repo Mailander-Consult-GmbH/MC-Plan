@@ -69,6 +69,24 @@ export function KaPlanLogo({
   return variante === 'Startseite' ? <span className="logo-ohne-zeile">{bild}</span> : bild;
 }
 
+/**
+ * Das Dreieck von KaPlan allein – für die eingeklappte Seitenleiste, in der
+ * das Logo mit Schriftzug keinen Platz hat. Die Datei ist blau auf
+ * durchsichtigem Grund; im dunklen Schema erscheint sie weiß
+ * (`.kaplan-zeichen` in global.css).
+ */
+export function KaPlanZeichen({ size = 32 }: { size?: number }) {
+  return (
+    <img
+      className="kaplan-zeichen"
+      src={`${import.meta.env.BASE_URL}icons/kaplan-dreieck-64.png`}
+      alt="KaPlan"
+      width={size}
+      height={size}
+    />
+  );
+}
+
 /** Dateiname der Originalmarke unter `public/`. */
 export const MAILAENDER_DATEI = 'mailaender-consult.svg';
 
