@@ -47,7 +47,10 @@ Die Anwendung besteht aus drei getrennten Bereichen (`BereichId` in
 erste Wegmarke der Adresse benennt den Bereich; die Shell (`src/shell/router.ts`)
 wählt danach aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
 (`src/shell/Start.tsx`: oben das Logo ohne Fläche dahinter (`KaPlanLogo` in `src/shared/logos.tsx`; im dunklen Farbschema die Datei `public/logos/Logo_Startseite_dunkel.png`), darunter das
-heutige Datum und „Bitte einen Bereich wählen.“, dann drei Karten – Planlaufmanagement,
+heutige Datum, die Begrüßung – „Guten Morgen“ von 5 bis 11 Uhr, „Guten Abend“ ab 18 Uhr, sonst
+„Hallo“ (`gruss`), dahinter der Vorname aus „Angemeldet als“ (`vornameVon` in
+`src/gemeinsam/benutzer.ts`; entfällt beim Vorgabenamen) – und „Bitte einen Bereich wählen.“,
+dann drei Karten – Planlaufmanagement,
 Baubetriebsplanung und Projektsteuerung, je mit
 Symbol, Titel und Untertitel (`titel`, `untertitel`), ohne Beschreibungstext; die
 letzten beiden mit dem Kennzeichen „Erster Entwurf“ aus `marke` in

@@ -18,7 +18,9 @@ Browser, eigene Einstellungen, eigener Router. **Projekte und Projektbeteiligte 
 über das Projektregister: Ein Projekt kann in mehreren Bereichen geführt werden, Kontaktdaten und
 Funktionen seiner Beteiligten gelten dann überall (siehe
 [**Gemeinsame Projekte**](#gemeinsame-projekte)). Der
-Startbildschirm zeigt die Bereiche als Karten mit Symbol, Titel und Untertitel; in einem Bereich führt **Bereich wechseln** unten
+Startbildschirm begrüßt nach der Tageszeit – „Guten Morgen“ von 5 bis 11 Uhr, „Guten Abend“ ab
+18 Uhr, sonst „Hallo“ – mit dem Vornamen aus „Angemeldet als“ (ohne Namen, solange dort keiner
+eingetragen ist) und zeigt die Bereiche als Karten mit Symbol, Titel und Untertitel; in einem Bereich führt **Bereich wechseln** unten
 in der Seitenleiste zurück. Der Abschnitt **Funktionsumfang** beschreibt das Planlaufmanagement,
 die Abschnitte [**Baubetriebsplanung**](#baubetriebsplanung) und
 [**Projektsteuerung**](#projektsteuerung) die übrigen Bereiche.
@@ -1616,7 +1618,7 @@ src/
   shell/         Startbildschirm und Bereichswechsel
     Shell.tsx    Wählt Bereichsauswahl oder Bereich; setzt das Farbschema (hell/dunkel)
                  aus „Angemeldet als“
-    Start.tsx    Startbildschirm mit Datum, je Bereich einer Karte und der laufenden Fassung
+    Start.tsx    Startbildschirm mit Datum, Begrüßung, je Bereich einer Karte und der laufenden Fassung
                  (Tailwind-Utilities)
     NeueFassung.tsx  Hinweis „Neue Fassung von KaPlan verfügbar“ über allen Bereichen
     bereiche.ts  Verzeichnis der Bereiche

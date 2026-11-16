@@ -33,6 +33,21 @@ export const STANDARD_NAME = 'Max Mustermann';
 
 const KEY = 'kaplan-benutzer.v1';
 
+/**
+ * Vorname für die Anrede auf dem Startbildschirm: das erste Wort des Namens,
+ * ohne vorangestellte Titel („Dr.“, „Dipl.-Ing.“); bei „Nachname, Vorname“
+ * das Wort nach dem Komma. Leer, solange niemand einen Namen eingetragen hat
+ * (Vorgabe) – dann grüßt der Startbildschirm ohne Namen.
+ */
+export function vornameVon(name: string): string {
+  const n = name.trim();
+  if (!n || n === STANDARD_NAME) return '';
+  const komma = n.indexOf(',');
+  const teil = komma >= 0 && n.slice(komma + 1).trim() ? n.slice(komma + 1) : n;
+  const worte = teil.trim().split(/\s+/);
+  return worte.find((w) => !w.endsWith('.')) ?? '';
+}
+
 type Roh = Record<string, unknown>;
 const objekt = (w: unknown): Roh | null => (w && typeof w === 'object' ? (w as Roh) : null);
 const text = (w: unknown) => (typeof w === 'string' ? w.trim() : '');
