@@ -62,18 +62,6 @@ export const PLAN_BEISPIELE: string[][] = [
   ['Plan', 'NK-LST-SP-102', 'Signallageplan Bereich Nord', 'B', 'LST', 'Ausführungsplanung', 'Bahnübergang Süd', '', '30.10.2026', '', 'VVBau STE', 'Einzelplan mit eigenem Planlauf'],
 ];
 
-/** Erläuterung der Spalten – auf der Seite „Vorlagen“ und im Import. */
-export const PLAN_HINWEISE: [string, string][] = [
-  ['Art', 'Plan, Planverzeichnis oder Planpaket'],
-  ['Plancodierung / Name', 'Plancodierung des Plans, Codierung des Planverzeichnisses bzw. Name des Pakets'],
-  ['Index/Ausgabe', 'Index des Plans bzw. Ausgabe des Planverzeichnisses'],
-  ['Planpaket', 'Name des Pakets – ist es noch nicht angelegt, entsteht es beim Import'],
-  ['Planverzeichnis', 'Name oder Codierung des Verzeichnisses, in dem der Plan mitläuft; fehlt es, wird es angelegt'],
-  ['Eingang Soll', 'Soll-Termin des ersten Prozessschritts'],
-  ['Datum Ausgabe', 'nur bei Planverzeichnissen'],
-  ['Workflow', 'Name eines hinterlegten Workflows; leer = der beim Import gewählte. Der Planlauf startet beim Import immer'],
-];
-
 export function planVorlageLaden(): void {
   dateiLaden(
     xlsxErzeugen([{ name: 'Pläne', zeilen: [PLAN_KOPFZEILE, ...PLAN_BEISPIELE] }]),
@@ -128,15 +116,6 @@ export const ROLLEN_BEISPIELE: string[][] = [
   ['LST', 'Fachtechnischer Prüfer', 'PSV', 'Herr', 'Dietmar', 'Krause', 'Prüfstelle Krause', '+49 4131 309-0', 'd.krause@example.de', 'Am Ochsenmarkt', '1', '21335', 'Lüneburg', '', '', ''],
   ['Übergreifend', 'Projektleitung', 'PL', 'Frau', 'Sabine', 'Ortmann', 'Projektleitung', '+49 40 123456-01', 's.ortmann@example.de', 'Hafenstraße', '12', '20359', 'Hamburg', '', '', ''],
   ['BÜ', 'Fachplaner', 'FP', 'Herr', 'Jens', 'Harms', 'Harms Planung', '+49 40 556677-3', 'j.harms@example.de', 'Deichweg', '4', '21079', 'Hamburg', 'Gewerk und Funktion werden beim Import angelegt', '', ''],
-];
-
-export const ROLLEN_HINWEISE: [string, string][] = [
-  ['Gewerk', 'Gewerk der Funktion; „Übergreifend“ für gewerkübergreifende Funktionen. Unbekannte Gewerke werden angelegt'],
-  ['Funktion', 'Bezeichnung der Funktion, z.B. Fachplaner – ist sie im Projekt nicht vorhanden, wird sie angelegt. Planlaufmanagement übernimmt stets die angemeldete Person und wird nicht besetzt'],
-  ['Kürzel', 'nur für neu angelegte Funktionen; leer = aus der Bezeichnung gebildet'],
-  ['Name', 'Nachname der Person – einzige Pflichtangabe der Besetzung'],
-  ['Straße · Nr. · PLZ · Ort', 'werden zur Anschrift zusammengefasst'],
-  ['SharePoint Eingang · Ausgang', 'Links zu den SharePoint-Ordnern der Person für die Versandmail; leere Zellen lassen vorhandene Links unverändert'],
 ];
 
 export function rollenVorlageLaden(): void {
