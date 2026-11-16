@@ -4,7 +4,7 @@
  * entspricht dem des Planlaufmanagements, ist davon aber getrennt – gemeinsam
  * ist nur das Projektregister (`src/gemeinsam/`), mit dem der Store die
  * Projekte nach jeder Änderung abgleicht (`useRegisterAbgleich`,
- * domain/register.ts). Name und Farbmodus unter „Angemeldet als“ spiegeln die
+ * domain/register.ts). Der Name unter „Angemeldet als“ spiegelt die
  * gemeinsame Anmeldung aller Bereiche (`useBenutzerAbgleich`,
  * src/gemeinsam/benutzer.ts).
  */
@@ -131,15 +131,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setData((alt) => fn(alt));
   }, []);
 
-  // Name und Farbmodus aus der gemeinsamen Anmeldung aller Bereiche (src/gemeinsam/benutzer.ts)
+  // Name aus der gemeinsamen Anmeldung aller Bereiche (src/gemeinsam/benutzer.ts)
   useBenutzerAbgleich(
     data,
-    (d, b) => d.einstellungen.bearbeiter !== b.name || d.einstellungen.farbmodus !== b.farbmodus,
+    (d, b) => d.einstellungen.bearbeiter !== b.name,
     (b) =>
       mutate((d) =>
-        d.einstellungen.bearbeiter === b.name && d.einstellungen.farbmodus === b.farbmodus
-          ? d
-          : { ...d, einstellungen: { ...d.einstellungen, bearbeiter: b.name, farbmodus: b.farbmodus } },
+        d.einstellungen.bearbeiter === b.name ? d : { ...d, einstellungen: { ...d.einstellungen, bearbeiter: b.name } },
       ),
   );
 
@@ -369,7 +367,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...neu,
           einstellungen: {
             ...neu.einstellungen,
-            farbmodus: d.einstellungen.farbmodus,
             bearbeiter: d.einstellungen.bearbeiter,
           },
         }));

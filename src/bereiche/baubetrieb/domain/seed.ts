@@ -67,7 +67,6 @@ export function standardRilFristen(): Record<RilSchluessel, RilFrist> {
 
 export function standardEinstellungen(): Einstellungen {
   return {
-    farbmodus: 'standard',
     bearbeiter: STANDARD_BEARBEITER,
     vorlaufTage: 14,
     nachhakTage: 21,

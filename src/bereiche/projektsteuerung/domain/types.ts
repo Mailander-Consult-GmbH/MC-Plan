@@ -27,12 +27,9 @@ export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
 /** So viele Tage vor dem Termin gilt ein offener Punkt als „demnächst fällig“. */
 export const VORLAUF_TAGE = 7;
 
-export type Farbmodus = 'standard' | 'kontrast';
-
 export interface Einstellungen {
   /** Angemeldete Person; schlägt sich als Protokollführung neuer Protokollreihen nieder. */
   bearbeiter: string;
-  farbmodus: Farbmodus;
 }
 
 /* ------------------------------------------------------------------ */

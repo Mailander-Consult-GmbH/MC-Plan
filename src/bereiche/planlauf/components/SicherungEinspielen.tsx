@@ -123,10 +123,10 @@ export function SicherungEinspielenDialog({
       setOhneKopie(true);
       return;
     }
-    // „Angemeldet als“ samt Farbmodus kommt nur auf ausdrücklichen Wunsch aus der Sicherung –
+    // „Angemeldet als“ kommt nur auf ausdrücklichen Wunsch aus der Sicherung –
     // dann für alle Bereiche (gemeinsame Anmeldung)
     const mitName = fremderName && nameUebernehmen;
-    if (mitName) benutzerAendern({ name: daten.bearbeiter.name, farbmodus: daten.bearbeiter.farbmodus ?? 'standard' });
+    if (mitName) benutzerAendern({ name: daten.bearbeiter.name });
     ersetzeDaten(mitName ? daten : { ...daten, bearbeiter: data.bearbeiter });
     toast(
       `Sicherung eingespielt – ${anzahl(daten.projects.length, 'Projekt', 'Projekte')}, ${anzahl(

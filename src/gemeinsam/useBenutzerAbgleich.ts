@@ -1,5 +1,5 @@
 /**
- * Zieht Name und Farbmodus der gemeinsamen Anmeldung (benutzer.ts) in den
+ * Zieht den Namen der gemeinsamen Anmeldung (benutzer.ts) in den
  * Bestand eines Bereichs nach – nach jeder Änderung des Bestands und der
  * Anmeldung. `weicht` prüft, ob der Bestand abweicht; `anwenden` übernimmt die
  * Anmeldung über das `mutate()` des Bereichs (rein; ohne Abweichung liefert es

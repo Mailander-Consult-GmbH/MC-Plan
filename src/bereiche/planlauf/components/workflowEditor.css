@@ -754,17 +754,6 @@ button.wf-parallel-kopf:hover .wf-parallel-titel { text-decoration: underline; t
 .wf-zweig.wf-parallel-unzulaessig { color: var(--rot-text); }
 .wf-parallel-nacharbeit { font-size: 12px; color: var(--text-secondary); }
 
-/* Kontrastmodus ------------------------------------------------------- */
-:root[data-farbmodus='kontrast'] .wf-karte { border-color: var(--separator-strong); }
-:root[data-farbmodus='kontrast'] .wf-karte.abweichung { border-color: var(--orange); }
-:root[data-farbmodus='kontrast'] .wf-karte.aktiv { border-color: var(--accent); border-width: 2px; }
-:root[data-farbmodus='kontrast'] .wf-kante-linie { stroke-width: 2; }
-:root[data-farbmodus='kontrast'] .wf-antwort { font-weight: 700; }
-:root[data-farbmodus='kontrast'] .wf-parallel { border-width: 2px; }
-:root[data-farbmodus='kontrast'] .wf-parallel-balken { background: var(--gruen-text); }
-:root[data-farbmodus='kontrast'] .wf-karte.wf-parallel-gestrichelt { border-color: var(--orange-text); }
-:root[data-farbmodus='kontrast'] .wf-parallel-gestapelt .wf-parallel-zweig { border-left-color: var(--gruen-text); }
-
 /* Schmale Bildschirme ------------------------------------------------- */
 @media (max-width: 820px) {
   .wf-overlay { padding: 0; }

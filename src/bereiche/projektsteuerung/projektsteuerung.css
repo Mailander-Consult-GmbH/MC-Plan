@@ -4,7 +4,7 @@
  * Gestaltung des Bereichs „Projektsteuerung“. Alle Klassen tragen das Präfix
  * „ps-“, damit sie die anderen Bereiche nicht berühren. Farben, Abstände und
  * Radien kommen aus den Design-Tokens in src/shared/global.css – so folgt
- * auch der Farbmodus „kontrast“.
+ * auch das dunkle Schema.
  */
 
 /* Typen der Protokolleinträge: Information, Festlegung, Aufgabe – Farben, die als
@@ -199,10 +199,6 @@
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; white-space: pre-wrap;
 }
-
-/* Kontrastmodus: Ergänzungen kräftiger */
-:root[data-farbmodus='kontrast'] .textarea.ps-zusatz { border-width: 1.5px; }
-:root[data-farbmodus='kontrast'] .ps-typwahl button.aktiv { box-shadow: inset 0 0 0 2px var(--separator-strong); }
 
 /* Hinweisleisten über dem Inhalt (components/Hinweisleisten.tsx): Ladefehler, neuere Fassung, Speicher voll */
 .ps-ladehinweis { display: grid; gap: 10px; margin-bottom: 18px; }

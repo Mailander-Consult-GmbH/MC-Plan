@@ -58,7 +58,7 @@ export function SicherungWaehlen({ onGelesen }: { onGelesen: (s: Sicherung) => v
 const anzahl = (n: number, eins: string, mehr: string) => `${n} ${n === 1 ? eins : mehr}`;
 
 /**
- * Rückfrage vor dem Einspielen – „Angemeldet als“ und Farbmodus bleiben
+ * Rückfrage vor dem Einspielen – „Angemeldet als“ bleibt
  * erhalten. Nach einem Lade- oder Fassungsfehler sichert „Gespeicherten Stand
  * herunterladen“ den gespeicherten Text unverändert (`rohdatenHerunterladen`);
  * bei einem Stand aus einer neueren Fassung ist „Einspielen“ gesperrt. Vor dem
@@ -103,12 +103,12 @@ export function SicherungEinspielenDialog({
       return;
     }
     // „Angemeldet als“ gilt in allen Bereichen – aus der Sicherung nur auf ausdrücklichen Wunsch
-    if (mitEinstellungen) benutzerAendern({ name: daten.einstellungen.bearbeiter, farbmodus: daten.einstellungen.farbmodus });
+    if (mitEinstellungen) benutzerAendern({ name: daten.einstellungen.bearbeiter });
     ersetzeDaten({
       ...daten,
       einstellungen: mitEinstellungen
         ? daten.einstellungen
-        : { ...daten.einstellungen, bearbeiter: data.einstellungen.bearbeiter, farbmodus: data.einstellungen.farbmodus },
+        : { ...daten.einstellungen, bearbeiter: data.einstellungen.bearbeiter },
     });
     toast(
       `Sicherung eingespielt – ${anzahl(daten.projekte.length, 'Projekt', 'Projekte')}, ${anzahl(
@@ -186,7 +186,7 @@ export function SicherungEinspielenDialog({
         )}
         <label className="checkbox">
           <input type="checkbox" checked={mitEinstellungen} onChange={(e) => setMitEinstellungen(e.target.checked)} />
-          Auch „Angemeldet als“ und Farbmodus aus der Sicherung übernehmen – gilt dann in allen Bereichen
+          Auch „Angemeldet als“ aus der Sicherung übernehmen – gilt dann in allen Bereichen
         </label>
       </div>
     </Modal>

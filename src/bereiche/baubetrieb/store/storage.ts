@@ -95,7 +95,6 @@ function einstellungenAufbereiten(roh: Partial<Einstellungen> | undefined): Eins
     };
   }
   return {
-    farbmodus: roh?.farbmodus === 'kontrast' ? 'kontrast' : 'standard',
     bearbeiter: text(roh?.bearbeiter).trim() || STANDARD_BEARBEITER,
     vorlaufTage: zahl(roh?.vorlaufTage, vorgabe.vorlaufTage),
     nachhakTage: zahl(roh?.nachhakTage, vorgabe.nachhakTage),
@@ -586,15 +585,14 @@ function ausFassung10(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
 
 /**
  * Hebt einen älteren Stand auf die aktuelle Fassung – in einem Aufruf, Schritt
- * für Schritt. Fassung 1 kannte nur den Farbmodus; der Bereich hatte noch
- * keinen Inhalt. Sie erhält deshalb die Demodaten und behält ihre Einstellung.
+ * für Schritt. Fassung 1 kannte nur den (inzwischen entfernten) Farbmodus; der
+ * Bereich hatte noch keinen Inhalt. Sie erhält deshalb die Demodaten.
  * Fassung 8 → 9: Anmelder und Änderungsdatum ergänzt aufbereiten() leer.
  */
 function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   const version = roh.version ?? 1;
   if (version < 2 || !Array.isArray(roh.projekte)) {
-    const neu = seedDaten();
-    return { ...neu, einstellungen: { ...neu.einstellungen, farbmodus: roh.einstellungen?.farbmodus ?? 'standard' } };
+    return seedDaten();
   }
   // Fassung 2 erhält die Standard-Workflows bereits in der aktuellen Form; die
   // folgenden Schritte ändern an ihnen nichts mehr, wohl aber an Maßnahmenarten

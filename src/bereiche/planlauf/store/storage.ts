@@ -359,6 +359,18 @@ function zieleBereinigen<T extends ProcessTemplateStep | RunStep>(steps: T[]): T
 }
 
 /**
+ * Der frühere Farbmodus (Farben für eine Rot-Grün-Sehschwäche) ist entfernt.
+ * Stände der aktuellen Fassung führen ihn noch unter `bearbeiter`; er entfällt
+ * beim Laden – ohne neue Fassung, weil sich sonst nichts ändert. Ohne das Feld
+ * kommt derselbe Bestand zurück.
+ */
+function ohneFarbmodus(daten: AppData): AppData {
+  if (!daten.bearbeiter || !('farbmodus' in daten.bearbeiter)) return daten;
+  const { farbmodus: _entfaellt, ...bearbeiter } = daten.bearbeiter as AppData['bearbeiter'] & { farbmodus?: unknown };
+  return { ...daten, bearbeiter };
+}
+
+/**
  * Bis Fassung 11 fehlte in den mitgelieferten Workflows der Übergang von
  * „Rückmeldung an Planer“ zu „Erneute Vorlage von Planer“: Die Rückmeldung
  * führte zum nächsten Schritt der Liste – einer Entscheidung, deren „Nein“
@@ -512,7 +524,7 @@ function vorlagenFassung13(vorlagen: EmailTemplate[]): EmailTemplate[] {
  * E-Mail-Regeln an Schritten und Antworten (siehe mailRegelnFassung15).
  */
 function migriere(daten: AppData): AppData {
-  if (daten.version === DATEN_VERSION) return daten;
+  if (daten.version === DATEN_VERSION) return ohneFarbmodus(daten);
 
   const alsAntworten = (typ: StepType, vorhanden: unknown) => {
     if (Array.isArray(vorhanden) && vorhanden.length > 0) return vorhanden as never;
@@ -545,7 +557,6 @@ function migriere(daten: AppData): AppData {
     bearbeiter: {
       name: eigenerName(daten.bearbeiter),
       mailNachfrage: daten.bearbeiter?.mailNachfrage ?? true,
-      farbmodus: daten.bearbeiter?.farbmodus === 'kontrast' ? 'kontrast' : 'standard',
     },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0

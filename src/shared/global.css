@@ -18,14 +18,12 @@
 
 /* `dark:` folgt dem Farbschema der Anwendung (data-farbschema am <html>), nicht unmittelbar dem Gerät */
 @custom-variant dark (&:where([data-farbschema='dunkel'], [data-farbschema='dunkel'] *));
-/* `kontrast:` – Utilities nur im Farbmodus für Rot-Grün-Sehschwäche */
-@custom-variant kontrast (&:where([data-farbmodus='kontrast'], [data-farbmodus='kontrast'] *));
 
 /*
  * Tokens für Tailwind-Utilities (bg-karte, text-gedaempft, border-linie,
  * bg-marke, shadow-karte …). Die Farben zeigen auf die Variablen unten und
- * folgen damit von selbst dem dunklen Schema und dem Farbmodus „kontrast“ –
- * `dark:`-Varianten sind für sie nicht nötig.
+ * folgen damit von selbst dem dunklen Schema – `dark:`-Varianten sind für sie
+ * nicht nötig.
  */
 @theme inline {
   --font-sans: 'Outfit Variable', 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -1343,96 +1341,4 @@
   background: color-mix(in srgb, var(--chip-farbe) 26%, transparent);
   color: color-mix(in srgb, var(--chip-farbe) 45%, #fff);
 }
-}
-
-/* ------------------------------------------------------------------ */
-/* Farbmodus für Rot-Grün-Sehschwäche                                  */
-/* ------------------------------------------------------------------ */
-/*
- * Statt Grün/Orange/Rot treten Blaugrün, Bernstein und Magenta – drei
- * Farbtöne, die sich auch bei einer Rot-Grün-Sehschwäche (Deuteranopie und
- * Protanopie) in Farbton und Helligkeit unterscheiden. Zusätzlich sind
- * Texte, Trennlinien und Markierungen kontraststärker, und die Markenfarbe
- * ist kräftiger.
- */
-:root[data-farbmodus='kontrast'] {
-  --green: #00786a;
-  --green-soft: rgba(0, 120, 106, 0.16);
-  --gruen-text: #00594c;
-  --orange: #a86800;
-  --orange-soft: rgba(168, 104, 0, 0.18);
-  --orange-text: #7d4d00;
-  --red: #b0007a;
-  --red-soft: rgba(176, 0, 122, 0.14);
-  --rot-text: #8a0060;
-  --purple: #4b3ea8;
-  --purple-soft: rgba(75, 62, 168, 0.16);
-  --blau: #0a6fa8;
-  --blau-soft: rgba(10, 111, 168, 0.14);
-  --blau-text: #07507a;
-
-  --text-secondary: #40424a;
-  --text-tertiary: #54565e;
-  --separator: #c9cad1;
-  --separator-strong: #9fa1aa;
-  --accent-soft: rgba(27, 28, 32, 0.12);
-  --bg-active: rgba(27, 28, 32, 0.16);
-  --gray-soft: rgba(27, 28, 32, 0.12);
-  --gelb-soft: rgba(255, 214, 51, 0.28);
-  --gelb-soft-stark: rgba(255, 214, 51, 0.5);
-  --gelb-text: #5c4100;
-
-  --marke: #1c3859;
-  --marke-2: #34608f;
-  --marke-soft: rgba(36, 69, 110, 0.16);
-  --marke-text: #1c3859;
-  --signal-verlauf: linear-gradient(150deg, #cc3f9e, #b0007a);
-}
-
-:root[data-farbmodus='kontrast'][data-farbschema='dunkel'] {
-  --green: #2fd0bd;
-  --green-soft: rgba(47, 208, 189, 0.2);
-  --gruen-text: #6fe3d4;
-  --orange: #f2b33d;
-  --orange-soft: rgba(242, 179, 61, 0.22);
-  --orange-text: #f7cb78;
-  --red: #ff6bcb;
-  --red-soft: rgba(255, 107, 203, 0.2);
-  --rot-text: #ff9adb;
-  --purple: #a99bff;
-  --purple-soft: rgba(169, 155, 255, 0.22);
-  --blau: #6cc4f5;
-  --blau-soft: rgba(108, 196, 245, 0.2);
-  --blau-text: #9ad8fa;
-
-  --text-secondary: #d3d5db;
-  --text-tertiary: #b6b8c0;
-  --separator: #4a4c55;
-  --separator-strong: #6c6e78;
-  --accent-soft: rgba(255, 255, 255, 0.16);
-  --bg-active: rgba(255, 255, 255, 0.2);
-  --gray-soft: rgba(255, 255, 255, 0.16);
-  --gelb-soft: rgba(255, 214, 51, 0.2);
-  --gelb-soft-stark: rgba(255, 214, 51, 0.34);
-  --gelb-text: #ffe08a;
-
-  --marke: #6fa3e8;
-  --marke-2: #9cc0f2;
-  --marke-soft: rgba(111, 163, 232, 0.26);
-  --marke-text: #b9d4f8;
-  --signal-verlauf: linear-gradient(150deg, #d94aaa, #b0007a);
-}
-
-@layer components {
-/* Status wird zusätzlich durch Rahmen und kräftigere Schrift unterscheidbar */
-:root[data-farbmodus='kontrast'] .badge { border: 1px solid currentColor; font-weight: 600; }
-:root[data-farbmodus='kontrast'] .dot { box-shadow: 0 0 0 1px var(--separator-strong); }
-:root[data-farbmodus='kontrast'] .chain-node.late { border-color: var(--red); }
-:root[data-farbmodus='kontrast'] .chain-node.done { border-color: var(--green); }
-:root[data-farbmodus='kontrast'] .progress { background: var(--separator); }
-:root[data-farbmodus='kontrast'] .stern.aktiv { color: var(--text); }
-:root[data-farbmodus='kontrast'] .input,
-:root[data-farbmodus='kontrast'] .select,
-:root[data-farbmodus='kontrast'] .textarea,
-:root[data-farbmodus='kontrast'] .btn:not(.btn-primary):not(.btn-ghost):not(.btn-danger) { border-color: var(--separator-strong); }
 }
