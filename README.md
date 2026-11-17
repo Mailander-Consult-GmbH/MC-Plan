@@ -226,6 +226,12 @@ die Initialen der angemeldeten Person und der Bereichswechsel; die Knöpfe der S
 Texte stehen nur in der ausgeklappten Leiste. Ob sie eingeklappt ist, merkt sich der
 Browser (Schlüssel `kaplan-seitenleiste.v1`) – für alle Bereiche.
 
+Kopfzeile und Inhalt stehen **in einer Flucht**: Der Seitentitel beginnt an der linken Kante der
+Kacheln, die Wortmarke Mailänder Consult endet an ihrer rechten – mit aus- wie mit eingeklappter
+Seitenleiste. Die Kacheln stehen auf jeder Seite und in jedem Bereich an derselben Stelle; der
+Platz des Rollbalkens bleibt dafür stets frei, auch wenn eine Seite nicht rollt (`.topbar-inner`
+und `.content-inner` in `src/shared/global.css`, Variablen `--arbeitsbreite` und `--seitenrand`).
+
 Die Oberfläche ist durchgehend responsiv: Bis etwa 860 px liegt die Seitenleiste als Menü über dem
 Inhalt – der Knopf „Menü“ links in der Kopfzeile öffnet sie –, und sie schließt bei jedem Seitenwechsel, auch bei *Zurück*
 im Browser oder per Zurück-Geste (`useSeitenleiste` in `src/shared/seitenleiste.tsx`); auf Telefonbreite stehen die Kennzahlen
