@@ -85,16 +85,17 @@ Logo ändert, ändert die Polygone bzw. Maße in `src/shared/logos.tsx` und die 
 `Druck_DB_InfraGO.png` und `Druck_Mailaender_Consult.png`, die Standardlogos im Druckkopf von
 Protokoll und Beteiligtenliste der Projektsteuerung.
 
-Die Symbole für Browser und Betriebssystem liegen unter `public/icons/` – ebenfalls mitgeliefert
-und unverändert übernommen:
+Die Symbole für Browser und Betriebssystem liegen unter `public/icons/` – mitgeliefert und bis
+auf das Symbol der Taskleiste unverändert übernommen:
 
 | Datei | Verwendung |
 | --- | --- |
 | `favicon.ico`, `favicon.svg` | Browser-Tab (`index.html`) – die drei Ebenen in Blautönen ohne Hintergrund; `favicon.svg` hellt sich über eine Medienabfrage selbst auf, wenn der Browser dunkel eingestellt ist |
 | `apple-touch-icon.png` | `apple-touch-icon` (`index.html`) – dunkelblaue Kachel mit weißen Ebenen, 180 px |
-| `icon-192.png`, `icon-512.png` | Manifest, `purpose: any` – dunkelblaue Kachel mit weißen Ebenen (Taskleiste, Startmenü, Desktop-Verknüpfung) |
+| `app-192.png`, `app-512.png` | Manifest, `purpose: any` – dunkelblaue Kachel mit abgerundeten Ecken und weißen Ebenen (Taskleiste, Startmenü, Desktop-Verknüpfung). Gegenüber der Vorlage sind die Ebenen größer (0,8 statt 0,6 der Kachel) und die Ecken gerundet (Radius 9 von 48); gerastert aus `app-icon-rund.svg` in 192 und 512 px, die Ecken durchsichtig |
 | `icon-maskable-512.png` | Manifest, `purpose: maskable` – Ebenen im sicheren Bereich (Android) |
-| `favicon-32.png`, `app-icon.svg` | Vorlagen in weiteren Formaten – nicht eingebunden |
+| `app-icon-rund.svg` | Vorlage für `app-192.png` und `app-512.png` – nicht eingebunden |
+| `favicon-32.png`, `app-icon.svg` | Mitgelieferte Vorlagen in weiteren Formaten (`app-icon.svg`: die eckige Kachel, Grundlage des maskierbaren und des Apple-Symbols) – nicht eingebunden |
 
 Ein neues Symbol bekommt **neue Dateinamen** (Verweise in `index.html`, `public/manifest.webmanifest`
 und `SHELL` in `public/sw.js` anpassen), und der Cache-Name in `public/sw.js` wird hochgezählt –

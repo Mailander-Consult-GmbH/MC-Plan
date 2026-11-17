@@ -222,8 +222,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   die mitgelieferten Dateien unter `public/logos/` (`kaplan-logo-*.svg`, `kaplan-symbol-*.svg`,
   je auch `-dark`) mit `docs/LOGO-ANLEITUNG.md` – sie werden nicht verändert und von der
   Oberfläche nicht geladen. Die Symbole für Browser-Tab und App liegen unter `public/icons/`
-  (`favicon.ico`, `favicon.svg`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`,
-  `icon-maskable-512.png`, ebenfalls mitgeliefert, immer neutral; ein
+  (`favicon.ico`, `favicon.svg`, `apple-touch-icon.png`, `icon-maskable-512.png` – mitgeliefert –
+  und `app-192.png`, `app-512.png` für Taskleiste und Startmenü: aus `app-icon-rund.svg`
+  gerastert, mit größeren Ebenen und abgerundeter Kachel; alle immer neutral; ein
   geändertes Symbol bekommt neue Dateinamen, siehe README, Abschnitt „Logos“). Die Wortmarke
   Mailänder Consult bleibt die Originaldatei; im dunklen Schema erscheint sie weiß
   (`.topbar-logo`, `.logo-hell`).
