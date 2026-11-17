@@ -70,9 +70,9 @@ export function App() {
       <motion.aside layoutScroll className={`sidebar ${menuOffen ? 'open' : ''} ${leiste.eingeklappt ? 'eingeklappt' : ''}`}>
         <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'dashboard' })} title="Zur Übersicht">
           <span className="marke-voll">
-            <KaPlanLogo variante="Planlaufmanagement" width="100%" />
+            <KaPlanLogo zustand="planlauf" />
           </span>
-          <KaPlanZeichen />
+          <KaPlanZeichen zustand="planlauf" />
         </button>
 
         <NavItem
