@@ -29,8 +29,9 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 >   einklappbar (`src/shared/seitenleiste.tsx`) – Griff und Zustand sind gemeinsam, die
 >   Leiste selbst steht weiter dreimal im Code (R-1).
 > * **Markenfarbe und Logos:** Akzent ist wieder das Blau von Mailänder Consult (statt der Koralle
->   der Vorlage), gezeigt werden die Logos von KaPlan ohne Fläche dahinter – im dunklen Schema in
->   einer eigenen, weißen Fassung (`werkzeuge/logos_dunkel.py`; die Logos selbst zeichnet inzwischen `werkzeuge/logos_zeichnen.py`); das Rot der Ampel ist ein eigenes
+>   der Vorlage), gezeigt wird das Logo von KaPlan ohne Fläche dahinter – inzwischen das Logo
+>   „Planebenen“, als SVG gezeichnet, mit eigenen Farben für das dunkle Schema (`KaPlanLogo` in
+>   `src/shared/logos.tsx`); das Rot der Ampel ist ein eigenes
 >   Rot.
 > * **Menüleiste:** im hellen Schema hell, dunkel nur im dunklen Schema – in allen drei Bereichen
 >   gleich (`.sidebar` in `src/shared/global.css`).

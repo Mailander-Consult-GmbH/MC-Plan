@@ -45,59 +45,56 @@ der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
 
 ## Logos
 
-Die Logos von KaPlan liegen unter `public/logos/`. Die Logos der Bereiche folgen einem Muster: das
-Dreieck mit je eigener Verteilung von Blau und Grau (Planlaufmanagement oben blau,
-Baubetriebsplanung links, Projektsteuerung rechts), daneben „KaPlan“ und darunter rechtsbündig der
-Name. Schriftzug und Unterzeile sind in Outfit gesetzt, der Schrift der Oberfläche – „KaPlan“
-kräftig, die Unterzeile leicht. Die Strichstärken folgen der Marke von Mailänder Consult, jeweils im
-Verhältnis zur Größe: die Linien des Dreiecks wie die Linien ihres Zeichens (0,089 der Höhe),
-„KaPlan“ nahe an ihrer Wortmarke, eine Stufe leichter (Stamm zu Versalhöhe rund 0,20).
+Das Logo von KaPlan heißt „Planebenen“: drei isometrische Ebenen, je Arbeitsbereich eine – oben
+Planlaufmanagement, in der Mitte Baubetriebsplanung, unten Projektsteuerung –, daneben der
+Schriftzug „KaPlan“. Es gibt vier Zustände:
+
+| Zustand | Wo | Ebenen | Unterzeile |
+| --- | --- | --- | --- |
+| `neutral` | Startbildschirm (Bereichsauswahl), oben links | alle drei in Blautönen, von hell (oben) nach dunkel (unten) | keine |
+| `planlauf` | Kopf der Menüleiste im Planlaufmanagement | die obere blau, die beiden anderen grau | Planlaufmanagement |
+| `baubetrieb` | Kopf der Menüleiste in der Baubetriebsplanung | die mittlere blau | Baubetriebsplanung |
+| `projekt` | Kopf der Menüleiste in der Projektsteuerung | die untere blau | Projektsteuerung |
+
+In der eingeklappten Menüleiste steht das Symbol allein, im Zustand des Bereichs. Browser-Tab und
+App-Symbole sind immer neutral.
+
+Die Oberfläche bindet das Logo nicht als Bilddatei ein, sondern **zeichnet es**: `KaPlanLogo` und
+`KaPlanZeichen` in `src/shared/logos.tsx` setzen die Ebenen als Polygone und den Schriftzug als
+Text in Outfit, der Schrift der Oberfläche („KaPlan“ in Stärke 600 mit `letter-spacing: -0.01em`,
+die Unterzeile in Stärke 300; alle drei Unterzeilen in derselben Größe, die längste –
+„Planlaufmanagement“ – so breit wie „KaPlan“). Die Farben sind Tokens in `src/shared/global.css`
+und folgen dem Farbschema; das Logo steht **ohne Fläche dahinter**:
+
+| Rolle | Token | Hell | Dunkel |
+| --- | --- | --- | --- |
+| Ebene des aktiven Bereichs | `--logo-aktiv` | `#1f3f6b` | `#7fa6dd` |
+| die anderen Ebenen | `--logo-inaktiv` | `#c3c7cb` | `#454c55` |
+| neutral oben | `--logo-neutral-oben` | `#6286ba` | `#b3cbee` |
+| neutral Mitte | `--logo-neutral-mitte` | `#30588c` | `#7fa6dd` |
+| neutral unten | `--logo-neutral-unten` | `#1f3f6b` | `#5a82bd` |
+| Schriftzug | `--logo-schrift` | `#3a4049` | `#e6e8eb` |
+
+**Vorlage** sind die mitgelieferten Dateien unter `public/logos/` – sie werden nicht verändert und
+von der Oberfläche nicht geladen: `kaplan-logo-<zustand>.svg` (Symbol mit Schriftzug, die Schrift
+in Pfade umgewandelt) und `kaplan-symbol-<zustand>.svg` (nur das Symbol), jeweils auch als
+`…-dark.svg` für dunklen Grund. Konzept, Farben, Geometrie und Regeln des Schriftzugs stehen in
+[`docs/LOGO-ANLEITUNG.md`](docs/LOGO-ANLEITUNG.md), der Anleitung, die mit den Dateien kam. Wer das
+Logo ändert, ändert die Polygone bzw. Maße in `src/shared/logos.tsx` und die Tokens in
+`global.css` – und tauscht die Vorlagen mit aus. Im selben Ordner liegen
+`Druck_DB_InfraGO.png` und `Druck_Mailaender_Consult.png`, die Standardlogos im Druckkopf von
+Protokoll und Beteiligtenliste der Projektsteuerung.
+
+Die Symbole für Browser und Betriebssystem liegen unter `public/icons/` – ebenfalls mitgeliefert
+und unverändert übernommen:
 
 | Datei | Verwendung |
 | --- | --- |
-| `Logo_Startseite.png` | Startbildschirm (Bereichsauswahl), oben links |
-| `Logo_Planlaufmanagement.png` | Kopf der Menüleiste im Planlaufmanagement |
-| `Logo_Baubetriebsplanung.png` | Kopf der Menüleiste in der Baubetriebsplanung |
-| `Logo_Projektsteuerung.png` | Kopf der Menüleiste in der Projektsteuerung |
-| `Logo_Startseite_dunkel.png`, `Logo_Planlaufmanagement_dunkel.png`, `Logo_Baubetriebsplanung_dunkel.png`, `Logo_Projektsteuerung_dunkel.png` | dieselben Logos für das dunkle Farbschema – erzeugt, nicht gezeichnet (siehe unten) |
-| `Druck_DB_InfraGO.png`, `Druck_Mailaender_Consult.png` | Standardlogos im Druckkopf von Protokoll und Beteiligtenliste der Projektsteuerung |
-| `Logo.png` | Symbol (Dreiecksmarke ohne Schriftzug, ganz blau) – dieselbe Marke wie in den App-Symbolen unter `public/icons/` |
-
-Die Logos stehen **ohne Fläche dahinter** – in der Menüleiste wie auf dem Startbildschirm
-(`KaPlanLogo` in `src/shared/logos.tsx`). Gezeichnet sind sie für hellen Grund (dunkle Schrift,
-Dreieck in Blau und Grau); so erscheinen sie im hellen Farbschema. Im **dunklen Farbschema** zeigt
-die Oberfläche je Logo die Fassung `Logo_<Name>_dunkel.png`: Schrift und graue Teile des Dreiecks
-in Weiß, der blaue Teil bleibt unverändert blau (ohne Rand).
-
-Logos, dunkle Fassungen, `Logo.png` und die App-Symbole **zeichnet das Skript
-`werkzeuge/logos_zeichnen.py`** – Maße, Farben, Schriftschnitte und die Verteilung von Blau und Grau
-stehen dort als Konstanten. Es braucht Python mit Pillow (samt WOFF2-Unterstützung) und die mit
-`npm ci` installierte Schrift Outfit:
-
-```bash
-python3 werkzeuge/logos_zeichnen.py
-```
-
-Wer ein Logo ändern will, ändert das Skript, führt es aus und checkt alle erzeugten Dateien mit
-ein; die Logos werden in der Oberfläche nur über die Breite bzw. Höhe skaliert. Die dunklen
-Fassungen entstehen dabei über `werkzeuge/logos_dunkel.py` (für sich allein nur nötig, wenn ein
-Logo von Hand ausgetauscht wurde).
-
-Die Symbole in `public/icons/` zeigen die Marke aus `Logo.png` in der Logofarbe `#21426d` – mit
-denselben kräftigen Linien wie in den Logos –, im
-Browser-Tab und in der Titelleiste des App-Fensters **ohne Hintergrund**, in der Taskleiste, im
-Startmenü und als Desktop-Verknüpfung auf einer **hellen Kachel**
-(`#f5f5f7`, mit feiner Randlinie) – das dünne Dreieck allein war in der Windows-Taskleiste
-kaum zu sehen. Die Marke wird je Größe eigens gerastert und steht genau mittig
-(gleicher Abstand oben und unten bzw. links und rechts); sehr kleine Symbole (Marke unter 45 px
-hoch) sind noch etwas kräftiger gezeichnet:
-
-| Datei | Verwendung |
-| --- | --- |
-| `kaplan-zeichen-32/64/192.png` | Browser-Tab und Titelleiste des App-Fensters (`index.html`) – nur das Dreieck; die 64er-Datei steht auch in der eingeklappten Seitenleiste (`KaPlanZeichen`) |
-| `kaplan-kachel-48/64/96/192/512.png` | Manifest, `purpose: any` – Kachel mit runden Ecken (Taskleiste, Startmenü, Desktop-Verknüpfung, Android-Browser ohne maskierbare Symbole) |
-| `kaplan-kachel-maskable-192/512.png` | Manifest, `purpose: maskable` – deckend, Marke im sicheren Bereich (Android) |
-| `kaplan-kachel-apple-180.png` | `apple-touch-icon` – deckend, iOS rundet selbst ab |
+| `favicon.ico`, `favicon.svg` | Browser-Tab (`index.html`) – die drei Ebenen in Blautönen ohne Hintergrund; `favicon.svg` hellt sich über eine Medienabfrage selbst auf, wenn der Browser dunkel eingestellt ist |
+| `apple-touch-icon.png` | `apple-touch-icon` (`index.html`) – dunkelblaue Kachel mit weißen Ebenen, 180 px |
+| `icon-192.png`, `icon-512.png` | Manifest, `purpose: any` – dunkelblaue Kachel mit weißen Ebenen (Taskleiste, Startmenü, Desktop-Verknüpfung) |
+| `icon-maskable-512.png` | Manifest, `purpose: maskable` – Ebenen im sicheren Bereich (Android) |
+| `favicon-32.png`, `app-icon.svg` | Vorlagen in weiteren Formaten – nicht eingebunden |
 
 Ein neues Symbol bekommt **neue Dateinamen** (Verweise in `index.html`, `public/manifest.webmanifest`
 und `SHELL` in `public/sw.js` anpassen), und der Cache-Name in `public/sw.js` wird hochgezählt –
@@ -213,8 +210,8 @@ Entfernen einer installierten App deshalb in jedem genutzten Bereich eine Sicher
 herunterladen**; Android und Desktop fragen beim Entfernen, ob auch die Daten gelöscht werden
 sollen.
 
-Enthalten sind `manifest.webmanifest`, App-Symbole auf einer hellen Kachel (`public/icons/`, siehe
-[Logos](#logos): 48–512 px, maskierbar für Android und Apple-Touch-Icon für iOS) sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
+Enthalten sind `manifest.webmanifest`, App-Symbole auf einer dunkelblauen Kachel (`public/icons/`, siehe
+[Logos](#logos): 192 und 512 px, maskierbar für Android und Apple-Touch-Icon für iOS) sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen – eine
 gültige Antwort ersetzt die zwischengespeicherte Startseite, eine Fehlerseite nicht – und
 bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (gehashte Namen unter
 `assets/`) kommen direkt aus dem Zwischenspeicher. Logos und Symbole werden wie Seitenaufrufe zuerst
@@ -224,7 +221,7 @@ stört er also nicht.
 Die **Seitenleiste** jedes Bereichs ist eine Karte wie die Kacheln des Inhalts. Der Griff mittig auf
 ihrem rechten Rand klappt sie ein und wieder aus: Es bleibt eine schmale Leiste mit den Symbolen der Menüpunkte (der
 Name steht im Tooltip, Zähler als kleine Marke am Symbol), darunter – nach einer Trennlinie – die
-markierten Projekte ebenfalls als Symbole mit ihrem Namen im Tooltip, dazu das Dreieck von KaPlan,
+markierten Projekte ebenfalls als Symbole mit ihrem Namen im Tooltip, dazu das Symbol von KaPlan,
 die Initialen der angemeldeten Person und der Bereichswechsel; die Knöpfe der Sicherung und die
 Texte stehen nur in der ausgeklappten Leiste. Ob sie eingeklappt ist, merkt sich der
 Browser (Schlüssel `kaplan-seitenleiste.v1`) – für alle Bereiche.
@@ -1634,7 +1631,7 @@ src/
                  eigenen Strichzeichnungen für die Druckfassungen
     bewegung.tsx Bewegungen (framer-motion): hoverLift, Zaehler, NavAktiv, BalkenFuellung,
                  Einblenden
-    logos.tsx    Logos KaPlan (public/logos/, je Farbschema eine Datei) und Wortmarke Mailänder Consult
+    logos.tsx    Logo KaPlan („Planebenen“, als SVG gezeichnet, vier Zustände) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
     bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
     bausteinEditor.tsx  Eingabefeld mit farbigen, nicht teilbaren Bausteinen (BausteinEditor,
@@ -1766,9 +1763,8 @@ src/
 Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden
 beim Aufruf auf `#/planlauf/…` umgelenkt und bleiben damit gültig.
 
-Außerhalb von `src/` liegen unter `werkzeuge/` die Skripte `logos_zeichnen.py` – es zeichnet Logos
-und App-Symbole – und `logos_dunkel.py` für die Fassungen im dunklen Farbschema (siehe
-[Logos](#logos)); beide gehören nicht zum Build.
+Die Vorlagen des Logos liegen unter `public/logos/`, ihre Anleitung unter
+`docs/LOGO-ANLEITUNG.md` (siehe [Logos](#logos)).
 
 ## Gestaltung
 
@@ -1800,7 +1796,7 @@ Menüleiste, die selbst eine Karte ist:
   im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Endzustände ohne Verschiebung.
 * **Hell und dunkel:** Die Vorgabe „Automatisch“ folgt wie in der Vorlage der Einstellung des
   Geräts; unter „Angemeldet als“ lässt sich das **Farbschema** fest auf „Hell“ oder „Dunkel“
-  stellen. Im dunklen Schema erscheinen die Logos von KaPlan in Weiß (siehe [Logos](#logos)).
+  stellen. Das Logo von KaPlan hat für das dunkle Schema eigene, hellere Farben (siehe [Logos](#logos)).
 * **Technik:** Tailwind 4 (`@tailwindcss/vite`) mit den Design-Tokens in `src/shared/global.css`;
   die Bausteinklassen aller Bereiche stehen in der Ebene `components`, Tailwind-Utilities gewinnen
   gegen sie.

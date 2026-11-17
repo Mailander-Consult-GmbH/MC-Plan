@@ -14,7 +14,7 @@ Optimierungspotenzial aus dem Vergleich der drei Bereiche: `docs/OPTIMIERUNG.md`
 Die Oberfläche folgt dem **Koralle-Design** nach der Vorlage `KoralleDashboard.jsx` im
 Wurzelverzeichnis – gebaut mit Tailwind 4, Framer Motion und Lucide-Icons. Abweichend von der
 Vorlage ist die **Markenfarbe das Blau von Mailänder Consult** (`#24456e`), nicht Koralle,
-gezeigt werden die **Logos von KaPlan**, und die **Menüleiste ist eine Karte wie die Kacheln**. Wie das
+gezeigt wird das **Logo von KaPlan**, und die **Menüleiste ist eine Karte wie die Kacheln**. Wie das
 Design anzuwenden ist, steht im Abschnitt
 [Designregeln](#designregeln-koralle-design); die früheren Gestaltungsregeln (helles
 Apple-Erscheinungsbild) gelten nicht mehr.
@@ -77,9 +77,9 @@ Schrift Outfit, weiche Bewegungen.
 * **Die Menüleiste ist eine Karte wie die Kacheln des Inhalts** – Kartengrund (`--bg-elev`),
   24 px Rundung, weicher Schatten, ohne Linie zum Inhalt, mit 16 px Abstand zum Fensterrand; in
   der Vorlage ist sie eine dunkle Fläche am Rand. Sie lässt sich einklappen (siehe Bausteine).
-* **Logos von KaPlan** (`public/logos/`) statt einer gezeichneten Marke – ohne Fläche dahinter.
-  Im dunklen Schema erscheint die Fassung `…_dunkel.png`: Schrift und Grau in Weiß, der blaue
-  Teil des Dreiecks unverändert – ohne Rand.
+* **Logo von KaPlan** („Planebenen“: drei Ebenen, je Arbeitsbereich eine) statt der Marke der
+  Vorlage – ohne Fläche dahinter, mit eigenen Farben (`--logo-…`), die nicht die Markenfarbe der
+  Oberfläche sind; für das dunkle Schema hat es eigene, hellere Töne.
 
 ### Technik
 
@@ -199,21 +199,24 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   mittig auf ihrem rechten Rand (`.leiste-griff`, `src/shared/seitenleiste.tsx`); der Knopf
   „Menü“ in der Kopfzeile (`SeitenleisteKnopf`) erscheint nur in der schmalen Ansicht. Eingeklappt bleiben Symbole (Name im Tooltip, Zähler als Marke
   am Symbol) – auch die der markierten Projekte, unter einer Trennlinie statt der Überschrift –,
-  `KaPlanZeichen` (das Dreieck allein), die Initialen der angemeldeten Person und der
+  `KaPlanZeichen` (das Symbol des Logos allein), die Initialen der angemeldeten Person und der
   Bereichswechsel; Sicherungsknöpfe und Texte entfallen.
 * `.tabs` sind Pillen, die gewählte blau; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
   `purple`, `gelb`); Ampelpunkt `.dot`; Stern der Projektmarkierung `Icon name="stern"` in `.stern`.
-* **Logos:** `KaPlanLogo` (`src/shared/logos.tsx`) zeigt die Dateien unter `public/logos/` – auf
-  dem Startbildschirm ohne Zusatz, in den Bereichen mit deren Namen (oben in der Menüleiste und
-  oben links auf dem Startbildschirm) – **ohne Kachel oder andere Fläche dahinter**. Je Logo gibt
-  es zwei Dateien: `Logo_<Name>.png` für das helle Schema und `Logo_<Name>_dunkel.png` für das
-  dunkle; `KaPlanLogo` setzt beide ein, sichtbar ist die zum Schema passende
-  (`.kaplan-logo-hell`, `.kaplan-logo-dunkel` in `global.css`). Logos, dunkle Fassungen
-  und App-Symbole werden nicht von Hand gezeichnet: `python3 werkzeuge/logos_zeichnen.py` erzeugt
-  sie (braucht Pillow und die mit `npm ci` installierte Schrift) – das Dreieck mit kräftigen
-  Linien, „KaPlan“ und die Unterzeile in Outfit; welcher Winkel blau ist, unterscheidet die
-  Bereiche. Wer ein Logo ändert, ändert das Skript und checkt alle erzeugten Dateien mit ein. Die
-  App-Symbole liegen unter `public/icons/` (`kaplan-zeichen-*`, `kaplan-kachel-*`; ein
+* **Logo:** `KaPlanLogo` und `KaPlanZeichen` (`src/shared/logos.tsx`) **zeichnen** das Logo
+  „Planebenen“ als SVG – drei Polygone (oben Planlaufmanagement, Mitte Baubetriebsplanung, unten
+  Projektsteuerung) und der Schriftzug als Text in Outfit – **ohne Kachel oder andere Fläche
+  dahinter**. Der Zustand (`LogoZustand`) ist `neutral` auf dem Startbildschirm (alle Ebenen in
+  Blautönen, keine Unterzeile) oder der Bereich (`planlauf`, `baubetrieb`, `projekt`: dessen
+  Ebene blau, die anderen grau, Name des Bereichs als Unterzeile); jede `App.tsx` gibt ihren
+  eigenen fest an. Welche Ebene blau ist, regelt die Klasse `logo-<zustand>` in `global.css`
+  über die Tokens `--logo-aktiv`, `--logo-inaktiv`, `--logo-neutral-oben/-mitte/-unten` und
+  `--logo-schrift` – sie schalten mit dem Farbschema um; keine Farben im Baustein. Vorlage sind
+  die mitgelieferten Dateien unter `public/logos/` (`kaplan-logo-*.svg`, `kaplan-symbol-*.svg`,
+  je auch `-dark`) mit `docs/LOGO-ANLEITUNG.md` – sie werden nicht verändert und von der
+  Oberfläche nicht geladen. Die Symbole für Browser-Tab und App liegen unter `public/icons/`
+  (`favicon.ico`, `favicon.svg`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`,
+  `icon-maskable-512.png`, ebenfalls mitgeliefert, immer neutral; ein
   geändertes Symbol bekommt neue Dateinamen, siehe README, Abschnitt „Logos“). Die Wortmarke
   Mailänder Consult bleibt die Originaldatei; im dunklen Schema erscheint sie weiß
   (`.topbar-logo`, `.logo-hell`).
