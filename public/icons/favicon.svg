@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><style>
+#planlauf{fill:#6286BA;stroke:#6286BA}#baubetrieb{fill:#30588C;stroke:#30588C}#projekt{fill:#1F3F6B;stroke:#1F3F6B}
+@media (prefers-color-scheme:dark){#planlauf{fill:#B3CBEE;stroke:#B3CBEE}#baubetrieb{fill:#7FA6DD;stroke:#7FA6DD}#projekt{fill:#5A82BD;stroke:#5A82BD}}
+</style><polygon id="planlauf" points="24,5 42,14 24,23 6,14" stroke-width="1.5" stroke-linejoin="round"/><polygon id="baubetrieb" points="6,19.5 24,28.5 42,19.5 42,24.5 24,33.5 6,24.5" stroke-width="1.5" stroke-linejoin="round"/><polygon id="projekt" points="6,30 24,39 42,30 42,35 24,44 6,35" stroke-width="1.5" stroke-linejoin="round"/></svg>

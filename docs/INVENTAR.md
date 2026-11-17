@@ -46,7 +46,7 @@ Die Anwendung besteht aus drei getrennten Bereichen (`BereichId` in
 `src/shell/bereiche.ts`). Die
 erste Wegmarke der Adresse benennt den Bereich; die Shell (`src/shell/router.ts`)
 wählt danach aus, welcher Bereich geladen wird: `#/` zeigt die Bereichsauswahl
-(`src/shell/Start.tsx`: oben das Logo ohne Fläche dahinter (`KaPlanLogo` in `src/shared/logos.tsx`; im dunklen Farbschema die Datei `public/logos/Logo_Startseite_dunkel.png`), darunter das
+(`src/shell/Start.tsx`: oben das Logo ohne Fläche dahinter (`KaPlanLogo` in `src/shared/logos.tsx` im Zustand `neutral` – drei Ebenen in Blautönen, „KaPlan“ ohne Unterzeile; in den Bereichen steht es mit deren Namen im Kopf der Menüleiste, die Ebene des Bereichs blau; die Farben sind die Tokens `--logo-aktiv` usw. in `src/shared/global.css`), darunter das
 heutige Datum, die Begrüßung – „Guten Morgen“ von 5 bis 11 Uhr, „Guten Abend“ ab 18 Uhr, sonst
 „Hallo“ (`gruss`), dahinter der Vorname aus „Angemeldet als“ (`vornameVon` in
 `src/gemeinsam/benutzer.ts`; entfällt beim Vorgabenamen) – und „Bitte einen Bereich wählen.“,
@@ -495,7 +495,7 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 
 | Variable | Bedeutung | Pflicht |
 | --- | --- | --- |
-| `import.meta.env.BASE_URL` | Basispfad der Auslieferung; wird für die Pfade der Logos (`public/logos/`) und des Hauslogos (`src/shared/logos.tsx`) sowie der Standardlogos im Druckkopf (`src/bereiche/projektsteuerung/domain/druck.ts`) verwendet. Vite setzt ihn aus `base: './'` in `vite.config.ts`. | von Vite gesetzt, keine eigene Pflege |
+| `import.meta.env.BASE_URL` | Basispfad der Auslieferung; wird für den Pfad des Hauslogos (`src/shared/logos.tsx`) sowie der Standardlogos im Druckkopf (`src/bereiche/projektsteuerung/domain/druck.ts`) verwendet. Vite setzt ihn aus `base: './'` in `vite.config.ts`. | von Vite gesetzt, keine eigene Pflege |
 | `import.meta.env.PROD` | Nur im Produktionsbuild wird der Service Worker registriert und auf eine neuere Fassung geprüft (`src/shared/pwa.ts`). | von Vite gesetzt, keine eigene Pflege |
 | `GITHUB_SHA` | Nur beim Bauen: Commit für die Kennung der Fassung (`__FASSUNG__` und `fassung.json`, `vite.config.ts`); fehlt er, heißt die Kennung `lokal-<Bauzeit>`. | nein, im Workflow von GitHub gesetzt |
 

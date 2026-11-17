@@ -87,9 +87,9 @@ export function App() {
           title="Zur Übersicht"
         >
           <span className="marke-voll">
-            <KaPlanLogo variante="Baubetriebsplanung" width="100%" />
+            <KaPlanLogo zustand="baubetrieb" />
           </span>
-          <KaPlanZeichen />
+          <KaPlanZeichen zustand="baubetrieb" />
         </button>
 
         <NavItem icon="dashboard" label="Übersicht" aktiv={route.view === 'uebersicht'} onClick={() => gehe({ view: 'uebersicht' })} />

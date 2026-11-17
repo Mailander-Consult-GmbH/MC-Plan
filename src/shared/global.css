@@ -119,6 +119,15 @@
   /* Fokus in der Markenfarbe wie die übrige Betonung (Hauptknopf, gewählter Reiter) */
   --fokus: var(--marke);
 
+  /* Logo von KaPlan („Planebenen“, KaPlanLogo in src/shared/logos.tsx): die Ebene des aktiven
+     Bereichs, die beiden anderen, die drei Blautöne des neutralen Zustands und der Schriftzug */
+  --logo-aktiv: #1f3f6b;
+  --logo-inaktiv: #c3c7cb;
+  --logo-neutral-oben: #6286ba;
+  --logo-neutral-mitte: #30588c;
+  --logo-neutral-unten: #1f3f6b;
+  --logo-schrift: #3a4049;
+
   /* Ampel und Kennzeichen */
   --green: #1f9d61;
   --green-soft: #e3f6ec;
@@ -196,6 +205,13 @@
   --marke-2: #7eaae4;
   --marke-soft: rgba(79, 134, 204, 0.2);
   --marke-text: #93bbee;
+
+  --logo-aktiv: #7fa6dd;
+  --logo-inaktiv: #454c55;
+  --logo-neutral-oben: #b3cbee;
+  --logo-neutral-mitte: #7fa6dd;
+  --logo-neutral-unten: #5a82bd;
+  --logo-schrift: #e6e8eb;
 
   --green: #35c283;
   --green-soft: rgba(53, 194, 131, 0.16);
@@ -359,24 +375,33 @@
   border-radius: var(--rund);
 }
 .sidebar-brand:hover { opacity: 0.88; }
-/* Logo mit Schriftzug in der ausgeklappten Leiste, das Dreieck allein in der eingeklappten */
+/* Logo mit Schriftzug in der ausgeklappten Leiste, das Symbol allein in der eingeklappten */
 .marke-voll { display: block; }
 .kaplan-zeichen { display: none; margin: 0 auto; }
-:root[data-farbschema='dunkel'] .kaplan-zeichen { filter: brightness(0) invert(1); opacity: 0.92; }
 
 /*
- * Logos von KaPlan (KaPlanLogo, src/shared/logos.tsx) – ohne Fläche dahinter,
- * je Farbschema eine eigene Datei unter public/logos/: im hellen das Logo wie
- * gezeichnet (dunkle Schrift, Dreieck in Blau und Grau), im dunklen die
- * Fassung „…_dunkel“ (Schrift und Grau in Weiß, der blaue Teil des Dreiecks
- * unverändert; erzeugt mit werkzeuge/logos_dunkel.py).
+ * Logo von KaPlan („Planebenen“; KaPlanLogo und KaPlanZeichen in
+ * src/shared/logos.tsx) – ohne Fläche dahinter, gezeichnet als SVG: drei
+ * Ebenen, je Arbeitsbereich eine, daneben „KaPlan“ und der Name des Bereichs
+ * in Outfit. Die Klasse `logo-<zustand>` sagt, welche Ebene blau ist: im
+ * neutralen Zustand alle drei in Blautönen von hell nach dunkel, in einem
+ * Bereich dessen Ebene, die anderen grau. Die Farben sind die Tokens
+ * `--logo-…` und folgen dem Farbschema.
  */
-.kaplan-logo-hell, .kaplan-logo-dunkel { display: block; max-width: 100%; }
-.kaplan-logo-dunkel { display: none; }
-:root[data-farbschema='dunkel'] .kaplan-logo-hell { display: none; }
-:root[data-farbschema='dunkel'] .kaplan-logo-dunkel { display: block; }
-/* Das Logo des Startbildschirms trägt unter dem Schriftzug keine Zeile – der leere Teil wird beschnitten */
-.logo-ohne-zeile { display: block; overflow: hidden; aspect-ratio: 960 / 262; }
+.kaplan-logo { display: block; width: 100%; height: auto; overflow: visible; }
+.logo-ebene {
+  fill: var(--logo-inaktiv); stroke: var(--logo-inaktiv);
+  stroke-width: 1.5; stroke-linejoin: round;
+}
+.logo-neutral .logo-ebene-planlauf { fill: var(--logo-neutral-oben); stroke: var(--logo-neutral-oben); }
+.logo-neutral .logo-ebene-baubetrieb { fill: var(--logo-neutral-mitte); stroke: var(--logo-neutral-mitte); }
+.logo-neutral .logo-ebene-projekt { fill: var(--logo-neutral-unten); stroke: var(--logo-neutral-unten); }
+.logo-planlauf .logo-ebene-planlauf,
+.logo-baubetrieb .logo-ebene-baubetrieb,
+.logo-projekt .logo-ebene-projekt { fill: var(--logo-aktiv); stroke: var(--logo-aktiv); }
+.logo-schriftzug, .logo-unterzeile { font-family: var(--font-sans); fill: var(--logo-schrift); }
+.logo-schriftzug { font-weight: 600; letter-spacing: -0.01em; }
+.logo-unterzeile { font-weight: 300; }
 
 .nav-group-label {
   font-size: 12px;
@@ -443,7 +468,7 @@
 
 /*
  * Eingeklappte Menüleiste: Es bleiben die Symbole der Menüpunkte und der
- * markierten Projekte (ihr Name steht im Tooltip), das Dreieck von KaPlan,
+ * markierten Projekte (ihr Name steht im Tooltip), das Symbol von KaPlan,
  * die Initialen der angemeldeten Person und der Bereichswechsel. Die Knöpfe
  * der Sicherung und die Texte entfallen – sie stehen in der ausgeklappten
  * Leiste. Statt der Überschrift „Projekte“ trennt eine Linie die Projekte

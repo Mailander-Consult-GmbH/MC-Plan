@@ -3,88 +3,100 @@ import { useState } from 'react';
 /**
  * Bildmarken der Anwendung.
  *
- * Die Logos von KaPlan liegen als PNG unter `public/logos/` (je Bereich
- * eines, dazu das Logo der Startseite und das Symbol `Logo.png`) – gezeichnet
- * von `werkzeuge/logos_zeichnen.py`: das Dreieck, „KaPlan“ und die Unterzeile
- * in Outfit, der Schrift der Oberfläche. Sie sind für hellen Grund angelegt –
- * dunkle Schrift, Dreieck in Blau und Grau. Für das dunkle Schema gibt es je
- * Logo die Fassung `…_dunkel.png`: Schrift und Grau in Weiß, der blaue Teil
- * des Dreiecks unverändert (`werkzeuge/logos_dunkel.py`). Beide stehen ohne
- * Fläche dahinter; welche zu sehen ist, entscheidet das Farbschema
- * (`.kaplan-logo-hell`/`.kaplan-logo-dunkel` in global.css). Die
- * Wortmarke Mailänder Consult stammt aus der Originaldatei
+ * Das Logo von KaPlan („Planebenen“) besteht aus drei isometrischen Ebenen –
+ * je Arbeitsbereich eine: oben Planlaufmanagement, in der Mitte
+ * Baubetriebsplanung, unten Projektsteuerung – und dem Schriftzug „KaPlan“.
+ * Es gibt vier Zustände: `neutral` (Startbildschirm: alle Ebenen in Blautönen,
+ * ohne Unterzeile) und je Bereich einen, in dem dessen Ebene blau ist, die
+ * beiden anderen grau, und der Name des Bereichs unter „KaPlan“ steht.
+ *
+ * Das Logo wird hier gezeichnet, nicht als Bilddatei eingebunden: die Ebenen
+ * als Polygone, der Schriftzug als Text in Outfit, der Schrift der Oberfläche.
+ * Die Farben kommen aus den Tokens `--logo-…` in global.css und folgen dem
+ * Farbschema. Vorlage sind die Dateien unter `public/logos/`
+ * (`kaplan-logo-*.svg`, `kaplan-symbol-*.svg`); Regeln und Maße stehen in
+ * `docs/LOGO-ANLEITUNG.md`. Es steht ohne Fläche dahinter.
+ *
+ * Die Wortmarke Mailänder Consult stammt aus der Originaldatei
  * `public/mailaender-consult.svg` und wird nur über die Höhe skaliert.
  */
 
 /** Hausfarbe nach dem Logo Mailänder Consult – auch die Markenfarbe der Oberfläche (`--marke`). */
 export const MARKE_BLAU = '#24456e';
 
-/** Logos von KaPlan unter `public/logos/`. */
-export type KaPlanLogo =
-  | 'Startseite'
-  | 'Planlaufmanagement'
-  | 'Baubetriebsplanung'
-  | 'Projektsteuerung';
+/** Zustand des Logos: ohne gewählten Bereich `neutral`, sonst der Bereich, dessen Ebene blau ist. */
+export type LogoZustand = 'neutral' | 'planlauf' | 'baubetrieb' | 'projekt';
 
-const KAPLAN_TEXT: Record<KaPlanLogo, string> = {
-  Startseite: 'KaPlan',
-  Planlaufmanagement: 'KaPlan – Planlaufmanagement',
-  Baubetriebsplanung: 'KaPlan – Baubetriebsplanung',
-  Projektsteuerung: 'KaPlan – Projektsteuerung',
+/** Name des Bereichs unter „KaPlan“ – im neutralen Zustand steht keiner. */
+const UNTERZEILE: Record<LogoZustand, string | null> = {
+  neutral: null,
+  planlauf: 'Planlaufmanagement',
+  baubetrieb: 'Baubetriebsplanung',
+  projekt: 'Projektsteuerung',
 };
 
 /**
- * Logo von KaPlan: auf dem Startbildschirm ohne Zusatz, in den Bereichen mit
- * dem Namen des Bereichs. Skaliert wird über die Breite oder die Höhe, das
- * Seitenverhältnis bleibt unverändert. Das Logo der Startseite trägt unter
- * dem Schriftzug keine Zeile; sein leerer unterer Teil wird beschnitten
- * (`.logo-ohne-zeile`).
+ * Die drei Ebenen im Maß 48 × 48 (Geometrie der Vorlage). Welche blau ist,
+ * entscheidet die Klasse `logo-<zustand>` am umgebenden SVG (global.css).
  */
-export function KaPlanLogo({
-  variante,
-  width,
-  height,
-}: {
-  variante: KaPlanLogo;
-  width?: number | string;
-  height?: number;
-}) {
-  // Kein `display` im Stil: Welche der beiden Dateien zu sehen ist, schaltet global.css am Farbschema
-  const stil = { width: width ?? 'auto', height: height ?? 'auto' };
-  const bild = (
+function Ebenen() {
+  return (
     <>
-      <img
-        className="kaplan-logo-hell"
-        src={`${import.meta.env.BASE_URL}logos/Logo_${variante}.png`}
-        alt={KAPLAN_TEXT[variante]}
-        style={stil}
-      />
-      <img
-        className="kaplan-logo-dunkel"
-        src={`${import.meta.env.BASE_URL}logos/Logo_${variante}_dunkel.png`}
-        alt={KAPLAN_TEXT[variante]}
-        style={stil}
-      />
+      <polygon className="logo-ebene logo-ebene-planlauf" points="24,5 42,14 24,23 6,14" />
+      <polygon className="logo-ebene logo-ebene-baubetrieb" points="6,19.5 24,28.5 42,19.5 42,24.5 24,33.5 6,24.5" />
+      <polygon className="logo-ebene logo-ebene-projekt" points="6,30 24,39 42,30 42,35 24,44 6,35" />
     </>
   );
-  return variante === 'Startseite' ? <span className="logo-ohne-zeile">{bild}</span> : bild;
 }
 
 /**
- * Das Dreieck von KaPlan allein – für die eingeklappte Seitenleiste, in der
- * das Logo mit Schriftzug keinen Platz hat. Die Datei ist blau auf
- * durchsichtigem Grund; im dunklen Schema erscheint sie weiß
+ * Logo von KaPlan mit Schriftzug – so breit wie sein Platz, die Höhe folgt
+ * dem Seitenverhältnis. Maße wie in den Vorlagen (Symbol 96 hoch, Abstand zur
+ * Schrift 18): mit Unterzeile 282 × 96, „KaPlan“ in Größe 54; ohne Unterzeile
+ * 300,4 × 96, „KaPlan“ in Größe 60 und zur Mitte des Symbols gesetzt. Die
+ * Unterzeile hat für alle Bereiche dieselbe Größe – die längste
+ * („Planlaufmanagement“) ist so breit wie „KaPlan“.
+ */
+export function KaPlanLogo({ zustand }: { zustand: LogoZustand }) {
+  const unterzeile = UNTERZEILE[zustand];
+  return (
+    <svg
+      className={`kaplan-logo logo-${zustand}`}
+      viewBox={unterzeile ? '0 0 282 96' : '0 0 300.4 96'}
+      role="img"
+      aria-label={unterzeile ? `KaPlan – ${unterzeile}` : 'KaPlan'}
+    >
+      <g transform="scale(2)">
+        <Ebenen />
+      </g>
+      {unterzeile ? (
+        <>
+          <text className="logo-schriftzug" x="110.63" y="56.1" fontSize="54">
+            KaPlan
+          </text>
+          <text className="logo-unterzeile" x="112.64" y="78.8" fontSize="17.5">
+            {unterzeile}
+          </text>
+        </>
+      ) : (
+        <text className="logo-schriftzug" x="110.26" y="69.39" fontSize="60">
+          KaPlan
+        </text>
+      )}
+    </svg>
+  );
+}
+
+/**
+ * Das Symbol von KaPlan allein – für die eingeklappte Seitenleiste, in der
+ * das Logo mit Schriftzug keinen Platz hat. Sichtbar ist es nur dort
  * (`.kaplan-zeichen` in global.css).
  */
-export function KaPlanZeichen({ size = 32 }: { size?: number }) {
+export function KaPlanZeichen({ zustand, size = 36 }: { zustand: LogoZustand; size?: number }) {
   return (
-    <img
-      className="kaplan-zeichen"
-      src={`${import.meta.env.BASE_URL}icons/kaplan-zeichen-64.png`}
-      alt="KaPlan"
-      width={size}
-      height={size}
-    />
+    <svg className={`kaplan-zeichen logo-${zustand}`} viewBox="0 0 48 48" width={size} height={size} role="img" aria-label="KaPlan">
+      <Ebenen />
+    </svg>
   );
 }
 
