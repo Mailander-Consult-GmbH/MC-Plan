@@ -372,6 +372,11 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   dieselbe Taste löste ihn noch einmal aus („Neues Gewerk“ in Planlaufmanagement und
   Projektsteuerung, „Angemeldet als“, Freigabe- bzw. Prüfbericht-Nr. in `SchrittStatus.tsx`,
   „Neues Planverzeichnis“ und „Neues Planpaket“ aus der Auswahl im Eintragsdialog).
+* **Flucht** (alle Bereiche): Kopfzeile und Inhalt sind gleich breit und liegen an derselben
+  Stelle (`.topbar-inner` und `.content-inner`, höchstens `--arbeitsbreite`, mittig, mit
+  `--seitenrand` zum Rand); `.topbar` und `.content` halten den Platz des Rollbalkens frei
+  (`scrollbar-gutter: stable` in `src/shared/global.css`). Der Seitentitel beginnt an der
+  linken Kante der Kacheln, das Hauslogo endet an ihrer rechten.
 * **Tabellen** (alle Bereiche): `.table-scroll` schneidet ab 861 px quer ab, damit die
   Kopfzeile stehen bleibt; passt eine Tabelle nicht in ihre Karte, setzt
   `tabellenBreiteBeobachten` (`src/shared/tabellen.ts`, aufgerufen in `src/main.tsx`) die

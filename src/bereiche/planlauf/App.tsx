@@ -179,13 +179,16 @@ export function App() {
 
       <main className="main">
         <header className="topbar">
-          <SeitenleisteKnopf leiste={leiste} offen={menuOffen} />
-          <div className="topbar-title">
-            <h1>{kopf.titel}</h1>
-            {kopf.sub ? <div className="sub">{kopf.sub}</div> : null}
-          </div>
-          <div className="topbar-logo">
-            <MailaenderLogo height={34} />
+          {/* So breit und an derselben Stelle wie der Inhalt (.content-inner): Titel und Hauslogo stehen in der Flucht der Kacheln */}
+          <div className="topbar-inner">
+            <SeitenleisteKnopf leiste={leiste} offen={menuOffen} />
+            <div className="topbar-title">
+              <h1>{kopf.titel}</h1>
+              {kopf.sub ? <div className="sub">{kopf.sub}</div> : null}
+            </div>
+            <div className="topbar-logo">
+              <MailaenderLogo height={34} />
+            </div>
           </div>
         </header>
 

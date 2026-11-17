@@ -171,6 +171,13 @@ Keine Hex-Werte in Ansichten oder Bereichs-CSS.
   getrennt wird mit `--separator`.
 * **Abstände:** Innenrand der Karte 24 px (Telefon 16 px), Abstand zwischen Karten 16 px. Erste und
   letzte Spalte einer Tabelle stehen in der Flucht des Kartenrands (`--tabellen-rand`).
+* **Eine Flucht:** Kopf und Inhalt haben dieselbe Breite und Lage – `.topbar-inner` wie
+  `.content-inner`: höchstens `--arbeitsbreite` (1560 px), mittig, `--seitenrand` (32 px, schmal
+  16 px) zum Rand; beide Rahmen (`.topbar`, `.content`) halten den Platz des Rollbalkens frei
+  (`scrollbar-gutter: stable`). So stehen die Kacheln auf jeder Seite und in jedem Bereich an
+  derselben Stelle – ob die Seite rollt oder nicht –, der Titel beginnt an ihrer linken Kante,
+  das Hauslogo endet an ihrer rechten, mit aus- wie mit eingeklappter Menüleiste. Breite und
+  Rand nur über die beiden Variablen an `.main` ändern, nicht je Rahmen oder je Bereich.
 * **Verschachteln:** In einer Karte steht keine zweite Karte, sondern eine graue Kachel
   (`--bg-subtle`, 16 px, ohne Schatten) – wie die Kennzahlen der Vorlage (`.kennzahlen`,
   Workflow-Karten in der Liste).
@@ -258,7 +265,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   allein) und zeigt je Bereich eine Karte – ab 768 px dreispaltig, darunter untereinander (Tailwind-Utilities in
   `src/shell/Start.tsx`; in `global.css` steht nur der Scrollrahmen `.start`). In jeder `App.tsx`
   ist die Seitenleiste ein `motion.aside` mit `layoutScroll`, der aktive Menüpunkt trägt `NavAktiv`,
-  und die Ansichten stehen in `Einblenden` (Schlüssel `route.view`). Links in der Kopfzeile steht
+  und die Ansichten stehen in `Einblenden` (Schlüssel `route.view`). Der Inhalt der Kopfzeile steckt in `.topbar-inner`
+  (siehe Designregeln, „Eine Flucht“); links darin steht
   `SeitenleisteKnopf` (nur schmal sichtbar), nach der Leiste `SeitenleisteGriff`; die Klassen `leiste-zu` (an `.app`) und `eingeklappt` (an `.sidebar`)
   setzt jede `App.tsx` aus `useSeitenleiste()`.
   Das **Farbschema** setzt allein `src/shell/Shell.tsx` – aus `useBenutzer()` in einem
