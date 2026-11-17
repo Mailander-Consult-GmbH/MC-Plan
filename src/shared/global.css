@@ -506,14 +506,36 @@
 
 .main { display: flex; flex-direction: column; overflow: hidden; }
 
+/*
+ * Arbeitsfläche: Kopf und Inhalt haben dieselbe Breite und dieselbe Lage –
+ * höchstens --arbeitsbreite, mittig, mit --seitenrand zum Rand. Beide halten
+ * den Platz des Rollbalkens stets frei (scrollbar-gutter): Sonst rückten die
+ * Kacheln, sobald eine Seite rollt, und stünden von Seite zu Seite und von
+ * Bereich zu Bereich leicht versetzt. So stehen der Titel links und das
+ * Hauslogo rechts in der Flucht der Kacheln – mit aus- wie mit eingeklappter
+ * Menüleiste.
+ */
+.main { --arbeitsbreite: 1560px; --seitenrand: 32px; }
+
 /* Kopf wie in der Vorlage: ohne Balken auf dem Seitengrund, die Unterzeile klein über dem Titel */
 .topbar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 32px 6px;
+  padding: 18px var(--seitenrand) 6px;
   flex: none;
   min-height: 72px;
+  /* rollt nie – hält aber wie der Inhalt den Platz des Rollbalkens frei */
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+.topbar-inner {
+  flex: 1;
+  min-width: 0;
+  max-width: var(--arbeitsbreite);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 .topbar-title { min-width: 0; flex: 1; display: flex; flex-direction: column-reverse; }
 .topbar-title h1 {
@@ -547,9 +569,12 @@
    unmittelbar unter der Kopfleiste stehen bleibt. Unten kommt die Höhe des
    Hinweises „Neue Fassung“ hinzu (--neue-fassung-hoehe), damit sich auch die
    letzten Bedienelemente über ihn hinaus scrollen lassen. */
-.content { flex: 1; overflow-y: auto; padding: 0 32px calc(64px + var(--neue-fassung-hoehe, 0px)); }
+.content {
+  flex: 1; overflow-y: auto; scrollbar-gutter: stable;
+  padding: 0 var(--seitenrand) calc(64px + var(--neue-fassung-hoehe, 0px));
+}
 /* Breite Arbeitsfläche – auf großen Bildschirmen bleibt ein Rand für die Lesbarkeit */
-.content-inner { max-width: 1560px; margin: 0 auto; padding-top: 16px; }
+.content-inner { max-width: var(--arbeitsbreite); margin: 0 auto; padding-top: 16px; }
 
 .stack { display: flex; flex-direction: column; gap: 16px; }
 .row { display: flex; align-items: center; gap: 10px; }
@@ -1434,9 +1459,10 @@
     transition: transform 0.3s var(--ease-koralle);
   }
   .sidebar.open { transform: none; box-shadow: var(--schatten-dialog); }
-  .content { padding: 0 16px calc(60px + var(--neue-fassung-hoehe, 0px)); }
+  .main { --seitenrand: 16px; }
+  .content { padding-bottom: calc(60px + var(--neue-fassung-hoehe, 0px)); }
   .content-inner { padding-top: 12px; }
-  .topbar { padding: 14px 16px 4px; min-height: 64px; }
+  .topbar { padding-top: 14px; padding-bottom: 4px; min-height: 64px; }
   .topbar-logo { display: none; }
   /* Auf dem Telefon bleibt die Seitenauswahl eine scrollbare Zeile */
   .tabs { flex-wrap: nowrap; overflow-x: auto; }
