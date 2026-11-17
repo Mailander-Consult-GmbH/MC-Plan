@@ -102,7 +102,7 @@ export function App() {
           />
         ) : null}
 
-        {/* Die markierten Projekte – in der eingeklappten Leiste entfallen sie: gleiche Symbole ohne Namen sagten nichts */}
+        {/* Die markierten Projekte – in der eingeklappten Leiste nur ihr Symbol (Name im Tooltip), unter einer Trennlinie */}
         <div className="nav-projekte">
           <div className="nav-group-label">
             Projekte

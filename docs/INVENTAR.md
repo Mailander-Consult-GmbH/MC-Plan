@@ -386,9 +386,10 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   *Breite Ansicht:* Der Griff mittig auf ihrem rechten Rand (`.leiste-griff`) heißt
   „Seitenleiste einklappen“ bzw. „Seitenleiste ausklappen“ und setzt
   `.sidebar.eingeklappt` und `.app.leiste-zu`; eingeklappt bleiben die Symbole der Menüpunkte
-  (Name im Tooltip), `KaPlanZeichen` aus `src/shared/logos.tsx`, die Initialen der angemeldeten
-  Person und der Bereichswechsel – die markierten Projekte (`.nav-projekte`), die Knöpfe der
-  Sicherung und die Texte entfallen. Der Zustand liegt unter dem Schlüssel
+  und der markierten Projekte (Name im Tooltip; `.nav-projekte` – statt der Überschrift
+  „Projekte“ eine Trennlinie, ohne markiertes Projekt entfällt der Abschnitt), `KaPlanZeichen`
+  aus `src/shared/logos.tsx`, die Initialen der angemeldeten Person und der Bereichswechsel –
+  die Knöpfe der Sicherung und die Texte entfallen. Der Zustand liegt unter dem Schlüssel
   `kaplan-seitenleiste.v1` im `localStorage` und gilt in allen Bereichen.
   *Schmale Ansicht* (bis 860 px): Der Griff entfällt; der Knopf „Menü“ links in der Kopfzeile
   (`.menu-toggle`) klappt die Leiste über dem Inhalt auf (`.sidebar.open`). Sie schließt bei jedem

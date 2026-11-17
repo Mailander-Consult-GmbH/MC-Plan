@@ -442,21 +442,29 @@
 .sicherung-knoepfe .btn:last-child { grid-column: 1 / -1; }
 
 /*
- * Eingeklappte Menüleiste: Es bleiben die Symbole der Menüpunkte (ihr Name
- * steht im Tooltip), das Dreieck von KaPlan, die Initialen der angemeldeten
- * Person und der Bereichswechsel. Die markierten Projekte, die Knöpfe der
- * Sicherung und die Texte entfallen – sie stehen in der ausgeklappten Leiste.
+ * Eingeklappte Menüleiste: Es bleiben die Symbole der Menüpunkte und der
+ * markierten Projekte (ihr Name steht im Tooltip), das Dreieck von KaPlan,
+ * die Initialen der angemeldeten Person und der Bereichswechsel. Die Knöpfe
+ * der Sicherung und die Texte entfallen – sie stehen in der ausgeklappten
+ * Leiste. Statt der Überschrift „Projekte“ trennt eine Linie die Projekte
+ * von den Menüpunkten.
  */
 .sidebar.eingeklappt { padding: 16px 10px; }
 .sidebar.eingeklappt .marke-voll,
 .sidebar.eingeklappt .nav-label,
 .sidebar.eingeklappt .nav-pfeil,
-.sidebar.eingeklappt .nav-projekte,
 .sidebar.eingeklappt .sicherung-knoepfe,
 .sidebar.eingeklappt .sidebar-hinweis,
 .sidebar.eingeklappt .gem-angemeldet-text,
 .sidebar.eingeklappt .bereich-wechsel-text { display: none; }
 .sidebar.eingeklappt .kaplan-zeichen { display: block; }
+/* Überschrift der Projekte als Trennlinie; ohne markiertes Projekt entfällt der Abschnitt */
+.sidebar.eingeklappt .nav-projekte .nav-group-label {
+  height: 1px; margin: 12px 12px 8px; padding: 0;
+  overflow: hidden; font-size: 0;
+  background: var(--separator);
+}
+.sidebar.eingeklappt .nav-projekte:not(:has(.nav-item)) { display: none; }
 .sidebar.eingeklappt .sidebar-brand { padding: 6px 0 8px; }
 .sidebar.eingeklappt .nav-item,
 .sidebar.eingeklappt .nav-item.unter { justify-content: center; gap: 0; padding: 8px 0; }

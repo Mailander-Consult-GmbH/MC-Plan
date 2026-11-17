@@ -198,8 +198,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
 * **Seitenleiste:** eine Karte (`.sidebar`), einklappbar über `SeitenleisteGriff` – eine Lasche
   mittig auf ihrem rechten Rand (`.leiste-griff`, `src/shared/seitenleiste.tsx`); der Knopf
   „Menü“ in der Kopfzeile (`SeitenleisteKnopf`) erscheint nur in der schmalen Ansicht. Eingeklappt bleiben Symbole (Name im Tooltip, Zähler als Marke
-  am Symbol), `KaPlanZeichen` (das Dreieck allein), die Initialen der angemeldeten Person und der
-  Bereichswechsel; markierte Projekte, Sicherungsknöpfe und Texte entfallen.
+  am Symbol) – auch die der markierten Projekte, unter einer Trennlinie statt der Überschrift –,
+  `KaPlanZeichen` (das Dreieck allein), die Initialen der angemeldeten Person und der
+  Bereichswechsel; Sicherungsknöpfe und Texte entfallen.
 * `.tabs` sind Pillen, die gewählte blau; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
   `purple`, `gelb`); Ampelpunkt `.dot`; Stern der Projektmarkierung `Icon name="stern"` in `.stern`.
 * **Logos:** `KaPlanLogo` (`src/shared/logos.tsx`) zeigt die Dateien unter `public/logos/` – auf
