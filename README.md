@@ -223,9 +223,10 @@ stört er also nicht.
 
 Die **Seitenleiste** jedes Bereichs ist eine Karte wie die Kacheln des Inhalts. Der Griff mittig auf
 ihrem rechten Rand klappt sie ein und wieder aus: Es bleibt eine schmale Leiste mit den Symbolen der Menüpunkte (der
-Name steht im Tooltip, Zähler als kleine Marke am Symbol), dem Dreieck von KaPlan, den Initialen
-der angemeldeten Person und dem Bereichswechsel; die markierten Projekte, die Knöpfe der Sicherung
-und die Texte stehen nur in der ausgeklappten Leiste. Ob sie eingeklappt ist, merkt sich der
+Name steht im Tooltip, Zähler als kleine Marke am Symbol), darunter – nach einer Trennlinie – die
+markierten Projekte ebenfalls als Symbole mit ihrem Namen im Tooltip, dazu das Dreieck von KaPlan,
+die Initialen der angemeldeten Person und der Bereichswechsel; die Knöpfe der Sicherung und die
+Texte stehen nur in der ausgeklappten Leiste. Ob sie eingeklappt ist, merkt sich der
 Browser (Schlüssel `kaplan-seitenleiste.v1`) – für alle Bereiche.
 
 Die Oberfläche ist durchgehend responsiv: Bis etwa 860 px liegt die Seitenleiste als Menü über dem
