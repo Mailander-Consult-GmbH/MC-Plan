@@ -9,8 +9,8 @@
  */
 // Die Fassung hochzählen, sobald sich Symbole oder die Hülle ändern – beim
 // Aktivieren werden alle älteren Caches gelöscht.
-const CACHE = 'mc-plan-v18';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/favicon.svg', './icons/icon-192.png'];
+const CACHE = 'mc-plan-v19';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/favicon.svg', './icons/app-192.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
