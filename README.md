@@ -1604,9 +1604,7 @@ Hinweise für die Arbeit am Code – was nach jeder Änderung nachzuziehen ist, 
 veröffentlicht wird und welche Randbedingungen gelten – stehen in [`CLAUDE.md`](CLAUDE.md); das
 belegte Inventar aller Routen, Aktionen und Meldungen in [`docs/INVENTAR.md`](docs/INVENTAR.md),
 Optimierungspotenzial aus dem Vergleich der drei Bereiche in
-[`docs/OPTIMIERUNG.md`](docs/OPTIMIERUNG.md). Wie KaPlan ohne GitHub auf einem Server im Haus
-läuft und dort weiterentwickelt wird, beschreibt
-[`docs/LOKAL-BETREIBEN.md`](docs/LOKAL-BETREIBEN.md).
+[`docs/OPTIMIERUNG.md`](docs/OPTIMIERUNG.md).
 
 KaPlan besteht aus drei getrennten Bereichen. Jeder Bereich bringt seinen
 eigenen Datenbestand, seinen eigenen localStorage-Schlüssel, seine eigenen Einstellungen und seinen
