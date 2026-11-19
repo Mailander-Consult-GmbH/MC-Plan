@@ -32,6 +32,8 @@ import { useStore } from './store/store';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import { RegisterHinweis } from '../../gemeinsam/RegisterHinweis';
+import { AdminSeite, AnsichtHinweis, KeinZugriff } from '../../gemeinsam/Admin';
+import { darf, useRolle } from '../../gemeinsam/rollen';
 
 export function App() {
   const { data, ladeZustand, zuruecksetzen } = useStore();
@@ -39,6 +41,10 @@ export function App() {
   const gesperrt = ladeZustand === 'neuere_fassung';
   const gesperrtTitel = 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt';
   const toast = useToast();
+  // Was die Rolle der Person freischaltet: die projektübergreifenden Einstellungen und den Bereich „Admin“
+  const { rolle } = useRolle();
+  const mitEinstellungen = darf(rolle, 'einstellungen');
+  const mitAdmin = darf(rolle, 'admin');
   const [route, navigate] = useRoute();
   // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
   const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projektId}` : route.view === 'anmeldung' ? `anmeldung/${route.anmeldungId}` : route.view);
@@ -76,6 +82,47 @@ export function App() {
 
   const kopf = kopfzeile(route, projekt?.name, anmeldung ? anmeldungBezeichnung(anmeldung) : undefined);
 
+  // Sichern, Einspielen und Zurücksetzen dieses Bereichs – stehen im Bereich „Admin“ (AdminSeite)
+  const nurProjektadmins = <KeinZugriff fuer="Projektadmins" onZurueck={() => gehe({ view: 'uebersicht' })} />;
+  const sicherungsKnoepfe = (
+    <div className="row wrap">
+      <button
+        type="button"
+        className="btn btn-sm btn-outline"
+        onClick={() => {
+          // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
+          // gesichert wird dann der gespeicherte Stand, unverändert.
+          if (ladeZustand === 'ok') exportiereDaten(data);
+          else if (!rohdatenHerunterladen())
+            toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
+        }}
+        title={
+          ladeZustand === 'ok'
+            ? 'Gesamten Datenbestand der Baubetriebsplanung als JSON sichern'
+            : 'Gespeicherten Stand unverändert herunterladen'
+        }
+      >
+        <Icon name="export" size={12} /> Sicherung
+      </button>
+      {gesperrt ? (
+        <button type="button" className="btn btn-sm btn-outline" disabled title={gesperrtTitel}>
+          <Icon name="importieren" size={12} /> Einspielen
+        </button>
+      ) : (
+        <SicherungWaehlen onGelesen={setSicherung} />
+      )}
+      <button
+        type="button"
+        className="btn btn-sm btn-outline"
+        onClick={() => setZuruecksetzenDialog(true)}
+        disabled={gesperrt}
+        title={gesperrt ? gesperrtTitel : undefined}
+      >
+        Zurücksetzen
+      </button>
+    </div>
+  );
+
   return (
     <div className={`app ${leiste.eingeklappt ? 'leiste-zu' : ''}`}>
       {/* layoutScroll: Die Fläche des aktiven Menüpunkts (NavAktiv) gleitet auch in der gescrollten Leiste an die richtige Stelle */}
@@ -109,19 +156,24 @@ export function App() {
           onClick={() => gehe({ view: 'import' })}
         />
         {/* Workflows und Fristen gebündelt unter „Einstellungen“ */}
-        <NavItem
-          icon="einstellungen"
-          label="Einstellungen"
-          aktiv={false}
-          offen={einstellungenOffen}
-          onClick={() => setEinstellungenOffen((o) => !o)}
-        />
-        {einstellungenOffen ? (
+        {mitEinstellungen ? (
+          <NavItem
+            icon="einstellungen"
+            label="Einstellungen"
+            aktiv={false}
+            offen={einstellungenOffen}
+            onClick={() => setEinstellungenOffen((o) => !o)}
+          />
+        ) : null}
+        {mitEinstellungen && einstellungenOffen ? (
           <>
             <NavItem unter icon="kette" label="Workflows" aktiv={route.view === 'workflows'} onClick={() => gehe({ view: 'workflows' })} />
             <NavItem unter icon="kalender" label="Fristen" aktiv={route.view === 'fristen'} onClick={() => gehe({ view: 'fristen' })} />
           </>
         ) : null}
+
+        {/* Personen, Rollen und Sicherung – nur für die Rolle KaPlan-Admin (src/gemeinsam/rollen.ts) */}
+        {mitAdmin ? <NavItem icon="admin" label="Admin" aktiv={route.view === 'admin'} onClick={() => gehe({ view: 'admin' })} /> : null}
 
         {/* Die markierten Projekte – in der eingeklappten Leiste nur ihr Symbol (Name im Tooltip), unter einer Trennlinie */}
         <div className="nav-projekte">
@@ -147,42 +199,6 @@ export function App() {
 
         <div className="sidebar-footer">
           <AngemeldetAls hinweis="Erscheint im Statusverlauf jeder Anmeldung bei den Wechseln, die Sie erfassen, und als Hauptbearbeiter neuer Projekte." />
-          <div className="sicherung-knoepfe">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={() => {
-                // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
-                // gesichert wird dann der gespeicherte Stand, unverändert.
-                if (ladeZustand === 'ok') exportiereDaten(data);
-                else if (!rohdatenHerunterladen())
-                  toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
-              }}
-              title={
-                ladeZustand === 'ok'
-                  ? 'Gesamten Datenbestand der Baubetriebsplanung als JSON sichern'
-                  : 'Gespeicherten Stand unverändert herunterladen'
-              }
-            >
-              <Icon name="export" size={12} /> Sicherung
-            </button>
-            {gesperrt ? (
-              <button type="button" className="btn btn-sm btn-outline" disabled title={gesperrtTitel}>
-                <Icon name="importieren" size={12} /> Einspielen
-              </button>
-            ) : (
-              <SicherungWaehlen onGelesen={setSicherung} />
-            )}
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={() => setZuruecksetzenDialog(true)}
-              disabled={gesperrt}
-              title={gesperrt ? gesperrtTitel : undefined}
-            >
-              Zurücksetzen
-            </button>
-          </div>
           <span className="sidebar-hinweis">Daten werden lokal im Browser gespeichert.</span>
           <BereichWechsel />
         </div>
@@ -208,13 +224,21 @@ export function App() {
           <div className="content-inner">
             <Hinweisleisten />
             <RegisterHinweis />
+            <AnsichtHinweis />
             <Einblenden schluessel={route.view}>
               {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
               {route.view === 'termine' ? <Termine navigate={gehe} /> : null}
               {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
               {route.view === 'import' ? <BbpImport navigate={gehe} /> : null}
-              {route.view === 'workflows' ? <Workflows navigate={gehe} /> : null}
-              {route.view === 'fristen' ? <Fristen /> : null}
+              {route.view === 'workflows' ? (mitEinstellungen ? <Workflows navigate={gehe} /> : nurProjektadmins) : null}
+              {route.view === 'fristen' ? (mitEinstellungen ? <Fristen /> : nurProjektadmins) : null}
+              {route.view === 'admin' ? (
+                mitAdmin ? (
+                  <AdminSeite bereich="Baubetriebsplanung" sicherung={sicherungsKnoepfe} />
+                ) : (
+                  <KeinZugriff fuer="KaPlan-Admins" onZurueck={() => gehe({ view: 'uebersicht' })} />
+                )
+              ) : null}
               {route.view === 'projekt' ? (
                 projekt ? (
                   <ProjektDetail projekt={projekt} navigate={gehe} />
@@ -339,6 +363,8 @@ function kopfzeile(route: Route, projektName?: string, anmeldungName?: string): 
       return { titel: 'Workflows', sub: 'Status, Terminfristen und Nachfolger je Phase – anpassbar' };
     case 'fristen':
       return { titel: 'Fristen', sub: 'Fristen laut Richtlinie, Ampel und Nachhaken' };
+    case 'admin':
+      return { titel: 'Admin', sub: 'Personen, Rollen und Sicherung' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projekt' };
     case 'anmeldung':

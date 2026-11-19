@@ -44,6 +44,7 @@ import {
   Undo2,
   Upload,
   User,
+  UserCog,
   Workflow,
   X,
   type LucideIcon,
@@ -96,6 +97,8 @@ const symbole = {
   // Projektmarkierung; gefüllt über `.stern.aktiv` in global.css
   stern: Star,
   warnung: TriangleAlert,
+  // Bereich „Admin“: Personen, Rollen, Sicherung
+  admin: UserCog,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof symbole;

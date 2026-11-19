@@ -13,6 +13,7 @@ export type Route =
   | { view: 'uebersicht' }
   | { view: 'projekte' }
   | { view: 'funktionen' }
+  | { view: 'admin' }
   | { view: 'projekt'; projektId: ID; tab: ProjektTab }
   | { view: 'protokoll'; projektId: ID; protokollId: ID };
 
@@ -52,6 +53,7 @@ export function hashToRoute(hash: string): Route {
   }
   if (teile[0] === 'projekte') return { view: 'projekte' };
   if (teile[0] === 'funktionen') return { view: 'funktionen' };
+  if (teile[0] === 'admin') return { view: 'admin' };
   return { view: 'uebersicht' };
 }
 

@@ -24,6 +24,8 @@ import { useStore } from './store/store';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import { RegisterHinweis } from '../../gemeinsam/RegisterHinweis';
+import { AdminSeite, AnsichtHinweis, KeinZugriff } from '../../gemeinsam/Admin';
+import { darf, useRolle } from '../../gemeinsam/rollen';
 
 export function App() {
   const { data, ladeZustand, zuruecksetzen } = useStore();
@@ -31,6 +33,10 @@ export function App() {
   const gesperrt = ladeZustand === 'neuere_fassung';
   const gesperrtTitel = 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt';
   const toast = useToast();
+  // Was die Rolle der Person freischaltet: die projektübergreifenden Einstellungen und den Bereich „Admin“
+  const { rolle } = useRolle();
+  const mitEinstellungen = darf(rolle, 'einstellungen');
+  const mitAdmin = darf(rolle, 'admin');
   const [route, navigate] = useRoute();
   // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
   const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projektId}` : route.view === 'protokoll' ? `protokoll/${route.protokollId}` : route.view);
@@ -65,6 +71,47 @@ export function App() {
 
   const kopf = kopfzeile(route, projekt?.name, protokoll ? bezeichnung(protokoll) : undefined);
 
+  // Sichern, Einspielen und Zurücksetzen dieses Bereichs – stehen im Bereich „Admin“ (AdminSeite)
+  const nurProjektadmins = <KeinZugriff fuer="Projektadmins" onZurueck={() => gehe({ view: 'uebersicht' })} />;
+  const sicherungsKnoepfe = (
+    <div className="row wrap">
+      <button
+        type="button"
+        className="btn btn-sm btn-outline"
+        onClick={() => {
+          // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
+          // gesichert wird dann der gespeicherte Stand, unverändert.
+          if (ladeZustand === 'ok') exportiereDaten(data);
+          else if (!rohdatenHerunterladen())
+            toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
+        }}
+        title={
+          ladeZustand === 'ok'
+            ? 'Gesamten Datenbestand der Projektsteuerung als JSON sichern'
+            : 'Gespeicherten Stand unverändert herunterladen'
+        }
+      >
+        <Icon name="export" size={12} /> Sicherung
+      </button>
+      {gesperrt ? (
+        <button type="button" className="btn btn-sm btn-outline" disabled title={gesperrtTitel}>
+          <Icon name="importieren" size={12} /> Einspielen
+        </button>
+      ) : (
+        <SicherungWaehlen onGelesen={setSicherung} />
+      )}
+      <button
+        type="button"
+        className="btn btn-sm btn-outline"
+        onClick={() => setZuruecksetzenDialog(true)}
+        disabled={gesperrt}
+        title={gesperrt ? gesperrtTitel : undefined}
+      >
+        Zurücksetzen
+      </button>
+    </div>
+  );
+
   return (
     <div className={`app ${leiste.eingeklappt ? 'leiste-zu' : ''}`}>
       {/* layoutScroll: Die Fläche des aktiven Menüpunkts (NavAktiv) gleitet auch in der gescrollten Leiste an die richtige Stelle */}
@@ -85,14 +132,16 @@ export function App() {
         />
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
         {/* Funktionen unter „Einstellungen“ – wie im Planlaufmanagement */}
-        <NavItem
-          icon="einstellungen"
-          label="Einstellungen"
-          aktiv={false}
-          offen={einstellungenOffen}
-          onClick={() => setEinstellungenOffen((o) => !o)}
-        />
-        {einstellungenOffen ? (
+        {mitEinstellungen ? (
+          <NavItem
+            icon="einstellungen"
+            label="Einstellungen"
+            aktiv={false}
+            offen={einstellungenOffen}
+            onClick={() => setEinstellungenOffen((o) => !o)}
+          />
+        ) : null}
+        {mitEinstellungen && einstellungenOffen ? (
           <NavItem
             unter
             icon="person"
@@ -101,6 +150,9 @@ export function App() {
             onClick={() => gehe({ view: 'funktionen' })}
           />
         ) : null}
+
+        {/* Personen, Rollen und Sicherung – nur für die Rolle KaPlan-Admin (src/gemeinsam/rollen.ts) */}
+        {mitAdmin ? <NavItem icon="admin" label="Admin" aktiv={route.view === 'admin'} onClick={() => gehe({ view: 'admin' })} /> : null}
 
         {/* Die markierten Projekte – in der eingeklappten Leiste nur ihr Symbol (Name im Tooltip), unter einer Trennlinie */}
         <div className="nav-projekte">
@@ -126,42 +178,6 @@ export function App() {
 
         <div className="sidebar-footer">
           <AngemeldetAls hinweis="Steht dieser Name in der Projektbeteiligtenliste, übernehmen Sie die Protokollführung neuer Protokollreihen, und die Übersicht zeigt die Aufgaben mit Ihrem Kürzel oder Namen als eigene To-Dos." />
-          <div className="sicherung-knoepfe">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={() => {
-                // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
-                // gesichert wird dann der gespeicherte Stand, unverändert.
-                if (ladeZustand === 'ok') exportiereDaten(data);
-                else if (!rohdatenHerunterladen())
-                  toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
-              }}
-              title={
-                ladeZustand === 'ok'
-                  ? 'Gesamten Datenbestand der Projektsteuerung als JSON sichern'
-                  : 'Gespeicherten Stand unverändert herunterladen'
-              }
-            >
-              <Icon name="export" size={12} /> Sicherung
-            </button>
-            {gesperrt ? (
-              <button type="button" className="btn btn-sm btn-outline" disabled title={gesperrtTitel}>
-                <Icon name="importieren" size={12} /> Einspielen
-              </button>
-            ) : (
-              <SicherungWaehlen onGelesen={setSicherung} />
-            )}
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={() => setZuruecksetzenDialog(true)}
-              disabled={gesperrt}
-              title={gesperrt ? gesperrtTitel : undefined}
-            >
-              Zurücksetzen
-            </button>
-          </div>
           <span className="sidebar-hinweis">Daten werden lokal im Browser gespeichert.</span>
           <BereichWechsel />
         </div>
@@ -187,10 +203,18 @@ export function App() {
           <div className="content-inner">
             <Hinweisleisten />
             <RegisterHinweis />
+            <AnsichtHinweis />
             <Einblenden schluessel={route.view}>
               {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
               {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
-              {route.view === 'funktionen' ? <Funktionen /> : null}
+              {route.view === 'funktionen' ? (mitEinstellungen ? <Funktionen /> : nurProjektadmins) : null}
+              {route.view === 'admin' ? (
+                mitAdmin ? (
+                  <AdminSeite bereich="Projektsteuerung" sicherung={sicherungsKnoepfe} />
+                ) : (
+                  <KeinZugriff fuer="KaPlan-Admins" onZurueck={() => gehe({ view: 'uebersicht' })} />
+                )
+              ) : null}
               {route.view === 'projekt' ? (
                 projekt ? (
                   <ProjektDetail projekt={projekt} tab={route.tab} navigate={gehe} />
@@ -309,6 +333,8 @@ function kopfzeile(route: Route, projektName?: string, protokollName?: string): 
       return { titel: 'Projekte', sub: 'Projektverwaltung' };
     case 'funktionen':
       return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Gewerken' };
+    case 'admin':
+      return { titel: 'Admin', sub: 'Personen, Rollen und Sicherung' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'protokoll':

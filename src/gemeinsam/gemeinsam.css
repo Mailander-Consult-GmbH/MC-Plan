@@ -7,6 +7,16 @@
  * Register. Nur Design-Tokens aus src/shared/global.css (Koralle-Design).
  */
 
+/* Bereich „Admin“ (Admin.tsx): die drei Rollen mit ihrer Beschreibung, Hinweis „Ansicht als“ */
+.gem-rollen { display: grid; gap: 10px; margin: 0 0 18px; }
+.gem-rollen > div { display: grid; grid-template-columns: 170px 1fr; gap: 4px 16px; }
+.gem-rollen dt { font-weight: 600; }
+.gem-rollen dd { margin: 0; color: var(--text-secondary); }
+@media (max-width: 640px) { .gem-rollen > div { grid-template-columns: 1fr; } }
+.gem-ansicht { margin-bottom: 16px; }
+/* Die Auswahl der Rolle bleibt lesbar – ist die Tabelle zu breit, rollt sie quer */
+.gem-rollenwahl { min-width: 200px; }
+
 /* Marken unten in der Kachel: „Auch in Planlaufmanagement …“ */
 .gem-marken {
   display: flex;

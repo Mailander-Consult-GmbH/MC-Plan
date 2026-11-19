@@ -27,9 +27,8 @@ export interface Sicherung {
 }
 
 /**
- * Schaltfläche „Einspielen“ in der Seitenleiste: wählt die Datei und liest sie.
- * Die Rückfrage steht außerhalb der Seitenleiste (SicherungEinspielenDialog),
- * weil deren Hintergrundfilter fest positionierte Dialoge sonst einschließt.
+ * Schaltfläche „Einspielen“ im Bereich „Admin“: wählt die Datei und liest sie.
+ * Die Rückfrage steht im Anwendungsrahmen (SicherungEinspielenDialog), nicht bei der Schaltfläche.
  */
 export function SicherungWaehlen({ onGelesen }: { onGelesen: (sicherung: Sicherung) => void }) {
   const toast = useToast();
