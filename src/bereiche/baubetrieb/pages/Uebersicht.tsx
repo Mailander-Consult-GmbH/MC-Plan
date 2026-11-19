@@ -146,12 +146,12 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                       </td>
                       <td>
                         {e.frist ? (
-                          <span className="small" title={ERSTANMELDUNG_GRUND[e.grund]}>
+                          <span className="small" title={ERSTANMELDUNG_GRUND}>
                             <b>{formatDate(e.frist)}</b>
                             <div className="tertiary small">{relativeLabel(e.frist)}</div>
                           </span>
                         ) : (
-                          <span className="small tertiary">kein erster Anmeldetermin</span>
+                          <span className="small tertiary">keine Fahrplanjahre gewählt</span>
                         )}
                       </td>
                       <td className="actions" />

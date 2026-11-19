@@ -67,7 +67,12 @@ interface StoreValue {
   /** Löscht einen Workflow, in dem keine Anmeldung mehr steht. */
   deleteWorkflow: (id: ID) => void;
   /* Projekte */
-  addProjekt: (p: Omit<Projekt, 'id'>) => ID;
+  /**
+   * Legt ein Projekt an. Mit `kennung` unter dieser Kennung – so übernimmt die
+   * Projektliste ein Projekt aus dem Projektregister; hat der Abgleich es unter
+   * ihr schon angelegt, gelten dafür die genannten Werte.
+   */
+  addProjekt: (p: Omit<Projekt, 'id'>, kennung?: ID) => ID;
   updateProjekt: (id: ID, patch: Partial<Projekt>) => void;
   /** Löscht das Projekt samt seiner Anmeldungen. */
   deleteProjekt: (id: ID) => void;
@@ -201,9 +206,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveWorkflow: (w) => mutate((d) => workflowSpeichern(d, w)),
       deleteWorkflow: (id) => mutate((d) => workflowLoeschen(d, id)),
 
-      addProjekt: (p) => {
-        const id = newId('pr');
-        mutate((d) => ({ ...d, projekte: [...d.projekte, { ...p, id }] }));
+      addProjekt: (p, kennung) => {
+        const id = kennung ?? newId('pr');
+        mutate((d) => ({
+          ...d,
+          projekte: d.projekte.some((x) => x.id === id)
+            ? d.projekte.map((x) => (x.id === id ? { ...p, id } : x))
+            : [...d.projekte, { ...p, id }],
+        }));
         return id;
       },
       updateProjekt: (id, patch) =>

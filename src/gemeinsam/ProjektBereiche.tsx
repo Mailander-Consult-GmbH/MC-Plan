@@ -4,7 +4,8 @@
  * * `BereichsMarken` – unten in der Projektkachel: in welchen anderen
  *   Bereichen das Projekt noch geführt wird,
  * * `FremdeProjekte` – grau hinterlegter Abschnitt „Projekte aus anderen
- *   Bereichen“ mit „Übernehmen in …“,
+ *   Bereichen“ mit „Übernehmen in …“; `UebernahmeHinweis` und
+ *   `uebernahmeMeldung` für Bereiche, die dabei ihre eigene Maske zeigen,
  * * `useSucheOhneTreffer` – Leerzustand der Projektlisten bei einer Suche ohne
  *   aktiven Treffer (nennt Treffer im Archiv und in anderen Bereichen),
  * * `andereBereiche`, `useLoeschHinweis` – für Löschdialoge,
@@ -265,13 +266,32 @@ export function useSucheOhneTreffer(
   return { titel: 'Kein Projekt gefunden', text: 'Für diese Suche gibt es keinen Treffer.' };
 }
 
+/** Kurzmeldung nach „Übernehmen in …“ – nennt, wie viele Projektbeteiligte mitkommen. */
+export function uebernahmeMeldung(register: Register, projekt: RegisterProjekt, name = projekt.name): string {
+  const personen = register.personen.filter((x) => x.projektId === projekt.id).length;
+  return personen > 0
+    ? `„${name}“ übernommen – mit ${personen} ${personen === 1 ? 'Projektbeteiligtem' : 'Projektbeteiligten'}.`
+    : `„${name}“ übernommen.`;
+}
+
 /**
  * Grau hinterlegter Abschnitt mit den Projekten, die andere Bereiche führen,
  * dieser aber nicht – ohne die, die in allen ihren Bereichen archiviert sind.
  * „Übernehmen in …“ legt das Projekt im Bereich an – samt den geteilten
- * Projektbeteiligten.
+ * Projektbeteiligten. Mit `onUebernehmen` übernimmt der Bereich selbst: Er
+ * zeigt seine Maske für ein neues Projekt, vorausgefüllt mit dem Bekannten,
+ * und meldet die Übernahme erst beim Anlegen (`inBereichUebernehmen` mit
+ * `stammdaten`).
  */
-export function FremdeProjekte({ bereich, suche }: { bereich: ProjektBereich; suche: string }) {
+export function FremdeProjekte({
+  bereich,
+  suche,
+  onUebernehmen,
+}: {
+  bereich: ProjektBereich;
+  suche: string;
+  onUebernehmen?: (projekt: RegisterProjekt) => void;
+}) {
   const register = useRegister();
   const toast = useToast();
   const liste = fremdeTreffer(register, bereich, suche).sort((a, b) =>
@@ -280,13 +300,12 @@ export function FremdeProjekte({ bereich, suche }: { bereich: ProjektBereich; su
   if (liste.length === 0) return null;
 
   const uebernehmen = (p: RegisterProjekt) => {
-    const personen = register.personen.filter((x) => x.projektId === p.id).length;
+    if (onUebernehmen) {
+      onUebernehmen(p);
+      return;
+    }
     registerAendern((r) => inBereichUebernehmen(r, p.id, bereich, p.id));
-    toast(
-      personen > 0
-        ? `„${p.name}“ übernommen – mit ${personen} ${personen === 1 ? 'Projektbeteiligtem' : 'Projektbeteiligten'}.`
-        : `„${p.name}“ übernommen.`,
-    );
+    toast(uebernahmeMeldung(register, p));
   };
 
   return (
@@ -316,6 +335,20 @@ export function FremdeProjekte({ bereich, suche }: { bereich: ProjektBereich; su
         ))}
       </div>
     </section>
+  );
+}
+
+/**
+ * In der Maske eines Bereichs, der ein Projekt aus einem anderen übernimmt:
+ * woher es kommt und was es mit den anderen Bereichen teilt.
+ */
+export function UebernahmeHinweis({ projekt, bereich }: { projekt: RegisterProjekt; bereich: ProjektBereich }) {
+  const titel = PROJEKT_BEREICHE.filter((b) => b.id !== bereich && projekt.bereiche[b.id]).map((b) => b.titel);
+  const aus = titel.length <= 1 ? (titel[0] ?? 'einem anderen Bereich') : `${titel.slice(0, -1).join(', ')} und ${titel[titel.length - 1]}`;
+  return (
+    <Callout icon="↔">
+      {`Übernahme aus ${aus}: Projektnummer und Bezeichnung gelten in allen Bereichen des Projekts – eine Änderung hier gilt auch dort. Die Projektbeteiligten kommen von dort.`}
+    </Callout>
   );
 }
 

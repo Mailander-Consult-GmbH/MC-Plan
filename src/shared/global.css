@@ -806,6 +806,8 @@
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
 .form-grid .full { grid-column: 1 / -1; }
+/* Hinweis unter den Feldern eines Dialogs (etwa „Übernahme aus …“) – mit demselben Abstand wie zwischen den Feldern */
+.form-grid + .callout { margin-top: 14px; }
 
 /* Suchfeld als Pille wie in der Vorlage */
 .search {

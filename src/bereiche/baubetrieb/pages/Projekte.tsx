@@ -1,47 +1,43 @@
 /**
  * Projekte: Liste mit Anlage- und Bearbeitungsdialog. Die Kacheln nennen nur
- * die MIC-Projektnummer, die Bezeichnung, die Bemerkung und die anderen
+ * die Projektnummer, die Bezeichnung, die Bemerkung und die anderen
  * Bereiche des Projekts. Darunter die im Bereich
  * archivierten Projekte und – grau hinterlegt – Projekte aus anderen Bereichen
- * zum Übernehmen (Projektregister, src/gemeinsam/).
+ * zum Übernehmen (Projektregister, src/gemeinsam/): „Übernehmen in …“ öffnet
+ * die Maske für ein neues Projekt, vorausgefüllt mit dem, was das Register
+ * über das Projekt weiß.
  */
 import { useState } from 'react';
+import { beschreibungOhneVermerke, inBereichUebernehmen } from '../../../gemeinsam/abgleich';
 import {
   ArchivAbschnitt,
   BereichsMarken,
   FremdeProjekte,
+  UebernahmeHinweis,
   VerknuepfungsHinweis,
+  uebernahmeMeldung,
   useArchivierte,
   useSucheOhneTreffer,
 } from '../../../gemeinsam/ProjektBereiche';
+import { registerAendern, useRegister, type RegisterProjekt } from '../../../gemeinsam/register';
 import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
-import { ersterTerminVorschlag, fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon } from '../domain/fristen';
-import {
-  ERSTE_PHASE_LABEL,
-  PROJEKT_STATUS_LABEL,
-  type ErstePhase,
-  type Projekt,
-  type ProjektStatus,
-} from '../domain/types';
+import { Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
+import { ersterTermin, fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon } from '../domain/fristen';
+import { ERSTE_PHASE_LABEL, type ErstePhase, type Projekt } from '../domain/types';
 import type { Route } from '../lib/router';
-import { useStore } from '../store/store';
-
-export const PROJEKT_STATUS_TON: Record<ProjektStatus, '' | 'green' | 'orange'> = {
-  aktiv: 'green',
-  pausiert: 'orange',
-  abgeschlossen: '',
-};
+import { newId, useStore } from '../store/store';
 
 export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const { data, toggleMarkiert, ladeZustand } = useStore();
   const [suche, setSuche] = useState('');
   const [dialog, setDialog] = useState(false);
+  // Projekt eines anderen Bereichs, das gerade übernommen wird – die Maske steht dann vorausgefüllt
+  const [uebernahme, setUebernahme] = useState<RegisterProjekt | null>(null);
 
   const projekte = data.projekte.filter((p) =>
-    [p.name, p.dbGNummer, p.projektnummer, p.projektleiter, p.hauptbearbeiter, p.bemerkung]
+    [p.name, p.dbGNummer, p.projektnummer, p.bemerkung]
       .join(' ')
       .toLowerCase()
       .includes(suche.toLowerCase()),
@@ -72,7 +68,6 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
               ) : null}
             </div>
             <span className="row" style={{ gap: 6 }}>
-              <Badge ton={PROJEKT_STATUS_TON[p.status]}>{PROJEKT_STATUS_LABEL[p.status]}</Badge>
               <span
                 role="button"
                 tabIndex={0}
@@ -105,7 +100,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
     <div className="stack">
       <div className="row-between wrap">
         <div className="row wrap">
-          <Search value={suche} onChange={setSuche} placeholder="Bezeichnung, DB-G-Nr., MIC-Nr. …" />
+          <Search value={suche} onChange={setSuche} placeholder="Bezeichnung, Projektnr., G-Nr. …" />
           <span className="small tertiary">
             Das Projekt wird bei der MIC-Beauftragung angelegt. Mit ★ markierte erscheinen in der Übersicht und
             in der Seitenleiste.
@@ -146,40 +141,48 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
 
       <ArchivAbschnitt anzahl={archivierte.length}>{archivierte.map(karte)}</ArchivAbschnitt>
       {/* Nur bei geladenem Bestand: Sonst sähe das Register die Übernahme vor, angelegt würde nichts */}
-      {ladeZustand === 'ok' ? <FremdeProjekte bereich="baubetrieb" suche={suche} /> : null}
+      {ladeZustand === 'ok' ? <FremdeProjekte bereich="baubetrieb" suche={suche} onUebernehmen={setUebernahme} /> : null}
 
       {dialog ? <ProjektDialog onClose={() => setDialog(false)} navigate={navigate} /> : null}
+      {uebernahme ? (
+        <ProjektDialog uebernahme={uebernahme} onClose={() => setUebernahme(null)} navigate={navigate} />
+      ) : null}
     </div>
   );
 }
 
+/**
+ * Maske zum Anlegen und Bearbeiten eines Projekts. Mit `uebernahme` legt sie
+ * ein Projekt an, das ein anderer Bereich schon führt: Projektnummer,
+ * Bezeichnung und Beschreibung (als Bemerkung) stehen vorausgefüllt, und beim
+ * Anlegen wird das neue Projekt mit dem des Registers verknüpft.
+ */
 export function ProjektDialog({
   projekt,
+  uebernahme,
   onClose,
   navigate,
 }: {
   projekt?: Projekt;
+  uebernahme?: RegisterProjekt;
   onClose: () => void;
   navigate?: (r: Route) => void;
 }) {
   const { data, addProjekt, updateProjekt } = useStore();
+  const register = useRegister();
   const toast = useToast();
   const [form, setForm] = useState({
-    name: projekt?.name ?? '',
-    projektleiter: projekt?.projektleiter ?? '',
+    name: projekt?.name ?? uebernahme?.name ?? '',
+    projektnummer: projekt?.projektnummer ?? uebernahme?.nummer ?? '',
     dbGNummer: projekt?.dbGNummer ?? '',
-    ersterAnmeldetermin: projekt?.ersterAnmeldetermin ?? '',
     erstePhase: projekt?.erstePhase ?? ('skm' as ErstePhase),
     fahrplanjahre: projekt?.fahrplanjahre ?? [],
     inbetriebnahme: projekt?.inbetriebnahme ?? '',
-    hauptbearbeiter: projekt?.hauptbearbeiter ?? data.einstellungen.bearbeiter,
-    projektnummer: projekt?.projektnummer ?? '',
-    status: projekt?.status ?? ('aktiv' as ProjektStatus),
-    bemerkung: projekt?.bemerkung ?? '',
+    bemerkung: projekt?.bemerkung ?? (uebernahme ? beschreibungOhneVermerke(uebernahme.beschreibung) : ''),
   });
   const set = <K extends keyof typeof form>(key: K, wert: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: wert }));
 
-  const vorschlag = ersterTerminVorschlag(form, data.einstellungen);
+  const termin = ersterTermin(form, data.einstellungen);
 
   // Zur Wahl: das vorige bis zehn Jahre nach dem laufenden Fahrplanjahr, dazu bereits gewählte
   const jetzt = fahrplanjahrVon(today()) ?? new Date().getFullYear();
@@ -198,23 +201,37 @@ export function ProjektDialog({
       return;
     }
     // Leerzeichen am Rand (etwa aus Excel kopiert) gehen nicht in den Bestand: Die
-    // MIC-Projektnummer verknüpft das Projekt über das Projektregister mit den anderen
-    // Bereichen und stünde sonst auch dort mit Leerzeichen; die DB-G-Nummer ordnet der
+    // Projektnummer verknüpft das Projekt über das Projektregister mit den anderen
+    // Bereichen und stünde sonst auch dort mit Leerzeichen; die G-Nummer ordnet der
     // Import aus BBPNeo zu.
     const werte = {
       ...form,
       name: form.name.trim(),
       projektnummer: form.projektnummer.trim(),
       dbGNummer: form.dbGNummer.trim(),
-      projektleiter: form.projektleiter.trim(),
-      hauptbearbeiter: form.hauptbearbeiter.trim(),
-      ersterAnmeldetermin: form.ersterAnmeldetermin || null,
       inbetriebnahme: form.inbetriebnahme || null,
     };
     if (projekt) {
       updateProjekt(projekt.id, werte);
       toast('Projekt gespeichert.');
       onClose();
+      return;
+    }
+    if (uebernahme) {
+      // Erst das Projekt, dann die Zugehörigkeit im Register – unter derselben Kennung. So findet der
+      // Abgleich das Projekt vor und legt es nicht noch einmal mit Vorgabewerten an.
+      const kennung = data.projekte.some((p) => p.id === uebernahme.id) ? newId('pr') : uebernahme.id;
+      const id = addProjekt({ ...werte, markiert: true }, kennung);
+      registerAendern((r) =>
+        inBereichUebernehmen(r, uebernahme.id, 'baubetrieb', id, {
+          nummer: werte.projektnummer,
+          name: werte.name,
+          jetzt: new Date().toISOString(),
+        }),
+      );
+      toast(uebernahmeMeldung(register, uebernahme, werte.name));
+      onClose();
+      navigate?.({ view: 'projekt', projektId: id });
       return;
     }
     const id = addProjekt({ ...werte, markiert: true });
@@ -226,7 +243,7 @@ export function ProjektDialog({
   return (
     <Modal
       titel={projekt ? 'Projekt bearbeiten' : 'Neues Projekt'}
-      sub={projekt ? projekt.name : 'Wird bei der MIC-Beauftragung angelegt'}
+      sub={projekt ? projekt.name : uebernahme ? 'Übernahme aus einem anderen Bereich' : 'Wird bei der MIC-Beauftragung angelegt'}
       onClose={onClose}
       wide
       footer={
@@ -235,7 +252,7 @@ export function ProjektDialog({
             Abbrechen
           </button>
           <button type="button" className="btn btn-primary" onClick={speichern}>
-            {projekt ? 'Speichern' : 'Anlegen'}
+            {projekt ? 'Speichern' : uebernahme ? 'Übernehmen' : 'Anlegen'}
           </button>
         </>
       }
@@ -244,20 +261,14 @@ export function ProjektDialog({
         <Field label="Bezeichnung" full>
           <TextInput value={form.name} onChange={(v) => set('name', v)} placeholder="EÜ … – Erneuerung …" />
         </Field>
-        <Field label="Projektleiter">
-          <TextInput value={form.projektleiter} onChange={(v) => set('projektleiter', v)} />
+        <Field label="Projektnummer">
+          <TextInput value={form.projektnummer} onChange={(v) => set('projektnummer', v)} placeholder="K1234" />
         </Field>
-        <Field label="DB-G-Nummer">
-          <TextInput value={form.dbGNummer} onChange={(v) => set('dbGNummer', v)} placeholder="G.…" />
-        </Field>
-        <Field label="Hauptbearbeiter MIC">
-          <TextInput value={form.hauptbearbeiter} onChange={(v) => set('hauptbearbeiter', v)} />
-        </Field>
-        <Field label="MIC-Projektnummer (wiko)">
-          <TextInput value={form.projektnummer} onChange={(v) => set('projektnummer', v)} />
+        <Field label="G-Nummer">
+          <TextInput value={form.dbGNummer} onChange={(v) => set('dbGNummer', v)} placeholder="G.123456789" />
         </Field>
 
-        <Field label="Betroffene Fahrplanjahre" full hint="Daraus ergeben sich der Anmeldebedarf in Übersicht und Terminen und der Vorschlag für den ersten Anmeldetermin.">
+        <Field label="Betroffene Fahrplanjahre" full hint="Daraus ergeben sich der Anmeldebedarf in Übersicht und Terminen und die Frist der ersten Anmeldung.">
           <div className="row wrap" style={{ gap: '6px 16px' }}>
             {jahre.map((n) => (
               <label
@@ -276,8 +287,14 @@ export function ProjektDialog({
           </div>
         </Field>
 
-        {/* Eine Zeile mit einzeiligen Beschriftungen – Eingaben stehen auf gleicher Höhe, Hinweise darunter. */}
-        <Field label="Prozessphase" hint="des ersten Anmeldetermins">
+        <Field
+          label="Prozessphase"
+          hint={
+            termin
+              ? `der ersten Anmeldung – laut Richtlinie bis ${formatDate(termin)}`
+              : 'der ersten Anmeldung – ihre Frist ergibt sich, sobald Fahrplanjahre gewählt sind'
+          }
+        >
           <Select
             value={form.erstePhase}
             onChange={(v) => set('erstePhase', v as ErstePhase)}
@@ -287,49 +304,18 @@ export function ProjektDialog({
             }))}
           />
         </Field>
-        <Field label="Erster Anmeldetermin (ca.)">
-          <TextInput type="date" value={form.ersterAnmeldetermin} onChange={(v) => set('ersterAnmeldetermin', v)} />
-          <span className="hint">
-            {vorschlag ? (
-              <>
-                Laut Richtlinie: {formatDate(vorschlag)}
-                {vorschlag !== form.ersterAnmeldetermin ? (
-                  <>
-                    {' · '}
-                    <button
-                      type="button"
-                      className="link-btn"
-                      style={{ fontSize: 'inherit', color: 'var(--link)' }}
-                      onClick={() => set('ersterAnmeldetermin', vorschlag)}
-                    >
-                      übernehmen
-                    </button>
-                  </>
-                ) : null}
-              </>
-            ) : (
-              'Vorschlag laut Richtlinie, sobald Fahrplanjahre gewählt sind'
-            )}
-          </span>
-        </Field>
         <Field label="Inbetriebnahme">
           <TextInput type="date" value={form.inbetriebnahme} onChange={(v) => set('inbetriebnahme', v)} />
-        </Field>
-        <Field label="Status der Betreuung">
-          <Select
-            value={form.status}
-            onChange={(v) => set('status', v as ProjektStatus)}
-            options={(Object.keys(PROJEKT_STATUS_LABEL) as ProjektStatus[]).map((k) => ({
-              value: k,
-              label: PROJEKT_STATUS_LABEL[k],
-            }))}
-          />
         </Field>
         <Field label="Bemerkung" full>
           <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={3} />
         </Field>
       </div>
-      {projekt ? null : <VerknuepfungsHinweis bereich="baubetrieb" nummer={form.projektnummer} />}
+      {projekt ? null : uebernahme ? (
+        <UebernahmeHinweis projekt={uebernahme} bereich="baubetrieb" />
+      ) : (
+        <VerknuepfungsHinweis bereich="baubetrieb" nummer={form.projektnummer} />
+      )}
     </Modal>
   );
 }

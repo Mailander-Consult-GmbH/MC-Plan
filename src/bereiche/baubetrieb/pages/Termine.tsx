@@ -151,10 +151,10 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
                               <span className="small">
                                 <b>{formatDate(e.frist)}</b>
                                 <div className="tertiary small">{relativeLabel(e.frist)}</div>
-                                <div className="tertiary small">{ERSTANMELDUNG_GRUND[e.grund]}</div>
+                                <div className="tertiary small">{ERSTANMELDUNG_GRUND}</div>
                               </span>
                             ) : (
-                              <span className="small tertiary">kein erster Anmeldetermin</span>
+                              <span className="small tertiary">keine Fahrplanjahre gewählt</span>
                             )}
                           </td>
                           <td className="actions">

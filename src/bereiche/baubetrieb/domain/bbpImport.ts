@@ -12,7 +12,7 @@
  *
  * Ablauf wie bei den übrigen Importen: `bbpLesen` (Datei → Anmeldungen je ID),
  * `bbpPlanen` (Vorschau gegen den Bestand: neu, aktualisiert, unverändert,
- * übersprungen; Projekte nach DB-G-Nummer) und `bbpImportAnwenden` (rein, im
+ * übersprungen; Projekte nach G-Nummer) und `bbpImportAnwenden` (rein, im
  * `mutate()` des Stores, mit vorab vergebenen Kennungen). Vorhandene
  * Anmeldungen derselben Anmelde-ID übernehmen alle Angaben aus BBPNeo – leere
  * Angaben der Datei überschreiben nichts –, einen anderen Status als
@@ -397,7 +397,7 @@ export interface BbpProjektGruppe {
   schluessel: string;
   /** Projektnummer wie in der Datei; leer – ohne Projektnummer. */
   projektnummer: string;
-  /** Projekt, dessen DB-G-Nummer passt. */
+  /** Projekt, dessen G-Nummer passt. */
   treffer: Projekt | null;
   /** Neue Anmeldungen, die ein Projekt brauchen. */
   neu: number;
@@ -542,7 +542,7 @@ export function bbpPlanen(d: BaubetriebDaten, gelesen: BbpGelesen, optionen: Bbp
     if (k) vorhanden.set(k, [...(vorhanden.get(k) ?? []), a]);
   }
 
-  // Projektgruppen nach Projektnummer, Treffer über die DB-G-Nummer
+  // Projektgruppen nach Projektnummer, Treffer über die G-Nummer
   const zuordnung = projektGruppen(
     gelesen.anmeldungen.map((q) => q.projektnummer),
     d.projekte,
@@ -717,17 +717,13 @@ export function bbpImportAnwenden(
     neueProjekte.push({
       id,
       name: g.name,
-      projektleiter: '',
       dbGNummer: g.projektnummer,
-      ersterAnmeldetermin: null,
       erstePhase,
       fahrplanjahre: [...new Set(neue.flatMap((q) => fahrplanjahreZwischen(q.von, q.bis ?? q.von)))].sort(
         (a, b) => a - b,
       ),
       inbetriebnahme: null,
-      hauptbearbeiter: k.bearbeiter,
       projektnummer: '',
-      status: 'aktiv',
       markiert: true,
       bemerkung: 'Beim Import aus BBPNeo angelegt.',
     });

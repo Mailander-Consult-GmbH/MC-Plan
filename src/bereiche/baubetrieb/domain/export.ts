@@ -5,7 +5,7 @@
 import { formatDate, today } from '../../../shared/dates';
 import { dateiLaden, xlsxErzeugen, type Zelle } from '../../../shared/xlsx';
 import { AMPEL_LABEL, ampelFuer, terminfrist } from './fristen';
-import { ANNEX_VII_LABEL, ERSTE_PHASE_LABEL, PROJEKT_STATUS_LABEL, type BaubetriebDaten, type ID } from './types';
+import { ANNEX_VII_LABEL, ERSTE_PHASE_LABEL, type BaubetriebDaten, type ID } from './types';
 import { statusVon, zustaendigText } from './workflow';
 
 const KOPF_STIL = { fett: true, fuellung: 'E8EDF3', rahmen: true };
@@ -15,7 +15,7 @@ const KOPF_STIL = { fett: true, fuellung: 'E8EDF3', rahmen: true };
 /** Spalten des Blatts „Anmeldungen“ mit ihrer Breite (Zeichen). */
 const ANMELDUNG_SPALTEN: [titel: string, breite: number][] = [
   ['Projekt', 28],
-  ['DB-G-Nummer', 14],
+  ['G-Nummer', 14],
   ['Vorhabenname', 26],
   ['Anmelde-ID / Begriff', 22],
   ['Titel', 40],
@@ -42,15 +42,11 @@ const ANMELDUNG_SPALTEN: [titel: string, breite: number][] = [
 /** Spalten des Blatts „Projekte“ mit ihrer Breite (Zeichen). */
 const PROJEKT_SPALTEN: [titel: string, breite: number][] = [
   ['Projekt', 32],
-  ['Projektleiter', 26],
-  ['DB-G-Nummer', 14],
-  ['Erster Anmeldetermin (ca.)', 14],
+  ['Projektnummer', 14],
+  ['G-Nummer', 14],
   ['Prozessphase', 16],
   ['Betroffene Fahrplanjahre', 22],
   ['Inbetriebnahme', 14],
-  ['Hauptbearbeiter MIC', 20],
-  ['MIC-Projektnummer (wiko)', 18],
-  ['Status', 16],
   ['Anmeldungen', 12],
   ['Bemerkung', 36],
 ];
@@ -93,7 +89,7 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
           workflow.name,
           status.name,
           datum(a.statusSeit),
-          zustaendigText(status, a, p) ?? '',
+          zustaendigText(status, a) ?? '',
           a.bbk,
           a.anmelder,
           a.bbpProjektnummer,
@@ -113,15 +109,11 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
 
   const projektZeilen: Zelle[][] = projekte.map((p) => [
     p.name,
-    p.projektleiter,
+    p.projektnummer,
     p.dbGNummer,
-    datum(p.ersterAnmeldetermin),
     ERSTE_PHASE_LABEL[p.erstePhase],
     p.fahrplanjahre.join(', '),
     datum(p.inbetriebnahme),
-    p.hauptbearbeiter,
-    p.projektnummer,
-    PROJEKT_STATUS_LABEL[p.status],
     d.anmeldungen.filter((a) => a.projektId === p.id).length,
     p.bemerkung,
   ]);

@@ -9,7 +9,7 @@ import { ArchivHinweis, ArchivKnopf, RegisterBeteiligte, useLoeschHinweis } from
 import { formatDate, relativeLabel } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Search, alsKlickZeile } from '../../../shared/ui';
+import { Card, CardHeader, ConfirmDialog, EmptyState, Search, alsKlickZeile } from '../../../shared/ui';
 import { AnmeldungDialog } from '../components/AnmeldungDialog';
 import { AmpelBadge, AmpelPunkt, NachfolgerAuswahl, SachstandKompakt, StatusBadge, TerminKompakt } from '../components/common';
 import { StatusWechselDialog } from '../components/StatusWechselDialog';
@@ -19,13 +19,13 @@ import {
   ampelFuer,
   bauzeitraumText,
   erstanmeldungAusstehend,
+  ersterTermin,
   terminfrist,
   type ErstanmeldungEintrag,
 } from '../domain/fristen';
 import {
   ANNEX_VII_LABEL,
   ERSTE_PHASE_LABEL,
-  PROJEKT_STATUS_LABEL,
   type Anmeldung,
   type Projekt,
   type StatusZiel,
@@ -41,7 +41,7 @@ import {
 } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
-import { ProjektDialog, PROJEKT_STATUS_TON } from './Projekte';
+import { ProjektDialog } from './Projekte';
 
 /** Kürzt einzeilig mit Auslassungspunkten – so bleibt jede Tabellenzeile bei höchstens zwei Textzeilen. */
 const EINZEILIG = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
@@ -58,6 +58,7 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
   const eigene = data.anmeldungen.filter((a) => a.projektId === projekt.id);
   const loeschHinweis = useLoeschHinweis('baubetrieb', projekt.id);
   const erstanmeldung = erstanmeldungAusstehend(projekt, data);
+  const ersteFrist = ersterTermin(projekt, data.einstellungen);
   const oeffne = (a: Anmeldung) => navigate({ view: 'anmeldung', projektId: projekt.id, anmeldungId: a.id });
 
   const workflowVon = (a: Anmeldung) => statusVon(data.workflows, a.statusId).workflow.id;
@@ -115,7 +116,6 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
           sub={[projekt.dbGNummer, projekt.projektnummer].filter(Boolean).join(' · ') || 'ohne Nummer'}
           actions={
             <>
-              <Badge ton={PROJEKT_STATUS_TON[projekt.status]}>{PROJEKT_STATUS_LABEL[projekt.status]}</Badge>
               <button
                 type="button"
                 className={`stern ${projekt.markiert ? 'aktiv' : ''}`}
@@ -131,25 +131,23 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
         <div className="card-pad">
           <div className="grid grid-2" style={{ gap: 10 }}>
             <dl className="kv kv-breit" style={{ margin: 0 }}>
-              <dt>Projektleiter</dt>
-              <dd>{projekt.projektleiter || '–'}</dd>
-              <dt>DB-G-Nummer</dt>
-              <dd>{projekt.dbGNummer || '–'}</dd>
-              <dt>Hauptbearbeiter MIC</dt>
-              <dd>{projekt.hauptbearbeiter || '–'}</dd>
-              <dt>MIC-Projektnummer (wiko)</dt>
+              <dt>Projektnummer</dt>
               <dd>{projekt.projektnummer || '–'}</dd>
+              <dt>G-Nummer</dt>
+              <dd>{projekt.dbGNummer || '–'}</dd>
+              <dt>Inbetriebnahme</dt>
+              <dd>{formatDate(projekt.inbetriebnahme)}</dd>
             </dl>
             <dl className="kv kv-breit" style={{ margin: 0 }}>
-              <dt>Erster Anmeldetermin</dt>
+              <dt>Prozessphase</dt>
               <dd>
-                {projekt.ersterAnmeldetermin ? `ca. ${formatDate(projekt.ersterAnmeldetermin)}` : '–'}
-                <span className="tertiary small"> · {ERSTE_PHASE_LABEL[projekt.erstePhase]}</span>
+                {ERSTE_PHASE_LABEL[projekt.erstePhase]}
+                {ersteFrist ? (
+                  <span className="tertiary small"> · erste Anmeldung laut Richtlinie bis {formatDate(ersteFrist)}</span>
+                ) : null}
               </dd>
               <dt>Betroffene Fahrplanjahre</dt>
               <dd>{projekt.fahrplanjahre.length > 0 ? projekt.fahrplanjahre.join(', ') : '–'}</dd>
-              <dt>Inbetriebnahme</dt>
-              <dd>{formatDate(projekt.inbetriebnahme)}</dd>
               {projekt.bemerkung ? (
                 <>
                   <dt>Bemerkung</dt>
@@ -195,7 +193,6 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
               zeilen={zeilen}
               onOeffnen={oeffne}
               onWechsel={(anmeldung, nach) => setWechsel({ anmeldung, nach })}
-              projekt={projekt}
             />
           ),
         )
@@ -253,12 +250,12 @@ function ErstanmeldungKarte({ eintrag, onBearbeiten }: { eintrag: ErstanmeldungE
             <span>
               Terminfrist: <b>{formatDate(eintrag.frist)}</b> <span className="muted">· {relativeLabel(eintrag.frist)}</span>
             </span>
-            <span className="small tertiary">{ERSTANMELDUNG_GRUND[eintrag.grund]}</span>
+            <span className="small tertiary">{ERSTANMELDUNG_GRUND}</span>
           </div>
         ) : (
           <div className="row wrap" style={{ gap: 10 }}>
             <span className="small muted">
-              Kein erster Anmeldetermin – mit Prozessphase und betroffenen Fahrplanjahren lässt er sich ermitteln.
+              Noch keine Frist – sie ergibt sich laut Richtlinie, sobald betroffene Fahrplanjahre gewählt sind.
             </span>
             <button type="button" className="btn btn-sm btn-outline" onClick={onBearbeiten}>
               <Icon name="bearbeiten" size={13} /> Projekt bearbeiten
@@ -281,14 +278,12 @@ function AnmeldungenTabelle({
   zeilen,
   onOeffnen,
   onWechsel,
-  projekt,
 }: {
   titel: string;
   anzahl: number;
   zeilen: Anmeldung[];
   onOeffnen: (a: Anmeldung) => void;
   onWechsel: (a: Anmeldung, nach: StatusZiel) => void;
-  projekt: Projekt;
 }) {
   const { data } = useStore();
   return (
@@ -327,7 +322,7 @@ function AnmeldungenTabelle({
                 // Die Maßnahmenart nur, wo der Workflow mehrere führt (KKM: A, B, C …)
                 const art = workflow.arten.length > 1 ? a.art : '';
                 const unterzeile = [vorhaben ? a.anmeldeId : '', art, a.kmRunde ?? '', a.titel].filter(Boolean).join(' · ');
-                const zustaendig = zustaendigText(status, a, projekt);
+                const zustaendig = zustaendigText(status, a);
                 const aenderung =
                   istAenderung(data.workflows, a.statusId) && (a.aenderungsNr || a.annexVII)
                     ? [a.aenderungsNr && `ÄAbst-Nr ${a.aenderungsNr}`, a.annexVII && ANNEX_VII_LABEL[a.annexVII]]

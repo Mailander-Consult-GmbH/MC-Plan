@@ -72,12 +72,20 @@ function datumAus(jahr: number, monat: number, tag: number): ISODate {
 /* Richtlinienfristen                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Toleranz um den ersten Anmeldetermin, der nur ein ca.-Wert ist. */
-const CA_TOLERANZ_TAGE = 31;
+/** Toleranz um die Frist der ersten Anmeldung. */
+const TOLERANZ_TAGE = 31;
 
-/** Ab wann MIC ein Projekt betreut: erster Anmeldetermin abzüglich Toleranz. */
-function betreuungAb(p: Pick<Projekt, 'ersterAnmeldetermin'> | undefined): ISODate | null {
-  return p?.ersterAnmeldetermin ? addDays(p.ersterAnmeldetermin, -CA_TOLERANZ_TAGE) : null;
+/**
+ * Ab wann MIC ein Projekt betreut: die Frist der ersten Anmeldung laut
+ * Richtlinie (`ersterTermin`) abzüglich Toleranz – null, solange das Projekt
+ * keine Fahrplanjahre nennt.
+ */
+function betreuungAb(
+  p: Pick<Projekt, 'erstePhase' | 'fahrplanjahre'> | undefined,
+  e: Pick<Einstellungen, 'rilFristen'>,
+): ISODate | null {
+  const termin = p ? ersterTermin(p, e) : null;
+  return termin ? addDays(termin, -TOLERANZ_TAGE) : null;
 }
 
 /**
@@ -93,7 +101,7 @@ function kmGrundFuerN1(
   const n2 = rilDatum(e.rilFristen['N-2'], a.fahrplanjahr, a.bauVon);
   if (!n2) return null;
   if (a.statusSeit > n2) return 'die N-2-Frist war beim Statuswechsel verstrichen';
-  if (ab && n2 < ab) return 'die N-2-Frist liegt vor dem ersten Anmeldetermin des Projekts';
+  if (ab && n2 < ab) return 'die N-2-Frist liegt vor der ersten Anmeldung des Projekts';
   return null;
 }
 
@@ -101,7 +109,7 @@ function kmGrundFuerN1(
  * Welche Richtlinienfrist gilt. Ril_KM nimmt die Frist der KM-Runde, wenn sie
  * bekannt ist (Prozessphase aus BBPNeo), sonst die N-2-Frist, solange sie am Tag
  * des Statuswechsels nicht verstrichen ist und nicht vor der Betreuung durch
- * MIC (erster Anmeldetermin des Projekts) liegt, und danach die N-1-Frist. Ril_KKM
+ * MIC (erste Anmeldung des Projekts laut Richtlinie) liegt, und danach die N-1-Frist. Ril_KKM
  * richtet sich nach der Maßnahmenart; Einträge der Art SKM oder MKM rechnen
  * dabei wie A.
  */
@@ -232,7 +240,7 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
       };
     }
     case 'ril': {
-      const ab = betreuungAb(d.projekte.find((p) => p.id === a.projektId));
+      const ab = betreuungAb(d.projekte.find((p) => p.id === a.projektId), e);
       const schluessel = rilSchluesselFuer(status.frist.bezug, a, e, ab);
       // Ril_KM: Hinweis, warum die N-1-Frist gilt – bzw. dass die Prozessphase die N-2-Frist vorgibt
       const kmGrund =
@@ -325,37 +333,25 @@ export function offeneTermine(d: BaubetriebDaten, projektIds?: ID[]): TerminEint
 /* Erstanmeldung                                                       */
 /* ------------------------------------------------------------------ */
 
-/** Woher die Frist der Erstanmeldung stammt. */
-export type ErstanmeldungGrund = 'eingetragen' | 'vorschlag';
-
-export const ERSTANMELDUNG_GRUND: Record<ErstanmeldungGrund, string> = {
-  eingetragen: 'Erster Anmeldetermin (ca.) laut Projekt',
-  vorschlag: 'laut Richtlinie ermittelt – im Projekt kein erster Anmeldetermin eingetragen',
-};
+/** Woher die Frist der Erstanmeldung stammt – steht in den Listen unter dem Datum. */
+export const ERSTANMELDUNG_GRUND = 'laut Richtlinie für Prozessphase und erstes Fahrplanjahr';
 
 /** Projekt ohne Anmeldung: Die Erstanmeldung steht aus. */
 export interface ErstanmeldungEintrag {
   projekt: Projekt;
-  /** Frist der Erstanmeldung – der erste Anmeldetermin, sonst der Vorschlag laut Richtlinie. */
+  /** Frist der Erstanmeldung laut Richtlinie – null, solange das Projekt keine Fahrplanjahre nennt. */
   frist: ISODate | null;
-  grund: ErstanmeldungGrund;
   ampel: Ampel;
 }
 
 /**
  * Ausstehende Erstanmeldung eines Projekts, solange es keine Anmeldung hat
- * (Anmeldeleichen zählen nicht) und nicht abgeschlossen ist – sonst null.
+ * (Anmeldeleichen zählen nicht) – sonst null.
  */
 export function erstanmeldungAusstehend(p: Projekt, d: BaubetriebDaten): ErstanmeldungEintrag | null {
-  if (p.status === 'abgeschlossen') return null;
   if (d.anmeldungen.some((a) => a.projektId === p.id && !istLeiche(d.workflows, a.statusId))) return null;
-  const frist = p.ersterAnmeldetermin ?? ersterTerminVorschlag(p, d.einstellungen);
-  return {
-    projekt: p,
-    frist,
-    grund: p.ersterAnmeldetermin ? 'eingetragen' : 'vorschlag',
-    ampel: ampelFuer(frist, d.einstellungen.vorlaufTage),
-  };
+  const frist = ersterTermin(p, d.einstellungen);
+  return { projekt: p, frist, ampel: ampelFuer(frist, d.einstellungen.vorlaufTage) };
 }
 
 /** Alle (bzw. die genannten) Projekte mit ausstehender Erstanmeldung – Überfälliges zuerst. */
@@ -413,8 +409,8 @@ export interface BedarfZeile {
 /**
  * Anmeldebedarf je betroffenem Fahrplanjahr: Für SKM, MKM, KM N-2 und KM N-1
  * die Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat.
- * Anmeldeleichen zählen nicht mit. Fristen vor dem ersten Anmeldetermin
- * liegen vor der Betreuung durch MIC.
+ * Anmeldeleichen zählen nicht mit. Fristen vor der ersten Anmeldung des
+ * Projekts (`betreuungAb`) liegen vor der Betreuung durch MIC.
  */
 export function anmeldebedarf(
   p: Projekt,
@@ -423,7 +419,7 @@ export function anmeldebedarf(
 ): BedarfZeile[] {
   const e = d.einstellungen;
   const eigene = d.anmeldungen.filter((a) => a.projektId === p.id && !istLeiche(d.workflows, a.statusId));
-  const beginnGrenze = betreuungAb(p);
+  const beginnGrenze = betreuungAb(p, e);
   // Bei gleichem Rang zählt der frühere Workflow – ein KM-Eintrag vor einem KKM-Eintrag.
   const workflowRang = (a: Anmeldung) => {
     const i = d.workflows.findIndex((w) => w.status.some((s) => s.id === a.statusId));
@@ -460,7 +456,7 @@ export interface BedarfEintrag {
 /** Anmeldebedarf aller (bzw. der genannten) Projekte, der in die Vorschau fällt. */
 export function faelligerBedarf(d: BaubetriebDaten, projektIds?: ID[]): BedarfEintrag[] {
   return d.projekte
-    .filter((p) => p.status !== 'abgeschlossen' && (!projektIds || projektIds.includes(p.id)))
+    .filter((p) => !projektIds || projektIds.includes(p.id))
     .flatMap((projekt) =>
       anmeldebedarf(projekt, d)
         .flatMap((z) => z.zellen)
@@ -471,13 +467,13 @@ export function faelligerBedarf(d: BaubetriebDaten, projektIds?: ID[]): BedarfEi
 }
 
 /**
- * Vorschlag für den ersten Anmeldetermin eines Projekts: die Frist laut
- * Richtlinie für die gewählte Prozessphase und das erste betroffene
- * Fahrplanjahr (im KKM für eine Sperrpause ab Beginn des Fahrplanjahres).
+ * Frist der ersten Anmeldung eines Projekts: die Frist laut Richtlinie für die
+ * gewählte Prozessphase und das erste betroffene Fahrplanjahr (im KKM für eine
+ * Sperrpause ab Beginn des Fahrplanjahres) – null ohne Fahrplanjahre.
  */
-export function ersterTerminVorschlag(
+export function ersterTermin(
   p: Pick<Projekt, 'erstePhase' | 'fahrplanjahre'>,
-  e: Einstellungen,
+  e: Pick<Einstellungen, 'rilFristen'>,
 ): ISODate | null {
   if (p.fahrplanjahre.length === 0) return null;
   const n = Math.min(...p.fahrplanjahre);

@@ -189,17 +189,13 @@ function aufbereiten(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
     (p: Partial<Projekt>): Projekt => ({
       id: text(p.id) || zufallsId('pr'),
       name: text(p.name) || 'Ohne Bezeichnung',
-      projektleiter: text(p.projektleiter),
       dbGNummer: text(p.dbGNummer),
-      ersterAnmeldetermin: datum(p.ersterAnmeldetermin),
       erstePhase: (p.erstePhase as string) in ERSTE_PHASE_LABEL ? (p.erstePhase as ErstePhase) : 'skm',
       fahrplanjahre: Array.isArray(p.fahrplanjahre)
         ? [...new Set(p.fahrplanjahre.filter((n) => Number.isInteger(n) && n > 1900 && n < 2200))].sort((a, b) => a - b)
         : [],
       inbetriebnahme: datum(p.inbetriebnahme),
-      hauptbearbeiter: text(p.hauptbearbeiter),
       projektnummer: text(p.projektnummer),
-      status: p.status === 'pausiert' || p.status === 'abgeschlossen' ? p.status : 'aktiv',
       markiert: p.markiert !== false,
       bemerkung: text(p.bemerkung),
     }),
@@ -413,7 +409,7 @@ const STANDARDS_BIS_FASSUNG5: Record<string, Pick<Workflow, 'name' | 'kurz' | 'b
   },
 };
 
-/** Prozessphase des ersten Anmeldetermins bis Fassung 5. */
+/** Prozessphase der ersten Anmeldung bis Fassung 5. */
 const ERSTE_PHASE_BIS_FASSUNG5: Record<string, ErstePhase> = { pze: 'mkm', unterjahr: 'kkm' };
 
 /**
@@ -422,7 +418,7 @@ const ERSTE_PHASE_BIS_FASSUNG5: Record<string, ErstePhase> = { pze: 'mkm', unter
  * Kurzbezeichnungen und Beschreibungen, soweit diese nicht geändert wurden;
  * die Texte im Statusverlauf folgen. Die Maßnahmenart PzE heißt MKM, A_Vor_N-2,
  * A_Vor_N-1 und A_unterjahr gehen in A auf. Fristbezug und Richtlinienfrist
- * „pze“ heißen „mkm“, die Prozessphase des ersten Anmeldetermins „mkm“ bzw.
+ * „pze“ heißen „mkm“, die Prozessphase der ersten Anmeldung „mkm“ bzw.
  * „kkm“ statt „pze“ bzw. „unterjahr“.
  */
 function ausFassung5(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
@@ -589,6 +585,32 @@ function ausFassung10(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
  * Bereich hatte noch keinen Inhalt. Sie erhält deshalb die Demodaten.
  * Fassung 8 → 9: Anmelder und Änderungsdatum ergänzt aufbereiten() leer.
  */
+/** Status der Betreuung bis Fassung 11 – „aktiv“ war die Vorgabe. */
+const BETREUUNG_BIS_FASSUNG11: Record<string, string> = {
+  pausiert: 'Betreuungspause',
+  abgeschlossen: 'Abgeschlossen',
+};
+
+/**
+ * Hebt Fassung 11 auf Fassung 12: Projekte führen keinen Projektleiter, keinen
+ * Hauptbearbeiter, keinen ersten Anmeldetermin (ca.) und keinen Status der
+ * Betreuung mehr – `aufbereiten` lässt die Felder fallen. Damit nicht verloren
+ * geht, welche Projekte pausiert oder abgeschlossen waren, steht das als Zeile
+ * in der Bemerkung; abgeschlossene Projekte werden künftig archiviert.
+ */
+function ausFassung11(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
+  const projekte = (Array.isArray(roh.projekte) ? roh.projekte : []).map(
+    (p: Partial<Projekt> & { status?: unknown }) => {
+      const betreuung = typeof p.status === 'string' ? BETREUUNG_BIS_FASSUNG11[p.status] : undefined;
+      if (!betreuung) return p;
+      const vermerk = `Status der Betreuung bisher: ${betreuung}`;
+      const bemerkung = text(p.bemerkung);
+      return bemerkung.includes(vermerk) ? p : { ...p, bemerkung: [bemerkung, vermerk].filter(Boolean).join('\n') };
+    },
+  );
+  return { ...roh, projekte: projekte as Projekt[] };
+}
+
 function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   const version = roh.version ?? 1;
   if (version < 2 || !Array.isArray(roh.projekte)) {
@@ -606,6 +628,7 @@ function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   if (version <= 7) stand = ausFassung7(stand);
   if (version <= 9) stand = ausFassung9(stand);
   if (version <= 10) stand = ausFassung10(stand);
+  if (version <= 11) stand = ausFassung11(stand);
   return aufbereiten(stand);
 }
 
