@@ -450,11 +450,37 @@ export function bereichArchivieren(register: Register, bereich: ProjektBereich, 
 /**
  * Sieht ein Projekt zur Übernahme in einen Bereich vor; der Bereich legt es
  * beim nächsten Abgleich mit der Kennung `lokaleId` an – samt Beteiligten.
+ *
+ * Legt der Bereich das Projekt selbst an (Maske „Neues Projekt“ mit den
+ * bekannten Angaben vorausgefüllt – Baubetriebsplanung), nennt er mit
+ * `stammdaten`, was dort als Projektnummer und Bezeichnung steht: Wurde es in
+ * der Maske geändert, gilt es im Register und damit in allen Bereichen – sonst
+ * nähme der nächste Abgleich die Änderung zurück.
  */
-export function inBereichUebernehmen(register: Register, id: ID, bereich: ProjektBereich, lokaleId: ID): Register {
+export function inBereichUebernehmen(
+  register: Register,
+  id: ID,
+  bereich: ProjektBereich,
+  lokaleId: ID,
+  stammdaten?: { nummer: string; name: string; jetzt: string },
+): Register {
   const r = klon(register);
   const p = r.projekte.find((x) => x.id === id);
   if (!p || p.bereiche[bereich]) return register;
   p.bereiche[bereich] = { id: lokaleId, archiviert: false, offen: true };
+  if (stammdaten && (stammdaten.nummer !== p.nummer || stammdaten.name !== p.name)) {
+    p.nummer = stammdaten.nummer;
+    p.name = stammdaten.name;
+    p.geaendertAm = stammdaten.jetzt;
+  }
   return r;
+}
+
+/** Beschreibung eines Registerprojekts ohne die Vermerke aus `stammdatenZusammenfuehren`. */
+export function beschreibungOhneVermerke(beschreibung: string): string {
+  return beschreibung
+    .split('\n')
+    .filter((z) => !z.includes(VERMERK))
+    .join('\n')
+    .trim();
 }

@@ -66,7 +66,7 @@ export function AnmeldungDetail({
   const oeffne = (a: Anmeldung) => navigate({ view: 'anmeldung', projektId: a.projektId, anmeldungId: a.id });
   const titel = anmeldungTitel(anmeldung);
   const vorhaben = vorhabenFuehrend(anmeldung);
-  const zustaendig = zustaendigText(status, anmeldung, projekt);
+  const zustaendig = zustaendigText(status, anmeldung);
   const duplizieren = () => {
     const id = duplicateAnmeldung(anmeldung.id);
     toast('Anmeldung dupliziert – die Kopie ist geöffnet.');

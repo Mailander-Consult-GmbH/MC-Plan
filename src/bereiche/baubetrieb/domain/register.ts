@@ -1,7 +1,7 @@
 /**
  * Anbindung an das Projektregister (`src/gemeinsam/`). Die
- * Baubetriebsplanung teilt ihre Projekte mit den anderen Bereichen; als
- * Projektnummer gilt die MIC-Projektnummer (wiko). Eigene Personen führt sie
+ * Baubetriebsplanung teilt ihre Projekte mit den anderen Bereichen – über
+ * die Projektnummer (nicht die G-Nummer der DB). Eigene Personen führt sie
  * nicht – die Projektbeteiligten liest die Projektseite direkt aus dem Register.
  */
 import type { Plan, Sicht } from '../../../gemeinsam/abgleich';
@@ -34,15 +34,11 @@ export function registerPlanAnwenden(daten: BaubetriebDaten, plan: Plan): Baubet
     .map(({ id, projekt }) => ({
       id,
       name: projekt.name || 'Ohne Bezeichnung',
-      projektleiter: '',
       dbGNummer: '',
-      ersterAnmeldetermin: null,
       erstePhase: 'skm',
       fahrplanjahre: [],
       inbetriebnahme: null,
-      hauptbearbeiter: d.einstellungen.bearbeiter,
       projektnummer: projekt.nummer,
-      status: 'aktiv',
       markiert: true,
       bemerkung: '',
     }));

@@ -324,7 +324,7 @@ export function AnmeldungDialog({
         <Field label="Anmelder" hint="wer die Anmeldung eingereicht hat – aus dem BBPNeo-Import oder von Hand">
           <TextInput value={form.anmelder} onChange={(v) => set('anmelder', v)} placeholder="z. B. DB InfraGO, I.NA-SW-N" />
         </Field>
-        <Field label="Projektnummer (BBPNeo)" hint="DB-G-Nummer laut Anmeldung – aus dem BBPNeo-Import">
+        <Field label="Projektnummer (BBPNeo)" hint="G-Nummer laut Anmeldung – aus dem BBPNeo-Import">
           <TextInput value={form.bbpProjektnummer} onChange={(v) => set('bbpProjektnummer', v)} placeholder="G.016010101" />
         </Field>
 

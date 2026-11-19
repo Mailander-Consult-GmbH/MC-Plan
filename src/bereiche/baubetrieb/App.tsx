@@ -146,7 +146,7 @@ export function App() {
         </div>
 
         <div className="sidebar-footer">
-          <AngemeldetAls hinweis="Erscheint im Statusverlauf jeder Anmeldung bei den Wechseln, die Sie erfassen, und als Hauptbearbeiter neuer Projekte." />
+          <AngemeldetAls hinweis="Erscheint im Statusverlauf jeder Anmeldung bei den Wechseln, die Sie erfassen." />
           <div className="sicherung-knoepfe">
             <button
               type="button"

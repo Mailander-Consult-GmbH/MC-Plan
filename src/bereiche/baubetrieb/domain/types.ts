@@ -20,8 +20,12 @@ export type ID = string;
  * Fassung 10: Titel, Projektnummer (BBPNeo) und KM-Runde an Anmeldungen statt
  * Bf/Strecke und Gewerk/Tätigkeit; Statuszuordnung des BBPNeo-Imports.
  * Fassung 11: Entscheidungen an Status (Frage und Antwort je Nachfolger).
+ * Fassung 12: Projekte ohne Projektleiter, Hauptbearbeiter, ersten
+ * Anmeldetermin (ca.) und Status der Betreuung – die Frist der ersten Anmeldung
+ * ergibt sich allein aus Prozessphase und Fahrplanjahren, abgeschlossene
+ * Projekte werden archiviert.
  */
-export const DATEN_VERSION = 11;
+export const DATEN_VERSION = 12;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -108,7 +112,7 @@ export const STATUS_ART_LABEL: Record<StatusArt, string> = {
 /**
  * Bezug einer Terminfrist auf die Richtlinie: Ril_SKM, Ril_MKM, Ril_KM N-2,
  * Ril_KM (N-2 oder N-1 – die N-2-Frist, solange sie am Tag des Statuswechsels
- * nicht verstrichen ist und nicht vor dem ersten Anmeldetermin liegt),
+ * nicht verstrichen ist und nicht vor der ersten Anmeldung des Projekts liegt),
  * Ril_KKM A und Ril_KKM (je Maßnahmenart). Im
  * Lastenheft hießen sie Ril_skm, Ril_pze, Ril_N-2, Ril_Nx, Ril_A und Ril_X.
  */
@@ -177,9 +181,8 @@ export const LOESCHEN = 'loeschen';
 export type StatusZiel = ID;
 
 /**
- * Wer in einem Status am Zug ist. Die Tabelle nennt dazu den Namen: BBK – der
- * bzw. die mitwirkenden BBK der Anmeldung, MIC – der Hauptbearbeiter, Projektleitung –
- * der Projektleiter des Projekts.
+ * Wer in einem Status am Zug ist. Für BBK nennt die Tabelle dazu den Namen –
+ * den bzw. die mitwirkenden BBK der Anmeldung.
  */
 export type Zustaendigkeit = 'mic' | 'bbk' | 'projektleitung';
 
@@ -323,19 +326,11 @@ export interface RilFrist {
 /* Bestand                                                             */
 /* ------------------------------------------------------------------ */
 
-export type ProjektStatus = 'aktiv' | 'pausiert' | 'abgeschlossen';
-
-export const PROJEKT_STATUS_LABEL: Record<ProjektStatus, string> = {
-  aktiv: 'Aktiv',
-  pausiert: 'Betreuungspause',
-  abgeschlossen: 'Abgeschlossen',
-};
-
 /** Hinweis je Phase, wie sich ihre Richtlinienfrist auswählt. */
 export const RIL_PHASE_HINWEIS: Record<Phase, string> = {
   skm: 'Stichtag je Fahrplanjahr',
   mkm: 'Stichtag je Fahrplanjahr',
-  km: 'Ist die KM-Runde bekannt (Prozessphase in BBPNeo: 2. KP = N-2, 3. KP = N-1), gilt ihre Frist. Sonst gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt, danach die N-1-Frist (Ril_KM).',
+  km: 'Ist die KM-Runde bekannt (Prozessphase in BBPNeo: 2. KP = N-2, 3. KP = N-1), gilt ihre Frist. Sonst gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor der ersten Anmeldung des Projekts liegt, danach die N-1-Frist (Ril_KM).',
   kkm: 'Vorlauf je Maßnahmenart (Ril_KKM); Stichtag der Anmeldung ist der Mittwoch.',
 };
 
@@ -347,7 +342,7 @@ export function rilFristenNachPhase(): { phase: Phase; schluessel: RilSchluessel
   }));
 }
 
-/** Prozessphase, auf die sich der erste Anmeldetermin bezieht. */
+/** Prozessphase der ersten Anmeldung eines Projekts. */
 export type ErstePhase = 'skm' | 'mkm' | 'N-2' | 'N-1' | 'kkm';
 
 export const ERSTE_PHASE_LABEL: Record<ErstePhase, string> = {
@@ -374,18 +369,18 @@ export interface Projekt {
   id: ID;
   /** Kurzbezeichnung der Baumaßnahme für Listen und Seitenleiste. */
   name: string;
-  projektleiter: string;
+  /** G-Nummer der DB, z. B. „G.016010101“ – ihr ordnet der Import aus BBPNeo die Anmeldungen zu. */
   dbGNummer: string;
-  /** Erster Anmeldetermin (ca.-Wert, je nach Prozessphase laut Richtlinie). */
-  ersterAnmeldetermin: ISODate | null;
+  /**
+   * Prozessphase der ersten Anmeldung. Mit dem ersten betroffenen Fahrplanjahr
+   * ergibt sie deren Frist laut Richtlinie (`ersterTermin` in `fristen.ts`).
+   */
   erstePhase: ErstePhase;
   /** Betroffene Fahrplanjahre, aufsteigend – je Jahr eine Zeile im Anmeldebedarf. */
   fahrplanjahre: number[];
   inbetriebnahme: ISODate | null;
-  hauptbearbeiter: string;
-  /** MIC-Projektnummer (wiko). */
+  /** Projektnummer – über sie verknüpft das Projektregister das Projekt mit den anderen Bereichen. */
   projektnummer: string;
-  status: ProjektStatus;
   markiert: boolean;
   bemerkung: string;
 }
@@ -443,7 +438,7 @@ export interface Anmeldung extends AnmeldungStand {
   bbk: string;
   /** Anmelder laut Anmeldung (wer sie eingereicht hat) – aus dem BBPNeo-Import oder von Hand. */
   anmelder: string;
-  /** Projektnummer laut BBPNeo (DB-G-Nummer, z. B. „G.016010101“); leer, wenn keine vergeben ist. */
+  /** Projektnummer laut BBPNeo (G-Nummer, z. B. „G.016010101“); leer, wenn keine vergeben ist. */
   bbpProjektnummer: string;
   /** Runde im KM laut Prozessphase (BBPNeo); null – Ril_KM wählt selbst. */
   kmRunde: KmRunde | null;

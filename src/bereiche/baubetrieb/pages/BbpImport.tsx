@@ -2,7 +2,7 @@
  * Seite „Import aus BBPNeo“ (eigener Punkt in der Seitenleiste, #/baubetrieb/import):
  * Excel-Export der Anmeldungen aus BBPNeo wählen, Status aus BBPNeo den Status
  * in KaPlan zuordnen (die Zuordnung merkt sich KaPlan für den nächsten
- * Import), Projekte nach DB-G-Nummer zuordnen oder anlegen und die Vorschau
+ * Import), Projekte nach G-Nummer zuordnen oder anlegen und die Vorschau
  * prüfen. Jede Änderung plant neu (`bbpPlanen`); „Importieren“ wendet den Plan
  * in einem `mutate()` an (`bbpImportieren` im Store, domain/bbpImport.ts) und
  * leert die Seite für die nächste Datei.
@@ -371,7 +371,7 @@ export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
               <section>
                 <h3 className="bb-imp-titel">Projekte</h3>
                 <p className="small tertiary bb-imp-text">
-                  Neue Anmeldungen kommen in das Projekt mit derselben DB-G-Nummer; vorhandene bleiben in ihrem Projekt.
+                  Neue Anmeldungen kommen in das Projekt mit derselben G-Nummer; vorhandene bleiben in ihrem Projekt.
                 </p>
                 <div className="table-scroll">
                   <table className="table table-stack">
@@ -391,7 +391,7 @@ export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
                               {g.treffer
                                 ? ` · passt zu „${g.treffer.name}“`
                                 : g.projektnummer
-                                  ? ' · kein Projekt mit dieser DB-G-Nummer'
+                                  ? ' · kein Projekt mit dieser G-Nummer'
                                   : ''}
                             </div>
                           </td>

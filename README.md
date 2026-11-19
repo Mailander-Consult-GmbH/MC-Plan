@@ -986,30 +986,35 @@ der Anwender. Offene fachliche Fragen und die Annahmen des Entwurfs stehen in
 [`docs/BAUBETRIEB_RUECKFRAGEN.md`](docs/BAUBETRIEB_RUECKFRAGEN.md).
 
 ### Projekt
-Im Lastenheft „Projekthülle“; wird bei der MIC-Beauftragung angelegt: Bezeichnung, Projektleiter,
-DB-G-Nummer, erster Anmeldetermin (ca.-Wert) samt Prozessphase, **betroffene Fahrplanjahre** (zum
-Ankreuzen, statt einer geplanten Sperrzeit), Inbetriebnahme, Hauptbearbeiter MIC,
-MIC-Projektnummer (wiko), Status der Betreuung (Aktiv, Betreuungspause, Abgeschlossen) und
-Bemerkung. Aus Prozessphase und erstem betroffenen Fahrplanjahr schlägt der Dialog den ersten
-Anmeldetermin laut Richtlinie vor („übernehmen“ unter dem Datumsfeld); Prozessphase, erster
-Anmeldetermin, Inbetriebnahme und Status der Betreuung stehen in einer Zeile mit einzeiligen
-Beschriftungen. Bezeichnung, MIC-Projektnummer, DB-G-Nummer, Projektleiter und Hauptbearbeiter
-werden ohne Leerzeichen am Rand gespeichert – die MIC-Projektnummer verknüpft das Projekt mit den
-anderen Bereichen. Mit ★ markierte Projekte erscheinen in Übersicht und Seitenleiste. Oben rechts im
+Im Lastenheft „Projekthülle“; wird bei der MIC-Beauftragung angelegt: Bezeichnung,
+**Projektnummer** (Beispiel im Feld: K1234), **G-Nummer** (Beispiel: G.123456789), **betroffene
+Fahrplanjahre** (zum Ankreuzen, statt einer geplanten Sperrzeit), Prozessphase der ersten
+Anmeldung, Inbetriebnahme und Bemerkung. Aus Prozessphase und erstem betroffenen Fahrplanjahr
+ergibt sich die Frist der ersten Anmeldung laut Richtlinie – der Dialog nennt sie unter der
+Prozessphase, die Projektseite neben ihr. Projektleiter, Hauptbearbeiter MIC, erster Anmeldetermin
+(ca.) und Status der Betreuung führt ein Projekt nicht mehr (siehe „Daten“); ein abgeschlossenes
+Projekt wird archiviert. Bezeichnung, Projektnummer und G-Nummer
+werden ohne Leerzeichen am Rand gespeichert – die Projektnummer verknüpft das Projekt mit den
+anderen Bereichen, der G-Nummer ordnet der Import aus BBPNeo die Anmeldungen zu. Wird ein Projekt
+aus einem anderen Bereich übernommen („Übernehmen in Baubetriebsplanung“ unter der Projektliste),
+öffnet sich dieselbe Maske, vorausgefüllt mit dem Bekannten (siehe
+[Gemeinsame Projekte](#gemeinsame-projekte)). Mit ★ markierte Projekte erscheinen in Übersicht und Seitenleiste. Oben rechts im
 Projekt stehen **Excel**, **Bearbeiten**, **Archivieren** (siehe
 [Gemeinsame Projekte](#gemeinsame-projekte)) und **Löschen**.
 
-**Erstanmeldung ausstehend:** Solange ein Projekt keine Anmeldung hat (Anmeldeleichen zählen nicht)
-und nicht abgeschlossen ist, steht zwischen den Projektangaben und den Anmeldungen der Hinweis
-„Erstanmeldung ausstehend“ mit Prozessphase und Terminfrist – dem ersten Anmeldetermin, sonst dem
-Vorschlag laut Richtlinie. Dieselbe Frist erscheint als eigene Zeile unter **Termine & Nachhaken**
+**Erstanmeldung ausstehend:** Solange ein Projekt keine Anmeldung hat (Anmeldeleichen zählen
+nicht), steht zwischen den Projektangaben und den Anmeldungen der Hinweis
+„Erstanmeldung ausstehend“ mit Prozessphase und Terminfrist – der Frist laut Richtlinie für die
+Prozessphase und das erste betroffene Fahrplanjahr; ohne Fahrplanjahre gibt es noch keine Frist.
+Dieselbe Frist erscheint als eigene Zeile unter **Termine & Nachhaken**
 und in den anstehenden Terminfristen der **Übersicht** und zählt bei „überfällig“ mit.
 
 **Anmeldebedarf:** Aus den betroffenen Fahrplanjahren berechnet die Anwendung je Jahr die Fristen
 für SKM, MKM, KM N-2 und KM N-1 und ob dafür schon ein Eintrag besteht (ein Eintrag einer späteren
 Phase deckt frühere ab, ein Eintrag im KM oder KKM beide KM-Fristen; Anmeldeleichen zählen nicht).
 Was in die Vorschau fällt (Vorgabe 180 Tage), steht unter „Anmeldebedarf aus den Projekten“ in
-Übersicht und Terminen. Die eigene Karte im Projekt ist entfallen.
+Übersicht und Terminen – ohne Fristen, die mehr als 31 Tage vor der ersten Anmeldung des Projekts
+liegen (vor der Betreuung durch MIC). Die eigene Karte im Projekt ist entfallen.
 
 ### Anmeldung
 Je Anmeldung eine Zeile im Projekt: Anmelde-ID (in Workflows mit ganzem Fahrplanjahr Begriff bzw.
@@ -1017,7 +1022,7 @@ tVE-Nr, weil es in SKM und MKM noch keine Anmeldungen gibt; im **SKM** führt de
 **Vorhabenname**, die tVE-Nr steht darunter – bei älteren SKM-Einträgen übernimmt
 „als Vorhabenname übernehmen“ im Dialog den bisherigen Begriff), **Titel** (Ort und Tätigkeit in
 Stichworten, in BBPNeo „Titel“), **Mitwirkender BBK** (auch mehrere Namen, durch Komma getrennt),
-**Anmelder** (wer die Anmeldung eingereicht hat), **Projektnummer (BBPNeo)** (DB-G-Nummer laut
+**Anmelder** (wer die Anmeldung eingereicht hat), **Projektnummer (BBPNeo)** (G-Nummer laut
 Anmeldung), in Workflows mit Ril_KM die **KM-Runde** (N-2 = 2. KP, N-1 = 3. KP; leer – Ril_KM wählt
 selbst), Maßnahmenart (SKM und MKM für die
 Sammeleinträge dieser Phasen, sonst A, B(0), B(S), B, C, Container – dieselbe Art kann in mehreren
@@ -1035,9 +1040,8 @@ darunter Abstand zu heute und Anlass –, dazu **Status ändern** als Haken wie 
 möglichen Nachfolger, wählt der Haken ihn direkt; bei mehreren öffnet er ein Menü „Welcher Status
 folgt?“ (wie bei parallelen Schritten im Planlauf; zu Menüs siehe „Als App installieren“). In
 den Anmeldungstabellen bleibt der Haken rechts stehen, wenn eine Tabelle quer scrollt. Bestätigt wird der Wechsel im Dialog des
-Statuswechsels. „Zuständig“ nennt die Rolle des aktuellen Status samt Namen:
-BBK mit den mitwirkenden BBK der Anmeldung, MIC mit dem Hauptbearbeiter, Projektleitung DB mit dem
-Projektleiter des Projekts. In der zweiten Zeile stehen die Maßnahmenart (wo der Workflow mehrere
+Statuswechsels. „Zuständig“ nennt die Rolle des aktuellen Status – MIC, Projektleitung DB oder
+BBK, diese mit den Namen der mitwirkenden BBK der Anmeldung. In der zweiten Zeile stehen die Maßnahmenart (wo der Workflow mehrere
 führt, KKM), die KM-Runde und der Titel. Jede Anmeldung belegt höchstens zwei Textzeilen; Längeres
 wird gekürzt und steht vollständig im Tooltip. Der Status steht hier ohne den Workflow davor, weil
 die Tabelle ihn nennt. Workflows ohne Anmeldung zeigen nur ihre Kopfzeile.
@@ -1071,9 +1075,9 @@ AC `Anmeldung::Mitwirkende BBK`, AG `Anmeldung::Projektnummern`, AH `Anmeldung::
   Genehmigt, „Anmeldung abgewiesen“ → Abgelehnt, jeweils im Standard-Workflow KM bzw. KKM. Andere
   Status stehen auf „– nicht importieren –“, bis man sie zuordnet. Die Zuordnung merkt sich KaPlan
   für den nächsten Import.
-* **Projekte:** Neue Anmeldungen kommen in das Projekt, dessen **DB-G-Nummer** zur Projektnummer
+* **Projekte:** Neue Anmeldungen kommen in das Projekt, dessen **G-Nummer** zur Projektnummer
   aus BBPNeo passt (z. B. G.016010101). Ohne Treffer schlägt der Dialog ein neues Projekt mit dieser
-  DB-G-Nummer vor (Bezeichnung aus dem Anfang des Titels, änderbar); Anmeldungen ohne Projektnummer
+  G-Nummer vor (Bezeichnung aus dem Anfang des Titels, änderbar); Anmeldungen ohne Projektnummer
   werden erst importiert, wenn man ihnen ein Projekt wählt. Anmeldungen, die eine Projektnummer
   verbindet, gehören zusammen – nennt eine „G.016010101“ und eine andere „G.016010101,
   G.016267085“, kommen beide in dasselbe Projekt, das alle Nummern trägt. Verbindet eine Zelle zwei
@@ -1230,9 +1234,11 @@ lässt den Sachstand stehen). Fassung 10 ersetzt Bf/Strecke und Gewerk/Tätigkei
 nicht aus der alten Maßnahmenart übernommen) und die
 Statuszuordnung des BBPNeo-Imports (Vorgabe). Fassung 11 führt Entscheidungen an Status ein; die
 Status der Standard-Workflows übernehmen die mitgelieferten Entscheidungen, solange ihre Nachfolger
-die Antworten noch enthalten. Der Name unter „Angemeldet als“
-gilt in allen Bereichen; er steht im Statusverlauf und ist Hauptbearbeiter neuer
-Projekte.
+die Antworten noch enthalten. Fassung 12 nimmt Projektleiter, Hauptbearbeiter, ersten
+Anmeldetermin (ca.) und Status der Betreuung aus den Projekten; war ein Projekt in
+„Betreuungspause“ oder „Abgeschlossen“, steht das danach als Zeile in seiner Bemerkung
+(„Status der Betreuung bisher: …“). Der Name unter „Angemeldet als“
+gilt in allen Bereichen; er steht im Statusverlauf.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
 einwandfrei geladen wurde (`ladeZustand === 'ok'`); vor jeder Umstellung auf eine neue Fassung
@@ -1436,7 +1442,7 @@ eingetragen.
 
 Was die Bereiche mit dem Namen tun: Im Planlaufmanagement füllt die Person in markierten Projekten
 das Planlaufmanagement aus (dazu die E-Mail-Nachfrage als eigene Einstellung im Dialog), in der
-Baubetriebsplanung steht sie im Statusverlauf und als Hauptbearbeiter neuer Projekte, in der
+Baubetriebsplanung steht sie im Statusverlauf, in der
 Projektsteuerung führt sie – steht sie in der Projektbeteiligtenliste – neue Protokollreihen und sieht
 ihre Aufgaben als eigene To-Dos. Beim Einspielen einer Sicherung
 bleibt der Name, es sei denn, er wird ausdrücklich aus der Sicherung übernommen – dann für alle
@@ -1465,9 +1471,9 @@ seinen Projektbeteiligten (`mitgliedschaftLoesen`).
 
 Geteilt werden:
 
-* **Stammdaten des Projekts** – Projektnummer und Bezeichnung in allen Bereichen (in der
-  Baubetriebsplanung als *MIC-Projektnummer (wiko)*), die Beschreibung zwischen
-  Planlaufmanagement und Projektsteuerung. Status (*Aktiv*, *Pausiert* …), ★-Markierung und alles
+* **Stammdaten des Projekts** – Projektnummer und Bezeichnung in allen Bereichen, die
+  Beschreibung zwischen Planlaufmanagement und Projektsteuerung. Status (*Aktiv*, *Pausiert* … –
+  im Planlaufmanagement und in der Projektsteuerung), ★-Markierung und alles
   Fachliche (Pläne, Planläufe, Anmeldungen, Protokolle) bleiben im jeweiligen Bereich.
 * **Projektbeteiligte** – Kontakte des Planlaufmanagements und Projektbeteiligte der
   Projektsteuerung sind dieselben Personen: Anrede, Vor- und Nachname, Firma, E-Mail, Telefon,
@@ -1509,9 +1515,9 @@ eine vorgesehene Übernahme zurücknehmen – das konnte nur das Controlling –
 Angelegt, bearbeitet und gelöscht wird in den Bereichen.
 
 ### In den Bereichen
-* Die **Projektkacheln** nennen nur Projektnummer (in der Baubetriebsplanung die MIC-Projektnummer),
+* Die **Projektkacheln** nennen nur Projektnummer,
   Projektname und – falls vorhanden – den Zusatztext (Beschreibung bzw. Bemerkung), dazu oben rechts
-  Status und ★-Markierung. Kennzahlen wie Pläne, Planläufe, Anmeldungen, Beteiligte, Protokolle oder
+  Status (nicht in der Baubetriebsplanung) und ★-Markierung. Kennzahlen wie Pläne, Planläufe, Anmeldungen, Beteiligte, Protokolle oder
   offene Punkte stehen in Übersicht und Projekt, nicht mehr in der Kachel.
 * Unten in jeder Projektkachel nennt die Zeile **Auch in** die anderen Bereiche, die das Projekt
   führen – grau mit *archiviert*, gestrichelt mit *vorgesehen*, solange der Bereich eine Übernahme
@@ -1520,7 +1526,11 @@ Angelegt, bearbeitet und gelöscht wird in den Bereichen.
   Bereich noch nicht führt – mit Nummer, Name, Zusatztext und unter **Geführt in** den Bereichen,
   die es führen. Projekte, die in allen ihren Bereichen archiviert sind, erscheinen dort nicht.
   **Übernehmen in …** legt das Projekt im Bereich an – samt den Projektbeteiligten (die Meldung
-  nennt ihre Zahl). Der Abschnitt steht nur, wenn der Bereich seinen Bestand laden konnte – sonst
+  nennt ihre Zahl). In der **Baubetriebsplanung** öffnet der Knopf zuerst die Maske „Neues
+  Projekt“, vorausgefüllt mit Bezeichnung, Projektnummer und der Beschreibung als Bemerkung; dort
+  ergänzt man G-Nummer, Fahrplanjahre und Prozessphase, „Übernehmen“ legt das Projekt an und
+  öffnet es, „Abbrechen“ übernimmt nichts. Wer dabei Projektnummer oder Bezeichnung ändert,
+  ändert sie für alle Bereiche des Projekts. Der Abschnitt steht nur, wenn der Bereich seinen Bestand laden konnte – sonst
   sähe das Register eine Übernahme vor, die niemand anlegt.
 * **Archivieren** nimmt ein Projekt in diesem Bereich aus Übersicht und Seitenleiste; es bleibt
   erhalten und steht in der Projektliste im aufklappbaren Abschnitt **Archiv**. Der Knopf steht im

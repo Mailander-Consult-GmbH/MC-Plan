@@ -725,7 +725,7 @@ N-x und unterjährige Anmeldung.
   oder `geaendertAm` mit „Merkmale geändert“, was später liegt; bei gleichem
   Tag gilt der Verlauf.
 * Schlüssel `baubetrieb-planung.data.v1` im `localStorage`
-  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 11`.
+  (`src/bereiche/baubetrieb/store/storage.ts`), `DATEN_VERSION = 12`.
   `migriere()` hebt ältere Stände in einem Aufruf Schritt für Schritt: Fassung 1 kannte nur den
   inzwischen entfernten Farbmodus und erhält die Demodaten; Fassung 2 führte Statusnummern (V0 … Y9),
   die `STATUS_AUS_NUMMER` (`src/bereiche/baubetrieb/domain/workflow.ts`) den
@@ -748,8 +748,8 @@ N-x und unterjährige Anmeldung.
   der Workflows und im gespeicherten Vorstand) – Anmeldungen der Art A_Vor_N-2
   bzw. A_Vor_N-1 erhalten dabei `kmRunde` `'N-2'` bzw. `'N-1'`, sofern keine
   gesetzt ist (`RUNDE_BIS_FASSUNG5`) –, Fristbezug und
-  Richtlinienfrist `pze` heißen `mkm`, die Prozessphase des ersten
-  Anmeldetermins `mkm` bzw. `kkm`; Fassung 6 (`ausFassung6`) führte je Projekt
+  Richtlinienfrist `pze` heißen `mkm`, die Prozessphase der ersten
+  Anmeldung `mkm` bzw. `kkm`; Fassung 6 (`ausFassung6`) führte je Projekt
   eine geplante Sperrzeit (`bauzeitVon`/`bauzeitBis`) – daraus werden die
   betroffenen Fahrplanjahre (`fahrplanjahre`, über `fahrplanjahreZwischen`,
   höchstens zehn); Fassung 7 (`ausFassung7`) kannte keine Zuständigkeit – die
@@ -763,7 +763,12 @@ N-x und unterjährige Anmeldung.
   `aufbereiten()` (leer bzw. Vorgabe, `bbpStatusAufbereiten`); Fassung 10
   (`ausFassung10`) kannte keine Entscheidungen – Status der Standard-Workflows
   übernehmen die mitgelieferte `entscheidung`, sofern ihre Nachfolger alle
-  Antworten enthalten, die übrigen erhalten `null` (`entscheidungAufbereiten`).
+  Antworten enthalten, die übrigen erhalten `null` (`entscheidungAufbereiten`);
+  Fassung 11 (`ausFassung11`) führte je Projekt `projektleiter`,
+  `hauptbearbeiter`, `ersterAnmeldetermin` und `status` – `aufbereiten()` lässt
+  sie fallen; war der Status `pausiert` oder `abgeschlossen`, hängt
+  `ausFassung11` an die Bemerkung die Zeile „Status der Betreuung bisher: …“
+  (`BETREUUNG_BIS_FASSUNG11`: „Betreuungspause“, „Abgeschlossen“).
   Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekte mit acht
   Anmeldungen, Termine relativ zum heutigen Tag, und die Standard-Workflows.
@@ -817,9 +822,9 @@ N-x und unterjährige Anmeldung.
 | --- | --- | --- |
 | `#/baubetrieb` | Übersicht (`src/bereiche/baubetrieb/pages/Uebersicht.tsx`) | Kacheln „Anmeldungen“, „Terminfristen überfällig“, „Demnächst fällig“, „Nachhaken & Anmeldebedarf“. Karte „Anstehende Terminfristen“ (die ersten acht, `ANZAHL_TERMINE`, samt ausstehender Erstanmeldungen, diese mit Prozessphase und Projekt) mit den Spalten Anmeldung, Projekt, Status, Terminfrist und „Status ändern“ je Zeile (Haken, siehe 7.3); Karte „Anmeldebedarf aus den Projekten“ (nur wenn Bedarf besteht); Karte „Projekte“ mit der Zahl der Anmeldungen je Workflow, überfälligen Fristen (samt überfälliger Erstanmeldung) und nächster Frist (ohne Anmeldung die der Erstanmeldung). Angezeigt werden markierte Projekte, ohne Markierung alle (`sichtbareProjekte`), archivierte (Abschnitt 9) in keinem Fall. |
 | `#/baubetrieb/termine` | Termine & Nachhaken (`src/bereiche/baubetrieb/pages/Termine.tsx`) | Alle Anmeldungen mit Terminfrist über alle nicht archivierten Projekte (`useArchivierte`, Abschnitt 9; ebenso ausstehende Erstanmeldungen und Anmeldebedarf), gegliedert nach Projekt; Filter Alle / Überfällig / Fällig / Im Plan / Zum Nachhaken, Suche; je Zeile „Nachgehakt“ (bei Status zum Nachhaken) und „Status ändern“ (Haken, siehe 7.3); je Projekt zuerst eine Zeile „Erstanmeldung ausstehend“ (`ausstehendeErstanmeldungen`) mit „Ausstehend“, Terminfrist und „Zum Projekt“ – sie zählt in den Filtern mit. Darunter „Anmeldebedarf aus den Projekten“. |
-| `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit MIC-Projektnummer, Bezeichnung, Bemerkung (falls vorhanden), Status der Betreuung, ★-Markierung und „Auch in“; Suche auch über DB-G-Nummer, Projektleiter und Hauptbearbeiter; „Neues Projekt“ (`ProjektDialog`; Bezeichnung, MIC-Projektnummer, DB-G-Nummer, Projektleiter und Hauptbearbeiter gehen ohne Leerzeichen am Rand in den Bestand – die Nummer verknüpft das Projekt über das Register mit den anderen Bereichen). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Baubetriebsplanung“ (siehe 9.3). |
+| `#/baubetrieb/projekte` | Projekte (`src/bereiche/baubetrieb/pages/Projekte.tsx`) | Karten mit Projektnummer, Bezeichnung, Bemerkung (falls vorhanden), ★-Markierung und „Auch in“; Suche („Bezeichnung, Projektnr., G-Nr. …“) über Bezeichnung, Projektnummer, G-Nummer und Bemerkung; „Neues Projekt“ (`ProjektDialog` mit den Feldern „Bezeichnung“, „Projektnummer“ – Platzhalter „K1234“ –, „G-Nummer“ – Platzhalter „G.123456789“ –, „Betroffene Fahrplanjahre“, „Prozessphase“ – darunter die Frist der ersten Anmeldung, „der ersten Anmeldung – laut Richtlinie bis …“, `ersterTermin` –, „Inbetriebnahme“ und „Bemerkung“; Bezeichnung, Projektnummer und G-Nummer gehen ohne Leerzeichen am Rand in den Bestand – die Projektnummer verknüpft das Projekt über das Register mit den anderen Bereichen). Darunter „Archiv“ und „Projekte aus anderen Bereichen“ mit „Übernehmen in Baubetriebsplanung“ (siehe 9.3) – der Knopf öffnet hier `ProjektDialog` mit `uebernahme`: Titel „Neues Projekt“, Unterzeile „Übernahme aus einem anderen Bereich“, vorausgefüllt mit Bezeichnung, Projektnummer und der Beschreibung des Registerprojekts als Bemerkung (`beschreibungOhneVermerke`), Hinweis `UebernahmeHinweis`, Knopf „Übernehmen“; beim Anlegen entsteht das Projekt über `addProjekt` unter der Kennung, die `inBereichUebernehmen` im Register vermerkt, und steht danach offen. |
 | `#/baubetrieb/import` | Import aus BBPNeo (`src/bereiche/baubetrieb/pages/BbpImport.tsx`), Menüpunkt zwischen „Projekte“ und „Einstellungen“ | Karten „Datei“ und „Vorschau“ mit „Verwerfen“ und „Importieren“; siehe 7.5. |
-| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Archivieren“ (`ArchivKnopf`, 9.3; fehlt bei einem archivierten Projekt), „Löschen“ (samt Anmeldungen; nur in diesem Bereich; die Rückfrage endet mit „Die Anmeldung lässt sich nicht wiederherstellen.“ bzw. „Die Anmeldungen lassen sich nicht wiederherstellen.“ und dem Hinweis aus `useLoeschHinweis`, 9.3); Archivhinweis mit „Aus dem Archiv holen“ (9.3); Stammdaten; am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und Herkunft der Frist (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche („ID, Titel, BBK, Status …“; auch über Anmelder, Projektnummer und Bemerkung) und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; in der zweiten Zeile die Maßnahmenart – nur, wo der Workflow mehrere führt –, die KM-Runde und der Titel), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status samt Namen), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip), Sachstand (`SachstandKompakt` in `src/bereiche/baubetrieb/components/common.tsx`: Datum, darunter Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; alles im Tooltip) und „Status ändern“ (Haken, siehe 7.3; Tabellenklasse `bb-anmeldungen` – scrollt die Tabelle quer, bleibt die Haken-Spalte rechts stehen, `position: sticky` in `src/bereiche/baubetrieb/components/baubetrieb.css`; dort führt die stehende Spalte auch den Fokusrahmen der Zeile weiter). Die Zeile öffnet die Anmeldung per Klick oder – als Tab-Halt, `alsKlickZeile` – mit Enter bzw. Leertaste; „Status ändern“ und sein Menü lösen sie nicht aus. Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
+| `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Archivieren“ (`ArchivKnopf`, 9.3; fehlt bei einem archivierten Projekt), „Löschen“ (samt Anmeldungen; nur in diesem Bereich; die Rückfrage endet mit „Die Anmeldung lässt sich nicht wiederherstellen.“ bzw. „Die Anmeldungen lassen sich nicht wiederherstellen.“ und dem Hinweis aus `useLoeschHinweis`, 9.3); Archivhinweis mit „Aus dem Archiv holen“ (9.3); Stammdaten („Projektnummer“, „G-Nummer“, „Inbetriebnahme“, „Prozessphase“ mit der Frist der ersten Anmeldung laut Richtlinie, „Betroffene Fahrplanjahre“, Bemerkung); am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und dem Zusatz „laut Richtlinie für Prozessphase und erstes Fahrplanjahr“ (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche („ID, Titel, BBK, Status …“; auch über Anmelder, Projektnummer und Bemerkung) und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; in der zweiten Zeile die Maßnahmenart – nur, wo der Workflow mehrere führt –, die KM-Runde und der Titel), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status, bei BBK mit den Namen der mitwirkenden BBK), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip), Sachstand (`SachstandKompakt` in `src/bereiche/baubetrieb/components/common.tsx`: Datum, darunter Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; alles im Tooltip) und „Status ändern“ (Haken, siehe 7.3; Tabellenklasse `bb-anmeldungen` – scrollt die Tabelle quer, bleibt die Haken-Spalte rechts stehen, `position: sticky` in `src/bereiche/baubetrieb/components/baubetrieb.css`; dort führt die stehende Spalte auch den Fokusrahmen der Zeile weiter). Die Zeile öffnet die Anmeldung per Klick oder – als Tab-Halt, `alsKlickZeile` – mit Enter bzw. Leertaste; „Status ändern“ und sein Menü lösen sie nicht aus. Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
 | `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“ (`src/bereiche/baubetrieb/components/TerminDialoge.tsx`: „Festlegen“ mit Datum meldet „Termin festgelegt.“; ein geleertes Feld hebt einen von Hand gesetzten Termin auf – „Terminfrist wird wieder berechnet.“, wie „Wieder berechnen“ –, ohne solchen Termin bleibt der Dialog offen mit „Bitte einen Termin angeben.“), „Letzten Wechsel zurücknehmen“, dazu „Zuständig:“ mit Rolle und Namen; Karte „Merkmale“ („Vorhabenname“ im SKM und wo er gesetzt ist, die Nummer als „tVE-Nr“ – bei älteren SKM-Einträgen ohne Vorhabenname weiter „Begriff / tVE-Nr“ –, „KM-Runde“ (falls gesetzt), „Titel“, „Mitwirkender BBK“, „Anmelder“, „Projektnummer (BBPNeo)“, Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; oben rechts „Bearbeiten“, „Duplizieren“ (Kopie mit aktuellem Stand und Statusverlauf, Vermerk „Dupliziert aus …“, „(Kopie)“ an der führenden Bezeichnung; öffnet die Kopie) und „Löschen“. |
 | `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Karte „Workflows“ mit je Workflow einer Karte (`bb-wf-liste-karte`): Kennzeichen „Standard“ bzw. „Eigener Workflow“, Beschreibung, Standardverlauf als Punktkette (`AblaufVorschau` in `src/bereiche/baubetrieb/components/AblaufVorschau.tsx`, mit „+ … Abweichungen“), Zahl der Status, Abweichungen und Anmeldungen, Sperrzeitraum und Maßnahmenarten, „Öffnen“ (auch Klick auf die Karte), „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
 | `#/baubetrieb/fristen` | Fristen (`src/bereiche/baubetrieb/pages/Fristen.tsx`), Menügruppe „Einstellungen“ | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase eine Gruppenzeile mit Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. Die frühere Adresse `#/baubetrieb/einstellungen` zeigt dieselbe Seite. |
@@ -951,8 +956,8 @@ die Übersicht.
   Frist der `kmRunde`, wenn sie gesetzt ist (Rechenweg „Prozessphase 2. KP“
   bzw. „Prozessphase 3. KP“), sonst die
   N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und
-  nicht vor dem ersten Anmeldetermin des Projekts abzüglich `CA_TOLERANZ_TAGE`
-  liegt, danach die N-1-Frist (`kmGrundFuerN1`; der Rechenweg nennt den Grund),
+  nicht vor der ersten Anmeldung des Projekts abzüglich `TOLERANZ_TAGE`
+  liegt (`betreuungAb`), danach die N-1-Frist (`kmGrundFuerN1`; der Rechenweg nennt den Grund),
   Ril_KKM die Frist der Maßnahmenart, für die Arten SKM und MKM die von A. Die Vorbelegung `standardRilFristen()` in `seed.ts` ist als
   `platzhalter` gekennzeichnet. Ampel `ampelFuer` mit `vorlaufTage`.
 * Fahrplanjahr: `fahrplanjahrBeginn`, `fahrplanjahrEnde`, `fahrplanjahrVon` –
@@ -965,14 +970,16 @@ die Übersicht.
   frühere Workflow; Anmeldungen in einer Anmeldeleiche zählen nicht,
   `istLeiche`),
   `faellig`, `kuenftig`, `verstrichen`, `vorBeginn` oder `offen`; Fristen, die
-  mehr als 31 Tage vor dem ersten Anmeldetermin liegen, gelten als `vorBeginn`
-  (`CA_TOLERANZ_TAGE`, weil der erste Anmeldetermin nur ein ca.-Wert ist).
+  mehr als 31 Tage (`TOLERANZ_TAGE`) vor der ersten Anmeldung des Projekts
+  liegen – ihrer Frist laut Richtlinie, `ersterTermin` –, gelten als
+  `vorBeginn` (`betreuungAb`).
   Angezeigt wird er unter „Anmeldebedarf aus den Projekten“ in Übersicht und
   Terminen.
 * Erstanmeldung (`erstanmeldungAusstehend`, `ausstehendeErstanmeldungen`):
-  Projekte, die nicht abgeschlossen sind und keine Anmeldung außer
-  Anmeldeleichen haben; Frist ist der erste Anmeldetermin, sonst
-  `ersterTerminVorschlag`. Die Seitenleiste zählt überfällige Erstanmeldungen
+  Projekte, die keine Anmeldung außer Anmeldeleichen haben; Frist ist
+  `ersterTermin` – die Frist laut Richtlinie für die Prozessphase
+  (`Projekt.erstePhase`) und das erste betroffene Fahrplanjahr, ohne
+  Fahrplanjahre keine. Die Seitenleiste zählt überfällige Erstanmeldungen
   bei „Termine & Nachhaken“ mit, ebenso die Kacheln „Terminfristen überfällig“
   und „Demnächst fällig“ der Übersicht.
 * Nachhaken: Ob der Termin eines Status zum Nachhaken dient, sagt
@@ -1060,7 +1067,7 @@ die Übersicht.
   verbindet, bilden eine Gruppe – ihr Schlüssel ist der der ersten Zelle, ihre
   Projektnummer nennt alle Nummern; verbindet eine Zelle zwei verschiedene
   Projekte des Bestands, bleibt jede Zelle für sich; Treffer
-  über die DB-G-Nummer, ohne „G“, Punkte und Leerzeichen verglichen; Vorgabe:
+  über die G-Nummer (`Projekt.dbGNummer`), ohne „G“, Punkte und Leerzeichen verglichen; Vorgabe:
   Treffer, sonst mit Projektnummer `NEUES_PROJEKT` mit Bezeichnung aus dem
   Anfang des Titels, ohne Nummer `KEIN_PROJEKT`). Vorhandene Anmeldungen
   derselben ID (`aktualisieren`): erst `statusUebernehmen` (Statuswechsel mit
@@ -1606,6 +1613,13 @@ Bausteine in `src/gemeinsam/ProjektBereiche.tsx` (Gestaltung in
   Bezeichnung (ohne sie „Ohne Bezeichnung“), Beschreibung (falls vorhanden),
   „Geführt in“ mit den Bereichen des Projekts und „Übernehmen in …“
   (`inBereichUebernehmen`, Kennung im Bereich = die des Registerprojekts).
+  Mit `onUebernehmen` übernimmt der Bereich selbst – so die
+  Baubetriebsplanung (7.2): Sie zeigt ihre Maske und ruft
+  `inBereichUebernehmen` erst beim Anlegen, mit `stammdaten` (Projektnummer und
+  Bezeichnung aus der Maske gelten dann im Register); `UebernahmeHinweis` nennt
+  in der Maske die Herkunft („Übernahme aus …: Projektnummer und Bezeichnung
+  gelten in allen Bereichen des Projekts …“), `uebernahmeMeldung` liefert die
+  Kurzmeldung.
 * `ArchivKnopf`: „Archivieren“ im Projekt (Tooltip „Nimmt das Projekt in diesem
   Bereich aus Übersicht und Seitenleiste – es bleibt erhalten“) – im
   Planlaufmanagement in der Karte „Projekt archivieren“ („Nimmt das Projekt aus
@@ -1704,7 +1718,7 @@ Inhaltsbereich, in `src/bereiche/baubetrieb/App.tsx` und
 
 | Meldung | Fundstelle | Ursache |
 | --- | --- | --- |
-| „„…“ übernommen – mit … Projektbeteiligten.“ bzw. „„…“ übernommen.“ | `src/gemeinsam/ProjektBereiche.tsx` | Kein Fehler: „Übernehmen in …“ in einem Bereich. |
+| „„…“ übernommen – mit … Projektbeteiligten.“ bzw. „„…“ übernommen.“ | `src/gemeinsam/ProjektBereiche.tsx` (`uebernahmeMeldung`) | Kein Fehler: „Übernehmen in …“ in einem Bereich – in der Baubetriebsplanung nach „Übernehmen“ in der Maske. |
 | „„…“ archiviert – es steht in der Projektliste unter „Archiv“.“ | `src/gemeinsam/ProjektBereiche.tsx` | Kein Fehler: „Archivieren“ im Projekt. |
 | „„…“ aus dem Archiv geholt.“ | `src/gemeinsam/ProjektBereiche.tsx` | Kein Fehler: „Aus dem Archiv holen“ im Archivhinweis. |
 | „Das Projektregister ließ sich nicht lesen. …“ bzw. „Das Projektregister stammt aus einer neueren Fassung von KaPlan. …“ | `src/gemeinsam/RegisterHinweis.tsx` | Gespeichertes Register unlesbar bzw. `version` größer als `REGISTER_VERSION`. |

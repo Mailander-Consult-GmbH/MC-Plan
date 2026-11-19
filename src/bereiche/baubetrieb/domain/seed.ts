@@ -167,50 +167,39 @@ export function seedDaten(): BaubetriebDaten {
   const workflows = standardWorkflows();
   const wer = 'M. Muster';
 
-  const projekt = (p: Omit<Projekt, 'id' | 'markiert' | 'status'> & Partial<Projekt>): Projekt => ({
+  const projekt = (p: Omit<Projekt, 'id' | 'markiert'> & Partial<Projekt>): Projekt => ({
     id: newId('pr'),
     markiert: true,
-    status: 'aktiv',
     ...p,
   });
 
   const alb = projekt({
     name: 'EÜ Alb – Erneuerung Überbau',
-    projektleiter: 'Projektleitung DB InfraGO (Muster)',
     dbGNummer: 'G.40001234',
-    ersterAnmeldetermin: `${jahr - 1}-03-31`,
     erstePhase: 'mkm',
     fahrplanjahre: fahrplanjahreZwischen(`${jahr + 2}-03-01`, `${jahr + 3}-06-30`),
     inbetriebnahme: `${jahr + 3}-06-02`,
-    hauptbearbeiter: wer,
     projektnummer: 'MIC-25-0412',
     bemerkung: 'Überbautausch mit Totalsperrung; Vorarbeiten unter Betrieb.',
   });
 
   const durmersheim = projekt({
     name: 'ESTW Durmersheim – Inbetriebnahme',
-    projektleiter: 'Projektleitung DB InfraGO (Muster)',
     dbGNummer: 'G.40005678',
-    ersterAnmeldetermin: `${jahr - 1}-10-31`,
     erstePhase: 'N-1',
     fahrplanjahre: fahrplanjahreZwischen(tag(-20), tag(220)),
     inbetriebnahme: tag(192),
-    hauptbearbeiter: wer,
     projektnummer: 'MIC-24-0815',
     bemerkung: '',
   });
 
   const durlach = projekt({
     name: 'Kabeltiefbau Karlsruhe-Durlach – Bruchsal',
-    projektleiter: 'Projektleitung DB InfraGO (Muster)',
     dbGNummer: 'G.40009012',
-    ersterAnmeldetermin: `${jahr}-03-31`,
     erstePhase: 'skm',
     fahrplanjahre: fahrplanjahreZwischen(`${jahr + 3}-04-01`, `${jahr + 5}-03-31`),
     inbetriebnahme: null,
-    hauptbearbeiter: wer,
     projektnummer: 'MIC-26-0107',
-    status: 'pausiert',
     bemerkung: 'Betreuungspause bis zur Entwurfsplanung.',
   });
 

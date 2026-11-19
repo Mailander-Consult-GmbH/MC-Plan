@@ -201,7 +201,7 @@ export function ProjektDialog({
     >
       <div className="form-grid">
         <Field label="Projektnummer">
-          <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="P-2026-001" />
+          <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="K1234" />
         </Field>
         <Field label="Status">
           <Select value={form.status} onChange={(v) => set('status', v as ProjektStatus)} options={STATUS_OPTIONEN} />

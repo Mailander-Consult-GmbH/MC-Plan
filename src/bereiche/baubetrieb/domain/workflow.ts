@@ -22,7 +22,6 @@ import {
   type RilBezug,
   type StatusArt,
   type Anmeldung,
-  type Projekt,
   type StatusZiel,
   type Workflow,
   type WorkflowStatus,
@@ -353,18 +352,13 @@ export function istLeiche(workflows: Workflow[], statusId: ID | null): boolean {
 }
 
 /**
- * Wer im Status zuständig ist, mit Namen, soweit bekannt: „BBK · Fr. Weber“
- * (die mitwirkenden BBK der Anmeldung),
- * „MIC · M. Muster“ – oder null, wenn der Status niemanden nennt.
+ * Wer im Status zuständig ist: „MIC“, „Projektleitung DB“ oder – mit Namen,
+ * soweit bekannt – „BBK · Fr. Weber“ (die mitwirkenden BBK der Anmeldung);
+ * null, wenn der Status niemanden nennt.
  */
-export function zustaendigText(
-  s: Pick<WorkflowStatus, 'zustaendig'>,
-  a: Pick<Anmeldung, 'bbk'>,
-  p: Pick<Projekt, 'hauptbearbeiter' | 'projektleiter'> | undefined,
-): string | null {
+export function zustaendigText(s: Pick<WorkflowStatus, 'zustaendig'>, a: Pick<Anmeldung, 'bbk'>): string | null {
   if (!s.zustaendig) return null;
-  const name =
-    s.zustaendig === 'bbk' ? a.bbk : s.zustaendig === 'mic' ? p?.hauptbearbeiter : p?.projektleiter;
+  const name = s.zustaendig === 'bbk' ? a.bbk : '';
   const rolle = ZUSTAENDIGKEIT_LABEL[s.zustaendig];
   return name?.trim() ? `${rolle} · ${name.trim()}` : rolle;
 }
