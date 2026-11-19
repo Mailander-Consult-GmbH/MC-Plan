@@ -207,7 +207,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   „Menü“ in der Kopfzeile (`SeitenleisteKnopf`) erscheint nur in der schmalen Ansicht. Eingeklappt bleiben Symbole (Name im Tooltip, Zähler als Marke
   am Symbol) – auch die der markierten Projekte, unter einer Trennlinie statt der Überschrift –,
   `KaPlanZeichen` (das Symbol des Logos allein), die Initialen der angemeldeten Person und der
-  Bereichswechsel; Sicherungsknöpfe und Texte entfallen.
+  Bereichswechsel; Texte entfallen. Sichern, Einspielen und Zurücksetzen stehen nicht in der
+  Leiste, sondern auf der Seite „Admin“.
 * `.tabs` sind Pillen, die gewählte blau; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
   `purple`, `gelb`); Ampelpunkt `.dot`; Stern der Projektmarkierung `Icon name="stern"` in `.stern`.
 * **Logo:** `KaPlanLogo` und `KaPlanZeichen` (`src/shared/logos.tsx`) **zeichnen** das Logo
@@ -338,7 +339,12 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   unlesbar, meldet er das Verwerfen). Dazu **„Angemeldet als“ für alle Bereiche**:
   `benutzer.ts` (Name und Farbschema, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
   `benutzerAendern`, `istDunkel`), `AngemeldetAls.tsx` (Knopf und Dialog in jeder Seitenleiste; eine eigene
-  Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`.
+  Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`. Und die
+  **Rollen**: `rollen.ts` (`Rolle` – `mitarbeiter`, `projektadmin`, `kaplanadmin` –, `darf(rolle,
+  recht)` mit den Rechten `einstellungen` und `admin`, Personenverzeichnis unter
+  `kaplan-personen.v1`, `useRolle`, „Ansicht als“ über `ansichtSetzen`) und `Admin.tsx`
+  (`AdminSeite` – in jedem Bereich unter der Route `admin`; der Bereich reicht seine Knöpfe für
+  Sichern, Einspielen und Zurücksetzen als `sicherung` herein –, `KeinZugriff`, `AnsichtHinweis`).
 * `src/bereiche/<bereich>/` – in sich geschlossene Bereiche mit eigenem Store, eigenem
   `localStorage`-Schlüssel, eigenen Einstellungen und eigenem Router.
 * `src/shared/` – fachfreie Bausteine (UI, Symbole `icons.tsx`, Bewegung `bewegung.tsx`, Marken
@@ -505,6 +511,15 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   eine Sicherung. Keine eigenen Dialoge „Angemeldet als“ in den Bereichen – `AngemeldetAls`
   verwenden. Das Farbschema setzt nur die Hülle (`src/shell/Shell.tsx`, aus
   `useBenutzer()`) – kein eigener Effekt auf `dataset.farbschema` in einer `App.tsx`.
+* **Rollen** gelten für alle Bereiche und stehen nur in `src/gemeinsam/rollen.ts`: Was eine Rolle
+  darf, fragt die Oberfläche über `darf(useRolle().rolle, recht)` – keine eigenen Rollenabfragen
+  und keine eigenen Verzeichnisse in den Bereichen. Jede `App.tsx` blendet die Menügruppe
+  „Einstellungen“ ohne das Recht `einstellungen` aus und zeigt auf deren Routen `KeinZugriff`;
+  Menüpunkt und Route `admin` gibt es nur mit dem Recht `admin`. Eine neue projektübergreifende
+  Einstellungsseite kommt in diese Gruppe und bekommt dieselbe Abfrage. Ohne Anmeldung ist das
+  **kein Schutz** (die Rolle hängt am Namen unter „Angemeldet als“, das Verzeichnis liegt im
+  Browser; leer = KaPlan-Admin, unbekannter Name = Projektmitarbeiter) – nichts darauf stützen,
+  was wirklich geschützt sein muss. Es bleibt stets ein KaPlan-Admin (`letzterAdmin`).
 * **Projektregister:** Ein Bereich schreibt seinen eigenen Bestand nur über sein `mutate()` –
   auch, was aus dem Register kommt (`registerPlanAnwenden` in `domain/register.ts`, reine
   Funktion, liefert ohne Änderung denselben Bestand zurück, damit der Abgleich zur Ruhe kommt).

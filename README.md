@@ -119,7 +119,7 @@ npm run typecheck
 ```
 
 Beim ersten Start wird ein Demodatenbestand mit einem Projekt samt Funktionen, Besetzungen, Plänen
-und laufenden Planläufen geladen. Über **Zurücksetzen** (unten in der Seitenleiste) lässt sich
+und laufenden Planläufen geladen. Über **Zurücksetzen** (Menüpunkt **Admin**) lässt sich
 dieser Stand jederzeit wiederherstellen („Angemeldet als“ samt E-Mail-Nachfrage bleibt), über **Sicherung** der gesamte Bestand als JSON sichern
 und über **Einspielen** eine solche Sicherung wieder laden. Vor dem Einspielen nennt eine Rückfrage
 Projekte, Pläne und Planläufe der Sicherung und bietet an, den jetzigen Stand vorher zu sichern –
@@ -920,7 +920,7 @@ Name und Farbschema gelten in **allen Bereichen** (siehe
 nur im Planlaufmanagement.
 
 ### Sicherung, Abgleich und Hinweise
-**Sicherung** (Seitenleiste) lädt den gesamten Bestand als JSON herunter. **Einspielen** liest eine
+**Sicherung** (Menüpunkt **Admin**, siehe [Rollen und Admin](#rollen-und-admin--für-alle-bereiche)) lädt den gesamten Bestand als JSON herunter. **Einspielen** liest eine
 solche Datei – Sicherungen der anderen Bereiche weist es mit Hinweis ab („… bitte dort
 einspielen.“) – und bietet danach **Alles ersetzen** oder **Abgleichen und auswählen**: Der Abgleich
 vergleicht Sicherung und Bestand je Element – übergreifend Gewerke, Funktionen, E-Mail-Vorlagen und
@@ -1442,6 +1442,45 @@ ihre Aufgaben als eigene To-Dos. Beim Einspielen einer Sicherung
 bleibt der Name, es sei denn, er wird ausdrücklich aus der Sicherung übernommen – dann für alle
 Bereiche.
 
+## Rollen und Admin – für alle Bereiche
+
+KaPlan kennt drei Rollen, die aufeinander aufbauen:
+
+| Rolle | Darf |
+| --- | --- |
+| **Projektmitarbeiter** | alle Funktionen in den Projekten – ohne die projektübergreifenden Einstellungen |
+| **Projektadmin** | zusätzlich die projektübergreifenden Einstellungen: die Menügruppe **Einstellungen** jedes Bereichs (Planlaufmanagement: Workflows, Funktionen, Vorlagen; Baubetriebsplanung: Workflows, Fristen; Projektsteuerung: Funktionen) |
+| **KaPlan-Admin** | zusätzlich den Menüpunkt **Admin** |
+
+Wem eine Seite nicht zusteht, sieht ihren Menüpunkt nicht; ruft er sie über die Adresse auf,
+erscheint „Kein Zugriff“.
+
+Der Menüpunkt **Admin** steht in der Seitenleiste jedes Bereichs und zeigt überall dieselbe Seite:
+
+* **Personen und Rollen** – das Personenverzeichnis, gültig für alle Bereiche. **Person einladen**
+  trägt eine Person mit Name, E-Mail und Rolle ein; **Einladung senden** öffnet einen
+  E-Mail-Entwurf mit der Adresse von KaPlan. Die Rolle lässt sich in der Liste ändern, eine Person
+  über **Entfernen** streichen. Es bleibt stets mindestens ein KaPlan-Admin: Der letzte lässt sich
+  weder herabstufen noch entfernen.
+* **Rollen** mit **Ansicht als** – zeigt KaPlan in diesem Fenster so, wie es eine andere Rolle
+  sieht, bis zum Neuladen oder bis **Ansicht beenden**.
+* **Sicherung** des Bereichs, in dem man sich gerade befindet: **Sicherung**, **Einspielen** und
+  **Zurücksetzen**. Die drei Knöpfe standen früher unten in der Seitenleiste.
+
+**Solange KaPlan ohne Anmeldung läuft, ist das eine Vorbereitung, kein Schutz.** Maßgeblich ist die
+Rolle der Person, deren Name unter „Angemeldet als“ steht; das Verzeichnis liegt im Browser
+(Schlüssel `kaplan-personen.v1`), jeder Browser hat sein eigenes. Damit bis zur Anmeldung über das
+Microsoft-Konto niemand eine Funktion verliert, gilt:
+
+* Ist das Verzeichnis leer, ist die Person am Gerät KaPlan-Admin.
+* Mit dem ersten Eintrag wird sie selbst als KaPlan-Admin ins Verzeichnis geschrieben – dafür muss
+  unter „Angemeldet als“ ein eigener Name stehen.
+* Wer nicht im Verzeichnis steht, ist Projektmitarbeiter.
+* Ändert ein KaPlan-Admin seinen Namen unter „Angemeldet als“, zieht sein Eintrag mit.
+
+Mit Anmeldung und Server sagt das Microsoft-Konto, wer jemand ist, und das Verzeichnis liegt in der
+Datenbank; erst dann sehen nur Berechtigte den Menüpunkt **Admin**.
+
 ## Gemeinsame Projekte
 
 ### Projektregister
@@ -1670,6 +1709,10 @@ src/
     useFremdeAenderung.ts   Lädt den Bestand nach, wenn ein anderes Fenster ihn speichert
     benutzer.ts  „Angemeldet als“ für alle Bereiche: Name und Farbschema (useBenutzer,
                  istDunkel)
+    rollen.ts    Rollen (Projektmitarbeiter, Projektadmin, KaPlan-Admin), Rechte (darf) und
+                 Personenverzeichnis (useRolle, usePersonen, „Ansicht als“)
+    Admin.tsx    Seite „Admin“ jedes Bereichs (AdminSeite), „Kein Zugriff“ (KeinZugriff) und
+                 Hinweis „Ansicht als“ (AnsichtHinweis)
     useBenutzerAbgleich.ts  Zieht den Namen in den Bestand eines Bereichs nach
     AngemeldetAls.tsx       Knopf in der Seitenleiste und Dialog „Angemeldet als“
     ProjektBereiche.tsx     Marken „Auch in“, Projekte aus anderen Bereichen, Archiv
