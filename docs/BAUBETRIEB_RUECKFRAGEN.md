@@ -53,6 +53,9 @@ SKM, MKM → MKM, KM → A, KKM → A, B(0), B(S), B, C, Container.
 **A7. „MIC-Projektnummer-wiko“** – Ist „wiko“ das interne System/Kostenträger? Gibt es eine feste
 Schreibweise, die wir prüfen sollen?
 
+*Stand 19.11.2026:* Das Feld heißt „Projektnummer“ (Beispiel im Feld: K1234), die Nummer der DB
+„G-Nummer“ (Beispiel: G.123456789). Geprüft wird die Schreibweise nicht.
+
 ---
 
 ## B. Projekt (im Lastenheft „Projekthülle“)
@@ -68,6 +71,10 @@ ist gemeint – die, in der MIC in das Projekt einsteigt?
 *Entwurf:* Feld „Prozessphase des ersten Anmeldetermins“ (SKM, MKM, KM N-2, KM N-1, KKM) und
 ein Vorschlag laut Richtlinie, der übernommen werden kann, aber nicht muss.
 
+*Stand 19.11.2026:* Das Datumsfeld ist entfallen. Die Frist der ersten Anmeldung ergibt sich
+allein aus der Prozessphase und dem ersten betroffenen Fahrplanjahr laut Richtlinie; von Hand
+lässt sie sich nicht mehr abweichend eintragen.
+
 **B3. Ende der Sperrzeit** – „Ende = i. d. R. Inbetriebnahme + 4 Wochen“: Gilt das immer? Soll die
 Inbetriebnahme als eigenes Feld geführt werden?
 
@@ -81,11 +88,16 @@ Fahrplanjahren, oder wird für Fristen „Wochen vor Sperrbeginn“ doch ein gen
 
 **B4. Projektleiter** – Ist der Projektleiter der DB oder der von MIC gemeint?
 
+*Stand 19.11.2026:* Entfallen – ein Projekt führt weder Projektleiter noch Hauptbearbeiter MIC.
+
 **B5. Status des Projekts** – Wir haben „Aktiv“, „Betreuungspause“ und „Abgeschlossen“
 ergänzt. Ist das hilfreich? Wann gilt ein Projekt als abgeschlossen (nach Bauende, nach
 Schlussrechnung)?
 
 *Entwurf:* Der Anmeldebedarf abgeschlossener Projekte erscheint nicht mehr in Übersicht und Terminen.
+
+*Stand 19.11.2026:* Der Status der Betreuung ist entfallen. Ein abgeschlossenes Projekt wird
+archiviert – archivierte Projekte fehlen in Übersicht und Terminen.
 
 **B6. ★ Anmeldebedarf** – „Bei längeren Betreuungspausen … nachvollziehen, ob eine Anmeldung zum
 nächsten SKM oder PzE oder N-x fällig ist“.
@@ -93,11 +105,11 @@ nächsten SKM oder PzE oder N-x fällig ist“.
 *Entwurf (nach Rückmeldung angepasst):* Für jedes betroffene Fahrplanjahr werden die Fristen für
 SKM, MKM, KM N-2 und KM N-1 berechnet; ein Eintrag im KM oder KKM deckt beide KM-Fristen ab. Eine
 Frist gilt als **abgedeckt**, sobald das Projekt für dieses Fahrplanjahr einen Eintrag in dieser
-oder einer späteren Phase hat; Anmeldeleichen zählen nicht. Fristen deutlich vor dem ersten
-Anmeldetermin gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne Eintrag erscheinen in
+oder einer späteren Phase hat; Anmeldeleichen zählen nicht. Fristen deutlich vor der ersten
+Anmeldung des Projekts (ihrer Frist laut Richtlinie, siehe B2) gelten als „vor Betreuung“. Fristen der nächsten 180 Tage ohne Eintrag erscheinen in
 Übersicht und Terminen; eine eigene Übersicht je Projekt gibt es nicht mehr. Solange ein Projekt
-keine Anmeldung hat, steht dort stattdessen „Erstanmeldung ausstehend“ mit dem ersten
-Anmeldetermin als Frist – auch in Terminen und Übersicht.
+keine Anmeldung hat, steht dort stattdessen „Erstanmeldung ausstehend“ mit der Frist der ersten
+Anmeldung laut Richtlinie – auch in Terminen und Übersicht.
 
 - Ist die Prüfung je Fahrplanjahr richtig, oder je Maßnahme/Bauabschnitt?
 - Reicht jeder Eintrag außer einer Anmeldeleiche als „abgedeckt“, oder muss er einen bestimmten
@@ -179,7 +191,7 @@ A_Vor_N-2 auf A_Vor_N-1 ändern?
 
 *Entwurf:* Der Status wird erneut gesetzt, das neue Datum im Verlauf festgehalten. Eine Art
 A_Vor_N-1 gibt es nicht mehr: Im KM gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht
-verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt, sonst die N-1-Frist
+verstrichen ist und nicht vor der ersten Anmeldung des Projekts liegt, sonst die N-1-Frist
 (siehe E9).
 
 **D4. X5 → Y4** – Eine im Vorprozess genehmigte Anmeldung wird direkt „Angemeldet_fristgerecht“
@@ -290,8 +302,8 @@ Vorprozessen N-x (KM) immer fristgerecht erfolgen. Gibt es Ausnahmen, die abgebi
 
 **E9. ★ KM: N-2 oder N-1** – Bisher entschied die Art (A_Vor_N-2 oder A_Vor_N-1), welche Frist im
 KM gilt. Ohne diese Arten wählt die Anwendung selbst: Es gilt die N-2-Frist, solange sie am Tag
-des Statuswechsels nicht verstrichen ist und nicht vor dem ersten Anmeldetermin des Projekts liegt
-(MIC betreut dann erst ab N-1), sonst die N-1-Frist; der Rechenweg nennt den Grund.
+des Statuswechsels nicht verstrichen ist und nicht vor der ersten Anmeldung des Projekts liegt
+(ihrer Frist laut Richtlinie, siehe B2 – MIC betreut dann erst ab N-1), sonst die N-1-Frist; der Rechenweg nennt den Grund.
 Passt das, oder gibt es Maßnahmen, die unabhängig vom Zeitpunkt in N-2 (bzw. N-1) angemeldet
 werden müssen?
 
@@ -303,7 +315,8 @@ Stimmt das so, und bis wann am Mittwoch muss die Anmeldung eingehen?
 **E11. ★ Zuständigkeit je Status** – Jeder Status nennt, wer am Zug ist: MIC, BBK oder
 Projektleitung DB. *Entwurf:* MIC bei Entwurf, Zugestimmt, Genehmigt und Abgelehnt; BBK bei
 Mitwirkung BBK, Angemeldet und Änderungsabstimmung; die Anmeldeleiche ohne Zuständigkeit. Die Liste
-nennt dazu den Namen (Mitwirkender BBK der Anmeldung – auch mehrere –, Hauptbearbeiter MIC, Projektleiter). Passt
+nennt für BBK dazu den Namen (Mitwirkender BBK der Anmeldung – auch mehrere); für MIC und
+Projektleitung DB nur die Rolle, seit ein Projekt weder Hauptbearbeiter noch Projektleiter führt. Passt
 die Vorbelegung, und braucht es weitere Rollen (z. B. Fahrplan/Kapazitätsmanagement DB, EVU)?
 
 ---
@@ -317,6 +330,7 @@ Vertretung)? Brauchen mehrere Personen denselben Datenbestand?
 Bestand setzt eine Datenbank voraus.
 
 **F2. Sicht „Meine Projekte“** – Soll nach Hauptbearbeiter gefiltert werden können?
+(Einen Hauptbearbeiter führt ein Projekt seit dem 19.11.2026 nicht mehr.)
 
 *Entwurf:* Markieren mit ★ wie im Planlaufmanagement.
 
@@ -338,7 +352,7 @@ Prozessphase (2. KP = KM N-2, 3. KP = KM N-1, KKM) und Titel. Je Anmelde-ID eine
 frühesten Beginn und dem spätesten Ende aller Zeilen; „Vorlage“ wird übersprungen. Status:
 „Anmeldung in Bearbeitung“ → Angemeldet, „Anmeldung bearbeitet“ → Genehmigt, „Anmeldung
 abgewiesen“ → Abgelehnt – im Dialog änderbar und gemerkt. Neue Anmeldungen kommen in das Projekt
-mit derselben DB-G-Nummer, sonst wählt man ein Projekt oder legt eines an. Vorhandene Anmeldungen
+mit derselben G-Nummer, sonst wählt man ein Projekt oder legt eines an. Vorhandene Anmeldungen
 derselben ID übernehmen alle Angaben aus BBPNeo; ein anderer Status steht als Statuswechsel „Import
 BBPNeo“ im Verlauf. Offen:
 

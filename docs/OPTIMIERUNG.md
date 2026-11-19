@@ -35,6 +35,20 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 >   Rot.
 > * **Menüleiste:** im hellen Schema hell, dunkel nur im dunklen Schema – in allen drei Bereichen
 >   gleich (`.sidebar` in `src/shared/global.css`).
+>
+> **Nachtrag 19.11.2026 – Projekte anlegen.** Berührt sind:
+>
+> * **U-5:** Das Beispiel für die Projektnummer ist in allen drei Bereichen „K1234“. Offen bleiben
+>   die übrigen Wörter (Projektname/Bezeichnung, Knöpfe, Meldungen).
+> * **U-7:** In der Baubetriebsplanung heißen die Felder „Projektnummer“ und „G-Nummer“ (bisher
+>   „MIC-Projektnummer (wiko)“ und „DB-G-Nummer“). Welche Nummer in Übersicht und Terminen führt,
+>   ist weiter offen.
+> * **U-13:** Die Baubetriebsplanung führt keinen Status der Betreuung mehr – ein abgeschlossenes
+>   Projekt wird dort archiviert. Die Frage stellt sich noch für Planlaufmanagement und
+>   Projektsteuerung.
+> * **Übernehmen in …:** In der Baubetriebsplanung öffnet der Knopf die Maske „Neues Projekt“,
+>   vorausgefüllt mit dem Bekannten; in den beiden anderen Bereichen legt er das Projekt weiter
+>   sofort an.
 
 Diese Liste beantwortet die Frage: **Wo lösen Planlaufmanagement, Baubetriebsplanung und
 Projektsteuerung dasselbe unterschiedlich – in der Funktion, im Wortlaut, in der Optik oder im

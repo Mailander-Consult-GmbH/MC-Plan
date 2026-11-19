@@ -302,7 +302,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Stammdaten gleicher Nummer
   führt `stammdatenZusammenfuehren` zusammen – das Register gilt, Abweichungen des Bereichs stehen
   als Vermerk in der Beschreibung) und die beiden Aktionen unmittelbar auf dem Register,
-  `inBereichUebernehmen` („Übernehmen in …“) und `bereichArchivieren` (Archiv je Bereich, über die
+  `inBereichUebernehmen` („Übernehmen in …“; mit `stammdaten`, wenn der Bereich das Projekt in
+  seiner eigenen Maske selbst anlegt – Baubetriebsplanung) und `bereichArchivieren` (Archiv je Bereich, über die
   Kennung im Bereich); `useRegisterAbgleich.ts`
   bindet einen Store an; `useFremdeAenderung.ts` lädt den Bestand eines Stores nach, wenn ein
   anderes Fenster seinen Schlüssel (`SPEICHER_SCHLUESSEL` aus `store/storage.ts`) speichert –
@@ -311,7 +312,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   ändert; nicht zurückschreiben; nicht `ersetzt()`);
   `ProjektBereiche.tsx` Bausteine der Projektlisten und Projekte („Auch in“, „Projekte aus anderen
   Bereichen“ mit „Übernehmen in …“ – ohne Projekte, die in allen ihren Bereichen archiviert sind,
-  `FremdeProjekte`; die Projektlisten zeigen den Abschnitt nur bei `ladeZustand === 'ok'`, sonst
+  `FremdeProjekte`; mit `onUebernehmen` zeigt der Bereich stattdessen seine Maske für ein neues
+  Projekt, vorausgefüllt mit dem Bekannten (`UebernahmeHinweis`, `uebernahmeMeldung`); die Projektlisten zeigen den Abschnitt nur bei `ladeZustand === 'ok'`, sonst
   sähe das Register eine Übernahme vor, die der Bereich nicht anlegt –, `ArchivAbschnitt`,
   `VerknuepfungsHinweis` (nennt ein überall archiviertes Projekt „(dort archiviert)“),
   `useSucheOhneTreffer` (Leerzustand der Projektlisten bei einer Suche ohne aktiven Treffer – nennt
@@ -449,7 +451,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   angezeigt in den Anmeldungstabellen des Projekts, `SachstandKompakt`),
   `domain/bbpImport.ts` Import aus BBPNeo (nur KM und KKM; Spalten über ihre Überschriften
   „Anmeldung::…“, je Anmelde-ID eine Anmeldung mit frühestem Beginn und spätestem Ende,
-  Statuszuordnung in `Einstellungen.bbpStatus`, Projekte über die DB-G-Nummer – Anmeldungen, die
+  Statuszuordnung in `Einstellungen.bbpStatus`, Projekte über die G-Nummer (`dbGNummer`) – Anmeldungen, die
   eine Projektnummer verbindet, bilden eine Projektgruppe, `projektGruppen`; einen anderen
   Status setzt `statusUebernehmen` in `domain/ablauf.ts` ohne Nachfolger-Prüfung, mit Vorstand
   zum Zurücknehmen; Seite `pages/BbpImport.tsx`, Route `import`, Menüpunkt zwischen „Projekte“ und
@@ -461,7 +463,17 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   (`baubetrieb/domain/types.ts`) und `migriere()` (`baubetrieb/store/storage.ts`). Die festen IDs
   der Standard-Status nicht ändern – `STATUS_AUS_NUMMER` ordnet ihnen ältere Stände zu. Stände
   bis Fassung 5 führten die KM-Runde in der Maßnahmenart; die Umstellung übernimmt sie nach
-  `kmRunde` (`RUNDE_BIS_FASSUNG5` in `store/storage.ts`).
+  `kmRunde` (`RUNDE_BIS_FASSUNG5` in `store/storage.ts`). Ein Projekt führt Bezeichnung,
+  Projektnummer (verknüpft über das Register), G-Nummer (`dbGNummer`, für den Import), Prozessphase
+  der ersten Anmeldung, Fahrplanjahre, Inbetriebnahme und Bemerkung – Projektleiter,
+  Hauptbearbeiter, erster Anmeldetermin (ca.) und Status der Betreuung sind seit Fassung 12
+  entfallen und kommen nicht wieder hinein, ohne dass es verlangt wird. Die Frist der ersten
+  Anmeldung und den Beginn der Betreuung liefert allein `ersterTermin` bzw. `betreuungAb`
+  (`domain/fristen.ts`) aus Prozessphase und erstem Fahrplanjahr; ein abgeschlossenes Projekt
+  wird archiviert. „Übernehmen in Baubetriebsplanung“ öffnet `ProjektDialog` mit `uebernahme`
+  (`pages/Projekte.tsx`): erst `addProjekt` mit der Kennung, dann `inBereichUebernehmen` mit
+  derselben Kennung und den Stammdaten der Maske – in dieser Reihenfolge, sonst legte der
+  Abgleich das Projekt ein zweites Mal mit Vorgabewerten an.
 * `src/bereiche/projektsteuerung/` – gleich aufgebaut, Schlüssel `projektsteuerung.data.v1`:
   `domain/types.ts` Datenmodell (projektübergreifende `Funktion`, `Beteiligter` mit `funktionId`,
   `Protokoll`), `domain/protokoll.ts` Reihen, Folgeprotokoll, Löschen (`protokollLoeschen` –
