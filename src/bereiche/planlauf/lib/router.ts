@@ -17,7 +17,6 @@ export type Route =
   | { view: 'rollen' }
   | { view: 'vorlagen' }
   | { view: 'terminrechner' }
-  | { view: 'admin' }
   | { view: 'projekt'; projectId: ID; tab: ProjektTab }
   | { view: 'planlauf'; projectId: ID; runId: ID };
 
@@ -69,7 +68,6 @@ export function hashToRoute(hash: string): Route {
   if (teile[0] === 'rollen') return { view: 'rollen' };
   if (teile[0] === 'vorlagen') return { view: 'vorlagen' };
   if (teile[0] === 'terminrechner') return { view: 'terminrechner' };
-  if (teile[0] === 'admin') return { view: 'admin' };
   return { view: 'dashboard' };
 }
 

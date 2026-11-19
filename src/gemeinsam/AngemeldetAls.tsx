@@ -11,8 +11,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Field, Modal, Segmented, TextInput, beiEnter } from '../shared/ui';
-import { STANDARD_NAME, benutzerAendern, initialen, useBenutzer, type Farbschema } from './benutzer';
-import { eigenenNamenNachziehen } from './rollen';
+import { benutzerAendern, initialen, useBenutzer, type Farbschema } from './benutzer';
 import './gemeinsam.css';
 
 /** Eigene Einstellung eines Bereichs im Dialog – ein Haken. */
@@ -77,8 +76,6 @@ export function BenutzerDialog({
   const [zusatzWert, setZusatzWert] = useState(zusatz?.wert ?? false);
 
   const uebernehmen = () => {
-    // Der Eintrag eines KaPlan-Admins im Personenverzeichnis zieht mit – sonst sperrte er sich selbst aus
-    eigenenNamenNachziehen(benutzer.name, name.trim() || STANDARD_NAME);
     benutzerAendern({ name, farbschema });
     if (zusatz && zusatzWert !== zusatz.wert) zusatz.uebernehmen(zusatzWert);
     onClose();

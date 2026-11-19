@@ -9,7 +9,6 @@
  *   #/baubetrieb/projekt/<id>/anmeldung/<id>      Anmeldung mit Statusverlauf
  *   #/baubetrieb/import                           Import aus BBPNeo
  *   #/baubetrieb/workflows                        Workflows (früher #/baubetrieb/workflow)
- *   #/baubetrieb/admin                            Admin: Personen, Rollen, Sicherung (nur KaPlan-Admin)
  *   #/baubetrieb/fristen                          Fristen laut Richtlinie, Ampel und Nachhaken
  *                                                 (früher #/baubetrieb/einstellungen)
  *
@@ -28,7 +27,6 @@ export type Route =
   | { view: 'import' }
   | { view: 'workflows' }
   | { view: 'fristen' }
-  | { view: 'admin' }
   | { view: 'projekt'; projektId: ID }
   | { view: 'anmeldung'; projektId: ID; anmeldungId: ID };
 
@@ -58,7 +56,6 @@ export function hashToRoute(hash: string): Route {
   if (teile[0] === 'termine') return { view: 'termine' };
   if (teile[0] === 'projekte') return { view: 'projekte' };
   if (teile[0] === 'import') return { view: 'import' };
-  if (teile[0] === 'admin') return { view: 'admin' };
   // Die frühere Adresse „workflow“ führt auf dieselbe Seite.
   if (teile[0] === 'workflows' || teile[0] === 'workflow') return { view: 'workflows' };
   // Die frühere Seite „Einstellungen“ heißt jetzt „Fristen“.

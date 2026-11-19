@@ -26,8 +26,6 @@ import { Hinweisleisten } from './components/Hinweisleisten';
 import { useArchivierte } from '../../gemeinsam/ProjektBereiche';
 import { AngemeldetAls } from '../../gemeinsam/AngemeldetAls';
 import { RegisterHinweis } from '../../gemeinsam/RegisterHinweis';
-import { AdminSeite, AnsichtHinweis, KeinZugriff } from '../../gemeinsam/Admin';
-import { darf, useRolle } from '../../gemeinsam/rollen';
 import type { IconName } from '../../shared/icons';
 import { useNachObenBeiSeitenwechsel } from '../../shared/scrollen';
 import { SeitenleisteGriff, SeitenleisteKnopf, useSeitenleiste } from '../../shared/seitenleiste';
@@ -35,10 +33,6 @@ import { SeitenleisteGriff, SeitenleisteKnopf, useSeitenleiste } from '../../sha
 export function App() {
   const { data, zuruecksetzen, ladeZustand, setBearbeiter } = useStore();
   const toast = useToast();
-  // Was die Rolle der Person freischaltet: die projektübergreifenden Einstellungen und den Bereich „Admin“
-  const { rolle } = useRolle();
-  const mitEinstellungen = darf(rolle, 'einstellungen');
-  const mitAdmin = darf(rolle, 'admin');
   const [route, navigate] = useRoute();
   // Eine neue Seite beginnt oben – ein Reiterwechsel nicht (src/shared/scrollen.ts)
   const inhalt = useNachObenBeiSeitenwechsel<HTMLDivElement>(route.view === 'projekt' ? `projekt/${route.projectId}` : route.view === 'planlauf' ? `planlauf/${route.runId}` : route.view);
@@ -70,45 +64,6 @@ export function App() {
 
   const kopf = kopfzeile(route, projekt?.name, lauf?.name);
 
-  // Sichern, Einspielen und Zurücksetzen dieses Bereichs – stehen im Bereich „Admin“ (AdminSeite)
-  const nurProjektadmins = <KeinZugriff fuer="Projektadmins" onZurueck={() => gehe({ view: 'dashboard' })} />;
-  const sicherungsKnoepfe = (
-    <div className="row wrap">
-      <button
-        type="button"
-        className="btn btn-sm btn-outline"
-        onClick={() => {
-          // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
-          // gesichert wird dann der gespeicherte Stand, unverändert.
-          if (ladeZustand === 'ok') exportiereDaten(data);
-          else if (!rohdatenHerunterladen())
-            toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
-        }}
-        title={
-          ladeZustand === 'ok'
-            ? 'Gesamten Datenbestand als JSON sichern'
-            : 'Gespeicherten Stand unverändert herunterladen'
-        }
-      >
-        <Icon name="export" size={12} /> Sicherung
-      </button>
-      <SicherungWaehlen onGelesen={setSicherung} />
-      <button
-        type="button"
-        className="btn btn-sm btn-outline"
-        onClick={() => setZuruecksetzenDialog(true)}
-        disabled={ladeZustand === 'neuere_fassung'}
-        title={
-          ladeZustand === 'neuere_fassung'
-            ? 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt'
-            : undefined
-        }
-      >
-        Zurücksetzen
-      </button>
-    </div>
-  );
-
   return (
     <div className={`app ${leiste.eingeklappt ? 'leiste-zu' : ''}`}>
       {/* layoutScroll: Die Fläche des aktiven Menüpunkts (NavAktiv) gleitet auch in der gescrollten Leiste an die richtige Stelle */}
@@ -135,25 +90,20 @@ export function App() {
           onClick={() => gehe({ view: 'terminrechner' })}
         />
         {/* Workflows, Funktionen und Vorlagen gebündelt unter „Einstellungen“ */}
-        {mitEinstellungen ? (
-          <NavItem
-            icon="einstellungen"
-            label="Einstellungen"
-            aktiv={false}
-            offen={einstellungenOffen}
-            onClick={() => setEinstellungenOffen((o) => !o)}
-          />
-        ) : null}
-        {mitEinstellungen && einstellungenOffen ? (
+        <NavItem
+          icon="einstellungen"
+          label="Einstellungen"
+          aktiv={false}
+          offen={einstellungenOffen}
+          onClick={() => setEinstellungenOffen((o) => !o)}
+        />
+        {einstellungenOffen ? (
           <>
             <NavItem unter icon="kette" label="Workflows" aktiv={route.view === 'ketten'} onClick={() => gehe({ view: 'ketten' })} />
             <NavItem unter icon="person" label="Funktionen" aktiv={route.view === 'rollen'} onClick={() => gehe({ view: 'rollen' })} />
             <NavItem unter icon="kopieren" label="Vorlagen" aktiv={route.view === 'vorlagen'} onClick={() => gehe({ view: 'vorlagen' })} />
           </>
         ) : null}
-
-        {/* Personen, Rollen und Sicherung – nur für die Rolle KaPlan-Admin (src/gemeinsam/rollen.ts) */}
-        {mitAdmin ? <NavItem icon="admin" label="Admin" aktiv={route.view === 'admin'} onClick={() => gehe({ view: 'admin' })} /> : null}
 
         {/* Die markierten Projekte – in der eingeklappten Leiste nur ihr Symbol (Name im Tooltip), unter einer Trennlinie */}
         <div className="nav-projekte">
@@ -187,6 +137,40 @@ export function App() {
               uebernehmen: (mailNachfrage) => setBearbeiter({ mailNachfrage }),
             }}
           />
+          <div className="sicherung-knoepfe">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => {
+                // Nach einem Lade- oder Fassungsfehler zeigt die Seite nur Demodaten –
+                // gesichert wird dann der gespeicherte Stand, unverändert.
+                if (ladeZustand === 'ok') exportiereDaten(data);
+                else if (!rohdatenHerunterladen())
+                  toast('Es ist kein gespeicherter Stand vorhanden, der sich herunterladen ließe.');
+              }}
+              title={
+                ladeZustand === 'ok'
+                  ? 'Gesamten Datenbestand als JSON sichern'
+                  : 'Gespeicherten Stand unverändert herunterladen'
+              }
+            >
+              <Icon name="export" size={12} /> Sicherung
+            </button>
+            <SicherungWaehlen onGelesen={setSicherung} />
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => setZuruecksetzenDialog(true)}
+              disabled={ladeZustand === 'neuere_fassung'}
+              title={
+                ladeZustand === 'neuere_fassung'
+                  ? 'Gesperrt, damit der Stand aus der neueren Fassung erhalten bleibt'
+                  : undefined
+              }
+            >
+              Zurücksetzen
+            </button>
+          </div>
           <span className="sidebar-hinweis">Daten werden lokal im Browser gespeichert.</span>
           <BereichWechsel />
         </div>
@@ -213,21 +197,13 @@ export function App() {
         <div className="content" ref={inhalt}>
           <div className="content-inner">
             <RegisterHinweis />
-            <AnsichtHinweis />
             <Einblenden schluessel={route.view}>
               {route.view === 'dashboard' ? <Dashboard navigate={gehe} /> : null}
               {route.view === 'fristen' ? <Fristen navigate={gehe} /> : null}
               {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
-              {route.view === 'ketten' ? (mitEinstellungen ? <Workflows /> : nurProjektadmins) : null}
-              {route.view === 'rollen' ? (mitEinstellungen ? <Funktionen /> : nurProjektadmins) : null}
-              {route.view === 'vorlagen' ? (mitEinstellungen ? <Vorlagen /> : nurProjektadmins) : null}
-              {route.view === 'admin' ? (
-                mitAdmin ? (
-                  <AdminSeite bereich="Planlaufmanagement" sicherung={sicherungsKnoepfe} />
-                ) : (
-                  <KeinZugriff fuer="KaPlan-Admins" onZurueck={() => gehe({ view: 'dashboard' })} />
-                )
-              ) : null}
+              {route.view === 'ketten' ? <Workflows /> : null}
+              {route.view === 'rollen' ? <Funktionen /> : null}
+              {route.view === 'vorlagen' ? <Vorlagen /> : null}
               {route.view === 'terminrechner' ? <Terminrechner /> : null}
               {route.view === 'projekt' ? (
                 projekt ? (
@@ -364,8 +340,6 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
       return { titel: 'Vorlagen', sub: 'E-Mail-Texte und Excel-Vorlagen für den Upload' };
     case 'terminrechner':
       return { titel: 'Terminrechner', sub: 'Späteste Übergabe und Ende des Planlaufs aus den Fristen' };
-    case 'admin':
-      return { titel: 'Admin', sub: 'Personen, Rollen und Sicherung' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'planlauf':

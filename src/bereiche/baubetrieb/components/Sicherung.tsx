@@ -17,7 +17,7 @@ export interface Sicherung {
   daten: BaubetriebDaten;
 }
 
-/** Schaltfläche „Einspielen“ im Bereich „Admin“: wählt die Datei und liest sie. */
+/** Schaltfläche „Einspielen“ in der Seitenleiste: wählt die Datei und liest sie. */
 export function SicherungWaehlen({ onGelesen }: { onGelesen: (s: Sicherung) => void }) {
   const toast = useToast();
   const eingabe = useRef<HTMLInputElement>(null);
