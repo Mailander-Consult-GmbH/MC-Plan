@@ -24,8 +24,10 @@ export type ID = string;
  * Anmeldetermin (ca.) und Status der Betreuung – die Frist der ersten Anmeldung
  * ergibt sich allein aus Prozessphase und Fahrplanjahren, abgeschlossene
  * Projekte werden archiviert.
+ * Fassung 13: Import aus PzE – gemerkte Auswahl der Ersteller und Zuordnung der
+ * Projekte aus PzE zu Projekten in KaPlan (Einstellungen).
  */
-export const DATEN_VERSION = 12;
+export const DATEN_VERSION = 13;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -476,6 +478,13 @@ export interface Einstellungen {
   rilFristen: Record<RilSchluessel, RilFrist>;
   /** Statuszuordnung des BBPNeo-Imports – merkt sich die Wahl im Import-Dialog. */
   bbpStatus: BbpStatusZuordnung;
+  /**
+   * Import aus PzE: welche Ersteller („Erstellt von“) relevant sind – nur ihre
+   * Vorhaben werden importiert. Wer hier fehlt, gilt als nicht relevant.
+   */
+  pzeErsteller: Record<string, boolean>;
+  /** Import aus PzE: Projekt aus PzE („Enthaltene Projekte“) → Projekt in KaPlan. */
+  pzeProjekte: Record<string, ID>;
 }
 
 export interface BaubetriebDaten {

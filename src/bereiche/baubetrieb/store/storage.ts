@@ -101,7 +101,20 @@ function einstellungenAufbereiten(roh: Partial<Einstellungen> | undefined): Eins
     bedarfVorschauTage: zahl(roh?.bedarfVorschauTage, vorgabe.bedarfVorschauTage),
     rilFristen: ril,
     bbpStatus: bbpStatusAufbereiten(roh?.bbpStatus),
+    pzeErsteller: zuordnungAufbereiten(roh?.pzeErsteller, (w): w is boolean => typeof w === 'boolean'),
+    pzeProjekte: zuordnungAufbereiten(roh?.pzeProjekte, (w): w is string => typeof w === 'string' && !!w),
   };
+}
+
+/** Gespeicherte Zuordnung des PzE-Imports (Text aus PzE → Wert); Unlesbares fällt weg. */
+function zuordnungAufbereiten<T>(roh: unknown, gueltig: (w: unknown) => w is T): Record<string, T> {
+  const zuordnung: Record<string, T> = {};
+  if (!roh || typeof roh !== 'object' || Array.isArray(roh)) return zuordnung;
+  for (const [schluessel, wert] of Object.entries(roh)) {
+    // Auch der leere Schlüssel gilt – ein Ersteller ohne Angabe lässt sich ebenso wählen
+    if (gueltig(wert)) zuordnung[schluessel.trim()] = wert;
+  }
+  return zuordnung;
 }
 
 /** Gespeicherte Statuszuordnung des BBPNeo-Imports über die Vorgabe gelegt. */

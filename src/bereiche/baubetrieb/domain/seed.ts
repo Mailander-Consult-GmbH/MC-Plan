@@ -73,6 +73,8 @@ export function standardEinstellungen(): Einstellungen {
     bedarfVorschauTage: 180,
     rilFristen: standardRilFristen(),
     bbpStatus: bbpStatusVorgabe(),
+    pzeErsteller: {},
+    pzeProjekte: {},
   };
 }
 

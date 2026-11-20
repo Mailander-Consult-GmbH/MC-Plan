@@ -1,7 +1,8 @@
 /**
  * Seite „Excel-Import“ (eigener Punkt in der Seitenleiste, #/baubetrieb/import)
- * mit zwei Kacheln: „Import aus BBPNeo“ und „Import aus PzE“ (Platzhalter, bis
- * die Excel-Vorlage aus PzE feststeht – `PzeImport`).
+ * mit zwei Kacheln: „Import aus BBPNeo“ (hier) und „Import aus PzE“
+ * (`usePzeImport`, pages/PzeImport.tsx); die Vorschau einer gelesenen Datei
+ * steht unter den Kacheln.
  *
  * Import aus BBPNeo: Export des vorkonfigurierten BBPNeo-Berichts „Export
  * Anmeldungen (Excel) (OS)“ wählen, Status aus BBPNeo den Status
@@ -17,6 +18,7 @@ import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Badge, Callout, Card, CardHeader, Field, Select, TextInput, alsKnopf } from '../../../shared/ui';
 import { tabelleLesen, type GeleseneTabelle } from '../../../shared/xlsxLesen';
+import { istPzeBlatt } from '../domain/pzeImport';
 import {
   BBP_PHASE_LABEL,
   BBP_SPALTEN,
@@ -34,6 +36,7 @@ import type { BbpPhase, BbpStatusZuordnung, ID, Workflow } from '../domain/types
 import { startbareWorkflows, zielText } from '../domain/workflow';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
+import { usePzeImport } from './PzeImport';
 
 const ERGEBNIS: Record<BbpErgebnis, { label: string; ton: '' | 'green' | 'blue' | 'orange' }> = {
   neu: { label: 'neu', ton: 'green' },
@@ -77,46 +80,10 @@ function StatusWahl({
   );
 }
 
-/**
- * Kachel „Import aus PzE“ – Platzhalter, bis die Excel-Vorlage aus PzE
- * feststeht. Die Ablagefläche liest keine Datei; eine hierher gezogene meldet
- * nur, dass der Import noch nicht eingerichtet ist (und der Browser öffnet sie
- * nicht selbst).
- */
-function PzeImport() {
-  const [datei, setDatei] = useState<string | null>(null);
-  return (
-    <Card>
-      <CardHeader titel="Import aus PzE" sub="Anmeldungen im SKM und KMK aus PzE" actions={<Badge>in Vorbereitung</Badge>} />
-      <div className="card-pad stack" style={{ gap: 14 }}>
-        <div
-          className="drop-zone bb-imp-platzhalter"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            const f = e.dataTransfer.files[0];
-            if (f) setDatei(f.name);
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-            <Icon name="importieren" size={26} strokeWidth={1.4} />
-          </div>
-          <strong>Excel-Export aus PzE hierher ziehen</strong>
-          <div className="small">Der Import aus PzE folgt, sobald die Excel-Vorlage feststeht.</div>
-        </div>
-        {datei ? (
-          <Callout role="status">
-            „{datei}“ wurde nicht gelesen – der Import aus PzE ist noch nicht eingerichtet.
-          </Callout>
-        ) : null}
-      </div>
-    </Card>
-  );
-}
-
 export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
   const { data, bbpImportieren } = useStore();
   const toast = useToast();
+  const pze = usePzeImport(navigate);
   const eingabe = useRef<HTMLInputElement>(null);
   const [ueber, setUeber] = useState(false);
   const [datei, setDatei] = useState<string | null>(null);
@@ -151,10 +118,13 @@ export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
     setProjektWahl({});
     setProjektNamen({});
     try {
-      const tabellen = (await tabelleLesen(f)).filter((t) => istBbpBlatt(t.zeilen[0] ?? []));
+      const alle = await tabelleLesen(f);
+      const tabellen = alle.filter((t) => istBbpBlatt(t.zeilen[0] ?? []));
       if (tabellen.length === 0) {
         setFehler(
-          `Die Datei enthält keinen Export der Anmeldungen aus BBPNeo – erwartet werden die Spalten „${BBP_SPALTEN.id.koepfe[0]}“, „${BBP_SPALTEN.status.koepfe[0]}“ und „${BBP_SPALTEN.phase.koepfe[0]}“.`,
+          alle.some((t) => istPzeBlatt(t.zeilen[0] ?? []))
+            ? 'Die Datei ist eine Vorhaben-Übersicht aus PzE – bitte in die Kachel „Import aus PzE“ ziehen.'
+            : `Die Datei enthält keinen Export der Anmeldungen aus BBPNeo – erwartet werden die Spalten „${BBP_SPALTEN.id.koepfe[0]}“, „${BBP_SPALTEN.status.koepfe[0]}“ und „${BBP_SPALTEN.phase.koepfe[0]}“.`,
         );
         return;
       }
@@ -251,6 +221,7 @@ export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
           </div>
         </Callout>
       ) : null}
+      {pze.meldung}
 
       <div className="grid grid-2">
         <Card>
@@ -324,13 +295,13 @@ export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
             ) : null}
           </div>
         </Card>
-        <PzeImport />
+        {pze.kachel}
       </div>
 
       {gelesen && plan ? (
         <Card>
           <CardHeader
-            titel="Vorschau"
+            titel="Vorschau – Import aus BBPNeo"
             sub={`Blatt „${gelesen.blatt}“`}
             actions={
               <>
@@ -535,6 +506,7 @@ export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
           </div>
         </Card>
       ) : null}
+      {pze.vorschau}
     </div>
   );
 }

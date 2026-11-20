@@ -457,8 +457,11 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   eine Projektnummer verbindet, bilden eine Projektgruppe, `projektGruppen`; einen anderen
   Status setzt `statusUebernehmen` in `domain/ablauf.ts` ohne Nachfolger-Prüfung, mit Vorstand
   zum Zurücknehmen; Seite `pages/BbpImport.tsx`, Route `import`, Menüpunkt „Excel-Import“ zwischen
-  „Projekte“ und „Einstellungen“; daneben die Kachel „Import aus PzE“ – ein Platzhalter, `PzeImport`,
-  bis die Excel-Vorlage aus PzE feststeht),
+  „Projekte“ und „Einstellungen“), daneben `domain/pzeImport.ts` Import aus PzE (Export der
+  „Vorhaben Übersicht“, Kachel und Vorschau aus `usePzeImport` in `pages/PzeImport.tsx`; legt nur
+  an, je Vorhaben und Fahrplanjahr eine Anmeldung mit der Bezeichnung als `vorhaben`, SKM oder MKM
+  nach der SKM-Frist – `vorgabeWorkflow`; vorhanden ist, was Bezeichnung und Fahrplanjahr teilt;
+  relevante Ersteller und Projektzuordnung merkt `Einstellungen.pzeErsteller`/`pzeProjekte`),
   `store/` mit eigenem Schlüssel `baubetrieb-planung.data.v1`. Workflows und Fristen stehen in der
   Seitenleiste unter der aufklappbaren Gruppe „Einstellungen“ (wie im Planlaufmanagement);
   „Status ändern“ ist `NachfolgerAuswahl` (Haken in `components/baubetrieb.css`, Präfix

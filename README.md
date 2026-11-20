@@ -1068,9 +1068,9 @@ aus …“, die führende Bezeichnung erhält „(Kopie)“, ohne Nummer wird �
 **Excel-Import** – ein eigener Punkt in der Seitenleiste zwischen *Projekte* und *Einstellungen*
 (`#/baubetrieb/import`, „Anmeldungen aus BBPNeo und PzE“) – zeigt zwei Kacheln nebeneinander
 (schmal untereinander): **Import aus BBPNeo** (Anmeldungen im KM und KKM) und **Import aus PzE**
-(Anmeldungen im SKM und KMK). Der Import aus PzE ist noch ein **Platzhalter** („in Vorbereitung“),
-bis die Excel-Vorlage aus PzE feststeht: Eine auf seine Fläche gezogene Datei wird nicht gelesen,
-die Kachel meldet nur, dass der Import noch nicht eingerichtet ist.
+(Anmeldungen im SKM und MKM). Unter den Kacheln erscheint nach dem Lesen einer Datei ihre Vorschau
+(„Vorschau – Import aus BBPNeo“ bzw. „Vorschau – Import aus PzE“). Landet eine Datei in der falschen
+Kachel, nennt die Meldung die richtige.
 
 **Import aus BBPNeo** legt Anmeldungen aus dem Export des vorkonfigurierten BBPNeo-Berichts
 „Export Anmeldungen (Excel) (OS)“ an bzw. aktualisiert sie – **nur KM und KKM**. Die Spalten erkennt der Import an ihren Überschriften,
@@ -1103,11 +1103,37 @@ AC `Anmeldung::Mitwirkende BBK`, AG `Anmeldung::Projektnummern`, AH `Anmeldung::
   als Statuswechsel mit dem Tag des Imports und dem Vermerk „Import BBPNeo (Status in BBPNeo: …)“
   gesetzt – auch wenn er kein Nachfolger des bisherigen ist – und lässt sich wie jeder Wechsel
   zurücknehmen. Neue Anmeldungen beginnen im zugeordneten Status („Aus BBPNeo importiert“).
-* Unter den beiden Kacheln erscheint nach dem Lesen der Datei die Karte **Vorschau**. Sie zählt, was neu
+* Unter den beiden Kacheln erscheint nach dem Lesen der Datei die **Vorschau**. Sie zählt, was neu
   angelegt, aktualisiert (davon mit neuem Status), unverändert gelassen und übersprungen wird, und
   nennt je Anmeldung Phase, Sperrzeitraum, Status in BBPNeo und KaPlan sowie das Ergebnis;
   **Verwerfen** und **Importieren** stehen oben und unten. Nach dem Import meldet die Seite das
   Ergebnis (mit **Zu den Projekten**) und ist für die nächste Datei leer.
+
+**Import aus PzE** liest den Export der **„Vorhaben Übersicht“** aus PzE (Spalten Bezeichnung,
+Erstellt von, Erstellt am, Anzahl enthaltene tVEn, Enthaltene Fahrplanjahre, Enthaltene Projekte,
+Enthaltene Streckennummern – erkannt an den Überschriften; nötig sind Bezeichnung, Fahrplanjahre
+und Projekte). PzE kennt keinen Status: Der Import **legt nur an** – Anmeldungen und Projekte – und
+ändert vorhandene Anmeldungen nicht.
+
+* **Je Vorhaben und Fahrplanjahr eine Anmeldung:** Aus „2031, 2032“ werden zwei Anmeldungen gleicher
+  Bezeichnung, je eine im ganzen Fahrplanjahr. Die **Bezeichnung** ist der Vorhabenname der Anmeldung
+  (statt Anmelde-ID oder tVE-Nr), **Erstellt von** wird Anmelder; Anzahl der tVEn und
+  Streckennummern stehen in der Bemerkung („PzE: … tVEn (Fahrplanjahre …) · Strecken …“), Ersteller
+  und Datum der Erstellung im Verlauf („Aus PzE importiert (erstellt am … von …)“).
+* **SKM oder MKM:** Vorgegeben ist SKM, solange die SKM-Frist laut Richtlinie für das Fahrplanjahr
+  (31.03. im Jahr N-4, einstellbar unter *Fristen*) noch nicht verstrichen ist, sonst MKM; in der
+  Vorschau je Anmeldung änderbar. Die Anmeldung beginnt im ersten Status des Workflows (Entwurf).
+* **Vorhanden** ist eine Anmeldung, wenn es schon eine mit derselben Bezeichnung (Vorhabenname bzw.
+  Begriff im Feld der Nummer) und demselben Fahrplanjahr gibt – sie bleibt, wie sie ist. Ein
+  zweiter Import derselben Datei legt also nichts doppelt an.
+* **Relevante Ersteller:** In PzE legen auch Externe Vorhaben an. Die Vorschau fragt deshalb, welche
+  Ersteller relevant sind – nur deren Vorhaben werden importiert. KaPlan merkt sich die Auswahl für
+  den nächsten Import; wer zum ersten Mal auftaucht, ist nicht angehakt (Kennzeichen „neu“).
+* **Projekte:** Je Angabe unter „Enthaltene Projekte“ (die ganze Zelle – Projektnamen enthalten selbst
+  Kommas) ein Projekt: das beim letzten Import zugeordnete, sonst eines gleichen Namens, sonst ein
+  neues (Bezeichnung aus PzE, änderbar; Prozessphase der ersten Anmeldung nach dem frühesten
+  Fahrplanjahr, Bemerkung „Beim Import aus PzE angelegt.“). Die Fahrplanjahre der Vorhaben gehen ins
+  Projekt – einem vorhandenen ergänzt der Import fehlende. Auch diese Zuordnung merkt sich KaPlan.
 
 ### Workflows
 Wie im Planlaufmanagement sind die Workflows **anpassbar**. Mitgeliefert wird je Phase ein
@@ -1222,7 +1248,7 @@ auf („Terminfrist wird wieder berechnet.“), ohne solchen Termin verlangt der
 Anmeldebedarf, Projekte mit ihren Anmeldungen je Workflow), **Termine & Nachhaken** (alle Fristen
 nach Projekten, je Projekt zuerst eine ausstehende Erstanmeldung, Filter
 Überfällig/Fällig/Im Plan/Zum Nachhaken; archivierte Projekte fehlen hier wie im Zähler der
-Seitenleiste), **Projekte**, **Excel-Import** (BBPNeo; PzE als Platzhalter) und – wie im Planlaufmanagement unter der
+Seitenleiste), **Projekte**, **Excel-Import** (BBPNeo und PzE) und – wie im Planlaufmanagement unter der
 aufklappbaren Gruppe **Einstellungen** – **Workflows** und **Fristen** (Fristen laut Richtlinie,
 Ampel und Nachhaken; früher die Seite „Einstellungen“, deren Adresse weiter gilt).
 **Excel** im Projekt lädt Anmeldungen und Projekt als Arbeitsmappe herunter.
@@ -1252,7 +1278,8 @@ Status der Standard-Workflows übernehmen die mitgelieferten Entscheidungen, sol
 die Antworten noch enthalten. Fassung 12 nimmt Projektleiter, Hauptbearbeiter, ersten
 Anmeldetermin (ca.) und Status der Betreuung aus den Projekten; war ein Projekt in
 „Betreuungspause“ oder „Abgeschlossen“, steht das danach als Zeile in seiner Bemerkung
-(„Status der Betreuung bisher: …“). Der Name unter „Angemeldet als“
+(„Status der Betreuung bisher: …“). Fassung 13 ergänzt in den Einstellungen die gemerkte Auswahl
+der Ersteller und die Projektzuordnung des PzE-Imports (beide leer). Der Name unter „Angemeldet als“
 gilt in allen Bereichen; er steht im Statusverlauf.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
@@ -1753,13 +1780,14 @@ src/
         fristen.ts   Fahrplanjahr, Terminfrist je Status, Ampel, Anmeldebedarf
         ablauf.ts    Statuswechsel, Übernahme mit Aufteilung, Status aus dem Import, Rücknahme, Sachstand
         bbpImport.ts Import aus BBPNeo: Lesen (je Anmelde-ID), Vorschau, Anwenden
+        pzeImport.ts Import aus PzE: Lesen (Vorhaben Übersicht), Vorschau, Anwenden
         export.ts    Excel-Ausgabe des Monitors
         seed.ts      Platzhalter der Richtlinienfristen und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
       store/         storage.ts (Laden, Migration, Rohkopie, Sicherung) und store.tsx (alle
                      Schreibzugriffe, Lade- und Speicherzustand)
       lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
-      pages/         Übersicht, Termine, Projekte, Excel-Import (BbpImport), Projekt, Anmeldung,
+      pages/         Übersicht, Termine, Projekte, Excel-Import (BbpImport, PzeImport), Projekt, Anmeldung,
                      Workflows (mit Editor), Fristen
       components/    Status- und Fristanzeigen, „Status ändern“ als Haken mit Auswahl (AufklappMenue),
                      Dialoge (Anmeldung, Statuswechsel, Nachhaken), grafischer Workflow-Editor mit
