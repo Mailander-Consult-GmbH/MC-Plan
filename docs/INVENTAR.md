@@ -1135,7 +1135,7 @@ die Übersicht.
 * `pzeImportAnwenden` (im `mutate()`, Kennungen vorab über `pzeIdBedarf`,
   `pzeImportieren` im Store) legt neue Projekte an (Fahrplanjahre der Gruppe,
   `erstePhase` nach dem Workflow des frühesten Fahrplanjahrs, Bemerkung „Beim
-  Import aus PzE angelegt.“), ergänzt vorhandenen fehlende Fahrplanjahre und
+  Import aus PzE angelegt.“, `markiert: false`), ergänzt vorhandenen fehlende Fahrplanjahre und
   legt die Anmeldungen an: `vorhaben` = Bezeichnung, `anmeldeId` leer,
   `anmelder` = „Erstellt von“, ganzes Fahrplanjahr, Bemerkung `pzeBemerkung`
   („PzE: … tVEn (Fahrplanjahre …) · Strecken …“), Verlaufseintrag
