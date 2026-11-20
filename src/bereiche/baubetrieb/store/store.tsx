@@ -19,6 +19,7 @@ import {
   type Wechsel,
 } from '../domain/ablauf';
 import { bbpIdBedarf, bbpImportAnwenden, type BbpGelesen, type BbpOptionen } from '../domain/bbpImport';
+import { pzeIdBedarf, pzeImportAnwenden, type PzeGelesen, type PzeOptionen } from '../domain/pzeImport';
 import { newId, seedDaten } from '../domain/seed';
 import type {
   Anmeldung,
@@ -101,6 +102,12 @@ interface StoreValue {
    * Statuszuordnung – in einem `mutate()`.
    */
   bbpImportieren: (gelesen: BbpGelesen, optionen: BbpOptionen) => void;
+  /**
+   * Import aus PzE (domain/pzeImport.ts): legt Anmeldungen und ggf. Projekte an,
+   * ergänzt Fahrplanjahre vorhandener Projekte und merkt sich Ersteller und
+   * Projektzuordnung – in einem `mutate()`.
+   */
+  pzeImportieren: (gelesen: PzeGelesen, optionen: PzeOptionen) => void;
   /* Verwaltung */
   ersetzeDaten: (d: BaubetriebDaten) => void;
   zuruecksetzen: () => void;
@@ -358,6 +365,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         };
         const kontext = { heute: today(), erfasst: new Date().toISOString() };
         mutate((d) => bbpImportAnwenden(d, gelesen, optionen, ids, { ...kontext, bearbeiter: d.einstellungen.bearbeiter }));
+      },
+      pzeImportieren: (gelesen, optionen) => {
+        // Kennungen vor mutate() – im StrictMode läuft die Änderungsfunktion doppelt.
+        const bedarf = pzeIdBedarf(gelesen);
+        const ids = {
+          anmeldung: Array.from({ length: bedarf.anmeldung }, () => newId('an')),
+          verlauf: Array.from({ length: bedarf.verlauf }, () => newId('vl')),
+          projekt: Array.from({ length: bedarf.projekt }, () => newId('pr')),
+        };
+        const kontext = { heute: today(), erfasst: new Date().toISOString() };
+        mutate((d) => pzeImportAnwenden(d, gelesen, optionen, ids, { ...kontext, bearbeiter: d.einstellungen.bearbeiter }));
       },
 
       ersetzeDaten: (d) => {
