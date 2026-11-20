@@ -27,13 +27,20 @@ export function newId(prefix = 'id'): ID {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-const stichtag = (tag: number, monat: number, jahreVorher: number): RilFrist => ({
+const stichtag = (
+  tag: number,
+  monat: number,
+  jahreVorher: number,
+  jahreVorherAb = jahreVorher,
+  platzhalter = true,
+): RilFrist => ({
   bezug: 'stichtag',
   tag,
   monat,
   jahreVorher,
+  jahreVorherAb,
   wochenVorher: 0,
-  platzhalter: true,
+  platzhalter,
 });
 
 const vorBaubeginn = (wochenVorher: number): RilFrist => ({
@@ -41,19 +48,21 @@ const vorBaubeginn = (wochenVorher: number): RilFrist => ({
   tag: 1,
   monat: 1,
   jahreVorher: 0,
+  jahreVorherAb: 0,
   wochenVorher,
   platzhalter: true,
 });
 
 /**
- * Fristen laut Richtlinie. Die Werte sind Platzhalter für den Entwurf und noch
- * nicht mit der Richtlinie abgeglichen – sie sind unter „Fristen“
- * anzupassen.
+ * Fristen laut Richtlinie. SKM und MKM sind abgeglichen; die übrigen Werte sind
+ * Platzhalter für den Entwurf und noch nicht mit der Richtlinie abgeglichen –
+ * sie sind unter „Fristen“ anzupassen.
  */
 export function standardRilFristen(): Record<RilSchluessel, RilFrist> {
   return {
-    skm: stichtag(31, 3, 4),
-    mkm: stichtag(31, 3, 3),
+    // SKM: Der 22.07. eines Jahres J nimmt die Fahrplanjahre J+5 bis J+9 auf, MKM: der 17.02. J+3 und J+4
+    skm: stichtag(22, 7, 5, 9, false),
+    mkm: stichtag(17, 2, 3, 4, false),
     'N-2': stichtag(31, 10, 2),
     'N-1': stichtag(30, 4, 1),
     A: vorBaubeginn(26),
@@ -199,7 +208,8 @@ export function seedDaten(): BaubetriebDaten {
     name: 'Kabeltiefbau Karlsruhe-Durlach – Bruchsal',
     dbGNummer: 'G.40009012',
     erstePhase: 'skm',
-    fahrplanjahre: fahrplanjahreZwischen(`${jahr + 3}-04-01`, `${jahr + 5}-03-31`),
+    // Fahrplanjahre, die das ganze Jahr über ins SKM gehören (22.07. in N−9 bis N−5)
+    fahrplanjahre: fahrplanjahreZwischen(`${jahr + 6}-04-01`, `${jahr + 8}-03-31`),
     inbetriebnahme: null,
     projektnummer: 'MIC-26-0107',
     bemerkung: 'Betreuungspause bis zur Entwurfsplanung.',
@@ -350,7 +360,7 @@ export function seedDaten(): BaubetriebDaten {
         vorhaben: 'Kabeltiefbau Abschnitt Nord',
         anmeldeId: 'tVE 4000-23',
         verlauf: [['V0', tag(-12)]],
-        fahrplanjahr: jahr + 5,
+        fahrplanjahr: jahr + 7,
         titel: 'Strecke 4020, Durlach – Weingarten – Kabeltiefbau, Querungen',
       },
       wer,

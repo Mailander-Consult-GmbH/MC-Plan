@@ -26,8 +26,11 @@ export type ID = string;
  * Projekte werden archiviert.
  * Fassung 13: Import aus PzE – gemerkte Auswahl der Ersteller und Zuordnung der
  * Projekte aus PzE zu Projekten in KaPlan (Einstellungen).
+ * Fassung 14: Richtlinienfristen mit einem Fenster von Jahren
+ * (`RilFrist.jahreVorherAb`); SKM und MKM nach der Richtlinie – 22.07. in den
+ * Jahren N−9 bis N−5 bzw. 17.02. in N−4 bis N−3 – statt der Platzhalter.
  */
-export const DATEN_VERSION = 13;
+export const DATEN_VERSION = 14;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -313,12 +316,21 @@ export const RIL_PHASE: Record<RilSchluessel, Phase> = {
 /**
  * Berechnungsweise einer Richtlinienfrist: als Stichtag TT.MM. im Jahr
  * N − k (N = Fahrplanjahr der Anmeldung) oder als Wochen vor Sperrbeginn.
+ *
+ * Ein Stichtag kann ein Fenster von Jahren haben: Im SKM nimmt der 22.07.
+ * eines Jahres J die Fahrplanjahre J+5 bis J+9 auf – für das Fahrplanjahr N
+ * also der 22.07. in den Jahren N−9 bis N−5 (`jahreVorherAb` 9, `jahreVorher`
+ * 5). Es gilt der nächste noch offene Stichtag im Fenster (`rilDatum` mit
+ * Bezugstag), sind alle verstrichen, der letzte.
  */
 export interface RilFrist {
   bezug: 'stichtag' | 'baubeginn';
   tag: number;
   monat: number;
+  /** Spätester Stichtag: im Jahr N − jahreVorher. */
   jahreVorher: number;
+  /** Frühester Stichtag: im Jahr N − jahreVorherAb (≥ jahreVorher; gleich – ein einziger Stichtag). */
+  jahreVorherAb: number;
   wochenVorher: number;
   /** Vorbelegter Wert, der noch nicht mit der Richtlinie abgeglichen ist. */
   platzhalter: boolean;
@@ -330,8 +342,8 @@ export interface RilFrist {
 
 /** Hinweis je Phase, wie sich ihre Richtlinienfrist auswählt. */
 export const RIL_PHASE_HINWEIS: Record<Phase, string> = {
-  skm: 'Stichtag je Fahrplanjahr',
-  mkm: 'Stichtag je Fahrplanjahr',
+  skm: 'Jährlicher Stichtag für mehrere Fahrplanjahre – es gilt der nächste noch offene',
+  mkm: 'Jährlicher Stichtag für mehrere Fahrplanjahre – es gilt der nächste noch offene',
   km: 'Ist die KM-Runde bekannt (Prozessphase in BBPNeo: 2. KP = N-2, 3. KP = N-1), gilt ihre Frist. Sonst gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor der ersten Anmeldung des Projekts liegt, danach die N-1-Frist (Ril_KM).',
   kkm: 'Vorlauf je Maßnahmenart (Ril_KKM); Stichtag der Anmeldung ist der Mittwoch.',
 };

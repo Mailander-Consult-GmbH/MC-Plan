@@ -83,8 +83,9 @@ const TOLERANZ_TAGE = 31;
 function betreuungAb(
   p: Pick<Projekt, 'erstePhase' | 'fahrplanjahre'> | undefined,
   e: Pick<Einstellungen, 'rilFristen'>,
+  heute: ISODate = today(),
 ): ISODate | null {
-  const termin = p ? ersterTermin(p, e) : null;
+  const termin = p ? ersterTermin(p, e, heute) : null;
   return termin ? addDays(termin, -TOLERANZ_TAGE) : null;
 }
 
@@ -141,19 +142,37 @@ function vorigerMittwoch(datum: ISODate): ISODate {
   return addDays(datum, -((tag - MITTWOCH + 7) % 7));
 }
 
+/** Ob ein Stichtag mehrere Jahre umfasst (Fenster, z. B. SKM: N−9 bis N−5). */
+export function hatFenster(frist: RilFrist): boolean {
+  return frist.bezug === 'stichtag' && frist.jahreVorherAb > frist.jahreVorher;
+}
+
+/** Die Stichtage im Fenster für ein Fahrplanjahr, aufsteigend – ohne Fenster einer. */
+export function stichtageImFenster(frist: RilFrist, fahrplanjahr: number): ISODate[] {
+  const ab = Math.max(frist.jahreVorherAb, frist.jahreVorher);
+  return Array.from({ length: ab - frist.jahreVorher + 1 }, (_, i) =>
+    datumAus(fahrplanjahr - ab + i, frist.monat, frist.tag),
+  );
+}
+
 /**
  * Datum einer Richtlinienfrist für ein Fahrplanjahr bzw. einen Sperrbeginn.
  * Im KKM ist der Stichtag der Anmeldung immer ein Mittwoch: Eine Frist in
  * Wochen vor Sperrbeginn fällt auf den Mittwoch an oder vor diesem Datum.
+ * Hat der Stichtag ein Fenster, gilt der erste an oder nach dem Bezugstag
+ * `ab`; sind alle verstrichen (oder fehlt `ab`), der letzte.
  */
 export function rilDatum(
   frist: RilFrist,
   fahrplanjahr: number | null,
   baubeginn: ISODate | null,
   stichtagMittwoch = false,
+  ab: ISODate | null = null,
 ): ISODate | null {
   if (frist.bezug === 'stichtag') {
-    return fahrplanjahr ? datumAus(fahrplanjahr - frist.jahreVorher, frist.monat, frist.tag) : null;
+    if (!fahrplanjahr) return null;
+    const stichtage = stichtageImFenster(frist, fahrplanjahr);
+    return (ab ? stichtage.find((t) => t >= ab) : undefined) ?? stichtage[stichtage.length - 1];
   }
   if (!baubeginn) return null;
   const datum = addDays(baubeginn, -7 * frist.wochenVorher);
@@ -162,11 +181,14 @@ export function rilDatum(
 
 const zweistellig = (n: number) => String(n).padStart(2, '0');
 
-/** „Stichtag 31.03. im Jahr N−4“ bzw. „12 Wochen vor Sperrbeginn“. */
+/** „Stichtag 31.10. im Jahr N−2“, „Stichtag 22.07. in den Jahren N−9 bis N−5“ bzw. „12 Wochen vor Sperrbeginn“. */
 export function rilFristText(frist: RilFrist): string {
   if (frist.bezug === 'stichtag') {
-    const jahr = frist.jahreVorher === 0 ? 'N' : `N−${frist.jahreVorher}`;
-    return `Stichtag ${zweistellig(frist.tag)}.${zweistellig(frist.monat)}. im Jahr ${jahr}`;
+    const jahr = (k: number) => (k === 0 ? 'N' : `N−${k}`);
+    const tag = `Stichtag ${zweistellig(frist.tag)}.${zweistellig(frist.monat)}.`;
+    return hatFenster(frist)
+      ? `${tag} in den Jahren ${jahr(frist.jahreVorherAb)} bis ${jahr(frist.jahreVorher)}`
+      : `${tag} im Jahr ${jahr(frist.jahreVorher)}`;
   }
   return `${frist.wochenVorher} ${frist.wochenVorher === 1 ? 'Woche' : 'Wochen'} vor Sperrbeginn`;
 }
@@ -248,7 +270,15 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
       const n1 = kmGrund ? ` – ${kmGrund}` : '';
       const ril = e.rilFristen[schluessel];
       const mittwoch = RIL_PHASE[schluessel] === 'kkm' && ril.bezug === 'baubeginn';
-      const grund = rilDatum(ril, a.fahrplanjahr, a.bauVon, mittwoch);
+      // Stichtag mit Fenster (SKM, MKM): der nächste ab dem Statuswechsel – wie Ril_KM die dann offene Frist nimmt
+      const fenster = hatFenster(ril);
+      const grund = rilDatum(ril, a.fahrplanjahr, a.bauVon, mittwoch, fenster ? a.statusSeit : null);
+      const fensterText =
+        !fenster || !grund
+          ? ''
+          : grund >= a.statusSeit
+            ? ` – der nächste ab dem Statuswechsel am ${formatDate(a.statusSeit)}`
+            : ` – der letzte, beim Statuswechsel am ${formatDate(a.statusSeit)} schon verstrichen`;
       const versatz = status.frist.versatzTage;
       const datum = grund ? addDays(grund, versatz) : null;
       const bezugText =
@@ -264,7 +294,7 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
         datum,
         platzhalter: ril.platzhalter,
         erlaeuterung: `${RIL_LABEL[schluessel]}: ${rilFristText(ril)} (${bezugText})${
-          grund ? ` = ${formatDate(grund)}${mittwoch ? ' (Stichtag Mittwoch)' : ''}` : ''
+          grund ? ` = ${formatDate(grund)}${mittwoch ? ' (Stichtag Mittwoch)' : ''}${fensterText}` : ''
         }${versatz ? `, ${versatz < 0 ? 'abzüglich' : 'zuzüglich'} ${Math.abs(versatz)} Tage` : ''}${n1}`,
       };
     }
@@ -419,7 +449,7 @@ export function anmeldebedarf(
 ): BedarfZeile[] {
   const e = d.einstellungen;
   const eigene = d.anmeldungen.filter((a) => a.projektId === p.id && !istLeiche(d.workflows, a.statusId));
-  const beginnGrenze = betreuungAb(p, e);
+  const beginnGrenze = betreuungAb(p, e, heute);
   // Bei gleichem Rang zählt der frühere Workflow – ein KM-Eintrag vor einem KKM-Eintrag.
   const workflowRang = (a: Anmeldung) => {
     const i = d.workflows.findIndex((w) => w.status.some((s) => s.id === a.statusId));
@@ -430,7 +460,8 @@ export function anmeldebedarf(
   for (const n of [...p.fahrplanjahre].sort((a, b) => a - b)) {
     const baubeginn = fahrplanjahrBeginn(n);
     const zellen = BEDARF_PHASEN.map((phase): BedarfZelle => {
-      const frist = rilDatum(e.rilFristen[phase], n, baubeginn);
+      // Stichtag mit Fenster: der nächste ab heute, sind alle verstrichen, der letzte
+      const frist = rilDatum(e.rilFristen[phase], n, baubeginn, false, heute);
       const durch = eigene
         .filter((a) => a.fahrplanjahr === n && rangDerArt(a.art) >= BEDARF_RANG[phase])
         .sort((a, b) => rangDerArt(a.art) - rangDerArt(b.art) || workflowRang(a) - workflowRang(b))[0];
@@ -469,16 +500,49 @@ export function faelligerBedarf(d: BaubetriebDaten, projektIds?: ID[]): BedarfEi
 /**
  * Frist der ersten Anmeldung eines Projekts: die Frist laut Richtlinie für die
  * gewählte Prozessphase und das erste betroffene Fahrplanjahr (im KKM für eine
- * Sperrpause ab Beginn des Fahrplanjahres) – null ohne Fahrplanjahre.
+ * Sperrpause ab Beginn des Fahrplanjahres) – null ohne Fahrplanjahre. Hat der
+ * Stichtag ein Fenster (SKM, MKM), der nächste ab `heute`, sind alle
+ * verstrichen, der letzte.
  */
 export function ersterTermin(
   p: Pick<Projekt, 'erstePhase' | 'fahrplanjahre'>,
   e: Pick<Einstellungen, 'rilFristen'>,
+  heute: ISODate = today(),
 ): ISODate | null {
   if (p.fahrplanjahre.length === 0) return null;
   const n = Math.min(...p.fahrplanjahre);
   const schluessel: RilSchluessel = p.erstePhase === 'kkm' ? 'A' : p.erstePhase;
-  return rilDatum(e.rilFristen[schluessel], n, fahrplanjahrBeginn(n), RIL_PHASE[schluessel] === 'kkm');
+  return rilDatum(e.rilFristen[schluessel], n, fahrplanjahrBeginn(n), RIL_PHASE[schluessel] === 'kkm', heute);
+}
+
+/**
+ * In welche Phase ein Fahrplanjahr von `heute` aus gehört: SKM oder MKM – je
+ * nach dem nächsten noch offenen Stichtag im Fenster; fällt das Fahrplanjahr in
+ * beide, gilt der frühere (am selben Tag SKM). Ist für beide kein Stichtag mehr
+ * offen, gehört es ins KM bzw. unterjährig – null. Liegt es hinter dem
+ * SKM-Fenster, gilt der erste SKM-Stichtag im Fenster, also SKM.
+ *
+ * Beispiel (SKM 22.07. in N−9 bis N−5, MKM 17.02. in N−4 bis N−3): Am
+ * 26.11.2026 kommt der 17.02.2027 vor dem 22.07.2027 – MKM sind 2030 und 2031,
+ * SKM 2032 bis 2036 (und später). Am 25.05.2027 kommt der 22.07.2027 zuerst –
+ * SKM 2032 bis 2036, MKM nur noch 2031 (2032 liegt schon im SKM).
+ */
+export function phaseNachFahrplanjahr(
+  e: Pick<Einstellungen, 'rilFristen'>,
+  fahrplanjahr: number,
+  heute: ISODate,
+): 'skm' | 'mkm' | null {
+  const naechster = (frist: RilFrist) =>
+    frist.bezug === 'stichtag'
+      ? (stichtageImFenster(frist, fahrplanjahr).find((t) => t >= heute) ?? null)
+      : (() => {
+          const datum = rilDatum(frist, fahrplanjahr, fahrplanjahrBeginn(fahrplanjahr));
+          return datum && datum >= heute ? datum : null;
+        })();
+  const skm = naechster(e.rilFristen.skm);
+  const mkm = naechster(e.rilFristen.mkm);
+  if (skm && (!mkm || skm <= mkm)) return 'skm';
+  return mkm ? 'mkm' : null;
 }
 
 /* ------------------------------------------------------------------ */

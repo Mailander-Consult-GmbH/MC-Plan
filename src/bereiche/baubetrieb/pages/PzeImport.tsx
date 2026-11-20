@@ -404,8 +404,9 @@ export function usePzeImport(navigate: (r: Route) => void): { kachel: ReactNode;
             <section>
               <h3 className="bb-imp-titel">Anmeldungen</h3>
               <p className="small tertiary bb-imp-text">
-                Vorgabe je Fahrplanjahr: SKM, solange die SKM-Frist laut Richtlinie noch nicht verstrichen ist, sonst MKM –
-                neue Anmeldungen beginnen im ersten Status.
+                Vorgabe je Fahrplanjahr nach dem nächsten offenen Stichtag laut Richtlinie: SKM oder MKM – fällt ein
+                Fahrplanjahr in beide, der frühere. Ist keiner mehr offen, gehört das Vorhaben ins KM bzw. unterjährig und
+                wird übersprungen. Neue Anmeldungen beginnen im ersten Status.
               </p>
               <div className="table-scroll">
                 <table className="table table-stack">

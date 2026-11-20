@@ -9,8 +9,11 @@
  * * Je Vorhaben und Fahrplanjahr entsteht eine Anmeldung („2031, 2032“ – zwei
  *   Anmeldungen gleicher Bezeichnung). Die Bezeichnung ist der Vorhabenname
  *   (`vorhaben`) – statt Anmelde-ID bzw. tVE-Nr; „Erstellt von“ wird Anmelder.
- * * Workflow: SKM, solange die SKM-Frist laut Richtlinie für das Fahrplanjahr
- *   noch nicht verstrichen ist, sonst MKM (`vorgabeWorkflow`) – je Anmeldung in
+ * * Workflow: SKM oder MKM nach dem nächsten noch offenen Stichtag laut
+ *   Richtlinie (`phaseNachFahrplanjahr` in fristen.ts; fällt ein Fahrplanjahr
+ *   in beide, gilt der frühere). Ist für beide kein Stichtag mehr offen, gehört
+ *   das Vorhaben ins KM bzw. unterjährig und wird übersprungen
+ *   (`vorgabeWorkflow`). Je Anmeldung in
  *   der Vorschau änderbar; die Anmeldung beginnt im ersten Status.
  * * Vorhanden ist eine Anmeldung, wenn eine mit derselben Bezeichnung
  *   (Vorhaben, früher auch Begriff im Feld der Nummer) und demselben
@@ -30,7 +33,7 @@
 import { formatDate } from '../../../shared/dates';
 import { datumLesen, spaltenZuordnen } from '../../../shared/xlsxLesen';
 import { bauzeitraumAbgleichen } from './ablauf';
-import { ganzesFahrplanjahr, rilDatum } from './fristen';
+import { ganzesFahrplanjahr, phaseNachFahrplanjahr } from './fristen';
 import type { Anmeldung, BaubetriebDaten, ErstePhase, ID, ISODate, Projekt, Workflow } from './types';
 import { STANDARD_WORKFLOW_ID, startbareWorkflows, zielText } from './workflow';
 
@@ -265,16 +268,20 @@ export function pzeWorkflows(d: BaubetriebDaten): Workflow[] {
   return startbareWorkflows(d.workflows).filter((w) => ganzesFahrplanjahr(w));
 }
 
+/** Grund, wenn für ein Fahrplanjahr weder ein SKM- noch ein MKM-Stichtag offen ist. */
+export const ZU_SPAET = 'zu spät für SKM und MKM – gehört ins KM bzw. unterjährig';
+
 /**
- * Vorgabe nach Fahrplanjahr: SKM, solange die SKM-Frist laut Richtlinie für
- * das Fahrplanjahr am Tag `heute` nicht verstrichen ist, sonst MKM – je der
- * Standard-Workflow; fehlt er, der erste Workflow mit ganzem Fahrplanjahr.
+ * Vorgabe nach Fahrplanjahr: SKM oder MKM nach dem nächsten noch offenen
+ * Stichtag ab `heute` (`phaseNachFahrplanjahr`) – je der Standard-Workflow;
+ * fehlt er, der erste Workflow mit ganzem Fahrplanjahr. null, wenn kein
+ * Stichtag mehr offen ist (KM bzw. unterjährig – nicht aus PzE).
  */
 export function vorgabeWorkflow(d: BaubetriebDaten, fahrplanjahr: number, heute: ISODate): ID | null {
+  const phase = phaseNachFahrplanjahr(d.einstellungen, fahrplanjahr, heute);
+  if (!phase) return null;
   const moeglich = pzeWorkflows(d);
-  const skmFrist = rilDatum(d.einstellungen.rilFristen.skm, fahrplanjahr, null);
-  const wunsch = !skmFrist || skmFrist >= heute ? STANDARD_WORKFLOW_ID.skm : STANDARD_WORKFLOW_ID.mkm;
-  return (moeglich.find((w) => w.id === wunsch) ?? moeglich[0])?.id ?? null;
+  return (moeglich.find((w) => w.id === STANDARD_WORKFLOW_ID[phase]) ?? moeglich[0])?.id ?? null;
 }
 
 /** Gemerkte Wahl eines Erstellers bzw. die im Dialog; unbekannt – nicht relevant. */
@@ -332,9 +339,12 @@ export function pzePlanen(d: BaubetriebDaten, gelesen: PzeGelesen, optionen: Pze
     const gruppe = vergleichbar(q.projekt);
     for (const fahrplanjahr of q.fahrplanjahre) {
       const schluessel = postenSchluessel(q.bezeichnung, fahrplanjahr);
-      const vorgabe = vorgabeWorkflow(d, fahrplanjahr, heute);
+      const zuSpaet = !phaseNachFahrplanjahr(d.einstellungen, fahrplanjahr, heute);
+      const vorgabe = zuSpaet ? null : vorgabeWorkflow(d, fahrplanjahr, heute);
       const gewaehlt = optionen.workflowWahl[schluessel];
-      const workflow = workflows.find((w) => w.id === gewaehlt) ?? workflows.find((w) => w.id === vorgabe) ?? null;
+      const workflow = zuSpaet
+        ? null
+        : (workflows.find((w) => w.id === gewaehlt) ?? workflows.find((w) => w.id === vorgabe) ?? null);
       const basis: PzePosten = {
         schluessel,
         quelle: q,
@@ -375,6 +385,10 @@ export function pzePlanen(d: BaubetriebDaten, gelesen: PzeGelesen, optionen: Pze
         g.vorhanden++;
         g.fahrplanjahre.push(fahrplanjahr);
         posten.push({ ...basis, ergebnis: 'vorhanden' });
+        continue;
+      }
+      if (zuSpaet) {
+        posten.push({ ...basis, grund: ZU_SPAET });
         continue;
       }
       if (!basis.statusId) {

@@ -85,11 +85,14 @@ function einstellungenAufbereiten(roh: Partial<Einstellungen> | undefined): Eins
   for (const s of RIL_SCHLUESSEL) {
     const g = gespeichert[s];
     if (!g) continue;
+    const jahreVorher = zahl(g.jahreVorher, ril[s].jahreVorher);
     ril[s] = {
       bezug: g.bezug === 'baubeginn' ? 'baubeginn' : 'stichtag',
       tag: zahl(g.tag, ril[s].tag),
       monat: zahl(g.monat, ril[s].monat),
-      jahreVorher: zahl(g.jahreVorher, ril[s].jahreVorher),
+      jahreVorher,
+      // Stände vor Fassung 14 kennen kein Fenster – dann ein einziger Stichtag
+      jahreVorherAb: Math.max(jahreVorher, zahl(g.jahreVorherAb, jahreVorher)),
       wochenVorher: zahl(g.wochenVorher, ril[s].wochenVorher),
       platzhalter: g.platzhalter !== false,
     };
@@ -624,6 +627,33 @@ function ausFassung11(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
   return { ...roh, projekte: projekte as Projekt[] };
 }
 
+/** Platzhalter der Fristen SKM und MKM bis Fassung 13: 31.03. im Jahr N−4 bzw. N−3. */
+const RIL_BIS_FASSUNG13: Record<string, { tag: number; monat: number; jahreVorher: number }> = {
+  skm: { tag: 31, monat: 3, jahreVorher: 4 },
+  mkm: { tag: 31, monat: 3, jahreVorher: 3 },
+};
+
+/**
+ * Hebt Fassung 13 auf Fassung 14: Die Fristen SKM und MKM folgen der
+ * Richtlinie (22.07. in den Jahren N−9 bis N−5 bzw. 17.02. in N−4 bis N−3).
+ * Waren sie noch Platzhalter oder trugen sie den alten Platzhalterwert, fallen
+ * sie weg, damit `aufbereiten()` die neue Vorgabe einsetzt; selbst eingetragene
+ * andere Werte bleiben.
+ */
+function ausFassung13(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
+  const e = roh.einstellungen as (Partial<Einstellungen> & { rilFristen?: unknown }) | undefined;
+  if (!e || typeof e.rilFristen !== 'object' || !e.rilFristen) return roh;
+  const ril = { ...(e.rilFristen as Record<string, Partial<RilFrist>>) };
+  for (const [s, alt] of Object.entries(RIL_BIS_FASSUNG13)) {
+    const g = ril[s];
+    if (!g || typeof g !== 'object') continue;
+    const alterWert =
+      g.bezug !== 'baubeginn' && g.tag === alt.tag && g.monat === alt.monat && g.jahreVorher === alt.jahreVorher;
+    if (g.platzhalter !== false || alterWert) delete ril[s];
+  }
+  return { ...roh, einstellungen: { ...e, rilFristen: ril } as Einstellungen };
+}
+
 function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   const version = roh.version ?? 1;
   if (version < 2 || !Array.isArray(roh.projekte)) {
@@ -642,6 +672,7 @@ function migriere(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
   if (version <= 9) stand = ausFassung9(stand);
   if (version <= 10) stand = ausFassung10(stand);
   if (version <= 11) stand = ausFassung11(stand);
+  if (version <= 13) stand = ausFassung13(stand);
   return aufbereiten(stand);
 }
 
