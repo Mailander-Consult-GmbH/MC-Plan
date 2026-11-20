@@ -167,9 +167,9 @@ export function AnmeldungDetail({
               <div className="step-body">
                 <div className="step-title">
                   <strong>{s.name}</strong>
+                  {/* Der aktuelle Status ist aufgeklappt und an seiner Nummer zu erkennen – ein eigenes Kennzeichen braucht er nicht */}
                   {aktuell ? (
                     <>
-                      <Badge ton={STATUS_TON[s.art]}>aktuell</Badge>
                       {frist.datum ? <AmpelBadge ampel={ampel} /> : null}
                       {frist.nachhaken && frist.datum ? <NachhakenBadge /> : null}
                     </>
