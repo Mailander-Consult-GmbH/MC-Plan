@@ -456,8 +456,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Statuszuordnung in `Einstellungen.bbpStatus`, Projekte über die G-Nummer (`dbGNummer`) – Anmeldungen, die
   eine Projektnummer verbindet, bilden eine Projektgruppe, `projektGruppen`; einen anderen
   Status setzt `statusUebernehmen` in `domain/ablauf.ts` ohne Nachfolger-Prüfung, mit Vorstand
-  zum Zurücknehmen; Seite `pages/BbpImport.tsx`, Route `import`, Menüpunkt zwischen „Projekte“ und
-  „Einstellungen“),
+  zum Zurücknehmen; Seite `pages/BbpImport.tsx`, Route `import`, Menüpunkt „Excel-Import“ zwischen
+  „Projekte“ und „Einstellungen“; daneben die Kachel „Import aus PzE“ – ein Platzhalter, `PzeImport`,
+  bis die Excel-Vorlage aus PzE feststeht),
   `store/` mit eigenem Schlüssel `baubetrieb-planung.data.v1`. Workflows und Fristen stehen in der
   Seitenleiste unter der aufklappbaren Gruppe „Einstellungen“ (wie im Planlaufmanagement);
   „Status ändern“ ist `NachfolgerAuswahl` (Haken in `components/baubetrieb.css`, Präfix

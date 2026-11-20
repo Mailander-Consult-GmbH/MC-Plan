@@ -1064,10 +1064,16 @@ direkt hinter dem Original eine Kopie mit aktuellem Stand und Statusverlauf an (
 aus …“, die führende Bezeichnung erhält „(Kopie)“, ohne Nummer wird „(Kopie)“ die Nummer) und
 öffnet sie.
 
-### Import aus BBPNeo
-**Import aus BBPNeo** – ein eigener Punkt in der Seitenleiste zwischen *Projekte* und
-*Einstellungen* (`#/baubetrieb/import`) – legt Anmeldungen aus dem Excel-Export von BBPNeo an
-bzw. aktualisiert sie – **nur KM und KKM**. Die Spalten erkennt der Import an ihren Überschriften,
+### Excel-Import
+**Excel-Import** – ein eigener Punkt in der Seitenleiste zwischen *Projekte* und *Einstellungen*
+(`#/baubetrieb/import`, „Anmeldungen aus BBPNeo und PzE“) – zeigt zwei Kacheln nebeneinander
+(schmal untereinander): **Import aus BBPNeo** (Anmeldungen im KM und KKM) und **Import aus PzE**
+(Anmeldungen im SKM und KMK). Der Import aus PzE ist noch ein **Platzhalter** („in Vorbereitung“),
+bis die Excel-Vorlage aus PzE feststeht: Eine auf seine Fläche gezogene Datei wird nicht gelesen,
+die Kachel meldet nur, dass der Import noch nicht eingerichtet ist.
+
+**Import aus BBPNeo** legt Anmeldungen aus dem Export des vorkonfigurierten BBPNeo-Berichts
+„Export Anmeldungen (Excel) (OS)“ an bzw. aktualisiert sie – **nur KM und KKM**. Die Spalten erkennt der Import an ihren Überschriften,
 weil die Exporte von BBPNeo sie verschieden anordnen; im Export „Anmeldung (OS)“ sind es A
 `Anmeldung::ID` (Anmelde-ID), F `Anmeldung::Anmelder`, G `Anmeldung::Fachstatus-ID` (Status im
 Workflow), L `Anmeldung::Angemeldete Maßnahmenkategorie`, P/Q `Anmeldung::Bauzeitraum: Beginn`/`Ende`,
@@ -1097,7 +1103,7 @@ AC `Anmeldung::Mitwirkende BBK`, AG `Anmeldung::Projektnummern`, AH `Anmeldung::
   als Statuswechsel mit dem Tag des Imports und dem Vermerk „Import BBPNeo (Status in BBPNeo: …)“
   gesetzt – auch wenn er kein Nachfolger des bisherigen ist – und lässt sich wie jeder Wechsel
   zurücknehmen. Neue Anmeldungen beginnen im zugeordneten Status („Aus BBPNeo importiert“).
-* Die Seite gliedert sich in die Karten **Datei** und **Vorschau**. Die Vorschau zählt, was neu
+* Unter den beiden Kacheln erscheint nach dem Lesen der Datei die Karte **Vorschau**. Sie zählt, was neu
   angelegt, aktualisiert (davon mit neuem Status), unverändert gelassen und übersprungen wird, und
   nennt je Anmeldung Phase, Sperrzeitraum, Status in BBPNeo und KaPlan sowie das Ergebnis;
   **Verwerfen** und **Importieren** stehen oben und unten. Nach dem Import meldet die Seite das
@@ -1216,7 +1222,7 @@ auf („Terminfrist wird wieder berechnet.“), ohne solchen Termin verlangt der
 Anmeldebedarf, Projekte mit ihren Anmeldungen je Workflow), **Termine & Nachhaken** (alle Fristen
 nach Projekten, je Projekt zuerst eine ausstehende Erstanmeldung, Filter
 Überfällig/Fällig/Im Plan/Zum Nachhaken; archivierte Projekte fehlen hier wie im Zähler der
-Seitenleiste), **Projekte**, **Import aus BBPNeo** und – wie im Planlaufmanagement unter der
+Seitenleiste), **Projekte**, **Excel-Import** (BBPNeo; PzE als Platzhalter) und – wie im Planlaufmanagement unter der
 aufklappbaren Gruppe **Einstellungen** – **Workflows** und **Fristen** (Fristen laut Richtlinie,
 Ampel und Nachhaken; früher die Seite „Einstellungen“, deren Adresse weiter gilt).
 **Excel** im Projekt lädt Anmeldungen und Projekt als Arbeitsmappe herunter.
@@ -1753,7 +1759,7 @@ src/
       store/         storage.ts (Laden, Migration, Rohkopie, Sicherung) und store.tsx (alle
                      Schreibzugriffe, Lade- und Speicherzustand)
       lib/router.ts  Hash-Adressen unterhalb von #/baubetrieb
-      pages/         Übersicht, Termine, Projekte, Import aus BBPNeo (BbpImport), Projekt, Anmeldung,
+      pages/         Übersicht, Termine, Projekte, Excel-Import (BbpImport), Projekt, Anmeldung,
                      Workflows (mit Editor), Fristen
       components/    Status- und Fristanzeigen, „Status ändern“ als Haken mit Auswahl (AufklappMenue),
                      Dialoge (Anmeldung, Statuswechsel, Nachhaken), grafischer Workflow-Editor mit
