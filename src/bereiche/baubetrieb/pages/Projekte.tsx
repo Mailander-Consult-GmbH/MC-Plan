@@ -184,17 +184,6 @@ export function ProjektDialog({
 
   const termin = ersterTermin(form, data.einstellungen);
 
-  // Zur Wahl: das vorige bis zehn Jahre nach dem laufenden Fahrplanjahr, dazu bereits gewählte
-  const jetzt = fahrplanjahrVon(today()) ?? new Date().getFullYear();
-  const jahre = [
-    ...new Set([...Array.from({ length: 12 }, (_, i) => jetzt - 1 + i), ...form.fahrplanjahre]),
-  ].sort((a, b) => a - b);
-  const jahrUmschalten = (n: number, an: boolean) =>
-    set(
-      'fahrplanjahre',
-      (an ? [...form.fahrplanjahre, n] : form.fahrplanjahre.filter((x) => x !== n)).sort((a, b) => a - b),
-    );
-
   const speichern = () => {
     if (!form.name.trim()) {
       toast('Bitte eine Bezeichnung angeben.');
@@ -257,7 +246,7 @@ export function ProjektDialog({
         </>
       }
     >
-      <div className="form-grid">
+      <div className="bb-projekt-maske">
         <Field label="Bezeichnung" full>
           <TextInput value={form.name} onChange={(v) => set('name', v)} placeholder="EÜ … – Erneuerung …" />
         </Field>
@@ -267,48 +256,39 @@ export function ProjektDialog({
         <Field label="G-Nummer">
           <TextInput value={form.dbGNummer} onChange={(v) => set('dbGNummer', v)} placeholder="G.123456789" />
         </Field>
-
-        <Field label="Betroffene Fahrplanjahre" full hint="Daraus ergeben sich der Anmeldebedarf in Übersicht und Terminen und die Frist der ersten Anmeldung.">
-          <div className="row wrap" style={{ gap: '6px 16px' }}>
-            {jahre.map((n) => (
-              <label
-                key={n}
-                className="checkbox"
-                title={`Fahrplanjahr ${n}: ${formatDate(fahrplanjahrBeginn(n))} – ${formatDate(fahrplanjahrEnde(n))}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={form.fahrplanjahre.includes(n)}
-                  onChange={(e) => jahrUmschalten(n, e.target.checked)}
-                />
-                {n}
-              </label>
-            ))}
-          </div>
-        </Field>
-
-        <Field
-          label="Prozessphase"
-          hint={
-            termin
-              ? `der ersten Anmeldung – laut Richtlinie bis ${formatDate(termin)}`
-              : 'der ersten Anmeldung – ihre Frist ergibt sich, sobald Fahrplanjahre gewählt sind'
-          }
-        >
-          <Select
-            value={form.erstePhase}
-            onChange={(v) => set('erstePhase', v as ErstePhase)}
-            options={(Object.keys(ERSTE_PHASE_LABEL) as ErstePhase[]).map((k) => ({
-              value: k,
-              label: ERSTE_PHASE_LABEL[k],
-            }))}
-          />
-        </Field>
         <Field label="Inbetriebnahme">
           <TextInput type="date" value={form.inbetriebnahme} onChange={(v) => set('inbetriebnahme', v)} />
         </Field>
+
+        <section className="bb-projekt-gruppe full" aria-label="Fahrplanjahre und erste Anmeldung">
+          <div className="bb-projekt-gruppe-kopf">Fahrplanjahre und erste Anmeldung</div>
+          <div className="bb-projekt-gruppe-felder">
+            <div className="field">
+              <label>Betroffene Fahrplanjahre</label>
+              <FahrplanjahrWahl jahre={form.fahrplanjahre} onChange={(j) => set('fahrplanjahre', j)} />
+            </div>
+            <Field
+              label="Prozessphase der ersten Anmeldung"
+              hint={
+                termin
+                  ? `Frist laut Richtlinie: ${formatDate(termin)}`
+                  : 'Die Frist ergibt sich, sobald Fahrplanjahre gewählt sind.'
+              }
+            >
+              <Select
+                value={form.erstePhase}
+                onChange={(v) => set('erstePhase', v as ErstePhase)}
+                options={(Object.keys(ERSTE_PHASE_LABEL) as ErstePhase[]).map((k) => ({
+                  value: k,
+                  label: ERSTE_PHASE_LABEL[k],
+                }))}
+              />
+            </Field>
+          </div>
+        </section>
+
         <Field label="Bemerkung" full>
-          <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={3} />
+          <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />
         </Field>
       </div>
       {projekt ? null : uebernahme ? (
@@ -317,5 +297,97 @@ export function ProjektDialog({
         <VerknuepfungsHinweis bereich="baubetrieb" nummer={form.projektnummer} />
       )}
     </Modal>
+  );
+}
+
+/** Jahre von `a` bis `b` (beide eingeschlossen). */
+const jahreVonBis = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
+
+/**
+ * Betroffene Fahrplanjahre als Zeitraum: „von“ und „bis“ als Auswahl, darunter
+ * – ab zwei Jahren – die Jahre des Zeitraums als Leiste, in der sich einzelne
+ * Jahre abwählen lassen. Eine neue Wahl von „von“ oder „bis“ nimmt den ganzen
+ * Zeitraum; ohne Änderung bleiben ausgenommene Jahre ausgenommen.
+ */
+function FahrplanjahrWahl({ jahre, onChange }: { jahre: number[]; onChange: (jahre: number[]) => void }) {
+  const jetzt = fahrplanjahrVon(today()) ?? new Date().getFullYear();
+  const von = jahre.length > 0 ? Math.min(...jahre) : null;
+  const bis = jahre.length > 0 ? Math.max(...jahre) : null;
+  // Zur Wahl: das vorige bis 15 Jahre nach dem laufenden Fahrplanjahr, dazu bereits gewählte
+  const angebot = jahreVonBis(Math.min(jetzt - 1, von ?? jetzt), Math.max(jetzt + 15, bis ?? jetzt));
+  const zeitraum = von !== null && bis !== null ? jahreVonBis(von, bis) : [];
+  const ausgenommen = zeitraum.filter((n) => !jahre.includes(n));
+  const umschalten = (n: number) =>
+    onChange(jahre.includes(n) ? jahre.filter((x) => x !== n) : [...jahre, n].sort((a, b) => a - b));
+
+  return (
+    <div className="bb-fpj">
+      <div className="bb-fpj-wahl">
+        <select
+          className="select"
+          aria-label="Fahrplanjahr von"
+          value={von ?? ''}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            onChange(e.target.value ? jahreVonBis(n, Math.max(n, bis ?? n)) : []);
+          }}
+        >
+          <option value="">– keine –</option>
+          {angebot.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+        <span>bis</span>
+        <select
+          className="select"
+          aria-label="Fahrplanjahr bis"
+          value={bis ?? ''}
+          disabled={von === null}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            onChange(jahreVonBis(Math.min(von ?? n, n), n));
+          }}
+        >
+          {von === null ? <option value="">–</option> : null}
+          {angebot
+            .filter((n) => von === null || n >= von)
+            .map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+        </select>
+      </div>
+      {zeitraum.length > 1 ? (
+        <div className="bb-fpj-leiste" role="group" aria-label="Fahrplanjahre im Zeitraum – zum Abwählen anklicken">
+          {zeitraum.map((n) => {
+            const an = jahre.includes(n);
+            return (
+              <button
+                key={n}
+                type="button"
+                className={`bb-fpj-jahr ${an ? 'an' : ''}`}
+                aria-pressed={an}
+                title={`Fahrplanjahr ${n}: ${formatDate(fahrplanjahrBeginn(n))} – ${formatDate(fahrplanjahrEnde(n))}${
+                  an ? ' – zum Abwählen anklicken' : ' – nicht betroffen'
+                }`}
+                onClick={() => umschalten(n)}
+              >
+                {n}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      <span className="hint">
+        {von === null || bis === null
+          ? 'Daraus ergeben sich der Anmeldebedarf in Übersicht und Terminen und die Frist der ersten Anmeldung.'
+          : `${jahre.length === 1 ? '1 Fahrplanjahr' : `${jahre.length} Fahrplanjahre`}: ${formatDate(
+              fahrplanjahrBeginn(von),
+            )} – ${formatDate(fahrplanjahrEnde(bis))}${ausgenommen.length > 0 ? ` (ohne ${ausgenommen.join(', ')})` : ''}`}
+      </span>
+    </div>
   );
 }

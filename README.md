@@ -987,11 +987,17 @@ der Anwender. Offene fachliche Fragen und die Annahmen des Entwurfs stehen in
 
 ### Projekt
 Im Lastenheft „Projekthülle“; wird bei der MIC-Beauftragung angelegt: Bezeichnung,
-**Projektnummer** (Beispiel im Feld: K1234), **G-Nummer** (Beispiel: G.123456789), **betroffene
-Fahrplanjahre** (zum Ankreuzen, statt einer geplanten Sperrzeit), Prozessphase der ersten
-Anmeldung, Inbetriebnahme und Bemerkung. Aus Prozessphase und erstem betroffenen Fahrplanjahr
-ergibt sich die Frist der ersten Anmeldung laut Richtlinie – der Dialog nennt sie unter der
-Prozessphase, die Projektseite neben ihr. Projektleiter, Hauptbearbeiter MIC, erster Anmeldetermin
+**Projektnummer** (Beispiel im Feld: K1234), **G-Nummer** (Beispiel: G.123456789), Inbetriebnahme,
+**betroffene Fahrplanjahre**, Prozessphase der ersten Anmeldung und Bemerkung. Die Maske hat die
+Bezeichnung über die ganze Breite, darunter Projektnummer, G-Nummer und Inbetriebnahme in drei
+Spalten, dann die Gruppe **Fahrplanjahre und erste Anmeldung** und die Bemerkung (schmal alles
+untereinander). Die Fahrplanjahre wählt man als **Zeitraum „von … bis …“**; ab zwei Jahren zeigt
+eine Leiste die Jahre des Zeitraums, ein Klick nimmt ein Jahr aus (durchgestrichen) bzw. wieder
+auf. Darunter stehen die Zahl der Fahrplanjahre und ihr Zeitraum, etwa „3 Fahrplanjahre:
+13.12.2026 – 14.12.2030 (ohne 2029)“; ohne Änderung an „von“ oder „bis“ bleiben ausgenommene
+Jahre ausgenommen. Aus Prozessphase und erstem betroffenen Fahrplanjahr ergibt sich die Frist der
+ersten Anmeldung laut Richtlinie – der Dialog nennt sie unter der Prozessphase („Frist laut
+Richtlinie: …“), die Projektseite neben ihr. Projektleiter, Hauptbearbeiter MIC, erster Anmeldetermin
 (ca.) und Status der Betreuung führt ein Projekt nicht mehr (siehe „Daten“); ein abgeschlossenes
 Projekt wird archiviert. Bezeichnung, Projektnummer und G-Nummer
 werden ohne Leerzeichen am Rand gespeichert – die Projektnummer verknüpft das Projekt mit den
