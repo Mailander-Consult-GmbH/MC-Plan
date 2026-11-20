@@ -7,7 +7,7 @@
  *   #/baubetrieb/projekte                         Projekte
  *   #/baubetrieb/projekt/<id>                     Projekt mit seinen Anmeldungen
  *   #/baubetrieb/projekt/<id>/anmeldung/<id>      Anmeldung mit Statusverlauf
- *   #/baubetrieb/import                           Import aus BBPNeo
+ *   #/baubetrieb/import                           Excel-Import (BBPNeo, PzE)
  *   #/baubetrieb/workflows                        Workflows (früher #/baubetrieb/workflow)
  *   #/baubetrieb/fristen                          Fristen laut Richtlinie, Ampel und Nachhaken
  *                                                 (früher #/baubetrieb/einstellungen)

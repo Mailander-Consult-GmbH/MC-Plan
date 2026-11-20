@@ -1,7 +1,7 @@
 /**
  * Rahmen der Baubetriebsplanung: Seitenleiste, Kopfzeile und Auswahl der
- * Ansicht. Zwischen „Projekte“ und „Einstellungen“ steht der Import aus
- * BBPNeo; Workflows und Fristen stehen – wie im Planlaufmanagement – unter
+ * Ansicht. Zwischen „Projekte“ und „Einstellungen“ steht der Excel-Import
+ * (BBPNeo, PzE); Workflows und Fristen stehen – wie im Planlaufmanagement – unter
  * der aufklappbaren Gruppe „Einstellungen“.
  */
 import { useEffect, useState } from 'react';
@@ -104,7 +104,7 @@ export function App() {
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
         <NavItem
           icon="importieren"
-          label="Import aus BBPNeo"
+          label="Excel-Import"
           aktiv={route.view === 'import'}
           onClick={() => gehe({ view: 'import' })}
         />
@@ -345,7 +345,7 @@ function kopfzeile(route: Route, projektName?: string, anmeldungName?: string): 
     case 'projekte':
       return { titel: 'Projekte', sub: 'Je Baumaßnahme ein Projekt mit seinen Anmeldungen' };
     case 'import':
-      return { titel: 'Import aus BBPNeo', sub: 'Anmeldungen im KM und KKM aus dem Excel-Export von BBPNeo' };
+      return { titel: 'Excel-Import', sub: 'Anmeldungen aus BBPNeo und PzE' };
     case 'workflows':
       return { titel: 'Workflows', sub: 'Status, Terminfristen und Nachfolger je Phase – anpassbar' };
     case 'fristen':
