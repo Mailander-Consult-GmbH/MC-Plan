@@ -34,6 +34,9 @@
 /* Import aus BBPNeo (pages/BbpImport.tsx) */
 .drop-zone.bb-imp-klein { padding: 10px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
 .drop-zone.bb-imp-klein .small { opacity: 0.85; }
+/* Platzhalter „Import aus PzE“: Ablagefläche ohne Funktion – keine Hervorhebung beim Überfahren */
+.drop-zone.bb-imp-platzhalter { cursor: default; color: var(--text-tertiary); }
+.drop-zone.bb-imp-platzhalter:hover { border-color: var(--separator-strong); background: none; color: var(--text-tertiary); }
 .bb-imp-summe { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .bb-imp-titel { font-size: 14px; margin: 0 0 2px; }
 .bb-imp-text { margin: 0 0 8px; }

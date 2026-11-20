@@ -1,6 +1,10 @@
 /**
- * Seite „Import aus BBPNeo“ (eigener Punkt in der Seitenleiste, #/baubetrieb/import):
- * Excel-Export der Anmeldungen aus BBPNeo wählen, Status aus BBPNeo den Status
+ * Seite „Excel-Import“ (eigener Punkt in der Seitenleiste, #/baubetrieb/import)
+ * mit zwei Kacheln: „Import aus BBPNeo“ und „Import aus PzE“ (Platzhalter, bis
+ * die Excel-Vorlage aus PzE feststeht – `PzeImport`).
+ *
+ * Import aus BBPNeo: Export des vorkonfigurierten BBPNeo-Berichts „Export
+ * Anmeldungen (Excel) (OS)“ wählen, Status aus BBPNeo den Status
  * in KaPlan zuordnen (die Zuordnung merkt sich KaPlan für den nächsten
  * Import), Projekte nach G-Nummer zuordnen oder anlegen und die Vorschau
  * prüfen. Jede Änderung plant neu (`bbpPlanen`); „Importieren“ wendet den Plan
@@ -73,6 +77,43 @@ function StatusWahl({
   );
 }
 
+/**
+ * Kachel „Import aus PzE“ – Platzhalter, bis die Excel-Vorlage aus PzE
+ * feststeht. Die Ablagefläche liest keine Datei; eine hierher gezogene meldet
+ * nur, dass der Import noch nicht eingerichtet ist (und der Browser öffnet sie
+ * nicht selbst).
+ */
+function PzeImport() {
+  const [datei, setDatei] = useState<string | null>(null);
+  return (
+    <Card>
+      <CardHeader titel="Import aus PzE" sub="Anmeldungen im SKM und KMK aus PzE" actions={<Badge>in Vorbereitung</Badge>} />
+      <div className="card-pad stack" style={{ gap: 14 }}>
+        <div
+          className="drop-zone bb-imp-platzhalter"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const f = e.dataTransfer.files[0];
+            if (f) setDatei(f.name);
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+            <Icon name="importieren" size={26} strokeWidth={1.4} />
+          </div>
+          <strong>Excel-Export aus PzE hierher ziehen</strong>
+          <div className="small">Der Import aus PzE folgt, sobald die Excel-Vorlage feststeht.</div>
+        </div>
+        {datei ? (
+          <Callout role="status">
+            „{datei}“ wurde nicht gelesen – der Import aus PzE ist noch nicht eingerichtet.
+          </Callout>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
 export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
   const { data, bbpImportieren } = useStore();
   const toast = useToast();
@@ -120,7 +161,7 @@ export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
       setBlaetter(tabellen);
     } catch (e) {
       setFehler(
-        `${e instanceof Error ? e.message : 'Die Datei konnte nicht gelesen werden.'} Erwartet wird der Excel-Export der Anmeldungen aus BBPNeo (.xlsx).`,
+        `${e instanceof Error ? e.message : 'Die Datei konnte nicht gelesen werden.'} Erwartet wird der Export des BBPNeo-Berichts „Export Anmeldungen (Excel) (OS)“ (.xlsx).`,
       );
     }
   };
@@ -211,84 +252,80 @@ export function BbpImport({ navigate }: { navigate: (r: Route) => void }) {
         </Callout>
       ) : null}
 
-      <Card>
-        <CardHeader titel="Datei" sub="Excel-Export der Anmeldungen aus BBPNeo (.xlsx)" />
-        <div className="card-pad stack" style={{ gap: 14 }}>
-          <p className="small muted" style={{ margin: 0 }}>
-            Übernommen werden Anmeldungen im KM (Prozessphase 2. KP = N-2, 3. KP = N-1) und im KKM; „Vorlage“ wird
-            übersprungen. Je Anmelde-ID entsteht eine Anmeldung mit dem frühesten Beginn und dem spätesten Ende des
-            Sperrzeitraums. Vorhandene Anmeldungen derselben ID übernehmen die Angaben aus BBPNeo, ein anderer Status
-            steht als „Import BBPNeo“ im Verlauf.
-          </p>
-
-          <div
-            className={`drop-zone ${ueber ? 'over' : ''} ${datei ? 'bb-imp-klein' : ''}`}
-            {...alsKnopf(() => eingabe.current?.click())}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setUeber(true);
-            }}
-            onDragLeave={() => setUeber(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setUeber(false);
-              const f = e.dataTransfer.files[0];
-              if (f) void lies(f);
-            }}
-          >
-            {datei ? (
-              <>
-                <Icon name="importieren" size={18} strokeWidth={1.5} />
-                <strong>{datei}</strong>
-                {blatt ? <span className="small">Blatt „{blatt.name}“</span> : null}
-                <span className="small">· Andere Datei wählen</span>
-              </>
-            ) : (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-                  <Icon name="importieren" size={26} strokeWidth={1.4} />
-                </div>
-                <strong>Excel-Export aus BBPNeo hierher ziehen</strong>
-                <div className="small">oder klicken, um eine Datei auszuwählen</div>
-              </>
-            )}
-            <input
-              ref={eingabe}
-              type="file"
-              accept=".xlsx,.csv,.txt"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = '';
+      <div className="grid grid-2">
+        <Card>
+          <CardHeader titel="Import aus BBPNeo" sub="Anmeldungen im KM und KKM aus BBPNeo" />
+          <div className="card-pad stack" style={{ gap: 14 }}>
+            <div
+              className={`drop-zone ${ueber ? 'over' : ''} ${datei ? 'bb-imp-klein' : ''}`}
+              {...alsKnopf(() => eingabe.current?.click())}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setUeber(true);
+              }}
+              onDragLeave={() => setUeber(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setUeber(false);
+                const f = e.dataTransfer.files[0];
                 if (f) void lies(f);
               }}
-            />
-          </div>
-
-          {fehler ? (
-            <Callout ton="error" icon="!">
-              {fehler}
-            </Callout>
-          ) : null}
-
-          {blaetter.length > 1 ? (
-            <Field label="Tabellenblatt" hint="Mehrere Blätter der Datei sind Exporte der Anmeldungen.">
-              <Select
-                value={String(blattIndex)}
-                onChange={(v) => {
-                  setBlattIndex(Number(v));
-                  setProjektWahl({});
-                  setProjektNamen({});
+            >
+              {datei ? (
+                <>
+                  <Icon name="importieren" size={18} strokeWidth={1.5} />
+                  <strong>{datei}</strong>
+                  {blatt ? <span className="small">Blatt „{blatt.name}“</span> : null}
+                  <span className="small">· Andere Datei wählen</span>
+                </>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                    <Icon name="importieren" size={26} strokeWidth={1.4} />
+                  </div>
+                  <strong>Export des vorkonfigurierten BBPNeo-Berichts „Export Anmeldungen (Excel) (OS)“ hierher ziehen</strong>
+                  <div className="small">oder klicken, um eine Datei auszuwählen</div>
+                </>
+              )}
+              <input
+                ref={eingabe}
+                type="file"
+                accept=".xlsx,.csv,.txt"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (f) void lies(f);
                 }}
-                options={blaetter.map((b, i) => ({
-                  value: String(i),
-                  label: `${b.name} (${b.zeilen.length - 1} Zeilen)`,
-                }))}
               />
-            </Field>
-          ) : null}
-        </div>
-      </Card>
+            </div>
+
+            {fehler ? (
+              <Callout ton="error" icon="!">
+                {fehler}
+              </Callout>
+            ) : null}
+
+            {blaetter.length > 1 ? (
+              <Field label="Tabellenblatt" hint="Mehrere Blätter der Datei sind Exporte der Anmeldungen.">
+                <Select
+                  value={String(blattIndex)}
+                  onChange={(v) => {
+                    setBlattIndex(Number(v));
+                    setProjektWahl({});
+                    setProjektNamen({});
+                  }}
+                  options={blaetter.map((b, i) => ({
+                    value: String(i),
+                    label: `${b.name} (${b.zeilen.length - 1} Zeilen)`,
+                  }))}
+                />
+              </Field>
+            ) : null}
+          </div>
+        </Card>
+        <PzeImport />
+      </div>
 
       {gelesen && plan ? (
         <Card>
