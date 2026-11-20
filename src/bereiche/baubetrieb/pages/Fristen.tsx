@@ -1,7 +1,9 @@
 /**
  * Seite „Fristen“ (Menügruppe „Einstellungen“, früher selbst „Einstellungen“):
  * Fristen laut Richtlinie, Ampel, Nachhak-Termin und Vorschau des
- * Anmeldebedarfs. Änderungen gelten sofort.
+ * Anmeldebedarfs. Änderungen gelten sofort. Ein Stichtag gilt in den Jahren
+ * N − frühester bis N − spätester Wert (SKM: N−9 bis N−5); sind beide gleich,
+ * ist es ein einziger Stichtag.
  */
 import { Fragment, useState } from 'react';
 import { Badge, Callout, Card, CardHeader, Field, Select } from '../../../shared/ui';
@@ -124,14 +126,24 @@ export function Fristen() {
                               <ZahlFeld label="Tag" wert={f.tag} min={1} max={31} breite={60} onChange={(n) => setze({ tag: n })} />
                               <span className="tertiary">.</span>
                               <ZahlFeld label="Monat" wert={f.monat} min={1} max={12} breite={60} onChange={(n) => setze({ monat: n })} />
-                              <span className="small muted">. im Jahr N −</span>
+                              {/* Fenster: frühester bis spätester Stichtag – bei gleichem Wert ein einziger */}
+                              <span className="small muted">. in den Jahren N −</span>
                               <ZahlFeld
-                                label="Jahre vor dem Fahrplanjahr"
+                                label="Frühester Stichtag: Jahre vor dem Fahrplanjahr"
+                                wert={f.jahreVorherAb}
+                                min={0}
+                                max={12}
+                                breite={60}
+                                onChange={(n) => setze({ jahreVorherAb: n, jahreVorher: Math.min(n, f.jahreVorher) })}
+                              />
+                              <span className="small muted">bis N −</span>
+                              <ZahlFeld
+                                label="Spätester Stichtag: Jahre vor dem Fahrplanjahr"
                                 wert={f.jahreVorher}
                                 min={0}
-                                max={10}
+                                max={12}
                                 breite={60}
-                                onChange={(n) => setze({ jahreVorher: n })}
+                                onChange={(n) => setze({ jahreVorher: n, jahreVorherAb: Math.max(n, f.jahreVorherAb) })}
                               />
                             </span>
                           ) : (

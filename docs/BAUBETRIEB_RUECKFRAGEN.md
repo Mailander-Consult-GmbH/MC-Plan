@@ -251,8 +251,8 @@ Abschnitt, Stand) nennen:
 
 | Frist (im Lastenheft) | Frage | Platzhalter im Entwurf |
 | --- | --- | --- |
-| Ril_SKM (Ril_skm) | Stichtag je Fahrplanjahr? | 31.03. im Jahr N−4 |
-| Ril_MKM (Ril_pze) | Stichtag je Fahrplanjahr? | 31.03. im Jahr N−3 |
+| Ril_SKM (Ril_skm) | *Geklärt:* Stichtag 22.07.; er nimmt die Fahrplanjahre N+5 bis N+9 auf | 22.07. in den Jahren N−9 bis N−5 (seit Fassung 14, kein Platzhalter mehr) |
+| Ril_MKM (Ril_pze) | *Geklärt:* Stichtag 17.02.; er nimmt N+3 und N+4 auf – fällt ein Fahrplanjahr auch ins SKM, gilt der frühere Stichtag | 17.02. in den Jahren N−4 bis N−3 (seit Fassung 14, kein Platzhalter mehr) |
 | Ril_KM N-2 (Ril_N-2) | Stichtag je Fahrplanjahr? | 31.10. im Jahr N−2 |
 | Ril_KM N-1 (Ril_N-1) | Stichtag je Fahrplanjahr? | 30.04. im Jahr N−1 |
 | Ril_KKM A (Ril_A) | Wochen vor Sperrbeginn? | 26 Wochen |
