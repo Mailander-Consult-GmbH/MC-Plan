@@ -204,7 +204,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Inline-Farbe.
 * **Seitenleiste:** eine Karte (`.sidebar`), einklappbar über `SeitenleisteGriff` – eine Lasche
   mittig auf ihrem rechten Rand (`.leiste-griff`, `src/shared/seitenleiste.tsx`); der Knopf
-  „Menü“ in der Kopfzeile (`SeitenleisteKnopf`) erscheint nur in der schmalen Ansicht. Eingeklappt bleiben Symbole (Name im Tooltip, Zähler als Marke
+  „Menü“ in der Kopfzeile (`SeitenleisteKnopf`) erscheint nur in der schmalen Ansicht. Die
+  markierten Projekte stehen zweizeilig – Projektnummer klein über dem Namen (`NavItem` mit
+  `nummer`, `.nav-label.zweizeilig`; ohne Nummer einzeilig), in allen drei Bereichen gleich. Eingeklappt bleiben Symbole (Name im Tooltip, Zähler als Marke
   am Symbol) – auch die der markierten Projekte, unter einer Trennlinie statt der Überschrift –,
   `KaPlanZeichen` (das Symbol des Logos allein), die Initialen der angemeldeten Person und der
   Bereichswechsel; Sicherungsknöpfe und Texte entfallen.

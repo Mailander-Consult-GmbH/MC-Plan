@@ -219,10 +219,12 @@ bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien (
 aus dem Netz geladen – ein unter gleichem Namen ausgetauschtes Logo erscheint also sofort. Der Service Worker ist nur im Produktionsbuild aktiv, in der Entwicklung
 stört er also nicht.
 
-Die **Seitenleiste** jedes Bereichs ist eine Karte wie die Kacheln des Inhalts. Der Griff mittig auf
+Die **Seitenleiste** jedes Bereichs ist eine Karte wie die Kacheln des Inhalts. Unter den
+Menüpunkten stehen die markierten Projekte **zweizeilig**: neben dem Ordnersymbol oben klein die
+Projektnummer, darunter der Name (ohne Projektnummer nur der Name). Der Griff mittig auf
 ihrem rechten Rand klappt sie ein und wieder aus: Es bleibt eine schmale Leiste mit den Symbolen der Menüpunkte (der
 Name steht im Tooltip, Zähler als kleine Marke am Symbol), darunter – nach einer Trennlinie – die
-markierten Projekte ebenfalls als Symbole mit ihrem Namen im Tooltip, dazu das Symbol von KaPlan,
+markierten Projekte ebenfalls als Symbole mit Projektnummer und Namen im Tooltip, dazu das Symbol von KaPlan,
 die Initialen der angemeldeten Person und der Bereichswechsel; die Knöpfe der Sicherung und die
 Texte stehen nur in der ausgeklappten Leiste. Ob sie eingeklappt ist, merkt sich der
 Browser (Schlüssel `kaplan-seitenleiste.v1`) – für alle Bereiche.
@@ -902,7 +904,7 @@ Schrittangaben.
 
 ### Übersicht und Markierung von Projekten
 Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
-Seitenleiste (mit vorangestellter Projektnummer); ohne Markierung werden alle angezeigt –
+Seitenleiste (mit der Projektnummer über dem Namen); ohne Markierung werden alle angezeigt –
 archivierte Projekte in keinem Fall (siehe
 [Gemeinsame Projekte](#gemeinsame-projekte)). Der Hinweis
 „Kein Projekt markiert“ erscheint nach derselben Regel – wenn es nicht archivierte Projekte gibt und

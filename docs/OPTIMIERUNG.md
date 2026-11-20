@@ -41,8 +41,9 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 > * **U-5:** Das Beispiel für die Projektnummer ist in allen drei Bereichen „K1234“. Offen bleiben
 >   die übrigen Wörter (Projektname/Bezeichnung, Knöpfe, Meldungen).
 > * **U-7:** In der Baubetriebsplanung heißen die Felder „Projektnummer“ und „G-Nummer“ (bisher
->   „MIC-Projektnummer (wiko)“ und „DB-G-Nummer“). Welche Nummer in Übersicht und Terminen führt,
->   ist weiter offen.
+>   „MIC-Projektnummer (wiko)“ und „DB-G-Nummer“). Die Seitenleiste nennt seit dem 20.11.2026 in
+>   allen drei Bereichen die Projektnummer über dem Namen. Welche Nummer in Übersicht und Terminen
+>   führt, ist weiter offen.
 > * **U-13:** Die Baubetriebsplanung führt keinen Status der Betreuung mehr – ein abgeschlossenes
 >   Projekt wird dort archiviert. Die Frage stellt sich noch für Planlaufmanagement und
 >   Projektsteuerung.
