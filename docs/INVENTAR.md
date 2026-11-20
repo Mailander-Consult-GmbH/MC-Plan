@@ -219,8 +219,10 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
 
 * **Seitenleiste** (`src/bereiche/planlauf/App.tsx`): Navigation (Übersicht, Projekte, Terminrechner
   und die aufklappbare Gruppe „Einstellungen“ mit Workflows, Funktionen und Vorlagen – aufgeklappt, sobald
-  eine dieser Seiten offen ist), darunter die markierten Projekte mit vorangestellter
-  Projektnummer und der Anzahl überfälliger Schritte. Ganz unten
+  eine dieser Seiten offen ist), darunter die markierten Projekte – zweizeilig, die
+  Projektnummer klein über dem Namen (`NavItem` mit `nummer`; in allen drei Bereichen gleich,
+  Klassen `.nav-label.zweizeilig`, `.nav-nummer`, `.nav-name` in `src/shared/global.css`; ohne
+  Nummer einzeilig) – mit der Anzahl überfälliger Schritte. Ganz unten
   **Bereich wechseln** zurück zur Bereichsauswahl
   (`src/shell/BereichWechsel.tsx`).
 * **Angemeldet als** (unten links, `AngemeldetAls` aus
@@ -391,7 +393,7 @@ von `protokollNachziehen` (`src/bereiche/planlauf/domain/protokoll.ts`).
   *Breite Ansicht:* Der Griff mittig auf ihrem rechten Rand (`.leiste-griff`) heißt
   „Seitenleiste einklappen“ bzw. „Seitenleiste ausklappen“ und setzt
   `.sidebar.eingeklappt` und `.app.leiste-zu`; eingeklappt bleiben die Symbole der Menüpunkte
-  und der markierten Projekte (Name im Tooltip; `.nav-projekte` – statt der Überschrift
+  und der markierten Projekte (Projektnummer und Name im Tooltip; `.nav-projekte` – statt der Überschrift
   „Projekte“ eine Trennlinie, ohne markiertes Projekt entfällt der Abschnitt), `KaPlanZeichen`
   aus `src/shared/logos.tsx`, die Initialen der angemeldeten Person und der Bereichswechsel –
   die Knöpfe der Sicherung und die Texte entfallen. Der Zustand liegt unter dem Schlüssel
@@ -1000,7 +1002,7 @@ die Übersicht.
 * Seitenleiste: Übersicht, „Termine & Nachhaken“ (mit der Zahl überfälliger
   Fristen – ohne archivierte Projekte), Projekte, „Import aus BBPNeo“ und die aufklappbare Gruppe „Einstellungen“ mit
   „Workflows“ und „Fristen“ (wie im Planlaufmanagement; aufgeklappt, sobald
-  eine der beiden Seiten offen ist), darunter die markierten Projekte; unten „Angemeldet als“ (gemeinsam für alle Bereiche, Abschnitt 10;
+  eine der beiden Seiten offen ist), darunter die markierten Projekte (Projektnummer über dem Namen, wie im Planlaufmanagement); unten „Angemeldet als“ (gemeinsam für alle Bereiche, Abschnitt 10;
   `einstellungen.bearbeiter` spiegelt den Namen),
   „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich wechseln“.
 * Sicherung (`exportiereDaten`) lädt `baubetrieb-sicherung-<Datum>.json` mit
@@ -1371,8 +1373,8 @@ bzw. „doppelt in der Liste“. „Vorlage“ lädt `Vorlage_Projektbeteiligte.
 
 * Seitenleiste: Übersicht (mit der Zahl eigener To-Dos), Projekte, die
   einklappbare Gruppe „Einstellungen“ mit „Funktionen“ (aufgeklappt, solange
-  die Seite Funktionen offen ist), darunter die markierten Projekte mit ihren
-  überfälligen Aufgaben; unten „Angemeldet als“ (gemeinsam für alle Bereiche,
+  die Seite Funktionen offen ist), darunter die markierten Projekte (Projektnummer über dem
+  Namen, wie im Planlaufmanagement) mit ihren überfälligen Aufgaben; unten „Angemeldet als“ (gemeinsam für alle Bereiche,
   Abschnitt 10; `einstellungen.bearbeiter`
   spiegelt den Namen), „Sicherung“, „Einspielen“, „Zurücksetzen“ und „Bereich
   wechseln“.

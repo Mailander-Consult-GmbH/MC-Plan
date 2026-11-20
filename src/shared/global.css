@@ -446,6 +446,11 @@
 .nav-pfeil.offen { transform: rotate(90deg); }
 .nav-icon { display: grid; place-items: center; width: 18px; flex: none; }
 .nav-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Projekte in der Menüleiste: Projektnummer klein über dem Namen, jede Zeile für sich gekürzt */
+.nav-label.zweizeilig { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.nav-nummer, .nav-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-nummer { font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--text-tertiary); }
+.nav-item.active .nav-nummer { color: inherit; opacity: 0.8; }
 .nav-badge {
   font-size: 11px;
   font-weight: 600;
