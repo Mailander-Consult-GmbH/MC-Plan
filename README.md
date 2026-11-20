@@ -1056,7 +1056,8 @@ die Tabelle ihn nennt. Workflows ohne Anmeldung zeigen nur ihre Kopfzeile.
 
 Die Seite einer Anmeldung ist wie ein Planlauf aufgebaut: der Weg durch die Workflows, darunter
 die Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit Haken und Datum, der
-aktuelle mit Terminfrist, Ampel und den möglichen Nachfolgern („Weiter mit“, „Übernahme in neue
+aktuelle aufgeklappt und an seiner hervorgehobenen Nummer zu erkennen (ein eigenes Kennzeichen
+„aktuell“ gibt es nicht), mit Terminfrist, Ampel, ggf. „Zum Nachhaken“ und den möglichen Nachfolgern („Weiter mit“, „Übernahme in neue
 Phase“, „Abschluss“ mit „Eintrag löschen“) und wer zuständig ist. Darunter Merkmale und
 Statusverlauf. Oben rechts stehen **Bearbeiten**, **Duplizieren** und **Löschen**: Duplizieren legt
 direkt hinter dem Original eine Kopie mit aktuellem Stand und Statusverlauf an (Vermerk „Dupliziert
