@@ -20,8 +20,8 @@
  *   nicht relevant.
  * * Projekte nach „Enthaltene Projekte“ (die ganze Zelle – Projektnamen
  *   enthalten selbst Kommas): gemerkte Zuordnung (`Einstellungen.pzeProjekte`),
- *   sonst ein Projekt gleichen Namens, sonst ein neues. Die Fahrplanjahre der
- *   Vorhaben gehen ins Projekt.
+ *   sonst ein Projekt gleichen Namens, sonst ein neues – ohne Markierung, also
+ *   nicht in der Seitenleiste. Die Fahrplanjahre der Vorhaben gehen ins Projekt.
  *
  * Ablauf wie beim Import aus BBPNeo: `pzeLesen` (Datei → Vorhaben),
  * `pzePlanen` (Vorschau gegen den Bestand) und `pzeImportAnwenden` (rein, im
@@ -515,7 +515,8 @@ export function pzeImportAnwenden(
       fahrplanjahre: g.fahrplanjahre,
       inbetriebnahme: null,
       projektnummer: '',
-      markiert: true,
+      // Ohne Markierung – eine Vorhaben-Übersicht bringt oft viele Projekte, die Seitenleiste bliebe sonst nicht übersichtlich
+      markiert: false,
       bemerkung: 'Beim Import aus PzE angelegt.',
     });
   }
