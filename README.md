@@ -1132,7 +1132,8 @@ und Projekte). PzE kennt keinen Status: Der Import **legt nur an** – Anmeldung
 * **Projekte:** Je Angabe unter „Enthaltene Projekte“ (die ganze Zelle – Projektnamen enthalten selbst
   Kommas) ein Projekt: das beim letzten Import zugeordnete, sonst eines gleichen Namens, sonst ein
   neues (Bezeichnung aus PzE, änderbar; Prozessphase der ersten Anmeldung nach dem frühesten
-  Fahrplanjahr, Bemerkung „Beim Import aus PzE angelegt.“). Die Fahrplanjahre der Vorhaben gehen ins
+  Fahrplanjahr, Bemerkung „Beim Import aus PzE angelegt.“; anders als beim Import aus BBPNeo ohne
+  Markierung, also nicht in der Seitenleiste). Die Fahrplanjahre der Vorhaben gehen ins
   Projekt – einem vorhandenen ergänzt der Import fehlende. Auch diese Zuordnung merkt sich KaPlan.
 
 ### Workflows
