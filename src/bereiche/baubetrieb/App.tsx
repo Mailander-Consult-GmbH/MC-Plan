@@ -123,7 +123,7 @@ export function App() {
           </>
         ) : null}
 
-        {/* Die markierten Projekte – in der eingeklappten Leiste nur ihr Symbol (Name im Tooltip), unter einer Trennlinie */}
+        {/* Die markierten Projekte, zweizeilig: Projektnummer klein über dem Namen – in der eingeklappten Leiste nur ihr Symbol (Nummer und Name im Tooltip), unter einer Trennlinie */}
         <div className="nav-projekte">
           <div className="nav-group-label">
             Projekte
@@ -135,6 +135,7 @@ export function App() {
               <NavItem
                 key={p.id}
                 icon="projekt"
+                nummer={p.projektnummer}
                 label={p.name}
                 aktiv={projekt?.id === p.id}
                 badge={spaet > 0 ? String(spaet) : undefined}
@@ -267,6 +268,7 @@ export function App() {
 function NavItem({
   icon,
   label,
+  nummer,
   aktiv,
   badge,
   badgeAlarm,
@@ -276,6 +278,8 @@ function NavItem({
 }: {
   icon: IconName;
   label: string;
+  /** Nur Projekte: die Projektnummer – steht klein über dem Namen (zweizeilig). */
+  nummer?: string;
   aktiv: boolean;
   badge?: string;
   badgeAlarm?: boolean;
@@ -290,14 +294,21 @@ function NavItem({
       type="button"
       className={`nav-item ${aktiv ? 'active' : ''} ${unter ? 'unter' : ''}`}
       onClick={onClick}
-      title={label}
+      title={nummer ? `${nummer} ${label}` : label}
       aria-expanded={offen}
     >
       {aktiv ? <NavAktiv /> : null}
       <span className="nav-icon">
         <Icon name={icon} size={17} />
       </span>
-      <span className="nav-label">{label}</span>
+      {nummer ? (
+        <span className="nav-label zweizeilig">
+          <span className="nav-nummer">{nummer}</span>
+          <span className="nav-name">{label}</span>
+        </span>
+      ) : (
+        <span className="nav-label">{label}</span>
+      )}
       {badge ? <span className={`nav-badge ${badgeAlarm ? 'alert' : ''}`}>{badge}</span> : null}
       {offen !== undefined ? (
         <span className={`nav-pfeil ${offen ? 'offen' : ''}`}>
