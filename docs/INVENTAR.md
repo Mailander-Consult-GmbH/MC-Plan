@@ -774,7 +774,11 @@ N-x und unterjährige Anmeldung.
   `ausFassung11` an die Bemerkung die Zeile „Status der Betreuung bisher: …“
   (`BETREUUNG_BIS_FASSUNG11`: „Betreuungspause“, „Abgeschlossen“); Fassung 12
   kannte `einstellungen.pzeErsteller` und `pzeProjekte` nicht – `aufbereiten()`
-  ergänzt sie leer (`zuordnungAufbereiten`).
+  ergänzt sie leer (`zuordnungAufbereiten`); Fassung 13 (`ausFassung13`)
+  kannte kein Fenster – `aufbereiten()` setzt `jahreVorherAb` gleich
+  `jahreVorher`; SKM und MKM, die noch Platzhalter waren oder den alten Wert
+  31.03. N−4 bzw. N−3 trugen (`RIL_BIS_FASSUNG13`), fallen weg und erhalten
+  die neue Vorgabe.
   Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/baubetrieb/domain/seed.ts`) drei Projekte mit acht
   Anmeldungen, Termine relativ zum heutigen Tag, und die Standard-Workflows.
@@ -833,7 +837,7 @@ N-x und unterjährige Anmeldung.
 | `#/baubetrieb/projekt/<id>` | Projekt (`src/bereiche/baubetrieb/pages/ProjektDetail.tsx`) | „Excel“, „Bearbeiten“, „Archivieren“ (`ArchivKnopf`, 9.3; fehlt bei einem archivierten Projekt), „Löschen“ (samt Anmeldungen; nur in diesem Bereich; die Rückfrage endet mit „Die Anmeldung lässt sich nicht wiederherstellen.“ bzw. „Die Anmeldungen lassen sich nicht wiederherstellen.“ und dem Hinweis aus `useLoeschHinweis`, 9.3); Archivhinweis mit „Aus dem Archiv holen“ (9.3); Stammdaten („Projektnummer“, „G-Nummer“, „Inbetriebnahme“, „Prozessphase“ mit der Frist der ersten Anmeldung laut Richtlinie, „Betroffene Fahrplanjahre“, Bemerkung); am Ende die Karte „Projektbeteiligte“ mit den geteilten Beteiligten (`RegisterBeteiligte`, 9.3); ohne Anmeldung (Anmeldeleichen zählen nicht) die Karte „Erstanmeldung ausstehend“ (`ErstanmeldungKarte`) mit Prozessphase, Terminfrist samt Ampel und dem Zusatz „laut Richtlinie für Prozessphase und erstes Fahrplanjahr“ (`ERSTANMELDUNG_GRUND`), ohne Frist „Projekt bearbeiten“; Überschrift „Baubetriebliche Anmeldungen“ mit Suche („ID, Titel, BBK, Status …“; auch über Anmelder, Projektnummer und Bemerkung) und „Neue Anmeldung“; darunter je Workflow eine Tabelle (`AnmeldungenTabelle`) mit den Spalten Anmeldung (im SKM der Vorhabenname, darunter tVE-Nr; in der zweiten Zeile die Maßnahmenart – nur, wo der Workflow mehrere führt –, die KM-Runde und der Titel), Sperrzeitraum, Status (ohne Workflow davor), Zuständig (`zustaendigText`: Rolle des Status, bei BBK mit den Namen der mitwirkenden BBK), Terminfrist (Ampelpunkt, Datum, Abstand; Regel im Tooltip), Sachstand (`SachstandKompakt` in `src/bereiche/baubetrieb/components/common.tsx`: Datum, darunter Abstand – „heute“, „gestern“, „vor … Tagen“ – und Anlass; alles im Tooltip) und „Status ändern“ (Haken, siehe 7.3; Tabellenklasse `bb-anmeldungen` – scrollt die Tabelle quer, bleibt die Haken-Spalte rechts stehen, `position: sticky` in `src/bereiche/baubetrieb/components/baubetrieb.css`; dort führt die stehende Spalte auch den Fokusrahmen der Zeile weiter). Die Zeile öffnet die Anmeldung per Klick oder – als Tab-Halt, `alsKlickZeile` – mit Enter bzw. Leertaste; „Status ändern“ und sein Menü lösen sie nicht aus. Jede Zeile umfasst höchstens zwei Textzeilen (`EINZEILIG` kürzt mit Auslassungspunkten). Workflows ohne Anmeldung zeigen nur die Kopfzeile mit „keine Anmeldung“; bei einer Suche entfallen Workflows ohne Treffer. Die frühere Karte zum Anmeldebedarf je Fahrplanjahr entfällt. |
 | `#/baubetrieb/projekt/<id>/anmeldung/<id>` | Anmeldung (`src/bereiche/baubetrieb/pages/AnmeldungDetail.tsx`) | Weg durch die Workflows; Karte „Workflow …“ mit den Status des aktuellen Workflows in ihrer Reihenfolge – erreichte mit „zuletzt erreicht am …“, der aktuelle aufgeklappt (Nummer hervorgehoben, überfällig rot; ohne eigenes Kennzeichen, daneben nur Ampel – `AmpelBadge` – und ggf. `NachhakenBadge`) mit Terminfrist samt Rechenweg und den Nachfolgern („Weiter mit:“ – der Wechsel in eine Anmeldeleiche in Rot –, „Übernahme in neue Phase:“, „Abschluss:“ mit „Eintrag löschen“), „Nachgehakt …“, „Termin festlegen …“ (`src/bereiche/baubetrieb/components/TerminDialoge.tsx`: „Festlegen“ mit Datum meldet „Termin festgelegt.“; ein geleertes Feld hebt einen von Hand gesetzten Termin auf – „Terminfrist wird wieder berechnet.“, wie „Wieder berechnen“ –, ohne solchen Termin bleibt der Dialog offen mit „Bitte einen Termin angeben.“), „Letzten Wechsel zurücknehmen“, dazu „Zuständig:“ mit Rolle und Namen; Karte „Merkmale“ („Vorhabenname“ im SKM und wo er gesetzt ist, die Nummer als „tVE-Nr“ – bei älteren SKM-Einträgen ohne Vorhabenname weiter „Begriff / tVE-Nr“ –, „KM-Runde“ (falls gesetzt), „Titel“, „Mitwirkender BBK“, „Anmelder“, „Projektnummer (BBPNeo)“, Herkunft bzw. „Aufgeteilt in“); Karte „Statusverlauf“; oben rechts „Bearbeiten“, „Duplizieren“ (Kopie mit aktuellem Stand und Statusverlauf, Vermerk „Dupliziert aus …“, „(Kopie)“ an der führenden Bezeichnung; öffnet die Kopie) und „Löschen“. |
 | `#/baubetrieb/workflows` | Workflows (`src/bereiche/baubetrieb/pages/Workflows.tsx`) | „Weg einer Anmeldung“; Karte „Workflows“ mit je Workflow einer Karte (`bb-wf-liste-karte`): Kennzeichen „Standard“ bzw. „Eigener Workflow“, Beschreibung, Standardverlauf als Punktkette (`AblaufVorschau` in `src/bereiche/baubetrieb/components/AblaufVorschau.tsx`, mit „+ … Abweichungen“), Zahl der Status, Abweichungen und Anmeldungen, Sperrzeitraum und Maßnahmenarten, „Öffnen“ (auch Klick auf die Karte), „Duplizieren“ und – bei eigenen Workflows ohne Anmeldungen – Löschen; „Neuer Workflow“; Übersicht der Richtlinienfristen nach Phase (`rilFristenNachPhase`) mit „Anpassen“. Editor siehe 7.3. Die frühere Adresse `#/baubetrieb/workflow` zeigt dieselbe Seite. |
-| `#/baubetrieb/fristen` | Fristen (`src/bereiche/baubetrieb/pages/Fristen.tsx`), Menügruppe „Einstellungen“ | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase eine Gruppenzeile mit Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. Die frühere Adresse `#/baubetrieb/einstellungen` zeigt dieselbe Seite. |
+| `#/baubetrieb/fristen` | Fristen (`src/bereiche/baubetrieb/pages/Fristen.tsx`), Menügruppe „Einstellungen“ | Richtlinienfristen je Schlüssel (`RIL_SCHLUESSEL`), nach Phase gegliedert (`rilFristenNachPhase`, je Phase eine Gruppenzeile mit Hinweis aus `RIL_PHASE_HINWEIS`) und mit Kürzel (`RIL_KUERZEL`, z. B. „Ril_KM N-2“, „Ril_KKM B(S)“), als „Stichtag im Fahrplanjahr“ (Tag, Monat, „in den Jahren N −“ frühester bis „bis N −“ spätester Stichtag, `jahreVorherAb`/`jahreVorher` – ändert man einen, folgt der andere, damit das Fenster gültig bleibt; Ergebnis z. B. „Stichtag 22.07. in den Jahren N−9 bis N−5“ bzw. bei gleichem Wert „… im Jahr N−2“, `rilFristText`) oder „Wochen vor Sperrbeginn“, Kennzeichen „Platzhalter“ mit „Geprüft“; „Fällig ab“, „Nachhak-Abstand – Vorgabe“, „Anmeldebedarf – Vorschau“. Änderungen gelten sofort. Die frühere Adresse `#/baubetrieb/einstellungen` zeigt dieselbe Seite. |
 
 Router: `src/bereiche/baubetrieb/lib/router.ts`; unbekannte Adressen führen auf
 die Übersicht.
@@ -975,7 +979,9 @@ die Übersicht.
   (Einträge im KM oder KKM decken beide KM-Fristen ab, bei mehreren zählt der
   frühere Workflow; Anmeldungen in einer Anmeldeleiche zählen nicht,
   `istLeiche`),
-  `faellig`, `kuenftig`, `verstrichen`, `vorBeginn` oder `offen`; Fristen, die
+  `faellig`, `kuenftig`, `verstrichen`, `vorBeginn` oder `offen` (bei einem
+  Stichtag mit Fenster – SKM, MKM – der nächste ab heute, sonst der letzte);
+  Fristen, die
   mehr als 31 Tage (`TOLERANZ_TAGE`) vor der ersten Anmeldung des Projekts
   liegen – ihrer Frist laut Richtlinie, `ersterTermin` –, gelten als
   `vorBeginn` (`betreuungAb`).
@@ -984,8 +990,8 @@ die Übersicht.
 * Erstanmeldung (`erstanmeldungAusstehend`, `ausstehendeErstanmeldungen`):
   Projekte, die keine Anmeldung außer Anmeldeleichen haben; Frist ist
   `ersterTermin` – die Frist laut Richtlinie für die Prozessphase
-  (`Projekt.erstePhase`) und das erste betroffene Fahrplanjahr, ohne
-  Fahrplanjahre keine. Die Seitenleiste zählt überfällige Erstanmeldungen
+  (`Projekt.erstePhase`) und das erste betroffene Fahrplanjahr (mit Fenster
+  der nächste Stichtag ab heute), ohne Fahrplanjahre keine. Die Seitenleiste zählt überfällige Erstanmeldungen
   bei „Termine & Nachhaken“ mit, ebenso die Kacheln „Terminfristen überfällig“
   und „Demnächst fällig“ der Übersicht.
 * Nachhaken: Ob der Termin eines Status zum Nachhaken dient, sagt
@@ -1000,6 +1006,20 @@ die Übersicht.
 * Ril_KKM in Wochen vor Sperrbeginn fällt auf den Mittwoch an oder vor
   diesem Datum (`rilDatum` mit `stichtagMittwoch`); der Rechenweg nennt
   „(Stichtag Mittwoch)“.
+* Stichtag mit Fenster (`RilFrist.jahreVorherAb` > `jahreVorher`,
+  `hatFenster`; Vorgabe in `standardRilFristen`, `src/bereiche/baubetrieb/domain/seed.ts`:
+  SKM 22.07. in den Jahren N−9 bis N−5, MKM 17.02. in N−4 bis N−3, beide
+  geprüft): `stichtageImFenster` liefert die Stichtage aufsteigend,
+  `rilDatum` mit Bezugstag `ab` den ersten an oder nach ihm, sind alle
+  verstrichen, den letzten. Die Terminfrist einer Anmeldung (`terminfrist`)
+  nimmt als Bezugstag den Statuswechsel (`statusSeit`) – Rechenweg „… – der
+  nächste ab dem Statuswechsel am …“ bzw. „… – der letzte, beim
+  Statuswechsel am … schon verstrichen“.
+* `phaseNachFahrplanjahr` (`src/bereiche/baubetrieb/domain/fristen.ts`): In
+  welche Phase ein Fahrplanjahr von heute aus gehört – SKM oder MKM nach dem
+  nächsten noch offenen Stichtag im jeweiligen Fenster; liegen beide offen,
+  der frühere (am selben Tag SKM); ist keiner offen, `null` (KM bzw.
+  unterjährig). Grundlage der Vorgabe im Import aus PzE (7.5).
 
 ### 7.4 Übergreifende Bedienelemente
 
@@ -1120,9 +1140,11 @@ die Übersicht.
   doppelt in der Datei – übersprungen): „vorhanden“, wenn eine Anmeldung mit
   derselben Bezeichnung (`vorhaben` oder `anmeldeId`) und demselben
   Fahrplanjahr besteht – sie bleibt unverändert –, sonst „neu“. Workflow:
-  `vorgabeWorkflow` – der Standard-Workflow SKM, solange die SKM-Frist
-  (`rilDatum` mit `einstellungen.rilFristen.skm`) am Tag des Imports nicht
-  verstrichen ist, sonst MKM; zur Wahl stehen die startbaren Workflows mit
+  `vorgabeWorkflow` – der Standard-Workflow der Phase aus
+  `phaseNachFahrplanjahr` am Tag des Imports (SKM oder MKM); ist für das
+  Fahrplanjahr kein Stichtag mehr offen, wird der Posten übersprungen
+  (`ZU_SPAET`: „zu spät für SKM und MKM – gehört ins KM bzw. unterjährig“);
+  zur Wahl stehen die startbaren Workflows mit
   ganzem Fahrplanjahr (`pzeWorkflows`); die Anmeldung beginnt in deren erstem
   Status. Ersteller: relevant laut Wahl im Dialog, sonst laut
   `einstellungen.pzeErsteller`, sonst nicht (`unbekannt` – Kennzeichen „neu“);

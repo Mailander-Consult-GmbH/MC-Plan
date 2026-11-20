@@ -1120,9 +1120,14 @@ und Projekte). PzE kennt keinen Status: Der Import **legt nur an** – Anmeldung
   (statt Anmelde-ID oder tVE-Nr), **Erstellt von** wird Anmelder; Anzahl der tVEn und
   Streckennummern stehen in der Bemerkung („PzE: … tVEn (Fahrplanjahre …) · Strecken …“), Ersteller
   und Datum der Erstellung im Verlauf („Aus PzE importiert (erstellt am … von …)“).
-* **SKM oder MKM:** Vorgegeben ist SKM, solange die SKM-Frist laut Richtlinie für das Fahrplanjahr
-  (31.03. im Jahr N-4, einstellbar unter *Fristen*) noch nicht verstrichen ist, sonst MKM; in der
-  Vorschau je Anmeldung änderbar. Die Anmeldung beginnt im ersten Status des Workflows (Entwurf).
+* **SKM oder MKM** nach den Stichtagen laut Richtlinie (siehe *Terminfristen*): Maßgebend ist der
+  nächste noch offene Stichtag ab heute, an dem das Fahrplanjahr dran ist – der 17.02. (MKM) nimmt
+  N+3 und N+4 auf, der 22.07. (SKM) N+5 bis N+9; fällt ein Fahrplanjahr in beide, gilt der frühere.
+  Am 26.11.2026 etwa kommt der 17.02.2027 vor dem 22.07.2027: MKM sind 2030 und 2031, SKM 2032
+  und später. Am 25.05.2027 kommt der 22.07.2027 zuerst: SKM 2032 und später, MKM nur noch 2031.
+  Ist für ein Fahrplanjahr kein Stichtag mehr offen, gehört das Vorhaben ins KM bzw. unterjährig –
+  der PzE-Import **überspringt** es („zu spät für SKM und MKM“). In der Vorschau ist der Workflow je
+  Anmeldung änderbar; die Anmeldung beginnt in seinem ersten Status (Entwurf).
 * **Vorhanden** ist eine Anmeldung, wenn es schon eine mit derselben Bezeichnung (Vorhabenname bzw.
   Begriff im Feld der Nummer) und demselben Fahrplanjahr gibt – sie bleibt, wie sie ist. Ein
   zweiter Import derselben Datei legt also nichts doppelt an.
@@ -1226,9 +1231,14 @@ Ril_X –, ggf. abzüglich einiger Tage, etwa „Ril_KKM − 14 Tage“), **näc
 1.8.“ ab dem Statuswechsel), **Nachhak-Termin** (Tage nach dem Statuswechsel, je Status
 einstellbar) oder **keine**; im Workflow-Editor ist die Auswahl nach Phase gegliedert. Die
 Richtlinienfristen werden unter **Einstellungen › Fristen** gepflegt, nach Phase gegliedert – je Frist als
-Stichtag TT.MM. im Jahr N − k des Fahrplanjahres oder als Wochen vor Sperrbeginn. **Die
-vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis sie geändert oder als
-„Geprüft“ bestätigt werden. **Ril_KM** nimmt die Frist der **KM-Runde**, wenn die Anmeldung sie
+Stichtag TT.MM. in den Jahren N − k bis N − m des Fahrplanjahres (bei gleichem Wert ein einziger
+Stichtag) oder als Wochen vor Sperrbeginn. **SKM und MKM** folgen der Richtlinie: Der **22.07.**
+eines Jahres nimmt im SKM die Fahrplanjahre fünf bis neun Jahre später auf (Stichtag in den Jahren
+N−9 bis N−5), der **17.02.** im MKM die drei und vier Jahre späteren (N−4 bis N−3). Es gilt der
+nächste noch offene Stichtag – für die Terminfrist einer Anmeldung ab dem Statuswechsel, für
+Anmeldebedarf und Erstanmeldung ab heute; sind alle verstrichen, der letzte (der Rechenweg sagt,
+welcher). **Die übrigen vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis
+sie geändert oder als „Geprüft“ bestätigt werden. **Ril_KM** nimmt die Frist der **KM-Runde**, wenn die Anmeldung sie
 kennt (Prozessphase aus BBPNeo oder im Dialog gewählt: 2. KP = N-2, 3. KP = N-1); sonst die
 N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor dem ersten
 Anmeldetermin des Projekts liegt, danach die N-1-Frist; der Rechenweg nennt den Grund. **Ril_KKM** richtet sich nach der Maßnahmenart
@@ -1280,7 +1290,10 @@ die Antworten noch enthalten. Fassung 12 nimmt Projektleiter, Hauptbearbeiter, e
 Anmeldetermin (ca.) und Status der Betreuung aus den Projekten; war ein Projekt in
 „Betreuungspause“ oder „Abgeschlossen“, steht das danach als Zeile in seiner Bemerkung
 („Status der Betreuung bisher: …“). Fassung 13 ergänzt in den Einstellungen die gemerkte Auswahl
-der Ersteller und die Projektzuordnung des PzE-Imports (beide leer). Der Name unter „Angemeldet als“
+der Ersteller und die Projektzuordnung des PzE-Imports (beide leer). Fassung 14 gibt den
+Richtlinienfristen ein Fenster von Jahren und setzt SKM (22.07. in N−9 bis N−5) und MKM (17.02. in
+N−4 bis N−3) – sofern sie noch Platzhalter waren oder den alten Platzhalterwert (31.03. N−4 bzw.
+N−3) trugen; selbst eingetragene andere Werte bleiben. Der Name unter „Angemeldet als“
 gilt in allen Bereichen; er steht im Statusverlauf.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
@@ -1783,7 +1796,7 @@ src/
         bbpImport.ts Import aus BBPNeo: Lesen (je Anmelde-ID), Vorschau, Anwenden
         pzeImport.ts Import aus PzE: Lesen (Vorhaben Übersicht), Vorschau, Anwenden
         export.ts    Excel-Ausgabe des Monitors
-        seed.ts      Platzhalter der Richtlinienfristen und Demodaten
+        seed.ts      Richtlinienfristen (SKM, MKM abgeglichen, übrige Platzhalter) und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
       store/         storage.ts (Laden, Migration, Rohkopie, Sicherung) und store.tsx (alle
                      Schreibzugriffe, Lade- und Speicherzustand)
