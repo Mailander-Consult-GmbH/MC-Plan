@@ -1321,9 +1321,10 @@ anderes Fenster denselben Bereich, lädt der Store dessen Stand nach (`useFremde
 ## Projektsteuerung
 
 Erster Entwurf für die externe Projektsteuerung. Aufbau und Gestaltung folgen dem
-Planlaufmanagement: Seitenleiste mit **Übersicht**, **Projekte** und der einklappbaren Gruppe
-**Einstellungen** mit den **Funktionen**, darunter die markierten Projekte; im Projekt zwei Seiten –
-**Projektbeteiligte** und **Protokolle** –, darüber Projektnummer, Status sowie **Bearbeiten**,
+Planlaufmanagement: Seitenleiste mit **Übersicht**, **To-Do-Liste**, **Projekte** und der
+einklappbaren Gruppe **Einstellungen** mit den **Funktionen**, darunter die markierten Projekte; im
+Projekt drei Seiten – **Projektbeteiligte**, **Protokolle** und **To-Dos** –, darüber
+Projektnummer, Status sowie **Bearbeiten**,
 **Archivieren** (siehe [Gemeinsame Projekte](#gemeinsame-projekte)) und **Löschen**.
 Die Protokolle übernehmen die Funktionen des bisherigen eigenständigen Protokoll-Tools
 (HTML-Datei), in der Optik von KaPlan.
@@ -1444,14 +1445,29 @@ zählt allein diese. Steht der Name in keiner
 Projektbeteiligtenliste der angezeigten Projekte, weist die Übersicht darauf hin. Kennzahlen
 (aktive Projekte, meine To-Dos, überfällig, demnächst fällig – 7 Tage vorher), die Liste
 **Meine To-Dos**, Überfälliges zuerst, mit **Erledigt** je Zeile;
-dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin und ihren
-eigenen To-Dos. Die Seitenleiste zählt die eigenen To-Dos an **Übersicht** und die überfälligen
-Aufgaben je Projekt.
+darunter **Fällige To-Dos** aus der eigenen To-Do-Liste (überfällig oder in den nächsten 7 Tagen
+fällig, mit **Erledigt**); dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
+nächstem Termin und ihren eigenen To-Dos. Die Seitenleiste zählt die eigenen To-Dos an
+**Übersicht** und die überfälligen Aufgaben je Projekt.
+
+### To-Do-Liste
+Eine schlichte Liste für sich selbst, unabhängig von den Protokollen – als Hauptpunkt
+**To-Do-Liste** in der Seitenleiste über alle Aufgaben und als Reiter **To-Dos** im Projekt mit
+dessen Aufgaben. Oben wird erfasst: Aufgabe, auf Wunsch Projekt (im Projekt-Reiter immer dieses)
+und Fälligkeit, die Eingabetaste in jedem Feld nimmt sie auf. Die Liste hat die Spalten Erledigt
+(Kästchen), Aufgabe (mit Notiz), Projekt (nur in der Seitenleisten-Ansicht), Fällig und Status
+(Ampel wie bei den Protokollaufgaben); offene Aufgaben stehen vorn, Überfälliges zuerst. Filter:
+**Offen**, **Fällig** (überfällig oder in den nächsten 7 Tagen), **Erledigt**, **Alle**, dazu
+nach Projekt (auch **Ohne Projekt**) und eine Suche. Ein Klick auf eine Zeile öffnet die Aufgabe
+zum Bearbeiten (Aufgabe, Projekt, Fällig am, Notiz, erledigt) und Löschen. Der Zähler am
+Menüpunkt nennt die zeitkritischen Aufgaben – rot, sobald eine überfällig ist. Wird ein Projekt
+gelöscht, bleiben seine Aufgaben ohne Projekt stehen.
 
 ### Daten
 Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
 mit Projektbeteiligten und zwei Protokollen, darunter Aufgaben der Projektsteuerin Lena Roth – wer
-unter „Angemeldet als“ „Lena Roth“ einträgt, sieht sie als eigene To-Dos), **Sicherung**/**Einspielen** (JSON mit dem
+unter „Angemeldet als“ „Lena Roth“ einträgt, sieht sie als eigene To-Dos –, dazu fünf Aufgaben der
+To-Do-Liste), **Sicherung**/**Einspielen** (JSON mit dem
 Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
 Protokoll-Tools werden mit Hinweis abgewiesen, eine beschädigte Datei mit „Die Sicherung konnte
 nicht gelesen werden.“) und **Zurücksetzen**. Stände der ersten Fassung
@@ -1462,8 +1478,8 @@ Protokoll seiner Fundstelle („Prot. 2, Pkt. 1.3“ → „aus Prot. 2“), die
 Bis Fassung 4 führte jedes Projekt eine Liste offener Punkte (LOP); sie entfällt beim Laden samt
 den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die frühere Adresse
 `#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Bis Fassung 5 galten für alle
-Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Der Name unter „Angemeldet als“
-gilt in allen Bereichen.
+Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Bis Fassung 6 gab es keine
+To-Do-Liste – sie beginnt leer. Der Name unter „Angemeldet als“ gilt in allen Bereichen.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
 einwandfrei geladen wurde (`ladeZustand === 'ok'`); vor jeder Umstellung auf eine neue Fassung
@@ -1825,6 +1841,7 @@ src/
                      (zuordnung, werMitziehen), Übernahme aus dem Protokoll-Tool
         beteiligteImport.ts  Excel-/CSV-Import der Projektbeteiligten (Spalten, Abgleich von Funktionen)
         punkte.ts    Offene Aufgaben der Protokolle mit Ampel
+        todos.ts     Eigene To-Do-Liste: anlegen, erledigen, Ampel, zeitkritisch, Reihenfolge
         druck.ts     Druckfassungen (Protokoll, Beteiligtenliste) samt Gestaltung und Live-Fenster
         export.ts    Excel-Ausgabe und -Vorlage der Projektbeteiligten
         seed.ts      Standard-Funktionen, Standardlogos und Demodaten
@@ -1833,8 +1850,9 @@ src/
                      Schreibzugriffe, Lade- und Speicherzustand)
       lib/router.ts  Hash-Adressen unterhalb von #/projektsteuerung (Übersicht unter
                      #/projektsteuerung selbst)
-      pages/         Übersicht, Projekte, Funktionen, Projekt mit Projektbeteiligten und Protokollen
-                     (Liste und Editor)
+      pages/         Übersicht, To-Do-Liste (Todos.tsx – auch Reiter im Projekt und Karte der
+                     Übersicht), Projekte, Funktionen, Projekt mit Projektbeteiligten, Protokollen
+                     (Liste und Editor) und To-Dos
       components/    Dialoge (Person, Funktion, Gewerk), Excel-Import, Logos, Sicherung, Ampel, Live-Druckansicht,
                      Hinweisleisten (Ladefehler, neuere Fassung, Speicher voll)
 ```
