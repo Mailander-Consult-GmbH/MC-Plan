@@ -18,8 +18,9 @@ export type ISODate = string;
  * Tagesordnungspunkte, Bemerkung der LOP-Punkte; die LOP ohne Kopfangaben.
  * Fassung 5: ohne LOP; Ergänzungen mit eigener Art (`Zeile.typ`).
  * Fassung 6: Logos je Protokollreihe (`reihenLogos`).
+ * Fassung 7: eigene To-Do-Liste (`todos`).
  */
-export const DATEN_VERSION = 6;
+export const DATEN_VERSION = 7;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
@@ -271,6 +272,25 @@ export const STANDARD_HINWEIS =
 /* Gesamtbestand                                                       */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* Eigene To-Do-Liste                                                  */
+/* ------------------------------------------------------------------ */
+
+/** Aufgabe der eigenen To-Do-Liste – unabhängig von den Protokollen. */
+export interface Todo {
+  id: ID;
+  text: string;
+  notiz: string;
+  /** Zugeordnetes Projekt; null = ohne Projekt. */
+  projektId: ID | null;
+  /** Fällig am; leer = ohne Termin. */
+  termin: ISODate;
+  status: Erledigung;
+  erledigtAm: ISODate;
+  /** Tag der Aufnahme in die Liste. */
+  angelegt: ISODate;
+}
+
 export interface ProjektsteuerungDaten {
   version: number;
   einstellungen: Einstellungen;
@@ -285,6 +305,8 @@ export interface ProjektsteuerungDaten {
    * Reihe, gelten die Logos des Projekts.
    */
   reihenLogos: Record<ID, Logo[]>;
+  /** Eigene To-Do-Liste. */
+  todos: Todo[];
 }
 
 /* ------------------------------------------------------------------ */

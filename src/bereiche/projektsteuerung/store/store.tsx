@@ -24,6 +24,8 @@ import {
 } from '../domain/protokoll';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { seedDaten } from '../domain/seed';
+import { neuesTodo, todoErledigt } from '../domain/todos';
+import { today } from '../../../shared/dates';
 import {
   newId,
   type Beteiligter,
@@ -34,6 +36,7 @@ import {
   type Projekt,
   type ProjektsteuerungDaten,
   type Protokoll,
+  type Todo,
 } from '../domain/types';
 import type { Punkt } from '../domain/punkte';
 import { SPEICHER_SCHLUESSEL, ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
@@ -68,7 +71,7 @@ interface StoreValue {
   /* Projekte */
   addProjekt: (p: Omit<Projekt, 'id'>) => ID;
   updateProjekt: (id: ID, patch: Partial<Omit<Projekt, 'id'>>) => void;
-  /** Löscht das Projekt mit Beteiligten und Protokollen. */
+  /** Löscht das Projekt mit Beteiligten und Protokollen; Aufgaben der To-Do-Liste bleiben ohne Projekt. */
   deleteProjekt: (id: ID) => void;
   toggleMarkiert: (id: ID) => void;
   /* Projektbeteiligte */
@@ -94,6 +97,13 @@ interface StoreValue {
   /* Aufgaben aus den Protokollen */
   /** Setzt „erledigt“ an einer Aufgabe – Eintrag oder Ergänzung mit eigener Art. */
   punktErledigen: (punkt: Punkt, erledigt: boolean) => void;
+  /* Eigene To-Do-Liste */
+  /** Nimmt eine Aufgabe auf und liefert ihre Kennung. */
+  addTodo: (werte: Pick<Todo, 'text' | 'projektId' | 'termin'>) => ID;
+  updateTodo: (id: ID, patch: Partial<Omit<Todo, 'id' | 'status' | 'erledigtAm'>>) => void;
+  /** „Erledigt“ setzen bzw. zurücknehmen; hält den Tag fest. */
+  todoErledigen: (id: ID, erledigt: boolean) => void;
+  deleteTodo: (id: ID) => void;
   /* Verwaltung */
   ersetzeDaten: (d: ProjektsteuerungDaten) => void;
   zuruecksetzen: () => void;
@@ -230,6 +240,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             projekte: d.projekte.filter((p) => p.id !== id),
             beteiligte: d.beteiligte.filter((b) => b.projektId !== id),
             protokolle: d.protokolle.filter((p) => p.projektId !== id),
+            todos: d.todos.map((t) => (t.projektId === id ? { ...t, projektId: null } : t)),
           }),
         ),
       toggleMarkiert: (id) =>
@@ -277,6 +288,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const { [reiheId]: _alt, ...andere } = d.reihenLogos;
           return { ...d, reihenLogos: logos ? { ...andere, [reiheId]: logos } : andere };
         }),
+
+      addTodo: (werte) => {
+        // Kennung und Tag vorab, damit die Änderung im StrictMode rein bleibt.
+        const id = newId('td');
+        const heute = today();
+        mutate((d) => ({ ...d, todos: [...d.todos, neuesTodo(id, werte, heute)] }));
+        return id;
+      },
+      updateTodo: (id, patch) =>
+        mutate((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? { ...t, ...patch, id } : t)) })),
+      todoErledigen: (id, erledigt) => {
+        const heute = today();
+        mutate((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? todoErledigt(t, erledigt, heute) : t)) }));
+      },
+      deleteTodo: (id) => mutate((d) => ({ ...d, todos: d.todos.filter((t) => t.id !== id) })),
 
       punktErledigen: (punkt, erledigt) => {
         const status = erledigt ? ('erledigt' as const) : ('offen' as const);

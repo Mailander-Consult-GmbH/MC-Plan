@@ -32,6 +32,7 @@ import {
   type Protokoll,
   type Teilnahme,
   type Teilnehmer,
+  type Todo,
   type Top,
   type Zeile,
 } from '../domain/types';
@@ -236,6 +237,22 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
       .filter(([id, w]) => reihen.has(id) && Array.isArray(w))
       .map(([id, w]) => [id, logosAufbereiten(w)]),
   );
+  // Eigene To-Do-Liste – der Verweis auf ein Projekt, das es nicht mehr gibt, entfällt
+  const todos = liste(roh.todos)
+    .filter((t) => text(t.text).trim())
+    .map((t): Todo => {
+      const status = erledigung(t.status);
+      return {
+        id: text(t.id) || zufallsId('td'),
+        text: text(t.text),
+        notiz: text(t.notiz),
+        projektId: projektIds.has(text(t.projektId)) ? text(t.projektId) : null,
+        termin: datum(t.termin),
+        status,
+        erledigtAm: status === 'erledigt' ? datum(t.erledigtAm) : '',
+        angelegt: datum(t.angelegt) || today(),
+      };
+    });
   return {
     version: DATEN_VERSION,
     einstellungen: {
@@ -247,6 +264,7 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
     beteiligte,
     protokolle,
     reihenLogos,
+    todos,
   };
 }
 
@@ -260,7 +278,8 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
  * Projekt eine Liste offener Punkte (LOP); `aufbereiten` lässt sie samt den
  * Verweisen der Aufgaben fallen, Zeilen ohne eigene Art laufen unter dem
  * Ursprung mit. Fassung 5 kannte keine Logos je Protokollreihe; `aufbereiten`
- * setzt `reihenLogos` leer – es gelten die Logos des Projekts.
+ * setzt `reihenLogos` leer – es gelten die Logos des Projekts. Fassung 6
+ * kannte keine eigene To-Do-Liste; `aufbereiten` beginnt sie leer.
  */
 function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   let stand = roh;

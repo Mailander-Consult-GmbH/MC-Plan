@@ -4,6 +4,7 @@
  */
 import { addDays, today } from '../../../shared/dates';
 import { folgeprotokoll, neuerEintrag, neuerTop, neueReihe, neueZeile, teilnehmerAus } from './protokoll';
+import { neuesTodo } from './todos';
 import {
   DATEN_VERSION,
   newId,
@@ -18,6 +19,7 @@ import {
   type Protokoll,
   type ProjektsteuerungDaten,
   type Teilnahme,
+  type Todo,
 } from './types';
 
 const F = (
@@ -247,5 +249,23 @@ export function seedDaten(): ProjektsteuerungDaten {
     beteiligte: [...Object.values(b), ...zweite],
     protokolle: demoProtokolle(p1.id, b),
     reihenLogos: {},
+    todos: demoTodos(p1.id, p2.id),
   };
+}
+
+/** Eigene To-Do-Liste: mit und ohne Projekt, überfällig, demnächst fällig, später, erledigt. */
+function demoTodos(p1: ID, p2: ID): Todo[] {
+  const todo = (text: string, projektId: ID | null, termin: string, werte: Partial<Todo> = {}): Todo => ({
+    ...neuesTodo(newId('td'), { text, projektId, termin }, tag(-10)),
+    ...werte,
+  });
+  return [
+    todo('Rechnung des Ingenieurbüros prüfen und zur Zahlung freigeben.', p1, tag(-1)),
+    todo('Monatsbericht für den Auftraggeber vorbereiten.', null, tag(3), {
+      notiz: 'Kosten, Termine und Risiken je Projekt',
+    }),
+    todo('Auftaktbesprechung zur Bahnsteigverlängerung vorbereiten.', p2, tag(12)),
+    todo('Urlaubsvertretung abstimmen.', null, ''),
+    todo('Projekthandbuch aktualisieren.', p1, tag(-4), { status: 'erledigt', erledigtAm: tag(-3) }),
+  ];
 }

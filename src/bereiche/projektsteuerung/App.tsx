@@ -13,11 +13,13 @@ import { Hinweisleisten } from './components/Hinweisleisten';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { bezeichnung } from './domain/protokoll';
 import { eigeneTodos, offenePunkte } from './domain/punkte';
+import { todoAmpel, zeitkritisch } from './domain/todos';
 import { useRoute, type Route } from './lib/router';
 import { Funktionen } from './pages/Funktionen';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
 import { ProtokollEditor } from './pages/projekt/ProtokollEditor';
+import { TodoListe } from './pages/Todos';
 import { Uebersicht, sichtbareProjekte } from './pages/Uebersicht';
 import { exportiereDaten, rohdatenHerunterladen } from './store/storage';
 import { useStore } from './store/store';
@@ -49,6 +51,9 @@ export function App() {
   const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
   const ueberfaellig = offenePunkte(data, markierte.map((p) => p.id)).filter((p) => p.ampel === 'ueberfaellig');
   const todos = eigeneTodos(data, markierte.map((p) => p.id)).length;
+  // To-Do-Liste: zeitkritische Aufgaben; rot, sobald eine überfällig ist
+  const faelligeTodos = data.todos.filter((t) => zeitkritisch(t));
+  const todoUeberfaellig = faelligeTodos.some((t) => todoAmpel(t) === 'ueberfaellig');
   const projekt =
     route.view === 'projekt' || route.view === 'protokoll'
       ? data.projekte.find((p) => p.id === route.projektId)
@@ -82,6 +87,14 @@ export function App() {
           aktiv={route.view === 'uebersicht'}
           badge={todos > 0 ? String(todos) : undefined}
           onClick={() => gehe({ view: 'uebersicht' })}
+        />
+        <NavItem
+          icon="aufgabe"
+          label="To-Do-Liste"
+          aktiv={route.view === 'todos'}
+          badge={faelligeTodos.length > 0 ? String(faelligeTodos.length) : undefined}
+          badgeAlarm={todoUeberfaellig}
+          onClick={() => gehe({ view: 'todos' })}
         />
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
         {/* Funktionen unter „Einstellungen“ – wie im Planlaufmanagement */}
@@ -192,6 +205,7 @@ export function App() {
               {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
               {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
               {route.view === 'funktionen' ? <Funktionen /> : null}
+              {route.view === 'todos' ? <TodoListe /> : null}
               {route.view === 'projekt' ? (
                 projekt ? (
                   <ProjektDetail projekt={projekt} tab={route.tab} navigate={gehe} />
@@ -227,7 +241,7 @@ export function App() {
       {zuruecksetzenDialog ? (
         <ConfirmDialog
           titel="Daten zurücksetzen?"
-          text="Alle lokal gespeicherten Projekte, Projektbeteiligten und Protokolle der Projektsteuerung werden verworfen und der Demodatenbestand samt Standard-Funktionen wird neu geladen. Die anderen Bereiche bleiben unberührt."
+          text="Alle lokal gespeicherten Projekte, Projektbeteiligten, Protokolle und To-Dos der Projektsteuerung werden verworfen und der Demodatenbestand samt Standard-Funktionen wird neu geladen. Die anderen Bereiche bleiben unberührt."
           bestaetigenLabel="Zurücksetzen"
           onConfirm={() => {
             zuruecksetzen();
@@ -320,6 +334,8 @@ function kopfzeile(route: Route, projektName?: string, protokollName?: string): 
       return { titel: 'Projekte', sub: 'Projektverwaltung' };
     case 'funktionen':
       return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Gewerken' };
+    case 'todos':
+      return { titel: 'To-Do-Liste', sub: 'Eigene Aufgaben – auf Wunsch mit Projekt' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'protokoll':

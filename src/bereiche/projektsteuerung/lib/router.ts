@@ -7,16 +7,18 @@ import { useEffect, useState } from 'react';
 import type { ID } from '../domain/types';
 
 /** Seiten im Projekt. */
-export type ProjektTab = 'beteiligte' | 'protokolle';
+export type ProjektTab = 'beteiligte' | 'protokolle' | 'todos';
 
 export type Route =
   | { view: 'uebersicht' }
   | { view: 'projekte' }
   | { view: 'funktionen' }
+  /** Eigene To-Do-Liste über alle Projekte. */
+  | { view: 'todos' }
   | { view: 'projekt'; projektId: ID; tab: ProjektTab }
   | { view: 'protokoll'; projektId: ID; protokollId: ID };
 
-export const TABS: ProjektTab[] = ['beteiligte', 'protokolle'];
+export const TABS: ProjektTab[] = ['beteiligte', 'protokolle', 'todos'];
 
 /** Präfix aller Adressen dieses Bereichs. */
 export const PREFIX = 'projektsteuerung';
@@ -52,6 +54,7 @@ export function hashToRoute(hash: string): Route {
   }
   if (teile[0] === 'projekte') return { view: 'projekte' };
   if (teile[0] === 'funktionen') return { view: 'funktionen' };
+  if (teile[0] === 'todos') return { view: 'todos' };
   return { view: 'uebersicht' };
 }
 
