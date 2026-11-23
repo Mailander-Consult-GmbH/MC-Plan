@@ -1,8 +1,9 @@
 /**
  * Startseite des Bereichs: Kennzahlen, die eigenen To-Dos – offene Aufgaben
  * der Protokolle für die angemeldete Person („Angemeldet als“) – nach
- * Dringlichkeit und die Projekte mit ihren Besprechungen. Angezeigt werden die
- * markierten Projekte; ohne Markierung alle.
+ * Dringlichkeit, die fälligen Aufgaben der eigenen To-Do-Liste und die
+ * Projekte mit ihren Besprechungen. Angezeigt werden die markierten Projekte;
+ * ohne Markierung alle.
  */
 import { useState } from 'react';
 import { formatDate, relativeLabel, today } from '../../../shared/dates';
@@ -15,6 +16,7 @@ import { angemeldetBeteiligt, eigeneTodos, type Punkt } from '../domain/punkte';
 import type { Projekt } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
+import { FaelligeTodos } from './Todos';
 import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 
 /** Markierte Projekte; ohne Markierung alle. */
@@ -177,6 +179,8 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
           </div>
         ) : null}
       </Card>
+
+      <FaelligeTodos onZurListe={() => navigate({ view: 'todos' })} />
 
       <Card>
         <CardHeader titel="Projekte" sub="Beteiligte, Besprechungen und eigene To-Dos je Projekt" />

@@ -510,7 +510,10 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   `uebernahme` mit `eintragUebernehmen` (`domain/protokoll.ts`). Die Übersicht zeigt nur eigene
   To-Dos – Aufgaben der Person unter „Angemeldet als“ (`eigeneTodos`, `domain/punkte.ts`). Logos im
   Druckkopf führt jede Protokollreihe selbst oder erbt die des Projekts (`reihenLogos`,
-  `logosFuer`). Eigene
+  `logosFuer`). Die eigene **To-Do-Liste** (`todos`, `domain/todos.ts`) ist unabhängig von den
+  Protokollen: `TodoListe` (`pages/Todos.tsx`) steht als Hauptpunkt „To-Do-Liste“ (Route `todos`)
+  und als Reiter „To-Dos“ im Projekt, `FaelligeTodos` als Karte auf der Übersicht; ein gelöschtes
+  Projekt lässt seine Aufgaben ohne Projekt stehen. Eigene
   Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens; weiß bleiben
   allein das Blatt der Druckansicht und die Logo-Kacheln). Neue Felder
   über `DATEN_VERSION` (`projektsteuerung/domain/types.ts`) und `migriere()`

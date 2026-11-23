@@ -1,5 +1,6 @@
 /**
- * Projektarbeitsbereich mit zwei Seiten: Projektbeteiligte und Protokolle.
+ * Projektarbeitsbereich mit drei Seiten: Projektbeteiligte, Protokolle und die
+ * eigenen To-Dos zum Projekt.
  * Darüber Projektnummer, Status sowie „Bearbeiten“, „Archivieren“ und „Löschen“.
  */
 import { useState } from 'react';
@@ -12,11 +13,13 @@ import type { ProjektTab, Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { Beteiligte } from './projekt/Beteiligte';
 import { Protokolle } from './projekt/Protokolle';
+import { TodoListe } from './Todos';
 import { ProjektDialog, STATUS_TON } from './Projekte';
 
 const TABS: { id: ProjektTab; label: string; titel: string }[] = [
   { id: 'beteiligte', label: 'Projektbeteiligte', titel: 'Projektbeteiligtenliste' },
   { id: 'protokolle', label: 'Protokolle', titel: 'Besprechungsprotokolle' },
+  { id: 'todos', label: 'To-Dos', titel: 'Eigene To-Dos zum Projekt' },
 ];
 
 export function ProjektDetail({
@@ -77,6 +80,7 @@ export function ProjektDetail({
 
       {tab === 'beteiligte' ? <Beteiligte projekt={projekt} /> : null}
       {tab === 'protokolle' ? <Protokolle projekt={projekt} navigate={navigate} /> : null}
+      {tab === 'todos' ? <TodoListe key={projekt.id} projekt={projekt} /> : null}
 
       {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
 
