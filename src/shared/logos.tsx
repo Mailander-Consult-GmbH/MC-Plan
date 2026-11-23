@@ -13,7 +13,9 @@ import { useState } from 'react';
  * Das Logo wird hier gezeichnet, nicht als Bilddatei eingebunden: die Ebenen
  * als Polygone, der Schriftzug als Text in Outfit, der Schrift der Oberfläche.
  * Die Farben kommen aus den Tokens `--logo-…` in global.css und folgen dem
- * Farbschema. Vorlage sind die Dateien unter `public/logos/`
+ * Farbschema – abweichend von der Vorlage steht „KaPlan“ im hellen Schema im
+ * Blau der Wortmarke Mailänder Consult (`--logo-schriftzug`), die Unterzeile
+ * bleibt grau. Vorlage sind die Dateien unter `public/logos/`
  * (`kaplan-logo-*.svg`, `kaplan-symbol-*.svg`); Regeln und Maße stehen in
  * `docs/LOGO-ANLEITUNG.md`. Es steht ohne Fläche dahinter.
  *
