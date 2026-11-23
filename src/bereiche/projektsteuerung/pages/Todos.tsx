@@ -5,10 +5,16 @@
  * eine Karte, wie die Phasen in der Baubetriebsplanung, dazu „Ohne Projekt“ –
  * und als Reiter „To-Dos“ im Projekt (nur dessen Karte). Neue Aufgaben werden
  * unter den vorhandenen eingetragen, als schriebe man die Liste fort; ein
- * Klick auf eine Zeile öffnet sie zum Bearbeiten. `FaelligeTodos` zeigt auf
- * der Übersicht, was wichtig, überfällig oder demnächst fällig ist.
+ * Klick auf eine Zeile öffnet sie zum Bearbeiten. Erledigt wird mit dem
+ * kleinen Haken des Planlaufmanagements (`ErledigtHaken`); eine Zeile, die
+ * damit oder mit dem Stern die Auswahl verlässt, bleibt noch kurz stehen
+ * (`useNachlauf`), Zeilen und Karten kommen, gehen und gleiten an ihren Platz
+ * (`listenEintrag`). `FaelligeTodos` zeigt auf der Übersicht, was wichtig,
+ * überfällig oder demnächst fällig ist.
  */
 import { useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Aufspringen, listenEintrag } from '../../../shared/bewegung';
 import { formatDate, relativeLabel, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
@@ -28,6 +34,7 @@ import {
 } from '../../../shared/ui';
 import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 import { AmpelBadge, AmpelPunkt } from '../components/common';
+import { ErledigtHaken, useNachlauf } from '../components/erledigen';
 import { VORLAUF_TAGE, type ID, type Projekt, type Todo } from '../domain/types';
 import { projektDes, todoAmpel, todosSortiert, zeitkritisch } from '../domain/todos';
 import type { Route } from '../lib/router';
@@ -76,9 +83,13 @@ function ProjektWahl({
 }
 
 const fertig = (t: Todo) => t.status === 'erledigt';
+/** Die Aufgabe, als wäre sie noch offen – damit eine eben erledigte an ihrem Platz bleibt. */
+const alsOffen = (t: Todo): Todo => (fertig(t) ? { ...t, status: 'offen', erledigtAm: '' } : t);
 
 export function TodoListe({ projekt, navigate }: { projekt?: Projekt; navigate?: (r: Route) => void }) {
-  const { data } = useStore();
+  const { data, todoErledigen, updateTodo } = useStore();
+  const toast = useToast();
+  const nachlauf = useNachlauf();
   const archiviert = useArchivierte('projektsteuerung');
   const [filter, setFilter] = useState<Filter>('offen');
   const [projektFilter, setProjektFilter] = useState('');
@@ -106,8 +117,10 @@ export function TodoListe({ projekt, navigate }: { projekt?: Projekt; navigate?:
           .includes(begriff),
       )
     : imBereich;
+  // Eben erledigt oder umgestellt: bleibt noch kurz stehen, auch wenn sie nicht mehr passt
   const passt = (t: Todo) =>
-    filter === 'offen'
+    nachlauf.hat(t.id) ||
+    (filter === 'offen'
       ? !fertig(t)
       : filter === 'wichtig'
         ? !fertig(t) && t.wichtig
@@ -115,7 +128,7 @@ export function TodoListe({ projekt, navigate }: { projekt?: Projekt; navigate?:
           ? zeitkritisch(t, heute)
           : filter === 'erledigt'
             ? fertig(t)
-            : true;
+            : true);
   const sichtbar = gesucht.filter(passt);
   const anzahl = {
     offen: gesucht.filter((t) => !fertig(t)).length,
@@ -149,6 +162,17 @@ export function TodoListe({ projekt, navigate }: { projekt?: Projekt; navigate?:
     : data.projekte.filter((p) => !archiviert.has(p.id) && !gruppen.some((g) => g.projekt?.id === p.id)).sort(nachProjekt);
   const mitAufgaben = data.projekte.filter((p) => data.todos.some((t) => t.projektId === p.id)).sort(nachProjekt);
   const zuBearbeiten = bearbeiten ? data.todos.find((t) => t.id === bearbeiten) : undefined;
+
+  const erledigen = (t: Todo) => {
+    const erledigt = !fertig(t);
+    todoErledigen(t.id, erledigt);
+    nachlauf.merken(t.id);
+    toast(erledigt ? 'Als erledigt markiert.' : 'Wieder offen.');
+  };
+  const wichtigUmschalten = (t: Todo) => {
+    updateTodo(t.id, { wichtig: !t.wichtig });
+    nachlauf.merken(t.id);
+  };
 
   return (
     <div className="stack">
@@ -190,21 +214,26 @@ export function TodoListe({ projekt, navigate }: { projekt?: Projekt; navigate?:
           <EmptyState icon="suche" titel="Keine Aufgabe gefunden" text="Für diese Suche gibt es keinen Treffer." />
         </Card>
       ) : (
-        gruppen.map((g) => (
-          <TodoGruppe
-            key={g.schluessel}
-            projekt={g.projekt}
-            imProjekt={!!projekt}
-            todos={g.todos}
-            alle={data.todos.filter((t) => (projektVon(t)?.id ?? null) === (g.projekt?.id ?? null))}
-            filter={filter}
-            leer={data.todos.length === 0}
-            fokus={fokusGruppe === g.schluessel}
-            heute={heute}
-            navigate={navigate}
-            onBearbeiten={setBearbeiten}
-          />
-        ))
+        <AnimatePresence initial={false}>
+          {gruppen.map((g) => (
+            <motion.div key={g.schluessel} {...listenEintrag}>
+              <TodoGruppe
+                projekt={g.projekt}
+                imProjekt={!!projekt}
+                todos={g.todos}
+                alle={data.todos.filter((t) => (projektVon(t)?.id ?? null) === (g.projekt?.id ?? null))}
+                filter={filter}
+                leer={data.todos.length === 0}
+                fokus={fokusGruppe === g.schluessel}
+                heute={heute}
+                navigate={navigate}
+                onBearbeiten={setBearbeiten}
+                onErledigen={erledigen}
+                onWichtig={wichtigUmschalten}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       )}
 
       {ohneKarte.length > 0 && !begriff && filter !== 'erledigt' ? (
@@ -250,6 +279,8 @@ function TodoGruppe({
   heute,
   navigate,
   onBearbeiten,
+  onErledigen,
+  onWichtig,
 }: {
   projekt: Projekt | null;
   imProjekt: boolean;
@@ -264,8 +295,10 @@ function TodoGruppe({
   heute: string;
   navigate?: (r: Route) => void;
   onBearbeiten: (id: ID) => void;
+  onErledigen: (t: Todo) => void;
+  onWichtig: (t: Todo) => void;
 }) {
-  const { data, addTodo, todoErledigen, updateTodo, todosTauschen } = useStore();
+  const { data, addTodo, todosTauschen } = useStore();
   const toast = useToast();
   const [neu, setNeu] = useState({ text: '', termin: '' });
   const feld = useRef<HTMLInputElement>(null);
@@ -317,113 +350,111 @@ function TodoGruppe({
             <thead>
               <tr>
                 <th style={{ width: 44 }}>
-                  <span className="sr-only">Erledigt</span>
-                </th>
-                <th style={{ width: 44 }}>
                   <span className="sr-only">Wichtig</span>
                 </th>
                 <th>Aufgabe</th>
                 <th style={{ width: 140 }}>Fällig</th>
                 <th style={{ width: 150 }}>Status</th>
-                <th className="actions" style={{ width: 84 }}>
-                  <span className="sr-only">Reihenfolge</span>
+                <th className="actions" style={{ width: 132 }}>
+                  <span className="sr-only">Reihenfolge und erledigt</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {todos.map((t, i) => {
-                const quelle = t.herkunft ? data.protokolle.find((p) => p.id === t.herkunft!.protokollId) : undefined;
-                return (
-                  <tr key={t.id} className="clickable" {...alsKlickZeile(() => onBearbeiten(t.id))}>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={fertig(t)}
-                        onChange={(e) => {
-                          todoErledigen(t.id, e.target.checked);
-                          toast(e.target.checked ? 'Als erledigt markiert.' : 'Wieder offen.');
-                        }}
-                        aria-label={`„${t.text}“ erledigt`}
-                      />
-                    </td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className={`stern ${t.wichtig ? 'aktiv' : ''}`}
-                        aria-pressed={t.wichtig}
-                        title={t.wichtig ? 'Nicht mehr wichtig' : 'Als wichtig markieren'}
-                        aria-label={`„${t.text}“ wichtig`}
-                        onClick={() => updateTodo(t.id, { wichtig: !t.wichtig })}
-                      >
-                        <Icon name="stern" size={16} />
-                      </button>
-                    </td>
-                    <td>
-                      <div className={fertig(t) ? 'text-gedaempft line-through' : t.wichtig ? 'font-medium' : ''}>
-                        {t.text}
-                      </div>
-                      {t.notiz ? <div className="ps-zweizeilig small tertiary">{t.notiz}</div> : null}
-                      {t.herkunft ? (
-                        <div className="small tertiary">
-                          aus{' '}
-                          {quelle && navigate ? (
-                            <button
-                              type="button"
-                              className="link-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate({ view: 'protokoll', projektId: quelle.projektId, protokollId: quelle.id });
-                              }}
-                            >
-                              {t.herkunft.fundstelle}
-                            </button>
-                          ) : (
-                            t.herkunft.fundstelle
-                          )}
+              <AnimatePresence initial={false}>
+                {todos.map((t, i) => {
+                  const quelle = t.herkunft ? data.protokolle.find((p) => p.id === t.herkunft!.protokollId) : undefined;
+                  return (
+                    <motion.tr
+                      key={t.id}
+                      {...listenEintrag}
+                      className="clickable"
+                      {...alsKlickZeile(() => onBearbeiten(t.id))}
+                    >
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className={`stern ${t.wichtig ? 'aktiv' : ''}`}
+                          aria-pressed={t.wichtig}
+                          title={t.wichtig ? 'Nicht mehr wichtig' : 'Als wichtig markieren'}
+                          aria-label={`„${t.text}“ wichtig`}
+                          onClick={() => onWichtig(t)}
+                        >
+                          <Aufspringen wert={t.wichtig}>
+                            <Icon name="stern" size={16} />
+                          </Aufspringen>
+                        </button>
+                      </td>
+                      <td>
+                        <div
+                          className={`transition-colors duration-300 ${fertig(t) ? 'text-gedaempft line-through' : t.wichtig ? 'font-medium' : ''}`}
+                        >
+                          {t.text}
                         </div>
-                      ) : null}
-                    </td>
-                    <td className="small">
-                      {t.termin ? (
-                        <>
-                          {formatDate(t.termin)}
-                          {fertig(t) ? null : <div className="tertiary small">{relativeLabel(t.termin)}</div>}
-                        </>
-                      ) : (
-                        <span className="tertiary">ohne Termin</span>
-                      )}
-                    </td>
-                    <td>
-                      <AmpelBadge ampel={todoAmpel(t, heute)} />
-                      {fertig(t) && t.erledigtAm ? (
-                        <div className="tertiary small">am {formatDate(t.erledigtAm)}</div>
-                      ) : null}
-                    </td>
-                    <td className="actions" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        disabled={i === 0}
-                        title="Nach oben"
-                        aria-label={`„${t.text}“ nach oben`}
-                        onClick={() => todosTauschen(t.id, todos[i - 1].id)}
-                      >
-                        <Icon name="hoch" size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        disabled={i === todos.length - 1}
-                        title="Nach unten"
-                        aria-label={`„${t.text}“ nach unten`}
-                        onClick={() => todosTauschen(t.id, todos[i + 1].id)}
-                      >
-                        <Icon name="runter" size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                        {t.notiz ? <div className="ps-zweizeilig small tertiary">{t.notiz}</div> : null}
+                        {t.herkunft ? (
+                          <div className="small tertiary">
+                            aus{' '}
+                            {quelle && navigate ? (
+                              <button
+                                type="button"
+                                className="link-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate({ view: 'protokoll', projektId: quelle.projektId, protokollId: quelle.id });
+                                }}
+                              >
+                                {t.herkunft.fundstelle}
+                              </button>
+                            ) : (
+                              t.herkunft.fundstelle
+                            )}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="small">
+                        {t.termin ? (
+                          <>
+                            {formatDate(t.termin)}
+                            {fertig(t) ? null : <div className="tertiary small">{relativeLabel(t.termin)}</div>}
+                          </>
+                        ) : (
+                          <span className="tertiary">ohne Termin</span>
+                        )}
+                      </td>
+                      <td>
+                        <AmpelBadge ampel={todoAmpel(t, heute)} />
+                        {fertig(t) && t.erledigtAm ? (
+                          <div className="tertiary small">am {formatDate(t.erledigtAm)}</div>
+                        ) : null}
+                      </td>
+                      <td className="actions" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          disabled={i === 0}
+                          title="Nach oben"
+                          aria-label={`„${t.text}“ nach oben`}
+                          onClick={() => todosTauschen(t.id, todos[i - 1].id)}
+                        >
+                          <Icon name="hoch" size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          disabled={i === todos.length - 1}
+                          title="Nach unten"
+                          aria-label={`„${t.text}“ nach unten`}
+                          onClick={() => todosTauschen(t.id, todos[i + 1].id)}
+                        >
+                          <Icon name="runter" size={14} />
+                        </button>
+                        <ErledigtHaken erledigt={fertig(t)} text={t.text} onUmschalten={() => onErledigen(t)} />
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </AnimatePresence>
             </tbody>
           </table>
         </div>
@@ -579,11 +610,15 @@ function TodoDialog({ todo, onClose }: { todo: Todo; onClose: () => void }) {
 export function FaelligeTodos({ onZurListe }: { onZurListe: () => void }) {
   const { data, todoErledigen } = useStore();
   const toast = useToast();
+  const nachlauf = useNachlauf();
   const heute = today();
+  // Eben erledigte bleiben kurz an ihrem Platz – gefiltert und sortiert, als wären sie noch offen
+  const kandidaten = data.todos.filter((t) => !fertig(t) || nachlauf.hat(t.id));
+  const nachId = new Map(kandidaten.map((t) => [t.id, t]));
   const liste = todosSortiert(
-    data.todos.filter((t) => !fertig(t) && (t.wichtig || zeitkritisch(t, heute))),
+    kandidaten.map(alsOffen).filter((t) => t.wichtig || zeitkritisch(t, heute)),
     heute,
-  );
+  ).map((t) => nachId.get(t.id)!);
 
   return (
     <Card>
@@ -612,57 +647,58 @@ export function FaelligeTodos({ onZurListe }: { onZurListe: () => void }) {
               </tr>
             </thead>
             <tbody>
-              {liste.map((t) => {
-                const ampel = todoAmpel(t, heute);
-                const p = projektDes(t, data.projekte);
-                return (
-                  <tr key={t.id}>
-                    <td className="col-optional">
-                      <AmpelPunkt ampel={ampel} />
-                    </td>
-                    <td style={{ maxWidth: 460 }}>
-                      <div className="ps-zweizeilig">
-                        {t.wichtig ? (
-                          <span className="stern aktiv p-0 pr-1 align-[-2px]" title="Wichtig">
-                            <Icon name="stern" size={13} />
-                          </span>
-                        ) : null}
-                        {t.text}
-                      </div>
-                      {t.notiz ? <div className="small tertiary ps-zweizeilig">{t.notiz}</div> : null}
-                    </td>
-                    <td className="small muted col-optional">
-                      {p ? projektText(p) : <span className="tertiary">ohne Projekt</span>}
-                    </td>
-                    <td className="small">
-                      {t.termin ? (
-                        <>
-                          {formatDate(t.termin)}
-                          <div className="tertiary small">{relativeLabel(t.termin)}</div>
-                        </>
-                      ) : (
-                        <span className="tertiary">ohne Termin</span>
-                      )}
-                    </td>
-                    <td>
-                      <AmpelBadge ampel={ampel} />
-                    </td>
-                    <td className="actions">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline btn-haken"
-                        title="Als erledigt markieren"
-                        onClick={() => {
-                          todoErledigen(t.id, true);
-                          toast('Als erledigt markiert.');
-                        }}
-                      >
-                        <Icon name="check" size={13} /> Erledigt
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              <AnimatePresence initial={false}>
+                {liste.map((t) => {
+                  const ampel = todoAmpel(t, heute);
+                  const p = projektDes(t, data.projekte);
+                  return (
+                    <motion.tr key={t.id} {...listenEintrag}>
+                      <td className="col-optional">
+                        <AmpelPunkt ampel={ampel} />
+                      </td>
+                      <td style={{ maxWidth: 460 }}>
+                        <div className={`ps-zweizeilig transition-colors duration-300 ${fertig(t) ? 'text-gedaempft line-through' : ''}`}>
+                          {t.wichtig ? (
+                            <span className="stern aktiv p-0 pr-1 align-[-2px]" title="Wichtig">
+                              <Icon name="stern" size={13} />
+                            </span>
+                          ) : null}
+                          {t.text}
+                        </div>
+                        {t.notiz ? <div className="small tertiary ps-zweizeilig">{t.notiz}</div> : null}
+                      </td>
+                      <td className="small muted col-optional">
+                        {p ? projektText(p) : <span className="tertiary">ohne Projekt</span>}
+                      </td>
+                      <td className="small">
+                        {t.termin ? (
+                          <>
+                            {formatDate(t.termin)}
+                            <div className="tertiary small">{relativeLabel(t.termin)}</div>
+                          </>
+                        ) : (
+                          <span className="tertiary">ohne Termin</span>
+                        )}
+                      </td>
+                      <td>
+                        <AmpelBadge ampel={ampel} />
+                      </td>
+                      <td className="actions">
+                        <ErledigtHaken
+                          erledigt={fertig(t)}
+                          text={t.text}
+                          onUmschalten={() => {
+                            const erledigt = !fertig(t);
+                            todoErledigen(t.id, erledigt);
+                            nachlauf.merken(t.id);
+                            toast(erledigt ? 'Als erledigt markiert.' : 'Wieder offen.');
+                          }}
+                        />
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </AnimatePresence>
             </tbody>
           </table>
         </div>

@@ -3,13 +3,15 @@
  * KoralleDashboard.jsx zeigt: Karten heben sich an, Zahlen zählen hoch, die
  * Fläche des aktiven Menüpunkts gleitet, Balken wachsen, Seiten blenden ein.
  * Fachfrei – hier stehen nur die Bausteine; wer sich bewegt, entscheiden die
- * Ansichten. Wer im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht
+ * Ansichten. Dazu Einträge einer Liste, die kommen, gehen und ihren Platz
+ * wechseln (`listenEintrag`), und ein Symbol, das bei einem Wechsel kurz
+ * aufspringt (`Aufspringen`). Wer im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht
  * die Endzustände ohne Bewegung (`MotionConfig reducedMotion="user"` in
  * main.tsx und `useReducedMotion` hier).
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
+import { animate, motion, useAnimate, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 
 /** Die Kurve der Vorlage: schnell los, weich auslaufend (wie `--ease-koralle`). */
 export const KURVE = [0.2, 0.8, 0.2, 1] as const;
@@ -81,5 +83,45 @@ export function Einblenden({ schluessel, children }: { schluessel: string; child
     <motion.div key={schluessel} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35, ease: KURVE }}>
       {children}
     </motion.div>
+  );
+}
+
+/**
+ * Eintrag einer Liste – Tabellenzeile oder Karte –, der kommt, geht und seinen
+ * Platz wechselt: in `<AnimatePresence initial={false}>` als
+ * `<motion.tr key={…} {...listenEintrag}>`. Neue blenden ein, gehende blenden
+ * aus, die übrigen gleiten an ihren neuen Platz (nur die Lage, `position` –
+ * die Höhe springt, sonst verzerrte sich der Inhalt). Beim Gehen ohne
+ * Verschiebung zur Seite: Schmal scrollen Tabellen quer, eine Verschiebung
+ * ließe kurz einen Rollbalken erscheinen.
+ */
+export const listenEintrag = {
+  layout: 'position',
+  initial: { opacity: 0, y: -6 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, scale: 0.98, transition: { duration: 0.2, ease: KURVE } },
+  transition: { duration: 0.3, ease: KURVE, layout: FEDER_STRAFF },
+} as const;
+
+/**
+ * Lässt seinen Inhalt kurz aufspringen, sobald `wert` wechselt – etwa einen
+ * Haken beim Erledigen oder einen Stern beim Markieren. Beim ersten Zeichnen
+ * bleibt er ruhig.
+ */
+export function Aufspringen({ wert, children }: { wert: unknown; children: ReactNode }) {
+  const ruhig = useReducedMotion();
+  const [bereich, animieren] = useAnimate<HTMLSpanElement>();
+  const vorher = useRef(wert);
+  useEffect(() => {
+    if (Object.is(vorher.current, wert)) return;
+    vorher.current = wert;
+    if (ruhig || !bereich.current) return;
+    const lauf = animieren(bereich.current, { scale: [1, 1.4, 1] }, { duration: 0.35, ease: KURVE });
+    return () => lauf.stop();
+  }, [wert, ruhig, animieren, bereich]);
+  return (
+    <span ref={bereich} className="inline-flex">
+      {children}
+    </span>
   );
 }
