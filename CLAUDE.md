@@ -103,8 +103,8 @@ Schrift Outfit, weiche Bewegungen.
   nicht in den Ansichten einbinden. Keine Textzeichen als Symbole (✕, ★, ▾, ↺). `iconSvg` ist nur
   für die Druckfassungen da.
 * **Bewegung** mit `framer-motion`, nur über die Bausteine in `src/shared/bewegung.tsx`
-  (`hoverLift`, `Zaehler`, `NavAktiv`, `BalkenFuellung`, `Einblenden`, dazu `KURVE`, `FEDER`,
-  `FEDER_STRAFF`). `main.tsx` setzt `MotionConfig reducedMotion="user"`.
+  (`hoverLift`, `Zaehler`, `NavAktiv`, `BalkenFuellung`, `Einblenden`, `listenEintrag`,
+  `Aufspringen`, dazu `KURVE`, `FEDER`, `FEDER_STRAFF`). `main.tsx` setzt `MotionConfig reducedMotion="user"`.
 
 ### Farben
 
@@ -242,6 +242,10 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Menüpunkts und des gewählten Segments **gleitet** (`layoutId`), eine Ansicht **blendet ein**
   (`Einblenden` – nur über die Deckkraft: Eine Verschiebung an einem Vorfahren machte ihn zum
   Bezug der fest positionierten Dialoge in der Ansicht).
+* Einträge einer Liste (Tabellenzeilen, Karten) **kommen, gehen und gleiten**: `listenEintrag` an
+  einem `motion.tr`/`motion.div` in `AnimatePresence initial={false}` – nur die Lage gleitet
+  (`position`), beim Gehen keine Verschiebung zur Seite (schmal scrollen Tabellen quer). Ein Haken
+  oder Stern **springt** beim Umschalten kurz auf (`Aufspringen`, nicht beim ersten Zeichnen).
 * Kurve der Vorlage: `--ease-koralle` bzw. `KURVE`; Bedienelemente 0,15–0,35 s, Zähler und Balken
   0,8–0,9 s. Der Dialog blendet per CSS ein (`pop`) – die Fokusregeln von `Modal` rechnen damit.
 
@@ -517,7 +521,11 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   (`TodoGruppe`, neue Aufgaben unter den vorhandenen); die Reihenfolge ist die von `todos`
   (`todosTauschen`), nicht sortiert. Aus dem Protokoll übernimmt `todosAusProtokoll`
   (`todoAusAufgabe` mit `herkunft`); ob eine Aufgabe schon dort ist, sagt allein `inTodoListe` –
-  den Status gleicht nichts ab. Eigene
+  den Status gleicht nichts ab. Erledigt wird in der To-Do-Liste und auf der Übersicht mit
+  `ErledigtHaken` (`components/erledigen.tsx`, der kleine Haken des Planlaufmanagements); eine
+  Zeile, die dadurch die Auswahl verlässt, hält `useNachlauf` kurz an ihrem Platz – gespeichert
+  wird sofort, nicht erst danach. Die Klasse `ps-haken` gehört dem Kästchen „erledigt“ im
+  Protokolleditor; der Knopf heißt `ps-erledigt-haken`. Eigene
   Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens; weiß bleiben
   allein das Blatt der Druckansicht und die Logo-Kacheln). Neue Felder
   über `DATEN_VERSION` (`projektsteuerung/domain/types.ts`) und `migriere()`
