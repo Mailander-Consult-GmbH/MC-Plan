@@ -1403,6 +1403,12 @@ den gespeicherten Wert.
   oder unten; am Anfang bzw. Ende seines Tagesordnungspunkts wechselt er ans Ende des vorigen bzw.
   an den Anfang des nächsten. Die Nummern folgen der neuen Reihenfolge. Beim Verschieben mit der
   Tastatur – auch eines Tagesordnungspunkts – bleibt der Fokus am Knopf des verschobenen Elements.
+* **In die To-Do-Liste**: Jede offene Aufgabe – auch eine Ergänzung mit eigener Art – lässt sich
+  einzeln in die eigene To-Do-Liste übernehmen; **In die To-Do-Liste …** im Kopf des Protokolls
+  übernimmt mehrere auf einmal (Dialog *In die To-Do-Liste übernehmen*, die eigenen Aufgaben sind
+  vorgewählt). Die übernommene Aufgabe kommt mit Text, Projekt, Termin und Fundstelle; an der
+  Aufgabe steht danach **In der To-Do-Liste** – auch im Folgeprotokoll, solange der Text gleich
+  bleibt. Erledigt wird jede Seite für sich: Ein Haken in der To-Do-Liste ändert das Protokoll nicht.
 * **Löschen heißt Durchstreichen** (Standard) – für Tagesordnungspunkte, Einträge und einzelne
   Zeilen (sobald ein Eintrag mehr als eine hat): Der Papierkorb bietet **Durchstreichen** und
   **Sofort löschen**. Gestrichenes steht im Druck und in der Live-Druckansicht dieses Protokolls
@@ -1445,23 +1451,33 @@ zählt allein diese. Steht der Name in keiner
 Projektbeteiligtenliste der angezeigten Projekte, weist die Übersicht darauf hin. Kennzahlen
 (aktive Projekte, meine To-Dos, überfällig, demnächst fällig – 7 Tage vorher), die Liste
 **Meine To-Dos**, Überfälliges zuerst, mit **Erledigt** je Zeile;
-darunter **Fällige To-Dos** aus der eigenen To-Do-Liste (überfällig oder in den nächsten 7 Tagen
-fällig, mit **Erledigt**); dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
+darunter **Wichtige und fällige To-Dos** aus der eigenen To-Do-Liste (als wichtig markiert,
+überfällig oder in den nächsten 7 Tagen fällig, Dringendes zuerst, mit **Erledigt**); dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
 nächstem Termin und ihren eigenen To-Dos. Die Seitenleiste zählt die eigenen To-Dos an
 **Übersicht** und die überfälligen Aufgaben je Projekt.
 
 ### To-Do-Liste
 Eine schlichte Liste für sich selbst, unabhängig von den Protokollen – als Hauptpunkt
 **To-Do-Liste** in der Seitenleiste über alle Aufgaben und als Reiter **To-Dos** im Projekt mit
-dessen Aufgaben. Oben wird erfasst: Aufgabe, auf Wunsch Projekt (im Projekt-Reiter immer dieses)
-und Fälligkeit, die Eingabetaste in jedem Feld nimmt sie auf. Die Liste hat die Spalten Erledigt
-(Kästchen), Aufgabe (mit Notiz), Projekt (nur in der Seitenleisten-Ansicht), Fällig und Status
-(Ampel wie bei den Protokollaufgaben); offene Aufgaben stehen vorn, Überfälliges zuerst. Filter:
-**Offen**, **Fällig** (überfällig oder in den nächsten 7 Tagen), **Erledigt**, **Alle**, dazu
-nach Projekt (auch **Ohne Projekt**) und eine Suche. Ein Klick auf eine Zeile öffnet die Aufgabe
-zum Bearbeiten (Aufgabe, Projekt, Fällig am, Notiz, erledigt) und Löschen. Der Zähler am
-Menüpunkt nennt die zeitkritischen Aufgaben – rot, sobald eine überfällig ist. Wird ein Projekt
-gelöscht, bleiben seine Aufgaben ohne Projekt stehen.
+dessen Aufgaben. In der Seitenleisten-Ansicht steht **je Projekt eine Karte** (wie die Phasen der
+Baubetriebsplanung; nach Projektnummer, zuletzt **Ohne Projekt**), im Projekt-Reiter nur die des
+Projekts. Die Liste wird **fortgeschrieben**: Unter den Aufgaben jeder Karte steht die Zeile für
+die nächste (**Neue Aufgabe …**, auf Wunsch mit Fälligkeit, **Hinzufügen** oder Eingabetaste) –
+sie gehört zum Projekt der Karte. Hat ein Projekt noch keine Karte, öffnet **Aufgabe zu weiterem
+Projekt …** unter den Karten eine und setzt den Cursor in ihre Eingabezeile.
+
+Je Aufgabe: Kästchen für erledigt, **Stern** für wichtig, Aufgabe (mit Notiz und – aus einem
+Protokoll übernommen – der Fundstelle, die ins Protokoll führt), Fällig und Status (Ampel wie bei
+den Protokollaufgaben) und die Pfeile **Nach oben**/**Nach unten**: Die Reihenfolge bestimmt man
+selbst, sie gilt über die Filter hinweg. Filter: **Offen**, **Wichtig**, **Fällig** (überfällig
+oder in den nächsten 7 Tagen), **Erledigt**, **Alle**, dazu nach Projekt (auch **Ohne Projekt**)
+und eine Suche; was in der Ansicht **Wichtig** neu eingetragen wird, ist wichtig. Ein Klick auf
+eine Zeile öffnet die Aufgabe zum Bearbeiten (Aufgabe, Projekt – ein anderes Projekt verschiebt
+sie in dessen Karte –, Fällig am, Notiz, wichtig, erledigt) und Löschen. Aufgaben aus einem
+Protokoll kommen über **In die To-Do-Liste** im Protokoll (siehe dort). Der Zähler am Menüpunkt
+nennt die zeitkritischen Aufgaben – rot, sobald eine überfällig ist. Wird ein Projekt gelöscht,
+bleiben seine Aufgaben ohne Projekt stehen. Schmal stehen Kästchen, Stern und Text oben, Termin,
+Status und Pfeile darunter.
 
 ### Daten
 Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
@@ -1479,7 +1495,8 @@ Bis Fassung 4 führte jedes Projekt eine Liste offener Punkte (LOP); sie entfäl
 den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die frühere Adresse
 `#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Bis Fassung 5 galten für alle
 Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Bis Fassung 6 gab es keine
-To-Do-Liste – sie beginnt leer. Der Name unter „Angemeldet als“ gilt in allen Bereichen.
+To-Do-Liste – sie beginnt leer; bis Fassung 7 kannte sie weder wichtige Aufgaben noch die Herkunft
+aus einem Protokoll – vorhandene Aufgaben gelten als nicht wichtig und ohne Herkunft. Der Name unter „Angemeldet als“ gilt in allen Bereichen.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
 einwandfrei geladen wurde (`ladeZustand === 'ok'`); vor jeder Umstellung auf eine neue Fassung
@@ -1841,7 +1858,8 @@ src/
                      (zuordnung, werMitziehen), Übernahme aus dem Protokoll-Tool
         beteiligteImport.ts  Excel-/CSV-Import der Projektbeteiligten (Spalten, Abgleich von Funktionen)
         punkte.ts    Offene Aufgaben der Protokolle mit Ampel
-        todos.ts     Eigene To-Do-Liste: anlegen, erledigen, Ampel, zeitkritisch, Reihenfolge
+        todos.ts     Eigene To-Do-Liste: anlegen, erledigen, Ampel, zeitkritisch, Reihenfolge,
+                     Übernahme aus dem Protokoll (todoAusAufgabe, inTodoListe)
         druck.ts     Druckfassungen (Protokoll, Beteiligtenliste) samt Gestaltung und Live-Fenster
         export.ts    Excel-Ausgabe und -Vorlage der Projektbeteiligten
         seed.ts      Standard-Funktionen, Standardlogos und Demodaten

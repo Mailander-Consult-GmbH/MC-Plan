@@ -513,7 +513,11 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   `logosFuer`). Die eigene **To-Do-Liste** (`todos`, `domain/todos.ts`) ist unabhängig von den
   Protokollen: `TodoListe` (`pages/Todos.tsx`) steht als Hauptpunkt „To-Do-Liste“ (Route `todos`)
   und als Reiter „To-Dos“ im Projekt, `FaelligeTodos` als Karte auf der Übersicht; ein gelöschtes
-  Projekt lässt seine Aufgaben ohne Projekt stehen. Eigene
+  Projekt lässt seine Aufgaben ohne Projekt stehen. Sie zeigt je Projekt eine Karte
+  (`TodoGruppe`, neue Aufgaben unter den vorhandenen); die Reihenfolge ist die von `todos`
+  (`todosTauschen`), nicht sortiert. Aus dem Protokoll übernimmt `todosAusProtokoll`
+  (`todoAusAufgabe` mit `herkunft`); ob eine Aufgabe schon dort ist, sagt allein `inTodoListe` –
+  den Status gleicht nichts ab. Eigene
   Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens; weiß bleiben
   allein das Blatt der Druckansicht und die Logo-Kacheln). Neue Felder
   über `DATEN_VERSION` (`projektsteuerung/domain/types.ts`) und `migriere()`

@@ -80,7 +80,7 @@ export function ProjektDetail({
 
       {tab === 'beteiligte' ? <Beteiligte projekt={projekt} /> : null}
       {tab === 'protokolle' ? <Protokolle projekt={projekt} navigate={navigate} /> : null}
-      {tab === 'todos' ? <TodoListe key={projekt.id} projekt={projekt} /> : null}
+      {tab === 'todos' ? <TodoListe key={projekt.id} projekt={projekt} navigate={navigate} /> : null}
 
       {bearbeiten ? <ProjektDialog projekt={projekt} onClose={() => setBearbeiten(false)} /> : null}
 

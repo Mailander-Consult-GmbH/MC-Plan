@@ -242,10 +242,20 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
     .filter((t) => text(t.text).trim())
     .map((t): Todo => {
       const status = erledigung(t.status);
+      const herkunft = objekt(t.herkunft);
       return {
         id: text(t.id) || zufallsId('td'),
         text: text(t.text),
         notiz: text(t.notiz),
+        wichtig: t.wichtig === true,
+        herkunft:
+          herkunft && text(herkunft.quelleId)
+            ? {
+                protokollId: text(herkunft.protokollId),
+                quelleId: text(herkunft.quelleId),
+                fundstelle: text(herkunft.fundstelle),
+              }
+            : null,
         projektId: projektIds.has(text(t.projektId)) ? text(t.projektId) : null,
         termin: datum(t.termin),
         status,
@@ -279,7 +289,9 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
  * Verweisen der Aufgaben fallen, Zeilen ohne eigene Art laufen unter dem
  * Ursprung mit. Fassung 5 kannte keine Logos je Protokollreihe; `aufbereiten`
  * setzt `reihenLogos` leer – es gelten die Logos des Projekts. Fassung 6
- * kannte keine eigene To-Do-Liste; `aufbereiten` beginnt sie leer.
+ * kannte keine eigene To-Do-Liste; `aufbereiten` beginnt sie leer. Fassung 7
+ * kannte weder wichtige Aufgaben noch ihre Herkunft aus einem Protokoll;
+ * `aufbereiten` setzt `wichtig` auf false und `herkunft` auf null.
  */
 function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   let stand = roh;

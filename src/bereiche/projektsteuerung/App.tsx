@@ -205,7 +205,7 @@ export function App() {
               {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
               {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
               {route.view === 'funktionen' ? <Funktionen /> : null}
-              {route.view === 'todos' ? <TodoListe /> : null}
+              {route.view === 'todos' ? <TodoListe navigate={gehe} /> : null}
               {route.view === 'projekt' ? (
                 projekt ? (
                   <ProjektDetail projekt={projekt} tab={route.tab} navigate={gehe} />
