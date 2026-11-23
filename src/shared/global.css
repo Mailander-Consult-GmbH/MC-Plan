@@ -120,12 +120,15 @@
   --fokus: var(--marke);
 
   /* Logo von KaPlan („Planebenen“, KaPlanLogo in src/shared/logos.tsx): die Ebene des aktiven
-     Bereichs, die beiden anderen, die drei Blautöne des neutralen Zustands und der Schriftzug */
+     Bereichs, die beiden anderen, die drei Blautöne des neutralen Zustands, der Schriftzug
+     „KaPlan“ – im hellen Schema im Blau der Wortmarke Mailänder Consult, abweichend von der
+     Vorlage – und die Schrift der Unterzeile */
   --logo-aktiv: #1f3f6b;
   --logo-inaktiv: #c3c7cb;
   --logo-neutral-oben: #6286ba;
   --logo-neutral-mitte: #30588c;
   --logo-neutral-unten: #1f3f6b;
+  --logo-schriftzug: #21426d;
   --logo-schrift: #3a4049;
 
   /* Ampel und Kennzeichen */
@@ -211,6 +214,7 @@
   --logo-neutral-oben: #b3cbee;
   --logo-neutral-mitte: #7fa6dd;
   --logo-neutral-unten: #5a82bd;
+  --logo-schriftzug: #e6e8eb;
   --logo-schrift: #e6e8eb;
 
   --green: #35c283;
@@ -386,7 +390,9 @@
  * in Outfit. Die Klasse `logo-<zustand>` sagt, welche Ebene blau ist: im
  * neutralen Zustand alle drei in Blautönen von hell nach dunkel, in einem
  * Bereich dessen Ebene, die anderen grau. Die Farben sind die Tokens
- * `--logo-…` und folgen dem Farbschema.
+ * `--logo-…` und folgen dem Farbschema. „KaPlan“ hat seine eigene Farbe
+ * (`--logo-schriftzug`: hell das Blau der Wortmarke Mailänder Consult, dunkel
+ * wie die Unterzeile), die Unterzeile `--logo-schrift`.
  */
 .kaplan-logo { display: block; width: 100%; height: auto; overflow: visible; }
 .logo-ebene {
@@ -400,7 +406,7 @@
 .logo-baubetrieb .logo-ebene-baubetrieb,
 .logo-projekt .logo-ebene-projekt { fill: var(--logo-aktiv); stroke: var(--logo-aktiv); }
 .logo-schriftzug, .logo-unterzeile { font-family: var(--font-sans); fill: var(--logo-schrift); }
-.logo-schriftzug { font-weight: 600; letter-spacing: -0.01em; }
+.logo-schriftzug { font-weight: 600; letter-spacing: -0.01em; fill: var(--logo-schriftzug); }
 .logo-unterzeile { font-weight: 300; }
 
 .nav-group-label {
