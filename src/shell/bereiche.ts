@@ -37,7 +37,6 @@ export const BEREICHE: Bereich[] = [
     titel: 'Projektsteuerung',
     untertitel: 'Beteiligte und Protokolle',
     icon: 'protokoll',
-    marke: 'Erster Entwurf',
   },
 ];
 
