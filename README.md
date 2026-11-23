@@ -1450,9 +1450,10 @@ gestrichene Zeile sie trägt – ist sie gestrichen und bleibt nur eine Ergänzu
 zählt allein diese. Steht der Name in keiner
 Projektbeteiligtenliste der angezeigten Projekte, weist die Übersicht darauf hin. Kennzahlen
 (aktive Projekte, meine To-Dos, überfällig, demnächst fällig – 7 Tage vorher), die Liste
-**Meine To-Dos**, Überfälliges zuerst, mit **Erledigt** je Zeile;
+**Meine To-Dos**, Überfälliges zuerst, je Zeile mit dem kleinen **Erledigt-Haken** wie im
+Planlaufmanagement;
 darunter **Wichtige und fällige To-Dos** aus der eigenen To-Do-Liste (als wichtig markiert,
-überfällig oder in den nächsten 7 Tagen fällig, Dringendes zuerst, mit **Erledigt**); dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
+überfällig oder in den nächsten 7 Tagen fällig, Dringendes zuerst, ebenfalls mit dem Haken); dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
 nächstem Termin und ihren eigenen To-Dos. Die Seitenleiste zählt die eigenen To-Dos an
 **Übersicht** und die überfälligen Aufgaben je Projekt.
 
@@ -1466,18 +1467,25 @@ die nächste (**Neue Aufgabe …**, auf Wunsch mit Fälligkeit, **Hinzufügen** 
 sie gehört zum Projekt der Karte. Hat ein Projekt noch keine Karte, öffnet **Aufgabe zu weiterem
 Projekt …** unter den Karten eine und setzt den Cursor in ihre Eingabezeile.
 
-Je Aufgabe: Kästchen für erledigt, **Stern** für wichtig, Aufgabe (mit Notiz und – aus einem
-Protokoll übernommen – der Fundstelle, die ins Protokoll führt), Fällig und Status (Ampel wie bei
-den Protokollaufgaben) und die Pfeile **Nach oben**/**Nach unten**: Die Reihenfolge bestimmt man
-selbst, sie gilt über die Filter hinweg. Filter: **Offen**, **Wichtig**, **Fällig** (überfällig
+Je Aufgabe: **Stern** für wichtig, Aufgabe (mit Notiz und – aus einem Protokoll übernommen – der
+Fundstelle, die ins Protokoll führt), Fällig und Status (Ampel wie bei den Protokollaufgaben), die
+Pfeile **Nach oben**/**Nach unten** – die Reihenfolge bestimmt man selbst, sie gilt über die Filter
+hinweg – und der **Erledigt-Haken**, derselbe kleine Knopf wie im Planlaufmanagement. Filter: **Offen**, **Wichtig**, **Fällig** (überfällig
 oder in den nächsten 7 Tagen), **Erledigt**, **Alle**, dazu nach Projekt (auch **Ohne Projekt**)
 und eine Suche; was in der Ansicht **Wichtig** neu eingetragen wird, ist wichtig. Ein Klick auf
 eine Zeile öffnet die Aufgabe zum Bearbeiten (Aufgabe, Projekt – ein anderes Projekt verschiebt
 sie in dessen Karte –, Fällig am, Notiz, wichtig, erledigt) und Löschen. Aufgaben aus einem
 Protokoll kommen über **In die To-Do-Liste** im Protokoll (siehe dort). Der Zähler am Menüpunkt
 nennt die zeitkritischen Aufgaben – rot, sobald eine überfällig ist. Wird ein Projekt gelöscht,
-bleiben seine Aufgaben ohne Projekt stehen. Schmal stehen Kästchen, Stern und Text oben, Termin,
-Status und Pfeile darunter.
+bleiben seine Aufgaben ohne Projekt stehen. Schmal stehen Stern und Text oben, Termin, Status,
+Pfeile und Haken darunter.
+
+Die Listen bewegen sich wie die Menüleiste: Erledigt ist der Haken grün gefüllt und springt kurz
+auf, der Text wird durchgestrichen; die Zeile bleibt noch einen Augenblick an ihrem Platz – ein
+zweiter Klick nimmt es zurück – und blendet dann aus, die übrigen gleiten nach. Ebenso gleiten
+verschobene Aufgaben an ihren neuen Platz, neue blenden ein, und eine Karte ohne passende Aufgabe
+blendet aus. Gespeichert ist der Haken sofort; das gilt auch für **Meine To-Dos** und **Wichtige
+und fällige To-Dos** auf der Übersicht.
 
 ### Daten
 Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
@@ -1741,7 +1749,7 @@ src/
     icons.tsx    Symbole (Lucide) unter den fachlichen Namen der Anwendung (Icon); iconSvg mit
                  eigenen Strichzeichnungen für die Druckfassungen
     bewegung.tsx Bewegungen (framer-motion): hoverLift, Zaehler, NavAktiv, BalkenFuellung,
-                 Einblenden
+                 Einblenden, listenEintrag (Listen: kommen, gehen, gleiten), Aufspringen
     logos.tsx    Logo KaPlan („Planebenen“, als SVG gezeichnet, vier Zustände) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
     bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
@@ -1872,7 +1880,8 @@ src/
                      Übersicht), Projekte, Funktionen, Projekt mit Projektbeteiligten, Protokollen
                      (Liste und Editor) und To-Dos
       components/    Dialoge (Person, Funktion, Gewerk), Excel-Import, Logos, Sicherung, Ampel, Live-Druckansicht,
-                     Hinweisleisten (Ladefehler, neuere Fassung, Speicher voll)
+                     Hinweisleisten (Ladefehler, neuere Fassung, Speicher voll), Erledigt-Haken
+                     mit kurzem Nachlauf der Zeile (erledigen.tsx)
 ```
 
 Alte Lesezeichen aus der Fassung ohne Bereiche (`#/dashboard`, `#/projekt/<id>/<reiter>` …) werden
@@ -1907,7 +1916,9 @@ Menüleiste, die selbst eine Karte ist:
 * **Symbole:** Lucide-Icons (`lucide-react`) über `Icon` in `src/shared/icons.tsx`.
 * **Bewegung** (`framer-motion`, `src/shared/bewegung.tsx`): Anklickbare Karten und Kennzahlen
   heben sich beim Überfahren an, Kennzahlen zählen hoch, Fortschrittsbalken wachsen, die Fläche des
-  aktiven Menüpunkts und des gewählten Segments gleitet zur neuen Wahl, Ansichten blenden ein. Wer
+  aktiven Menüpunkts und des gewählten Segments gleitet zur neuen Wahl, Ansichten blenden ein.
+  Einträge einer Liste blenden ein und aus und gleiten an ihren neuen Platz, ein Haken oder Stern
+  springt beim Umschalten kurz auf (bisher in den To-Do-Listen der Projektsteuerung). Wer
   im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Endzustände ohne Verschiebung.
 * **Hell und dunkel:** Die Vorgabe „Automatisch“ folgt wie in der Vorlage der Einstellung des
   Geräts; unter „Angemeldet als“ lässt sich das **Farbschema** fest auf „Hell“ oder „Dunkel“

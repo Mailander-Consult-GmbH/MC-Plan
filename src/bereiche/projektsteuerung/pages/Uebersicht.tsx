@@ -3,16 +3,20 @@
  * der Protokolle für die angemeldete Person („Angemeldet als“) – nach
  * Dringlichkeit, die fälligen Aufgaben der eigenen To-Do-Liste und die
  * Projekte mit ihren Besprechungen. Angezeigt werden die markierten Projekte;
- * ohne Markierung alle.
+ * ohne Markierung alle. Erledigt wird mit dem kleinen Haken
+ * (`ErledigtHaken`); die Zeile bleibt danach noch kurz stehen (`useNachlauf`).
  */
 import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { listenEintrag } from '../../../shared/bewegung';
 import { formatDate, relativeLabel, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Card, CardHeader, EmptyState, Segmented, Stat } from '../../../shared/ui';
 import { AmpelBadge, AmpelPunkt } from '../components/common';
+import { ErledigtHaken, useNachlauf } from '../components/erledigen';
 import { reihenVon } from '../domain/protokoll';
-import { angemeldetBeteiligt, eigeneTodos, type Punkt } from '../domain/punkte';
+import { allePunkte, ampelFuer, angemeldetBeteiligt, nachDringlichkeit, type Punkt } from '../domain/punkte';
 import type { Projekt } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
@@ -41,20 +45,28 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
   const toast = useToast();
   const [filter, setFilter] = useState<Filter>('alle');
   const [alle, setAlle] = useState(false);
+  const nachlauf = useNachlauf();
+  const heute = today();
 
   const archiviert = useArchivierte('projektsteuerung');
   const projekte = sichtbareProjekte(data.projekte, archiviert);
   const ids = projekte.map((p) => p.id);
-  const offen = eigeneTodos(data, ids);
+  // Eigene Aufgaben (wie eigeneTodos); eben erledigte bleiben kurz an ihrem Platz – mit
+  // der Ampel, die sie offen hätten, damit Filter und Reihenfolge sie dort lassen
+  const eigene = allePunkte(data, ids).filter((p) => p.eigen);
+  const offen = eigene.filter((p) => p.status !== 'erledigt');
   const ueberfaellig = offen.filter((p) => p.ampel === 'ueberfaellig');
   const faellig = offen.filter((p) => p.ampel === 'faellig');
-  const gefiltert = filter === 'ueberfaellig' ? ueberfaellig : filter === 'faellig' ? faellig : offen;
+  const ampelOffen = (p: Punkt) => (p.status === 'erledigt' ? ampelFuer(p.termin, 'offen', heute) : p.ampel);
+  const gefiltert = eigene
+    .filter((p) => p.status !== 'erledigt' || nachlauf.hat(p.schluessel))
+    .filter((p) => filter === 'alle' || ampelOffen(p) === (filter === 'ueberfaellig' ? 'ueberfaellig' : 'faellig'))
+    .sort((a, b) => nachDringlichkeit({ ...a, ampel: ampelOffen(a) }, { ...b, ampel: ampelOffen(b) }));
   const sichtbar = alle ? gefiltert : gefiltert.slice(0, ANZAHL_PUNKTE);
   // Hinweis „Kein Projekt markiert“ nach derselben Regel wie sichtbareProjekte: Markierte archivierte zählen nicht
   const aktive = data.projekte.filter((p) => !archiviert.has(p.id));
   const keinesMarkiert = aktive.length > 0 && !aktive.some((p) => p.markiert);
   const ich = data.einstellungen.bearbeiter;
-  const heute = today();
 
   return (
     <div className="stack">
@@ -131,42 +143,51 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                 </tr>
               </thead>
               <tbody>
-                {sichtbar.map((p) => (
-                  <tr key={p.schluessel} className="clickable" onClick={() => navigate(punktZiel(p))}>
-                    <td className="col-optional">
-                      <AmpelPunkt ampel={p.ampel} />
-                    </td>
-                    <td style={{ maxWidth: 460 }}>
-                      <div className="ps-zweizeilig">{p.text || <span className="tertiary">ohne Text</span>}</div>
-                      <div className="small tertiary">{p.fundstelle}</div>
-                    </td>
-                    <td className="small">{p.wer || <span className="tertiary">–</span>}</td>
-                    <td className="small muted col-optional">
-                      {p.projekt.nummer} {p.projekt.name}
-                    </td>
-                    <td className="small">
-                      {p.termin ? formatDate(p.termin) : <span className="tertiary">ohne Termin</span>}
-                      {p.termin ? <div className="tertiary small">{relativeLabel(p.termin)}</div> : null}
-                    </td>
-                    <td>
-                      <AmpelBadge ampel={p.ampel} />
-                    </td>
-                    <td className="actions">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline btn-haken"
-                        title="Als erledigt markieren"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          punktErledigen(p, true);
-                          toast(`${p.fundstelle} als erledigt markiert.`);
-                        }}
-                      >
-                        <Icon name="check" size={13} /> Erledigt
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                <AnimatePresence initial={false}>
+                  {sichtbar.map((p) => (
+                    <motion.tr
+                      key={p.schluessel}
+                      {...listenEintrag}
+                      className="clickable"
+                      onClick={() => navigate(punktZiel(p))}
+                    >
+                      <td className="col-optional">
+                        <AmpelPunkt ampel={p.ampel} />
+                      </td>
+                      <td style={{ maxWidth: 460 }}>
+                        <div
+                          className={`ps-zweizeilig transition-colors duration-300 ${p.status === 'erledigt' ? 'text-gedaempft line-through' : ''}`}
+                        >
+                          {p.text || <span className="tertiary">ohne Text</span>}
+                        </div>
+                        <div className="small tertiary">{p.fundstelle}</div>
+                      </td>
+                      <td className="small">{p.wer || <span className="tertiary">–</span>}</td>
+                      <td className="small muted col-optional">
+                        {p.projekt.nummer} {p.projekt.name}
+                      </td>
+                      <td className="small">
+                        {p.termin ? formatDate(p.termin) : <span className="tertiary">ohne Termin</span>}
+                        {p.termin ? <div className="tertiary small">{relativeLabel(p.termin)}</div> : null}
+                      </td>
+                      <td>
+                        <AmpelBadge ampel={p.ampel} />
+                      </td>
+                      <td className="actions">
+                        <ErledigtHaken
+                          erledigt={p.status === 'erledigt'}
+                          text={p.text}
+                          onUmschalten={() => {
+                            const erledigt = p.status !== 'erledigt';
+                            punktErledigen(p, erledigt);
+                            nachlauf.merken(p.schluessel);
+                            toast(erledigt ? `${p.fundstelle} als erledigt markiert.` : `${p.fundstelle} wieder offen.`);
+                          }}
+                        />
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
               </tbody>
             </table>
           </div>

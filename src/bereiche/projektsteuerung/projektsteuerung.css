@@ -204,22 +204,32 @@
 .ps-ladehinweis { display: grid; gap: 10px; margin-bottom: 18px; }
 .ps-ladehinweis-knoepfe { gap: 6px; margin-top: 8px; }
 
-/* To-Do-Liste (pages/Todos.tsx): schmal je Aufgabe Kästchen, Stern und Text oben,
-   darunter in einer Zeile Termin, Status und die Pfeile – statt jeder Spalte in eigener Zeile */
+/* Erledigt-Haken (components/erledigen.tsx): derselbe kleine Knopf wie im Planlaufmanagement
+   (btn btn-sm btn-haken); deutet beim Überfahren Grün an, erledigt ist er grün gefüllt */
+.ps-erledigt-haken {
+  transition: background 0.25s var(--ease-koralle), border-color 0.25s var(--ease-koralle),
+    color 0.25s var(--ease-koralle), transform 0.2s var(--ease-koralle);
+}
+.ps-erledigt-haken:hover { color: var(--gruen-text); border-color: var(--green); }
+.ps-erledigt-haken.erledigt,
+.ps-erledigt-haken.erledigt:hover { background: var(--green-soft); border-color: var(--green); color: var(--gruen-text); }
+
+/* To-Do-Liste (pages/Todos.tsx): schmal je Aufgabe Stern und Text oben, darunter in einer
+   Zeile Termin, Status, die Pfeile und der Haken – statt jeder Spalte in eigener Zeile */
 @media (max-width: 640px) {
   .table-stack.ps-todos tr {
     display: grid;
-    grid-template-columns: 28px 32px minmax(0, 1fr) auto auto;
-    grid-template-areas: 'haken stern text text text' '. . termin status pfeile';
+    grid-template-columns: 32px minmax(0, 1fr) auto auto;
+    grid-template-areas: 'stern text text text' '. termin status aktionen';
     align-items: center;
     gap: 6px;
   }
   .table-stack.ps-todos td { width: auto; padding: 0; }
-  .table-stack.ps-todos td:nth-child(1) { grid-area: haken; }
-  .table-stack.ps-todos td:nth-child(2) { grid-area: stern; }
-  .table-stack.ps-todos td:nth-child(3) { grid-area: text; }
-  .table-stack.ps-todos td:nth-child(4) { grid-area: termin; }
-  .table-stack.ps-todos td:nth-child(5) { grid-area: status; }
-  .table-stack.ps-todos td.actions { grid-area: pfeile; padding-top: 0; flex-wrap: nowrap; gap: 2px; }
+  .table-stack.ps-todos td:nth-child(1) { grid-area: stern; }
+  .table-stack.ps-todos td:nth-child(2) { grid-area: text; }
+  .table-stack.ps-todos td:nth-child(3) { grid-area: termin; }
+  .table-stack.ps-todos td:nth-child(4) { grid-area: status; }
+  .table-stack.ps-todos td.actions { grid-area: aktionen; padding-top: 0; flex-wrap: nowrap; align-items: center; gap: 2px; }
+  .table-stack.ps-todos td.actions .btn-haken { min-width: 0; margin-left: 4px; }
 }
 }
