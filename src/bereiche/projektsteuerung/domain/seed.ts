@@ -253,14 +253,14 @@ export function seedDaten(): ProjektsteuerungDaten {
   };
 }
 
-/** Eigene To-Do-Liste: mit und ohne Projekt, überfällig, demnächst fällig, später, erledigt. */
+/** Eigene To-Do-Liste: mit und ohne Projekt, wichtig, überfällig, demnächst fällig, später, erledigt. */
 function demoTodos(p1: ID, p2: ID): Todo[] {
   const todo = (text: string, projektId: ID | null, termin: string, werte: Partial<Todo> = {}): Todo => ({
     ...neuesTodo(newId('td'), { text, projektId, termin }, tag(-10)),
     ...werte,
   });
   return [
-    todo('Rechnung des Ingenieurbüros prüfen und zur Zahlung freigeben.', p1, tag(-1)),
+    todo('Rechnung des Ingenieurbüros prüfen und zur Zahlung freigeben.', p1, tag(-1), { wichtig: true }),
     todo('Monatsbericht für den Auftraggeber vorbereiten.', null, tag(3), {
       notiz: 'Kosten, Termine und Risiken je Projekt',
     }),

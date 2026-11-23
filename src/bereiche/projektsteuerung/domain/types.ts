@@ -19,8 +19,9 @@ export type ISODate = string;
  * Fassung 5: ohne LOP; Ergänzungen mit eigener Art (`Zeile.typ`).
  * Fassung 6: Logos je Protokollreihe (`reihenLogos`).
  * Fassung 7: eigene To-Do-Liste (`todos`).
+ * Fassung 8: wichtige Aufgaben und Herkunft aus einem Protokoll (`Todo.wichtig`, `Todo.herkunft`).
  */
-export const DATEN_VERSION = 7;
+export const DATEN_VERSION = 8;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
@@ -276,11 +277,27 @@ export const STANDARD_HINWEIS =
 /* Eigene To-Do-Liste                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Aufgabe der eigenen To-Do-Liste – unabhängig von den Protokollen. */
+/** Aufgabe eines Protokolls, aus der eine Aufgabe der To-Do-Liste übernommen wurde. */
+export interface TodoHerkunft {
+  protokollId: ID;
+  /** Eintrag bzw. Ergänzung mit eigener Art „Aufgabe“ im Protokoll. */
+  quelleId: ID;
+  /** „Baubesprechung Nr. 3, Pkt. 2.1“ – bleibt stehen, auch wenn das Protokoll gelöscht wird. */
+  fundstelle: string;
+}
+
+/**
+ * Aufgabe der eigenen To-Do-Liste – unabhängig von den Protokollen; die
+ * Reihenfolge in `todos` ist die Reihenfolge der Liste.
+ */
 export interface Todo {
   id: ID;
   text: string;
   notiz: string;
+  /** Als wichtig markiert (Stern). */
+  wichtig: boolean;
+  /** Aus einem Protokoll übernommen; null = selbst erfasst. Ein Abgleich mit dem Protokoll findet nicht statt. */
+  herkunft: TodoHerkunft | null;
   /** Zugeordnetes Projekt; null = ohne Projekt. */
   projektId: ID | null;
   /** Fällig am; leer = ohne Termin. */

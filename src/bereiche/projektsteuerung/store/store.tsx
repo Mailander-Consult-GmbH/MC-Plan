@@ -24,7 +24,7 @@ import {
 } from '../domain/protokoll';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { seedDaten } from '../domain/seed';
-import { neuesTodo, todoErledigt } from '../domain/todos';
+import { neuesTodo, todoAusAufgabe, todoErledigt } from '../domain/todos';
 import { today } from '../../../shared/dates';
 import {
   newId,
@@ -99,11 +99,15 @@ interface StoreValue {
   punktErledigen: (punkt: Punkt, erledigt: boolean) => void;
   /* Eigene To-Do-Liste */
   /** Nimmt eine Aufgabe auf und liefert ihre Kennung. */
-  addTodo: (werte: Pick<Todo, 'text' | 'projektId' | 'termin'>) => ID;
+  addTodo: (werte: Pick<Todo, 'text' | 'projektId' | 'termin'> & Partial<Pick<Todo, 'wichtig'>>) => ID;
   updateTodo: (id: ID, patch: Partial<Omit<Todo, 'id' | 'status' | 'erledigtAm'>>) => void;
   /** „Erledigt“ setzen bzw. zurücknehmen; hält den Tag fest. */
   todoErledigen: (id: ID, erledigt: boolean) => void;
   deleteTodo: (id: ID) => void;
+  /** Tauscht zwei Aufgaben in der Reihenfolge der Liste (nach oben bzw. unten). */
+  todosTauschen: (a: ID, b: ID) => void;
+  /** Übernimmt Aufgaben aus einem Protokoll in die To-Do-Liste (ans Ende); liefert ihre Zahl. */
+  todosAusProtokoll: (aufgaben: Punkt[]) => number;
   /* Verwaltung */
   ersetzeDaten: (d: ProjektsteuerungDaten) => void;
   zuruecksetzen: () => void;
@@ -303,6 +307,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         mutate((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? todoErledigt(t, erledigt, heute) : t)) }));
       },
       deleteTodo: (id) => mutate((d) => ({ ...d, todos: d.todos.filter((t) => t.id !== id) })),
+      todosTauschen: (a, b) =>
+        mutate((d) => {
+          const i = d.todos.findIndex((t) => t.id === a);
+          const j = d.todos.findIndex((t) => t.id === b);
+          if (i < 0 || j < 0) return d;
+          const todos = [...d.todos];
+          [todos[i], todos[j]] = [todos[j], todos[i]];
+          return { ...d, todos };
+        }),
+      todosAusProtokoll: (aufgaben) => {
+        // Kennungen und Tag vorab, damit die Änderung im StrictMode rein bleibt.
+        const neu = aufgaben.map((a) => todoAusAufgabe(newId('td'), a, today()));
+        if (neu.length > 0) mutate((d) => ({ ...d, todos: [...d.todos, ...neu] }));
+        return neu.length;
+      },
 
       punktErledigen: (punkt, erledigt) => {
         const status = erledigt ? ('erledigt' as const) : ('offen' as const);

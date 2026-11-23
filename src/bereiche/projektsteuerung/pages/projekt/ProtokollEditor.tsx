@@ -40,7 +40,8 @@ import {
   zeileHerkunft,
   zuordnung,
 } from '../../domain/protokoll';
-import { ampelFuer } from '../../domain/punkte';
+import { allePunkte, ampelFuer, type Punkt } from '../../domain/punkte';
+import { inTodoListe } from '../../domain/todos';
 import { logosFuer } from '../../domain/seed';
 import {
   BESPRECHUNG_VORSCHLAEGE,
@@ -94,13 +95,14 @@ export function ProtokollEditor({
   protokoll: Protokoll;
   navigate: (r: Route) => void;
 }) {
-  const { data, updateProtokoll, folgeprotokollAnlegen } = useStore();
+  const { data, updateProtokoll, folgeprotokollAnlegen, todosAusProtokoll } = useStore();
   const toast = useToast();
   const [ansicht, setAnsicht] = useState<Ansicht>('bearbeiten');
   const [korrektur, setKorrektur] = useState<Set<ID>>(new Set());
   const [auswahl, setAuswahl] = useState(false);
   const [person, setPerson] = useState<{ beteiligter?: Beteiligter; teilnehmer?: Teilnehmer } | null>(null);
   const [loeschen, setLoeschen] = useState<Loeschen | null>(null);
+  const [todoDialog, setTodoDialog] = useState(false);
   const [fokus, setFokus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -131,6 +133,26 @@ export function ProtokollEditor({
   const liveOeffnen = useLiveDruck(titel, inhalt);
   // Für „Verantwortlich“ stehen nur Teilnehmende zur Wahl.
   const zuordenbar = p.teilnehmer.filter((t) => zuordnung(t, p.teilnehmer));
+  // Offene Aufgaben dieses Protokolls – Einträge und Ergänzungen – für die eigene To-Do-Liste
+  const aufgaben = allePunkte(data, [projekt.id]).filter((a) => a.protokollId === p.id && a.status !== 'erledigt');
+  const aufgabeZu = new Map(aufgaben.map((a) => [a.id, a]));
+  const fuerTodo = aufgaben.filter((a) => !inTodoListe(data.todos, a));
+  const inTodo = (liste: Punkt[]) => {
+    const n = todosAusProtokoll(liste);
+    toast(n === 1 ? 'In die To-Do-Liste übernommen.' : `${n} Aufgaben in die To-Do-Liste übernommen.`);
+  };
+  /** Vermerk an einer offenen Aufgabe: schon in der To-Do-Liste – oder der Knopf, sie zu übernehmen. */
+  const todoVermerk = (id: ID) => {
+    const a = aufgabeZu.get(id);
+    if (!a) return null;
+    return inTodoListe(data.todos, a) ? (
+      <span className="ps-herkunft">In der To-Do-Liste</span>
+    ) : (
+      <button type="button" className="ps-link ps-wieder" onClick={() => inTodo([a])}>
+        <Icon name="aufgabe" size={12} /> In die To-Do-Liste
+      </button>
+    );
+  };
 
   /* Änderungen – alle über den Store */
   const aendern = (fn: (x: Protokoll) => Protokoll) => updateProtokoll(p.id, fn);
@@ -487,6 +509,16 @@ export function ProtokollEditor({
           <div className="row-between wrap">
             <h2 style={{ fontSize: 17 }}>Tagesordnung</h2>
             <div className="row wrap">
+              {fuerTodo.length > 0 ? (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  title="Offene Aufgaben dieses Protokolls in die eigene To-Do-Liste übernehmen"
+                  onClick={() => setTodoDialog(true)}
+                >
+                  <Icon name="aufgabe" size={12} /> In die To-Do-Liste …
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="btn btn-sm btn-outline"
@@ -732,6 +764,7 @@ export function ProtokollEditor({
                                     onAendern={(werte) => zeileAendern(top.id, e.id, z.id, werte)}
                                   />
                                 ) : null}
+                                {z.typ === 'A' ? todoVermerk(z.id) : null}
                                 {herkunft || z.entfaellt ? (
                                   <span className="ps-herkunft">
                                     {herkunft}
@@ -765,6 +798,7 @@ export function ProtokollEditor({
                               Wiederherstellen
                             </button>
                           ) : null}
+                          {istA ? todoVermerk(e.id) : null}
                         </div>
                         <div className="ps-wer">
                           <WerAuswahl
@@ -938,7 +972,83 @@ export function ProtokollEditor({
       ) : null}
 
       {loeschen ? <LoeschenDialog auftrag={loeschen} onClose={() => setLoeschen(null)} /> : null}
+
+      {todoDialog ? (
+        <TodoUebernahmeDialog aufgaben={fuerTodo} onClose={() => setTodoDialog(false)} onUebernehmen={inTodo} />
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * Offene Aufgaben dieses Protokolls in die eigene To-Do-Liste übernehmen –
+ * vorgewählt sind die der angemeldeten Person. Übernommen werden Text, Projekt
+ * und Termin mit der Fundstelle; abgeglichen wird danach nicht.
+ */
+function TodoUebernahmeDialog({
+  aufgaben,
+  onClose,
+  onUebernehmen,
+}: {
+  aufgaben: Punkt[];
+  onClose: () => void;
+  onUebernehmen: (aufgaben: Punkt[]) => void;
+}) {
+  const [gewaehlt, setGewaehlt] = useState<Set<ID>>(() => new Set(aufgaben.filter((a) => a.eigen).map((a) => a.id)));
+  const umschalten = (id: ID) =>
+    setGewaehlt((g) => {
+      const neu = new Set(g);
+      if (neu.has(id)) neu.delete(id);
+      else neu.add(id);
+      return neu;
+    });
+
+  return (
+    <Modal
+      titel="In die To-Do-Liste übernehmen"
+      sub="Offene Aufgaben dieses Protokolls – Ihre eigenen sind vorgewählt"
+      onClose={onClose}
+      footer={
+        <>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setGewaehlt(gewaehlt.size === aufgaben.length ? new Set() : new Set(aufgaben.map((a) => a.id)))}
+          >
+            {gewaehlt.size === aufgaben.length ? 'Keine' : 'Alle wählen'}
+          </button>
+          <span className="spacer" />
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={gewaehlt.size === 0}
+            onClick={() => {
+              onUebernehmen(aufgaben.filter((a) => gewaehlt.has(a.id)));
+              onClose();
+            }}
+          >
+            Übernehmen{gewaehlt.size ? ` (${gewaehlt.size})` : ''}
+          </button>
+        </>
+      }
+    >
+      <div className="ps-auswahl">
+        {aufgaben.map((a) => (
+          <label key={a.id}>
+            <input type="checkbox" checked={gewaehlt.has(a.id)} onChange={() => umschalten(a.id)} />
+            <span className="ps-auswahl-text">
+              <span className="ps-zweizeilig">{a.text || 'ohne Text'}</span>
+              <span className="small tertiary">
+                {[a.fundstelle.replace(/^.*, /, ''), a.wer, a.termin ? formatDate(a.termin) : ''].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </Modal>
   );
 }
 
