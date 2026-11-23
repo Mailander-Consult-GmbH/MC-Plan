@@ -73,7 +73,12 @@ und folgen dem Farbschema; das Logo steht **ohne Fläche dahinter**:
 | neutral oben | `--logo-neutral-oben` | `#6286ba` | `#b3cbee` |
 | neutral Mitte | `--logo-neutral-mitte` | `#30588c` | `#7fa6dd` |
 | neutral unten | `--logo-neutral-unten` | `#1f3f6b` | `#5a82bd` |
-| Schriftzug | `--logo-schrift` | `#3a4049` | `#e6e8eb` |
+| Schriftzug „KaPlan“ | `--logo-schriftzug` | `#21426d` | `#e6e8eb` |
+| Unterzeile (Name des Bereichs) | `--logo-schrift` | `#3a4049` | `#e6e8eb` |
+
+„KaPlan“ steht im hellen Schema im Blau der Wortmarke Mailänder Consult – eine bewusste Abweichung
+von den Vorlagen, in denen der Schriftzug grau ist wie die Unterzeile; im dunklen Schema ist er
+hell wie dort.
 
 **Vorlage** sind die mitgelieferten Dateien unter `public/logos/` – sie werden nicht verändert und
 von der Oberfläche nicht geladen: `kaplan-logo-<zustand>.svg` (Symbol mit Schriftzug, die Schrift

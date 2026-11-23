@@ -219,8 +219,10 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Blautönen, keine Unterzeile) oder der Bereich (`planlauf`, `baubetrieb`, `projekt`: dessen
   Ebene blau, die anderen grau, Name des Bereichs als Unterzeile); jede `App.tsx` gibt ihren
   eigenen fest an. Welche Ebene blau ist, regelt die Klasse `logo-<zustand>` in `global.css`
-  über die Tokens `--logo-aktiv`, `--logo-inaktiv`, `--logo-neutral-oben/-mitte/-unten` und
-  `--logo-schrift` – sie schalten mit dem Farbschema um; keine Farben im Baustein. Vorlage sind
+  über die Tokens `--logo-aktiv`, `--logo-inaktiv`, `--logo-neutral-oben/-mitte/-unten`,
+  `--logo-schriftzug` („KaPlan“: im hellen Schema das Blau der Wortmarke Mailänder Consult,
+  `#21426d` – abweichend von der Vorlage, dort grau; im dunklen hell) und `--logo-schrift`
+  (Unterzeile, grau) – sie schalten mit dem Farbschema um; keine Farben im Baustein. Vorlage sind
   die mitgelieferten Dateien unter `public/logos/` (`kaplan-logo-*.svg`, `kaplan-symbol-*.svg`,
   je auch `-dark`) mit `docs/LOGO-ANLEITUNG.md` – sie werden nicht verändert und von der
   Oberfläche nicht geladen. Die Symbole für Browser-Tab und App liegen unter `public/icons/`
