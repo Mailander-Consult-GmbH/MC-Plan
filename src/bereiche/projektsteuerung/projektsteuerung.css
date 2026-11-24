@@ -213,6 +213,9 @@
 .ps-erledigt-haken:hover { color: var(--gruen-text); border-color: var(--green); }
 .ps-erledigt-haken.erledigt,
 .ps-erledigt-haken.erledigt:hover { background: var(--green-soft); border-color: var(--green); color: var(--gruen-text); }
+/* Papierkorb neben dem Haken einer erledigten Aufgabe: löscht sofort, beim Überfahren rot */
+.ps-todo-loeschen { margin-left: 2px; }
+.ps-todo-loeschen:hover { background: var(--red-soft); color: var(--rot-text); }
 
 /* To-Do-Liste (pages/Todos.tsx): schmal je Aufgabe Stern und Text oben, darunter in einer
    Zeile Termin, Status, die Pfeile und der Haken – statt jeder Spalte in eigener Zeile */
