@@ -1406,7 +1406,12 @@ den gespeicherten Wert.
 * **In die To-Do-Liste**: Jede offene Aufgabe – auch eine Ergänzung mit eigener Art – lässt sich
   einzeln in die eigene To-Do-Liste übernehmen; **In die To-Do-Liste …** im Kopf des Protokolls
   übernimmt mehrere auf einmal (Dialog *In die To-Do-Liste übernehmen*, die eigenen Aufgaben sind
-  vorgewählt). Die übernommene Aufgabe kommt mit Text, Projekt, Termin und Fundstelle; an der
+  vorgewählt). Eigene Aufgaben sind die, deren Verantwortlich die Person unter **Angemeldet als**
+  nennt – mit ihrem Kürzel oder Namen aus den Teilnehmenden oder der Projektbeteiligtenliste
+  (Groß- und Kleinschreibung zählen nicht); Kürzel und Name aus der Liste gelten nur, wenn sie im
+  Protokoll niemand anderes führt. Ein Eintrag zählt nur als Aufgabe, solange eine nicht
+  gestrichene Zeile sie trägt – ist sie gestrichen und bleibt nur eine Ergänzung mit eigener Art,
+  zählt allein diese. Die übernommene Aufgabe kommt mit Text, Projekt, Termin und Fundstelle; an der
   Aufgabe steht danach **In der To-Do-Liste** – auch im Folgeprotokoll, solange der Text gleich
   bleibt. Erledigt wird jede Seite für sich: Ein Haken in der To-Do-Liste ändert das Protokoll nicht.
 * **Löschen heißt Durchstreichen** (Standard) – für Tagesordnungspunkte, Einträge und einzelne
@@ -1440,22 +1445,14 @@ den gespeicherten Wert.
   in diesem Protokoll steht und mit ihm entfällt.“).
 
 ### Übersicht
-Nur die **eigenen To-Dos**: offene Aufgaben der Protokolle aller markierten Projekte (Einträge vom
-Typ A und Ergänzungen mit eigener Art „Aufgabe“), deren Verantwortlich die Person unter
-**Angemeldet als** nennt – mit ihrem Kürzel oder Namen aus den Teilnehmenden oder der
-Projektbeteiligtenliste; Groß- und Kleinschreibung zählen nicht. Kürzel und Name aus der Liste
-gelten nur, wenn sie im Protokoll niemand anderes führt – wer bloß dieselbe Funktion hat, sieht die
-Aufgaben der anderen Person nicht als eigene. Ein Eintrag zählt nur als Aufgabe, solange eine nicht
-gestrichene Zeile sie trägt – ist sie gestrichen und bleibt nur eine Ergänzung mit eigener Art,
-zählt allein diese. Steht der Name in keiner
-Projektbeteiligtenliste der angezeigten Projekte, weist die Übersicht darauf hin. Kennzahlen
-(aktive Projekte, meine To-Dos, überfällig, demnächst fällig – 7 Tage vorher), die Liste
-**Meine To-Dos**, Überfälliges zuerst, je Zeile mit dem kleinen **Erledigt-Haken** wie im
-Planlaufmanagement;
-darunter **Wichtige und fällige To-Dos** aus der eigenen To-Do-Liste (als wichtig markiert,
-überfällig oder in den nächsten 7 Tagen fällig, Dringendes zuerst, ebenfalls mit dem Haken); dazu die Projekte mit Beteiligten, Protokollen, letzter Besprechung,
-nächstem Termin und ihren eigenen To-Dos. Die Seitenleiste zählt die eigenen To-Dos an
-**Übersicht** und die überfälligen Aufgaben je Projekt.
+Kennzahlen: aktive Projekte und aus der eigenen To-Do-Liste **Meine To-Dos** (alle offenen
+Aufgaben), **Überfällig** und **Demnächst fällig** (in den nächsten 7 Tagen) – ein Klick öffnet die
+To-Do-Liste, bei *Überfällig* und *Demnächst fällig* mit dem Filter **Fällig**. Darunter die
+Projekte mit Beteiligten, Protokollen, letzter Besprechung, nächstem Termin und den offenen bzw.
+überfälligen Aufgaben der To-Do-Liste je Projekt; angezeigt werden die markierten Projekte, ohne
+Markierung alle. Die Aufgaben selbst stehen in der To-Do-Liste – die der Protokolle kommen über
+**In die To-Do-Liste** dorthin. Die Seitenleiste zählt die zeitkritischen Aufgaben an
+**To-Do-Liste** und die überfälligen Protokollaufgaben je Projekt.
 
 ### To-Do-Liste
 Eine schlichte Liste für sich selbst, unabhängig von den Protokollen – als Hauptpunkt
@@ -1467,7 +1464,7 @@ die nächste (**Neue Aufgabe …**, auf Wunsch mit Fälligkeit, **Hinzufügen** 
 sie gehört zum Projekt der Karte. Hat ein Projekt noch keine Karte, öffnet **Aufgabe zu weiterem
 Projekt …** unter den Karten eine und setzt den Cursor in ihre Eingabezeile.
 
-Je Aufgabe: **Stern** für wichtig, Aufgabe (mit Notiz und – aus einem Protokoll übernommen – der
+Je Aufgabe: **Stern** für wichtig (Spalte **Wichtig**), Aufgabe (mit Notiz und – aus einem Protokoll übernommen – der
 Fundstelle, die ins Protokoll führt), Fällig und Status (Ampel wie bei den Protokollaufgaben), die
 Pfeile **Nach oben**/**Nach unten** – die Reihenfolge bestimmt man selbst, sie gilt über die Filter
 hinweg – und der **Erledigt-Haken**, derselbe kleine Knopf wie im Planlaufmanagement. Filter: **Offen**, **Wichtig**, **Fällig** (überfällig
@@ -1484,13 +1481,13 @@ Die Listen bewegen sich wie die Menüleiste: Erledigt ist der Haken grün gefül
 auf, der Text wird durchgestrichen; die Zeile bleibt noch einen Augenblick an ihrem Platz – ein
 zweiter Klick nimmt es zurück – und blendet dann aus, die übrigen gleiten nach. Ebenso gleiten
 verschobene Aufgaben an ihren neuen Platz, neue blenden ein, und eine Karte ohne passende Aufgabe
-blendet aus. Gespeichert ist der Haken sofort; das gilt auch für **Meine To-Dos** und **Wichtige
-und fällige To-Dos** auf der Übersicht.
+blendet aus. Gespeichert ist der Haken sofort.
 
 ### Daten
 Eigener Schlüssel `projektsteuerung.data.v1` im `localStorage`, eigene Demodaten (zwei Projekte
 mit Projektbeteiligten und zwei Protokollen, darunter Aufgaben der Projektsteuerin Lena Roth – wer
-unter „Angemeldet als“ „Lena Roth“ einträgt, sieht sie als eigene To-Dos –, dazu fünf Aufgaben der
+unter „Angemeldet als“ „Lena Roth“ einträgt, findet sie bei der Übernahme in die To-Do-Liste
+vorgewählt –, dazu fünf Aufgaben der
 To-Do-Liste), **Sicherung**/**Einspielen** (JSON mit dem
 Kennzeichen `"bereich": "projektsteuerung"`; Sicherungen der anderen Bereiche und des
 Protokoll-Tools werden mit Hinweis abgewiesen, eine beschädigte Datei mit „Die Sicherung konnte
@@ -1545,8 +1542,8 @@ eingetragen.
 Was die Bereiche mit dem Namen tun: Im Planlaufmanagement füllt die Person in markierten Projekten
 das Planlaufmanagement aus (dazu die E-Mail-Nachfrage als eigene Einstellung im Dialog), in der
 Baubetriebsplanung steht sie im Statusverlauf, in der
-Projektsteuerung führt sie – steht sie in der Projektbeteiligtenliste – neue Protokollreihen und sieht
-ihre Aufgaben als eigene To-Dos. Beim Einspielen einer Sicherung
+Projektsteuerung führt sie – steht sie in der Projektbeteiligtenliste – neue Protokollreihen und
+findet ihre Aufgaben bei der Übernahme in die To-Do-Liste vorgewählt. Beim Einspielen einer Sicherung
 bleibt der Name, es sei denn, er wird ausdrücklich aus der Sicherung übernommen – dann für alle
 Bereiche.
 

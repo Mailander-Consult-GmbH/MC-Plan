@@ -511,17 +511,19 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   `termin` und `status`; ohne Art läuft sie unter dem Ursprung mit. TOPs, Einträge und Zeilen
   werden standardmäßig gestrichen statt gelöscht (`entfaellt`) und entfallen im Folgeprotokoll;
   erledigte Aufgaben gehen noch einmal mit. Was ins Folgeprotokoll geht, entscheidet allein
-  `uebernahme` mit `eintragUebernehmen` (`domain/protokoll.ts`). Die Übersicht zeigt nur eigene
-  To-Dos – Aufgaben der Person unter „Angemeldet als“ (`eigeneTodos`, `domain/punkte.ts`). Logos im
+  `uebernahme` mit `eintragUebernehmen` (`domain/protokoll.ts`). Aufgaben der Person unter
+  „Angemeldet als“ (`Punkt.eigen`, `domain/punkte.ts`) sind bei der Übernahme in die To-Do-Liste
+  vorgewählt; die Übersicht zeigt keine Aufgaben, sondern zählt die To-Do-Liste. Logos im
   Druckkopf führt jede Protokollreihe selbst oder erbt die des Projekts (`reihenLogos`,
   `logosFuer`). Die eigene **To-Do-Liste** (`todos`, `domain/todos.ts`) ist unabhängig von den
   Protokollen: `TodoListe` (`pages/Todos.tsx`) steht als Hauptpunkt „To-Do-Liste“ (Route `todos`)
-  und als Reiter „To-Dos“ im Projekt, `FaelligeTodos` als Karte auf der Übersicht; ein gelöschtes
+  und als Reiter „To-Dos“ im Projekt (Filter über die Adresse vorwählbar, `TodoFilter` in
+  `lib/router.ts` – so öffnen die Kacheln der Übersicht sie); ein gelöschtes
   Projekt lässt seine Aufgaben ohne Projekt stehen. Sie zeigt je Projekt eine Karte
   (`TodoGruppe`, neue Aufgaben unter den vorhandenen); die Reihenfolge ist die von `todos`
   (`todosTauschen`), nicht sortiert. Aus dem Protokoll übernimmt `todosAusProtokoll`
   (`todoAusAufgabe` mit `herkunft`); ob eine Aufgabe schon dort ist, sagt allein `inTodoListe` –
-  den Status gleicht nichts ab. Erledigt wird in der To-Do-Liste und auf der Übersicht mit
+  den Status gleicht nichts ab. Erledigt wird in der To-Do-Liste mit
   `ErledigtHaken` (`components/erledigen.tsx`, der kleine Haken des Planlaufmanagements); eine
   Zeile, die dadurch die Auswahl verlässt, hält `useNachlauf` kurz an ihrem Platz – gespeichert
   wird sofort, nicht erst danach. Die Klasse `ps-haken` gehört dem Kästchen „erledigt“ im
@@ -649,7 +651,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   zurückgeholt über „Aus dem Archiv holen“ im archivierten Projekt (Projektliste, Abschnitt
   „Archiv“); der Archivstand gilt nur in diesem Bereich, der andere zeigt ihn unter „Auch in“.
   Wer den `localStorage` leert, leert auch `kaplan-projektregister.v1`.
-* Projektsteuerung: Wer „Lena Roth“ einträgt, sieht die Demo-Aufgaben als eigene To-Dos; mit
-  einem anderen Namen zeigt die Übersicht keine.
+* Projektsteuerung: Wer „Lena Roth“ einträgt, findet die Demo-Aufgaben der Protokolle bei „In die
+  To-Do-Liste …“ vorgewählt; mit einem anderen Namen ist keine vorgewählt.
 * „Angemeldet als“ liegt unter `kaplan-benutzer.v1` – wer es zurücksetzen will, löscht diesen
   Schlüssel.
