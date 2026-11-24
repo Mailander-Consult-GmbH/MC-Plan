@@ -9,12 +9,16 @@ import type { ID } from '../domain/types';
 /** Seiten im Projekt. */
 export type ProjektTab = 'beteiligte' | 'protokolle' | 'todos';
 
+/** Filter der To-Do-Liste; über die Adresse vorwählbar (Kacheln der Übersicht), Vorgabe „offen“. */
+export type TodoFilter = 'offen' | 'wichtig' | 'faellig' | 'erledigt' | 'alle';
+const TODO_FILTER: TodoFilter[] = ['offen', 'wichtig', 'faellig', 'erledigt', 'alle'];
+
 export type Route =
   | { view: 'uebersicht' }
   | { view: 'projekte' }
   | { view: 'funktionen' }
-  /** Eigene To-Do-Liste über alle Projekte. */
-  | { view: 'todos' }
+  /** Eigene To-Do-Liste über alle Projekte, auf Wunsch mit vorgewähltem Filter. */
+  | { view: 'todos'; filter?: TodoFilter }
   | { view: 'projekt'; projektId: ID; tab: ProjektTab }
   | { view: 'protokoll'; projektId: ID; protokollId: ID };
 
@@ -34,6 +38,8 @@ export function routeToHash(r: Route): string {
       return `#/${PREFIX}/projekt/${r.projektId}/${r.tab}`;
     case 'protokoll':
       return `#/${PREFIX}/projekt/${r.projektId}/protokoll/${r.protokollId}`;
+    case 'todos':
+      return r.filter && r.filter !== 'offen' ? `#/${PREFIX}/todos/${r.filter}` : `#/${PREFIX}/todos`;
     default:
       return `#/${PREFIX}/${r.view}`;
   }
@@ -54,7 +60,10 @@ export function hashToRoute(hash: string): Route {
   }
   if (teile[0] === 'projekte') return { view: 'projekte' };
   if (teile[0] === 'funktionen') return { view: 'funktionen' };
-  if (teile[0] === 'todos') return { view: 'todos' };
+  if (teile[0] === 'todos') {
+    const filter = TODO_FILTER.find((f) => f === teile[1]);
+    return filter && filter !== 'offen' ? { view: 'todos', filter } : { view: 'todos' };
+  }
   return { view: 'uebersicht' };
 }
 

@@ -42,21 +42,6 @@ export const zeitkritisch = (t: Todo, heute?: ISODate): boolean => {
   return a === 'ueberfaellig' || a === 'faellig';
 };
 
-const RANG: Record<Ampel, number> = { ueberfaellig: 0, faellig: 1, geplant: 2, ohneTermin: 3, erledigt: 4 };
-
-/**
- * Offene zuerst – Überfälliges vorn, dann nach Termin, ohne Termin zuletzt –,
- * danach das Erledigte, zuletzt Erledigtes zuerst.
- */
-export function todosSortiert(todos: Todo[], heute?: ISODate): Todo[] {
-  return [...todos].sort((a, b) => {
-    const rang = RANG[todoAmpel(a, heute)] - RANG[todoAmpel(b, heute)];
-    if (rang) return rang;
-    if (a.status === 'erledigt') return b.erledigtAm.localeCompare(a.erledigtAm);
-    return (a.termin || '9999').localeCompare(b.termin || '9999') || a.angelegt.localeCompare(b.angelegt);
-  });
-}
-
 /** Projekt einer Aufgabe; fehlt es (gelöscht), gilt sie als ohne Projekt. */
 export const projektDes = (t: Todo, projekte: Projekt[]): Projekt | undefined =>
   t.projektId ? projekte.find((p) => p.id === t.projektId) : undefined;

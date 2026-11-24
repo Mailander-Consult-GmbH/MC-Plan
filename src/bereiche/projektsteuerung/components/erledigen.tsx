@@ -1,6 +1,5 @@
 /**
- * Erledigen in den Listen der Projektsteuerung (To-Do-Liste, „Meine To-Dos“
- * und „Wichtige und fällige To-Dos“ der Übersicht): `ErledigtHaken` ist
+ * Erledigen in der To-Do-Liste der Projektsteuerung: `ErledigtHaken` ist
  * derselbe kleine Haken wie im Planlaufmanagement (`btn btn-sm btn-haken`,
  * nur das Symbol); erledigt ist er grün gefüllt und springt dabei kurz auf.
  * `useNachlauf` lässt eine Zeile, die gerade erledigt wurde, noch einen

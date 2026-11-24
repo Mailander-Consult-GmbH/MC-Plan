@@ -1,11 +1,12 @@
 /**
  * Offene Punkte: die Aufgaben aus den Protokollen – Einträge vom Typ A und
  * Ergänzungen mit eigener Art „Aufgabe“ – mit Ampel nach Termin. Grundlage
- * der Übersicht und der Zähler in der Seitenleiste.
+ * der Zähler in der Seitenleiste und der Übernahme in die To-Do-Liste.
  *
- * Eigene To-Dos sind die Aufgaben der angemeldeten Person („Angemeldet als“):
+ * Eigene Aufgaben sind die der angemeldeten Person („Angemeldet als“):
  * „Verantwortlich“ nennt ihr Kürzel oder ihren Namen aus der
- * Projektbeteiligtenliste oder aus den Teilnehmenden des Protokolls.
+ * Projektbeteiligtenliste oder aus den Teilnehmenden des Protokolls. Bei der
+ * Übernahme in die To-Do-Liste sind sie vorgewählt.
  */
 import { diffDays, today } from '../../../shared/dates';
 import { bezeichnung, eintragText, protokollAufgaben } from './protokoll';
@@ -57,7 +58,7 @@ export interface Punkt {
   termin: ISODate;
   status: Erledigung;
   ampel: Ampel;
-  /** Aufgabe der angemeldeten Person – ein eigenes To-Do. */
+  /** Aufgabe der angemeldeten Person – bei der Übernahme in die To-Do-Liste vorgewählt. */
   eigen: boolean;
 }
 
@@ -77,10 +78,6 @@ function ichImProjekt(d: ProjektsteuerungDaten, projektId: ID) {
   return d.beteiligte.filter((b) => b.projektId === projektId && norm(personName(b)) === ich);
 }
 
-/** Steht die angemeldete Person in der Projektbeteiligtenliste eines der Projekte? */
-export const angemeldetBeteiligt = (d: ProjektsteuerungDaten, projektIds: ID[]): boolean =>
-  projektIds.some((id) => ichImProjekt(d, id).length > 0);
-
 /**
  * Werte von „Verantwortlich“, die die angemeldete Person meinen: im Protokoll
  * Kürzel und Name der Teilnehmenden, die sie ist – verknüpft oder gleichen
@@ -88,7 +85,7 @@ export const angemeldetBeteiligt = (d: ProjektsteuerungDaten, projektIds: ID[]):
  * Projektbeteiligtenliste. Letztere gelten nur, wenn sie im Protokoll niemand
  * anderes führt: Was dort eine teilnehmende Person nennt, meint sie – sonst
  * sähe, wer dieselbe Funktion (und damit dasselbe Kürzel) hat, deren Aufgaben
- * als eigene To-Dos. Ein Kürzel, das im Protokoll mehrere führen (Bestände von
+ * als eigene. Ein Kürzel, das im Protokoll mehrere führen (Bestände von
  * früher; neu Gewähltes nennt dann den Namen, `zuordnung`), zählt für alle,
  * die es führen – lieber bei zweien als bei niemandem.
  */
@@ -139,7 +136,3 @@ export function allePunkte(d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[]
 
 export const offenePunkte = (d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[] =>
   allePunkte(d, projektIds).filter((p) => p.status !== 'erledigt');
-
-/** Offene Aufgaben der angemeldeten Person („Angemeldet als“). */
-export const eigeneTodos = (d: ProjektsteuerungDaten, projektIds?: ID[]): Punkt[] =>
-  offenePunkte(d, projektIds).filter((p) => p.eigen);

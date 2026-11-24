@@ -9,8 +9,9 @@
  * kleinen Haken des Planlaufmanagements (`ErledigtHaken`); eine Zeile, die
  * damit oder mit dem Stern die Auswahl verlässt, bleibt noch kurz stehen
  * (`useNachlauf`), Zeilen und Karten kommen, gehen und gleiten an ihren Platz
- * (`listenEintrag`). `FaelligeTodos` zeigt auf der Übersicht, was wichtig,
- * überfällig oder demnächst fällig ist.
+ * (`listenEintrag`). Die Übersicht zählt die offenen, überfälligen und
+ * demnächst fälligen Aufgaben; ihre Kacheln öffnen die Liste mit passendem
+ * Filter (`startFilter` aus der Adresse).
  */
 import { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -33,14 +34,14 @@ import {
   beiEnter,
 } from '../../../shared/ui';
 import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
-import { AmpelBadge, AmpelPunkt } from '../components/common';
+import { AmpelBadge } from '../components/common';
 import { ErledigtHaken, useNachlauf } from '../components/erledigen';
-import { VORLAUF_TAGE, type ID, type Projekt, type Todo } from '../domain/types';
-import { projektDes, todoAmpel, todosSortiert, zeitkritisch } from '../domain/todos';
-import type { Route } from '../lib/router';
+import type { ID, Projekt, Todo } from '../domain/types';
+import { projektDes, todoAmpel, zeitkritisch } from '../domain/todos';
+import type { Route, TodoFilter } from '../lib/router';
 import { useStore } from '../store/store';
 
-type Filter = 'offen' | 'wichtig' | 'faellig' | 'erledigt' | 'alle';
+type Filter = TodoFilter;
 
 /** Wert der Projektauswahl für Aufgaben ohne Projekt. */
 const OHNE = 'ohne';
@@ -83,15 +84,22 @@ function ProjektWahl({
 }
 
 const fertig = (t: Todo) => t.status === 'erledigt';
-/** Die Aufgabe, als wäre sie noch offen – damit eine eben erledigte an ihrem Platz bleibt. */
-const alsOffen = (t: Todo): Todo => (fertig(t) ? { ...t, status: 'offen', erledigtAm: '' } : t);
 
-export function TodoListe({ projekt, navigate }: { projekt?: Projekt; navigate?: (r: Route) => void }) {
+export function TodoListe({
+  projekt,
+  startFilter,
+  navigate,
+}: {
+  projekt?: Projekt;
+  /** Filter beim Öffnen – aus der Adresse (`#/projektsteuerung/todos/faellig`); sonst „Offen“. */
+  startFilter?: Filter;
+  navigate?: (r: Route) => void;
+}) {
   const { data, todoErledigen, updateTodo } = useStore();
   const toast = useToast();
   const nachlauf = useNachlauf();
   const archiviert = useArchivierte('projektsteuerung');
-  const [filter, setFilter] = useState<Filter>('offen');
+  const [filter, setFilter] = useState<Filter>(startFilter ?? 'offen');
   const [projektFilter, setProjektFilter] = useState('');
   const [suche, setSuche] = useState('');
   // Projekte, deren (noch leere) Karte über „Aufgabe zu weiterem Projekt“ geöffnet wurde
@@ -349,8 +357,8 @@ function TodoGruppe({
           <table className="table table-stack ps-todos">
             <thead>
               <tr>
-                <th style={{ width: 44 }}>
-                  <span className="sr-only">Wichtig</span>
+                <th className="text-center" style={{ width: 64 }}>
+                  Wichtig
                 </th>
                 <th>Aufgabe</th>
                 <th style={{ width: 140 }}>Fällig</th>
@@ -371,7 +379,7 @@ function TodoGruppe({
                       className="clickable"
                       {...alsKlickZeile(() => onBearbeiten(t.id))}
                     >
-                      <td onClick={(e) => e.stopPropagation()}>
+                      <td className="text-center" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           className={`stern ${t.wichtig ? 'aktiv' : ''}`}
@@ -603,106 +611,5 @@ function TodoDialog({ todo, onClose }: { todo: Todo; onClose: () => void }) {
         />
       ) : null}
     </>
-  );
-}
-
-/** Übersicht: Aufgaben der To-Do-Liste, die wichtig, überfällig oder demnächst fällig sind. */
-export function FaelligeTodos({ onZurListe }: { onZurListe: () => void }) {
-  const { data, todoErledigen } = useStore();
-  const toast = useToast();
-  const nachlauf = useNachlauf();
-  const heute = today();
-  // Eben erledigte bleiben kurz an ihrem Platz – gefiltert und sortiert, als wären sie noch offen
-  const kandidaten = data.todos.filter((t) => !fertig(t) || nachlauf.hat(t.id));
-  const nachId = new Map(kandidaten.map((t) => [t.id, t]));
-  const liste = todosSortiert(
-    kandidaten.map(alsOffen).filter((t) => t.wichtig || zeitkritisch(t, heute)),
-    heute,
-  ).map((t) => nachId.get(t.id)!);
-
-  return (
-    <Card>
-      <CardHeader
-        titel="Wichtige und fällige To-Dos"
-        sub={`Aus der To-Do-Liste – als wichtig markiert, überfällig oder in den nächsten ${VORLAUF_TAGE} Tagen fällig`}
-        actions={
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onZurListe}>
-            To-Do-Liste <Icon name="chevron" size={13} />
-          </button>
-        }
-      />
-      {liste.length === 0 ? (
-        <p className="card-pad small tertiary">Nichts fällig, nichts als wichtig markiert.</p>
-      ) : (
-        <div className="table-scroll">
-          <table className="table table-stack">
-            <thead>
-              <tr>
-                <th className="col-optional" style={{ width: 22 }} />
-                <th>Aufgabe</th>
-                <th className="col-optional">Projekt</th>
-                <th>Fällig</th>
-                <th>Status</th>
-                <th className="actions" />
-              </tr>
-            </thead>
-            <tbody>
-              <AnimatePresence initial={false}>
-                {liste.map((t) => {
-                  const ampel = todoAmpel(t, heute);
-                  const p = projektDes(t, data.projekte);
-                  return (
-                    <motion.tr key={t.id} {...listenEintrag}>
-                      <td className="col-optional">
-                        <AmpelPunkt ampel={ampel} />
-                      </td>
-                      <td style={{ maxWidth: 460 }}>
-                        <div className={`ps-zweizeilig transition-colors duration-300 ${fertig(t) ? 'text-gedaempft line-through' : ''}`}>
-                          {t.wichtig ? (
-                            <span className="stern aktiv p-0 pr-1 align-[-2px]" title="Wichtig">
-                              <Icon name="stern" size={13} />
-                            </span>
-                          ) : null}
-                          {t.text}
-                        </div>
-                        {t.notiz ? <div className="small tertiary ps-zweizeilig">{t.notiz}</div> : null}
-                      </td>
-                      <td className="small muted col-optional">
-                        {p ? projektText(p) : <span className="tertiary">ohne Projekt</span>}
-                      </td>
-                      <td className="small">
-                        {t.termin ? (
-                          <>
-                            {formatDate(t.termin)}
-                            <div className="tertiary small">{relativeLabel(t.termin)}</div>
-                          </>
-                        ) : (
-                          <span className="tertiary">ohne Termin</span>
-                        )}
-                      </td>
-                      <td>
-                        <AmpelBadge ampel={ampel} />
-                      </td>
-                      <td className="actions">
-                        <ErledigtHaken
-                          erledigt={fertig(t)}
-                          text={t.text}
-                          onUmschalten={() => {
-                            const erledigt = !fertig(t);
-                            todoErledigen(t.id, erledigt);
-                            nachlauf.merken(t.id);
-                            toast(erledigt ? 'Als erledigt markiert.' : 'Wieder offen.');
-                          }}
-                        />
-                      </td>
-                    </motion.tr>
-                  );
-                })}
-              </AnimatePresence>
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
   );
 }
