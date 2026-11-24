@@ -12,7 +12,7 @@ import { BereichWechsel } from '../../shell/BereichWechsel';
 import { Hinweisleisten } from './components/Hinweisleisten';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { bezeichnung } from './domain/protokoll';
-import { eigeneTodos, offenePunkte } from './domain/punkte';
+import { offenePunkte } from './domain/punkte';
 import { todoAmpel, zeitkritisch } from './domain/todos';
 import { useRoute, type Route } from './lib/router';
 import { Funktionen } from './pages/Funktionen';
@@ -50,7 +50,6 @@ export function App() {
   const markierte = sichtbareProjekte(data.projekte, archiviert);
   const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
   const ueberfaellig = offenePunkte(data, markierte.map((p) => p.id)).filter((p) => p.ampel === 'ueberfaellig');
-  const todos = eigeneTodos(data, markierte.map((p) => p.id)).length;
   // To-Do-Liste: zeitkritische Aufgaben; rot, sobald eine überfällig ist
   const faelligeTodos = data.todos.filter((t) => zeitkritisch(t));
   const todoUeberfaellig = faelligeTodos.some((t) => todoAmpel(t) === 'ueberfaellig');
@@ -85,7 +84,6 @@ export function App() {
           icon="dashboard"
           label="Übersicht"
           aktiv={route.view === 'uebersicht'}
-          badge={todos > 0 ? String(todos) : undefined}
           onClick={() => gehe({ view: 'uebersicht' })}
         />
         <NavItem
@@ -139,7 +137,7 @@ export function App() {
         </div>
 
         <div className="sidebar-footer">
-          <AngemeldetAls hinweis="Steht dieser Name in der Projektbeteiligtenliste, übernehmen Sie die Protokollführung neuer Protokollreihen, und die Übersicht zeigt die Aufgaben mit Ihrem Kürzel oder Namen als eigene To-Dos." />
+          <AngemeldetAls hinweis="Steht dieser Name in der Projektbeteiligtenliste, übernehmen Sie die Protokollführung neuer Protokollreihen, und Aufgaben mit Ihrem Kürzel oder Namen sind bei der Übernahme in die To-Do-Liste vorgewählt." />
           <div className="sicherung-knoepfe">
             <button
               type="button"
@@ -205,7 +203,9 @@ export function App() {
               {route.view === 'uebersicht' ? <Uebersicht navigate={gehe} /> : null}
               {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
               {route.view === 'funktionen' ? <Funktionen /> : null}
-              {route.view === 'todos' ? <TodoListe navigate={gehe} /> : null}
+              {route.view === 'todos' ? (
+                <TodoListe key={route.filter ?? 'offen'} startFilter={route.filter} navigate={gehe} />
+              ) : null}
               {route.view === 'projekt' ? (
                 projekt ? (
                   <ProjektDetail projekt={projekt} tab={route.tab} navigate={gehe} />

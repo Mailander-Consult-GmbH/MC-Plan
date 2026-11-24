@@ -96,7 +96,6 @@ interface StoreValue {
   setReihenLogos: (reiheId: ID, logos: Logo[] | null) => void;
   /* Aufgaben aus den Protokollen */
   /** Setzt „erledigt“ an einer Aufgabe – Eintrag oder Ergänzung mit eigener Art. */
-  punktErledigen: (punkt: Punkt, erledigt: boolean) => void;
   /* Eigene To-Do-Liste */
   /** Nimmt eine Aufgabe auf und liefert ihre Kennung. */
   addTodo: (werte: Pick<Todo, 'text' | 'projektId' | 'termin'> & Partial<Pick<Todo, 'wichtig'>>) => ID;
@@ -321,21 +320,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const neu = aufgaben.map((a) => todoAusAufgabe(newId('td'), a, today()));
         if (neu.length > 0) mutate((d) => ({ ...d, todos: [...d.todos, ...neu] }));
         return neu.length;
-      },
-
-      punktErledigen: (punkt, erledigt) => {
-        const status = erledigt ? ('erledigt' as const) : ('offen' as const);
-        protokollAendern(punkt.protokollId, (p) => ({
-          ...p,
-          tops: p.tops.map((t) => ({
-            ...t,
-            eintraege: t.eintraege.map((e) =>
-              e.id === punkt.id
-                ? { ...e, status }
-                : { ...e, zeilen: e.zeilen.map((z) => (z.id === punkt.id ? { ...z, status } : z)) },
-            ),
-          })),
-        }));
       },
 
       ersetzeDaten: (d) => {
