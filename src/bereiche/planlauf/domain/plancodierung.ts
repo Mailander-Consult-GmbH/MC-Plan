@@ -581,7 +581,7 @@ const ZWEISPALTIG_AB = 90;
  */
 const SCHRIFT_PT = 7;
 /** Kleinste Schrift, für die ein langer Katalog in zwei Spalten läuft. */
-const SCHRIFT_ZWEISPALTIG_PT = 6.5;
+const SCHRIFT_ZWEISPALTIG_PT = 6.2;
 /** Kleinste Schrift überhaupt – passt es auch so nicht, brechen lange Wörter um. */
 const SCHRIFT_MINDEST_PT = 6;
 const ZEICHEN_MM = 1.36;
@@ -650,7 +650,7 @@ interface DruckSpalte {
  * Verteilt die Breite: Jede Spalte erhält ihre Mindestbreite, der Rest geht
  * nach dem, was ihr zur Wunschbreite fehlt. Ein Katalog über
  * `ZWEISPALTIG_AB` Zeilen läuft in zwei Spalten, wenn das mit höchstens
- * 0,7 pt kleinerer Schrift Platz hat – das spart Seiten. Die Schrift wird
+ * 0,8 pt kleinerer Schrift Platz hat – das spart Seiten. Die Schrift wird
  * nur so weit verkleinert, wie die Mindestbreiten es verlangen. Liefert die
  * Breiten in Prozent der Tabelle und die Schriftgröße in pt.
  */
