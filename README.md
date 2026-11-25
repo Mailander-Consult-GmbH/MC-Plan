@@ -1044,7 +1044,8 @@ nennt ein Hinweis sie mit einem Verweis auf die Einstellungen des Projekts.
   Mitgeliefert sind die acht Kategorien des
   Muster-Pflichtenhefts (Projekt, Planungsphase, Planersteller, Planungsfachbereich,
   Planungsobjekt, Planart, laufende Nummer, Index) mit ihren Katalogen; die Kategorie „Projekt“
-  füllt ein neues Pflichtenheft mit dem Kürzel der Betriebsstelle und der Station. Legt das
+  füllt ein neues Pflichtenheft mit dem Code des Projekts aus dem Assistenten (Vorgabe: Kürzel der
+  Betriebsstelle) samt Station bzw. bei Fahrweg Projektname. Legt das
   Pflichtenheft ein Schema fest, prüft die **Planliste** die Plancodierung jedes Plans
   (`plancodePruefen`): Weicht sie ab, steht neben der Nummer ein oranges Warnzeichen, sein Tooltip
   nennt die Gründe – unzulässige Zeichen (erlaubt sind a–z, A–Z, Ziffern, „-“ und „_“, die Endung

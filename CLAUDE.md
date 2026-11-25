@@ -449,7 +449,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     `GESCHAEFTSBEREICHE` (`domain/types.ts`) – ein neuer Geschäftsbereich braucht dort einen
     Eintrag und eine Vorlage. Dazu `domain/ablaufDiagramm.ts` (Ablaufdiagramm
     eines Workflows als SVG, allein über `gliedern`) und `domain/plancodierung.ts` (Kataloge,
-    `plancodePruefen` für die Planliste, Druckfassung). Die G-Nummer (`Project.gNummer`) teilt das
+    `plancodePruefen` für die Planliste, Druckfassung; die Einträge einer Kategorie bleiben Text –
+    der Editor `PlancodierungEditor.tsx`/`CodierungsKatalog.tsx` liest sie mit `eintraegeLesen` und
+    schreibt sie mit `eintraegeSchreiben` verlustfrei zurück). Die G-Nummer (`Project.gNummer`) teilt das
     Register mit der Baubetriebsplanung (`RegisterProjekt.gNummer`, `null` = noch unbekannt),
     Mobil und OE der Kontakte ebenso (`PERSON_FELDER`),
   * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten
