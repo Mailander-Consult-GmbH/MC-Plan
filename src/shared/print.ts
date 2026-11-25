@@ -17,7 +17,26 @@ export function druckeHtml(titel: string, inhalt: string, zusatzStil = ''): void
   }
 
   dokument.open();
-  dokument.write(`<!doctype html>
+  dokument.write(htmlDokument(titel, inhalt, zusatzStil));
+  dokument.close();
+
+  const drucken = () => {
+    rahmen.contentWindow?.focus();
+    rahmen.contentWindow?.print();
+    // Der Rahmen muss bis zum Ende des Druckdialogs bestehen bleiben.
+    setTimeout(() => rahmen.remove(), 60_000);
+  };
+
+  if (rahmen.contentWindow?.document.readyState === 'complete') drucken();
+  else rahmen.onload = drucken;
+}
+
+/**
+ * Das vollständige HTML-Dokument der Druckausgabe – auch für eine Vorschau in
+ * einem eingebetteten Rahmen (`srcDoc`), die dann genau so aussieht wie der Druck.
+ */
+export function htmlDokument(titel: string, inhalt: string, zusatzStil = ''): string {
+  return `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><title>${titel}</title>
 <style>
   @page { size: A4 landscape; margin: 14mm 12mm; }
@@ -38,18 +57,7 @@ export function druckeHtml(titel: string, inhalt: string, zusatzStil = ''): void
   .grau { color: #6e6e73; }
   .fuss { margin-top: 6mm; color: #8e8e93; font-size: 8pt; }
 ${zusatzStil}
-</style></head><body>${inhalt}</body></html>`);
-  dokument.close();
-
-  const drucken = () => {
-    rahmen.contentWindow?.focus();
-    rahmen.contentWindow?.print();
-    // Der Rahmen muss bis zum Ende des Druckdialogs bestehen bleiben.
-    setTimeout(() => rahmen.remove(), 60_000);
-  };
-
-  if (rahmen.contentWindow?.document.readyState === 'complete') drucken();
-  else rahmen.onload = drucken;
+</style></head><body>${inhalt}</body></html>`;
 }
 
 /** Maskiert Text für die Ausgabe in HTML. */

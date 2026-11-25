@@ -212,6 +212,9 @@ export interface PflichtenheftWorkflow {
   titel: string;
 }
 
+/** Was ein neues Pflichtenheft aus der Vorlage übernimmt. */
+export type PflichtenheftVorlage = Pick<Pflichtenheft, 'titel' | 'abschnitte' | 'gewerkNamen' | 'workflowHinweis' | 'plancodierung'>;
+
 export interface Pflichtenheft {
   /** Titel auf dem Deckblatt, mit Platzhaltern. */
   titel: string;
@@ -226,6 +229,8 @@ export interface Pflichtenheft {
   /** Abweichende Bezeichnungen einzelner Zeilen: Abschnitt|Funktion|Gewerk → Text. */
   zeilenNamen: Record<string, string>;
   workflows: PflichtenheftWorkflow[];
+  /** Text unter jedem Ablaufdiagramm (Fußnote, Hinweise zum Zeitbedarf), mit Platzhaltern. */
+  workflowHinweis: string;
   plancodierung: Plancodierung;
   aenderungen: PflichtenheftAenderung[];
 }
@@ -988,7 +993,7 @@ export interface AppData {
    * Vorlage für neue Pflichtenhefte (Abschnitte und Plancodierung); fehlt sie,
    * gilt die mitgelieferte (domain/pflichtenheft.ts).
    */
-  pflichtenheftVorlage?: Pick<Pflichtenheft, 'titel' | 'abschnitte' | 'gewerkNamen' | 'plancodierung'>;
+  pflichtenheftVorlage?: PflichtenheftVorlage;
   /** Vermerke über gelöschte Elemente. */
   geloescht: Loeschvermerk[];
 }

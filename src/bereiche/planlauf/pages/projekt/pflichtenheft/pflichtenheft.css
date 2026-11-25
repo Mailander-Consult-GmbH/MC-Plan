@@ -1,0 +1,85 @@
+/*
+ * Reiter „Pflichtenheft“ (Planlaufmanagement) – Präfix phe-, nur Design-Tokens.
+ * Bausteine und Knöpfe der Platzhalter: shared/bausteinEditor.css. Die
+ * Druckfassung hat ihre eigene Gestaltung (domain/pflichtenheft.ts).
+ */
+@layer components {
+  .phe-link { color: var(--marke-text); text-decoration: underline; text-underline-offset: 2px; }
+
+  .phe-text { display: flex; flex-direction: column; gap: 8px; }
+  .phe-palette {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--rund);
+    background: var(--bg-subtle);
+  }
+  .phe-kapitel.offen .phe-palette { background: var(--bg-elev); }
+  .phe-palette-zeile { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 8px; align-items: start; }
+  .phe-palette-kat { font-size: 12px; color: var(--text-secondary); padding-top: 5px; }
+
+  .phe-vorschau {
+    display: block; width: 100%; height: min(80vh, 1100px);
+    border: 0; border-radius: var(--rund-xl);
+    background: var(--bg-subtle);
+  }
+
+  .phe-bild { width: 160px; height: 90px; object-fit: cover; border-radius: var(--rund-s); }
+
+  .phe-unterschrift { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 10px; align-items: center; }
+  .phe-unterschrift-titel { font-size: 12.5px; color: var(--text-secondary); }
+  .phe-unterschrift-felder { display: grid; grid-template-columns: 1fr 150px 1.3fr 1fr; gap: 8px; }
+
+  /* Kapitel: Zeilen wie eine Liste, die offene als graue Kachel */
+  .phe-kapitel-liste { display: flex; flex-direction: column; padding: 0 var(--tabellen-rand, 24px) 8px; }
+  .phe-kapitel { border-top: 1px solid var(--separator); }
+  .phe-kapitel:first-child { border-top: 0; }
+  .phe-kapitel.offen { background: var(--bg-subtle); border-radius: var(--rund-l); border-top-color: transparent; margin: 4px 0; }
+  .phe-kapitel.offen + .phe-kapitel { border-top-color: transparent; }
+  .phe-kapitel-kopf { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+  .phe-kapitel-titel {
+    display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
+    border: 0; background: none; padding: 6px 0; font: inherit; color: inherit; text-align: left; cursor: pointer;
+  }
+  .phe-kapitel-titel:hover { color: var(--marke-text); }
+  .phe-kapitel.ebene2 .phe-kapitel-titel { padding-left: 22px; }
+  .phe-nr { min-width: 28px; color: var(--text-tertiary); font-weight: 500; }
+  .phe-kapitel.ebene1 .phe-kapitel-titel { font-weight: 500; }
+  .phe-abschnitt { padding: 4px 12px 14px; }
+
+  .phe-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 999px;
+    border: 1px solid var(--separator-strong); background: var(--bg-elev);
+    font: inherit; font-size: 12.5px; color: var(--text); cursor: pointer;
+  }
+  .phe-chip.an { border-color: var(--accent); color: var(--marke-text); background: var(--marke-soft); }
+
+  .phe-zeilen { display: flex; flex-direction: column; gap: 8px; }
+  .phe-zeile { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 12px; align-items: start; }
+
+  .phe-gewerke { border-top: 1px solid var(--separator); }
+  .phe-unterueberschrift { font-size: 14px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 2px; }
+  .phe-gewerke-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px 16px; margin-top: 10px; }
+  .phe-gewerk { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; align-items: center; }
+  .phe-gewerk-kuerzel { font-size: 12.5px; color: var(--text-secondary); font-weight: 500; }
+
+  .phe-workflows { display: flex; flex-direction: column; gap: 8px; }
+  .phe-workflow { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: var(--rund-l); background: var(--bg-subtle); }
+  .phe-workflow .phe-nr { padding-top: 7px; }
+
+  .phe-aenderungen { display: flex; flex-direction: column; gap: 8px; }
+  .phe-aenderung { display: grid; grid-template-columns: 150px 180px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+
+  @media (max-width: 760px) {
+    .phe-palette-zeile { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .phe-palette-kat { padding-top: 0; }
+    .phe-unterschrift { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .phe-unterschrift-felder { grid-template-columns: 1fr 1fr; }
+    .phe-zeile { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .phe-aenderung { grid-template-columns: 1fr auto; }
+    .phe-aenderung > :nth-child(3) { grid-column: 1 / -1; grid-row: 3; }
+    .phe-kapitel-liste { padding: 0 8px 8px; }
+    .phe-kapitel-titel .badge { display: none; }
+    .phe-kapitel.ebene2 .phe-kapitel-titel { padding-left: 10px; }
+  }
+}
