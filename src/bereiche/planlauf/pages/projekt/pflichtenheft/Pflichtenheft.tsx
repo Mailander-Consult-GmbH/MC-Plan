@@ -43,7 +43,7 @@ import {
 } from '../../../domain/types';
 import type { ProjektTab } from '../../../lib/router';
 import { newId, useStore } from '../../../store/store';
-import { htmlDokument } from '../../../../../shared/print';
+import { htmlDokument, querformatImDruck } from '../../../../../shared/print';
 import { useToast } from '../../../../../shared/toast';
 import { Icon } from '../../../../../shared/icons';
 import { listenEintrag } from '../../../../../shared/bewegung';
@@ -131,6 +131,13 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
           </button>
         </div>
       </div>
+
+      {!querformatImDruck() ? (
+        <Callout icon="!" ton="warn">
+          Dieser Browser kann im Druck nicht zwischen Hoch- und Querformat wechseln – Ablaufdiagramme und Plancodierung
+          stünden im Hochformat. Für die PDF-Ausgabe bitte Microsoft Edge oder Google Chrome verwenden.
+        </Callout>
+      ) : null}
 
       {fehlend.length > 0 ? (
         <Callout icon="i">

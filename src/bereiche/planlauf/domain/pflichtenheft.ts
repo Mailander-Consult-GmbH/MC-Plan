@@ -655,11 +655,21 @@ export const PFLICHTENHEFT_STIL = `
   .ph-hinweis p { margin: 0 0 1.5mm; }
   table.ph-index td.datum { width: 26mm; white-space: nowrap; }
   table.ph-index td.stelle { width: 42mm; }
+  /* Vorschau am Bildschirm: je Abschnitt ein Blatt – die Anlagen im Querformat so breit wie gedruckt */
   @media screen {
-    html { background: #e9e9ec; }
-    body { background: #fff; max-width: 210mm; margin: 0 auto; padding: 18mm 18mm 18mm 22mm; box-sizing: border-box; }
-    .ph-umbruch { border-top: 2px dashed #c7c7cc; margin-top: 14mm; padding-top: 14mm; }
+    html, body { background: #e9e9ec; }
+    body { margin: 0; padding: 8mm 0; }
+    body > section {
+      background: #fff; width: 210mm; box-sizing: border-box; margin: 0 auto 8mm;
+      padding: 18mm 18mm 18mm 22mm; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    }
+    body > section.ph-quer, body > section.ph-pc { width: 297mm; padding: 12mm; }
   }
+  /* Schmaler Rahmen: Blätter verkleinern, damit ein Querblatt ganz zu sehen ist */
+  @media screen and (max-width: 1180px) { body { zoom: 0.85; } }
+  @media screen and (max-width: 1000px) { body { zoom: 0.72; } }
+  @media screen and (max-width: 820px) { body { zoom: 0.58; } }
+  @media screen and (max-width: 640px) { body { zoom: 0.42; } }
 `;
 
 /** Das ganze Pflichtenheft als HTML-Fragment (für `druckeHtml` bzw. die Vorschau mit `htmlDokument`). */
