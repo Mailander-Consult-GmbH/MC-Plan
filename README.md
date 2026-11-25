@@ -296,8 +296,14 @@ Bildschirmleser vor, jede neue für sich, auch wenn eine ältere noch steht (`ro
 ## Funktionsumfang
 
 ### Projekte
-Anlage und Pflege von Projekten (Projektnummer, Name, Status, Beschreibung). Beim Anlegen werden
-die projektübergreifenden Funktionen als Projektfunktionen übernommen. Die E-Mail-Texte gelten
+Anlage und Pflege von Projekten (Projektnummer, **G-Nummer** – die Projektnummer der DB –, Name,
+Status, Beschreibung). Beim Anlegen werden
+die projektübergreifenden Funktionen als Projektfunktionen übernommen. Die **Stammdaten** des
+Projekts – Bahnhof bzw. Haltepunkt, Kürzel der Betriebsstelle (Ril 100), Bahnhofsnummer,
+Stations-km, betroffene Strecken (Nummer und Bezeichnung), Auftraggeber, Geschäftsbereich,
+Planungsphase und der zentrale SharePoint-Ordner mit den genehmigten Unterlagen – stehen in der
+Karte **Stammdaten** der Projekteinstellungen; jede Eingabe wird sofort gespeichert. Sie gelten
+unabhängig vom Pflichtenheft, das sie über Platzhalter einsetzt. Die E-Mail-Texte gelten
 projektübergreifend und werden unter **Einstellungen › Vorlagen** in der Seitenleiste gepflegt.
 
 ### Funktionen und Gewerke
@@ -345,7 +351,8 @@ Kurzmeldung nennt, wo die Funktion jetzt so heißt („Funktion gespeichert – 
 Im Vordergrund steht die **Funktion, nicht die Person**: Die Seite ist – wie der projektübergreifende
 Reiter *Funktionen* – nach **Gewerken** gegliedert (je Gewerk eine Seite, dazu „Übergreifend“). Je
 Funktion steht in der Zeile, wer sie ausfüllt; ein Klick öffnet die Besetzung, in der eine im Projekt
-bekannte Person übernommen oder eine neue mit Anrede, Firma, E-Mail, Telefon und Anschrift erfasst
+bekannte Person übernommen oder eine neue mit Anrede, Firma, Organisationseinheit (OE), E-Mail,
+Telefon, Mobil und Anschrift erfasst
 wird – dazu die Felder **SharePoint-Link Eingang** (Ordner, in dem die Unterlagen für die Person
 bereitliegen) und **SharePoint-Link Ausgang** (Ordner, in den sie ihre Unterlagen hochlädt) für die
 Versandmail; hinterlegte Links stehen als kleine Links unter den Kontaktdaten in der Liste. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann mehrere Funktionen
@@ -379,8 +386,8 @@ Bezeichnung weiter, ohne dass das Projekt dafür noch eine Funktion hat, sagt es
 diese Schritte keine zuständige Person.“ Dann die Funktion im Workflow anpassen oder die Person im
 neuen Planlauf von Hand eintragen.
 
-**Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · Telefon ·
-Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*. Personen, die
+**Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · OE ·
+Telefon · Mobil · Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*. Personen, die
 es im Projekt schon gibt, werden aktualisiert; eine leere Zelle oder fehlende Spalte heißt „keine
 Angabe“ und lässt stehen, was bei der Person schon eingetragen ist (Telefon, Firma, Anschrift,
 SharePoint-Links …), mehrere Zeilen derselben Person ergänzen einander. Erkannt wird eine Person
@@ -965,8 +972,55 @@ Einspielen, gleich welchen Bereichs, die älteste zuerst (`nachRaeumenSpeichern`
 Speichert ein anderes Fenster (Tab oder installierte App) den Bestand, lädt die Anwendung dessen
 Stand nach, statt ihn mit dem eigenen älteren zu überschreiben (`useFremdeAenderung`).
 
+### Pflichtenheft
+Reiter **Pflichtenheft** im Projekt (zwischen *Workflows* und *Einstellungen*). Ohne Pflichtenheft
+steht dort „Noch kein Pflichtenheft“ mit **Pflichtenheft erstellen**: KaPlan legt es aus der Vorlage
+an – mit den Texten des Muster-Pflichtenhefts (Einleitung, Abwicklung der Planläufe,
+Plannummerierung, Änderungen, Ansprechpartner, Weitere Projektbeteiligte, Verpflichtungen der
+Planer, Digitale Plandaten, Schriftfeld, Strecken, Anlagenverzeichnis), den Workflows des Projekts
+(ohne eigene: den projektübergreifenden) als Anlage „Planläufe und Ablaufdiagramme“, der
+mitgelieferten Plancodierung und einem leeren Änderungsindex. Oben wechselt **Bearbeiten** /
+**Vorschau**; daneben stehen **Neu aus Vorlage** (nach Rückfrage), **Als Vorlage speichern**
+(Titel, Kapitel, Texte, Bezeichnungen der Gewerke, Hinweis der Ablaufdiagramme und Plancodierung
+gelten danach für jedes neu erstellte Pflichtenheft) und **Als PDF ausgeben** (Druckdialog,
+„Als PDF sichern“). Fehlen Stammdaten, nennt ein Hinweis sie mit einem Verweis auf die
+Einstellungen des Projekts.
+
+* **Deckblatt** – Titel (mit Platzhaltern, Vorgabe „Pflichtenheft Planlauf“ + Planungsphase), ein
+  Bild (wird auf höchstens 1600 px Breite verkleinert) und die Zeilen **Aufgestellt**,
+  **Freigegeben** und **Zuletzt geändert** mit Ort, Datum, Funktion (OE) und Name. Leere Felder füllt
+  KaPlan vor (grau im Feld): aufgestellt und zuletzt geändert vom Planlaufmanagement (eigener
+  Kontakt, „PLM, Firma“), freigegeben von der Projektleitung („OE, Firma“); der Ort kommt aus der
+  letzten Zeile der Anschrift, „Zuletzt geändert“ trägt das Datum des jüngsten Eintrags im
+  Änderungsindex.
+* **Kapitel** – Kapitel und Unterkapitel; die Nummern entstehen aus der Reihenfolge (nach oben,
+  nach unten, entfernen, **+ Kapitel**, **+ Ansprechpartner**). Ein Klick öffnet den Abschnitt: Titel,
+  Gliederung (Kapitel/Unterkapitel) und Text. Projekt- und Stammdaten stehen im Text als farbige
+  Platzhalter – Projekt blau (G-Nummer, Projektnummer, Projektname, Planungsphase), Station und
+  Strecke grün (Station, Kürzel, Bahnhofsnummer, Stations-km, Streckennummern, Streckenliste),
+  Auftraggeber lila (Auftraggeber, Geschäftsbereich, Projektleitung, SharePoint zentral), Anlagen
+  orange (Nummern der drei Anlagen, sie folgen dem Anlagenverzeichnis). Absätze trennt eine
+  Leerzeile, `**fett**` setzt Fettschrift. Ein Abschnitt **Ansprechpartner** nennt Funktionen (in
+  allen Gewerken, Auswahl aus den Funktionen des Projekts); die Tabelle „Gewerk | Zuständig“ zeigt
+  je Funktion die Personen, die sie ausfüllen – mit Name, Firma, OE, Anschrift, Telefon, Mobil und
+  E-Mail. Füllen dieselben Personen mehrere Funktionen aus, stehen sie in einer Zeile
+  („Konstruktiver Ingenieurbau / Verkehrsanlagen“); jede Zeile lässt sich abweichend benennen.
+  Funktionen ohne Person nennt ein Hinweis. Der Abschnitt **Planlaufmanagement** zeigt die
+  angemeldete Person und dazu gewählte Kontakte (etwa die Vertretung) nebeneinander. Unter den
+  Kapiteln stehen die **Bezeichnungen der Gewerke** (etwa KIB → „Konstruktiver Ingenieurbau“).
+* **Planläufe und Ablaufdiagramme** – die Workflows der Anlage mit Titel, Reihenfolge, Entfernen und
+  „Workflow hinzufügen …“; dazu der Hinweis unter jedem Ablaufdiagramm.
+* **Plancodierung** – das Schema der Plancodierung (Anlage „Plancodierung“).
+* **Änderungsindex** – Datum, Seite bzw. Anlage und Änderung; **+ Änderung** setzt das heutige Datum.
+
+Die **Druckfassung** hat eine eigene, helle Gestaltung: Deckblatt, Inhaltsverzeichnis und die
+Kapitel im Hochformat mit „Seite x von y“, die Ablaufdiagramme und die Plancodierung im
+Querformat, zuletzt der Änderungsindex (jüngster Eintrag zuerst). Die Vorschau zeigt dasselbe
+Dokument fortlaufend, Seitenwechsel gestrichelt.
+
 ### Projekteinstellungen
-Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage (aufgelistet als TT.MM.JJJJ) und Absenderangaben sowie – wie im Reiter
+**Projektdaten** (Projektnummer, G-Nummer, Beschreibung) und **Stammdaten** (siehe
+[Projekte](#projekte)), Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage (aufgelistet als TT.MM.JJJJ) und Absenderangaben sowie – wie im Reiter
 *Planläufe* – der **Export**. Unten stehen die Karten **Projekt archivieren** (mit **Archivieren**;
 sie steht nur, wenn es etwas zu archivieren gibt – das Projekt also nicht schon archiviert und dem
 Projektregister bekannt ist, siehe [Gemeinsame Projekte](#gemeinsame-projekte)) und
@@ -1011,7 +1065,8 @@ Hauptbearbeiter MIC, erster Anmeldetermin (ca.) und Status der Betreuung führt 
 ebenfalls nicht mehr (siehe „Daten“); ein abgeschlossenes
 Projekt wird archiviert. Bezeichnung, Projektnummer und G-Nummer
 werden ohne Leerzeichen am Rand gespeichert – die Projektnummer verknüpft das Projekt mit den
-anderen Bereichen, der G-Nummer ordnet der Import aus BBPNeo die Anmeldungen zu. Wird ein Projekt
+anderen Bereichen, der G-Nummer ordnet der Import aus BBPNeo die Anmeldungen zu; die G-Nummer
+teilt die Baubetriebsplanung mit dem Planlaufmanagement. Wird ein Projekt
 aus einem anderen Bereich übernommen („Übernehmen in Baubetriebsplanung“ unter der Projektliste),
 öffnet sich dieselbe Maske, vorausgefüllt mit dem Bekannten (siehe
 [Gemeinsame Projekte](#gemeinsame-projekte)). Mit ★ markierte Projekte erscheinen in Übersicht und Seitenleiste. Oben rechts im
@@ -1578,13 +1633,16 @@ seinen Projektbeteiligten (`mitgliedschaftLoesen`).
 Geteilt werden:
 
 * **Stammdaten des Projekts** – Projektnummer und Bezeichnung in allen Bereichen, die
-  Beschreibung zwischen Planlaufmanagement und Projektsteuerung. Status (*Aktiv*, *Pausiert* … –
+  Beschreibung zwischen Planlaufmanagement und Projektsteuerung, die **G-Nummer** (Projektnummer der
+  DB) zwischen Planlaufmanagement und Baubetriebsplanung. Kennt das Register noch keine G-Nummer
+  (Stände vor Fassung 4), trägt der erste Bereich, der eine führt, sie ein – kein Bereich verliert
+  dabei die seine. Status (*Aktiv*, *Pausiert* … –
   im Planlaufmanagement und in der Projektsteuerung), ★-Markierung und alles
   Fachliche (Pläne, Planläufe, Anmeldungen, Protokolle) bleiben im jeweiligen Bereich.
 * **Projektbeteiligte** – Kontakte des Planlaufmanagements und Projektbeteiligte der
   Projektsteuerung sind dieselben Personen: Anrede, Vor- und Nachname, Firma, E-Mail, Telefon,
-  Anschrift und Notiz gelten in beiden Bereichen; Mobilnummer und persönliches Kürzel führt nur die
-  Projektsteuerung, die SharePoint-Links nur das Planlaufmanagement. Wer eine Person in einem
+  Mobil, Anschrift und Notiz gelten in beiden Bereichen; das persönliche Kürzel führt nur die
+  Projektsteuerung, Organisationseinheit (OE) und SharePoint-Links nur das Planlaufmanagement. Wer eine Person in einem
   Bereich anlegt, ändert oder löscht, tut das auch im anderen.
 * **Funktionen** – eine Funktion gilt in allen Bereichen als dieselbe, wenn Bezeichnung und Gewerk
   übereinstimmen. Fehlt sie im anderen Bereich, wird sie dort angelegt – im Planlaufmanagement als
@@ -1633,10 +1691,10 @@ Angelegt, bearbeitet und gelöscht wird in den Bereichen.
   die es führen. Projekte, die in allen ihren Bereichen archiviert sind, erscheinen dort nicht.
   **Übernehmen in …** legt das Projekt im Bereich an – samt den Projektbeteiligten (die Meldung
   nennt ihre Zahl). In der **Baubetriebsplanung** öffnet der Knopf zuerst die Maske „Neues
-  Projekt“, vorausgefüllt mit Bezeichnung, Projektnummer und der Beschreibung als Bemerkung; dort
-  ergänzt man G-Nummer und Fahrplanjahre, „Übernehmen“ legt das Projekt an und
-  öffnet es, „Abbrechen“ übernimmt nichts. Wer dabei Projektnummer oder Bezeichnung ändert,
-  ändert sie für alle Bereiche des Projekts. Der Abschnitt steht nur, wenn der Bereich seinen Bestand laden konnte – sonst
+  Projekt“, vorausgefüllt mit Bezeichnung, Projektnummer, G-Nummer und der Beschreibung als
+  Bemerkung; dort ergänzt man die Fahrplanjahre, „Übernehmen“ legt das Projekt an und
+  öffnet es, „Abbrechen“ übernimmt nichts. Wer dabei Projektnummer, G-Nummer oder Bezeichnung
+  ändert, ändert sie für alle Bereiche des Projekts (eine leere G-Nummer lässt die bekannte stehen). Der Abschnitt steht nur, wenn der Bereich seinen Bestand laden konnte – sonst
   sähe das Register eine Übernahme vor, die niemand anlegt.
 * **Archivieren** nimmt ein Projekt in diesem Bereich aus Übersicht und Seitenleiste; es bleibt
   erhalten und steht in der Projektliste im aufklappbaren Abschnitt **Archiv**. Der Knopf steht im
@@ -1823,12 +1881,17 @@ src/
         importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen
         seed.ts      Standard-Prozessketten und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
+        pflichtenheft.ts  Pflichtenheft: Vorlage, Platzhalter, Ansprechpartner, Unterschriften,
+                     Druckfassung
+        ablaufDiagramm.ts  Ablaufdiagramm eines Workflows als SVG (Anlage „Planläufe“)
+        plancodierung.ts   Plancodierung: mitgelieferte Kataloge, Prüfung, Druckfassung
       store/
         storage.ts   Persistenz (localStorage), Migration, Rohkopie vor der Umstellung, Sicherung
         store.tsx    Zentraler Zustand, alle Schreibzugriffe, Lade- und Speicherzustand
       lib/router.ts  Hash-Adressen unterhalb von #/planlauf (Übersicht unter #/planlauf selbst)
       pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen,
-                     Terminrechner, Projektreiter)
+                     Terminrechner, Projektreiter; projekt/pflichtenheft/ der Reiter
+                     „Pflichtenheft“, projekt/Stammdaten.tsx die Karte „Stammdaten“)
       components/    Fachliche Bausteine (common.tsx, WorkflowEditor, AblaufVorschau, EmailDialog,
                      PlanlaufListe, PaketDialog, BuendelnDialog, SicherungEinspielen, Abgleich,
                      Hinweisleisten, Terminnachweis, Protokoll, NeuZustaendig („E-Mail senden“), SammelErledigen,
