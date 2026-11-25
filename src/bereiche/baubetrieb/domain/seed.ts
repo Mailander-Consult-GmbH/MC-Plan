@@ -187,7 +187,6 @@ export function seedDaten(): BaubetriebDaten {
   const alb = projekt({
     name: 'EÜ Alb – Erneuerung Überbau',
     dbGNummer: 'G.40001234',
-    erstePhase: 'mkm',
     fahrplanjahre: fahrplanjahreZwischen(`${jahr + 2}-03-01`, `${jahr + 3}-06-30`),
     inbetriebnahme: `${jahr + 3}-06-02`,
     projektnummer: 'MIC-25-0412',
@@ -197,7 +196,6 @@ export function seedDaten(): BaubetriebDaten {
   const durmersheim = projekt({
     name: 'ESTW Durmersheim – Inbetriebnahme',
     dbGNummer: 'G.40005678',
-    erstePhase: 'N-1',
     fahrplanjahre: fahrplanjahreZwischen(tag(-20), tag(220)),
     inbetriebnahme: tag(192),
     projektnummer: 'MIC-24-0815',
@@ -207,7 +205,6 @@ export function seedDaten(): BaubetriebDaten {
   const durlach = projekt({
     name: 'Kabeltiefbau Karlsruhe-Durlach – Bruchsal',
     dbGNummer: 'G.40009012',
-    erstePhase: 'skm',
     // Fahrplanjahre, die das ganze Jahr über ins SKM gehören (22.07. in N−9 bis N−5)
     fahrplanjahre: fahrplanjahreZwischen(`${jahr + 6}-04-01`, `${jahr + 8}-03-31`),
     inbetriebnahme: null,

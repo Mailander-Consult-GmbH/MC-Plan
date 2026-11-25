@@ -13,6 +13,7 @@ import {
   type AnmeldungsArt,
   type BaubetriebDaten,
   type Einstellungen,
+  type ErstePhase,
   type FristRegel,
   type ID,
   type ISODate,
@@ -72,23 +73,6 @@ function datumAus(jahr: number, monat: number, tag: number): ISODate {
 /* Richtlinienfristen                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Toleranz um die Frist der ersten Anmeldung. */
-const TOLERANZ_TAGE = 31;
-
-/**
- * Ab wann MIC ein Projekt betreut: die Frist der ersten Anmeldung laut
- * Richtlinie (`ersterTermin`) abzüglich Toleranz – null, solange das Projekt
- * keine Fahrplanjahre nennt.
- */
-function betreuungAb(
-  p: Pick<Projekt, 'erstePhase' | 'fahrplanjahre'> | undefined,
-  e: Pick<Einstellungen, 'rilFristen'>,
-  heute: ISODate = today(),
-): ISODate | null {
-  const termin = p ? ersterTermin(p, e, heute) : null;
-  return termin ? addDays(termin, -TOLERANZ_TAGE) : null;
-}
-
 /**
  * Warum Ril_KM die N-1-Frist nimmt – oder null, wenn die N-2-Frist gilt. Ist
  * die Runde aus der Prozessphase bekannt (BBPNeo, `kmRunde`), entscheidet sie.
@@ -96,21 +80,18 @@ function betreuungAb(
 function kmGrundFuerN1(
   a: Pick<Anmeldung, 'statusSeit' | 'fahrplanjahr' | 'bauVon' | 'kmRunde'>,
   e: Pick<Einstellungen, 'rilFristen'>,
-  ab: ISODate | null,
 ): string | null {
   if (a.kmRunde) return a.kmRunde === 'N-1' ? 'Prozessphase 3. KP' : null;
   const n2 = rilDatum(e.rilFristen['N-2'], a.fahrplanjahr, a.bauVon);
   if (!n2) return null;
   if (a.statusSeit > n2) return 'die N-2-Frist war beim Statuswechsel verstrichen';
-  if (ab && n2 < ab) return 'die N-2-Frist liegt vor der ersten Anmeldung des Projekts';
   return null;
 }
 
 /**
  * Welche Richtlinienfrist gilt. Ril_KM nimmt die Frist der KM-Runde, wenn sie
  * bekannt ist (Prozessphase aus BBPNeo), sonst die N-2-Frist, solange sie am Tag
- * des Statuswechsels nicht verstrichen ist und nicht vor der Betreuung durch
- * MIC (erste Anmeldung des Projekts laut Richtlinie) liegt, und danach die N-1-Frist. Ril_KKM
+ * des Statuswechsels nicht verstrichen ist, und danach die N-1-Frist. Ril_KKM
  * richtet sich nach der Maßnahmenart; Einträge der Art SKM oder MKM rechnen
  * dabei wie A.
  */
@@ -118,7 +99,6 @@ export function rilSchluesselFuer(
   bezug: RilBezug,
   a: Pick<Anmeldung, 'art' | 'statusSeit' | 'fahrplanjahr' | 'bauVon' | 'kmRunde'>,
   e: Pick<Einstellungen, 'rilFristen'>,
-  ab: ISODate | null = null,
 ): RilSchluessel {
   switch (bezug) {
     case 'skm':
@@ -127,7 +107,7 @@ export function rilSchluesselFuer(
     case 'A':
       return bezug;
     case 'Nx':
-      return kmGrundFuerN1(a, e, ab) ? 'N-1' : 'N-2';
+      return kmGrundFuerN1(a, e) ? 'N-1' : 'N-2';
     case 'X':
       return MASSNAHMENARTEN.includes(a.art) ? (a.art as RilSchluessel) : 'A';
   }
@@ -262,11 +242,10 @@ export function terminfrist(a: Anmeldung, d: FristKontext): Terminfrist {
       };
     }
     case 'ril': {
-      const ab = betreuungAb(d.projekte.find((p) => p.id === a.projektId), e);
-      const schluessel = rilSchluesselFuer(status.frist.bezug, a, e, ab);
+      const schluessel = rilSchluesselFuer(status.frist.bezug, a, e);
       // Ril_KM: Hinweis, warum die N-1-Frist gilt – bzw. dass die Prozessphase die N-2-Frist vorgibt
       const kmGrund =
-        status.frist.bezug !== 'Nx' ? null : a.kmRunde === 'N-2' ? 'Prozessphase 2. KP' : kmGrundFuerN1(a, e, ab);
+        status.frist.bezug !== 'Nx' ? null : a.kmRunde === 'N-2' ? 'Prozessphase 2. KP' : kmGrundFuerN1(a, e);
       const n1 = kmGrund ? ` – ${kmGrund}` : '';
       const ril = e.rilFristen[schluessel];
       const mittwoch = RIL_PHASE[schluessel] === 'kkm' && ril.bezug === 'baubeginn';
@@ -364,13 +343,15 @@ export function offeneTermine(d: BaubetriebDaten, projektIds?: ID[]): TerminEint
 /* ------------------------------------------------------------------ */
 
 /** Woher die Frist der Erstanmeldung stammt – steht in den Listen unter dem Datum. */
-export const ERSTANMELDUNG_GRUND = 'laut Richtlinie für Prozessphase und erstes Fahrplanjahr';
+export const ERSTANMELDUNG_GRUND = 'nächster offener Termin laut Richtlinie für das erste Fahrplanjahr';
 
 /** Projekt ohne Anmeldung: Die Erstanmeldung steht aus. */
 export interface ErstanmeldungEintrag {
   projekt: Projekt;
   /** Frist der Erstanmeldung laut Richtlinie – null, solange das Projekt keine Fahrplanjahre nennt. */
   frist: ISODate | null;
+  /** Prozessphase, in die die Erstanmeldung fällt – abgeleitet aus dem ersten Fahrplanjahr (`ersteAnmeldung`). */
+  phase: ErstePhase | null;
   ampel: Ampel;
 }
 
@@ -380,8 +361,9 @@ export interface ErstanmeldungEintrag {
  */
 export function erstanmeldungAusstehend(p: Projekt, d: BaubetriebDaten): ErstanmeldungEintrag | null {
   if (d.anmeldungen.some((a) => a.projektId === p.id && !istLeiche(d.workflows, a.statusId))) return null;
-  const frist = ersterTermin(p, d.einstellungen);
-  return { projekt: p, frist, ampel: ampelFuer(frist, d.einstellungen.vorlaufTage) };
+  const erste = ersteAnmeldung(p, d.einstellungen);
+  const frist = erste?.frist ?? null;
+  return { projekt: p, frist, phase: erste?.phase ?? null, ampel: ampelFuer(frist, d.einstellungen.vorlaufTage) };
 }
 
 /** Alle (bzw. die genannten) Projekte mit ausstehender Erstanmeldung – Überfälliges zuerst. */
@@ -420,7 +402,7 @@ function rangDerArt(art: AnmeldungsArt): number {
   }
 }
 
-export type BedarfZustand = 'abgedeckt' | 'faellig' | 'kuenftig' | 'verstrichen' | 'vorBeginn' | 'offen';
+export type BedarfZustand = 'abgedeckt' | 'faellig' | 'kuenftig' | 'verstrichen' | 'offen';
 
 export interface BedarfZelle {
   phase: BedarfPhase;
@@ -439,8 +421,7 @@ export interface BedarfZeile {
 /**
  * Anmeldebedarf je betroffenem Fahrplanjahr: Für SKM, MKM, KM N-2 und KM N-1
  * die Frist laut Richtlinie und ob das Projekt dafür schon einen Eintrag hat.
- * Anmeldeleichen zählen nicht mit. Fristen vor der ersten Anmeldung des
- * Projekts (`betreuungAb`) liegen vor der Betreuung durch MIC.
+ * Anmeldeleichen zählen nicht mit.
  */
 export function anmeldebedarf(
   p: Projekt,
@@ -449,7 +430,6 @@ export function anmeldebedarf(
 ): BedarfZeile[] {
   const e = d.einstellungen;
   const eigene = d.anmeldungen.filter((a) => a.projektId === p.id && !istLeiche(d.workflows, a.statusId));
-  const beginnGrenze = betreuungAb(p, e, heute);
   // Bei gleichem Rang zählt der frühere Workflow – ein KM-Eintrag vor einem KKM-Eintrag.
   const workflowRang = (a: Anmeldung) => {
     const i = d.workflows.findIndex((w) => w.status.some((s) => s.id === a.statusId));
@@ -468,7 +448,6 @@ export function anmeldebedarf(
       let zustand: BedarfZustand;
       if (durch) zustand = 'abgedeckt';
       else if (!frist) zustand = 'offen';
-      else if (beginnGrenze && frist < beginnGrenze) zustand = 'vorBeginn';
       else if (frist < heute) zustand = 'verstrichen';
       else if (diffDays(heute, frist) <= e.bedarfVorschauTage) zustand = 'faellig';
       else zustand = 'kuenftig';
@@ -497,22 +476,48 @@ export function faelligerBedarf(d: BaubetriebDaten, projektIds?: ID[]): BedarfEi
     .sort((a, b) => (a.zelle.frist ?? '').localeCompare(b.zelle.frist ?? ''));
 }
 
+/** Prozessphasen einer ersten Anmeldung in ihrer zeitlichen Folge, je mit dem Schlüssel ihrer Richtlinienfrist. */
+const ERSTE_PHASEN: { phase: ErstePhase; schluessel: RilSchluessel }[] = [
+  { phase: 'skm', schluessel: 'skm' },
+  { phase: 'mkm', schluessel: 'mkm' },
+  { phase: 'N-2', schluessel: 'N-2' },
+  { phase: 'N-1', schluessel: 'N-1' },
+  { phase: 'kkm', schluessel: 'A' },
+];
+
+/** Wann und in welcher Prozessphase die erste Anmeldung eines Projekts fällig ist. */
+export interface ErsteAnmeldung {
+  phase: ErstePhase;
+  frist: ISODate;
+  /** Das erste betroffene Fahrplanjahr – nach ihm richtet sich die Frist. */
+  fahrplanjahr: number;
+}
+
 /**
- * Frist der ersten Anmeldung eines Projekts: die Frist laut Richtlinie für die
- * gewählte Prozessphase und das erste betroffene Fahrplanjahr (im KKM für eine
- * Sperrpause ab Beginn des Fahrplanjahres) – null ohne Fahrplanjahre. Hat der
- * Stichtag ein Fenster (SKM, MKM), der nächste ab `heute`, sind alle
- * verstrichen, der letzte.
+ * Erste Anmeldung eines Projekts – allein aus seinen Fahrplanjahren: für das
+ * erste betroffene Fahrplanjahr der nächste noch offene Termin laut Richtlinie
+ * ab `heute`, in der Folge SKM, MKM, KM N-2, KM N-1 und unterjährig
+ * (Maßnahmenart A, Sperrpause ab Beginn des Fahrplanjahres). Stichtage mit
+ * Fenster zählen mit ihrem nächsten offenen Stichtag; fällt das Fahrplanjahr
+ * in SKM und MKM, gilt der frühere (wie `phaseNachFahrplanjahr`). Ist kein
+ * Termin mehr offen, der unterjährige – dann überfällig. null ohne
+ * Fahrplanjahre.
  */
-export function ersterTermin(
-  p: Pick<Projekt, 'erstePhase' | 'fahrplanjahre'>,
+export function ersteAnmeldung(
+  p: Pick<Projekt, 'fahrplanjahre'>,
   e: Pick<Einstellungen, 'rilFristen'>,
   heute: ISODate = today(),
-): ISODate | null {
+): ErsteAnmeldung | null {
   if (p.fahrplanjahre.length === 0) return null;
-  const n = Math.min(...p.fahrplanjahre);
-  const schluessel: RilSchluessel = p.erstePhase === 'kkm' ? 'A' : p.erstePhase;
-  return rilDatum(e.rilFristen[schluessel], n, fahrplanjahrBeginn(n), RIL_PHASE[schluessel] === 'kkm', heute);
+  const fahrplanjahr = Math.min(...p.fahrplanjahre);
+  const beginn = fahrplanjahrBeginn(fahrplanjahr);
+  const termine = ERSTE_PHASEN.flatMap(({ phase, schluessel }) => {
+    const frist = rilDatum(e.rilFristen[schluessel], fahrplanjahr, beginn, RIL_PHASE[schluessel] === 'kkm', heute);
+    return frist ? [{ phase, frist, fahrplanjahr }] : [];
+  });
+  // Bei gleichem Datum bleibt die Folge der Phasen (stabile Sortierung) – SKM vor MKM
+  const offen = termine.filter((t) => t.frist >= heute).sort((a, b) => a.frist.localeCompare(b.frist));
+  return offen[0] ?? termine[termine.length - 1] ?? null;
 }
 
 /**

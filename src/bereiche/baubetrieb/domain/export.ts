@@ -5,7 +5,7 @@
 import { formatDate, today } from '../../../shared/dates';
 import { dateiLaden, xlsxErzeugen, type Zelle } from '../../../shared/xlsx';
 import { AMPEL_LABEL, ampelFuer, terminfrist } from './fristen';
-import { ANNEX_VII_LABEL, ERSTE_PHASE_LABEL, type BaubetriebDaten, type ID } from './types';
+import { ANNEX_VII_LABEL, type BaubetriebDaten, type ID } from './types';
 import { statusVon, zustaendigText } from './workflow';
 
 const KOPF_STIL = { fett: true, fuellung: 'E8EDF3', rahmen: true };
@@ -44,7 +44,6 @@ const PROJEKT_SPALTEN: [titel: string, breite: number][] = [
   ['Projekt', 32],
   ['Projektnummer', 14],
   ['G-Nummer', 14],
-  ['Prozessphase', 16],
   ['Betroffene Fahrplanjahre', 22],
   ['Inbetriebnahme', 14],
   ['Anmeldungen', 12],
@@ -111,7 +110,6 @@ export function monitorExportieren(d: BaubetriebDaten, projektIds?: ID[]): void 
     p.name,
     p.projektnummer,
     p.dbGNummer,
-    ERSTE_PHASE_LABEL[p.erstePhase],
     p.fahrplanjahre.join(', '),
     datum(p.inbetriebnahme),
     d.anmeldungen.filter((a) => a.projektId === p.id).length,

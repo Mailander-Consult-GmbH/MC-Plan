@@ -42,7 +42,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
   const erstanmeldungen = erst.filter(
     (e) =>
       passt(filter, e.ampel, false) &&
-      sucheTrifft(['Erstanmeldung ausstehend', e.projekt.name, e.projekt.dbGNummer, ERSTE_PHASE_LABEL[e.projekt.erstePhase]]),
+      sucheTrifft(['Erstanmeldung ausstehend', e.projekt.name, e.projekt.dbGNummer, e.phase ? ERSTE_PHASE_LABEL[e.phase] : '']),
   );
 
   const eintraege = alle.filter((t) => {
@@ -140,7 +140,7 @@ export function Termine({ navigate }: { navigate: (r: Route) => void }) {
                               <strong>Erstanmeldung ausstehend</strong>
                             </button>
                             <div className="small tertiary">
-                              {ERSTE_PHASE_LABEL[projekt.erstePhase]} · noch keine Anmeldung im Projekt
+                              {e.phase ? `${ERSTE_PHASE_LABEL[e.phase]} · ` : ''}noch keine Anmeldung im Projekt
                             </div>
                           </td>
                           <td>

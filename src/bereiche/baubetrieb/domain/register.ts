@@ -35,7 +35,6 @@ export function registerPlanAnwenden(daten: BaubetriebDaten, plan: Plan): Baubet
       id,
       name: projekt.name || 'Ohne Bezeichnung',
       dbGNummer: '',
-      erstePhase: 'skm',
       fahrplanjahre: [],
       inbetriebnahme: null,
       projektnummer: projekt.nummer,

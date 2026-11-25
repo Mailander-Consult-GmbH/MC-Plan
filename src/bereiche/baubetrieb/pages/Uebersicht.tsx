@@ -137,7 +137,8 @@ export function Uebersicht({ navigate }: { navigate: (r: Route) => void }) {
                       <td>
                         <strong>Erstanmeldung ausstehend</strong>
                         <div className="small tertiary">
-                          {ERSTE_PHASE_LABEL[e.projekt.erstePhase]} · {e.projekt.name}
+                          {e.phase ? `${ERSTE_PHASE_LABEL[e.phase]} · ` : ''}
+                          {e.projekt.name}
                         </div>
                       </td>
                       <td className="small muted col-optional">{e.projekt.name}</td>
