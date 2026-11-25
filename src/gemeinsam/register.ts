@@ -58,8 +58,10 @@ export function andereBereicheVon(bereich: ProjektBereich): ProjektBereich[] {
  * Bereich mehr führt; das Archiv „für alle Bereiche“ (`RegisterProjekt.archiviert`)
  * geht in das Archiv je Bereich über; `herkunft` und der ★-Spiegel
  * (`Mitgliedschaft.markiert`, nur von den Leistungsnachweisen gelesen) entfallen.
+ * Fassung 4: G-Nummer am Projekt (`gNummer`, bei älteren Ständen `null` = noch
+ * unbekannt) und Organisationseinheit an der Person (`oe`).
  */
-export const REGISTER_VERSION = 3;
+export const REGISTER_VERSION = 4;
 
 const KEY = 'kaplan-projektregister.v1';
 
@@ -79,6 +81,12 @@ export interface Mitgliedschaft {
 export interface RegisterProjekt {
   id: ID;
   nummer: string;
+  /**
+   * Projektnummer der DB („G-Nummer“). `null`: noch von keinem Bereich
+   * genannt – dann trägt der erste Bereich, der eine führt, sie ein, und kein
+   * Bereich verliert die seine (ältere Stände kannten das Feld nicht).
+   */
+  gNummer: string | null;
   name: string;
   beschreibung: string;
   /** ISO-Zeitstempel. */
@@ -106,6 +114,8 @@ export interface PersonFelder {
   email: string;
   telefon: string;
   mobil: string;
+  /** Organisationseinheit, z. B. „V.IOF 21“ (Planlaufmanagement). */
+  oe: string;
   /** Straße, PLZ und Ort – mehrzeilig. */
   anschrift: string;
   notiz: string;
@@ -120,6 +130,7 @@ export const PERSON_FELDER: (keyof PersonFelder)[] = [
   'email',
   'telefon',
   'mobil',
+  'oe',
   'anschrift',
   'notiz',
 ];
@@ -244,6 +255,7 @@ export function aufbereiten(roh: Roh): Register {
       return {
         id: text(p.id),
         nummer: text(p.nummer),
+        gNummer: typeof p.gNummer === 'string' ? p.gNummer : null,
         name: text(p.name),
         beschreibung: text(p.beschreibung),
         angelegtAm: text(p.angelegtAm),

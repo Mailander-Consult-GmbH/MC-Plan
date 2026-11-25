@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import type { ID } from '../domain/types';
 
 /** Reiter im Projekt; „uebersicht“ ist der Reiter „Planläufe“. */
-export type ProjektTab = 'uebersicht' | 'plaene' | 'rollen' | 'ketten' | 'einstellungen';
+export type ProjektTab = 'uebersicht' | 'plaene' | 'rollen' | 'ketten' | 'pflichtenheft' | 'einstellungen';
 
 export type Route =
   | { view: 'dashboard' }
@@ -20,7 +20,7 @@ export type Route =
   | { view: 'projekt'; projectId: ID; tab: ProjektTab }
   | { view: 'planlauf'; projectId: ID; runId: ID };
 
-const TABS: ProjektTab[] = ['uebersicht', 'plaene', 'rollen', 'ketten', 'einstellungen'];
+const TABS: ProjektTab[] = ['uebersicht', 'plaene', 'rollen', 'ketten', 'pflichtenheft', 'einstellungen'];
 
 /**
  * Frühere Adressen bleiben gültig: „adressbuch“ führt auf „rollen“, die

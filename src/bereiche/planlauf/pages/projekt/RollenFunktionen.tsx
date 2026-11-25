@@ -207,7 +207,9 @@ export function RollenFunktionen({ project }: { project: Project }) {
                         ) : (
                           <span className="tertiary">–</span>
                         )}
-                        {c?.telefon ? <div className="tertiary small">{c.telefon}</div> : null}
+                        {c?.telefon || c?.mobil ? (
+                          <div className="tertiary small">{[c.telefon, c.mobil].filter(Boolean).join(' · ')}</div>
+                        ) : null}
                         {c ? <SharePointLinks kontakt={c} /> : null}
                       </td>
                       <td className="actions">
@@ -437,6 +439,8 @@ function BesetzungsDialog({
     firma: '',
     email: '',
     telefon: '',
+    mobil: '',
+    oe: '',
     anschrift: '',
     sharepointEingang: '',
     sharepointAusgang: '',
@@ -451,6 +455,8 @@ function BesetzungsDialog({
           firma: c.firma,
           email: c.email,
           telefon: c.telefon,
+          mobil: c.mobil ?? '',
+          oe: c.oe ?? '',
           anschrift: c.anschrift,
           sharepointEingang: c.sharepointEingang ?? '',
           sharepointAusgang: c.sharepointAusgang ?? '',
@@ -607,11 +613,17 @@ function BesetzungsDialog({
           <Field label="Firma / Büro">
             <TextInput value={form.firma} onChange={(v) => set('firma', v)} />
           </Field>
+          <Field label="Organisationseinheit (OE)">
+            <TextInput value={form.oe} onChange={(v) => set('oe', v)} placeholder="z. B. V.IOF 21" />
+          </Field>
           <Field label="E-Mail">
             <TextInput value={form.email} onChange={(v) => set('email', v)} type="email" />
           </Field>
           <Field label="Telefon">
-            <TextInput value={form.telefon} onChange={(v) => set('telefon', v)} />
+            <TextInput value={form.telefon} onChange={(v) => set('telefon', v)} type="tel" />
+          </Field>
+          <Field label="Mobil">
+            <TextInput value={form.mobil} onChange={(v) => set('mobil', v)} type="tel" />
           </Field>
           <Field label="Anschrift" full hint="Straße, PLZ und Ort">
             <TextArea value={form.anschrift} onChange={(v) => set('anschrift', v)} rows={2} />

@@ -1130,6 +1130,8 @@ export function eigeneKontakteSichern(daten: AppData, neueId: (prefix: string) =
           firma: EIGENE_ROLLE,
           email: '',
           telefon: '',
+          mobil: '',
+          oe: '',
           anschrift: '',
           sharepointEingang: '',
           sharepointAusgang: '',

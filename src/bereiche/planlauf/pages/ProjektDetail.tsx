@@ -4,6 +4,7 @@ import type { Project } from '../domain/types';
 import type { ProjektTab, Route } from '../lib/router';
 import { RollenFunktionen } from './projekt/RollenFunktionen';
 import { Einstellungen } from './projekt/Einstellungen';
+import { PflichtenheftSeite } from './projekt/pflichtenheft/Pflichtenheft';
 import { Plaene } from './projekt/Plaene';
 import { Uebersicht } from './projekt/Uebersicht';
 import { Workflows } from './Workflows';
@@ -13,6 +14,7 @@ const TABS: { id: ProjektTab; label: string }[] = [
   { id: 'plaene', label: 'Planliste' },
   { id: 'rollen', label: 'Funktion' },
   { id: 'ketten', label: 'Workflows' },
+  { id: 'pflichtenheft', label: 'Pflichtenheft' },
   { id: 'einstellungen', label: 'Einstellungen' },
 ];
 
@@ -43,6 +45,7 @@ export function ProjektDetail({
       {tab === 'plaene' ? <Plaene project={project} oeffneLauf={oeffneLauf} /> : null}
       {tab === 'rollen' ? <RollenFunktionen project={project} /> : null}
       {tab === 'ketten' ? <Workflows projectId={project.id} /> : null}
+      {tab === 'pflichtenheft' ? <PflichtenheftSeite project={project} gotoTab={gotoTab} /> : null}
       {tab === 'einstellungen' ? <Einstellungen project={project} navigate={navigate} /> : null}
 
     </div>

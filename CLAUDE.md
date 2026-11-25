@@ -437,6 +437,16 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     Fassung 15 – mit Kennungen aus denen der Schritte, damit Bestand und Sicherung gleich
     ausfallen; `mailRegelnUebernehmen` trägt geänderte Regeln in laufende Planläufe nach. Ohne
     Regel wird keine E-Mail vorgeschlagen,
+  * `domain/pflichtenheft.ts` Pflichtenheft eines Projekts (`Project.pflichtenheft`, Reiter
+    `pflichtenheft`, `pages/projekt/pflichtenheft/`): Vorlage (`standardVorlage`, gespeichert als
+    `AppData.pflichtenheftVorlage`), Platzhalter aus Projekt- und Stammdaten
+    (`platzhalterWerte`), Ansprechpartner allein aus den Funktionen des Projekts
+    (`ansprechpartnerZeilen` – keine Personen im Pflichtenheft speichern), Druckfassung
+    (`pflichtenheftHtml`, eigene helle Gestaltung). Dazu `domain/ablaufDiagramm.ts` (Ablaufdiagramm
+    eines Workflows als SVG, allein über `gliedern`) und `domain/plancodierung.ts` (Kataloge,
+    `plancodePruefen` für die Planliste, Druckfassung). Die G-Nummer (`Project.gNummer`) teilt das
+    Register mit der Baubetriebsplanung (`RegisterProjekt.gNummer`, `null` = noch unbekannt),
+    Mobil und OE der Kontakte ebenso (`PERSON_FELDER`),
   * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten
     (Läufe über die Engine, zufällige IDs),
   * `store/store.tsx` alle Schreibzugriffe, `store/storage.ts` Laden, Speichern, Migration,

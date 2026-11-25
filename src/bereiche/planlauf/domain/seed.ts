@@ -584,10 +584,22 @@ export function seedData(): AppData {
   const project: Project = {
     id: projectId,
     nummer: '2026-014',
+    gNummer: 'G.011604711',
     name: 'Ausbaustrecke Nordkreuz',
     status: 'aktiv',
     markiert: true,
     beschreibung: 'Streckenausbau mit Anpassung von Oberleitung, LST und Verkehrsanlagen.',
+    stammdaten: {
+      station: 'Bf Nordkreuz',
+      stationKuerzel: 'ANK',
+      bahnhofsNummer: '4417',
+      stationsKm: '12,310 – 14,055',
+      strecken: [{ nummer: '1120', bezeichnung: 'Hamburg-Harburg – Nordkreuz' }],
+      auftraggeber: 'DB InfraGO AG',
+      geschaeftsbereich: 'Fahrweg',
+      planungsphase: 'Ausführungsplanung',
+      sharepointZentral: 'https://example.sharepoint.com/sites/Nordkreuz/Freigegebene%20Dokumente/Genehmigt',
+    },
     settings: {
       erinnerungVorlaufTage: 5,
       fristenInArbeitstagen: true,
@@ -598,13 +610,15 @@ export function seedData(): AppData {
   };
 
   const kontakt = (
-    c: Omit<Contact, 'id' | 'projectId' | 'eigen' | 'notiz' | 'sharepointEingang' | 'sharepointAusgang'> &
-      Partial<Pick<Contact, 'notiz' | 'eigen' | 'sharepointEingang' | 'sharepointAusgang'>>,
+    c: Omit<Contact, 'id' | 'projectId' | 'eigen' | 'notiz' | 'sharepointEingang' | 'sharepointAusgang' | 'mobil' | 'oe'> &
+      Partial<Pick<Contact, 'notiz' | 'eigen' | 'sharepointEingang' | 'sharepointAusgang' | 'mobil' | 'oe'>>,
   ): Contact => ({
     id: zufallsId('con'),
     projectId,
     notiz: '',
     eigen: false,
+    mobil: '',
+    oe: '',
     sharepointEingang: '',
     sharepointAusgang: '',
     ...c,
@@ -613,11 +627,11 @@ export function seedData(): AppData {
   const contacts: Contact[] = [
     // Eigener Eintrag: die angemeldete Person führt das Planlaufmanagement
     kontakt({ anrede: '', vorname: 'Max', nachname: 'Mustermann', firma: EIGENE_ROLLE, email: '', telefon: '', anschrift: '', zuordnungen: [{ roleId: rolle('PLM'), gewerk: null }], eigen: true }),
-    kontakt({ anrede: 'Frau', vorname: 'Sabine', nachname: 'Ortmann', firma: 'Projektleitung', email: 's.ortmann@example.de', telefon: '+49 40 123456-01', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle('PL'), gewerk: null }], sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Frau', vorname: 'Sabine', nachname: 'Ortmann', firma: 'Projektleitung', email: 's.ortmann@example.de', telefon: '+49 40 123456-01', mobil: '+49 160 1234567', oe: 'I.IV-N-2', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle('PL'), gewerk: null }], sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Ausgang' }),
     kontakt({ anrede: 'Frau', vorname: 'Katrin', nachname: 'Berger', firma: 'Ingenieurbüro Berger', email: 'k.berger@example.de', telefon: '+49 40 998877-12', anschrift: 'Billstraße 88\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachplanung Ingenieurbau' }),
     kontakt({ anrede: 'Herr', vorname: 'Ali', nachname: 'Sarikaya', firma: 'LST Nord Ingenieure', email: 'sarikaya@example.de', telefon: '+49 40 998877-30', anschrift: 'Billstraße 90\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'LST'), gewerk: 'LST' }], notiz: 'Fachplanung Leit- und Sicherungstechnik' }),
     kontakt({ anrede: 'Herr', vorname: 'Piet', nachname: 'Osterkamp', firma: 'Osterkamp Fahrleitungsbau', email: 'p.osterkamp@example.de', telefon: '+49 4101 7788-0', anschrift: 'Industriering 9\n25436 Tornesch', zuordnungen: [{ roleId: rolle('FP', 'OLA'), gewerk: 'OLA' }], notiz: 'Fachplanung Oberleitung' }),
-    kontakt({ anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'KIB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', mobil: '+49 172 9988776', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'KIB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Ausgang' }),
     kontakt({ anrede: 'Frau', vorname: 'Marlene', nachname: 'Hoffstedt', firma: 'Bauvorlageberechtigung Nord', email: 'm.hoffstedt@example.de', telefon: '+49 40 224466-4', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'LST'), gewerk: 'LST' }, { roleId: rolle('BVB', 'OLA'), gewerk: 'OLA' }], sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Ausgang' }),
     kontakt({ anrede: 'Herr', vorname: 'Dietmar', nachname: 'Krause', firma: 'Prüfstelle Krause', email: 'd.krause@example.de', telefon: '+49 4131 309-0', anschrift: 'Am Ochsenmarkt 1\n21335 Lüneburg', zuordnungen: [{ roleId: rolle('PSV', 'LST'), gewerk: 'LST' }], notiz: 'Fachtechnische Prüfung LST', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Ausgang' }),
     kontakt({ anrede: 'Frau', vorname: 'Yuki', nachname: 'Tanaka', firma: 'Prüfstelle Tanaka', email: 'y.tanaka@example.de', telefon: '+49 40 556677-1', anschrift: 'Alsterdorfer Damm 4\n22297 Hamburg', zuordnungen: [{ roleId: rolle('PSV', 'KIB'), gewerk: 'KIB' }, { roleId: rolle('PrSt', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachtechnische Prüfung und Prüfstatik KIB', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Ausgang' }),

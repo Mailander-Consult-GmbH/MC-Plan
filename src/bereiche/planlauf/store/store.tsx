@@ -52,6 +52,7 @@ import {
 import { basisplanFestlegen } from '../domain/simulation';
 import { laeufeMitAnderenRegeln, mailRegelnUebernehmen } from '../domain/mailRegeln';
 import { seedData } from '../domain/seed';
+import { alsVorlage, neuesPflichtenheft, pflichtenheftAufbereiten } from '../domain/pflichtenheft';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
 import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
@@ -69,6 +70,7 @@ import type {
   ID,
   ISODate,
   PlanDocument,
+  Pflichtenheft,
   PlanRun,
   ProcessTemplate,
   Project,
@@ -111,6 +113,15 @@ interface StoreValue {
   toggleMarkiert: (id: ID) => void;
   updateProject: (id: ID, patch: Partial<Project>) => void;
   deleteProject: (id: ID) => void;
+  /* Pflichtenheft */
+  /** Legt das Pflichtenheft des Projekts aus der Vorlage an – ersetzt ein vorhandenes. */
+  pflichtenheftAnlegen: (projectId: ID) => void;
+  /** Ändert das Pflichtenheft auf dem jeweils aktuellen Stand (auch bei verzögertem Speichern). */
+  pflichtenheftAendern: (projectId: ID, fn: (ph: Pflichtenheft) => Pflichtenheft) => void;
+  /** Texte, Kapitel und Plancodierung des Pflichtenhefts als Vorlage für neue Pflichtenhefte. */
+  pflichtenheftVorlageSpeichern: (projectId: ID) => void;
+  /** Zurück zur mitgelieferten Vorlage. */
+  pflichtenheftVorlageZuruecksetzen: () => void;
   /* Funktionen (projektübergreifend) */
   addStandardRolle: (r: Omit<StandardRolle, 'id'>) => ID;
   /**
@@ -450,6 +461,31 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
     },
     updateProject: (id, patch) => mutate((d) => ({ ...d, projects: upd(d.projects, id, patch) })),
     deleteProject: (id) => mutate((d, v) => projektLoeschen(d, id, v)),
+
+    pflichtenheftAnlegen: (projectId) =>
+      mutate((d) => {
+        const p = d.projects.find((x) => x.id === projectId);
+        if (!p) return d;
+        return { ...d, projects: upd(d.projects, projectId, { pflichtenheft: neuesPflichtenheft(d, p, newId) }) };
+      }),
+    pflichtenheftAendern: (projectId, fn) =>
+      mutate((d) => {
+        const p = d.projects.find((x) => x.id === projectId);
+        if (!p?.pflichtenheft) return d;
+        const neu = fn(pflichtenheftAufbereiten(p.pflichtenheft));
+        return { ...d, projects: upd(d.projects, projectId, { pflichtenheft: neu }) };
+      }),
+    pflichtenheftVorlageSpeichern: (projectId) =>
+      mutate((d) => {
+        const ph = d.projects.find((x) => x.id === projectId)?.pflichtenheft;
+        return ph ? { ...d, pflichtenheftVorlage: alsVorlage(pflichtenheftAufbereiten(ph)) } : d;
+      }),
+    pflichtenheftVorlageZuruecksetzen: () =>
+      mutate((d) => {
+        if (!d.pflichtenheftVorlage) return d;
+        const { pflichtenheftVorlage: _weg, ...rest } = d;
+        return rest;
+      }),
 
     addStandardRolle: (r) => {
       const id = newId('srol');

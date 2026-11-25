@@ -46,6 +46,10 @@ import {
   User,
   Workflow,
   X,
+  BookText,
+  Printer,
+  ImagePlus,
+  Eye,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -96,6 +100,11 @@ const symbole = {
   // Projektmarkierung; gefüllt über `.stern.aktiv` in global.css
   stern: Star,
   warnung: TriangleAlert,
+  // Pflichtenheft (Planlaufmanagement)
+  pflichtenheft: BookText,
+  drucken: Printer,
+  bild: ImagePlus,
+  vorschau: Eye,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof symbole;

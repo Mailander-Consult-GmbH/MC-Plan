@@ -7,6 +7,7 @@ import {
   DATEN_VERSION,
   EIGENE_ROLLE,
   GEWERKE,
+  leereStammdaten,
   STAMMDATEN_VERSION,
   STANDARD_BEARBEITER,
   seiteAusFunktion,
@@ -521,7 +522,9 @@ function vorlagenFassung13(vorlagen: EmailTemplate[]): EmailTemplate[] {
  * jeden Lauf. Ab Fassung 14: SharePoint-Links an Kontakten (leer) und das
  * Anliegen der Versandmail an Workflow- und Laufschritten – nach dem
  * Schrittnamen der mitgelieferten Versandschritte, sonst keins. Ab Fassung 15:
- * E-Mail-Regeln an Schritten und Antworten (siehe mailRegelnFassung15).
+ * E-Mail-Regeln an Schritten und Antworten (siehe mailRegelnFassung15). Ab
+ * Fassung 16: G-Nummer und Stammdaten an Projekten, Mobil und
+ * Organisationseinheit an Kontakten (leer).
  */
 function migriere(daten: AppData): AppData {
   if (daten.version === DATEN_VERSION) return ohneFarbmodus(daten);
@@ -582,7 +585,14 @@ function migriere(daten: AppData): AppData {
       const { emailTemplates: _alt, ...settings } = p.settings as typeof p.settings & {
         emailTemplates?: EmailTemplate[];
       };
-      return { ...p, markiert: p.markiert ?? true, settings };
+      return {
+        ...p,
+        markiert: p.markiert ?? true,
+        // Fassung 16: G-Nummer und Stammdaten (leer)
+        gNummer: p.gNummer ?? '',
+        stammdaten: { ...leereStammdaten(), ...(p.stammdaten ?? {}) },
+        settings,
+      };
     }),
     roles: rollenAufteilen(daten.roles ?? []).map(mitSeite),
     contacts: (daten.contacts ?? []).map((c) => {
@@ -592,6 +602,9 @@ function migriere(daten: AppData): AppData {
       return {
         ...c,
         anschrift: c.anschrift ?? '',
+        // Fassung 16: Mobil und Organisationseinheit
+        mobil: c.mobil ?? '',
+        oe: c.oe ?? '',
         sharepointEingang: c.sharepointEingang ?? '',
         sharepointAusgang: c.sharepointAusgang ?? '',
         eigen: c.eigen ?? false,

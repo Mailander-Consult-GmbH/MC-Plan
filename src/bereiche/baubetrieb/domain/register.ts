@@ -1,7 +1,8 @@
 /**
  * Anbindung an das Projektregister (`src/gemeinsam/`). Die
  * Baubetriebsplanung teilt ihre Projekte mit den anderen Bereichen – über
- * die Projektnummer (nicht die G-Nummer der DB). Eigene Personen führt sie
+ * die Projektnummer (nicht die G-Nummer der DB). Die G-Nummer (`dbGNummer`)
+ * gleicht sie als Stammdatum mit dem Register ab. Eigene Personen führt sie
  * nicht – die Projektbeteiligten liest die Projektseite direkt aus dem Register.
  */
 import type { Plan, Sicht } from '../../../gemeinsam/abgleich';
@@ -9,7 +10,7 @@ import type { BaubetriebDaten, Projekt } from './types';
 
 export function sichtFuerRegister(d: BaubetriebDaten): Sicht {
   return {
-    projekte: d.projekte.map((p) => ({ id: p.id, nummer: p.projektnummer, name: p.name, beschreibung: null })),
+    projekte: d.projekte.map((p) => ({ id: p.id, nummer: p.projektnummer, gNummer: p.dbGNummer, name: p.name, beschreibung: null })),
     personen: null,
   };
 }
@@ -34,7 +35,7 @@ export function registerPlanAnwenden(daten: BaubetriebDaten, plan: Plan): Baubet
     .map(({ id, projekt }) => ({
       id,
       name: projekt.name || 'Ohne Bezeichnung',
-      dbGNummer: '',
+      dbGNummer: projekt.gNummer ?? '',
       fahrplanjahre: [],
       inbetriebnahme: null,
       projektnummer: projekt.nummer,
@@ -45,8 +46,13 @@ export function registerPlanAnwenden(daten: BaubetriebDaten, plan: Plan): Baubet
 
   for (const a of plan.projekteAendern) {
     const p = d.projekte.find((x) => x.id === a.id);
-    if (!p || (p.projektnummer === a.nummer && p.name === a.name)) continue;
-    d = { ...d, projekte: d.projekte.map((x) => (x.id === a.id ? { ...x, projektnummer: a.nummer, name: a.name } : x)) };
+    // Eine G-Nummer, die das Register (noch) nicht kennt (null), bleibt stehen
+    const dbGNummer = a.gNummer ?? p?.dbGNummer ?? '';
+    if (!p || (p.projektnummer === a.nummer && p.name === a.name && p.dbGNummer === dbGNummer)) continue;
+    d = {
+      ...d,
+      projekte: d.projekte.map((x) => (x.id === a.id ? { ...x, projektnummer: a.nummer, name: a.name, dbGNummer } : x)),
+    };
   }
 
   return d;

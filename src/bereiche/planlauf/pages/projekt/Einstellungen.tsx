@@ -1,5 +1,5 @@
 /**
- * Projekteinstellungen: Projektdaten, Fristen und Erinnerungen, Export, Archivieren und Löschen.
+ * Projekteinstellungen: Projektdaten, Stammdaten, Fristen und Erinnerungen, Export, Archivieren und Löschen.
  * Die E-Mail-Vorlagen gelten für alle Projekte und stehen auf der Seite „Vorlagen“ – hier nur der Verweis.
  */
 import { useState } from 'react';
@@ -11,6 +11,7 @@ import { formatDate } from '../../../../shared/dates';
 import { useToast } from '../../../../shared/toast';
 import { ProjektDialog } from '../Projekte';
 import { ExportDialog } from './ExportDialog';
+import { StammdatenKarte } from './Stammdaten';
 import {
   Callout,
   Card,
@@ -51,11 +52,15 @@ export function Einstellungen({ project, navigate }: { project: Project; navigat
           <dl className="kv">
             <dt>Projektnummer</dt>
             <dd className="mono">{project.nummer || '–'}</dd>
+            <dt>G-Nummer</dt>
+            <dd className="mono">{project.gNummer || '–'}</dd>
             <dt>Beschreibung</dt>
             <dd>{project.beschreibung || '–'}</dd>
           </dl>
         </div>
       </Card>
+
+      <StammdatenKarte project={project} />
 
       <Card>
         <CardHeader titel="Fristen & Erinnerungen" sub="Grundlage der Soll-Termin-Berechnung" />
