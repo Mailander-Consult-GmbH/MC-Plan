@@ -18,18 +18,23 @@ import { funktionsSchluessel } from '../../../gemeinsam/register';
 import { formatDate } from '../../../shared/dates';
 import { html } from '../../../shared/print';
 import { ablaufDiagrammSvg } from './ablaufDiagramm';
-import { plancodierungHtml, standardPlancodierung } from './plancodierung';
-import { ROLLE_BVB, ROLLE_PL, ROLLE_PRST, ROLLE_PSV } from './seed';
+import { plancodierungHtml } from './plancodierung';
+import { vorlageFuer } from './pflichtenheftVorlagen';
+import { ROLLE_PL } from './seed';
 import {
   EIGENE_ROLLE,
-  funktionsName,
+  GESCHAEFTSBEREICHE,
+  geschaeftsbereichVon,
   leereStammdaten,
   type AppData,
   type Contact,
   type ID,
   type Pflichtenheft,
   type PflichtenheftAbschnitt,
+  type PflichtenheftAusgabe,
+  type PflichtenheftStandEintrag,
   type PflichtenheftVorlage,
+  type ProcessTemplate,
   type Project,
   type Role,
   type Unterschrift,
@@ -58,7 +63,7 @@ export interface PflichtenheftPlatzhalter {
 }
 
 export const PFLICHTENHEFT_PLATZHALTER: PflichtenheftPlatzhalter[] = [
-  { schluessel: 'gNummer', label: 'G-Nummer', gruppe: 'projekt', beschreibung: 'Projektnummer der DB' },
+  { schluessel: 'gNummer', label: 'Projektnummer DB', gruppe: 'projekt', beschreibung: 'Projektnummer der DB (G- bzw. E-Nummer)' },
   { schluessel: 'projektnummer', label: 'Projektnummer', gruppe: 'projekt', beschreibung: 'Projektnummer von Mailänder Consult' },
   { schluessel: 'projektname', label: 'Projektname', gruppe: 'projekt', beschreibung: 'Bezeichnung des Projekts' },
   { schluessel: 'planungsphase', label: 'Planungsphase', gruppe: 'projekt', beschreibung: 'Stammdaten: Planungsphase' },
@@ -68,8 +73,15 @@ export const PFLICHTENHEFT_PLATZHALTER: PflichtenheftPlatzhalter[] = [
   { schluessel: 'stationsKm', label: 'Stations-km', gruppe: 'station', beschreibung: 'Stations-Kilometrierung' },
   { schluessel: 'streckenNummern', label: 'Streckennummern', gruppe: 'station', beschreibung: 'Nummern der betroffenen Strecken, mit Komma' },
   { schluessel: 'strecken', label: 'Streckenliste', gruppe: 'station', beschreibung: 'Je Zeile „Strecke Nummer  Bezeichnung“' },
+  {
+    schluessel: 'streckenabschnitte',
+    label: 'Streckenabschnitte',
+    gruppe: 'station',
+    beschreibung: 'Je Zeile „Strecke Nummer von km … bis km …“',
+  },
   { schluessel: 'auftraggeber', label: 'Auftraggeber', gruppe: 'auftraggeber', beschreibung: 'Stammdaten: Auftraggeber' },
   { schluessel: 'geschaeftsbereich', label: 'Geschäftsbereich', gruppe: 'auftraggeber', beschreibung: 'Stammdaten: Geschäftsbereich' },
+  { schluessel: 'region', label: 'Region', gruppe: 'auftraggeber', beschreibung: 'Region der DB InfraGO, etwa „Südwest“' },
   { schluessel: 'projektleitung', label: 'Projektleitung', gruppe: 'auftraggeber', beschreibung: 'Name der Person mit der Funktion Projektleitung' },
   { schluessel: 'sharepointZentral', label: 'SharePoint zentral', gruppe: 'auftraggeber', beschreibung: 'Zentraler SharePoint-Ordner' },
   { schluessel: 'anlagePlanlaeufe', label: 'Anlage Planläufe', gruppe: 'anlagen', beschreibung: 'Nummer der Anlage „Planläufe und Ablaufdiagramme“' },
@@ -77,182 +89,61 @@ export const PFLICHTENHEFT_PLATZHALTER: PflichtenheftPlatzhalter[] = [
   { schluessel: 'anlageAenderungsindex', label: 'Anlage Änderungsindex', gruppe: 'anlagen', beschreibung: 'Nummer der Anlage „Änderungsindex“' },
 ];
 
-/* ------------------------------------------------------------------ */
-/* Mitgelieferte Vorlage                                               */
-/* ------------------------------------------------------------------ */
-
-type AbschnittRoh = Omit<PflichtenheftAbschnitt, 'id' | 'text' | 'funktionen' | 'kontaktIds'> &
-  Partial<Pick<PflichtenheftAbschnitt, 'text' | 'funktionen' | 'kontaktIds'>>;
-
-const VORLAGE_ABSCHNITTE: AbschnittRoh[] = [
-  {
-    art: 'text',
-    ebene: 1,
-    titel: 'Einleitung',
-    text: `Dieses Pflichtenheft gilt für das Projekt
-
-**{{gNummer}} {{station}} – {{projektname}}**
-
-der {{auftraggeber}} – Geschäftsbereich {{geschaeftsbereich}}.
-
-Es regelt die Planläufe dieser Projekte, sowie den dafür erforderlichen Datenaustausch und trifft formale Festlegungen bezüglich der Projektbezeichnungen, der Plancodierung, der Datenformate, der Schriftfelder, etc. Die Vorgaben dieses Pflichtenheftes sind von allen beteiligten Projektverantwortlichen und deren Mitarbeitern einzuhalten.
-
-Mailänder Consult (MC) ist von der {{auftraggeber}} mit dem Planlaufmanagement (PLM) beauftragt und überwacht damit die terminliche und formale Einhaltung der Vorgaben dieses Pflichtenheftes durch die Projektbeteiligten.`,
-  },
-  {
-    art: 'text',
-    ebene: 1,
-    titel: 'Abwicklung der Planläufe',
-    text: `Die Projektleitung der {{auftraggeber}} hat entschieden, die Planläufe in digitaler Form durchzuführen. Deshalb erfolgen alle Prüfungen anhand der PDF-Daten der zu prüfenden Unterlagen. Unterschriften erfolgen mit fortgeschrittener elektronischer Signatur gemäß Signaturgesetz (Verordnung (EU) Nr. 910/2014).
-
-Das Planlaufmanagement MC steuert und überwacht die Planläufe (siehe Kapitel 8 und Anlage {{anlagePlanlaeufe}}) in formaler und terminlicher Hinsicht. Verteilungen und Übergaben von Plänen erfolgen in der Regel digital. Das Planlaufmanagement richtet dazu jedem am Planlauf Beteiligten ein SharePoint-Verzeichnis ‚Eingang‘ zum Herunterladen und ein SharePoint-Verzeichnis ‚Ausgang‘ zum Hochladen ein.
-
-Das Planlaufmanagement stellt die genehmigten Unterlagen einschließlich der Prüfberichte und Freigabeschreiben auf einem zentralen SharePoint-Ordner bereit. Alle Projektbeteiligten mit berechtigtem Interesse erhalten Lese-Zugriff auf diesen Ordner.
-
-Alle Unterlagen sind mit einem eindeutigen Dateinamen zu kennzeichnen. Siehe dazu Kapitel 3.
-
-Die verbindlich festgelegten Planläufe sind in Anlage {{anlagePlanlaeufe}} dargestellt. Die Ablaufschemen geben Auskunft über die Anzahl der benötigten Fertigungen, den Adressaten der jeweils erforderlichen Weiterleitung, die für jeden Schritt maximal verfügbare Zeit, erforderliche E-Mail-Benachrichtigungen etc. Zwingend erforderliche Änderungen sind nur in Abstimmung mit dem Planlaufmanagement MC möglich.
-
-Falls nach dem abgeschlossenen Planlauf Planänderungen erforderlich werden, so sind die geänderten Pläne auf Grundlage der letztgültigen Fassung zu erstellen und erneut in den Planlauf einzureichen. Die bei der Einarbeitung der Prüfergebnisse mit „gez. ….“ ins Schriftfeld übernommenen Unterschriften und Prüfanmerkungen sind zu entfernen.`,
-  },
-  {
-    art: 'text',
-    ebene: 1,
-    titel: 'Plannummerierung',
-    text: `Alle erfassten Dokumente müssen einen eindeutigen Plancode erhalten. Über die Plancodierung ist jedem Dokument eine unverwechselbare Codierung und ein damit identischer Dateiname zugeordnet. Als Dateiname ist ausschließlich die Plancodierung entsprechend der Anlage {{anlagePlancodierung}} mit der Namenserweiterung .pdf zu verwenden, die auch im Schriftfeld der Unterlage eingetragen ist. Dies gilt sowohl für Pläne als auch für Planverzeichnisse, Listen, statische Berechnungen, Erläuterungsberichte etc.
-
-Bei den bautechnischen Gewerken werden Änderungen durch einen Index gekennzeichnet.
-Bei den STE-Gewerken (VV BAU-STE) werden erstmals herausgegebene Dokumente als Ausgabe Nr. 1 bezeichnet. Diese Nummer wird mit jeder Planänderung erhöht.
-
-Die erfolgten Prüf- und Genehmigungsschritte werden im Dateinamen dokumentiert. Dazu hängt der für den letzten Schritt Verantwortliche dem Dateinamen ein entsprechendes Kurzzeichen an. Nach der Freigabe zur bautechnischen Prüfung erhält ein Dokument den Anhang ‚_BVB1‘, nach der Prüfung durch den Prüfsachverständigen zusätzlich ‚_PSV‘, nach der BVB-Freigabe zusätzlich ‚_BVB2‘ und nach erfolgter Genehmigung der Bauausführung noch ‚_PL‘.
-
-Zulässige Zeichen für Dateinamen sind die Buchstaben a – z und A – Z, Ziffern, Bindestriche und Unterstriche. Nicht zulässig sind Umlaute, Sonderzeichen, Leerzeichen und Interpunktionen.`,
-  },
-  {
-    art: 'text',
-    ebene: 1,
-    titel: 'Änderungen am Pflichtenheft',
-    text: `Soweit sich aus der Projektabwicklung die Notwendigkeit zu Änderungen an diesem Pflichtenheft ergibt, werden diese von Mailänder Consult in Abstimmung mit der Projektleitung {{auftraggeber}} eingepflegt, und das Pflichtenheft erneut digital an die Beteiligten verteilt.
-Alle Änderungen werden im Änderungsindex (Anlage {{anlageAenderungsindex}}) dargestellt.`,
-  },
-  { art: 'text', ebene: 1, titel: 'Ansprechpartner' },
-  { art: 'plm', ebene: 2, titel: 'Planlaufmanagement und Pflichtenheft' },
-  { art: 'ansprechpartner', ebene: 2, titel: 'Projektleitung', funktionen: [ROLLE_PL] },
-  { art: 'ansprechpartner', ebene: 2, titel: 'Bauvorlageberechtigte (BVB)', funktionen: [ROLLE_BVB] },
-  {
-    art: 'ansprechpartner',
-    ebene: 2,
-    titel: 'Planprüfer / Prüfingenieure',
-    funktionen: [ROLLE_PSV, ROLLE_PRST, 'Schweißtechnischer Prüfer', 'Vermessungsprüfer', 'Erdungsprüfer'],
-  },
-  { art: 'ansprechpartner', ebene: 2, titel: 'Inbetriebnahmeverantwortliche', funktionen: ['Inbetriebnahmeverantwortlicher'] },
-  { art: 'ansprechpartner', ebene: 2, titel: 'Fachspezialisten', funktionen: ['Fachspezialist'] },
-  {
-    art: 'text',
-    ebene: 1,
-    titel: 'Weitere Projektbeteiligte',
-    text: 'Weitere Projektbeteiligte sind der jeweils aktuellen Projektbeteiligtenliste zu entnehmen.',
-  },
-  {
-    art: 'text',
-    ebene: 1,
-    titel: 'Verpflichtungen der Planer',
-    text: `Die Planer benennen gegenüber dem Planlaufmanagement MC einen verantwortlichen Ansprechpartner (Planungskoordinator AN) zur Abstimmung aller den Planlauf betreffenden Belange. In einzelnen Gewerken kann diese Funktion durch den Qualitätsprüfer des AN wahrgenommen werden.
-
-Dieser Planungskoordinator unterschreibt im Schriftfeld jedes Planes bereits auf dem ersten zur Prüfung vorgelegten Exemplar. Den eingereichten Ausführungsunterlagen ist grundsätzlich der Prüfbericht der internen Qualitätsprüfung beizufügen, dies ist Voraussetzung für die Prüfbarkeit von Unterlagen.
-
-Die Planungskoordinatoren vertreten gegenüber dem Planlaufmanagement MC auch ihre sämtlichen Nachunternehmer.
-Zur vorausschauenden Steuerung erhält das Planlaufmanagement MC vom Planungskoordinator AN eine Planlieferliste, aus der die Planliefertermine des Planers und die Zusammensetzung der einzelnen Planpakete hervorgehen.
-
-Die aktuelle Planlieferliste ist durch den Planungsverantwortlichen des AN zum Beginn jedes Monats unaufgefordert dem Planlaufmanagement MC zu übermitteln.`,
-  },
-  {
-    art: 'text',
-    ebene: 1,
-    titel: 'Digitale Plandaten',
-    text: `Der Austausch digitaler Pläne und Dokumente im Rahmen des Planlaufmanagements erfolgt grundsätzlich im PDF/A-Format. Die PDF/A-Dateien sind mit einer Auflösung von 300 dpi zu erstellen. Als Dateiname ist ausschließlich die eindeutige Plannummer mit der Namenserweiterung .pdf zu verwenden, die auch im Schriftfeld der Unterlage eingetragen ist.
-
-Digitale Planprüfungen erfolgen ausschließlich auf der Grundlage von PDF/A-Dateien. Ein eventueller Austausch von bearbeitbaren Daten (DWG, DGN etc.) erfolgt gegebenenfalls in selbständiger Abstimmung zwischen den Planern.`,
-  },
-  {
-    art: 'text',
-    ebene: 1,
-    titel: 'Schriftfeld',
-    text: `Alle Pläne sind abhängig vom Gewerk mit den im Regelwerk der DB aktuell vorgeschriebenen Schriftfeldern zu versehen. Im Schriftfeld anzugeben sind unter anderem:
-
-**{{station}} ({{stationKuerzel}})  ·  Strecke {{streckenNummern}}  ·  Stations-km {{stationsKm}}  ·  Bahnhofs-Nr. {{bahnhofsNummer}}**`,
-  },
-  {
-    art: 'text',
-    ebene: 1,
-    titel: 'Streckennummern, Kilometrierung und Lage- und Höhenbezug',
-    text: `Folgende Strecken sind von den Planungen in den Projekten betroffen:
-
-{{strecken}}
-
-Trassendaten zur Bestimmung der verbindlichen Kilometrierung, das zugrunde zu legende Lage- und Höhensystem, sowie Festpunkte sind über das Portal IPID zu beziehen beim Datenmanagement Südwest der DB InfraGO AG.`,
-  },
-  { art: 'anlagen', ebene: 1, titel: 'Anlagenverzeichnis' },
-];
-
-const VORLAGE_WORKFLOW_HINWEIS = `Der Planlaufbeginn ist vom Planungsverantwortlichen des AN so einzutakten, dass die genehmigten Pläne spätestens 6 Wochen vor Baubeginn beim EBA vorliegen.
-
-Hinweis: Der dargestellte Zeitbedarf berücksichtigt nicht die Planungszeiten des Ausführungsplaners. Außerplanmäßige Korrekturläufe sind im Zeitbedarf nicht berücksichtigt.
-
-Die Weitergabe der digitalen Unterlagen erfolgt per E-Mail oder über die Datenaustauschplattform der Mailänder Consult GmbH.`;
-
-/** Bezeichnungen der mitgelieferten Gewerke in den Ansprechpartnern. */
-const VORLAGE_GEWERKNAMEN: Record<string, string> = {
-  EEA: 'EEA 50 Hz',
-  KIB: 'Konstruktiver Ingenieurbau',
-  LST: 'Leit- und Sicherungstechnik',
-  OLA: 'Oberleitungsanlagen',
-  TK: 'Telekommunikation',
-  VA: 'Verkehrsanlagen',
-};
-
-/** Die mitgelieferte Vorlage (ohne die gespeicherte des Bestands); `projektKuerzel` ist das Beispiel der Kategorie „Projekt“. */
-export function standardVorlage(neueId: NeueId, projektKuerzel = ''): PflichtenheftVorlage {
-  return {
-    titel: 'Pflichtenheft Planlauf {{planungsphase}}',
-    abschnitte: VORLAGE_ABSCHNITTE.map((a) => ({
-      id: neueId('phab'),
-      text: '',
-      funktionen: [],
-      kontaktIds: [],
-      ...a,
-    })),
-    gewerkNamen: { ...VORLAGE_GEWERKNAMEN },
-    workflowHinweis: VORLAGE_WORKFLOW_HINWEIS,
-    plancodierung: standardPlancodierung(neueId, projektKuerzel),
-  };
-}
-
 const leereUnterschrift = (): Unterschrift => ({ ort: '', datum: null, funktion: '', name: '' });
 
+/** Workflows, die das Projekt verwendet: seine Varianten und die Workflows seiner Planläufe. */
+export function verwendeteWorkflows(data: AppData, project: Project): ProcessTemplate[] {
+  const ausLaeufen = new Set(data.runs.filter((r) => r.projectId === project.id).map((r) => r.templateId));
+  return data.templates.filter((t) => t.projectId === project.id || ausLaeufen.has(t.id));
+}
+
+/** Workflows zur Auswahl: die des Projekts zuerst, dann die projektübergreifenden. */
+export function waehlbareWorkflows(data: AppData, project: Project): ProcessTemplate[] {
+  return data.templates
+    .filter((t) => t.projectId === null || t.projectId === project.id)
+    .sort((a, b) => Number(a.projectId === null) - Number(b.projectId === null) || a.name.localeCompare(b.name, 'de'));
+}
+
+/** Was der Assistent beim Erstellen festlegt; ohne Angabe gelten die Vorgaben. */
+export interface PflichtenheftAngaben {
+  /** Workflows der Anlage „Planläufe“; ohne Angabe die im Projekt verwendeten (ohne solche: alle wählbaren). */
+  workflowIds?: ID[];
+  /** Weitere Personen im Abschnitt „Planlaufmanagement“ (etwa die Vertretung). */
+  kontaktIds?: ID[];
+  titelbild?: string;
+  aufgestellt?: Partial<Unterschrift>;
+  freigegeben?: Partial<Unterschrift>;
+  /** Code des Projekts in der Plancodierung; ohne Angabe das Kürzel der Betriebsstelle. */
+  projektKuerzel?: string;
+}
+
 /**
- * Neues Pflichtenheft aus der Vorlage des Bestands (sonst der mitgelieferten):
- * Abschnitte und Kategorien erhalten neue Kennungen; als Planläufe gelten die
- * Workflows des Projekts, ohne eigene die projektübergreifenden. Ist die
- * Kategorie „Projekt“ der Plancodierung leer, trägt das Kürzel der
- * Betriebsstelle aus den Stammdaten sie (samt Station) ein.
+ * Neues Pflichtenheft aus der Vorlage des Geschäftsbereichs (die gespeicherte,
+ * sonst die mitgelieferte): Abschnitte und Kategorien erhalten neue Kennungen.
+ * Ist die Kategorie „Projekt“ der Plancodierung leer, trägt der Code des
+ * Projekts sie (samt Station bzw. Projektname) ein.
  */
-export function neuesPflichtenheft(data: AppData, project: Project, neueId: NeueId): Pflichtenheft {
+export function neuesPflichtenheft(data: AppData, project: Project, neueId: NeueId, angaben: PflichtenheftAngaben = {}): Pflichtenheft {
   const s = { ...leereStammdaten(), ...project.stammdaten };
-  const kuerzel = s.stationKuerzel.trim();
-  const vorlage = data.pflichtenheftVorlage ?? standardVorlage(neueId, kuerzel);
-  const eigene = data.templates.filter((t) => t.projectId === project.id);
-  const workflows = (eigene.length > 0 ? eigene : data.templates.filter((t) => t.projectId === null)).map((t) => ({
-    workflowId: t.id,
-    titel: t.name,
-  }));
+  const kuerzel = (angaben.projektKuerzel ?? s.stationKuerzel).trim();
+  const vorlage = vorlageFuer(data, geschaeftsbereichVon(s.geschaeftsbereich), neueId, kuerzel);
+  const verwendet = verwendeteWorkflows(data, project);
+  const ids = angaben.workflowIds ?? (verwendet.length > 0 ? verwendet : waehlbareWorkflows(data, project)).map((t) => t.id);
+  const workflows = waehlbareWorkflows(data, project)
+    .filter((t) => ids.includes(t.id))
+    .map((t) => ({ workflowId: t.id, titel: t.name }));
   return {
     titel: vorlage.titel,
-    abschnitte: vorlage.abschnitte.map((a) => ({ ...a, id: neueId('phab'), funktionen: [...a.funktionen], kontaktIds: [] })),
-    aufgestellt: leereUnterschrift(),
-    freigegeben: leereUnterschrift(),
-    geaendert: leereUnterschrift(),
-    titelbild: '',
+    deckblatt: vorlage.deckblatt,
+    abschnitte: vorlage.abschnitte.map((a) => ({
+      ...a,
+      id: neueId('phab'),
+      funktionen: [...a.funktionen],
+      kontaktIds: a.art === 'plm' ? [...(angaben.kontaktIds ?? [])] : [],
+    })),
+    aufgestellt: { ...leereUnterschrift(), ...angaben.aufgestellt },
+    freigegeben: { ...leereUnterschrift(), ...angaben.freigegeben },
+    titelbild: angaben.titelbild ?? '',
     gewerkNamen: { ...vorlage.gewerkNamen },
     zeilenNamen: {},
     workflows,
@@ -265,7 +156,8 @@ export function neuesPflichtenheft(data: AppData, project: Project, neueId: Neue
           : { ...k, id: neueId('phkat') },
       ),
     },
-    aenderungen: [],
+    ausgaben: [],
+    stand: null,
   };
 }
 
@@ -273,6 +165,7 @@ export function neuesPflichtenheft(data: AppData, project: Project, neueId: Neue
 export function alsVorlage(ph: Pflichtenheft): PflichtenheftVorlage {
   return {
     titel: ph.titel,
+    deckblatt: ph.deckblatt,
     abschnitte: ph.abschnitte.map((a) => ({ ...a, kontaktIds: [] })),
     gewerkNamen: { ...ph.gewerkNamen },
     workflowHinweis: ph.workflowHinweis,
@@ -280,11 +173,28 @@ export function alsVorlage(ph: Pflichtenheft): PflichtenheftVorlage {
   };
 }
 
-/** Ergänzt fehlende Felder – etwa in einer Sicherung, die von Hand bearbeitet wurde. */
-export function pflichtenheftAufbereiten(ph: Partial<Pflichtenheft>): Pflichtenheft {
+/**
+ * Ergänzt fehlende Felder – etwa in einer Sicherung, die von Hand bearbeitet
+ * wurde. Pflichtenhefte vor den Ausgaben führten einen von Hand gepflegten
+ * Änderungsindex (`aenderungen` mit Datum) und die Zeile „Zuletzt geändert“
+ * als Eingabe: Die Einträge werden je Datum zu Ausgaben.
+ */
+export function pflichtenheftAufbereiten(roh: Partial<Pflichtenheft>): Pflichtenheft {
+  const ph = roh as Partial<Pflichtenheft> & { aenderungen?: { id: ID; datum: string; stelle: string; text: string }[] };
   const u = (x?: Partial<Unterschrift>): Unterschrift => ({ ...leereUnterschrift(), ...(x ?? {}) });
+  let ausgaben: PflichtenheftAusgabe[] = ph.ausgaben ?? [];
+  if (!ph.ausgaben && ph.aenderungen?.length) {
+    const daten = [...new Set(ph.aenderungen.map((a) => a.datum))].sort();
+    ausgaben = daten.map((datum) => ({
+      id: `phaus-${datum}`,
+      datum,
+      von: '',
+      aenderungen: ph.aenderungen!.filter((a) => a.datum === datum).map(({ id, stelle, text }) => ({ id, stelle, text })),
+    }));
+  }
   return {
     titel: ph.titel ?? '',
+    deckblatt: ph.deckblatt ?? 'Projekt {{gNummer}}\n\n**{{station}}**\n**{{projektname}}**',
     abschnitte: (ph.abschnitte ?? []).map((a) => ({
       ...a,
       text: a.text ?? '',
@@ -294,14 +204,14 @@ export function pflichtenheftAufbereiten(ph: Partial<Pflichtenheft>): Pflichtenh
     })),
     aufgestellt: u(ph.aufgestellt),
     freigegeben: u(ph.freigegeben),
-    geaendert: u(ph.geaendert),
     titelbild: ph.titelbild ?? '',
     gewerkNamen: ph.gewerkNamen ?? {},
     zeilenNamen: ph.zeilenNamen ?? {},
     workflows: ph.workflows ?? [],
     workflowHinweis: ph.workflowHinweis ?? '',
     plancodierung: { kategorien: ph.plancodierung?.kategorien ?? [], hinweis: ph.plancodierung?.hinweis ?? '' },
-    aenderungen: ph.aenderungen ?? [],
+    ausgaben,
+    stand: ph.stand ?? null,
   };
 }
 
@@ -373,8 +283,21 @@ export function platzhalterWerte(data: AppData, project: Project, ph: Pflichtenh
       .filter((x) => x.nummer.trim() || x.bezeichnung.trim())
       .map((x) => `Strecke ${x.nummer.trim()}  ${x.bezeichnung.trim()}`.trim())
       .join('\n'),
+    streckenabschnitte: s.strecken
+      .filter((x) => x.nummer.trim())
+      .map((x) =>
+        [
+          `Strecke ${x.nummer.trim()}`,
+          x.kmVon?.trim() ? `von km ${x.kmVon.trim()}` : '',
+          x.kmBis?.trim() ? `bis km ${x.kmBis.trim()}` : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
+      )
+      .join('\n'),
     auftraggeber: s.auftraggeber,
     geschaeftsbereich: s.geschaeftsbereich,
+    region: s.region,
     projektleitung: pl ? personName(pl) : '',
     sharepointZentral: s.sharepointZentral,
     anlagePlanlaeufe: `${anlage}.1`,
@@ -426,14 +349,12 @@ export function ansprechpartnerZeilen(
     if (gesucht.length > 1 && norm(r.name) !== gesucht[0]) return `${r.name} ${gewerkName(r.gewerk)}`;
     return gewerkName(r.gewerk);
   };
-  const offen: string[] = [];
   const zeilen: AnsprechpartnerZeile[] = [];
+  const besetzt = new Set<string>();
   for (const r of rollen) {
     const kontakte = data.contacts.filter((c) => c.projectId === project.id && c.zuordnungen.some((z) => z.roleId === r.id));
-    if (kontakte.length === 0) {
-      offen.push(funktionsName(r));
-      continue;
-    }
+    if (kontakte.length === 0) continue;
+    besetzt.add(norm(r.name));
     const kennung = kontakte.map((c) => c.id).sort().join(',');
     const gleich = zeilen.find((z) => z.kontakte.map((c) => c.id).sort().join(',') === kennung);
     const vorgabe = vorgabeVon(r);
@@ -444,10 +365,9 @@ export function ansprechpartnerZeilen(
     zeilen.push({ schluessel: `${abschnitt.id}|${funktionsSchluessel(r)}`, vorgabe, label: '', kontakte });
   }
   for (const z of zeilen) z.label = ph.zeilenNamen[z.schluessel]?.trim() || z.vorgabe;
-  // Nicht gefundene Funktionen nennen, damit sie im Editor auffallen
-  for (const f of abschnitt.funktionen) {
-    if (f.trim() && !rollen.some((r) => norm(r.name) === norm(f))) offen.push(f.trim());
-  }
+  // Funktionen, die in keinem Gewerk eine Person ausfüllt (oder die es im Projekt nicht gibt) –
+  // unbesetzte Gewerke einer sonst besetzten Funktion sind der Regelfall und bleiben ungenannt
+  const offen = abschnitt.funktionen.map((f) => f.trim()).filter((f) => f && !besetzt.has(norm(f)));
   return { zeilen, offen, mitKopf: gesucht.length > 1 || rollen.some((r) => r.gewerk !== null) };
 }
 
@@ -480,18 +400,29 @@ export function unterschriftVorgabe(data: AppData, project: Project, ph: Pflicht
     art === 'freigegeben'
       ? [person?.oe.trim() ?? '', firma].filter(Boolean).join(', ')
       : ['PLM', firma && norm(firma) !== norm(EIGENE_ROLLE) ? firma : ''].filter(Boolean).join(', ');
-  const juengste = [...ph.aenderungen].map((a) => a.datum).filter(Boolean).sort().pop() ?? null;
+  const letzte = letzteAenderung(ph);
+  const name = art === 'geaendert' && letzte?.von.trim() ? letzte.von.trim() : person ? personName(person) : '';
   return {
     ort: person ? ortAus(person.anschrift) : '',
-    datum: art === 'geaendert' ? juengste : null,
+    datum: art === 'aufgestellt' ? (ph.ausgaben[0]?.datum ?? null) : art === 'geaendert' ? (letzte?.datum ?? null) : null,
     funktion,
-    name: person ? `i. A. ${personName(person)}` : '',
+    name: name ? `i. A. ${name}` : '',
   };
 }
 
-/** Unterschriftszeile, wie sie gedruckt wird: Eingetragenes vor der Vorbelegung. */
+/** Die jüngste Ausgabe mit Änderungen – „Zuletzt geändert“; vor der zweiten Ausgabe keine. */
+export function letzteAenderung(ph: Pflichtenheft): PflichtenheftAusgabe | null {
+  return ph.ausgaben.length >= 2 ? ph.ausgaben[ph.ausgaben.length - 1] : null;
+}
+
+/**
+ * Unterschriftszeile, wie sie gedruckt wird: Eingetragenes vor der
+ * Vorbelegung. „Zuletzt geändert“ wird nicht eingetragen – es folgt allein
+ * den Ausgaben.
+ */
 export function unterschriftWert(data: AppData, project: Project, ph: Pflichtenheft, art: UnterschriftArt): Unterschrift {
   const v = unterschriftVorgabe(data, project, ph, art);
+  if (art === 'geaendert') return v;
   const e = ph[art];
   return {
     ort: e.ort.trim() || v.ort,
@@ -499,6 +430,126 @@ export function unterschriftWert(data: AppData, project: Project, ph: Pflichtenh
     funktion: e.funktion.trim() || v.funktion,
     name: e.name.trim() || v.name,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Ausgaben: Stand und Änderungen                                      */
+/* ------------------------------------------------------------------ */
+
+/** Kurze Prüfsumme eines Texts (FNV-1a samt Länge). */
+function pruefsumme(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return `${(h >>> 0).toString(36)}-${text.length.toString(36)}`;
+}
+
+/** Was eine Person im Pflichtenheft zeigt (Ansprechpartner). */
+function kontaktInhalt(c: Contact): string {
+  return [personName(c), c.firma, c.oe, c.anschrift, c.telefon, c.mobil, c.email].map((x) => x.trim()).join('|');
+}
+
+/**
+ * Inhalt des Pflichtenhefts je Stelle, so wie er gedruckt wird – zum
+ * Erkennen von Änderungen zwischen zwei Ausgaben. Schlüssel: `deckblatt`,
+ * `ab:<Abschnitt>` (Titel und Text), `ap:<Abschnitt>|<Zeile>` (je Zeile der
+ * Ansprechpartner bzw. je Person des Planlaufmanagements), `wf:<Workflow>`,
+ * `wfhinweis`, `pc:<Kategorie>` und `pchinweis`. Die Unterschriften zählen
+ * nicht dazu, ebenso wenig Nummern: Umgestellte Kapitel gelten nicht als geändert.
+ */
+export function pflichtenheftStand(data: AppData, project: Project, ph: Pflichtenheft): Record<string, PflichtenheftStandEintrag> {
+  const werte = platzhalterWerte(data, project, ph);
+  const nummern = kapitelNummern(ph.abschnitte);
+  const anlage = anlagenNummer(ph.abschnitte);
+  const stand: Record<string, PflichtenheftStandEintrag> = {};
+  const setzen = (schluessel: string, stelle: string, titel: string, inhalt: string) => {
+    stand[schluessel] = { stelle, titel, wert: pruefsumme(inhalt) };
+  };
+  setzen(
+    'deckblatt',
+    'Deckblatt',
+    'Deckblatt',
+    [textEinsetzen(ph.titel, werte), textEinsetzen(ph.deckblatt, werte), ph.titelbild ? pruefsumme(ph.titelbild) : ''].join('\n'),
+  );
+  for (const a of ph.abschnitte) {
+    const stelle = `Kap. ${nummern.get(a.id)}`;
+    setzen(`ab:${a.id}`, stelle, a.titel, `${a.titel}\n${textEinsetzen(a.text, werte)}`);
+    if (a.art === 'ansprechpartner') {
+      for (const z of ansprechpartnerZeilen(data, project, a, ph).zeilen) {
+        setzen(`ap:${z.schluessel}`, stelle, z.label, `${z.label}\n${z.kontakte.map(kontaktInhalt).join('\n')}`);
+      }
+    } else if (a.art === 'plm') {
+      for (const c of plmKontakte(data, project, a)) setzen(`ap:${a.id}|${c.id}`, stelle, personName(c), kontaktInhalt(c));
+    }
+  }
+  ph.workflows.forEach((w, i) => {
+    const t = data.templates.find((x) => x.id === w.workflowId);
+    if (!t) return;
+    const ablauf = t.steps.map((x) => ({
+      n: x.name,
+      t: x.typ,
+      r: x.roleName,
+      f: x.fristTage,
+      z: x.naechster,
+      a: x.antworten.map((y) => [y.text, y.ziel]),
+      p: x.parallel,
+    }));
+    setzen(`wf:${w.workflowId}`, `Anl. ${anlage}.1.${i + 1}`, w.titel, `${w.titel}\n${JSON.stringify(ablauf)}`);
+  });
+  setzen('wfhinweis', `Anl. ${anlage}.1`, 'Hinweis zu den Ablaufdiagrammen', textEinsetzen(ph.workflowHinweis, werte));
+  for (const k of ph.plancodierung.kategorien) {
+    setzen(`pc:${k.id}`, `Anl. ${anlage}.2`, k.name, `${k.name}\n${k.beispiel}\n${k.eintraege}`);
+  }
+  setzen('pchinweis', `Anl. ${anlage}.2`, 'Hinweis zur Plancodierung', ph.plancodierung.hinweis);
+  return stand;
+}
+
+/**
+ * Änderungen zwischen dem Stand der letzten Ausgabe und dem aktuellen, als
+ * Einträge für den Änderungsindex – in der Reihenfolge des Dokuments, danach
+ * Entfallenes.
+ */
+export function aenderungenErmitteln(
+  alt: Record<string, PflichtenheftStandEintrag>,
+  neu: Record<string, PflichtenheftStandEintrag>,
+): { stelle: string; text: string }[] {
+  const art = (k: string) => k.split(':')[0];
+  const text = (k: string, e: PflichtenheftStandEintrag, wie: 'ergaenzt' | 'geaendert' | 'entfallen', vorher?: PflichtenheftStandEintrag) => {
+    const titel = e.titel.trim() || 'ohne Titel';
+    switch (art(k)) {
+      case 'deckblatt':
+        return 'Deckblatt geändert';
+      case 'ab':
+        if (wie === 'ergaenzt') return `Kapitel „${titel}“ ergänzt`;
+        if (wie === 'entfallen') return `Kapitel „${titel}“ entfallen`;
+        return vorher && vorher.titel !== e.titel ? `„${vorher.titel}“ umbenannt in „${titel}“` : `${titel}: Text geändert`;
+      case 'ap':
+        return wie === 'ergaenzt' ? `${titel} eingetragen` : wie === 'entfallen' ? `${titel} entfallen` : `${titel} aktualisiert`;
+      case 'wf':
+        return wie === 'ergaenzt'
+          ? `Planlauf „${titel}“ aufgenommen`
+          : wie === 'entfallen'
+            ? `Planlauf „${titel}“ entfallen`
+            : `Planlauf „${titel}“ geändert`;
+      case 'pc':
+        return wie === 'ergaenzt'
+          ? `Plancodierung: ${titel} ergänzt`
+          : wie === 'entfallen'
+            ? `Plancodierung: ${titel} entfallen`
+            : `Plancodierung: ${titel} geändert`;
+      default:
+        return `${titel} geändert`;
+    }
+  };
+  const ergebnis: { stelle: string; text: string }[] = [];
+  for (const [k, e] of Object.entries(neu)) {
+    const a = alt[k];
+    if (!a) ergebnis.push({ stelle: e.stelle, text: text(k, e, 'ergaenzt') });
+    else if (a.wert !== e.wert) ergebnis.push({ stelle: e.stelle, text: text(k, e, 'geaendert', a) });
+  }
+  for (const [k, a] of Object.entries(alt)) {
+    if (!(k in neu)) ergebnis.push({ stelle: a.stelle, text: text(k, a, 'entfallen') });
+  }
+  return ergebnis;
 }
 
 /* ------------------------------------------------------------------ */
@@ -544,10 +595,10 @@ function unterschriftHtml(u: Unterschrift, art: UnterschriftArt): string {
 }
 
 /** Kopf der Anlagenseiten. */
-function anlagenKopf(nummer: string, titel: string, werte: Record<string, string>): string {
+function anlagenKopf(nummer: string, titel: string, zeilen: [string, string]): string {
   return `<div class="ph-anlagenkopf">
   <div class="ph-anlage-nr">Anlage ${html(nummer)} zum Pflichtenheft Planlauf</div>
-  <div class="ph-anlage-projekt"><strong>${html(werte.station)}</strong><br>${html(werte.projektname)}</div>
+  <div class="ph-anlage-projekt"><strong>${html(zeilen[0])}</strong><br>${html(zeilen[1])}</div>
   <h2 class="ph-anlage-titel">${html(titel)}</h2>
 </div>`;
 }
@@ -567,8 +618,8 @@ export const PFLICHTENHEFT_STIL = `
   .ph-titel { font-size: 20pt; font-weight: 700; margin: 0 0 4mm; }
   .ph-projekt { font-size: 13pt; margin: 0 0 6mm; }
   .ph-bild { width: 100%; max-height: 95mm; object-fit: cover; display: block; margin: 0 0 6mm; }
-  .ph-station { font-size: 15pt; font-weight: 700; margin: 0; }
-  .ph-name { font-size: 13pt; font-weight: 700; margin: 0 0 14mm; }
+  .ph-deckblatt-text { font-size: 13pt; margin: 0 0 14mm; }
+  .ph-deckblatt-text p { margin: 0 0 3mm; }
   .ph-unterschrift { margin: 0 0 11mm; }
   .ph-u-werte { display: grid; grid-template-columns: 1.1fr 1.3fr 1fr; gap: 4mm; min-height: 5mm; }
   .ph-u-linie { border-top: 1px dashed #1d1d1f; padding-top: 1mm; font-size: 9pt; }
@@ -615,6 +666,11 @@ export function pflichtenheftHtml(data: AppData, project: Project, ph: Pflichten
   const anlage = anlagenNummer(ph.abschnitte);
   const titel = textEinsetzen(ph.titel, werte);
   const einheit = project.settings.fristenInArbeitstagen ? 'AT' : 'KT';
+  // Kopf der Anlagen: Personenbahnhöfe Station und Projekt, Fahrweg Projekt und Strecke
+  const mitStation = GESCHAEFTSBEREICHE.find((g) => g.id === geschaeftsbereichVon(werte.geschaeftsbereich))?.station ?? true;
+  const kopf: [string, string] = mitStation
+    ? [werte.station, werte.projektname]
+    : [werte.projektname, werte.streckenabschnitte.split('\n')[0] ?? ''];
   const workflows = ph.workflows
     .map((w) => ({ w, t: data.templates.find((t) => t.id === w.workflowId) }))
     .filter((x): x is { w: (typeof ph.workflows)[number]; t: NonNullable<typeof x.t> } => !!x.t);
@@ -624,11 +680,11 @@ export function pflichtenheftHtml(data: AppData, project: Project, ph: Pflichten
   // Deckblatt
   teile.push(`<section class="ph-deckblatt">
   <h1 class="ph-titel">${html(titel)}</h1>
-  <div class="ph-projekt">Projekt ${html(project.gNummer || project.nummer)}</div>
   ${ph.titelbild ? `<img class="ph-bild" src="${ph.titelbild.replace(/"/g, '%22')}" alt="">` : ''}
-  <p class="ph-station">${html(werte.station)}</p>
-  <p class="ph-name">${html(project.name)}</p>
-  ${(['aufgestellt', 'freigegeben', 'geaendert'] as const).map((a) => unterschriftHtml(unterschriftWert(data, project, ph, a), a)).join('')}
+  <div class="ph-deckblatt-text">${textHtml(textEinsetzen(ph.deckblatt, werte))}</div>
+  ${(letzteAenderung(ph) ? (['aufgestellt', 'freigegeben', 'geaendert'] as const) : (['aufgestellt', 'freigegeben'] as const))
+    .map((a) => unterschriftHtml(unterschriftWert(data, project, ph, a), a))
+    .join('')}
 </section>`);
 
   // Inhaltsverzeichnis
@@ -681,7 +737,7 @@ export function pflichtenheftHtml(data: AppData, project: Project, ph: Pflichten
     const hoeheMm = Math.max(90, 150 - Math.ceil(ph.workflowHinweis.trim().length / 160) * 4.5);
     const { svg } = ablaufDiagrammSvg(t.steps, { einheit, hoeheMm });
     teile.push(`<section class="ph-umbruch ph-quer">
-  ${anlagenKopf(`${anlage}.1.${i + 1}`, w.titel, werte)}
+  ${anlagenKopf(`${anlage}.1.${i + 1}`, w.titel, kopf)}
   <div class="ph-diagramm">${svg}</div>
   ${hinweis}
 </section>`);
@@ -689,18 +745,21 @@ export function pflichtenheftHtml(data: AppData, project: Project, ph: Pflichten
 
   // Anlage Plancodierung – auf der Querformatseite der Plancodierung (pc-quer), deren Spaltenbreiten darauf rechnen
   teile.push(`<section class="ph-umbruch ph-pc">
-  ${anlagenKopf(`${anlage}.2`, `Plancodierungsschema für das Projekt ${werte.station || project.name}`, werte)}
+  ${anlagenKopf(`${anlage}.2`, `Plancodierungsschema für das Projekt ${(mitStation && werte.station) || project.name}`, kopf)}
   ${plancodierungHtml(ph.plancodierung, '')}
 </section>`);
 
-  // Anlage Änderungsindex
-  const aenderungen = [...ph.aenderungen].sort((a, b) => b.datum.localeCompare(a.datum));
+  // Anlage Änderungsindex: die Änderungen aller Ausgaben nach der ersten, jüngste zuerst
+  const aenderungen = ph.ausgaben
+    .slice(1)
+    .flatMap((a) => a.aenderungen.map((x) => ({ ...x, datum: a.datum })))
+    .reverse();
   teile.push(`<section class="ph-umbruch">
-  ${anlagenKopf(`${anlage}.3`, 'Änderungsindex', werte)}
+  ${anlagenKopf(`${anlage}.3`, 'Änderungsindex', kopf)}
   ${
     aenderungen.length === 0
       ? '<p class="grau">Noch keine Änderungen.</p>'
-      : `<table class="ph-tab ph-index"><tr><th>Seite / Anlagen-Nr.</th><th>Änderung</th><th>Datum</th></tr>${aenderungen
+      : `<table class="ph-tab ph-index"><tr><th>Kapitel / Anlage</th><th>Änderung</th><th>Datum</th></tr>${aenderungen
           .map(
             (x) =>
               `<tr><td class="stelle">${html(x.stelle)}</td><td>${html(x.text)}</td><td class="datum num">${html(formatDate(x.datum))}</td></tr>`,

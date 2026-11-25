@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 16;
+export const DATEN_VERSION = 17;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -99,6 +99,36 @@ export interface Strecke {
   nummer: string;
   /** z. B. „Bietigheim-Bissingen – Osterburken“. */
   bezeichnung: string;
+  /** Betroffener Abschnitt (Fahrweg), z. B. „271,300“ bis „344,875“; leer = ohne Angabe. */
+  kmVon?: string;
+  kmBis?: string;
+}
+
+/**
+ * Geschäftsbereich der DB InfraGO, für den das Projekt geplant wird. Er
+ * bestimmt, welche Stammdaten gelten (`GESCHAEFTSBEREICHE`) und aus welcher
+ * Vorlage ein Pflichtenheft entsteht.
+ */
+export type GeschaeftsbereichId = 'personenbahnhoefe' | 'fahrweg';
+
+export const GESCHAEFTSBEREICHE: {
+  id: GeschaeftsbereichId;
+  label: string;
+  /** Station: Bahnhof bzw. Haltepunkt, Kürzel, Bahnhofsnummer, Stations-km. */
+  station: boolean;
+  /** Je Strecke der betroffene Abschnitt in km. */
+  streckenKm: boolean;
+}[] = [
+  { id: 'personenbahnhoefe', label: 'Personenbahnhöfe', station: true, streckenKm: false },
+  { id: 'fahrweg', label: 'Fahrweg', station: false, streckenKm: true },
+];
+
+/** Auftraggeber, wenn nichts anderes eingetragen ist. */
+export const STANDARD_AUFTRAGGEBER = 'DB InfraGO AG';
+
+/** Geschäftsbereich aus dem eingetragenen Text; ohne Angabe Personenbahnhöfe. */
+export function geschaeftsbereichVon(text: string): GeschaeftsbereichId {
+  return /fahrweg/i.test(text) ? 'fahrweg' : 'personenbahnhoefe';
 }
 
 /** Projektdaten über Nummer und Bezeichnung hinaus – Grundlage des Pflichtenhefts. */
@@ -114,8 +144,10 @@ export interface ProjektStammdaten {
   strecken: Strecke[];
   /** z. B. „DB InfraGO AG“. */
   auftraggeber: string;
-  /** z. B. „Personenbahnhöfe“. */
+  /** „Personenbahnhöfe“ oder „Fahrweg“ (siehe `GESCHAEFTSBEREICHE`). */
   geschaeftsbereich: string;
+  /** Region der DB InfraGO, z. B. „Südwest“ (Datenmanagement). */
+  region: string;
   /** z. B. „Ausführungsplanung“. */
   planungsphase: string;
   /** Zentraler SharePoint-Ordner mit den genehmigten Unterlagen. */
@@ -131,6 +163,7 @@ export function leereStammdaten(): ProjektStammdaten {
     strecken: [],
     auftraggeber: '',
     geschaeftsbereich: '',
+    region: '',
     planungsphase: '',
     sharepointZentral: '',
   };
@@ -177,13 +210,34 @@ export interface Unterschrift {
   name: string;
 }
 
-/** Eintrag im Änderungsindex (Anlage „Änderungsindex“). */
+/** Eintrag im Änderungsindex (Anlage „Änderungsindex“) – entsteht bei einer Ausgabe. */
 export interface PflichtenheftAenderung {
   id: ID;
-  datum: ISODate;
-  /** Seite bzw. Kapitel oder Anlage, z. B. „S. 5 / Kap. 5.4“. */
+  /** Kapitel oder Anlage, z. B. „Kap. 5.4“. */
   stelle: string;
   text: string;
+}
+
+/**
+ * Ausgabe des Pflichtenhefts („Als PDF ausgeben“): Die erste ist die
+ * Aufstellung, jede weitere mit Änderungen erscheint als „Zuletzt geändert“
+ * auf dem Deckblatt und mit ihren Änderungen im Änderungsindex.
+ */
+export interface PflichtenheftAusgabe {
+  id: ID;
+  datum: ISODate;
+  /** Wer ausgegeben hat (Name unter „Angemeldet als“). */
+  von: string;
+  aenderungen: PflichtenheftAenderung[];
+}
+
+/** Inhalt einer Stelle des Pflichtenhefts bei der letzten Ausgabe – zum Erkennen von Änderungen. */
+export interface PflichtenheftStandEintrag {
+  /** Kapitel oder Anlage zum Zeitpunkt der Ausgabe, z. B. „Kap. 5.4“. */
+  stelle: string;
+  titel: string;
+  /** Prüfsumme des Inhalts. */
+  wert: string;
 }
 
 /**
@@ -213,15 +267,19 @@ export interface PflichtenheftWorkflow {
 }
 
 /** Was ein neues Pflichtenheft aus der Vorlage übernimmt. */
-export type PflichtenheftVorlage = Pick<Pflichtenheft, 'titel' | 'abschnitte' | 'gewerkNamen' | 'workflowHinweis' | 'plancodierung'>;
+export type PflichtenheftVorlage = Pick<
+  Pflichtenheft,
+  'titel' | 'deckblatt' | 'abschnitte' | 'gewerkNamen' | 'workflowHinweis' | 'plancodierung'
+>;
 
 export interface Pflichtenheft {
   /** Titel auf dem Deckblatt, mit Platzhaltern. */
   titel: string;
+  /** Text unter dem Titel (Projektnummer, Station bzw. Strecke …), mit Platzhaltern. */
+  deckblatt: string;
   abschnitte: PflichtenheftAbschnitt[];
   aufgestellt: Unterschrift;
   freigegeben: Unterschrift;
-  geaendert: Unterschrift;
   /** Bild auf dem Deckblatt als Data-URL (verkleinert), leer = ohne Bild. */
   titelbild: string;
   /** Bezeichnungen der Gewerke in den Ansprechpartnern (Kürzel → Klartext). */
@@ -232,7 +290,10 @@ export interface Pflichtenheft {
   /** Text unter jedem Ablaufdiagramm (Fußnote, Hinweise zum Zeitbedarf), mit Platzhaltern. */
   workflowHinweis: string;
   plancodierung: Plancodierung;
-  aenderungen: PflichtenheftAenderung[];
+  /** Ausgaben, älteste zuerst; „Zuletzt geändert“ und Änderungsindex entstehen daraus. */
+  ausgaben: PflichtenheftAusgabe[];
+  /** Inhalt bei der letzten Ausgabe (Schlüssel je Stelle); null = noch nicht ausgegeben. */
+  stand: Record<string, PflichtenheftStandEintrag> | null;
 }
 
 export interface ProjectSettings {
@@ -990,10 +1051,10 @@ export interface AppData {
   templates: ProcessTemplate[];
   runs: PlanRun[];
   /**
-   * Vorlage für neue Pflichtenhefte (Abschnitte und Plancodierung); fehlt sie,
-   * gilt die mitgelieferte (domain/pflichtenheft.ts).
+   * Vorlagen für neue Pflichtenhefte je Geschäftsbereich („Als Vorlage
+   * speichern“); fehlt eine, gilt die mitgelieferte (domain/pflichtenheftVorlagen.ts).
    */
-  pflichtenheftVorlage?: PflichtenheftVorlage;
+  pflichtenheftVorlagen?: Partial<Record<GeschaeftsbereichId, PflichtenheftVorlage>>;
   /** Vermerke über gelöschte Elemente. */
   geloescht: Loeschvermerk[];
 }
