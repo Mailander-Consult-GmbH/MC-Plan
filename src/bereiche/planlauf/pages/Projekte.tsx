@@ -14,7 +14,7 @@ import {
   useArchivierte,
   useSucheOhneTreffer,
 } from '../../../gemeinsam/ProjektBereiche';
-import type { Project, ProjectStatus } from '../domain/types';
+import { leereStammdaten, type Project, type ProjectStatus } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -160,6 +160,7 @@ export function ProjektDialog({
   const toast = useToast();
   const [form, setForm] = useState({
     nummer: project?.nummer ?? '',
+    gNummer: project?.gNummer ?? '',
     name: project?.name ?? '',
     status: project?.status ?? ('aktiv' as ProjectStatus),
     markiert: project?.markiert ?? true,
@@ -175,7 +176,7 @@ export function ProjektDialog({
       return;
     }
     // Leerzeichen am Rand gehen nicht in den Bestand – die Nummer verknüpft das Projekt mit den anderen Bereichen
-    const werte = { ...form, name: form.name.trim(), nummer: form.nummer.trim() };
+    const werte = { ...form, name: form.name.trim(), nummer: form.nummer.trim(), gNummer: form.gNummer.trim() };
     if (project) {
       updateProject(project.id, werte);
       toast('Projekt aktualisiert.');
@@ -184,6 +185,7 @@ export function ProjektDialog({
     }
     const id = addProject({
       ...werte,
+      stammdaten: leereStammdaten(),
       settings: {
         erinnerungVorlaufTage: 5,
         fristenInArbeitstagen: true,
@@ -228,6 +230,9 @@ export function ProjektDialog({
       <div className="form-grid">
         <Field label="Projektnummer">
           <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="K1234" />
+        </Field>
+        <Field label="G-Nummer (Projektnummer der DB)">
+          <TextInput value={form.gNummer} onChange={(v) => set('gNummer', v)} placeholder="G.011606148" />
         </Field>
         <Field label="Status">
           <Select value={form.status} onChange={(v) => set('status', v as ProjectStatus)} options={STATUS_OPTIONEN} />

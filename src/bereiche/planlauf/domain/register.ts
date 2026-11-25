@@ -4,7 +4,7 @@
  * Projekt führen.
  *
  * * `sichtFuerRegister` beschreibt den Bestand für den Abgleich: Nummer,
- *   Bezeichnung, Beschreibung der Projekte; Kontaktdaten und Funktionen der
+ *   G-Nummer, Bezeichnung, Beschreibung der Projekte; Kontaktdaten und Funktionen der
  *   Kontakte. Der eigene Kontakt (*Angemeldet als*) und die Funktion
  *   Planlaufmanagement bleiben außen vor – sie gehören zur angemeldeten Person
  *   dieses Arbeitsplatzes.
@@ -20,6 +20,7 @@ import { kontaktLoeschen, projektLoeschen, type Vorgang } from './bestand';
 import {
   istEigeneFunktion,
   kuerzelAus,
+  leereStammdaten,
   seiteAusFunktion,
   type AppData,
   type Contact,
@@ -58,7 +59,7 @@ export function sichtFuerRegister(d: AppData): Sicht {
         return (inhaber.get(`${person.projektId}|${k}`) ?? []).some((id) => id !== person.id);
       });
     },
-    projekte: d.projects.map((p) => ({ id: p.id, nummer: p.nummer, name: p.name, beschreibung: p.beschreibung })),
+    projekte: d.projects.map((p) => ({ id: p.id, nummer: p.nummer, gNummer: p.gNummer, name: p.name, beschreibung: p.beschreibung })),
     personen: d.contacts
       .filter((c) => !c.eigen)
       .map((c) => {
@@ -78,6 +79,8 @@ export function sichtFuerRegister(d: AppData): Sicht {
           firma: c.firma,
           email: c.email,
           telefon: c.telefon,
+          mobil: c.mobil,
+          oe: c.oe,
           anschrift: c.anschrift,
           notiz: c.notiz,
           funktionen,
@@ -93,15 +96,19 @@ const felder = (p: RegisterPerson) => ({
   firma: p.firma,
   email: p.email,
   telefon: p.telefon,
+  mobil: p.mobil,
+  oe: p.oe,
   anschrift: p.anschrift,
   notiz: p.notiz,
 });
 
 /** Neues Projekt aus dem Register – mit den Einstellungen eines im Planlaufmanagement angelegten Projekts. */
-function neuesProjekt(id: ID, werte: { nummer: string; name: string; beschreibung: string }): Project {
+function neuesProjekt(id: ID, werte: { nummer: string; gNummer: string | null; name: string; beschreibung: string }): Project {
   return {
     id,
     nummer: werte.nummer,
+    gNummer: werte.gNummer ?? '',
+    stammdaten: leereStammdaten(),
     name: werte.name || 'Ohne Bezeichnung',
     status: 'aktiv',
     markiert: true,
@@ -139,10 +146,14 @@ export function registerPlanAnwenden(daten: AppData, plan: Plan, vorgang: Vorgan
   // Stammdaten
   for (const a of plan.projekteAendern) {
     const p = d.projects.find((x) => x.id === a.id);
-    if (!p || (p.nummer === a.nummer && p.name === a.name && p.beschreibung === a.beschreibung)) continue;
+    // Eine G-Nummer, die das Register (noch) nicht kennt (null), bleibt stehen
+    const gNummer = a.gNummer ?? p?.gNummer ?? '';
+    if (!p || (p.nummer === a.nummer && p.gNummer === gNummer && p.name === a.name && p.beschreibung === a.beschreibung)) continue;
     d = {
       ...d,
-      projects: d.projects.map((x) => (x.id === a.id ? { ...x, nummer: a.nummer, name: a.name, beschreibung: a.beschreibung } : x)),
+      projects: d.projects.map((x) =>
+        x.id === a.id ? { ...x, nummer: a.nummer, gNummer, name: a.name, beschreibung: a.beschreibung } : x,
+      ),
     };
   }
 

@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 15;
+export const DATEN_VERSION = 16;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -72,15 +72,162 @@ export type ProjectStatus = 'aktiv' | 'pausiert' | 'abgeschlossen';
 
 export interface Project {
   id: ID;
+  /** Projektnummer von Mailänder Consult (z. B. „K2525“). */
   nummer: string;
+  /**
+   * Projektnummer der DB („G-Nummer“, z. B. „G.011606148“) – geteilt über das
+   * Projektregister, in der Baubetriebsplanung als `dbGNummer` geführt.
+   */
+  gNummer: string;
   name: string;
   status: ProjectStatus;
   /** Markierte Projekte erscheinen in der Übersicht und in der Seitenleiste. */
   markiert: boolean;
   beschreibung: string;
+  /** Angaben zu Station und Strecke, Auftraggeber und Planungsphase (Projektdaten). */
+  stammdaten: ProjektStammdaten;
   settings: ProjectSettings;
+  /** Pflichtenheft des Projekts; fehlt, solange keines angelegt ist. */
+  pflichtenheft?: Pflichtenheft;
   /** Zeitpunkt der letzten Änderung (ISO-Zeitstempel), vom Store gesetzt. */
   geaendertAm?: string;
+}
+
+/** Von den Planungen betroffene Strecke. */
+export interface Strecke {
+  /** Streckennummer, z. B. „4900“. */
+  nummer: string;
+  /** z. B. „Bietigheim-Bissingen – Osterburken“. */
+  bezeichnung: string;
+}
+
+/** Projektdaten über Nummer und Bezeichnung hinaus – Grundlage des Pflichtenhefts. */
+export interface ProjektStammdaten {
+  /** Bahnhof bzw. Haltepunkt, z. B. „Hp Herbolzheim (Jagst)“. */
+  station: string;
+  /** Kürzel der Betriebsstelle (Ril 100), z. B. „THZ“. */
+  stationKuerzel: string;
+  /** Bahnhofsnummer, z. B. „2700“. */
+  bahnhofsNummer: string;
+  /** Stations-Kilometrierung, z. B. „73,589 – 73,760“. */
+  stationsKm: string;
+  strecken: Strecke[];
+  /** z. B. „DB InfraGO AG“. */
+  auftraggeber: string;
+  /** z. B. „Personenbahnhöfe“. */
+  geschaeftsbereich: string;
+  /** z. B. „Ausführungsplanung“. */
+  planungsphase: string;
+  /** Zentraler SharePoint-Ordner mit den genehmigten Unterlagen. */
+  sharepointZentral: string;
+}
+
+export function leereStammdaten(): ProjektStammdaten {
+  return {
+    station: '',
+    stationKuerzel: '',
+    bahnhofsNummer: '',
+    stationsKm: '',
+    strecken: [],
+    auftraggeber: '',
+    geschaeftsbereich: '',
+    planungsphase: '',
+    sharepointZentral: '',
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Pflichtenheft                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Art eines Abschnitts im Pflichtenheft:
+ * * `text` – freier Text mit Platzhaltern (siehe domain/pflichtenheft.ts),
+ * * `ansprechpartner` – Tabelle der Personen, die die genannten Funktionen ausfüllen,
+ * * `plm` – das Planlaufmanagement: die angemeldete Person und weitere Kontakte,
+ * * `anlagen` – Anlagenverzeichnis, gebildet aus den Anlagen.
+ */
+export type PflichtenheftArt = 'text' | 'ansprechpartner' | 'plm' | 'anlagen';
+
+export interface PflichtenheftAbschnitt {
+  id: ID;
+  art: PflichtenheftArt;
+  /** 1 = Kapitel, 2 = Unterkapitel; die Nummern entstehen aus der Reihenfolge. */
+  ebene: 1 | 2;
+  titel: string;
+  /**
+   * Text des Abschnitts (bei allen Arten möglich, steht vor Tabelle bzw.
+   * Verzeichnis): Absätze durch Leerzeilen getrennt, `**fett**`, Platzhalter
+   * in doppelten geschweiften Klammern.
+   */
+  text: string;
+  /** Nur `ansprechpartner`: Bezeichnungen der Funktionen – in allen Gewerken. */
+  funktionen: string[];
+  /** Nur `plm`: weitere Kontakte des Projekts neben der angemeldeten Person. */
+  kontaktIds: ID[];
+}
+
+/** Unterschriftszeile auf dem Deckblatt; leere Felder füllt KaPlan vor. */
+export interface Unterschrift {
+  ort: string;
+  datum: ISODate | null;
+  /** „Funktion (OE)“, z. B. „PLM, Mailänder Consult“. */
+  funktion: string;
+  /** z. B. „i. A. Fred Bittighofer“. */
+  name: string;
+}
+
+/** Eintrag im Änderungsindex (Anlage „Änderungsindex“). */
+export interface PflichtenheftAenderung {
+  id: ID;
+  datum: ISODate;
+  /** Seite bzw. Kapitel oder Anlage, z. B. „S. 5 / Kap. 5.4“. */
+  stelle: string;
+  text: string;
+}
+
+/**
+ * Kategorie der Plancodierung. Die Einträge stehen als Zeilen
+ * „Code<Tab>Bezeichnung“ (auch „Code – Bezeichnung“ oder zwei Leerzeichen);
+ * eine Zeile „# Überschrift“ gliedert die Liste.
+ */
+export interface CodierungsKategorie {
+  id: ID;
+  name: string;
+  /** Beispiel für diese Stelle des Codes, z. B. „THZ“. */
+  beispiel: string;
+  eintraege: string;
+}
+
+export interface Plancodierung {
+  kategorien: CodierungsKategorie[];
+  /** Erläuterung unter dem Schema (Trennzeichen, zulässige Zeichen). */
+  hinweis: string;
+}
+
+/** Workflow in der Anlage „Planläufe und Ablaufdiagramme“. */
+export interface PflichtenheftWorkflow {
+  workflowId: ID;
+  /** Titel der Anlage, z. B. „Planlauf nach VV Bau ohne Prüfstatiker“. */
+  titel: string;
+}
+
+export interface Pflichtenheft {
+  /** Titel auf dem Deckblatt, mit Platzhaltern. */
+  titel: string;
+  abschnitte: PflichtenheftAbschnitt[];
+  aufgestellt: Unterschrift;
+  freigegeben: Unterschrift;
+  geaendert: Unterschrift;
+  /** Bild auf dem Deckblatt als Data-URL (verkleinert), leer = ohne Bild. */
+  titelbild: string;
+  /** Bezeichnungen der Gewerke in den Ansprechpartnern (Kürzel → Klartext). */
+  gewerkNamen: Record<string, string>;
+  /** Abweichende Bezeichnungen einzelner Zeilen: Abschnitt|Funktion|Gewerk → Text. */
+  zeilenNamen: Record<string, string>;
+  workflows: PflichtenheftWorkflow[];
+  plancodierung: Plancodierung;
+  aenderungen: PflichtenheftAenderung[];
 }
 
 export interface ProjectSettings {
@@ -223,6 +370,10 @@ export interface Contact {
   firma: string;
   email: string;
   telefon: string;
+  /** Mobilfunknummer – geteilt über das Projektregister. */
+  mobil: string;
+  /** Organisationseinheit (z. B. „V.IOF 21“) – geteilt über das Projektregister. */
+  oe: string;
   /** Straße, PLZ und Ort – mehrzeilig. */
   anschrift: string;
   /** SharePoint-Ordner, in dem die Unterlagen für die Person bereitliegen (Versandmail). */
@@ -833,6 +984,11 @@ export interface AppData {
   documents: PlanDocument[];
   templates: ProcessTemplate[];
   runs: PlanRun[];
+  /**
+   * Vorlage für neue Pflichtenhefte (Abschnitte und Plancodierung); fehlt sie,
+   * gilt die mitgelieferte (domain/pflichtenheft.ts).
+   */
+  pflichtenheftVorlage?: Pick<Pflichtenheft, 'titel' | 'abschnitte' | 'gewerkNamen' | 'plancodierung'>;
   /** Vermerke über gelöschte Elemente. */
   geloescht: Loeschvermerk[];
 }

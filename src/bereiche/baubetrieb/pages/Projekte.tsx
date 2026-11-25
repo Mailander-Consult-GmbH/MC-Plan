@@ -174,7 +174,7 @@ export function ProjektDialog({
   const [form, setForm] = useState({
     name: projekt?.name ?? uebernahme?.name ?? '',
     projektnummer: projekt?.projektnummer ?? uebernahme?.nummer ?? '',
-    dbGNummer: projekt?.dbGNummer ?? '',
+    dbGNummer: projekt?.dbGNummer ?? uebernahme?.gNummer ?? '',
     fahrplanjahre: projekt?.fahrplanjahre ?? [],
     inbetriebnahme: projekt?.inbetriebnahme ?? '',
     bemerkung: projekt?.bemerkung ?? (uebernahme ? beschreibungOhneVermerke(uebernahme.beschreibung) : ''),
@@ -214,6 +214,7 @@ export function ProjektDialog({
       registerAendern((r) =>
         inBereichUebernehmen(r, uebernahme.id, 'baubetrieb', id, {
           nummer: werte.projektnummer,
+          gNummer: werte.dbGNummer,
           name: werte.name,
           jetzt: new Date().toISOString(),
         }),

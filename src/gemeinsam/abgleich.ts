@@ -41,6 +41,8 @@ import {
 export interface LokalesProjekt {
   id: ID;
   nummer: string;
+  /** G-Nummer; null bzw. ohne Angabe: Der Bereich führt keine. */
+  gNummer?: string | null;
   name: string;
   /** null: Der Bereich führt keine Beschreibung. */
   beschreibung: string | null;
@@ -69,7 +71,8 @@ export interface Sicht {
 /** Was ein Bereich aus dem Register übernehmen muss – alle Kennungen sind die des Bereichs. */
 export interface Plan {
   projekteAnlegen: { id: ID; projekt: RegisterProjekt }[];
-  projekteAendern: { id: ID; nummer: string; name: string; beschreibung: string }[];
+  /** `gNummer` null: Das Register kennt (noch) keine – die des Bereichs bleibt. */
+  projekteAendern: { id: ID; nummer: string; gNummer: string | null; name: string; beschreibung: string }[];
   projekteLoeschen: ID[];
   /** Personen in bestehenden oder im selben Plan angelegten Projekten. */
   personenAnlegen: { id: ID; projektId: ID; person: RegisterPerson }[];
@@ -104,7 +107,20 @@ function gleichesProjekt(p: RegisterProjekt, l: LokalesProjekt): boolean {
 }
 
 function stammdatenWeichen(l: LokalesProjekt, p: RegisterProjekt): boolean {
-  return l.nummer !== p.nummer || l.name !== p.name || (l.beschreibung !== null && l.beschreibung !== p.beschreibung);
+  return (
+    l.nummer !== p.nummer ||
+    l.name !== p.name ||
+    (l.beschreibung !== null && l.beschreibung !== p.beschreibung) ||
+    (l.gNummer != null && p.gNummer !== null && l.gNummer !== p.gNummer)
+  );
+}
+
+/**
+ * Kennt das Register noch keine G-Nummer (`null`, etwa nach der Umstellung auf
+ * Fassung 4), trägt die des Bereichs sie ein – sofern er eine nennt.
+ */
+function gNummerErgaenzen(p: RegisterProjekt, l: LokalesProjekt): void {
+  if (p.gNummer === null && l.gNummer != null && l.gNummer.trim()) p.gNummer = l.gNummer;
 }
 
 /** Kennzeichen der Vermerke, die `stammdatenZusammenfuehren` an die Beschreibung anhängt. */
@@ -124,6 +140,7 @@ function stammdatenZusammenfuehren(p: RegisterProjekt, l: LokalesProjekt, bereic
   const titel = PROJEKT_BEREICHE.find((b) => b.id === bereich)?.titel ?? bereich;
   const einzeilig = (t: string) => t.replace(/\s*\n\s*/g, ' ');
   if (!p.nummer.trim() && l.nummer.trim()) p.nummer = l.nummer;
+  if (!(p.gNummer ?? '').trim() && l.gNummer != null && l.gNummer.trim()) p.gNummer = l.gNummer;
 
   const neu: string[] = [];
   const name = l.name.trim();
@@ -229,6 +246,7 @@ export function uebertragen(bereich: ProjektBereich, alt: Sicht, neu: Sicht, reg
     if (a.nummer !== n.nummer) (reg.nummer = n.nummer), (geaendert = true);
     if (a.name !== n.name) (reg.name = n.name), (geaendert = true);
     if (n.beschreibung !== null && a.beschreibung !== n.beschreibung) (reg.beschreibung = n.beschreibung), (geaendert = true);
+    if (n.gNummer != null && (a.gNummer ?? null) !== n.gNummer) (reg.gNummer = n.gNummer), (geaendert = true);
     if (geaendert) reg.geaendertAm = jetzt;
   }
 
@@ -352,8 +370,9 @@ export function abgleichen(
       continue;
     }
     m.offen = false;
+    gNummerErgaenzen(p, l);
     if (!projektWeg.has(l.id) && stammdatenWeichen(l, p)) {
-      plan.projekteAendern.push({ id: l.id, nummer: p.nummer, name: p.name, beschreibung: p.beschreibung });
+      plan.projekteAendern.push({ id: l.id, nummer: p.nummer, gNummer: p.gNummer, name: p.name, beschreibung: p.beschreibung });
     }
   }
 
@@ -368,13 +387,20 @@ export function abgleichen(
       // Abweichendes des Bereichs bleibt in der Beschreibung vermerkt
       stammdatenZusammenfuehren(gleich, l, bereich);
       if (stammdatenWeichen(l, gleich)) {
-        plan.projekteAendern.push({ id: l.id, nummer: gleich.nummer, name: gleich.name, beschreibung: gleich.beschreibung });
+        plan.projekteAendern.push({
+          id: l.id,
+          nummer: gleich.nummer,
+          gNummer: gleich.gNummer,
+          name: gleich.name,
+          beschreibung: gleich.beschreibung,
+        });
       }
       continue;
     }
     r.projekte.push({
       id: r.projekte.some((p) => p.id === l.id) ? newId('prj') : l.id,
       nummer: l.nummer,
+      gNummer: l.gNummer != null && l.gNummer.trim() ? l.gNummer : null,
       name: l.name,
       beschreibung: l.beschreibung ?? '',
       angelegtAm: jetzt,
@@ -453,24 +479,27 @@ export function bereichArchivieren(register: Register, bereich: ProjektBereich, 
  *
  * Legt der Bereich das Projekt selbst an (Maske „Neues Projekt“ mit den
  * bekannten Angaben vorausgefüllt – Baubetriebsplanung), nennt er mit
- * `stammdaten`, was dort als Projektnummer und Bezeichnung steht: Wurde es in
- * der Maske geändert, gilt es im Register und damit in allen Bereichen – sonst
- * nähme der nächste Abgleich die Änderung zurück.
+ * `stammdaten`, was dort als Projektnummer, G-Nummer und Bezeichnung steht:
+ * Wurde es in der Maske geändert, gilt es im Register und damit in allen
+ * Bereichen – sonst nähme der nächste Abgleich die Änderung zurück. Eine leere
+ * G-Nummer lässt die des Registers stehen.
  */
 export function inBereichUebernehmen(
   register: Register,
   id: ID,
   bereich: ProjektBereich,
   lokaleId: ID,
-  stammdaten?: { nummer: string; name: string; jetzt: string },
+  stammdaten?: { nummer: string; gNummer?: string; name: string; jetzt: string },
 ): Register {
   const r = klon(register);
   const p = r.projekte.find((x) => x.id === id);
   if (!p || p.bereiche[bereich]) return register;
   p.bereiche[bereich] = { id: lokaleId, archiviert: false, offen: true };
-  if (stammdaten && (stammdaten.nummer !== p.nummer || stammdaten.name !== p.name)) {
+  const gNummer = stammdaten?.gNummer?.trim() ? stammdaten.gNummer : p.gNummer;
+  if (stammdaten && (stammdaten.nummer !== p.nummer || stammdaten.name !== p.name || gNummer !== p.gNummer)) {
     p.nummer = stammdaten.nummer;
     p.name = stammdaten.name;
+    p.gNummer = gNummer;
     p.geaendertAm = stammdaten.jetzt;
   }
   return r;

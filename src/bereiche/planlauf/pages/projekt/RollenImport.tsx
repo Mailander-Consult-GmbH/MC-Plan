@@ -267,6 +267,8 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           firma: wert(zeile, 'firma'),
           email: wert(zeile, 'email'),
           telefon: wert(zeile, 'telefon'),
+          mobil: wert(zeile, 'mobil'),
+          oe: wert(zeile, 'oe'),
           anschrift: anschriftBauen(
             wert(zeile, 'strasse'),
             wert(zeile, 'hausnummer'),

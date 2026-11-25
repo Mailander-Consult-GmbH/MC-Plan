@@ -81,7 +81,9 @@ export const ROLLEN_KOPFZEILE = [
   'Vorname',
   'Name',
   'Firma',
+  'OE',
   'Telefon',
+  'Mobil',
   'Email',
   'Straße',
   'Nr.',
@@ -100,7 +102,9 @@ export const ROLLEN_SPALTEN: Record<string, string[]> = {
   vorname: ['Vorname'],
   nachname: ['Name', 'Nachname'],
   firma: ['Firma', 'Büro', 'Unternehmen'],
+  oe: ['OE', 'Organisationseinheit'],
   telefon: ['Telefon', 'Tel', 'Telefonnummer'],
+  mobil: ['Mobil', 'Mobilfunk', 'Handy', 'Mobiltelefon'],
   email: ['Email', 'E-Mail', 'Mail'],
   strasse: ['Straße', 'Strasse'],
   hausnummer: ['Nr.', 'Nr', 'Hausnummer'],
@@ -112,10 +116,10 @@ export const ROLLEN_SPALTEN: Record<string, string[]> = {
 };
 
 export const ROLLEN_BEISPIELE: string[][] = [
-  ['KIB', 'Fachplaner', 'FP', 'Frau', 'Katrin', 'Berger', 'Ingenieurbüro Berger', '+49 40 998877-12', 'k.berger@example.de', 'Billstraße', '88', '20539', 'Hamburg', 'Fachplanung Ingenieurbau', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Eingang', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Ausgang'],
-  ['LST', 'Fachtechnischer Prüfer', 'PSV', 'Herr', 'Dietmar', 'Krause', 'Prüfstelle Krause', '+49 4131 309-0', 'd.krause@example.de', 'Am Ochsenmarkt', '1', '21335', 'Lüneburg', '', '', ''],
-  ['Übergreifend', 'Projektleitung', 'PL', 'Frau', 'Sabine', 'Ortmann', 'Projektleitung', '+49 40 123456-01', 's.ortmann@example.de', 'Hafenstraße', '12', '20359', 'Hamburg', '', '', ''],
-  ['BÜ', 'Fachplaner', 'FP', 'Herr', 'Jens', 'Harms', 'Harms Planung', '+49 40 556677-3', 'j.harms@example.de', 'Deichweg', '4', '21079', 'Hamburg', 'Gewerk und Funktion werden beim Import angelegt', '', ''],
+  ['KIB', 'Fachplaner', 'FP', 'Frau', 'Katrin', 'Berger', 'Ingenieurbüro Berger', '', '+49 40 998877-12', '+49 171 2233445', 'k.berger@example.de', 'Billstraße', '88', '20539', 'Hamburg', 'Fachplanung Ingenieurbau', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Eingang', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Ausgang'],
+  ['LST', 'Fachtechnischer Prüfer', 'PSV', 'Herr', 'Dietmar', 'Krause', 'Prüfstelle Krause', '', '+49 4131 309-0', '', 'd.krause@example.de', 'Am Ochsenmarkt', '1', '21335', 'Lüneburg', '', '', ''],
+  ['Übergreifend', 'Projektleitung', 'PL', 'Frau', 'Sabine', 'Ortmann', 'Projektleitung', 'I.IV-N-2', '+49 40 123456-01', '', 's.ortmann@example.de', 'Hafenstraße', '12', '20359', 'Hamburg', '', '', ''],
+  ['BÜ', 'Fachplaner', 'FP', 'Herr', 'Jens', 'Harms', 'Harms Planung', '', '+49 40 556677-3', '', 'j.harms@example.de', 'Deichweg', '4', '21079', 'Hamburg', 'Gewerk und Funktion werden beim Import angelegt', '', ''],
 ];
 
 export function rollenVorlageLaden(): void {
