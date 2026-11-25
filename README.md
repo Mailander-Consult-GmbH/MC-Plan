@@ -1009,8 +1009,29 @@ Einstellungen des Projekts.
   angemeldete Person und dazu gewählte Kontakte (etwa die Vertretung) nebeneinander. Unter den
   Kapiteln stehen die **Bezeichnungen der Gewerke** (etwa KIB → „Konstruktiver Ingenieurbau“).
 * **Planläufe und Ablaufdiagramme** – die Workflows der Anlage mit Titel, Reihenfolge, Entfernen und
-  „Workflow hinzufügen …“; dazu der Hinweis unter jedem Ablaufdiagramm.
-* **Plancodierung** – das Schema der Plancodierung (Anlage „Plancodierung“).
+  „Workflow hinzufügen …“; dazu der Hinweis unter jedem Ablaufdiagramm. Das **Ablaufdiagramm**
+  entsteht aus dem Workflow: links die Frist je Zeile, in der Mitte die Schritte der
+  Projektbeteiligten („Funktion: Schritt“), rechts im blauen Band die des Planlaufmanagements,
+  parallele Blöcke mit ihren Zweigen nebeneinander, Entscheidungen mit den Antworten an den
+  Pfeilen, Abweichungen (etwa „Rückmeldung an Planer“) und Rücksprünge gestrichelt daneben, unten
+  „Gesamtdauer … AT“ im Standardverlauf und eine Legende. Lange Workflows werden kleiner, nicht
+  höher – jedes Diagramm steht samt Kopf und Hinweis auf einer Seite im Querformat.
+* **Plancodierung** – das Schema der Plancodierung (Anlage „Plancodierung“): oben der Beispielcode
+  aus den Beispielen der Kategorien, darunter je Kategorie eine Kachel mit Name, Beispiel und den
+  Einträgen als Zeilen „Code Tab Bezeichnung“ (auch „Code – Bezeichnung“; „# Überschrift“
+  gliedert; aus Excel einfügbar), nach oben/unten, **Kategorie hinzufügen**, Entfernen (mit
+  Rückfrage, wenn sie Einträge hat), und der Hinweis. Mitgeliefert sind die acht Kategorien des
+  Muster-Pflichtenhefts (Projekt, Planungsphase, Planersteller, Planungsfachbereich,
+  Planungsobjekt, Planart, laufende Nummer, Index) mit ihren Katalogen; die Kategorie „Projekt“
+  füllt ein neues Pflichtenheft mit dem Kürzel der Betriebsstelle und der Station. Legt das
+  Pflichtenheft ein Schema fest, prüft die **Planliste** die Plancodierung jedes Plans
+  (`plancodePruefen`): Weicht sie ab, steht neben der Nummer ein oranges Warnzeichen, sein Tooltip
+  nennt die Gründe – unzulässige Zeichen (erlaubt sind a–z, A–Z, Ziffern, „-“ und „_“, die Endung
+  .pdf zählt nicht), falsche Zahl der Kategorien (ohne den Index, den die Planliste in einem
+  eigenen Feld führt, ist eine weniger erlaubt), Codes, die der Katalog nicht kennt (nur bei
+  Katalogen mit Codes; nach „-“ ist die Gliederung frei), eine laufende Nummer mit falscher
+  Stellenzahl. In der Druckfassung steht der Katalog als Tabelle mit einer Spalte je Kategorie;
+  lange Kataloge laufen zweispaltig, die Schrift wird nur so weit kleiner wie nötig.
 * **Änderungsindex** – Datum, Seite bzw. Anlage und Änderung; **+ Änderung** setzt das heutige Datum.
 
 Die **Druckfassung** hat eine eigene, helle Gestaltung: Deckblatt, Inhaltsverzeichnis und die
