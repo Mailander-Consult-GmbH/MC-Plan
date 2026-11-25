@@ -23,9 +23,9 @@ import { registerAendern, useRegister, type RegisterProjekt } from '../../../gem
 import { formatDate, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
-import { Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../../../shared/ui';
-import { ersterTermin, fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon } from '../domain/fristen';
-import { ERSTE_PHASE_LABEL, type ErstePhase, type Projekt } from '../domain/types';
+import { Card, EmptyState, Field, Modal, Search, TextArea, TextInput } from '../../../shared/ui';
+import { ersteAnmeldung, fahrplanjahrBeginn, fahrplanjahrEnde, fahrplanjahrVon } from '../domain/fristen';
+import { ERSTE_PHASE_LABEL, type Projekt } from '../domain/types';
 import type { Route } from '../lib/router';
 import { newId, useStore } from '../store/store';
 
@@ -175,14 +175,14 @@ export function ProjektDialog({
     name: projekt?.name ?? uebernahme?.name ?? '',
     projektnummer: projekt?.projektnummer ?? uebernahme?.nummer ?? '',
     dbGNummer: projekt?.dbGNummer ?? '',
-    erstePhase: projekt?.erstePhase ?? ('skm' as ErstePhase),
     fahrplanjahre: projekt?.fahrplanjahre ?? [],
     inbetriebnahme: projekt?.inbetriebnahme ?? '',
     bemerkung: projekt?.bemerkung ?? (uebernahme ? beschreibungOhneVermerke(uebernahme.beschreibung) : ''),
   });
   const set = <K extends keyof typeof form>(key: K, wert: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: wert }));
 
-  const termin = ersterTermin(form, data.einstellungen);
+  // Phase und Frist der ersten Anmeldung ergeben sich aus dem ersten Fahrplanjahr
+  const erste = ersteAnmeldung(form, data.einstellungen);
 
   const speichern = () => {
     if (!form.name.trim()) {
@@ -268,21 +268,22 @@ export function ProjektDialog({
               <FahrplanjahrWahl jahre={form.fahrplanjahre} onChange={(j) => set('fahrplanjahre', j)} />
             </div>
             <Field
-              label="Prozessphase der ersten Anmeldung"
+              label="Erste Anmeldung"
               hint={
-                termin
-                  ? `Frist laut Richtlinie: ${formatDate(termin)}`
-                  : 'Die Frist ergibt sich, sobald Fahrplanjahre gewählt sind.'
+                erste
+                  ? `Nächster offener Termin laut Richtlinie für das Fahrplanjahr ${erste.fahrplanjahr}`
+                  : 'Ergibt sich, sobald Fahrplanjahre gewählt sind.'
               }
             >
-              <Select
-                value={form.erstePhase}
-                onChange={(v) => set('erstePhase', v as ErstePhase)}
-                options={(Object.keys(ERSTE_PHASE_LABEL) as ErstePhase[]).map((k) => ({
-                  value: k,
-                  label: ERSTE_PHASE_LABEL[k],
-                }))}
-              />
+              <div className="bb-projekt-erste">
+                {erste ? (
+                  <>
+                    <strong>{ERSTE_PHASE_LABEL[erste.phase]}</strong> bis {formatDate(erste.frist)}
+                  </>
+                ) : (
+                  <span className="tertiary">–</span>
+                )}
+              </div>
             </Field>
           </div>
         </section>

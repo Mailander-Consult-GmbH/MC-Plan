@@ -29,8 +29,11 @@ export type ID = string;
  * Fassung 14: Richtlinienfristen mit einem Fenster von Jahren
  * (`RilFrist.jahreVorherAb`); SKM und MKM nach der Richtlinie – 22.07. in den
  * Jahren N−9 bis N−5 bzw. 17.02. in N−4 bis N−3 – statt der Platzhalter.
+ * Fassung 15: Projekte ohne Prozessphase der ersten Anmeldung – Phase und Frist
+ * der ersten Anmeldung ergeben sich aus den Fahrplanjahren (`ersteAnmeldung`
+ * in `fristen.ts`).
  */
-export const DATEN_VERSION = 14;
+export const DATEN_VERSION = 15;
 
 /** Name, solange niemand unter „Angemeldet als“ eingetragen ist. */
 export const STANDARD_BEARBEITER = 'Bearbeitung MIC';
@@ -117,7 +120,7 @@ export const STATUS_ART_LABEL: Record<StatusArt, string> = {
 /**
  * Bezug einer Terminfrist auf die Richtlinie: Ril_SKM, Ril_MKM, Ril_KM N-2,
  * Ril_KM (N-2 oder N-1 – die N-2-Frist, solange sie am Tag des Statuswechsels
- * nicht verstrichen ist und nicht vor der ersten Anmeldung des Projekts liegt),
+ * nicht verstrichen ist),
  * Ril_KKM A und Ril_KKM (je Maßnahmenart). Im
  * Lastenheft hießen sie Ril_skm, Ril_pze, Ril_N-2, Ril_Nx, Ril_A und Ril_X.
  */
@@ -344,7 +347,7 @@ export interface RilFrist {
 export const RIL_PHASE_HINWEIS: Record<Phase, string> = {
   skm: 'Jährlicher Stichtag für mehrere Fahrplanjahre – es gilt der nächste noch offene',
   mkm: 'Jährlicher Stichtag für mehrere Fahrplanjahre – es gilt der nächste noch offene',
-  km: 'Ist die KM-Runde bekannt (Prozessphase in BBPNeo: 2. KP = N-2, 3. KP = N-1), gilt ihre Frist. Sonst gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor der ersten Anmeldung des Projekts liegt, danach die N-1-Frist (Ril_KM).',
+  km: 'Ist die KM-Runde bekannt (Prozessphase in BBPNeo: 2. KP = N-2, 3. KP = N-1), gilt ihre Frist. Sonst gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist, danach die N-1-Frist (Ril_KM).',
   kkm: 'Vorlauf je Maßnahmenart (Ril_KKM); Stichtag der Anmeldung ist der Mittwoch.',
 };
 
@@ -356,7 +359,11 @@ export function rilFristenNachPhase(): { phase: Phase; schluessel: RilSchluessel
   }));
 }
 
-/** Prozessphase der ersten Anmeldung eines Projekts. */
+/**
+ * Prozessphase der ersten Anmeldung eines Projekts – abgeleitet aus dem ersten
+ * betroffenen Fahrplanjahr (`ersteAnmeldung` in `fristen.ts`), kein Feld am
+ * Projekt (bis Fassung 14 war sie es).
+ */
 export type ErstePhase = 'skm' | 'mkm' | 'N-2' | 'N-1' | 'kkm';
 
 export const ERSTE_PHASE_LABEL: Record<ErstePhase, string> = {
@@ -386,11 +393,10 @@ export interface Projekt {
   /** G-Nummer der DB, z. B. „G.016010101“ – ihr ordnet der Import aus BBPNeo die Anmeldungen zu. */
   dbGNummer: string;
   /**
-   * Prozessphase der ersten Anmeldung. Mit dem ersten betroffenen Fahrplanjahr
-   * ergibt sie deren Frist laut Richtlinie (`ersterTermin` in `fristen.ts`).
+   * Betroffene Fahrplanjahre, aufsteigend – je Jahr eine Zeile im Anmeldebedarf.
+   * Aus dem ersten ergeben sich Phase und Frist der ersten Anmeldung
+   * (`ersteAnmeldung` in `fristen.ts`).
    */
-  erstePhase: ErstePhase;
-  /** Betroffene Fahrplanjahre, aufsteigend – je Jahr eine Zeile im Anmeldebedarf. */
   fahrplanjahre: number[];
   inbetriebnahme: ISODate | null;
   /** Projektnummer – über sie verknüpft das Projektregister das Projekt mit den anderen Bereichen. */

@@ -31,7 +31,6 @@ import {
   ALLE_ARTEN,
   ANNEX_VII,
   DATEN_VERSION,
-  ERSTE_PHASE_LABEL,
   LOESCHEN,
   RIL_BEZUG_LABEL,
   RIL_SCHLUESSEL,
@@ -46,7 +45,6 @@ import {
   type BbpStatusZuordnung,
   type Einstellungen,
   type Entscheidung,
-  type ErstePhase,
   type FristRegel,
   type Projekt,
   type RilBezug,
@@ -206,7 +204,6 @@ function aufbereiten(roh: Partial<BaubetriebDaten>): BaubetriebDaten {
       id: text(p.id) || zufallsId('pr'),
       name: text(p.name) || 'Ohne Bezeichnung',
       dbGNummer: text(p.dbGNummer),
-      erstePhase: (p.erstePhase as string) in ERSTE_PHASE_LABEL ? (p.erstePhase as ErstePhase) : 'skm',
       fahrplanjahre: Array.isArray(p.fahrplanjahre)
         ? [...new Set(p.fahrplanjahre.filter((n) => Number.isInteger(n) && n > 1900 && n < 2200))].sort((a, b) => a - b)
         : [],
@@ -425,17 +422,14 @@ const STANDARDS_BIS_FASSUNG5: Record<string, Pick<Workflow, 'name' | 'kurz' | 'b
   },
 };
 
-/** Prozessphase der ersten Anmeldung bis Fassung 5. */
-const ERSTE_PHASE_BIS_FASSUNG5: Record<string, ErstePhase> = { pze: 'mkm', unterjahr: 'kkm' };
-
 /**
  * Hebt Fassung 5 auf Fassung 6: Die Phasen heißen SKM, MKM, KM (n-2 & n-1)
  * und KKM (unterjährig). Die Standard-Workflows erhalten neue Namen,
  * Kurzbezeichnungen und Beschreibungen, soweit diese nicht geändert wurden;
  * die Texte im Statusverlauf folgen. Die Maßnahmenart PzE heißt MKM, A_Vor_N-2,
  * A_Vor_N-1 und A_unterjahr gehen in A auf. Fristbezug und Richtlinienfrist
- * „pze“ heißen „mkm“, die Prozessphase der ersten Anmeldung „mkm“ bzw.
- * „kkm“ statt „pze“ bzw. „unterjahr“.
+ * „pze“ heißen „mkm“ (die damalige Prozessphase der ersten Anmeldung am
+ * Projekt gibt es seit Fassung 15 nicht mehr).
  */
 function ausFassung5(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
   const standard = standardWorkflows();
@@ -491,11 +485,6 @@ function ausFassung5(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
       : a.verlauf,
   }));
 
-  const projekte = (Array.isArray(roh.projekte) ? roh.projekte : []).map((p: Partial<Projekt>) => ({
-    ...p,
-    erstePhase: ERSTE_PHASE_BIS_FASSUNG5[p.erstePhase as string] ?? p.erstePhase,
-  }));
-
   // Die Richtlinienfrist „pze“ heißt „mkm“ – bis Fassung 5 galt allein „pze“.
   const gespeichert: unknown = roh.einstellungen?.rilFristen;
   const einstellungen =
@@ -511,7 +500,6 @@ function ausFassung5(roh: Partial<BaubetriebDaten>): Partial<BaubetriebDaten> {
     einstellungen,
     workflows: workflows as Workflow[],
     anmeldungen: anmeldungen as Anmeldung[],
-    projekte: projekte as Projekt[],
   };
 }
 

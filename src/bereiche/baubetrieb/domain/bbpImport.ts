@@ -28,7 +28,6 @@ import {
   type BaubetriebDaten,
   type BbpPhase,
   type BbpStatusZuordnung,
-  type ErstePhase,
   type ID,
   type ISODate,
   type KmRunde,
@@ -710,15 +709,12 @@ export function bbpImportAnwenden(
       continue;
     }
     const neue = plan.posten.filter((p) => p.gruppe === g.schluessel && p.ergebnis === 'neu').map((p) => p.quelle);
-    const runden = new Set(neue.map((q) => (q.phase === 'kkm' ? 'kkm' : q.kmRunde)));
-    const erstePhase: ErstePhase = runden.has('N-2') ? 'N-2' : runden.has('N-1') ? 'N-1' : 'kkm';
     const id = naechste(ids.projekt, nProjekt++, 'pr');
     projektFuer.set(g.schluessel, id);
     neueProjekte.push({
       id,
       name: g.name,
       dbGNummer: g.projektnummer,
-      erstePhase,
       fahrplanjahre: [...new Set(neue.flatMap((q) => fahrplanjahreZwischen(q.von, q.bis ?? q.von)))].sort(
         (a, b) => a - b,
       ),

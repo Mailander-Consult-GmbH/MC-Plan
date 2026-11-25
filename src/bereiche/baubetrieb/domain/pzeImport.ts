@@ -34,7 +34,7 @@ import { formatDate } from '../../../shared/dates';
 import { datumLesen, spaltenZuordnen } from '../../../shared/xlsxLesen';
 import { bauzeitraumAbgleichen } from './ablauf';
 import { ganzesFahrplanjahr, phaseNachFahrplanjahr } from './fristen';
-import type { Anmeldung, BaubetriebDaten, ErstePhase, ID, ISODate, Projekt, Workflow } from './types';
+import type { Anmeldung, BaubetriebDaten, ID, ISODate, Projekt, Workflow } from './types';
 import { STANDARD_WORKFLOW_ID, startbareWorkflows, zielText } from './workflow';
 
 /* ------------------------------------------------------------------ */
@@ -515,9 +515,6 @@ export function pzeImportAnwenden(
       continue;
     }
     if (g.neu === 0) continue;
-    const neue = plan.posten.filter((p) => p.gruppe === g.schluessel && p.relevant && p.ergebnis === 'neu');
-    const frueheste = neue.reduce((a, b) => (b.fahrplanjahr < a.fahrplanjahr ? b : a));
-    const erstePhase: ErstePhase = workflowVon(frueheste.workflowId)?.arten.includes('MKM') ? 'mkm' : 'skm';
     const id = naechste(ids.projekt, nProjekt++, 'pr');
     projektFuer.set(g.schluessel, id);
     if (g.projekt) pzeProjekte[g.projekt] = id;
@@ -525,7 +522,6 @@ export function pzeImportAnwenden(
       id,
       name: g.name,
       dbGNummer: '',
-      erstePhase,
       fahrplanjahre: g.fahrplanjahre,
       inbetriebnahme: null,
       projektnummer: '',

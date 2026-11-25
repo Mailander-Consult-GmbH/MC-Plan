@@ -19,7 +19,6 @@ import {
   ampelFuer,
   bauzeitraumText,
   erstanmeldungAusstehend,
-  ersterTermin,
   terminfrist,
   type ErstanmeldungEintrag,
 } from '../domain/fristen';
@@ -58,7 +57,6 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
   const eigene = data.anmeldungen.filter((a) => a.projektId === projekt.id);
   const loeschHinweis = useLoeschHinweis('baubetrieb', projekt.id);
   const erstanmeldung = erstanmeldungAusstehend(projekt, data);
-  const ersteFrist = ersterTermin(projekt, data.einstellungen);
   const oeffne = (a: Anmeldung) => navigate({ view: 'anmeldung', projektId: projekt.id, anmeldungId: a.id });
 
   const workflowVon = (a: Anmeldung) => statusVon(data.workflows, a.statusId).workflow.id;
@@ -139,13 +137,6 @@ export function ProjektDetail({ projekt, navigate }: { projekt: Projekt; navigat
               <dd>{formatDate(projekt.inbetriebnahme)}</dd>
             </dl>
             <dl className="kv kv-breit" style={{ margin: 0 }}>
-              <dt>Prozessphase</dt>
-              <dd>
-                {ERSTE_PHASE_LABEL[projekt.erstePhase]}
-                {ersteFrist ? (
-                  <span className="tertiary small"> · erste Anmeldung laut Richtlinie bis {formatDate(ersteFrist)}</span>
-                ) : null}
-              </dd>
               <dt>Betroffene Fahrplanjahre</dt>
               <dd>{projekt.fahrplanjahre.length > 0 ? projekt.fahrplanjahre.join(', ') : '–'}</dd>
               {projekt.bemerkung ? (
@@ -240,7 +231,7 @@ function ErstanmeldungKarte({ eintrag, onBearbeiten }: { eintrag: ErstanmeldungE
     <Card>
       <CardHeader
         titel="Erstanmeldung ausstehend"
-        sub={`Noch keine Anmeldung im Projekt – Prozessphase ${ERSTE_PHASE_LABEL[eintrag.projekt.erstePhase]}`}
+        sub={`Noch keine Anmeldung im Projekt${eintrag.phase ? ` – erste Anmeldung im ${ERSTE_PHASE_LABEL[eintrag.phase]}` : ''}`}
         actions={eintrag.frist ? <AmpelBadge ampel={eintrag.ampel} /> : null}
       />
       <div className="card-pad">
