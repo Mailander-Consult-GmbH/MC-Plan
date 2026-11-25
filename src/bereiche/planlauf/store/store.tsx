@@ -52,14 +52,20 @@ import {
 import { basisplanFestlegen } from '../domain/simulation';
 import { laeufeMitAnderenRegeln, mailRegelnUebernehmen } from '../domain/mailRegeln';
 import { seedData } from '../domain/seed';
-import { alsVorlage, neuesPflichtenheft, pflichtenheftAufbereiten } from '../domain/pflichtenheft';
+import {
+  alsVorlage,
+  neuesPflichtenheft,
+  pflichtenheftAufbereiten,
+  pflichtenheftStand,
+  type PflichtenheftAngaben,
+} from '../domain/pflichtenheft';
 import { registerPlanAnwenden, sichtFuerRegister } from '../domain/register';
 import { useRegisterAbgleich } from '../../../gemeinsam/useRegisterAbgleich';
 import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
 import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
 import { SPEICHER_SCHLUESSEL, ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 import { formatDate, today } from '../../../shared/dates';
-import { funktionsName } from '../domain/types';
+import { funktionsName, geschaeftsbereichVon, type GeschaeftsbereichId } from '../domain/types';
 import type {
   AbbruchArt,
   AppData,
@@ -114,14 +120,28 @@ interface StoreValue {
   updateProject: (id: ID, patch: Partial<Project>) => void;
   deleteProject: (id: ID) => void;
   /* Pflichtenheft */
-  /** Legt das Pflichtenheft des Projekts aus der Vorlage an – ersetzt ein vorhandenes. */
-  pflichtenheftAnlegen: (projectId: ID) => void;
+  /**
+   * Legt das Pflichtenheft des Projekts aus der Vorlage seines
+   * Geschäftsbereichs an – ersetzt ein vorhandenes. `projekt` übernimmt
+   * zugleich G-Nummer und Stammdaten (Assistent).
+   */
+  pflichtenheftAnlegen: (
+    projectId: ID,
+    angaben?: PflichtenheftAngaben,
+    projekt?: Partial<Pick<Project, 'gNummer' | 'stammdaten'>>,
+  ) => void;
+  /**
+   * Vermerkt eine Ausgabe („Als PDF ausgeben“): heute, von der angemeldeten
+   * Person, mit den Einträgen für den Änderungsindex; der Stand des
+   * Pflichtenhefts gilt danach als ausgegeben.
+   */
+  pflichtenheftAusgeben: (projectId: ID, aenderungen: { stelle: string; text: string }[]) => void;
   /** Ändert das Pflichtenheft auf dem jeweils aktuellen Stand (auch bei verzögertem Speichern). */
   pflichtenheftAendern: (projectId: ID, fn: (ph: Pflichtenheft) => Pflichtenheft) => void;
-  /** Texte, Kapitel und Plancodierung des Pflichtenhefts als Vorlage für neue Pflichtenhefte. */
+  /** Texte, Kapitel und Plancodierung des Pflichtenhefts als Vorlage für neue Pflichtenhefte seines Geschäftsbereichs. */
   pflichtenheftVorlageSpeichern: (projectId: ID) => void;
-  /** Zurück zur mitgelieferten Vorlage. */
-  pflichtenheftVorlageZuruecksetzen: () => void;
+  /** Zurück zur mitgelieferten Vorlage des Geschäftsbereichs. */
+  pflichtenheftVorlageZuruecksetzen: (gb: GeschaeftsbereichId) => void;
   /* Funktionen (projektübergreifend) */
   addStandardRolle: (r: Omit<StandardRolle, 'id'>) => ID;
   /**
@@ -462,11 +482,37 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
     updateProject: (id, patch) => mutate((d) => ({ ...d, projects: upd(d.projects, id, patch) })),
     deleteProject: (id) => mutate((d, v) => projektLoeschen(d, id, v)),
 
-    pflichtenheftAnlegen: (projectId) =>
+    pflichtenheftAnlegen: (projectId, angaben, projekt) =>
       mutate((d) => {
+        const alt = d.projects.find((x) => x.id === projectId);
+        if (!alt) return d;
+        const p = { ...alt, ...projekt };
+        const neu = neuesPflichtenheft(d, p, newId, angaben);
+        // Ein ersetztes Pflichtenheft behält seine Ausgaben – die nächste vermerkt, was sich geändert hat
+        const bisher = alt.pflichtenheft ? pflichtenheftAufbereiten(alt.pflichtenheft) : null;
+        const pflichtenheft = bisher ? { ...neu, ausgaben: bisher.ausgaben, stand: bisher.stand } : neu;
+        return { ...d, projects: upd(d.projects, projectId, { ...projekt, pflichtenheft }) };
+      }),
+    pflichtenheftAusgeben: (projectId, aenderungen) =>
+      mutate((d, v) => {
         const p = d.projects.find((x) => x.id === projectId);
-        if (!p) return d;
-        return { ...d, projects: upd(d.projects, projectId, { pflichtenheft: neuesPflichtenheft(d, p, newId) }) };
+        if (!p?.pflichtenheft) return d;
+        const ph = pflichtenheftAufbereiten(p.pflichtenheft);
+        const stand = pflichtenheftStand(d, p, ph);
+        // Ohne früheren Stand (ältere Pflichtenhefte) wird nur der Stand festgehalten
+        const neueAusgabe = ph.ausgaben.length === 0 || (ph.stand !== null && aenderungen.length > 0);
+        const ausgaben = neueAusgabe
+          ? [
+              ...ph.ausgaben,
+              {
+                id: newId('phaus'),
+                datum: v.heute ?? today(),
+                von: v.bearbeiter,
+                aenderungen: ph.ausgaben.length === 0 ? [] : aenderungen.map((a) => ({ id: newId('phaen'), ...a })),
+              },
+            ]
+          : ph.ausgaben;
+        return { ...d, projects: upd(d.projects, projectId, { pflichtenheft: { ...ph, ausgaben, stand } }) };
       }),
     pflichtenheftAendern: (projectId, fn) =>
       mutate((d) => {
@@ -477,14 +523,16 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
       }),
     pflichtenheftVorlageSpeichern: (projectId) =>
       mutate((d) => {
-        const ph = d.projects.find((x) => x.id === projectId)?.pflichtenheft;
-        return ph ? { ...d, pflichtenheftVorlage: alsVorlage(pflichtenheftAufbereiten(ph)) } : d;
+        const p = d.projects.find((x) => x.id === projectId);
+        if (!p?.pflichtenheft) return d;
+        const gb = geschaeftsbereichVon(p.stammdaten?.geschaeftsbereich ?? '');
+        return { ...d, pflichtenheftVorlagen: { ...d.pflichtenheftVorlagen, [gb]: alsVorlage(pflichtenheftAufbereiten(p.pflichtenheft)) } };
       }),
-    pflichtenheftVorlageZuruecksetzen: () =>
+    pflichtenheftVorlageZuruecksetzen: (gb) =>
       mutate((d) => {
-        if (!d.pflichtenheftVorlage) return d;
-        const { pflichtenheftVorlage: _weg, ...rest } = d;
-        return rest;
+        if (!d.pflichtenheftVorlagen?.[gb]) return d;
+        const { [gb]: _weg, ...rest } = d.pflichtenheftVorlagen;
+        return { ...d, pflichtenheftVorlagen: rest };
       }),
 
     addStandardRolle: (r) => {

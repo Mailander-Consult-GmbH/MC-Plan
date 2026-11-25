@@ -597,6 +597,7 @@ export function seedData(): AppData {
       strecken: [{ nummer: '1120', bezeichnung: 'Hamburg-Harburg – Nordkreuz' }],
       auftraggeber: 'DB InfraGO AG',
       geschaeftsbereich: 'Fahrweg',
+      region: 'Nord',
       planungsphase: 'Ausführungsplanung',
       sharepointZentral: 'https://example.sharepoint.com/sites/Nordkreuz/Freigegebene%20Dokumente/Genehmigt',
     },

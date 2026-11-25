@@ -296,13 +296,17 @@ Bildschirmleser vor, jede neue für sich, auch wenn eine ältere noch steht (`ro
 ## Funktionsumfang
 
 ### Projekte
-Anlage und Pflege von Projekten (Projektnummer, **G-Nummer** – die Projektnummer der DB –, Name,
+Anlage und Pflege von Projekten (Projektnummer, **G-Nummer** – die Projektnummer der DB, bei Fahrweg
+auch eine E-Nummer –, Name,
 Status, Beschreibung). Beim Anlegen werden
 die projektübergreifenden Funktionen als Projektfunktionen übernommen. Die **Stammdaten** des
-Projekts – Bahnhof bzw. Haltepunkt, Kürzel der Betriebsstelle (Ril 100), Bahnhofsnummer,
-Stations-km, betroffene Strecken (Nummer und Bezeichnung), Auftraggeber, Geschäftsbereich,
-Planungsphase und der zentrale SharePoint-Ordner mit den genehmigten Unterlagen – stehen in der
-Karte **Stammdaten** der Projekteinstellungen; jede Eingabe wird sofort gespeichert. Sie gelten
+Projekts stehen in der Karte **Stammdaten** der Projekteinstellungen; jede Eingabe wird sofort
+gespeichert. Welche Felder es gibt, bestimmt der **Geschäftsbereich** (Segmente *Personenbahnhöfe*
+/ *Fahrweg*): immer Auftraggeber (leer gilt „DB InfraGO AG“ als Vorschlag), Region (Datenmanagement
+der DB InfraGO, etwa „Südwest“), Planungsphase, zentraler SharePoint-Ordner und die betroffenen
+Strecken (Nummer und Bezeichnung); bei Personenbahnhöfen dazu Bahnhof bzw. Haltepunkt, Kürzel der
+Betriebsstelle (Ril 100), Bahnhofsnummer und Stations-km, bei Fahrweg je Strecke der Abschnitt
+„von km … bis km …“. Sie gelten
 unabhängig vom Pflichtenheft, das sie über Platzhalter einsetzt. Die E-Mail-Texte gelten
 projektübergreifend und werden unter **Einstellungen › Vorlagen** in der Seitenleiste gepflegt.
 
@@ -974,56 +978,74 @@ Stand nach, statt ihn mit dem eigenen älteren zu überschreiben (`useFremdeAend
 
 ### Pflichtenheft
 Reiter **Pflichtenheft** im Projekt (zwischen *Workflows* und *Einstellungen*). Ohne Pflichtenheft
-steht dort „Noch kein Pflichtenheft“ mit **Pflichtenheft erstellen**: KaPlan legt es aus der Vorlage
-an – mit den Texten des Muster-Pflichtenhefts (Einleitung, Abwicklung der Planläufe,
-Plannummerierung, Änderungen, Ansprechpartner, Weitere Projektbeteiligte, Verpflichtungen der
-Planer, Digitale Plandaten, Schriftfeld, Strecken, Anlagenverzeichnis), den Workflows des Projekts
-(ohne eigene: den projektübergreifenden) als Anlage „Planläufe und Ablaufdiagramme“, der
-mitgelieferten Plancodierung und einem leeren Änderungsindex. Oben wechselt **Bearbeiten** /
-**Vorschau**; daneben stehen **Neu aus Vorlage** (nach Rückfrage), **Als Vorlage speichern**
-(Titel, Kapitel, Texte, Bezeichnungen der Gewerke, Hinweis der Ablaufdiagramme und Plancodierung
-gelten danach für jedes neu erstellte Pflichtenheft) und **Als PDF ausgeben** (Druckdialog,
-„Als PDF sichern“). Fehlen Stammdaten, nennt ein Hinweis sie mit einem Verweis auf die
-Einstellungen des Projekts.
+steht dort „Noch kein Pflichtenheft“ mit **Pflichtenheft erstellen**: Ein **Assistent** führt in
+fünf Schritten hindurch, vorausgefüllt aus dem Projekt – **Projekt** (Projektnummer der DB und die
+Stammdaten, Geschäftsbereich zuerst; Auftraggeber vorbelegt mit „DB InfraGO AG“, Planungsphase mit
+„Ausführungsplanung“), **Deckblatt** (Bild, Aufgestellt, Freigegeben), **Ansprechpartner** (wer aus
+den Funktionen im Pflichtenheft steht, weitere Personen des Planlaufmanagements, Hinweis auf
+Funktionen, die in keinem Gewerk besetzt sind), **Planläufe** (Workflows per Haken, vorgewählt die
+im Projekt verwendeten – Varianten des Projekts und Workflows seiner Planläufe) und
+**Plancodierung** (Code des Projekts, vorbelegt mit dem Kürzel der Betriebsstelle). Die Schritte
+lassen sich oben direkt anwählen. **Pflichtenheft erstellen** schreibt Projektnummer und
+Stammdaten ins Projekt und legt das Pflichtenheft aus der **Vorlage des Geschäftsbereichs** an:
+*Personenbahnhöfe* nach dem Muster Hp Herbolzheim (SharePoint), *Fahrweg* nach dem Muster
+Hochrheinbahn (Planläufe mit Eplass, EG-Prüfung, eigenes Kapitel „Planläufe“). Oben wechselt
+**Bearbeiten** / **Vorschau**; daneben stehen **Neu aus Vorlage** (derselbe Assistent; die
+bisherigen Ausgaben bleiben), **Als Vorlage speichern** (Titel, Deckblatt, Kapitel, Texte,
+Bezeichnungen der Gewerke, Hinweis der Ablaufdiagramme und Plancodierung gelten danach für jedes neu
+erstellte Pflichtenheft desselben Geschäftsbereichs) und **Als PDF ausgeben**. Fehlen Stammdaten,
+nennt ein Hinweis sie mit einem Verweis auf die Einstellungen des Projekts.
 
-* **Deckblatt** – Titel (mit Platzhaltern, Vorgabe „Pflichtenheft Planlauf“ + Planungsphase), ein
-  Bild (wird auf höchstens 1600 px Breite verkleinert) und die Zeilen **Aufgestellt**,
-  **Freigegeben** und **Zuletzt geändert** mit Ort, Datum, Funktion (OE) und Name. Leere Felder füllt
-  KaPlan vor (grau im Feld): aufgestellt und zuletzt geändert vom Planlaufmanagement (eigener
-  Kontakt, „PLM, Firma“), freigegeben von der Projektleitung („OE, Firma“); der Ort kommt aus der
-  letzten Zeile der Anschrift, „Zuletzt geändert“ trägt das Datum des jüngsten Eintrags im
-  Änderungsindex.
+* **Deckblatt** – Titel (mit Platzhaltern, Vorgabe „Pflichtenheft Planlauf“ + Planungsphase), der
+  **Text unter dem Titel** (Personenbahnhöfe: Projektnummer, Station und Projektname; Fahrweg:
+  Projektnummer, Projektname und Streckenabschnitte), ein Bild (wird auf höchstens 1600 px Breite
+  verkleinert) und die Zeilen **Aufgestellt** und **Freigegeben** mit Ort, Datum, Funktion (OE) und
+  Name. Leere Felder füllt KaPlan vor (grau im Feld): aufgestellt vom Planlaufmanagement (eigener
+  Kontakt, „PLM, Firma“, Datum der ersten Ausgabe), freigegeben von der Projektleitung („OE,
+  Firma“); der Ort kommt aus der letzten Zeile der Anschrift. **Zuletzt geändert** wird nicht
+  eingetragen: Die Zeile erscheint ab der zweiten Ausgabe mit deren Datum und der Person, die
+  ausgegeben hat.
 * **Kapitel** – Kapitel und Unterkapitel; die Nummern entstehen aus der Reihenfolge (nach oben,
   nach unten, entfernen, **+ Kapitel**, **+ Ansprechpartner**). Ein Klick öffnet den Abschnitt: Titel,
   Gliederung (Kapitel/Unterkapitel) und Text. Projekt- und Stammdaten stehen im Text als farbige
-  Platzhalter – Projekt blau (G-Nummer, Projektnummer, Projektname, Planungsphase), Station und
-  Strecke grün (Station, Kürzel, Bahnhofsnummer, Stations-km, Streckennummern, Streckenliste),
-  Auftraggeber lila (Auftraggeber, Geschäftsbereich, Projektleitung, SharePoint zentral), Anlagen
+  Platzhalter – Projekt blau (Projektnummer DB, Projektnummer, Projektname, Planungsphase), Station
+  und Strecke grün (Station, Kürzel, Bahnhofsnummer, Stations-km, Streckennummern, Streckenliste,
+  Streckenabschnitte), Auftraggeber lila (Auftraggeber, Geschäftsbereich, Region, Projektleitung,
+  SharePoint zentral), Anlagen
   orange (Nummern der drei Anlagen, sie folgen dem Anlagenverzeichnis). Absätze trennt eine
   Leerzeile, `**fett**` setzt Fettschrift. Ein Abschnitt **Ansprechpartner** nennt Funktionen (in
   allen Gewerken, Auswahl aus den Funktionen des Projekts); die Tabelle „Gewerk | Zuständig“ zeigt
   je Funktion die Personen, die sie ausfüllen – mit Name, Firma, OE, Anschrift, Telefon, Mobil und
   E-Mail. Füllen dieselben Personen mehrere Funktionen aus, stehen sie in einer Zeile
   („Konstruktiver Ingenieurbau / Verkehrsanlagen“); jede Zeile lässt sich abweichend benennen.
-  Funktionen ohne Person nennt ein Hinweis. Der Abschnitt **Planlaufmanagement** zeigt die
+  Funktionen, die in keinem Gewerk eine Person ausfüllt, nennt ein Hinweis. Der Abschnitt **Planlaufmanagement** zeigt die
   angemeldete Person und dazu gewählte Kontakte (etwa die Vertretung) nebeneinander. Unter den
   Kapiteln stehen die **Bezeichnungen der Gewerke** (etwa KIB → „Konstruktiver Ingenieurbau“).
-* **Planläufe und Ablaufdiagramme** – die Workflows der Anlage mit Titel, Reihenfolge, Entfernen und
-  „Workflow hinzufügen …“; dazu der Hinweis unter jedem Ablaufdiagramm. Das **Ablaufdiagramm**
+* **Planläufe und Ablaufdiagramme** – alle Workflows des Projekts und die projektübergreifenden mit
+  einem Haken: gewählte oben mit Titel der Anlage und Reihenfolge, die übrigen darunter (Klick
+  nimmt sie auf); je Workflow „Projektvariante“ bzw. „projektübergreifend“, „im Projekt verwendet“
+  und die Zahl der Schritte. Dazu der Hinweis unter jedem Ablaufdiagramm. Das **Ablaufdiagramm**
   entsteht aus dem Workflow: links die Frist je Zeile, in der Mitte die Schritte der
   Projektbeteiligten („Funktion: Schritt“), rechts im blauen Band die des Planlaufmanagements,
   parallele Blöcke mit ihren Zweigen nebeneinander, Entscheidungen mit den Antworten an den
   Pfeilen, Abweichungen (etwa „Rückmeldung an Planer“) und Rücksprünge gestrichelt daneben, unten
   „Gesamtdauer … AT“ im Standardverlauf und eine Legende. Lange Workflows werden kleiner, nicht
   höher – jedes Diagramm steht samt Kopf und Hinweis auf einer Seite im Querformat.
-* **Plancodierung** – das Schema der Plancodierung (Anlage „Plancodierung“): oben der Beispielcode
-  aus den Beispielen der Kategorien, darunter je Kategorie eine Kachel mit Name, Beispiel und den
-  Einträgen als Zeilen „Code Tab Bezeichnung“ (auch „Code – Bezeichnung“; „# Überschrift“
-  gliedert; aus Excel einfügbar), nach oben/unten, **Kategorie hinzufügen**, Entfernen (mit
-  Rückfrage, wenn sie Einträge hat), und der Hinweis. Mitgeliefert sind die acht Kategorien des
+* **Plancodierung** – das Schema der Plancodierung (Anlage „Plancodierung“): oben der **Aufbau
+  des Codes** als Kette – je Kategorie ein farbiges Glied mit ihrem Beispiel, Nummer und Name,
+  „_“ dazwischen, „.pdf“ am Ende, zuletzt **+ Kategorie**. Ein Klick wählt die Kategorie; darunter
+  steht sie in einer grauen Kachel: Name, Beispiel, wie die Stelle geprüft wird, nach links/rechts,
+  Entfernen (mit Rückfrage, wenn sie Einträge hat), daneben der **Katalog** als Liste – Code und
+  Bezeichnung je Zeile, Gruppenüberschriften als abgesetzte Zeilen, **+ Eintrag** und **+ Gruppe**;
+  Enter legt darunter einen Eintrag an, ↑/↓ wechseln die Zeile, aus Excel kopierte Zeilen lassen
+  sich einfügen, ab 15 Einträgen gibt es eine Suche. **Als Text** zeigt den Katalog als Zeilen
+  „Code Tab Bezeichnung“ (auch „Code – Bezeichnung“; „# Überschrift“ gliedert) – so wird er auch
+  gespeichert. Zuletzt der Hinweis. Eingaben speichert der Editor nach einer kurzen Pause.
+  Mitgeliefert sind die acht Kategorien des
   Muster-Pflichtenhefts (Projekt, Planungsphase, Planersteller, Planungsfachbereich,
   Planungsobjekt, Planart, laufende Nummer, Index) mit ihren Katalogen; die Kategorie „Projekt“
-  füllt ein neues Pflichtenheft mit dem Kürzel der Betriebsstelle und der Station. Legt das
+  füllt ein neues Pflichtenheft mit dem Code des Projekts aus dem Assistenten (Vorgabe: Kürzel der
+  Betriebsstelle) samt Station bzw. bei Fahrweg Projektname. Legt das
   Pflichtenheft ein Schema fest, prüft die **Planliste** die Plancodierung jedes Plans
   (`plancodePruefen`): Weicht sie ab, steht neben der Nummer ein oranges Warnzeichen, sein Tooltip
   nennt die Gründe – unzulässige Zeichen (erlaubt sind a–z, A–Z, Ziffern, „-“ und „_“, die Endung
@@ -1032,11 +1054,22 @@ Einstellungen des Projekts.
   Katalogen mit Codes; nach „-“ ist die Gliederung frei), eine laufende Nummer mit falscher
   Stellenzahl. In der Druckfassung steht der Katalog als Tabelle mit einer Spalte je Kategorie;
   lange Kataloge laufen zweispaltig, die Schrift wird nur so weit kleiner wie nötig.
-* **Änderungsindex** – Datum, Seite bzw. Anlage und Änderung; **+ Änderung** setzt das heutige Datum.
+* **Ausgaben und Änderungsindex** – **Als PDF ausgeben** vermerkt jede Ausgabe. Die erste gilt als
+  Aufstellung (Dialog „Pflichtenheft ausgeben“). Danach vergleicht KaPlan den Inhalt mit dem Stand
+  der letzten Ausgabe – Deckblatt, Titel und Text jedes Kapitels mit eingesetzten Platzhaltern, jede
+  Zeile der Ansprechpartner, jeder Workflow, jede Kategorie der Plancodierung; Unterschriften und
+  Kapitelnummern zählen nicht – und schlägt im Dialog „Änderungen vermerken“ die Einträge vor, etwa
+  „Kap. 5.4 · Prüfstatiker OLA eingetragen“, „Anl. 11.1.2 · Planlauf „…“ geändert“ (änderbar,
+  abwählbar). **Vermerken und ausgeben** hält die Ausgabe fest und druckt, **Ohne Vermerk drucken**
+  druckt nur. Ohne Änderung druckt KaPlan sofort. Die Karte zeigt, was sich seit der letzten
+  Ausgabe geändert hat, und je Ausgabe Datum, Person und Einträge (Text änderbar, Eintrag
+  entfernbar).
 
 Die **Druckfassung** hat eine eigene, helle Gestaltung: Deckblatt, Inhaltsverzeichnis und die
 Kapitel im Hochformat mit „Seite x von y“, die Ablaufdiagramme und die Plancodierung im
-Querformat, zuletzt der Änderungsindex (jüngster Eintrag zuerst). Die Vorschau zeigt dasselbe
+Querformat, zuletzt der Änderungsindex (die Einträge aller Ausgaben nach der ersten, jüngster
+zuerst). Der Kopf der Anlagen nennt bei Personenbahnhöfen Station und Projekt, bei Fahrweg Projekt
+und Streckenabschnitt. Die Vorschau zeigt dasselbe
 Dokument fortlaufend, Seitenwechsel gestrichelt.
 
 ### Projekteinstellungen
@@ -1902,17 +1935,19 @@ src/
         importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen
         seed.ts      Standard-Prozessketten und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
-        pflichtenheft.ts  Pflichtenheft: Vorlage, Platzhalter, Ansprechpartner, Unterschriften,
-                     Druckfassung
+        pflichtenheft.ts  Pflichtenheft: Platzhalter, Ansprechpartner, Unterschriften, Ausgaben
+                     (Stand und Änderungen), Druckfassung
+        pflichtenheftVorlagen.ts  Mitgelieferte Vorlagen je Geschäftsbereich
         ablaufDiagramm.ts  Ablaufdiagramm eines Workflows als SVG (Anlage „Planläufe“)
-        plancodierung.ts   Plancodierung: mitgelieferte Kataloge, Prüfung, Druckfassung
+        plancodierung.ts   Plancodierung: Kataloge lesen und schreiben, mitgelieferte Kataloge,
+                     Prüfung, Druckfassung
       store/
         storage.ts   Persistenz (localStorage), Migration, Rohkopie vor der Umstellung, Sicherung
         store.tsx    Zentraler Zustand, alle Schreibzugriffe, Lade- und Speicherzustand
       lib/router.ts  Hash-Adressen unterhalb von #/planlauf (Übersicht unter #/planlauf selbst)
       pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen,
                      Terminrechner, Projektreiter; projekt/pflichtenheft/ der Reiter
-                     „Pflichtenheft“, projekt/Stammdaten.tsx die Karte „Stammdaten“)
+                     „Pflichtenheft“ mit Assistent und Ausgabe-Dialog, projekt/Stammdaten.tsx die Karte „Stammdaten“)
       components/    Fachliche Bausteine (common.tsx, WorkflowEditor, AblaufVorschau, EmailDialog,
                      PlanlaufListe, PaketDialog, BuendelnDialog, SicherungEinspielen, Abgleich,
                      Hinweisleisten, Terminnachweis, Protokoll, NeuZustaendig („E-Mail senden“), SammelErledigen,

@@ -1,6 +1,9 @@
 /**
- * Reiter „Pflichtenheft“ im Projekt: erstellt das Pflichtenheft aus der
- * Vorlage und lässt Deckblatt, Kapitel, Anlagen und Änderungsindex bearbeiten.
+ * Reiter „Pflichtenheft“ im Projekt: Ein Assistent (`PflichtenheftAssistent`)
+ * erstellt das Pflichtenheft aus der Vorlage des Geschäftsbereichs; danach
+ * lassen sich Deckblatt, Kapitel und Anlagen bearbeiten. „Als PDF ausgeben“
+ * vermerkt die Ausgabe (`AusgabeDialog`) – „Zuletzt geändert“ und der
+ * Änderungsindex entstehen daraus, nicht von Hand.
  * Ansprechpartner kommen aus den Funktionen des Projekts (Reiter „Funktion“),
  * Projekt- und Stammdaten aus den Einstellungen des Projekts; im Text stehen
  * sie als farbige Platzhalter. „Vorschau“ zeigt das Dokument so, wie es
@@ -9,26 +12,30 @@
  * Längere Eingaben speichert die Seite verzögert (`useEntwurf`), damit nicht
  * jeder Tastendruck den ganzen Bestand schreibt.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  PFLICHTENHEFT_GRUPPEN,
-  PFLICHTENHEFT_PLATZHALTER,
   PFLICHTENHEFT_STIL,
+  aenderungenErmitteln,
   ansprechpartnerZeilen,
   eigenerKontakt,
   kapitelNummern,
+  letzteAenderung,
   pflichtenheftAufbereiten,
   pflichtenheftHtml,
+  pflichtenheftStand,
   platzhalterWerte,
-  textEinsetzen,
   unterschriftVorgabe,
+  unterschriftWert,
   UNTERSCHRIFT_LABEL,
-  type PflichtenheftPlatzhalterGruppe,
-  type UnterschriftArt,
+  verwendeteWorkflows,
+  waehlbareWorkflows,
 } from '../../../domain/pflichtenheft';
 import {
+  GESCHAEFTSBEREICHE,
   funktionsName,
+  geschaeftsbereichVon,
+  leereStammdaten,
   type Pflichtenheft,
   type PflichtenheftAbschnitt,
   type PflichtenheftArt,
@@ -36,252 +43,61 @@ import {
 } from '../../../domain/types';
 import type { ProjektTab } from '../../../lib/router';
 import { newId, useStore } from '../../../store/store';
-import { druckeHtml, htmlDokument } from '../../../../../shared/print';
+import { htmlDokument } from '../../../../../shared/print';
 import { useToast } from '../../../../../shared/toast';
 import { Icon } from '../../../../../shared/icons';
 import { listenEintrag } from '../../../../../shared/bewegung';
-import { today } from '../../../../../shared/dates';
-import {
-  BausteinEditor,
-  type BausteinEditorGriff,
-  type BausteinTon,
-  type BausteinVerzeichnis,
-} from '../../../../../shared/bausteinEditor';
-import {
-  Badge,
-  Callout,
-  Card,
-  CardHeader,
-  ConfirmDialog,
-  EmptyState,
-  Field,
-  Segmented,
-  TextInput,
-} from '../../../../../shared/ui';
+import { formatDate } from '../../../../../shared/dates';
+import type { BausteinVerzeichnis } from '../../../../../shared/bausteinEditor';
+import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Field, Segmented } from '../../../../../shared/ui';
 import { PlancodierungKarte } from './PlancodierungKarte';
+import { PflichtenheftAssistent } from './Assistent';
+import { AusgabeDialog } from './AusgabeDialog';
+import { ART_LABEL, BildWahl, EntwurfFeld, PlatzhalterText, UnterschriftFelder, usePlatzhalterBausteine } from './bausteine';
 import './pflichtenheft.css';
-
-/* ------------------------------------------------------------------ */
-/* Hilfen                                                              */
-/* ------------------------------------------------------------------ */
-
-/**
- * Eingabe mit verzögertem Speichern: Der Entwurf folgt jedem Tastendruck,
- * gespeichert wird nach einer kurzen Pause und spätestens beim Verlassen.
- * Ändert sich der gespeicherte Wert von außen, übernimmt ihn der Entwurf,
- * solange nichts ungespeichert ist.
- */
-function useEntwurf(wert: string, speichern: (v: string) => void, ms = 450): [string, (v: string) => void] {
-  const [entwurf, setEntwurf] = useState(wert);
-  const offen = useRef(false);
-  const aktuell = useRef(wert);
-  const speichernRef = useRef(speichern);
-  speichernRef.current = speichern;
-  useEffect(() => {
-    if (!offen.current) {
-      setEntwurf(wert);
-      aktuell.current = wert;
-    }
-  }, [wert]);
-  useEffect(() => {
-    if (!offen.current) return;
-    const t = setTimeout(() => {
-      offen.current = false;
-      speichernRef.current(aktuell.current);
-    }, ms);
-    return () => clearTimeout(t);
-  }, [entwurf, ms]);
-  useEffect(
-    () => () => {
-      if (offen.current) speichernRef.current(aktuell.current);
-    },
-    [],
-  );
-  return [
-    entwurf,
-    (v: string) => {
-      offen.current = true;
-      aktuell.current = v;
-      setEntwurf(v);
-    },
-  ];
-}
-
-const GRUPPEN_TON: Record<PflichtenheftPlatzhalterGruppe, BausteinTon> = {
-  projekt: 'blau',
-  station: 'gruen',
-  auftraggeber: 'lila',
-  anlagen: 'orange',
-};
-
-const ART_LABEL: Record<PflichtenheftArt, string> = {
-  text: 'Text',
-  ansprechpartner: 'Ansprechpartner',
-  plm: 'Planlaufmanagement',
-  anlagen: 'Anlagenverzeichnis',
-};
-
-/** Text mit farbigen Platzhaltern und der Leiste zum Einfügen. */
-function PlatzhalterText({
-  wert,
-  onChange,
-  bausteine,
-  label,
-  zeilen = 6,
-  einzeilig = false,
-  leiste = true,
-}: {
-  wert: string;
-  onChange: (v: string) => void;
-  bausteine: BausteinVerzeichnis;
-  label: string;
-  zeilen?: number;
-  einzeilig?: boolean;
-  leiste?: boolean;
-}) {
-  const griff = useRef<BausteinEditorGriff>(null);
-  const [entwurf, setEntwurf] = useEntwurf(wert, onChange);
-  return (
-    <div className="phe-text">
-      <BausteinEditor
-        griff={griff}
-        wert={entwurf}
-        onChange={setEntwurf}
-        bausteine={bausteine}
-        label={label}
-        zeilen={zeilen}
-        einzeilig={einzeilig}
-        leer="Text eingeben …"
-      />
-      {leiste ? (
-        <div className="phe-palette" role="group" aria-label={`Platzhalter in „${label}“ einfügen`}>
-          {PFLICHTENHEFT_GRUPPEN.map((g) => (
-            <div key={g.id} className="phe-palette-zeile">
-              <span className="phe-palette-kat">{g.label}</span>
-              <div className="row wrap" style={{ gap: 6 }}>
-                {PFLICHTENHEFT_PLATZHALTER.filter((p) => p.gruppe === g.id).map((p) => (
-                  <button
-                    key={p.schluessel}
-                    type="button"
-                    className={`bst-knopf bst-ton-${GRUPPEN_TON[g.id]}`}
-                    title={bausteine[p.schluessel]?.titel}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => griff.current?.einfuegen(p.schluessel)}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          <p className="small tertiary">Absätze durch eine Leerzeile trennen, **fett** mit zwei Sternchen.</p>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-/** Eingabefeld mit verzögertem Speichern. */
-function EntwurfFeld({
-  wert,
-  onChange,
-  ...rest
-}: { wert: string; onChange: (v: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
-  const [entwurf, setEntwurf] = useEntwurf(wert, onChange);
-  return <TextInput value={entwurf} onChange={setEntwurf} {...rest} />;
-}
-
-/** Verkleinert ein Bild auf höchstens 1600 px Breite (JPEG) – der Bestand liegt im localStorage. */
-function bildVerkleinern(datei: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const leser = new FileReader();
-    leser.onerror = () => reject(new Error('Bild nicht lesbar'));
-    leser.onload = () => {
-      const bild = new Image();
-      bild.onerror = () => reject(new Error('Bild nicht lesbar'));
-      bild.onload = () => {
-        const faktor = Math.min(1, 1600 / bild.width);
-        const leinwand = document.createElement('canvas');
-        leinwand.width = Math.round(bild.width * faktor);
-        leinwand.height = Math.round(bild.height * faktor);
-        const ctx = leinwand.getContext('2d');
-        if (!ctx) return reject(new Error('Bild nicht lesbar'));
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, leinwand.width, leinwand.height);
-        ctx.drawImage(bild, 0, 0, leinwand.width, leinwand.height);
-        resolve(leinwand.toDataURL('image/jpeg', 0.8));
-      };
-      bild.src = String(leser.result);
-    };
-    leser.readAsDataURL(datei);
-  });
-}
-
-/* ------------------------------------------------------------------ */
-/* Seite                                                               */
-/* ------------------------------------------------------------------ */
 
 type Ansicht = 'bearbeiten' | 'vorschau';
 
 export function PflichtenheftSeite({ project, gotoTab }: { project: Project; gotoTab: (t: ProjektTab) => void }) {
-  const { data, pflichtenheftAnlegen, pflichtenheftAendern, pflichtenheftVorlageSpeichern } = useStore();
+  const { data, pflichtenheftAendern, pflichtenheftVorlageSpeichern } = useStore();
   const toast = useToast();
   const [ansicht, setAnsicht] = useState<Ansicht>('bearbeiten');
-  const [neuErstellen, setNeuErstellen] = useState(false);
+  const [assistent, setAssistent] = useState<'neu' | 'ersetzen' | null>(null);
+  const [ausgabe, setAusgabe] = useState(false);
   const ph = useMemo(() => (project.pflichtenheft ? pflichtenheftAufbereiten(project.pflichtenheft) : null), [project.pflichtenheft]);
   const aendern = (fn: (p: Pflichtenheft) => Pflichtenheft) => pflichtenheftAendern(project.id, fn);
 
   const werte = useMemo(() => (ph ? platzhalterWerte(data, project, ph) : {}), [data, project, ph]);
-  const bausteine: BausteinVerzeichnis = useMemo(
-    () =>
-      Object.fromEntries(
-        PFLICHTENHEFT_PLATZHALTER.map((p) => [
-          p.schluessel,
-          {
-            label: p.label,
-            ton: GRUPPEN_TON[p.gruppe],
-            titel: `${p.beschreibung}\nIm Projekt: ${werte[p.schluessel]?.trim() ? werte[p.schluessel] : '(noch leer)'}`,
-          },
-        ]),
-      ),
-    [werte],
-  );
+  const bausteine = usePlatzhalterBausteine(werte);
+  const gb = GESCHAEFTSBEREICHE.find((g) => g.id === geschaeftsbereichVon(project.stammdaten?.geschaeftsbereich ?? ''))!;
 
   if (!ph) {
     return (
-      <Card>
-        <EmptyState
-          icon="pflichtenheft"
-          titel="Noch kein Pflichtenheft"
-          text="KaPlan erstellt es aus der Vorlage – mit den Projekt- und Stammdaten, den Ansprechpartnern aus den Funktionen und den Workflows des Projekts. Texte und Anlagen lassen sich danach hier anpassen."
-          action={
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                pflichtenheftAnlegen(project.id);
-                toast('Pflichtenheft erstellt.');
-              }}
-            >
-              <Icon name="plus" size={14} /> Pflichtenheft erstellen
-            </button>
-          }
-        />
-      </Card>
+      <>
+        <Card>
+          <EmptyState
+            icon="pflichtenheft"
+            titel="Noch kein Pflichtenheft"
+            text="Ein Assistent führt in wenigen Schritten durch das Erstellen – Geschäftsbereich, Stammdaten, Deckblatt, Ansprechpartner und Planläufe, vorausgefüllt aus dem Projekt. Texte und Anlagen lassen sich danach hier anpassen."
+            action={
+              <button type="button" className="btn btn-primary" onClick={() => setAssistent('neu')}>
+                <Icon name="plus" size={14} /> Pflichtenheft erstellen
+              </button>
+            }
+          />
+        </Card>
+        {assistent ? <PflichtenheftAssistent project={project} onClose={() => setAssistent(null)} /> : null}
+      </>
     );
   }
 
-  const ausgeben = () => {
-    const titel = textEinsetzen(ph.titel, werte) || 'Pflichtenheft';
-    druckeHtml(`${titel} ${project.gNummer || project.nummer}`.trim(), pflichtenheftHtml(data, project, ph), PFLICHTENHEFT_STIL);
-  };
-  const s = project.stammdaten;
+  const s = { ...leereStammdaten(), ...project.stammdaten };
   const fehlend = [
-    !project.gNummer.trim() ? 'G-Nummer' : '',
-    !s?.station.trim() ? 'Station' : '',
-    !s?.planungsphase.trim() ? 'Planungsphase' : '',
-    !s?.auftraggeber.trim() ? 'Auftraggeber' : '',
-    !s?.strecken.length ? 'Strecken' : '',
+    !project.gNummer.trim() ? 'Projektnummer DB' : '',
+    gb.station && !s.station.trim() ? 'Station' : '',
+    !s.planungsphase.trim() ? 'Planungsphase' : '',
+    !s.auftraggeber.trim() ? 'Auftraggeber' : '',
+    !s.strecken.length ? 'Strecken' : '',
   ].filter(Boolean);
 
   return (
@@ -296,7 +112,7 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
           ]}
         />
         <div className="row wrap" style={{ gap: 8 }}>
-          <button type="button" className="btn btn-ghost" onClick={() => setNeuErstellen(true)}>
+          <button type="button" className="btn btn-ghost" onClick={() => setAssistent('ersetzen')}>
             Neu aus Vorlage
           </button>
           <button
@@ -304,13 +120,13 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
             className="btn btn-outline"
             onClick={() => {
               pflichtenheftVorlageSpeichern(project.id);
-              toast('Als Vorlage für neue Pflichtenhefte gespeichert.');
+              toast(`Als Vorlage für neue Pflichtenhefte (${gb.label}) gespeichert.`);
             }}
-            title="Titel, Kapitel, Texte, Gewerke, Hinweis der Ablaufdiagramme und Plancodierung gelten danach für jedes neu erstellte Pflichtenheft"
+            title={`Titel, Deckblatt, Kapitel, Texte, Gewerke, Hinweis der Ablaufdiagramme und Plancodierung gelten danach für jedes neu erstellte Pflichtenheft im Geschäftsbereich ${gb.label}`}
           >
             Als Vorlage speichern
           </button>
-          <button type="button" className="btn btn-primary" onClick={ausgeben}>
+          <button type="button" className="btn btn-primary" onClick={() => setAusgabe(true)}>
             <Icon name="drucken" size={14} /> Als PDF ausgeben
           </button>
         </div>
@@ -339,22 +155,12 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
           <KapitelKarte project={project} ph={ph} aendern={aendern} bausteine={bausteine} gotoTab={gotoTab} />
           <AnlagenKarte project={project} ph={ph} aendern={aendern} bausteine={bausteine} />
           <PlancodierungKarte project={project} ph={ph} aendern={aendern} />
-          <AenderungsKarte ph={ph} aendern={aendern} />
+          <AusgabenKarte project={project} ph={ph} aendern={aendern} />
         </>
       )}
 
-      {neuErstellen ? (
-        <ConfirmDialog
-          titel="Pflichtenheft neu erstellen?"
-          text="Kapitel, Texte, Unterschriften, Anlagen und Änderungsindex werden durch die Vorlage ersetzt. Projektdaten und Ansprechpartner bleiben, wie sie im Projekt stehen."
-          bestaetigenLabel="Neu erstellen"
-          onConfirm={() => {
-            pflichtenheftAnlegen(project.id);
-            toast('Pflichtenheft neu erstellt.');
-          }}
-          onClose={() => setNeuErstellen(false)}
-        />
-      ) : null}
+      {assistent ? <PflichtenheftAssistent project={project} ersetzen onClose={() => setAssistent(null)} /> : null}
+      {ausgabe ? <AusgabeDialog project={project} ph={ph} onClose={() => setAusgabe(false)} /> : null}
     </div>
   );
 }
@@ -372,22 +178,10 @@ type KartenProps = {
 
 function DeckblattKarte({ project, ph, aendern, bausteine }: KartenProps) {
   const { data } = useStore();
-  const toast = useToast();
-  const datei = useRef<HTMLInputElement>(null);
-
-  const bildWaehlen = async (f: File | undefined) => {
-    if (!f) return;
-    try {
-      const url = await bildVerkleinern(f);
-      aendern((p) => ({ ...p, titelbild: url }));
-    } catch {
-      toast('Das Bild ließ sich nicht lesen.');
-    }
-  };
-
+  const geaendert = unterschriftWert(data, project, ph, 'geaendert');
   return (
     <Card>
-      <CardHeader titel="Deckblatt" sub="Titel, Bild und Unterschriften – leere Felder füllt KaPlan aus den Kontakten" />
+      <CardHeader titel="Deckblatt" sub="Titel, Text, Bild und Unterschriften – leere Felder füllt KaPlan aus den Kontakten" />
       <div className="card-pad stack">
         <Field label="Titel" full>
           <PlatzhalterText
@@ -399,61 +193,41 @@ function DeckblattKarte({ project, ph, aendern, bausteine }: KartenProps) {
             leiste={false}
           />
         </Field>
+        <Field label="Text unter dem Titel" full>
+          <PlatzhalterText
+            wert={ph.deckblatt}
+            onChange={(v) => aendern((p) => ({ ...p, deckblatt: v }))}
+            bausteine={bausteine}
+            label="Text unter dem Titel"
+            zeilen={4}
+          />
+        </Field>
         <div className="field">
           <label>Bild</label>
-          <div className="row wrap" style={{ gap: 12, alignItems: 'center' }}>
-            {ph.titelbild ? <img className="phe-bild" src={ph.titelbild} alt="Bild auf dem Deckblatt" /> : null}
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => datei.current?.click()}>
-              <Icon name="bild" size={13} /> {ph.titelbild ? 'Bild ersetzen' : 'Bild wählen'}
-            </button>
-            {ph.titelbild ? (
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => aendern((p) => ({ ...p, titelbild: '' }))}>
-                Bild entfernen
-              </button>
-            ) : null}
-            <input
-              ref={datei}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => {
-                void bildWaehlen(e.target.files?.[0]);
-                e.target.value = '';
-              }}
-            />
+          <BildWahl wert={ph.titelbild} onChange={(url) => aendern((p) => ({ ...p, titelbild: url }))} />
+        </div>
+        {(['aufgestellt', 'freigegeben'] as const).map((art) => (
+          <UnterschriftFelder
+            key={art}
+            label={UNTERSCHRIFT_LABEL[art]}
+            wert={ph[art]}
+            vorgabe={unterschriftVorgabe(data, project, ph, art)}
+            onChange={(patch) => aendern((p) => ({ ...p, [art]: { ...p[art], ...patch } }))}
+          />
+        ))}
+        <div className="phe-unterschrift">
+          <div className="phe-unterschrift-titel">{UNTERSCHRIFT_LABEL.geaendert}</div>
+          <div className="small muted">
+            {letzteAenderung(ph)
+              ? `${[geaendert.ort, geaendert.datum ? formatDate(geaendert.datum) : ''].filter(Boolean).join(', ')} · ${geaendert.funktion} · ${geaendert.name}`
+              : 'Erscheint, sobald das Pflichtenheft nach Änderungen erneut ausgegeben wird.'}
           </div>
         </div>
-        {(['aufgestellt', 'freigegeben', 'geaendert'] as UnterschriftArt[]).map((art) => {
-          const vorgabe = unterschriftVorgabe(data, project, ph, art);
-          const u = ph[art];
-          const setzen = (patch: Partial<typeof u>) => aendern((p) => ({ ...p, [art]: { ...p[art], ...patch } }));
-          return (
-            <div key={art} className="phe-unterschrift">
-              <div className="phe-unterschrift-titel">{UNTERSCHRIFT_LABEL[art]}</div>
-              <div className="phe-unterschrift-felder">
-                <EntwurfFeld wert={u.ort} onChange={(v) => setzen({ ort: v })} placeholder={vorgabe.ort || 'Ort'} aria-label={`${UNTERSCHRIFT_LABEL[art]}: Ort`} />
-                <TextInput
-                  type="date"
-                  value={u.datum ?? ''}
-                  onChange={(v) => setzen({ datum: v || null })}
-                  aria-label={`${UNTERSCHRIFT_LABEL[art]}: Datum`}
-                  title={art === 'geaendert' && !u.datum ? 'Leer: Datum des jüngsten Eintrags im Änderungsindex' : undefined}
-                />
-                <EntwurfFeld
-                  wert={u.funktion}
-                  onChange={(v) => setzen({ funktion: v })}
-                  placeholder={vorgabe.funktion || 'Funktion (OE)'}
-                  aria-label={`${UNTERSCHRIFT_LABEL[art]}: Funktion (OE)`}
-                />
-                <EntwurfFeld wert={u.name} onChange={(v) => setzen({ name: v })} placeholder={vorgabe.name || 'Name'} aria-label={`${UNTERSCHRIFT_LABEL[art]}: Name`} />
-              </div>
-            </div>
-          );
-        })}
       </div>
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Kapitel                                                             */
@@ -803,89 +577,83 @@ function GewerkNamen({ ph, aendern }: { ph: Pflichtenheft; aendern: (fn: (p: Pfl
 
 function AnlagenKarte({ project, ph, aendern, bausteine }: KartenProps) {
   const { data } = useStore();
-  const verfuegbar = data.templates
-    .filter((t) => (t.projectId === null || t.projectId === project.id) && !ph.workflows.some((w) => w.workflowId === t.id))
-    .sort((x, y) => Number(x.projectId === null) - Number(y.projectId === null) || x.name.localeCompare(y.name, 'de'));
+  const verwendet = new Set(verwendeteWorkflows(data, project).map((t) => t.id));
+  const gewaehlt = new Set(ph.workflows.map((w) => w.workflowId));
+  const nichtGewaehlt = waehlbareWorkflows(data, project).filter((t) => !gewaehlt.has(t.id));
   const setzen = (workflows: Pflichtenheft['workflows']) => aendern((p) => ({ ...p, workflows }));
   const verschieben = (i: number, r: -1 | 1) => {
     const liste = [...ph.workflows];
     [liste[i], liste[i + r]] = [liste[i + r], liste[i]];
     setzen(liste);
   };
+  const herkunft = (id: string) => {
+    const t = data.templates.find((x) => x.id === id);
+    if (!t) return 'Workflow nicht mehr vorhanden – erscheint nicht im Pflichtenheft';
+    return [t.projectId ? 'Projektvariante' : 'projektübergreifend', verwendet.has(t.id) ? 'im Projekt verwendet' : '', `${t.steps.length} Schritte`]
+      .filter(Boolean)
+      .join(' · ');
+  };
 
   return (
     <Card>
-      <CardHeader titel="Planläufe und Ablaufdiagramme" sub="Je Workflow eine Anlage mit dem Ablaufdiagramm – Fristen aus dem Workflow" />
+      <CardHeader
+        titel="Planläufe und Ablaufdiagramme"
+        sub="Per Klick in das Pflichtenheft aufnehmen – je Workflow eine Anlage mit dem Ablaufdiagramm"
+      />
       <div className="card-pad stack">
-        {ph.workflows.length === 0 ? <p className="small muted">Noch kein Workflow gewählt.</p> : null}
         <div className="phe-workflows">
           <AnimatePresence initial={false}>
-            {ph.workflows.map((w, i) => {
-              const t = data.templates.find((x) => x.id === w.workflowId);
-              return (
-                <motion.div key={w.workflowId} {...listenEintrag} className="phe-workflow">
-                  <span className="phe-nr num">{i + 1}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <EntwurfFeld
-                      wert={w.titel}
-                      onChange={(v) => setzen(ph.workflows.map((x) => (x.workflowId === w.workflowId ? { ...x, titel: v } : x)))}
-                      aria-label={`Titel der Anlage ${i + 1}`}
-                    />
-                    <div className="small tertiary">
-                      {t ? `Workflow „${t.name}“${t.projectId ? ' (Projekt)' : ''} · ${t.steps.length} Schritte` : 'Workflow nicht mehr vorhanden – erscheint nicht im Pflichtenheft'}
-                    </div>
-                  </div>
-                  <div className="row" style={{ gap: 2 }}>
-                    <button type="button" className="btn-icon" disabled={i === 0} onClick={() => verschieben(i, -1)} aria-label="Nach oben" title="Nach oben">
-                      <Icon name="hoch" size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-icon"
-                      disabled={i === ph.workflows.length - 1}
-                      onClick={() => verschieben(i, 1)}
-                      aria-label="Nach unten"
-                      title="Nach unten"
-                    >
-                      <Icon name="runter" size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-icon"
-                      onClick={() => setzen(ph.workflows.filter((x) => x.workflowId !== w.workflowId))}
-                      aria-label={`„${w.titel}“ entfernen`}
-                      title="Entfernen"
-                    >
-                      <Icon name="loeschen" size={14} />
-                    </button>
-                  </div>
-                </motion.div>
-              );
-            })}
+            {ph.workflows.map((w, i) => (
+              <motion.div key={w.workflowId} {...listenEintrag} className="phe-workflow an">
+                <input
+                  type="checkbox"
+                  className="phe-wf-haken"
+                  checked
+                  onChange={() => setzen(ph.workflows.filter((x) => x.workflowId !== w.workflowId))}
+                  aria-label={`„${w.titel}“ aus dem Pflichtenheft nehmen`}
+                />
+                <span className="phe-nr num">{i + 1}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <EntwurfFeld
+                    wert={w.titel}
+                    onChange={(v) => setzen(ph.workflows.map((x) => (x.workflowId === w.workflowId ? { ...x, titel: v } : x)))}
+                    aria-label={`Titel der Anlage ${i + 1}`}
+                  />
+                  <div className="small tertiary">{herkunft(w.workflowId)}</div>
+                </div>
+                <div className="row" style={{ gap: 2 }}>
+                  <button type="button" className="btn-icon" disabled={i === 0} onClick={() => verschieben(i, -1)} aria-label="Nach oben" title="Nach oben">
+                    <Icon name="hoch" size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    disabled={i === ph.workflows.length - 1}
+                    onClick={() => verschieben(i, 1)}
+                    aria-label="Nach unten"
+                    title="Nach unten"
+                  >
+                    <Icon name="runter" size={14} />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+            {nichtGewaehlt.map((t) => (
+              <motion.label key={t.id} {...listenEintrag} className="phe-workflow aus">
+                <input
+                  type="checkbox"
+                  className="phe-wf-haken"
+                  checked={false}
+                  onChange={() => setzen([...ph.workflows, { workflowId: t.id, titel: t.name }])}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="truncate">{t.name}</div>
+                  <div className="small tertiary">{herkunft(t.id)}</div>
+                </div>
+              </motion.label>
+            ))}
           </AnimatePresence>
         </div>
-        {verfuegbar.length > 0 ? (
-          <div className="row wrap" style={{ gap: 8 }}>
-            <select
-              className="select"
-              value=""
-              aria-label="Workflow hinzufügen"
-              onChange={(e) => {
-                const t = data.templates.find((x) => x.id === e.target.value);
-                if (t) setzen([...ph.workflows, { workflowId: t.id, titel: t.name }]);
-              }}
-              style={{ maxWidth: 360 }}
-            >
-              <option value="">Workflow hinzufügen …</option>
-              {verfuegbar.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                  {t.projectId ? ' (Projekt)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
         <Field label="Hinweis unter jedem Ablaufdiagramm" full>
           <PlatzhalterText
             wert={ph.workflowHinweis}
@@ -902,52 +670,93 @@ function AnlagenKarte({ project, ph, aendern, bausteine }: KartenProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Änderungsindex                                                      */
+/* Ausgaben und Änderungsindex                                         */
 /* ------------------------------------------------------------------ */
 
-function AenderungsKarte({ ph, aendern }: { ph: Pflichtenheft; aendern: (fn: (p: Pflichtenheft) => Pflichtenheft) => void }) {
-  const eintragAendern = (id: string, patch: Partial<Pflichtenheft['aenderungen'][number]>) =>
-    aendern((p) => ({ ...p, aenderungen: p.aenderungen.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
+function AusgabenKarte({
+  project,
+  ph,
+  aendern,
+}: {
+  project: Project;
+  ph: Pflichtenheft;
+  aendern: (fn: (p: Pflichtenheft) => Pflichtenheft) => void;
+}) {
+  const { data } = useStore();
+  const offen = ph.stand ? aenderungenErmitteln(ph.stand, pflichtenheftStand(data, project, ph)) : [];
+  const eintragAendern = (ausgabeId: string, id: string, text: string | null) =>
+    aendern((p) => ({
+      ...p,
+      ausgaben: p.ausgaben.map((a) =>
+        a.id !== ausgabeId
+          ? a
+          : {
+              ...a,
+              aenderungen:
+                text === null ? a.aenderungen.filter((x) => x.id !== id) : a.aenderungen.map((x) => (x.id === id ? { ...x, text } : x)),
+            },
+      ),
+    }));
+  const letzte = ph.ausgaben[ph.ausgaben.length - 1];
+
   return (
     <Card>
       <CardHeader
-        titel="Änderungsindex"
-        sub="Jüngste Änderung zuerst – ihr Datum steht unter „Zuletzt geändert“"
-        actions={
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            onClick={() => aendern((p) => ({ ...p, aenderungen: [{ id: newId('phaen'), datum: today(), stelle: '', text: '' }, ...p.aenderungen] }))}
-          >
-            <Icon name="plus" size={13} /> Änderung
-          </button>
-        }
+        titel="Ausgaben und Änderungsindex"
+        sub="KaPlan vermerkt jede Ausgabe und erkennt, was sich seit der letzten geändert hat"
       />
-      <div className="card-pad">
-        {ph.aenderungen.length === 0 ? (
-          <p className="small muted">Noch keine Änderung eingetragen.</p>
+      <div className="card-pad stack">
+        {ph.ausgaben.length === 0 ? (
+          <Callout icon="i">Noch nicht ausgegeben. Die erste Ausgabe über „Als PDF ausgeben“ gilt als Aufstellung.</Callout>
+        ) : offen.length === 0 ? (
+          <p className="small muted">Keine Änderungen seit der Ausgabe vom {formatDate(letzte.datum)}.</p>
         ) : (
-          <div className="phe-aenderungen">
-            <AnimatePresence initial={false}>
-              {ph.aenderungen.map((x) => (
-                <motion.div key={x.id} {...listenEintrag} className="phe-aenderung">
-                  <TextInput type="date" value={x.datum} onChange={(v) => eintragAendern(x.id, { datum: v })} aria-label="Datum" />
-                  <EntwurfFeld wert={x.stelle} onChange={(v) => eintragAendern(x.id, { stelle: v })} placeholder="S. 5 / Kap. 5.4" aria-label="Seite bzw. Anlage" />
-                  <EntwurfFeld wert={x.text} onChange={(v) => eintragAendern(x.id, { text: v })} placeholder="Änderung" aria-label="Änderung" />
-                  <button
-                    type="button"
-                    className="btn-icon"
-                    onClick={() => aendern((p) => ({ ...p, aenderungen: p.aenderungen.filter((y) => y.id !== x.id) }))}
-                    aria-label="Eintrag entfernen"
-                    title="Entfernen"
-                  >
-                    <Icon name="loeschen" size={14} />
-                  </button>
-                </motion.div>
+          <Callout icon="!" ton="warn">
+            Seit der Ausgabe vom {formatDate(letzte.datum)} geändert – wird bei der nächsten Ausgabe vermerkt:
+            <ul className="phe-offen">
+              {offen.map((x, i) => (
+                <li key={i}>
+                  <span className="phe-stelle">{x.stelle}</span> {x.text}
+                </li>
               ))}
-            </AnimatePresence>
-          </div>
+            </ul>
+          </Callout>
         )}
+        {[...ph.ausgaben].reverse().map((a, i) => {
+          const nr = ph.ausgaben.length - i;
+          return (
+            <div key={a.id} className="phe-ausgabe">
+              <div className="phe-ausgabe-kopf">
+                <strong>{nr === 1 ? 'Aufgestellt' : `Ausgabe ${nr}`}</strong>
+                <span className="small muted">
+                  {formatDate(a.datum)}
+                  {a.von ? ` · ${a.von}` : ''}
+                </span>
+              </div>
+              {nr === 1 ? null : a.aenderungen.length === 0 ? (
+                <p className="small tertiary">Keine Einträge.</p>
+              ) : (
+                <div className="phe-aenderungen">
+                  {a.aenderungen.map((x) => (
+                    <div key={x.id} className="phe-aenderung">
+                      <span className="phe-stelle">{x.stelle}</span>
+                      <EntwurfFeld wert={x.text} onChange={(v) => eintragAendern(a.id, x.id, v)} aria-label={`Änderung ${x.stelle}`} />
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        onClick={() => eintragAendern(a.id, x.id, null)}
+                        aria-label={`Eintrag „${x.text}“ entfernen`}
+                        title="Aus dem Änderungsindex entfernen"
+                      >
+                        <Icon name="loeschen" size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </Card>
   );

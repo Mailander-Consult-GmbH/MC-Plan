@@ -438,13 +438,20 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     ausfallen; `mailRegelnUebernehmen` trägt geänderte Regeln in laufende Planläufe nach. Ohne
     Regel wird keine E-Mail vorgeschlagen,
   * `domain/pflichtenheft.ts` Pflichtenheft eines Projekts (`Project.pflichtenheft`, Reiter
-    `pflichtenheft`, `pages/projekt/pflichtenheft/`): Vorlage (`standardVorlage`, gespeichert als
-    `AppData.pflichtenheftVorlage`), Platzhalter aus Projekt- und Stammdaten
-    (`platzhalterWerte`), Ansprechpartner allein aus den Funktionen des Projekts
-    (`ansprechpartnerZeilen` – keine Personen im Pflichtenheft speichern), Druckfassung
-    (`pflichtenheftHtml`, eigene helle Gestaltung). Dazu `domain/ablaufDiagramm.ts` (Ablaufdiagramm
+    `pflichtenheft`, `pages/projekt/pflichtenheft/` – erstellt über den Assistenten
+    `Assistent.tsx`): Vorlage je Geschäftsbereich (`domain/pflichtenheftVorlagen.ts`,
+    `vorlageFuer`; gespeichert als `AppData.pflichtenheftVorlagen`), Platzhalter aus Projekt- und
+    Stammdaten (`platzhalterWerte`), Ansprechpartner allein aus den Funktionen des Projekts
+    (`ansprechpartnerZeilen` – keine Personen im Pflichtenheft speichern), Ausgaben
+    (`pflichtenheftStand` je Stelle, `aenderungenErmitteln`, Store `pflichtenheftAusgeben` –
+    „Zuletzt geändert“ und Änderungsindex entstehen allein daraus, nicht von Hand), Druckfassung
+    (`pflichtenheftHtml`, eigene helle Gestaltung). Welche Stammdaten gelten, sagt
+    `GESCHAEFTSBEREICHE` (`domain/types.ts`) – ein neuer Geschäftsbereich braucht dort einen
+    Eintrag und eine Vorlage. Dazu `domain/ablaufDiagramm.ts` (Ablaufdiagramm
     eines Workflows als SVG, allein über `gliedern`) und `domain/plancodierung.ts` (Kataloge,
-    `plancodePruefen` für die Planliste, Druckfassung). Die G-Nummer (`Project.gNummer`) teilt das
+    `plancodePruefen` für die Planliste, Druckfassung; die Einträge einer Kategorie bleiben Text –
+    der Editor `PlancodierungEditor.tsx`/`CodierungsKatalog.tsx` liest sie mit `eintraegeLesen` und
+    schreibt sie mit `eintraegeSchreiben` verlustfrei zurück). Die G-Nummer (`Project.gNummer`) teilt das
     Register mit der Baubetriebsplanung (`RegisterProjekt.gNummer`, `null` = noch unbekannt),
     Mobil und OE der Kontakte ebenso (`PERSON_FELDER`),
   * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten
