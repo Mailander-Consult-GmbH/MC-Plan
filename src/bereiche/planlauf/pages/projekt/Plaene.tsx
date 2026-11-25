@@ -50,6 +50,7 @@ import { BuendelnDialog, planeMitEigenemLauf } from '../../components/BuendelnDi
 import { PaketDialog } from '../../components/PaketDialog';
 import { paketVon } from '../../domain/uebersicht';
 import { aktuelleSchritte } from '../../domain/ablauf';
+import { plancodePruefen } from '../../domain/plancodierung';
 import { EintraegeAendernDialog, EintraegeLoeschenDialog, PaketZuweisenDialog } from '../../components/PlanlisteAktionen';
 import '../../components/planliste.css';
 import {
@@ -129,6 +130,11 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   // Planpakete gliedern die Liste; die Einträge sind Pläne und Planverzeichnisse.
   const alle = projektDokumente.filter((d) => d.kind !== 'paket');
   const pakete = projektDokumente.filter((d) => d.kind === 'paket');
+
+  /** Hinweise zur Plancodierung eines Plans, wenn das Pflichtenheft ein Schema festlegt (leer = in Ordnung). */
+  const plancodierung = project.pflichtenheft?.plancodierung;
+  const codeHinweise = (d: PlanDocument): string[] =>
+    d.kind === 'plan' && plancodierung && plancodierung.kategorien.length > 0 ? plancodePruefen(d.nummer, plancodierung) : [];
 
   /** Planpaket eines Eintrags – Pläne eines Verzeichnisses tragen dessen Paket. */
   const paketIdVon = (d: PlanDocument): ID | null => {
@@ -337,6 +343,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     const kinder = doc.kind === 'verzeichnis' ? kinderVon(doc.id) : [];
     const offen = !zugeklappt.includes(doc.id);
     const einzug = (imPaket ? 10 : 0) + (eingerueckt ? 24 : 0);
+    const hinweise = codeHinweise(doc);
     return (
       <tr
         key={doc.id}
@@ -388,6 +395,16 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
             <span style={{ minWidth: 0 }}>
               <span className="num">
                 {doc.nummer}
+                {hinweise.length > 0 ? (
+                  <span
+                    className="ml-1 inline-block align-[-2px] text-orange-text"
+                    role="img"
+                    aria-label={`Plancodierung weicht vom Schema ab: ${hinweise.join(' ')}`}
+                    title={hinweise.join('\n')}
+                  >
+                    <Icon name="warnung" size={13} />
+                  </span>
+                ) : null}
                 {doc.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
               </span>
               <div>

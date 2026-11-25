@@ -211,8 +211,8 @@ const VORLAGE_GEWERKNAMEN: Record<string, string> = {
   VA: 'Verkehrsanlagen',
 };
 
-/** Die mitgelieferte Vorlage (ohne die gespeicherte des Bestands). */
-export function standardVorlage(neueId: NeueId): PflichtenheftVorlage {
+/** Die mitgelieferte Vorlage (ohne die gespeicherte des Bestands); `projektKuerzel` ist das Beispiel der Kategorie „Projekt“. */
+export function standardVorlage(neueId: NeueId, projektKuerzel = ''): PflichtenheftVorlage {
   return {
     titel: 'Pflichtenheft Planlauf {{planungsphase}}',
     abschnitte: VORLAGE_ABSCHNITTE.map((a) => ({
@@ -224,7 +224,7 @@ export function standardVorlage(neueId: NeueId): PflichtenheftVorlage {
     })),
     gewerkNamen: { ...VORLAGE_GEWERKNAMEN },
     workflowHinweis: VORLAGE_WORKFLOW_HINWEIS,
-    plancodierung: standardPlancodierung(neueId),
+    plancodierung: standardPlancodierung(neueId, projektKuerzel),
   };
 }
 
@@ -233,10 +233,14 @@ const leereUnterschrift = (): Unterschrift => ({ ort: '', datum: null, funktion:
 /**
  * Neues Pflichtenheft aus der Vorlage des Bestands (sonst der mitgelieferten):
  * Abschnitte und Kategorien erhalten neue Kennungen; als Planläufe gelten die
- * Workflows des Projekts, ohne eigene die projektübergreifenden.
+ * Workflows des Projekts, ohne eigene die projektübergreifenden. Ist die
+ * Kategorie „Projekt“ der Plancodierung leer, trägt das Kürzel der
+ * Betriebsstelle aus den Stammdaten sie (samt Station) ein.
  */
 export function neuesPflichtenheft(data: AppData, project: Project, neueId: NeueId): Pflichtenheft {
-  const vorlage = data.pflichtenheftVorlage ?? standardVorlage(neueId);
+  const s = { ...leereStammdaten(), ...project.stammdaten };
+  const kuerzel = s.stationKuerzel.trim();
+  const vorlage = data.pflichtenheftVorlage ?? standardVorlage(neueId, kuerzel);
   const eigene = data.templates.filter((t) => t.projectId === project.id);
   const workflows = (eigene.length > 0 ? eigene : data.templates.filter((t) => t.projectId === null)).map((t) => ({
     workflowId: t.id,
@@ -255,7 +259,11 @@ export function neuesPflichtenheft(data: AppData, project: Project, neueId: Neue
     workflowHinweis: vorlage.workflowHinweis,
     plancodierung: {
       hinweis: vorlage.plancodierung.hinweis,
-      kategorien: vorlage.plancodierung.kategorien.map((k) => ({ ...k, id: neueId('phkat') })),
+      kategorien: vorlage.plancodierung.kategorien.map((k) =>
+        kuerzel && norm(k.name) === 'projekt' && !k.eintraege.trim()
+          ? { ...k, id: neueId('phkat'), beispiel: kuerzel, eintraege: `${kuerzel}\t${s.station.trim() || project.name}` }
+          : { ...k, id: neueId('phkat') },
+      ),
     },
     aenderungen: [],
   };
@@ -555,6 +563,7 @@ export const PFLICHTENHEFT_STIL = `
   .ph-deckblatt { page: deckblatt; }
   .ph-umbruch { break-before: page; }
   .ph-quer { page: quer; }
+  .ph-pc { page: pc-quer; }
   .ph-titel { font-size: 20pt; font-weight: 700; margin: 0 0 4mm; }
   .ph-projekt { font-size: 13pt; margin: 0 0 6mm; }
   .ph-bild { width: 100%; max-height: 95mm; object-fit: cover; display: block; margin: 0 0 6mm; }
@@ -678,10 +687,10 @@ export function pflichtenheftHtml(data: AppData, project: Project, ph: Pflichten
 </section>`);
   });
 
-  // Anlage Plancodierung
-  teile.push(`<section class="ph-umbruch ph-quer">
+  // Anlage Plancodierung – auf der Querformatseite der Plancodierung (pc-quer), deren Spaltenbreiten darauf rechnen
+  teile.push(`<section class="ph-umbruch ph-pc">
   ${anlagenKopf(`${anlage}.2`, `Plancodierungsschema für das Projekt ${werte.station || project.name}`, werte)}
-  ${plancodierungHtml(ph.plancodierung, werte.station || project.name)}
+  ${plancodierungHtml(ph.plancodierung, '')}
 </section>`);
 
   // Anlage Änderungsindex
