@@ -471,12 +471,13 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   der Standard-Status nicht ändern – `STATUS_AUS_NUMMER` ordnet ihnen ältere Stände zu. Stände
   bis Fassung 5 führten die KM-Runde in der Maßnahmenart; die Umstellung übernimmt sie nach
   `kmRunde` (`RUNDE_BIS_FASSUNG5` in `store/storage.ts`). Ein Projekt führt Bezeichnung,
-  Projektnummer (verknüpft über das Register), G-Nummer (`dbGNummer`, für den Import), Prozessphase
-  der ersten Anmeldung, Fahrplanjahre, Inbetriebnahme und Bemerkung – Projektleiter,
-  Hauptbearbeiter, erster Anmeldetermin (ca.) und Status der Betreuung sind seit Fassung 12
-  entfallen und kommen nicht wieder hinein, ohne dass es verlangt wird. Die Frist der ersten
-  Anmeldung und den Beginn der Betreuung liefert allein `ersterTermin` bzw. `betreuungAb`
-  (`domain/fristen.ts`) aus Prozessphase und erstem Fahrplanjahr. Richtlinienfristen können ein
+  Projektnummer (verknüpft über das Register), G-Nummer (`dbGNummer`, für den Import),
+  Fahrplanjahre, Inbetriebnahme und Bemerkung – Projektleiter, Hauptbearbeiter, erster
+  Anmeldetermin (ca.) und Status der Betreuung sind seit Fassung 12 entfallen, die Prozessphase
+  der ersten Anmeldung seit Fassung 15 (irreführend, ein Projekt hat Anmeldungen in mehreren
+  Phasen); sie kommen nicht wieder hinein, ohne dass es verlangt wird. Phase und Frist der ersten
+  Anmeldung liefert allein `ersteAnmeldung` (`domain/fristen.ts`) aus dem ersten Fahrplanjahr –
+  der nächste offene Termin laut Richtlinie ab heute. Richtlinienfristen können ein
   Fenster von Jahren haben (`RilFrist.jahreVorherAb`; SKM 22.07. in N−9 bis N−5, MKM 17.02. in
   N−4 bis N−3): Das Datum liefert allein `rilDatum` mit Bezugstag – der Statuswechsel für die
   Terminfrist einer Anmeldung, heute für Anmeldebedarf und Erstanmeldung –, die Phase eines

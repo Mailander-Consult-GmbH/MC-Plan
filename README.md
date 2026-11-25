@@ -990,17 +990,20 @@ der Anwender. Offene fachliche Fragen und die Annahmen des Entwurfs stehen in
 ### Projekt
 Im Lastenheft „Projekthülle“; wird bei der MIC-Beauftragung angelegt: Bezeichnung,
 **Projektnummer** (Beispiel im Feld: K1234), **G-Nummer** (Beispiel: G.123456789), Inbetriebnahme,
-**betroffene Fahrplanjahre**, Prozessphase der ersten Anmeldung und Bemerkung. Die Maske hat die
+**betroffene Fahrplanjahre** und Bemerkung. Die Maske hat die
 Bezeichnung über die ganze Breite, darunter Projektnummer, G-Nummer und Inbetriebnahme in drei
 Spalten, dann die Gruppe **Fahrplanjahre und erste Anmeldung** und die Bemerkung (schmal alles
 untereinander). Die Fahrplanjahre wählt man als **Zeitraum „von … bis …“**; ab zwei Jahren zeigt
 eine Leiste die Jahre des Zeitraums, ein Klick nimmt ein Jahr aus (durchgestrichen) bzw. wieder
 auf. Darunter stehen die Zahl der Fahrplanjahre und ihr Zeitraum, etwa „3 Fahrplanjahre:
 13.12.2026 – 14.12.2030 (ohne 2029)“; ohne Änderung an „von“ oder „bis“ bleiben ausgenommene
-Jahre ausgenommen. Aus Prozessphase und erstem betroffenen Fahrplanjahr ergibt sich die Frist der
-ersten Anmeldung laut Richtlinie – der Dialog nennt sie unter der Prozessphase („Frist laut
-Richtlinie: …“), die Projektseite neben ihr. Projektleiter, Hauptbearbeiter MIC, erster Anmeldetermin
-(ca.) und Status der Betreuung führt ein Projekt nicht mehr (siehe „Daten“); ein abgeschlossenes
+Jahre ausgenommen. Neben den Fahrplanjahren zeigt die Maske die **erste Anmeldung**: Phase und Frist
+ergeben sich allein aus dem ersten betroffenen Fahrplanjahr – der nächste noch offene Termin laut
+Richtlinie ab heute, in der Folge SKM, MKM, KM N-2, KM N-1 und unterjährig (für 2030 etwa am
+25.11.2026 „MKM bis 17.02.2027“). Eine eigene **Prozessphase am Projekt gibt es nicht mehr** – sie
+war irreführend, weil ein Projekt Anmeldungen in mehreren Phasen hat. Projektleiter,
+Hauptbearbeiter MIC, erster Anmeldetermin (ca.) und Status der Betreuung führt ein Projekt
+ebenfalls nicht mehr (siehe „Daten“); ein abgeschlossenes
 Projekt wird archiviert. Bezeichnung, Projektnummer und G-Nummer
 werden ohne Leerzeichen am Rand gespeichert – die Projektnummer verknüpft das Projekt mit den
 anderen Bereichen, der G-Nummer ordnet der Import aus BBPNeo die Anmeldungen zu. Wird ein Projekt
@@ -1012,8 +1015,9 @@ Projekt stehen **Excel**, **Bearbeiten**, **Archivieren** (siehe
 
 **Erstanmeldung ausstehend:** Solange ein Projekt keine Anmeldung hat (Anmeldeleichen zählen
 nicht), steht zwischen den Projektangaben und den Anmeldungen der Hinweis
-„Erstanmeldung ausstehend“ mit Prozessphase und Terminfrist – der Frist laut Richtlinie für die
-Prozessphase und das erste betroffene Fahrplanjahr; ohne Fahrplanjahre gibt es noch keine Frist.
+„Erstanmeldung ausstehend“ mit der Phase und Terminfrist der ersten Anmeldung (abgeleitet aus dem
+ersten betroffenen Fahrplanjahr, siehe oben); ohne Fahrplanjahre gibt es noch keine Frist. Ist für
+das Fahrplanjahr kein Termin mehr offen, gilt der unterjährige – dann ist die Erstanmeldung überfällig.
 Dieselbe Frist erscheint als eigene Zeile unter **Termine & Nachhaken**
 und in den anstehenden Terminfristen der **Übersicht** und zählt bei „überfällig“ mit.
 
@@ -1021,8 +1025,7 @@ und in den anstehenden Terminfristen der **Übersicht** und zählt bei „überf
 für SKM, MKM, KM N-2 und KM N-1 und ob dafür schon ein Eintrag besteht (ein Eintrag einer späteren
 Phase deckt frühere ab, ein Eintrag im KM oder KKM beide KM-Fristen; Anmeldeleichen zählen nicht).
 Was in die Vorschau fällt (Vorgabe 180 Tage), steht unter „Anmeldebedarf aus den Projekten“ in
-Übersicht und Terminen – ohne Fristen, die mehr als 31 Tage vor der ersten Anmeldung des Projekts
-liegen (vor der Betreuung durch MIC). Die eigene Karte im Projekt ist entfallen.
+Übersicht und Terminen. Die eigene Karte im Projekt ist entfallen.
 
 ### Anmeldung
 Je Anmeldung eine Zeile im Projekt: Anmelde-ID (in Workflows mit ganzem Fahrplanjahr Begriff bzw.
@@ -1136,8 +1139,7 @@ und Projekte). PzE kennt keinen Status: Der Import **legt nur an** – Anmeldung
   den nächsten Import; wer zum ersten Mal auftaucht, ist nicht angehakt (Kennzeichen „neu“).
 * **Projekte:** Je Angabe unter „Enthaltene Projekte“ (die ganze Zelle – Projektnamen enthalten selbst
   Kommas) ein Projekt: das beim letzten Import zugeordnete, sonst eines gleichen Namens, sonst ein
-  neues (Bezeichnung aus PzE, änderbar; Prozessphase der ersten Anmeldung nach dem frühesten
-  Fahrplanjahr, Bemerkung „Beim Import aus PzE angelegt.“; anders als beim Import aus BBPNeo ohne
+  neues (Bezeichnung aus PzE, änderbar; Bemerkung „Beim Import aus PzE angelegt.“; anders als beim Import aus BBPNeo ohne
   Markierung, also nicht in der Seitenleiste). Die Fahrplanjahre der Vorhaben gehen ins
   Projekt – einem vorhandenen ergänzt der Import fehlende. Auch diese Zuordnung merkt sich KaPlan.
 
@@ -1240,8 +1242,8 @@ Anmeldebedarf und Erstanmeldung ab heute; sind alle verstrichen, der letzte (der
 welcher). **Die übrigen vorbelegten Werte sind Platzhalter** und als solche gekennzeichnet, bis
 sie geändert oder als „Geprüft“ bestätigt werden. **Ril_KM** nimmt die Frist der **KM-Runde**, wenn die Anmeldung sie
 kennt (Prozessphase aus BBPNeo oder im Dialog gewählt: 2. KP = N-2, 3. KP = N-1); sonst die
-N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist und nicht vor dem ersten
-Anmeldetermin des Projekts liegt, danach die N-1-Frist; der Rechenweg nennt den Grund. **Ril_KKM** richtet sich nach der Maßnahmenart
+N-2-Frist, solange sie am Tag des Statuswechsels nicht verstrichen ist, danach die N-1-Frist; der
+Rechenweg nennt den Grund. **Ril_KKM** richtet sich nach der Maßnahmenart
 (Einträge der Art SKM oder MKM rechnen dabei wie A); ihr Stichtag ist ein Mittwoch – die Frist
 fällt auf den Mittwoch an oder vor „Sperrbeginn minus Vorlauf“.
 Das Fahrplanjahr N reicht vom Sonntag nach dem zweiten Samstag im Dezember N−1 bis zum zweiten
@@ -1293,7 +1295,9 @@ Anmeldetermin (ca.) und Status der Betreuung aus den Projekten; war ein Projekt 
 der Ersteller und die Projektzuordnung des PzE-Imports (beide leer). Fassung 14 gibt den
 Richtlinienfristen ein Fenster von Jahren und setzt SKM (22.07. in N−9 bis N−5) und MKM (17.02. in
 N−4 bis N−3) – sofern sie noch Platzhalter waren oder den alten Platzhalterwert (31.03. N−4 bzw.
-N−3) trugen; selbst eingetragene andere Werte bleiben. Der Name unter „Angemeldet als“
+N−3) trugen; selbst eingetragene andere Werte bleiben. Fassung 15 nimmt die Prozessphase der ersten
+Anmeldung aus den Projekten – Phase und Frist der ersten Anmeldung ergeben sich aus den
+Fahrplanjahren. Der Name unter „Angemeldet als“
 gilt in allen Bereichen; er steht im Statusverlauf.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
@@ -1584,7 +1588,7 @@ Angelegt, bearbeitet und gelöscht wird in den Bereichen.
   **Übernehmen in …** legt das Projekt im Bereich an – samt den Projektbeteiligten (die Meldung
   nennt ihre Zahl). In der **Baubetriebsplanung** öffnet der Knopf zuerst die Maske „Neues
   Projekt“, vorausgefüllt mit Bezeichnung, Projektnummer und der Beschreibung als Bemerkung; dort
-  ergänzt man G-Nummer, Fahrplanjahre und Prozessphase, „Übernehmen“ legt das Projekt an und
+  ergänzt man G-Nummer und Fahrplanjahre, „Übernehmen“ legt das Projekt an und
   öffnet es, „Abbrechen“ übernimmt nichts. Wer dabei Projektnummer oder Bezeichnung ändert,
   ändert sie für alle Bereiche des Projekts. Der Abschnitt steht nur, wenn der Bereich seinen Bestand laden konnte – sonst
   sähe das Register eine Übernahme vor, die niemand anlegt.

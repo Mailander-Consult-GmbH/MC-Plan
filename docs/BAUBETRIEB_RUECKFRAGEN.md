@@ -71,6 +71,10 @@ ist gemeint – die, in der MIC in das Projekt einsteigt?
 *Entwurf:* Feld „Prozessphase des ersten Anmeldetermins“ (SKM, MKM, KM N-2, KM N-1, KKM) und
 ein Vorschlag laut Richtlinie, der übernommen werden kann, aber nicht muss.
 
+*Stand 25.11.2026:* Auch das Feld „Prozessphase“ ist entfallen (irreführend – ein Projekt hat
+Anmeldungen in mehreren Phasen). Phase und Frist der ersten Anmeldung ergeben sich allein aus dem
+ersten betroffenen Fahrplanjahr: der nächste noch offene Termin laut Richtlinie ab heute.
+
 *Stand 19.11.2026:* Das Datumsfeld ist entfallen. Die Frist der ersten Anmeldung ergibt sich
 allein aus der Prozessphase und dem ersten betroffenen Fahrplanjahr laut Richtlinie; von Hand
 lässt sie sich nicht mehr abweichend eintragen.
@@ -191,7 +195,7 @@ A_Vor_N-2 auf A_Vor_N-1 ändern?
 
 *Entwurf:* Der Status wird erneut gesetzt, das neue Datum im Verlauf festgehalten. Eine Art
 A_Vor_N-1 gibt es nicht mehr: Im KM gilt die N-2-Frist, solange sie am Tag des Statuswechsels nicht
-verstrichen ist und nicht vor der ersten Anmeldung des Projekts liegt, sonst die N-1-Frist
+verstrichen ist, sonst die N-1-Frist
 (siehe E9).
 
 **D4. X5 → Y4** – Eine im Vorprozess genehmigte Anmeldung wird direkt „Angemeldet_fristgerecht“
@@ -302,8 +306,9 @@ Vorprozessen N-x (KM) immer fristgerecht erfolgen. Gibt es Ausnahmen, die abgebi
 
 **E9. ★ KM: N-2 oder N-1** – Bisher entschied die Art (A_Vor_N-2 oder A_Vor_N-1), welche Frist im
 KM gilt. Ohne diese Arten wählt die Anwendung selbst: Es gilt die N-2-Frist, solange sie am Tag
-des Statuswechsels nicht verstrichen ist und nicht vor der ersten Anmeldung des Projekts liegt
-(ihrer Frist laut Richtlinie, siehe B2 – MIC betreut dann erst ab N-1), sonst die N-1-Frist; der Rechenweg nennt den Grund.
+des Statuswechsels nicht verstrichen ist, sonst die N-1-Frist; der Rechenweg nennt den Grund. (Bis
+Fassung 14 galt zusätzlich: nicht vor der ersten Anmeldung des Projekts laut seiner Prozessphase –
+die Prozessphase am Projekt ist entfallen, siehe B2; eine bekannte KM-Runde gibt die Frist vor.)
 Passt das, oder gibt es Maßnahmen, die unabhängig vom Zeitpunkt in N-2 (bzw. N-1) angemeldet
 werden müssen?
 
