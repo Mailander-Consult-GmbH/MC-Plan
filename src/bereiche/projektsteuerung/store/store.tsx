@@ -103,6 +103,8 @@ interface StoreValue {
   /** „Erledigt“ setzen bzw. zurücknehmen; hält den Tag fest. */
   todoErledigen: (id: ID, erledigt: boolean) => void;
   deleteTodo: (id: ID) => void;
+  /** Löscht mehrere Aufgaben auf einmal (etwa alle erledigten der Ansicht). */
+  todosLoeschen: (ids: ID[]) => void;
   /** Tauscht zwei Aufgaben in der Reihenfolge der Liste (nach oben bzw. unten). */
   todosTauschen: (a: ID, b: ID) => void;
   /** Übernimmt Aufgaben aus einem Protokoll in die To-Do-Liste (ans Ende); liefert ihre Zahl. */
@@ -306,6 +308,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         mutate((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? todoErledigt(t, erledigt, heute) : t)) }));
       },
       deleteTodo: (id) => mutate((d) => ({ ...d, todos: d.todos.filter((t) => t.id !== id) })),
+      todosLoeschen: (ids) => {
+        const weg = new Set(ids);
+        if (weg.size > 0) mutate((d) => ({ ...d, todos: d.todos.filter((t) => !weg.has(t.id)) }));
+      },
       todosTauschen: (a, b) =>
         mutate((d) => {
           const i = d.todos.findIndex((t) => t.id === a);

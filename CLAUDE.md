@@ -524,10 +524,13 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   (`todosTauschen`), nicht sortiert. Aus dem Protokoll übernimmt `todosAusProtokoll`
   (`todoAusAufgabe` mit `herkunft`); ob eine Aufgabe schon dort ist, sagt allein `inTodoListe` –
   den Status gleicht nichts ab. Erledigt wird in der To-Do-Liste mit
-  `ErledigtHaken` (`components/erledigen.tsx`, der kleine Haken des Planlaufmanagements); eine
+  `ErledigtHaken` (`components/erledigen.tsx`, der kleine Haken des Planlaufmanagements; daneben
+  bei erledigten der Papierkorb, im Filter „Erledigt“ „Erledigte löschen“ über `todosLoeschen`); eine
   Zeile, die dadurch die Auswahl verlässt, hält `useNachlauf` kurz an ihrem Platz – gespeichert
   wird sofort, nicht erst danach. Die Klasse `ps-haken` gehört dem Kästchen „erledigt“ im
-  Protokolleditor; der Knopf heißt `ps-erledigt-haken`. Eigene
+  Protokolleditor; der Knopf heißt `ps-erledigt-haken`. Der Zähler an „To-Do-Liste“ in der
+  Seitenleiste (fällige und überfällige) ist auf Wunsch stets rot (`badgeAlarm`) wie die
+  Projektzähler im Planlaufmanagement – nicht auf „nur bei Überfälligem“ zurückstellen. Eigene
   Gestaltung in `projektsteuerung.css` (Klassen mit Präfix `ps-`, nur Design-Tokens; weiß bleiben
   allein das Blatt der Druckansicht und die Logo-Kacheln). Neue Felder
   über `DATEN_VERSION` (`projektsteuerung/domain/types.ts`) und `migriere()`

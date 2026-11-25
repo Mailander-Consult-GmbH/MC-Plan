@@ -6,7 +6,9 @@
  * und als Reiter „To-Dos“ im Projekt (nur dessen Karte). Neue Aufgaben werden
  * unter den vorhandenen eingetragen, als schriebe man die Liste fort; ein
  * Klick auf eine Zeile öffnet sie zum Bearbeiten. Erledigt wird mit dem
- * kleinen Haken des Planlaufmanagements (`ErledigtHaken`); eine Zeile, die
+ * kleinen Haken des Planlaufmanagements (`ErledigtHaken`), daneben löscht der
+ * Papierkorb eine erledigte Aufgabe sofort, „Erledigte löschen“ im Filter
+ * „Erledigt“ alle der Ansicht nach Rückfrage; eine Zeile, die
  * damit oder mit dem Stern die Auswahl verlässt, bleibt noch kurz stehen
  * (`useNachlauf`), Zeilen und Karten kommen, gehen und gleiten an ihren Platz
  * (`listenEintrag`). Die Übersicht zählt die offenen, überfälligen und
@@ -95,7 +97,7 @@ export function TodoListe({
   startFilter?: Filter;
   navigate?: (r: Route) => void;
 }) {
-  const { data, todoErledigen, updateTodo } = useStore();
+  const { data, todoErledigen, updateTodo, deleteTodo, todosLoeschen } = useStore();
   const toast = useToast();
   const nachlauf = useNachlauf();
   const archiviert = useArchivierte('projektsteuerung');
@@ -106,6 +108,7 @@ export function TodoListe({
   const [weitere, setWeitere] = useState<ID[]>([]);
   const [fokusGruppe, setFokusGruppe] = useState<string | null>(null);
   const [bearbeiten, setBearbeiten] = useState<ID | null>(null);
+  const [aufraeumen, setAufraeumen] = useState(false);
   const heute = today();
 
   const projektVon = (t: Todo) => projektDes(t, data.projekte);
@@ -177,6 +180,12 @@ export function TodoListe({
     nachlauf.merken(t.id);
     toast(erledigt ? 'Als erledigt markiert.' : 'Wieder offen.');
   };
+  const loeschen = (t: Todo) => {
+    deleteTodo(t.id);
+    toast('Aufgabe gelöscht.');
+  };
+  // Alle erledigten der Ansicht – nach Projekt (bzw. im Projekt-Reiter) und Suche
+  const erledigte = gesucht.filter(fertig);
   const wichtigUmschalten = (t: Todo) => {
     updateTodo(t.id, { wichtig: !t.wichtig });
     nachlauf.merken(t.id);
@@ -217,6 +226,16 @@ export function TodoListe({
         </div>
       </div>
 
+      {/* Im Filter „Erledigt“: alle erledigten der Ansicht auf einmal löschen – in eigener Zeile,
+          damit Projektauswahl und Suche nicht umbrechen */}
+      {filter === 'erledigt' && erledigte.length > 0 ? (
+        <div className="flex justify-end">
+          <button type="button" className="btn btn-sm btn-danger" onClick={() => setAufraeumen(true)}>
+            <Icon name="loeschen" size={14} /> Erledigte löschen
+          </button>
+        </div>
+      ) : null}
+
       {begriff && gesucht.length === 0 ? (
         <Card>
           <EmptyState icon="suche" titel="Keine Aufgabe gefunden" text="Für diese Suche gibt es keinen Treffer." />
@@ -238,6 +257,7 @@ export function TodoListe({
                 onBearbeiten={setBearbeiten}
                 onErledigen={erledigen}
                 onWichtig={wichtigUmschalten}
+                onLoeschen={loeschen}
               />
             </motion.div>
           ))}
@@ -268,6 +288,22 @@ export function TodoListe({
       ) : null}
 
       {zuBearbeiten ? <TodoDialog todo={zuBearbeiten} onClose={() => setBearbeiten(null)} /> : null}
+
+      {aufraeumen ? (
+        <ConfirmDialog
+          titel="Erledigte Aufgaben löschen?"
+          text={
+            erledigte.length === 1
+              ? 'Die erledigte Aufgabe dieser Ansicht wird aus der To-Do-Liste entfernt.'
+              : `Die ${erledigte.length} erledigten Aufgaben dieser Ansicht werden aus der To-Do-Liste entfernt.`
+          }
+          onConfirm={() => {
+            todosLoeschen(erledigte.map((t) => t.id));
+            toast(erledigte.length === 1 ? 'Aufgabe gelöscht.' : `${erledigte.length} Aufgaben gelöscht.`);
+          }}
+          onClose={() => setAufraeumen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -289,6 +325,7 @@ function TodoGruppe({
   onBearbeiten,
   onErledigen,
   onWichtig,
+  onLoeschen,
 }: {
   projekt: Projekt | null;
   imProjekt: boolean;
@@ -305,6 +342,8 @@ function TodoGruppe({
   onBearbeiten: (id: ID) => void;
   onErledigen: (t: Todo) => void;
   onWichtig: (t: Todo) => void;
+  /** Löscht eine erledigte Aufgabe sofort (Papierkorb neben dem Haken). */
+  onLoeschen: (t: Todo) => void;
 }) {
   const { data, addTodo, todosTauschen } = useStore();
   const toast = useToast();
@@ -363,8 +402,8 @@ function TodoGruppe({
                 <th>Aufgabe</th>
                 <th style={{ width: 140 }}>Fällig</th>
                 <th style={{ width: 150 }}>Status</th>
-                <th className="actions" style={{ width: 132 }}>
-                  <span className="sr-only">Reihenfolge und erledigt</span>
+                <th className="actions" style={{ width: 164 }}>
+                  <span className="sr-only">Reihenfolge, erledigt und löschen</span>
                 </th>
               </tr>
             </thead>
@@ -458,6 +497,17 @@ function TodoGruppe({
                           <Icon name="runter" size={14} />
                         </button>
                         <ErledigtHaken erledigt={fertig(t)} text={t.text} onUmschalten={() => onErledigen(t)} />
+                        {fertig(t) ? (
+                          <button
+                            type="button"
+                            className="btn-icon ps-todo-loeschen"
+                            title="Löschen"
+                            aria-label={`„${t.text}“ löschen`}
+                            onClick={() => onLoeschen(t)}
+                          >
+                            <Icon name="loeschen" size={14} />
+                          </button>
+                        ) : null}
                       </td>
                     </motion.tr>
                   );

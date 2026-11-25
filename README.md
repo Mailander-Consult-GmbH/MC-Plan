@@ -1472,10 +1472,13 @@ oder in den nächsten 7 Tagen), **Erledigt**, **Alle**, dazu nach Projekt (auch 
 und eine Suche; was in der Ansicht **Wichtig** neu eingetragen wird, ist wichtig. Ein Klick auf
 eine Zeile öffnet die Aufgabe zum Bearbeiten (Aufgabe, Projekt – ein anderes Projekt verschiebt
 sie in dessen Karte –, Fällig am, Notiz, wichtig, erledigt) und Löschen. Aufgaben aus einem
-Protokoll kommen über **In die To-Do-Liste** im Protokoll (siehe dort). Der Zähler am Menüpunkt
-nennt die zeitkritischen Aufgaben – rot, sobald eine überfällig ist. Wird ein Projekt gelöscht,
+Protokoll kommen über **In die To-Do-Liste** im Protokoll (siehe dort). Neben dem Haken einer
+erledigten Aufgabe löscht ein **Papierkorb** sie sofort; im Filter **Erledigt** löscht **Erledigte
+löschen** nach einer Rückfrage alle erledigten der Ansicht (nach Projektauswahl und Suche, im
+Projekt-Reiter die des Projekts). Der Zähler am Menüpunkt nennt die fälligen und überfälligen
+Aufgaben – rot wie die Zähler der Projekte im Planlaufmanagement. Wird ein Projekt gelöscht,
 bleiben seine Aufgaben ohne Projekt stehen. Schmal stehen Stern und Text oben, Termin, Status,
-Pfeile und Haken darunter.
+Pfeile, Haken und Papierkorb darunter.
 
 Die Listen bewegen sich wie die Menüleiste: Erledigt ist der Haken grün gefüllt und springt kurz
 auf, der Text wird durchgestrichen; die Zeile bleibt noch einen Augenblick an ihrem Platz – ein

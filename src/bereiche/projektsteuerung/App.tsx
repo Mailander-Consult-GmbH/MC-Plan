@@ -13,7 +13,7 @@ import { Hinweisleisten } from './components/Hinweisleisten';
 import { SicherungEinspielenDialog, SicherungWaehlen, type Sicherung } from './components/Sicherung';
 import { bezeichnung } from './domain/protokoll';
 import { offenePunkte } from './domain/punkte';
-import { todoAmpel, zeitkritisch } from './domain/todos';
+import { zeitkritisch } from './domain/todos';
 import { useRoute, type Route } from './lib/router';
 import { Funktionen } from './pages/Funktionen';
 import { ProjektDetail } from './pages/ProjektDetail';
@@ -50,9 +50,8 @@ export function App() {
   const markierte = sichtbareProjekte(data.projekte, archiviert);
   const aktiveAnzahl = data.projekte.filter((p) => !archiviert.has(p.id)).length;
   const ueberfaellig = offenePunkte(data, markierte.map((p) => p.id)).filter((p) => p.ampel === 'ueberfaellig');
-  // To-Do-Liste: zeitkritische Aufgaben; rot, sobald eine überfällig ist
+  // To-Do-Liste: fällige und überfällige Aufgaben – rot wie die Zähler der Projekte im Planlaufmanagement
   const faelligeTodos = data.todos.filter((t) => zeitkritisch(t));
-  const todoUeberfaellig = faelligeTodos.some((t) => todoAmpel(t) === 'ueberfaellig');
   const projekt =
     route.view === 'projekt' || route.view === 'protokoll'
       ? data.projekte.find((p) => p.id === route.projektId)
@@ -91,7 +90,7 @@ export function App() {
           label="To-Do-Liste"
           aktiv={route.view === 'todos'}
           badge={faelligeTodos.length > 0 ? String(faelligeTodos.length) : undefined}
-          badgeAlarm={todoUeberfaellig}
+          badgeAlarm
           onClick={() => gehe({ view: 'todos' })}
         />
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
