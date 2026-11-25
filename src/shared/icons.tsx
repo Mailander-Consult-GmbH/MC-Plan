@@ -7,6 +7,8 @@
 import {
   Archive,
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   ArrowUp,
   Bell,
   BookUser,
@@ -81,6 +83,8 @@ const symbole = {
   person: User,
   hoch: ArrowUp,
   runter: ArrowDown,
+  links: ArrowLeft,
+  rechts: ArrowRight,
   kopieren: Copy,
   // Klemmbrett mit Textzeilen – Protokolle und Projektsteuerung
   protokoll: ClipboardList,
