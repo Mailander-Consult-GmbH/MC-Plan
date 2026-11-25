@@ -596,10 +596,9 @@ export const PFLICHTENHEFT_STIL = `
   .ph-anlage-nr { text-align: right; font-size: 9pt; color: #6e6e73; }
   .ph-anlage-projekt { font-size: 10pt; margin: 1mm 0 2mm; }
   h2.ph-anlage-titel { font-size: 13pt; margin: 0; }
-  .ph-diagramm svg { width: 100%; height: auto; max-height: 150mm; display: block; }
+  .ph-diagramm svg { display: block; margin: 0 auto; }
   .ph-hinweis { font-size: 8.5pt; color: #3a3a3c; margin-top: 3mm; }
   .ph-hinweis p { margin: 0 0 1.5mm; }
-  .ph-dauer { font-weight: 700; margin-top: 2mm; }
   table.ph-index td.datum { width: 26mm; white-space: nowrap; }
   table.ph-index td.stelle { width: 42mm; }
   @media screen {
@@ -678,11 +677,12 @@ export function pflichtenheftHtml(data: AppData, project: Project, ph: Pflichten
   // Anlage Planläufe: je Workflow eine Seite im Querformat
   const hinweis = ph.workflowHinweis.trim() ? `<div class="ph-hinweis">${textHtml(textEinsetzen(ph.workflowHinweis, werte))}</div>` : '';
   workflows.forEach(({ w, t }, i) => {
-    const { svg, dauer } = ablaufDiagrammSvg(t.steps, { einheit });
+    // Kopf (≈ 25 mm) und Hinweis lassen dem Bild auf A4 quer (184 mm) den Rest; die Gesamtdauer steht im Bild
+    const hoeheMm = Math.max(90, 150 - Math.ceil(ph.workflowHinweis.trim().length / 160) * 4.5);
+    const { svg } = ablaufDiagrammSvg(t.steps, { einheit, hoeheMm });
     teile.push(`<section class="ph-umbruch ph-quer">
   ${anlagenKopf(`${anlage}.1.${i + 1}`, w.titel, werte)}
   <div class="ph-diagramm">${svg}</div>
-  <div class="ph-dauer">Gesamtdauer ${dauer} ${einheit}</div>
   ${hinweis}
 </section>`);
   });
