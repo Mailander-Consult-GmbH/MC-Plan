@@ -45,7 +45,7 @@ export function ProjektDetail({
       {tab === 'plaene' ? <Plaene project={project} oeffneLauf={oeffneLauf} /> : null}
       {tab === 'rollen' ? <RollenFunktionen project={project} /> : null}
       {tab === 'ketten' ? <Workflows projectId={project.id} /> : null}
-      {tab === 'pflichtenheft' ? <PflichtenheftSeite project={project} gotoTab={gotoTab} /> : null}
+      {tab === 'pflichtenheft' ? <PflichtenheftSeite key={project.id} project={project} gotoTab={gotoTab} /> : null}
       {tab === 'einstellungen' ? <Einstellungen project={project} navigate={navigate} /> : null}
 
     </div>

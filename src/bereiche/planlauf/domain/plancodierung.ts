@@ -87,6 +87,34 @@ export function eintraegeLesen(text: string): CodierungsZeile[] {
   return zeilen;
 }
 
+/**
+ * Schreibt Zeilen eines Katalogs als Text, wie `eintraegeLesen` ihn liest:
+ * „# Titel“, „Code<Tab>Bezeichnung“, ohne Code „<Tab>Bezeichnung“, ohne
+ * Bezeichnung nur der Code. Leere Einträge und Überschriften ohne Titel
+ * entfallen, Zeilenumbrüche (im Eintrag auch Tabulatoren) werden zu
+ * Leerzeichen, Ränder abgeschnitten. Für Zeilen, wie `eintraegeLesen` sie
+ * liefert, gilt `eintraegeLesen(eintraegeSchreiben(z))` gleich `z` – so
+ * wechselt der Editor verlustfrei zwischen Liste und Text. (Ein Code ohne
+ * Bezeichnung bleibt nur dann ein Code, wenn er aus Zeichen eines Codes
+ * besteht; sonst liest ihn `eintraegeLesen` als Erläuterung.)
+ */
+export function eintraegeSchreiben(zeilen: readonly CodierungsZeile[]): string {
+  const einzeilig = (s: string) => s.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+  const feld = (s: string) => einzeilig(s).replace(/\s*\t+\s*/g, ' ');
+  const text: string[] = [];
+  for (const z of zeilen) {
+    if (z.art === 'gruppe') {
+      const titel = einzeilig(z.titel);
+      if (titel) text.push(`# ${titel}`);
+      continue;
+    }
+    const code = feld(z.code);
+    const bezeichnung = feld(z.bezeichnung);
+    if (code || bezeichnung) text.push(bezeichnung ? `${code}\t${bezeichnung}` : code);
+  }
+  return text.join('\n');
+}
+
 /* ------------------------------------------------------------------ */
 /* Art einer Kategorie                                                 */
 /* ------------------------------------------------------------------ */

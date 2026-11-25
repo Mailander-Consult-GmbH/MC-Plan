@@ -1031,11 +1031,17 @@ nennt ein Hinweis sie mit einem Verweis auf die Einstellungen des Projekts.
   Pfeilen, Abweichungen (etwa „Rückmeldung an Planer“) und Rücksprünge gestrichelt daneben, unten
   „Gesamtdauer … AT“ im Standardverlauf und eine Legende. Lange Workflows werden kleiner, nicht
   höher – jedes Diagramm steht samt Kopf und Hinweis auf einer Seite im Querformat.
-* **Plancodierung** – das Schema der Plancodierung (Anlage „Plancodierung“): oben der Beispielcode
-  aus den Beispielen der Kategorien, darunter je Kategorie eine Kachel mit Name, Beispiel und den
-  Einträgen als Zeilen „Code Tab Bezeichnung“ (auch „Code – Bezeichnung“; „# Überschrift“
-  gliedert; aus Excel einfügbar), nach oben/unten, **Kategorie hinzufügen**, Entfernen (mit
-  Rückfrage, wenn sie Einträge hat), und der Hinweis. Mitgeliefert sind die acht Kategorien des
+* **Plancodierung** – das Schema der Plancodierung (Anlage „Plancodierung“): oben der **Aufbau
+  des Codes** als Kette – je Kategorie ein farbiges Glied mit ihrem Beispiel, Nummer und Name,
+  „_“ dazwischen, „.pdf“ am Ende, zuletzt **+ Kategorie**. Ein Klick wählt die Kategorie; darunter
+  steht sie in einer grauen Kachel: Name, Beispiel, wie die Stelle geprüft wird, nach links/rechts,
+  Entfernen (mit Rückfrage, wenn sie Einträge hat), daneben der **Katalog** als Liste – Code und
+  Bezeichnung je Zeile, Gruppenüberschriften als abgesetzte Zeilen, **+ Eintrag** und **+ Gruppe**;
+  Enter legt darunter einen Eintrag an, ↑/↓ wechseln die Zeile, aus Excel kopierte Zeilen lassen
+  sich einfügen, ab 15 Einträgen gibt es eine Suche. **Als Text** zeigt den Katalog als Zeilen
+  „Code Tab Bezeichnung“ (auch „Code – Bezeichnung“; „# Überschrift“ gliedert) – so wird er auch
+  gespeichert. Zuletzt der Hinweis. Eingaben speichert der Editor nach einer kurzen Pause.
+  Mitgeliefert sind die acht Kategorien des
   Muster-Pflichtenhefts (Projekt, Planungsphase, Planersteller, Planungsfachbereich,
   Planungsobjekt, Planart, laufende Nummer, Index) mit ihren Katalogen; die Kategorie „Projekt“
   füllt ein neues Pflichtenheft mit dem Kürzel der Betriebsstelle und der Station. Legt das
@@ -1932,7 +1938,8 @@ src/
                      (Stand und Änderungen), Druckfassung
         pflichtenheftVorlagen.ts  Mitgelieferte Vorlagen je Geschäftsbereich
         ablaufDiagramm.ts  Ablaufdiagramm eines Workflows als SVG (Anlage „Planläufe“)
-        plancodierung.ts   Plancodierung: mitgelieferte Kataloge, Prüfung, Druckfassung
+        plancodierung.ts   Plancodierung: Kataloge lesen und schreiben, mitgelieferte Kataloge,
+                     Prüfung, Druckfassung
       store/
         storage.ts   Persistenz (localStorage), Migration, Rohkopie vor der Umstellung, Sicherung
         store.tsx    Zentraler Zustand, alle Schreibzugriffe, Lade- und Speicherzustand

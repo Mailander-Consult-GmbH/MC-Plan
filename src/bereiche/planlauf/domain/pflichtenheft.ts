@@ -126,7 +126,10 @@ export interface PflichtenheftAngaben {
 export function neuesPflichtenheft(data: AppData, project: Project, neueId: NeueId, angaben: PflichtenheftAngaben = {}): Pflichtenheft {
   const s = { ...leereStammdaten(), ...project.stammdaten };
   const kuerzel = (angaben.projektKuerzel ?? s.stationKuerzel).trim();
-  const vorlage = vorlageFuer(data, geschaeftsbereichVon(s.geschaeftsbereich), neueId, kuerzel);
+  const gb = geschaeftsbereichVon(s.geschaeftsbereich);
+  const mitStation = GESCHAEFTSBEREICHE.find((g) => g.id === gb)?.station ?? true;
+  const bezeichnung = (mitStation && s.station.trim()) || project.name;
+  const vorlage = vorlageFuer(data, gb, neueId, kuerzel);
   const verwendet = verwendeteWorkflows(data, project);
   const ids = angaben.workflowIds ?? (verwendet.length > 0 ? verwendet : waehlbareWorkflows(data, project)).map((t) => t.id);
   const workflows = waehlbareWorkflows(data, project)
@@ -152,7 +155,7 @@ export function neuesPflichtenheft(data: AppData, project: Project, neueId: Neue
       hinweis: vorlage.plancodierung.hinweis,
       kategorien: vorlage.plancodierung.kategorien.map((k) =>
         kuerzel && norm(k.name) === 'projekt' && !k.eintraege.trim()
-          ? { ...k, id: neueId('phkat'), beispiel: kuerzel, eintraege: `${kuerzel}\t${s.station.trim() || project.name}` }
+          ? { ...k, id: neueId('phkat'), beispiel: kuerzel, eintraege: `${kuerzel}\t${bezeichnung}` }
           : { ...k, id: neueId('phkat') },
       ),
     },

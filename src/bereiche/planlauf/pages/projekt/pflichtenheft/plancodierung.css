@@ -1,0 +1,101 @@
+/*
+ * Editor der Plancodierung im Reiter „Pflichtenheft“ (PlancodierungEditor.tsx,
+ * CodierungsKatalog.tsx) – Präfix pc-, nur Design-Tokens. Die Druckfassung
+ * (domain/plancodierung.ts) hat eigene pc-Klassen unter .pc-blatt in ihrem
+ * eigenen Dokument; die Namen hier überschneiden sich nicht mit ihnen.
+ */
+@layer components {
+  /* Kette „Aufbau des Codes“: je Kategorie ein Glied, der Ton kommt aus Tailwind-Utilities */
+  .pc-glied {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+    min-width: 54px; max-width: 11rem;
+    padding: 8px 11px 9px;
+    border: 0; border-radius: var(--rund-l);
+    font: inherit; text-align: left; cursor: pointer;
+    transition: box-shadow 0.2s var(--ease-koralle);
+  }
+  .pc-glied:hover { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, currentColor 30%, transparent); }
+  .pc-glied[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--bg-elev), 0 0 0 4px var(--accent); }
+  .pc-glied:focus-visible { outline: 2px solid var(--fokus); outline-offset: 6px; }
+  .pc-glied-wert {
+    font-size: 19px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .pc-glied-name {
+    max-width: 100%;
+    font-size: 11.5px; font-weight: 500; line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pc-glied-name .pc-glied-nr { font-variant-numeric: tabular-nums; opacity: 0.75; }
+  .pc-trenner {
+    padding: 8px 3px 0;
+    font-size: 19px; font-weight: 500; line-height: 1.25;
+    color: var(--text-tertiary);
+  }
+  /* „_“ steht unten zwischen den Gliedern – sonst läse es sich als Strich */
+  .pc-trenner.unterstrich { align-self: flex-end; padding: 0 2px 9px; line-height: 1; }
+  /* Platz für das nächste Glied: gestrichelt, wie ein Glied aufgebaut (Plus, darunter „Kategorie“) */
+  .pc-glied-neu {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    align-self: stretch;
+    padding: 6px 12px; min-height: 56px;
+    border: 1.5px dashed var(--separator-strong); border-radius: var(--rund-l);
+    background: transparent;
+    font: inherit; color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .pc-glied-neu:hover { background: var(--bg-hover); color: var(--text); border-color: var(--text-tertiary); }
+  .pc-glied-neu:focus-visible { outline: 2px solid var(--fokus); outline-offset: 2px; }
+
+  /* Katalog als Blatt: weiß wie ein Eingabefeld in der grauen Kachel, Zeilen durch Linien getrennt */
+  .pc-katalog {
+    border: 1px solid var(--separator-strong); border-radius: var(--rund);
+    background: var(--bg-elev);
+    overflow: hidden;
+  }
+  .pc-katalog-rumpf { max-height: min(64vh, 560px); overflow-y: auto; }
+  .pc-kzeile {
+    display: grid; grid-template-columns: minmax(4.5rem, 8.5rem) minmax(0, 1fr) 36px; align-items: center;
+    border-top: 1px solid var(--separator);
+  }
+  .pc-kzeile:first-child { border-top: 0; }
+  .pc-kzeile:hover { background: var(--bg-hover); }
+  .pc-kzeile.kopf {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--bg-elev);
+    border-top: 0; border-bottom: 1px solid var(--separator);
+    font-size: 12px; color: var(--text-tertiary);
+  }
+  .pc-kzeile.kopf + .pc-kzeile { border-top: 0; }
+  .pc-kzeile.kopf > span { padding: 7px 12px 6px; }
+  .pc-kzeile.gruppe { background: var(--fill-gruppe); }
+  .pc-kzeile.gruppe .pc-zelle { grid-column: 1 / 3; font-weight: 600; letter-spacing: -0.01em; }
+
+  /* Eingabe in einer Zelle: ohne Rahmen, der Fokus zeigt sich als Rahmen der Zelle */
+  .pc-zelle {
+    width: 100%; min-width: 0;
+    padding: 8px 12px;
+    border: 0; border-radius: 0;
+    background: transparent;
+    font: inherit; font-size: 13.5px; color: var(--text);
+    outline: none;
+  }
+  .pc-zelle::placeholder { color: var(--text-tertiary); font-weight: 400; }
+  .pc-zelle:focus { background: var(--bg-elev); box-shadow: inset 0 0 0 2px var(--fokus); border-radius: var(--rund-s); }
+  .pc-zelle.code { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pc-weg { justify-self: center; padding: 5px; color: var(--text-tertiary); }
+  .pc-weg:hover { color: var(--rot-text); background: var(--red-soft); }
+
+  .pc-katalog-leer { padding: 22px 16px; text-align: center; }
+
+  @media (max-width: 760px) {
+    .pc-glied { padding: 7px 10px 8px; }
+    .pc-glied-wert, .pc-trenner { font-size: 17px; }
+    .pc-trenner { padding-top: 7px; }
+    .pc-trenner.unterstrich { padding: 0 2px 8px; }
+    .pc-glied-neu { min-height: 52px; }
+    .pc-kzeile { grid-template-columns: minmax(4rem, 6rem) minmax(0, 1fr) 34px; }
+    .pc-zelle { padding: 8px 9px; }
+  }
+}
