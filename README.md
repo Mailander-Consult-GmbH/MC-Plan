@@ -311,12 +311,36 @@ unabhängig vom Pflichtenheft, das sie über Platzhalter einsetzt. Die E-Mail-Te
 projektübergreifend und werden unter **Einstellungen › Vorlagen** in der Seitenleiste gepflegt.
 
 ### Funktionen und Gewerke
-Im übergeordneten Reiter **Funktionen** werden die projektübergreifenden Funktionen gepflegt –
-gegliedert in eine Seite je Gewerk sowie eine Seite **Übergreifend**. Neue Projekte übernehmen sie
-automatisch. Mitgeliefert sind die vorgegebenen Funktionen: Planlaufmanagement (PLM), Projektleitung (PL), Fachplaner (FP),
-Fachspezialist (FS), Bauvorlageberechtiger (BVB), Bau AN, Bauüberwachung (BÜW), Fachtechnischer
-Prüfer (PSV), Prüfstatiker, Vermessungs-, Erdungs-, Schweißtechnischer, Korrosionsschutz-,
-Gleisgeometrie- und Geotechnischer Prüfer.
+Im übergeordneten Reiter **Funktionen** werden die projektübergreifenden Funktionen gepflegt. Erste
+Ebene der Gliederung ist die **Art der Funktion**: Reiter *Alle* und je Art einer – Auftraggeber
+(AG), Projektsteuerung und Planlaufmanagement (PS-PLM), Betrieb, Anlagenverantwortliche (ALV),
+Inbetriebnahmeverantwortliche (IBV), Ausführungsplanung (AP), Entwurfsplanung (EP), Prüfer (PSV),
+Bauvorlageberechtigte (BVB), Auftragnehmer (AN), Bauüberwachung (BÜW), Abnahme und Sonstige; der
+Reiter zeigt das Kurzzeichen, der Name steht im Tooltip. Unter *Alle* trennt eine Gruppenzeile die
+Arten. Das **Gewerk** ist die zweite Ebene: ein Filter neben der Suche (*Alle Gewerke*,
+*Übergreifend* oder ein Gewerk) und in jeder Zeile ein Abzeichen hinter der Bezeichnung –
+„Planprüfer KIB“ ist eine andere Funktion als „Planprüfer LST“. Neue Projekte übernehmen alle
+Funktionen der Liste automatisch.
+
+Mitgeliefert sind die Funktionen des **Funktionskatalogs** (`src/gemeinsam/funktionskatalog.ts`),
+den Planlaufmanagement und Projektsteuerung gemeinsam führen: die 131 Funktionen der Liste
+„Projektbeteiligte“ der Anwender (Arbeitsstand vom 26.11.2026 – sie wird noch ergänzt), dazu der
+Fachplaner je Gewerk, den die Workflows nennen – zusammen 140, etwa Projektleitung (PL),
+Projektingenieur (PING), Planprüfer (PSV KIB, PSV LST …), Bauvorlageberechtigter (BVB KIB …),
+Auftragnehmer (AN), Bauüberwacher (BÜW-LST …) und die übergreifenden Vermessungs-, Erdungs-,
+Schweißtechnischen, Korrosionsschutz-, Gleisgeometrie- und Geotechnischen Prüfer. Jede Funktion
+lässt sich in ihrem Dialog einer anderen Art zuordnen (Feld *Art*); eine neue ist mit der Art des
+gewählten Reiters vorbelegt, unter *Alle* mit der des Katalogs für ihre Bezeichnung.
+
+Mit dem Katalog haben frühere Bezeichnungen neue Namen bekommen: „Fachtechnischer Prüfer“ heißt
+**Planprüfer**, „Bauvorlageberechtiger“ **Bauvorlageberechtigter**, „Bau AN“ **Auftragnehmer** und
+„Bauüberwachung“ eines Gewerks **Bauüberwacher** (die übergreifende Bauüberwachung behält ihren
+Namen). Vorhandene Bestände stellt die Anwendung beim Laden um – Vorlagen, Funktionen der Projekte,
+Workflows, laufende Planläufe und Pflichtenhefte; Kennungen und Besetzung bleiben. Bisher
+mitgelieferte Funktionen, die der Katalog nicht mehr führt, entfallen in den Projekten, **wenn sie
+unbesetzt sind**; besetzte und selbst angelegte Funktionen bleiben, fehlende Funktionen des
+Katalogs kommen hinzu. Die Standard-Workflows werden dabei nicht ersetzt, nur umbenannt – Änderungen
+der Anwender bleiben erhalten.
 
 Das **Planlaufmanagement** füllt stets die angemeldete Person mit ihrem Profil (*Angemeldet als*)
 aus. Es steht deshalb weder hier noch im Projekt unter **Funktion** zur Bearbeitung, bleibt aber in
@@ -327,20 +351,25 @@ eigenen Person belegt – es gibt also z.B. einen Fachplaner je Gewerk. Beim Sta
 setzt die Anwendung die Verantwortlichen **nach dem Gewerk des Plans** ein: Zwei Pläne nach
 demselben Workflow, aber mit unterschiedlichem Gewerk, erhalten unterschiedliche Verantwortliche.
 
-Gewerke zur Auswahl: EEA, KIB, LST, OLA, OSE, TK, VA – weitere lassen sich über das **+** an den
-Gewerk-Reitern anlegen; sie gelten dann überall.
+Gewerke zur Auswahl: EEA, KIB, LST, OB, OLA, PT1, PT2, TK, VA – weitere entstehen im Dialog einer
+Funktion über den Knopf *Gewerk* neben der Auswahl; sie gelten dann überall. Ist im Filter ein Gewerk
+gewählt, bietet *Vorhandene Funktion* an, eine Funktion eines anderen Gewerks in dieses zu übernehmen
+(als eigene Funktion, in der Art des Originals; das Kürzel nennt das neue Gewerk), und am Ende der
+Seite steht *Gewerk „…“ löschen*.
 
 Jede Funktion trägt eine **Seite für den Verzug** – *Planer*, *Prüfer*, *Auftraggeber*, *PLM* oder
 „nicht festgelegt“. Der Terminnachweis rechnet Verzug in Schritten dieser Funktion der Seite zu.
-Neue Funktionen erhalten sie aus der Bezeichnung vorbelegt (Planlaufmanagement → PLM, Planer und
-Fachspezialisten → Planer, prüfende Funktionen → Prüfer, Bauvorlageberechtigte, Projektleitung und
-Bauüberwachung → Auftraggeber), bis sie von Hand gewählt wird. Die Listen zeigen die Seite als
-Abzeichen; fehlt sie, steht dort gelb *Seite offen*. Dasselbe Feld gibt es im Projekt unter
-**Funktion**.
+Neue Funktionen erhalten sie aus Art und Bezeichnung vorbelegt (Auftraggeber, Bauvorlageberechtigte
+und Bauüberwachung → Auftraggeber, Ausführungs- und Entwurfsplanung → Planer, Prüfer → Prüfer – der
+Fachspezialist bleibt Planer –, Planlaufmanagement → PLM, Projektsteuerung → Auftraggeber; in den
+übrigen Arten entscheidet die Bezeichnung, meist bleibt sie offen), bis sie von Hand gewählt wird.
+Die Listen zeigen die Seite als Abzeichen; fehlt sie, steht dort gelb *Seite offen* – aber nur an
+Funktionen, die ein Workflow oder ein Planlauf nennt: Nur für sie zählt die Seite. Dasselbe Feld
+gibt es im Projekt unter **Funktion**.
 
-Je Gewerk gibt es eine Bezeichnung nur einmal – hier wie im Projekt: Eine Funktion, die das Gewerk
-schon führt, weist der Dialog ab („Die Funktion „…“ gibt es bereits.“, ohne Rücksicht auf Groß- und
-Kleinschreibung); dieselbe Bezeichnung in einem anderen Gewerk bleibt möglich. Gespeichert wird die
+Je Gewerk gibt es eine Bezeichnung nur einmal – hier wie im Projekt, über alle Arten hinweg: Eine
+Funktion, die das Gewerk schon führt, weist der Dialog ab („Die Funktion „…“ gibt es bereits.“, ohne
+Rücksicht auf Groß- und Kleinschreibung); dieselbe Bezeichnung in einem anderen Gewerk bleibt möglich. Gespeichert wird die
 Bezeichnung ohne Leerzeichen am Rand. Wird eine projektübergreifende Funktion **umbenannt**, nennen
 auch die projektübergreifenden Workflows – Schritte und E-Mail-Regeln „an Funktion“ – die neue
 Bezeichnung, sobald keine übergreifende Funktion mehr die alte trägt. Mit ihnen ziehen die Funktionen
@@ -353,7 +382,10 @@ Kurzmeldung nennt, wo die Funktion jetzt so heißt („Funktion gespeichert – 
 
 ### Funktion (im Projekt)
 Im Vordergrund steht die **Funktion, nicht die Person**: Die Seite ist – wie der projektübergreifende
-Reiter *Funktionen* – nach **Gewerken** gegliedert (je Gewerk eine Seite, dazu „Übergreifend“). Je
+Reiter *Funktionen* – nach der **Art der Funktion** gegliedert (Reiter *Alle* und je Art, die das
+Projekt führt; unter *Alle* mit Gruppenzeilen, die auch nennen, wie viele Funktionen der Art besetzt
+sind), das Gewerk steht als Abzeichen an der Funktion und als Filter neben der Suche. Ein Projekt
+führt alle Funktionen des Katalogs – das Kästchen **Nur besetzte** blendet die unbesetzten aus. Je
 Funktion steht in der Zeile, wer sie ausfüllt; ein Klick öffnet die Besetzung, in der eine im Projekt
 bekannte Person übernommen oder eine neue mit Anrede, Firma, Organisationseinheit (OE), E-Mail,
 Telefon, Mobil und Anschrift erfasst
@@ -362,13 +394,16 @@ bereitliegen) und **SharePoint-Link Ausgang** (Ordner, in den sie ihre Unterlage
 Versandmail; hinterlegte Links stehen als kleine Links unter den Kontaktdaten in der Liste. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann mehrere Funktionen
 haben.
 
-Über das **+** an den Gewerk-Reitern entsteht ein weiteres Gewerk, über *Gewerk löschen* am Ende der
-Seite verschwindet das gerade geöffnete wieder – der Dialog nennt vorher, welche Funktionen und Besetzungen damit
-entfallen. Gewerke gelten projektübergreifend: angelegt oder gelöscht wird überall, also auch im
+Ein weiteres Gewerk entsteht im Dialog einer Funktion über den Knopf *Gewerk* neben der Auswahl; ist
+im Filter ein Gewerk gewählt, verschwindet es über *Gewerk „…“ löschen* am Ende der Seite wieder –
+der Dialog nennt vorher, welche Funktionen und Besetzungen damit entfallen. Gewerke gelten projektübergreifend: angelegt oder gelöscht wird überall, also auch im
 Reiter *Funktionen* im Hauptmenü, und jedes Gewerk des Projekts steht in der **Planliste** für Pläne,
 Planverzeichnisse und Planpakete zur Auswahl – darüber findet ein Planlauf die Verantwortlichen seines Gewerks.
-Über *Neue Funktion* entsteht eine weitere Funktion im gewählten Gewerk; eine Suche ohne Treffer
-meldet „Keine Funktion gefunden“ und bietet kein Anlegen an. Beide Wege führen zum Ziel: **Funktion anlegen und dort die Person
+Über *Neue Funktion* entsteht eine weitere Funktion – vorbelegt mit der Art des gewählten Reiters und
+dem Gewerk des Filters; eine Suche ohne Treffer meldet „Keine Funktion gefunden“ und bietet kein
+Anlegen an, ein leeres Ergebnis von *Nur besetzte* meldet „Keine Funktion besetzt“ mit *Alle
+Funktionen zeigen*. In der Besetzung von der Person aus ist die Auswahl der Funktion nach Art
+gruppiert. Beide Wege führen zum Ziel: **Funktion anlegen und dort die Person
 eintragen** oder mit *Person hinzufügen* die **Person erfassen und die Funktion gleich dabei
 zuweisen** – die Zuweisung kann offen bleiben und später nachgeholt werden. Personen ohne Funktion –
 aus einem Import, nach einem Wechsel oder bewusst ohne Zuordnung – stehen in einer eigenen Liste
@@ -390,8 +425,11 @@ Bezeichnung weiter, ohne dass das Projekt dafür noch eine Funktion hat, sagt es
 diese Schritte keine zuständige Person.“ Dann die Funktion im Workflow anpassen oder die Person im
 neuen Planlauf von Hand eintragen.
 
-**Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · OE ·
-Telefon · Mobil · Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*. Personen, die
+**Excel-Import:** Je Zeile *Art · Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · OE ·
+Telefon · Mobil · Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*. Die
+Spalte *Art* ist optional (Kurzzeichen oder Name einer Art, etwa „PSV“ oder „Prüfer“): Eine Funktion,
+die der Import anlegt, bekommt sie, ohne Angabe die des Funktionskatalogs; eine vorhandene Funktion
+behält ihre Art, und die Vorschau sagt es, wenn die Datei eine andere nennt. Personen, die
 es im Projekt schon gibt, werden aktualisiert; eine leere Zelle oder fehlende Spalte heißt „keine
 Angabe“ und lässt stehen, was bei der Person schon eingetragen ist (Telefon, Firma, Anschrift,
 SharePoint-Links …), mehrere Zeilen derselben Person ergänzen einander. Erkannt wird eine Person
@@ -411,14 +449,14 @@ beim Import angelegt; ein Gewerk, das die Datei nur anders schreibt als die Gewe
 statt „KIB“), ist dasselbe Gewerk und legt keine zweite Funktion an. „Übergreifend“ steht für
 Funktionen ohne Gewerkbezug. Eine optionale Spalte
 *Seite* setzt die Seite für den Verzug – bei neuen Funktionen (sonst gilt die Vorbelegung) und bei
-vorhandenen, wenn sie abweicht. Die Vorschau nennt je Zeile, was angelegt wird, wen eine Besetzung
+vorhandenen, wenn sie abweicht. Die Vorschau nennt je Zeile die Art, was angelegt wird, wen eine Besetzung
 ersetzt, welche Seite sich ändert, wo eine unvollständige Anschrift nicht übernommen wird und
 welche Zeile eine mehrfach genannte Funktion nicht vergibt.
 
 ### Planliste
 Planbestand aus Plänen, Planpaketen und Planverzeichnissen im Reiter **Planliste**. Je Eintrag
-werden Plancodierung, Titel, Index (standardmäßig leer), Gewerk (EEA, KIB, LST, OLA, OSE, TK, VA oder
-freie Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
+werden Plancodierung, Titel, Index (standardmäßig leer), Gewerk (EEA, KIB, LST, OB, OLA, PT1, PT2, TK,
+VA oder freie Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
 der Soll-Termin für den Eingang und eine Bemerkung geführt. Plancodierung, Index, Titel, Gewerk und
 Planungsphase – beim Planpaket Name, Kurzzeichen und Gewerk – werden ohne Leerzeichen am Rand
 gespeichert, damit der Name des Planlaufs, die Besetzung nach Gewerk und das Wiedererkennen im
@@ -680,6 +718,12 @@ hatte, behält diesen als eigene Kopie „… (eigene Fassung)“ – ein einmal
 Vorhandene Workflow-Kopien, Projektvarianten und Planläufe erhalten das Anliegen über den
 Schrittnamen. Laufende Planläufe behalten ihre Schritte;
 der Planlauf bietet dann **Auf aktuelle Fassung umstellen …**.
+
+Stammdatenfassung 7 bringt den Funktionskatalog (siehe [Funktionen und
+Gewerke](#funktionen-und-gewerke)) und ersetzt die Workflows **nicht**: In vorhandenen Beständen
+nennen die Schritte und E-Mail-Regeln aller Workflows und laufenden Planläufe danach die neuen
+Bezeichnungen („Planprüfer“ statt „Fachtechnischer Prüfer“, „Bauvorlageberechtigter“), alles andere
+bleibt, wie es war – auch die Namen der Schritte, Blöcke und Zweige („Bau AN“).
 
 Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen; Projektvarianten erscheinen nur im Reiter *Workflows* ihres Projekts. Die eigene Rolle im
 Projekt ist **Planlaufmanagement (PLM)**.
@@ -1446,30 +1490,41 @@ Die Protokolle übernehmen die Funktionen des bisherigen eigenständigen Protoko
 (HTML-Datei), in der Optik von KaPlan.
 
 ### Funktionen
-Projektübergreifende Funktionen (Bezeichnung, Gewerk, Kürzel, Farbe, Beschreibung) – die Auswahl,
-aus der jede Person der Projektbeteiligtenliste ihre Funktion erhält. Gegliedert wie im
-Planlaufmanagement: eine Seite **Übergreifend** und je **Gewerk** eine eigene; „Fachplanung“ im
-Gewerk LST ist eine andere Funktion als „Fachplanung“ in OLA und erscheint überall als
-„Fachplanung LST“. Über das **+** an den Reitern entsteht ein Gewerk, **Vorhandene Funktion**
-übernimmt eine Funktion aus einem anderen Gewerk, **Gewerk … löschen** entfernt ein Gewerk samt
-seinen Funktionen. Mitgeliefert sind typische Funktionen einer DB-Baumaßnahme (übergreifend etwa
-Auftraggeber, Projektleitung, Teilprojektleitung, Projektsteuerung, Objektplanung, Bauüberwachung,
-Bauunternehmen, Prüfsachverständiger, Eisenbahn-Bundesamt; je Gewerk 50 Hz, KIB, LST, OLA und TK
-die Fachplanung, für LST und OLA zusätzlich die Bauüberwachung). Funktionen und Gewerke, die noch
-Projektbeteiligten zugeordnet sind, lassen sich nicht löschen. Eine Suche ohne Treffer meldet
+Projektübergreifende Funktionen (Bezeichnung, Art, Gewerk, Kürzel, Farbe, Beschreibung) – die
+Auswahl, aus der jede Person der Projektbeteiligtenliste ihre Funktion erhält. Gegliedert wie im
+Planlaufmanagement: Reiter *Alle* und je **Art der Funktion** einer (unter *Alle* mit Gruppenzeilen),
+daneben die Suche und der Filter nach **Gewerk**; das Gewerk steht in jeder Zeile als Abzeichen
+hinter der Bezeichnung. „Fachplaner“ im Gewerk LST ist eine andere Funktion als „Fachplaner“ in OLA
+und heißt in Auswahl, Protokoll und Druck „Fachplaner LST“. Ein Gewerk entsteht im Dialog einer
+Funktion über den Knopf *Gewerk*; ist im Filter ein Gewerk gewählt, übernimmt **Vorhandene
+Funktion** eine Funktion aus einem anderen Gewerk (in der Art des Originals), und **Gewerk „…“
+löschen** entfernt das Gewerk samt seinen Funktionen. Mitgeliefert sind die 140 Funktionen des
+**Funktionskatalogs**, den auch das Planlaufmanagement führt (Liste „Projektbeteiligte“ der
+Anwender, Arbeitsstand vom 26.11.2026), in den Gewerken EEA, KIB, LST, OB, OLA, PT1, PT2, TK und VA.
+Ein vorhandener Bestand behält seine bisherigen Funktionen und Gewerke samt Kürzeln und bekommt die
+des Katalogs dazu; umbenannt werden „Bauunternehmen“ in **Auftragnehmer**, „Fachplanung“ eines
+Gewerks in **Fachplaner** und „Bauüberwachung“ eines Gewerks in **Bauüberwacher** (die
+übergreifende Bauüberwachung behält ihren Namen) – auch in den Angaben der Teilnehmenden der
+Protokolle; gab es die neue Bezeichnung schon, werden beide Funktionen zu einer. Funktionen und
+Gewerke, die noch Projektbeteiligten zugeordnet sind, lassen sich nicht löschen. Eine Suche ohne Treffer meldet
 „Keine Funktion gefunden“ und bietet kein Anlegen an. Bearbeitet wird per Klick auf die Zeile oder
 – auch mit der Tastatur – über den Knopf *Funktion bearbeiten* vor dem Löschknopf.
 
 ### Projektbeteiligte
 Aufgebaut wie die Seite **Funktion** im Planlaufmanagement, aber ohne leere Funktionen: Es stehen
 nur Personen in der Liste, je Person mit ihrer Funktion, Firma/Büro, Kürzel und Kontaktdaten.
-Beim Hinzufügen wird die Funktion aus einem Auswahlfeld gewählt, nach Gewerk gruppiert;
+Beim Hinzufügen wird die Funktion aus einem Auswahlfeld gewählt, nach der Art gruppiert;
 **+ Neue Funktion anlegen …** legt dort gleich eine neue projektübergreifende Funktion an. Ohne
-eigenes Kürzel gilt das der Funktion. Reiter gliedern die Liste nach den Gewerken, die im Projekt
-vorkommen. Die Liste lässt sich drucken (PDF) und als Excel-Datei herunterladen.
+eigenes Kürzel gilt das der Funktion. Reiter gliedern die Liste nach den Arten, die im Projekt
+vorkommen (bei nur einer Art entfallen sie), unter *Alle* trennen Gruppenzeilen die Arten – Personen
+ohne Funktion stehen zuletzt unter „Ohne Funktion“; dazu die Suche und der Filter nach den Gewerken
+des Projekts. Sortiert ist nach Art, Bezeichnung, Gewerk und Nachname. Die Liste lässt sich drucken
+(PDF, mit einer Zwischenüberschrift je Art) und als Excel-Datei herunterladen.
 
-**Excel-Import** liest eine Liste (.xlsx oder .csv) mit den Spalten Funktion, Gewerk, Kürzel,
-Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift, Notiz; zwingend ist nur
+**Excel-Import** liest eine Liste (.xlsx oder .csv) mit den Spalten Art, Funktion, Gewerk, Kürzel,
+Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift, Notiz; die Spalte *Art*
+ist optional (Kurzzeichen oder Name einer Art, etwa „PSV“ oder „Prüfer“) und gilt für Funktionen, die
+der Import anlegt – ohne Angabe bekommen sie die Art des Funktionskatalogs. Zwingend ist nur
 der Nachname (oder eine Spalte „Name“ mit Vor- und Nachnamen; steht daneben in der Zeile ein
 Vorname, gilt „Name“ als Nachname und wird nicht zerlegt – enthält „Name“ den Vornamen doch,
 bleibt als Nachname, was auf ihn folgt; ohne Vornamen in der Zeile wird „Name“ zerlegt wie in
@@ -1620,7 +1675,10 @@ den Verweisen der Aufgaben, vorhandene Zeilen laufen unter dem Ursprung mit. Die
 `#/projektsteuerung/projekt/<id>/lop` führt zu den Protokollen. Bis Fassung 5 galten für alle
 Protokollreihen die Logos des Projekts; daran ändert das Laden nichts. Bis Fassung 6 gab es keine
 To-Do-Liste – sie beginnt leer; bis Fassung 7 kannte sie weder wichtige Aufgaben noch die Herkunft
-aus einem Protokoll – vorhandene Aufgaben gelten als nicht wichtig und ohne Herkunft. Der Name unter „Angemeldet als“ gilt in allen Bereichen.
+aus einem Protokoll – vorhandene Aufgaben gelten als nicht wichtig und ohne Herkunft. Bis Fassung 8
+kannten die Funktionen keine Art: Beim Laden bekommen sie die des Funktionskatalogs, frühere
+Bezeichnungen ihre neuen Namen, und die Funktionen und Gewerke des Katalogs kommen hinzu (siehe
+[Funktionen](#funktionen)). Der Name unter „Angemeldet als“ gilt in allen Bereichen.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
 einwandfrei geladen wurde (`ladeZustand === 'ok'`); vor jeder Umstellung auf eine neue Fassung
@@ -1726,6 +1784,13 @@ eines älteren Stands stellt `aufbereiten()` (`src/gemeinsam/register.ts`) um:
   und lässt sich dort einzeln zurückholen.
 * Projekte, die danach kein Bereich mehr führt und die für keinen zur Übernahme vorgesehen sind –
   etwa nur in den Leistungsnachweisen geführte –, entfallen samt ihren Projektbeteiligten.
+
+**Fassung 5 – Art der Funktion.** Die Funktionen der Projektbeteiligten tragen im Register ihre
+**Art** (`art`, siehe `src/gemeinsam/funktionskatalog.ts`); erkannt wird eine Funktion weiter an
+Bezeichnung + Gewerk. Ein älterer Stand bekommt beim Laden die neuen Bezeichnungen des Katalogs
+(„Planprüfer“, „Bauvorlageberechtigter“, „Auftragnehmer“, „Bauüberwacher“ und „Fachplaner“ eines
+Gewerks) – mit derselben Tabelle, mit der Planlaufmanagement und Projektsteuerung ihre Bestände
+umstellen; sonst holte der Abgleich die alten Bezeichnungen zurück.
 
 Vor der Umstellung legt das Laden den gespeicherten Text als Rohkopie ab
 (`kaplan-projektregister.v1.vor-fassung-<n>` mit der gespeicherten Fassung, hier also
@@ -1894,6 +1959,11 @@ src/
     register.ts  Datenmodell, Laden/Speichern, gemeinsamer Zustand (useRegister, Ergebnis des
                  Speicherns: useRegisterSpeicherZustand; nicht Gespeichertes übersteht das
                  Speichern eines anderen Fensters: eigeneAenderungenNachziehen)
+    funktionskatalog.ts  Arten der Funktionen, Katalog der mitgelieferten Funktionen
+                 (Bezeichnung, Gewerk, Kürzel, Art), Umbenennungen früherer Bezeichnungen und die
+                 Hilfen dazu (artVon, funktionenVergleich, nachArt, kuerzelFuerGewerk, artAusText)
+    FunktionsArten.tsx   Reiter je Art, Gruppenzeile, Auswahl der Art, Filter und Abzeichen des
+                 Gewerks – für die Funktionslisten beider Bereiche
     abgleich.ts  Abgleich Bereich ↔ Register als reine Funktionen (uebertragen, abgleichen),
                  dazu „Übernehmen in …“ und das Archiv je Bereich (inBereichUebernehmen,
                  bereichArchivieren)
@@ -1936,7 +2006,7 @@ src/
         uebersicht.ts  Gliederung und Zeilenwerte der Planlaufliste – auch für den Export
         export.ts    Kurz- und Langfassung für Excel und PDF
         importVorlagen.ts  Spalten und Schreibweisen der Excel-Vorlagen
-        seed.ts      Standard-Prozessketten und Demodaten
+        seed.ts      Funktionen aus dem Funktionskatalog, Standard-Prozessketten und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
         pflichtenheft.ts  Pflichtenheft: Platzhalter, Ansprechpartner, Unterschriften, Ausgaben
                      (Stand und Änderungen), Druckfassung
@@ -1946,6 +2016,8 @@ src/
                      Prüfung, Druckfassung
       store/
         storage.ts   Persistenz (localStorage), Migration, Rohkopie vor der Umstellung, Sicherung
+        katalogUmstellung.ts  Umstellung eines Bestands auf den Funktionskatalog (Stammdaten 7):
+                     Umbenennen samt Verweisen, Art, Vorlagen, Funktionen der Projekte, Gewerke
         store.tsx    Zentraler Zustand, alle Schreibzugriffe, Lade- und Speicherzustand
       lib/router.ts  Hash-Adressen unterhalb von #/planlauf (Übersicht unter #/planlauf selbst)
       pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Vorlagen,
@@ -1954,7 +2026,8 @@ src/
       components/    Fachliche Bausteine (common.tsx, WorkflowEditor, AblaufVorschau, EmailDialog,
                      PlanlaufListe, PaketDialog, BuendelnDialog, SicherungEinspielen, Abgleich,
                      Hinweisleisten, Terminnachweis, Protokoll, NeuZustaendig („E-Mail senden“), SammelErledigen,
-                     SammelErinnern, PlanlisteAktionen, SeiteAuswahl …)
+                     SammelErinnern, PlanlisteAktionen, SeiteAuswahl, FunktionsFelder (Dialog einer
+                     Funktion), FunktionsListe (Zelle einer Funktion in den Listen) …)
     baubetrieb/  Bereich „Baubetriebsplanung“ (erster Entwurf)
       index.tsx  Einstiegspunkt samt Datenbestand des Bereichs
       App.tsx    Seitenleiste, Kopfzeile und Auswahl der Ansicht
@@ -1996,10 +2069,10 @@ src/
                      Übernahme aus dem Protokoll (todoAusAufgabe, inTodoListe)
         druck.ts     Druckfassungen (Protokoll, Beteiligtenliste) samt Gestaltung und Live-Fenster
         export.ts    Excel-Ausgabe und -Vorlage der Projektbeteiligten
-        seed.ts      Standard-Funktionen, Standardlogos und Demodaten
+        seed.ts      Funktionen aus dem Funktionskatalog, Standardlogos und Demodaten
         register.ts  Sicht für das Projektregister und Übernahme von dort
-      store/         storage.ts (Laden, Aufbereiten, Rohkopie, Sicherung) und store.tsx (alle
-                     Schreibzugriffe, Lade- und Speicherzustand)
+      store/         storage.ts (Laden, Aufbereiten, Umstellung auf den Funktionskatalog, Rohkopie,
+                     Sicherung) und store.tsx (alle Schreibzugriffe, Lade- und Speicherzustand)
       lib/router.ts  Hash-Adressen unterhalb von #/projektsteuerung (Übersicht unter
                      #/projektsteuerung selbst)
       pages/         Übersicht, To-Do-Liste (Todos.tsx – auch Reiter im Projekt und Karte der
