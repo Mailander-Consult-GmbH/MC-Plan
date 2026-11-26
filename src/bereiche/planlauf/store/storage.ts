@@ -308,7 +308,7 @@ function stammdatenAktualisieren(daten: AppData): { daten: AppData; kopien: stri
   }
 
   // 2. Funktionen, Namensverweise und Gewerke auf den Funktionskatalog
-  const umgestellt = funktionenAufKatalogUmstellen({ ...daten, templates }, neueId);
+  const umgestellt = funktionenAufKatalogUmstellen({ ...daten, templates }, neueId, bisher < 7);
 
   // 3. Fehlt ein mitgelieferter Standard-Workflow, kommt er hinzu
   const fehlende = STANDARD_TEMPLATES.filter((t) => !umgestellt.templates.some((x) => x.id === t.id)).map((t) => ({ ...t }));

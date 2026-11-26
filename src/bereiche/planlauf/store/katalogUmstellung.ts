@@ -371,8 +371,19 @@ function vorlageUmstellen(vorlage: PflichtenheftVorlage, mitGewerk: MitGewerk): 
  * erkennt er am Fingerabdruck, und der zählt die früheren Bezeichnungen.
  * `neueId` vergibt die Kennungen der Funktionen, die aus dem Katalog in die
  * Projekte kommen.
+ *
+ * `vorKatalog`: Der Bestand kommt von einem Stand vor Stammdaten-Fassung 7.
+ * Nur dann entfällt, was bis Fassung 6 mitgeliefert war und nicht mehr im
+ * Katalog steht (`BISHER_MITGELIEFERT`, das Gewerk OSE). Bei einer späteren
+ * Fassung – ein neuer Stand der Liste – kommen Umbenennungen, Arten und
+ * fehlende Funktionen des Katalogs hinzu, aber eine Funktion, die jemand nach
+ * der Umstellung wieder angelegt hat, bleibt stehen.
  */
-export function funktionenAufKatalogUmstellen(daten: AppData, neueId: (prefix: string) => ID): AppData {
+export function funktionenAufKatalogUmstellen(
+  daten: AppData,
+  neueId: (prefix: string) => ID,
+  vorKatalog = true,
+): AppData {
   const rollenVorher = daten.roles ?? [];
   const vorlagenVorher = daten.standardRollen ?? [];
   const besetzt = new Set((daten.contacts ?? []).flatMap((c) => (c.zuordnungen ?? []).map((z) => z.roleId)));
@@ -452,7 +463,7 @@ export function funktionenAufKatalogUmstellen(daten: AppData, neueId: (prefix: s
   for (const r of vorlagenVorher) {
     const name = umbenannt(r.name, r.gewerk ?? null);
     const k = schluesselVon({ name, gewerk: r.gewerk ?? null });
-    if (VORLAGE_NACH_SCHLUESSEL.has(k) || BISHER_MITGELIEFERT.has(k) || eigeneSchluessel.has(k)) continue;
+    if (VORLAGE_NACH_SCHLUESSEL.has(k) || (vorKatalog && BISHER_MITGELIEFERT.has(k)) || eigeneSchluessel.has(k)) continue;
     eigeneSchluessel.add(k);
     // Keine Kennung zweimal: Eine eigene Funktion, die die Kennung einer mitgelieferten trägt, bekommt eine neue
     const id = vergeben.has(r.id) ? neueId('srol') : r.id;
@@ -465,7 +476,7 @@ export function funktionenAufKatalogUmstellen(daten: AppData, neueId: (prefix: s
         vorhandene Funktionen des Katalogs erhalten dessen Kürzel – wenn es noch das frühere ist. */
   const bleibt = (r: Role): boolean => {
     const k = schluesselVon(r);
-    return besetzt.has(r.id) || VORLAGE_NACH_SCHLUESSEL.has(k) || !BISHER_MITGELIEFERT.has(k);
+    return !vorKatalog || besetzt.has(r.id) || VORLAGE_NACH_SCHLUESSEL.has(k) || !BISHER_MITGELIEFERT.has(k);
   };
   const angepasst = (r: Role): Role => {
     const vorlage = VORLAGE_NACH_SCHLUESSEL.get(schluesselVon(r));
@@ -502,7 +513,7 @@ export function funktionenAufKatalogUmstellen(daten: AppData, neueId: (prefix: s
   const frueher = new Set(GEWERKE_BIS_FASSUNG6.map(norm));
   const bisher = (daten.gewerke ?? []).filter((g) => g && g.trim());
   const gewerke = [...bisher, ...KATALOG_GEWERKE.filter((g) => !bisher.some((x) => norm(x) === norm(g)))]
-    .filter((g) => imKatalog.has(norm(g)) || !frueher.has(norm(g)) || genannt.has(norm(g)))
+    .filter((g) => !vorKatalog || imKatalog.has(norm(g)) || !frueher.has(norm(g)) || genannt.has(norm(g)))
     .sort((a, b) => a.localeCompare(b, 'de'));
 
   return {
