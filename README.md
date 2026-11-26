@@ -1069,8 +1069,11 @@ Die **Druckfassung** hat eine eigene, helle Gestaltung: Deckblatt, Inhaltsverzei
 Kapitel im Hochformat mit „Seite x von y“, die Ablaufdiagramme und die Plancodierung im
 Querformat, zuletzt der Änderungsindex (die Einträge aller Ausgaben nach der ersten, jüngster
 zuerst). Der Kopf der Anlagen nennt bei Personenbahnhöfen Station und Projekt, bei Fahrweg Projekt
-und Streckenabschnitt. Die Vorschau zeigt dasselbe
-Dokument fortlaufend, Seitenwechsel gestrichelt.
+und Streckenabschnitt. Den Wechsel zwischen Hoch- und Querformat setzen benannte Druckseiten
+(CSS `page`) – Microsoft Edge und Google Chrome drucken so; kann ein Browser es nicht
+(`querformatImDruck` in `src/shared/print.ts`), weist der Reiter darauf hin. Die Vorschau zeigt
+dasselbe Dokument mit einem Blatt je Abschnitt, die Anlagen im Querformat als Querblatt; in einem
+schmalen Fenster verkleinert sie die Blätter.
 
 ### Projekteinstellungen
 **Projektdaten** (Projektnummer, G-Nummer, Beschreibung) und **Stammdaten** (siehe

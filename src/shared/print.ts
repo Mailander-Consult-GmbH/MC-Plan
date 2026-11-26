@@ -60,6 +60,15 @@ ${zusatzStil}
 </style></head><body>${inhalt}</body></html>`;
 }
 
+/**
+ * Ob der Browser im Druck je Seite zwischen Hoch- und Querformat wechseln kann
+ * (CSS-Eigenschaft `page` mit benannten Seiten) – Chrome und Edge können es.
+ * Ohne diese Fähigkeit stünden Anlagen im Querformat auf Hochformatseiten.
+ */
+export function querformatImDruck(): boolean {
+  return typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('page', 'quer');
+}
+
 /** Maskiert Text für die Ausgabe in HTML. */
 export function html(wert: string | number | null | undefined): string {
   return String(wert ?? '')
