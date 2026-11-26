@@ -12,8 +12,9 @@
  * * Die Liste führt das Gewerk meist im Namen („Planprüfer KIB“, „Auftragnehmer
  *   Übergreifend“). Hier steht die Bezeichnung **ohne** Gewerk und das Gewerk
  *   daneben – ein Workflow nennt nur die Bezeichnung, und das Gewerk des Plans
- *   wählt die Funktion (`rolleFuerSchritt` im Planlaufmanagement). Angezeigt
- *   wird Bezeichnung + Gewerk.
+ *   wählt die Funktion (`rolleFuerSchritt` im Planlaufmanagement; füllt sie
+ *   niemand aus, springt die besetzte übergreifende gleichen Namens ein,
+ *   `zustaendigeRolle`). Angezeigt wird Bezeichnung + Gewerk.
  * * „Übergreifend“ und eine leere Gewerk-Angabe sind `null` (einmal je Projekt).
  * * Blatt BÜW nennt als Gewerk durchgehend „BÜW“; das Gewerk kommt dort aus dem
  *   Namen („Bauüberwacher LST“, „… Oberbau“ = OB, „Bauüberwachung KIB“), der
@@ -23,6 +24,9 @@
  *   OLA. Den Abnahmeprüfern fehlt in der Liste das Kürzel – hier ergänzt.
  * * „Fachplaner“ steht nicht in der Liste, bleibt aber, bis die Workflows
  *   überarbeitet sind (sie nennen ihn) – je Gewerk, in der Art Ausführungsplanung.
+ * * „Planprüfer“ führt die Liste nicht für EEA – auf Wunsch der Anwender
+ *   ergänzt (Kürzel „PSV EEA“), sonst fände der Prüfschritt der Workflows in
+ *   diesem Gewerk keine Funktion.
  *
  * Bezeichnung + Gewerk ist über alle Arten eindeutig und bleibt der Schlüssel
  * einer Funktion (`funktionsSchluessel` in register.ts); die Art ist ein
