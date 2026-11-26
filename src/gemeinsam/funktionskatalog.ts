@@ -172,13 +172,26 @@ export function artGueltig(art: unknown): art is string {
   return typeof art === 'string' && ART_NACH_ID.has(art);
 }
 
+/** Art der heutigen Bezeichnung, wenn `name` eine frühere ist (`FUNKTIONS_UMBENENNUNGEN`). */
+function artFruehererBezeichnung(name: string): string | undefined {
+  const u = FUNKTIONS_UMBENENNUNGEN.find((x) => norm(x.alt) === norm(name));
+  return u ? ART_NACH_NAME.get(norm(u.neu)) : undefined;
+}
+
 /**
  * Art einer Funktion laut Katalog: über Bezeichnung + Gewerk, sonst über die
  * Bezeichnung allein (dieselbe Funktion in einem Gewerk, das die Liste nicht
- * nennt), sonst „Sonstige“.
+ * nennt), sonst über bekannte ältere Bezeichnungen – eine umbenannte steht in
+ * der Art ihrer heutigen –, sonst „Sonstige“.
  */
 export function artVon(name: string, gewerk: string | null): string {
-  return katalogEintrag(name, gewerk)?.art ?? ART_NACH_NAME.get(norm(name)) ?? WEITERE_ARTEN[norm(name)] ?? ART_SONSTIGE;
+  return (
+    katalogEintrag(name, gewerk)?.art ??
+    ART_NACH_NAME.get(norm(name)) ??
+    WEITERE_ARTEN[norm(name)] ??
+    artFruehererBezeichnung(name) ??
+    ART_SONSTIGE
+  );
 }
 
 /** Eine gültige gespeicherte Art bleibt, sonst gilt die des Katalogs – für das Aufbereiten der Bestände. */

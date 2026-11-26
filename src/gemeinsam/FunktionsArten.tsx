@@ -128,9 +128,15 @@ export const ALLE_GEWERKE = '*';
 /** Wahl „Übergreifend“ in `GewerkFilter` (Funktionen ohne Gewerk). */
 export const OHNE_GEWERK = '';
 
-/** Trifft die Wahl des Gewerkfilters auf das Gewerk einer Funktion zu? */
+/**
+ * Trifft die Wahl des Gewerkfilters auf das Gewerk einer Funktion zu? Gewerke
+ * gelten ohne Groß-/Kleinschreibung als dieselben – wie beim Anlegen und
+ * Löschen eines Gewerks.
+ */
 export function gewerkPasst(gewerk: string | null, wahl: string): boolean {
-  return wahl === ALLE_GEWERKE || (wahl === OHNE_GEWERK ? gewerk === null : gewerk === wahl);
+  if (wahl === ALLE_GEWERKE) return true;
+  if (wahl === OHNE_GEWERK) return gewerk === null;
+  return gewerk !== null && gewerk.trim().toLowerCase() === wahl.trim().toLowerCase();
 }
 
 /** Eine Wahl, die es unter `gewerke` nicht (mehr) gibt, fällt auf „Alle Gewerke“ zurück. */

@@ -5,13 +5,17 @@
  * Beteiligtenliste mit ihren Titelzeilen wieder einlesen.
  *
  * Funktionen werden über Bezeichnung und Gewerk, ersatzweise über die volle
- * Bezeichnung („Fachplaner LST“) oder das Kürzel gefunden; unbekannte werden
- * beim Übernehmen angelegt – in der Art aus der Spalte „Art“ (Kurzzeichen
- * oder Name), ohne Angabe in der des Funktionskatalogs. An einer vorhandenen
- * Funktion ändert die Spalte nichts. Personen gleichen Namens im Projekt
- * werden aktualisiert statt doppelt angelegt.
+ * Bezeichnung („Fachplaner LST“) oder ein eindeutiges Kürzel gefunden – auch
+ * unter einer früheren Bezeichnung (`FUNKTIONS_UMBENENNUNGEN`: eine Liste aus
+ * der Fassung vor dem Funktionskatalog nennt „Bauunternehmen“ oder
+ * „Fachplanung | LST“ und trifft „Auftragnehmer“ bzw. „Fachplaner LST“).
+ * Unbekannte werden beim Übernehmen angelegt – unter der heutigen Bezeichnung,
+ * in der Art aus der Spalte „Art“ (Kurzzeichen oder Name), ohne Angabe in der
+ * des Funktionskatalogs. An einer vorhandenen Funktion ändert die Spalte
+ * nichts. Personen gleichen Namens im Projekt werden aktualisiert statt doppelt
+ * angelegt.
  */
-import { artAusText, artVon, katalogEintrag } from '../../../gemeinsam/funktionskatalog';
+import { artAusText, artInfo, artVon, katalogEintrag, umbenannt } from '../../../gemeinsam/funktionskatalog';
 import { spaltenZuordnen } from '../../../shared/xlsxLesen';
 import {
   UEBERGREIFEND,
@@ -90,23 +94,66 @@ function nameTeilen(name: string): { vorname: string; nachname: string } {
 }
 
 /**
+ * Sucht die Funktion über Bezeichnung und Gewerk bzw. über die volle
+ * Bezeichnung. `frueher`: Der Text ist eine frühere Bezeichnung
+ * („Bauunternehmen“, „Fachplanung LST“) und meint die Funktion, die heute
+ * anders heißt (`umbenannt`).
+ */
+function ueberBezeichnung(funktionen: Funktion[], text: string, gewerk: string | null, frueher: boolean): Funktion | undefined {
+  const heisst = (f: Funktion, bezeichnung: string, g: string | null) =>
+    gleich(f.name, frueher ? umbenannt(bezeichnung.trim(), g) : bezeichnung);
+  /** Der Text ist die volle Bezeichnung dieser Funktion: „Fachplaner LST“ bzw. die übergreifende beim Namen. */
+  const voll = (f: Funktion): boolean => {
+    if (!frueher) return gleich(funktionsName(f), text);
+    if (!f.gewerk) return heisst(f, text, null);
+    const ende = ` ${f.gewerk}`.toLowerCase();
+    return text.toLowerCase().endsWith(ende) && heisst(f, text.slice(0, -ende.length), f.gewerk);
+  };
+  if (gewerk) {
+    return funktionen.find((f) => heisst(f, text, gewerk) && gleich(f.gewerk ?? '', gewerk)) ?? funktionen.find(voll);
+  }
+  const volle = funktionen.find(voll);
+  if (volle) return volle;
+  const gleicheBezeichnung = funktionen.filter((f) => heisst(f, text, f.gewerk));
+  return gleicheBezeichnung.length === 1 ? gleicheBezeichnung[0] : undefined;
+}
+
+/** Ergebnis der Suche nach der Funktion einer Zeile. */
+interface FunktionsTreffer {
+  funktion?: Funktion;
+  /** Gefunden über eine frühere Bezeichnung – die Funktion heißt heute anders. */
+  frueher: boolean;
+  /** Der Text ist das Kürzel mehrerer Funktionen; keine davon wird geraten. */
+  kuerzelMehrdeutig: boolean;
+}
+
+/**
  * Funktion zu Bezeichnung und Gewerk. Ohne Gewerk zählt die volle
  * Bezeichnung („Fachplaner LST“ oder eine übergreifende Funktion), dann eine
- * eindeutige Bezeichnung in irgendeinem Gewerk, zuletzt das Kürzel.
+ * eindeutige Bezeichnung in irgendeinem Gewerk – wörtlich, sonst als frühere
+ * Bezeichnung –, zuletzt das Kürzel: Tragen es mehrere Funktionen (der Katalog
+ * führt „AN“, „FP“ oder „PING“ je Gewerk), gilt die eine übergreifende
+ * darunter, sonst keine.
  */
+function funktionSuchen(funktionen: Funktion[], name: string, gewerk: string | null): FunktionsTreffer {
+  const text = name.trim();
+  if (!text) return { frueher: false, kuerzelMehrdeutig: false };
+  const woertlich = ueberBezeichnung(funktionen, text, gewerk, false);
+  if (woertlich) return { funktion: woertlich, frueher: false, kuerzelMehrdeutig: false };
+  const umbenannte = ueberBezeichnung(funktionen, text, gewerk, true);
+  if (umbenannte) return { funktion: umbenannte, frueher: true, kuerzelMehrdeutig: false };
+  if (gewerk) return { frueher: false, kuerzelMehrdeutig: false };
+  const mitKuerzel = funktionen.filter((f) => f.kuerzel && gleich(f.kuerzel, text));
+  if (mitKuerzel.length <= 1) return { funktion: mitKuerzel[0], frueher: false, kuerzelMehrdeutig: false };
+  const uebergreifend = mitKuerzel.filter((f) => f.gewerk === null);
+  return uebergreifend.length === 1
+    ? { funktion: uebergreifend[0], frueher: false, kuerzelMehrdeutig: false }
+    : { frueher: false, kuerzelMehrdeutig: true };
+}
+
+/** Die Funktion zu Bezeichnung und Gewerk einer Zeile (siehe `funktionSuchen`). */
 export function funktionFinden(funktionen: Funktion[], name: string, gewerk: string | null): Funktion | undefined {
-  if (!name.trim()) return undefined;
-  if (gewerk) {
-    return (
-      funktionen.find((f) => gleich(f.name, name) && gleich(f.gewerk ?? '', gewerk)) ??
-      funktionen.find((f) => gleich(funktionsName(f), name))
-    );
-  }
-  const voll = funktionen.find((f) => gleich(funktionsName(f), name));
-  if (voll) return voll;
-  const gleicheBezeichnung = funktionen.filter((f) => gleich(f.name, name));
-  if (gleicheBezeichnung.length === 1) return gleicheBezeichnung[0];
-  return funktionen.find((f) => f.kuerzel && gleich(f.kuerzel, name));
+  return funktionSuchen(funktionen, name, gewerk).funktion;
 }
 
 /**
@@ -127,6 +174,8 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
   const wert = (z: string[], feld: string) => (spalten[feld] !== undefined ? (z[spalten[feld]] ?? '').trim() : '');
   const imProjekt = daten.beteiligte.filter((b) => b.projektId === projektId);
   const gesehen = new Set<string>();
+  // Gewerke, die im Laufe der Datei neu hinzukommen: klein geschrieben → erste Schreibweise
+  const neueGewerke = new Map<string, string>();
   const ergebnis: ImportZeile[] = [];
 
   for (const z of zeilen.slice(kopfIndex + 1)) {
@@ -173,10 +222,24 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
     }
     if (!nachname) continue;
 
+    // Gewerk in der Schreibweise der Gewerkliste bzw. seiner ersten Nennung in der Datei – Gewerke gelten
+    // ohne Groß-/Kleinschreibung als dieselben, „pt1“ legte sonst Funktionen neben denen in „PT1“ an.
+    // Nennt die Spalte kein Gewerk der Liste, aber eine Art der Funktion (die Liste der Anwender führt im
+    // Blatt der Bauüberwachung „BÜW“ als Gewerk), entsteht daraus kein Gewerk: Die Angabe zählt als Art.
     const gewerkText = wert(z, 'gewerk');
-    const gewerk = gewerkText && !gleich(gewerkText, UEBERGREIFEND) ? gewerkText : null;
-    const funktionText = wert(z, 'funktion');
-    const gefunden = funktionFinden(daten.funktionen, funktionText, gewerk);
+    let gewerk: string | null = null;
+    let artStattGewerk: string | null = null;
+    if (gewerkText && !gleich(gewerkText, UEBERGREIFEND)) {
+      const bekannt = daten.gewerke.find((g) => gleich(g, gewerkText)) ?? neueGewerke.get(gewerkText.toLowerCase());
+      if (bekannt) gewerk = bekannt;
+      else if (artAusText(gewerkText)) artStattGewerk = artAusText(gewerkText);
+      else gewerk = gewerkText;
+    }
+    // „Auftragnehmer Übergreifend“ – so schreibt die Liste der Anwender eine Funktion ohne Gewerk
+    const funktionRoh = wert(z, 'funktion');
+    const funktionText = gewerk === null ? funktionRoh.replace(/\s+übergreifend$/i, '') || funktionRoh : funktionRoh;
+    const treffer = funktionSuchen(daten.funktionen, funktionText, gewerk);
+    const gefunden = treffer.funktion;
     const kuerzel = wert(z, 'kuerzel');
     const person: Personenangaben = {
       anrede: wert(z, 'anrede'),
@@ -197,21 +260,34 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
     if (gesehen.has(name)) hinweise.push('doppelt in der Liste');
     gesehen.add(name);
     if (vorhanden) hinweise.push('wird aktualisiert');
-    // Art einer neuen Funktion: aus der Spalte, sonst laut Katalog
+    // Art einer neuen Funktion: aus der Spalte „Art“ (ersatzweise einer Art in der Spalte „Gewerk“), sonst laut Katalog
     const artSpalte = wert(z, 'art');
-    const artGenannt = artAusText(artSpalte);
+    const artGenannt = artAusText(artSpalte) ?? artStattGewerk;
+    // Eine neue Funktion entsteht unter der heutigen Bezeichnung, nicht unter einer früheren
+    const neuerName = umbenannt(funktionText, gewerk);
+    // Ein Kürzel, das mehrere Funktionen tragen, benennt keine: Die Person kommt ohne Funktion
+    const ohneFunktion = !funktionText || treffer.kuerzelMehrdeutig;
     if (!funktionText) hinweise.push('ohne Funktion');
-    else if (!gefunden) {
-      hinweise.push(
-        gewerk && !daten.gewerke.some((g) => gleich(g, gewerk)) ? 'neue Funktion, neues Gewerk' : 'neue Funktion',
-      );
-      if (artSpalte && !artGenannt) hinweise.push('Art unbekannt');
+    else if (treffer.kuerzelMehrdeutig) hinweise.push(`Kürzel „${funktionText}“ tragen mehrere Funktionen – ohne Funktion`);
+    else if (gefunden) {
+      if (treffer.frueher) hinweise.push(`heißt jetzt „${funktionsName(gefunden)}“`);
+    } else {
+      const neuesGewerk = gewerk !== null && !daten.gewerke.some((g) => gleich(g, gewerk));
+      if (neuesGewerk) neueGewerke.set(gewerk!.toLowerCase(), gewerk!);
+      hinweise.push(neuesGewerk ? 'neue Funktion, neues Gewerk' : 'neue Funktion');
+      if (neuerName !== funktionText) hinweise.push(`heißt jetzt „${neuerName}“`);
+      if (artSpalte && !artAusText(artSpalte)) hinweise.push('Art unbekannt');
+    }
+    if (artStattGewerk && !ohneFunktion) {
+      hinweise.push(`„${gewerkText}“ ist kein Gewerk, sondern die Art „${artInfo(artStattGewerk).name}“ – ohne Gewerk`);
     }
     ergebnis.push({
       person,
       funktion: gefunden
         ? { id: gefunden.id, name: gefunden.name, gewerk: gefunden.gewerk, art: gefunden.art }
-        : { id: null, name: funktionText, gewerk, art: funktionText ? (artGenannt ?? artVon(funktionText, gewerk)) : null },
+        : ohneFunktion
+          ? { id: null, name: '', gewerk: null, art: null }
+          : { id: null, name: neuerName, gewerk, art: artGenannt ?? artVon(neuerName, gewerk) },
       vorhandenId: vorhanden?.id ?? null,
       hinweise,
     });

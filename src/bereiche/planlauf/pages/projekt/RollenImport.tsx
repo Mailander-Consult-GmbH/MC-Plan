@@ -8,6 +8,12 @@
  * der Spalte „Art“ (optional), sonst die des Funktionskatalogs; eine
  * vorhandene behält ihre. Die Vorschau nennt je Zeile die Art, unter der die
  * Funktion danach in der Liste steht, und das Gewerk als Abzeichen.
+ *
+ * Eine frühere Bezeichnung (`FUNKTIONS_UMBENENNUNGEN`: Listen nach der Vorlage
+ * vor dem Funktionskatalog nennen „Fachtechnischer Prüfer“ oder „Bau AN“)
+ * meint die Funktion, die heute anders heißt – die Zeile besetzt „Planprüfer“
+ * bzw. „Auftragnehmer“, sonst blieben die Schritte der Workflows ohne Person.
+ * Führt das Projekt die frühere Bezeichnung selbst noch, gilt sie wörtlich.
  */
 import { useRef, useState } from 'react';
 import {
@@ -30,7 +36,7 @@ import {
   rollenVorlageLaden,
 } from '../../domain/importVorlagen';
 import { GewerkAbzeichen } from '../../../../gemeinsam/FunktionsArten';
-import { artAusText, artInfo, artVon } from '../../../../gemeinsam/funktionskatalog';
+import { artAusText, artInfo, artVon, umbenannt } from '../../../../gemeinsam/funktionskatalog';
 import { seiteAusText } from '../../components/SeiteAuswahl';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
@@ -153,6 +159,13 @@ interface Zeile {
   neuesGewerk: boolean;
   neueFunktion: boolean;
   /**
+   * Angabe in der Spalte „Art“, die keine Art ist – an einer Funktion, die der
+   * Import anlegt. Welche Art stattdessen gilt (die einer anderen Zeile oder
+   * die des Funktionskatalogs), sagt der Hinweis erst, wenn alle Zeilen gelesen
+   * sind.
+   */
+  artUnbekannt?: string;
+  /**
    * Die Funktion steht weiter unten in der Datei noch einmal mit einer anderen
    * Person. Eine Funktion hat genau eine Person – es gilt die letzte Zeile;
    * diese hier hinterlegt ihre Person ohne die Funktion.
@@ -231,10 +244,14 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         // Person der Zeile wird deshalb ohne diese Funktion übernommen.
         const funktionRoh = wert(zeile, 'funktion');
         const eigeneFunktion = Boolean(funktionRoh) && istEigeneFunktion({ name: funktionRoh, gewerk });
-        const funktion = eigeneFunktion ? '' : funktionRoh;
+        // Eine frühere Bezeichnung meint die heutige Funktion – außer das Projekt führt sie selbst noch
+        const heutige = umbenannt(funktionRoh, gewerk);
+        const frueher = !eigeneFunktion && heutige !== funktionRoh && !findeRolle(funktionRoh, gewerk);
+        const funktion = eigeneFunktion ? '' : frueher ? heutige : funktionRoh;
         if (eigeneFunktion) {
           hinweise.push(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person – die Person wird ohne Funktion hinterlegt`);
         }
+        if (frueher) hinweise.push(`„${funktionRoh}“ heißt jetzt „${heutige}“`);
 
         let neuesGewerk = false;
         if (gewerk && !data.gewerke.some((g) => gleich(g, gewerk))) {
@@ -262,9 +279,12 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         // Art der Funktion: optional, zählt nur für Funktionen, die der Import anlegt
         const artRoh = wert(zeile, 'art');
         const art = funktion && artRoh ? (artAusText(artRoh) ?? undefined) : undefined;
+        // Unbekannte Angabe: An einer vorhandenen Funktion ändert sie nichts; für eine neue sagt der
+        // Hinweis erst nach dem Lesen aller Zeilen, welche Art gilt (siehe Zeile.artUnbekannt)
+        let artUnbekannt: string | undefined;
         if (funktion && artRoh && art === undefined) {
-          const folge = findeRolle(funktion, gewerk) ? 'bleibt unverändert' : 'laut Funktionskatalog vorbelegt';
-          hinweise.push(`Art „${artRoh}“ unbekannt – ${folge}`);
+          if (findeRolle(funktion, gewerk)) hinweise.push(`Art „${artRoh}“ unbekannt – bleibt unverändert`);
+          else artUnbekannt = artRoh;
         }
         // Eine vorhandene Funktion behält ihre Art – nennt die Datei eine andere, sagt es der Hinweis
         const vorhandeneArt = funktion ? findeRolle(funktion, gewerk)?.art : undefined;
@@ -339,6 +359,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           personKennung: zuordnung.kennung,
           neuesGewerk,
           neueFunktion,
+          artUnbekannt,
           ueberholt: false,
           hinweis: hinweise.join('; '),
         };
@@ -351,10 +372,20 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       for (const z of ergebnis) {
         if (z.funktion) letztePerson.set(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`, z.personKennung);
       }
+      // Art je neuer Funktion: die erste gültige Angabe der Datei (wie beim Übernehmen)
+      const artGenannt = genannteArten(ergebnis);
       setVorschau(
         ergebnis.map((z) => {
           if (!z.funktion) return z;
           const hinweise = z.hinweis ? [z.hinweis] : [];
+          if (z.artUnbekannt !== undefined) {
+            const andere = artGenannt.get(funktionSchluessel(z));
+            hinweise.push(
+              `Art „${z.artUnbekannt}“ unbekannt – ${
+                andere !== undefined ? `es gilt „${artInfo(andere).name}“ aus einer anderen Zeile` : 'laut Funktionskatalog vorbelegt'
+              }`,
+            );
+          }
           if (letztePerson.get(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`) !== z.personKennung) {
             hinweise.push('Funktion steht weiter unten mit einer anderen Person – es gilt die letzte Zeile');
             return { ...z, ueberholt: true, hinweis: hinweise.join('; ') };
