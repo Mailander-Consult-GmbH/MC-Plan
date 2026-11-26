@@ -29,6 +29,7 @@ import {
   newId,
   personName,
   projektImBereich,
+  registerSchluessel,
   type FunktionsBezug,
   type ID,
   type PersonFelder,
@@ -178,14 +179,14 @@ function gleichePerson(r: RegisterPerson, l: LokalePerson): boolean {
 }
 
 function funktionenVereinigen(a: FunktionsBezug[], b: FunktionsBezug[]): FunktionsBezug[] {
-  const schluessel = new Set(a.map(funktionsSchluessel));
-  return [...a, ...b.filter((f) => !schluessel.has(funktionsSchluessel(f)))];
+  const schluessel = new Set(a.map(registerSchluessel));
+  return [...a, ...b.filter((f) => !schluessel.has(registerSchluessel(f)))];
 }
 
 /** Dieselben Funktionen (nach Bezeichnung und Gewerk)? */
 export function gleicheFunktionen(a: FunktionsBezug[], b: FunktionsBezug[]): boolean {
-  const x = new Set(a.map(funktionsSchluessel));
-  const y = new Set(b.map(funktionsSchluessel));
+  const x = new Set(a.map(registerSchluessel));
+  const y = new Set(b.map(registerSchluessel));
   return x.size === y.size && [...x].every((k) => y.has(k));
 }
 
@@ -270,17 +271,34 @@ export function uebertragen(bereich: ProjektBereich, alt: Sicht, neu: Sicht, reg
         reg[f] = wert;
         geaendert = true;
       }
-      const vorher = new Set(a.funktionen.map(funktionsSchluessel));
-      const nachher = new Set(n.funktionen.map(funktionsSchluessel));
+      const vorher = new Set(a.funktionen.map(registerSchluessel));
+      const nachher = new Set(n.funktionen.map(registerSchluessel));
       const weg = [...vorher].filter((k) => !nachher.has(k));
-      const dazu = n.funktionen.filter((f) => !vorher.has(funktionsSchluessel(f)));
+      const dazu = n.funktionen.filter((f) => !vorher.has(registerSchluessel(f)));
       if (weg.length > 0 || dazu.length > 0) {
-        const ohne = reg.funktionen.filter((f) => !weg.includes(funktionsSchluessel(f)));
+        const ohne = reg.funktionen.filter((f) => !weg.includes(registerSchluessel(f)));
         const funktionen = funktionenVereinigen(ohne, dazu);
         if (JSON.stringify(funktionen) !== JSON.stringify(reg.funktionen)) {
           reg.funktionen = funktionen;
           geaendert = true;
         }
+      }
+      // Geänderte Art einer Funktion, die die Person behält: am Eintrag des Registers nachziehen –
+      // sonst legte ein anderer Bereich die Funktion später in der früheren Art an
+      // (dieselbe Funktion heißt hier: dieselbe Bezeichnung – wechselt die Person an eine Funktion, die
+      // nur gegenüber dem Register dieselbe ist, bleibt die Art des Registers)
+      const artVorher = new Map(a.funktionen.map((f) => [funktionsSchluessel(f), f.art]));
+      const artNeu = new Map<string, string>();
+      for (const f of n.funktionen) {
+        const bisher = artVorher.get(funktionsSchluessel(f));
+        if (bisher !== undefined && bisher !== f.art) artNeu.set(registerSchluessel(f), f.art);
+      }
+      if (artNeu.size > 0 && reg.funktionen.some((f) => (artNeu.get(registerSchluessel(f)) ?? f.art) !== f.art)) {
+        reg.funktionen = reg.funktionen.map((f) => {
+          const art = artNeu.get(registerSchluessel(f));
+          return art !== undefined && art !== f.art ? { ...f, art } : f;
+        });
+        geaendert = true;
       }
       if (geaendert) reg.geaendertAm = jetzt;
     }

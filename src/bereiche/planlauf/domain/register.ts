@@ -30,7 +30,12 @@
  */
 import type { Plan, Sicht } from '../../../gemeinsam/abgleich';
 import { artAus, artInfo, umbenannt } from '../../../gemeinsam/funktionskatalog';
-import { funktionsSchluessel, type FunktionsBezug, type RegisterPerson } from '../../../gemeinsam/register';
+import {
+  funktionsSchluessel,
+  registerSchluessel,
+  type FunktionsBezug,
+  type RegisterPerson,
+} from '../../../gemeinsam/register';
 import { kontaktLoeschen, projektLoeschen, type Vorgang } from './bestand';
 import {
   istEigeneFunktion,
@@ -44,15 +49,6 @@ import {
   type Role,
   type Zuordnung,
 } from './types';
-
-/**
- * Schlüssel einer Funktion gegenüber dem Register: Bezeichnung + Gewerk
- * (`funktionsSchluessel`), eine frühere Bezeichnung zählt als die heutige
- * (siehe Kopf der Datei). Für Funktionen des Projekts wie für die Nennungen
- * des Registers.
- */
-const registerSchluessel = (f: { name: string; gewerk: string | null }): string =>
-  funktionsSchluessel({ name: umbenannt(f.name, f.gewerk), gewerk: f.gewerk });
 
 export function sichtFuerRegister(d: AppData): Sicht {
   const rollen = new Map(d.roles.map((r) => [r.id, r]));

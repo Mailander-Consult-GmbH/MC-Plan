@@ -104,9 +104,12 @@ export interface RegisterProjekt {
 
 /**
  * Funktion einer Person im Projekt, bereichsübergreifend über Bezeichnung und
- * Gewerk erkannt (`funktionsSchluessel`). Kürzel und Art sind Beigaben: Sie
- * gehören nicht zum Schlüssel, und eine Änderung allein an ihnen wird nicht
- * übertragen – der zuerst eingetragene Wert bleibt.
+ * Gewerk erkannt (`registerSchluessel` – eine frühere Bezeichnung zählt als
+ * die heutige). Kürzel und Art sind Beigaben und gehören nicht zum Schlüssel.
+ * Beim Kürzel bleibt der zuerst eingetragene Wert. Eine geänderte Art zieht
+ * der Bereich nach, der sie ändert (`uebertragen`) – eine Funktion, die ein
+ * anderer Bereich danach aus dem Register anlegt, bekommt so die heutige Art;
+ * Funktionen, die er schon führt, behalten ihre.
  */
 export interface FunktionsBezug {
   name: string;
@@ -220,6 +223,21 @@ export function funktionText(f: Pick<FunktionsBezug, 'name' | 'gewerk'>): string
 /** Schlüssel, unter dem eine Funktion in allen Bereichen als dieselbe gilt. */
 export function funktionsSchluessel(f: Pick<FunktionsBezug, 'name' | 'gewerk'>): string {
   return `${f.name.trim().toLowerCase()}|${(f.gewerk ?? '').trim().toLowerCase()}`;
+}
+
+/**
+ * Schlüssel einer Funktion gegenüber dem Register: Bezeichnung + Gewerk, eine
+ * frühere Bezeichnung (`FUNKTIONS_UMBENENNUNGEN`) zählt als die heutige. Der
+ * Abgleich mit dem Register vergleicht überall hiermit – beim Übertragen wie
+ * in den Bereichen: Führt ein Bereich eine Funktion unter ihrem früheren Namen
+ * (bei der Umstellung behalten oder später von Hand so angelegt), ist sie
+ * gegenüber dem Register dieselbe wie die heutige. Sonst ließe sich eine
+ * Besetzung im einen Bereich nicht aufheben, solange der andere die Funktion
+ * anders nennt. Wo es um die Funktion selbst geht (Umstellung, Listen der
+ * Bereiche), gilt weiter `funktionsSchluessel`.
+ */
+export function registerSchluessel(f: Pick<FunktionsBezug, 'name' | 'gewerk'>): string {
+  return funktionsSchluessel({ name: umbenannt(f.name, f.gewerk), gewerk: f.gewerk });
 }
 
 export function projektTitel(p: Pick<RegisterProjekt, 'nummer' | 'name'>): string {
