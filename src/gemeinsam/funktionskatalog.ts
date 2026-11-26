@@ -109,7 +109,7 @@ export const FUNKTIONS_KATALOG: KatalogFunktion[] = [
   // EP – Entwurfsplanung
   ...je('ep', 'Entwurfsplanung', [['KIB', 'EP KIB'], ['OLA', 'EP OLA'], ['LST', 'EP LST'], ['PT1', 'EP PT1'], ['PT2', 'EP PT2'], ['TK', 'EP TK'], ['VA', 'EP VA'], ['OB', 'EP OB']]),
   // PSV – Prüfer
-  ...je('psv', 'Planprüfer', [['KIB', 'PSV KIB'], ['OLA', 'PSV OLA'], ['LST', 'PSV LST'], ['PT1', 'PSV PT1'], ['PT2', 'PSV PT2'], ['TK', 'PSV TK'], ['VA', 'PSV VA'], ['OB', 'PSV OB']]),
+  ...je('psv', 'Planprüfer', [['KIB', 'PSV KIB'], ['OLA', 'PSV OLA'], ['LST', 'PSV LST'], ['PT1', 'PSV PT1'], ['PT2', 'PSV PT2'], ['TK', 'PSV TK'], ['VA', 'PSV VA'], ['OB', 'PSV OB'], ['EEA', 'PSV EEA']]),
   ...je('psv', 'Planprüfer Erdung', [['OLA', 'PSV OLA']]),
   ...je('psv', 'Prüfstatiker', [['KIB', 'PSt KIB'], ['OLA', 'PSt OLA']]),
   ...je('psv', 'Vermessungsprüfer', [[null, 'VeP']]),

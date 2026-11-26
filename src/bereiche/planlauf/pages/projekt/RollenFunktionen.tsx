@@ -104,6 +104,17 @@ export function RollenFunktionen({ project }: { project: Project }) {
   }
   /** Person, die eine Funktion ausfüllt. */
   const besetztVon = (rolle: Role) => inhaber.get(rolle.id);
+  /**
+   * Für eine unbesetzte Funktion eines Gewerks: die Person an der übergreifenden
+   * Funktion gleichen Namens – sie bearbeitet die Schritte dieses Gewerks, bis die
+   * Funktion selbst besetzt ist (`kontaktFuerRolleUndGewerk`).
+   */
+  const vertretenVon = (rolle: Role): Contact | undefined => {
+    if (rolle.gewerk === null || inhaber.has(rolle.id)) return undefined;
+    const name = rolle.name.trim().toLowerCase();
+    const uebergreifend = rollen.find((r) => r.gewerk === null && r.name.trim().toLowerCase() === name);
+    return uebergreifend ? inhaber.get(uebergreifend.id) : undefined;
+  };
 
   // Erste Ebene: die Art – nur Arten, die das Projekt führt. Eine Art, die es nicht mehr gibt, fällt auf „Alle“ zurück.
   const art = artWahlGueltig(
@@ -264,6 +275,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
                   ) : null,
                   ...g.eintraege.map((rolle) => {
                     const c = besetztVon(rolle);
+                    const vertretung = c ? undefined : vertretenVon(rolle);
                     return (
                       <tr key={rolle.id} className="clickable" {...alsKlickZeile(() => setBesetzen(rolle))}>
                         <td>
@@ -283,7 +295,15 @@ export function RollenFunktionen({ project }: { project: Project }) {
                               </strong>
                             </span>
                           ) : (
-                            <span className="tertiary small pl-unbesetzt">– nicht besetzt –</span>
+                            <>
+                              <span className="tertiary small pl-unbesetzt">– nicht besetzt –</span>
+                              {/* Die Schritte des Gewerks gehen solange an die Person der übergreifenden Funktion */}
+                              {vertretung ? (
+                                <div className="tertiary small">
+                                  es gilt die übergreifende Funktion: {vertretung.vorname} {vertretung.nachname}
+                                </div>
+                              ) : null}
+                            </>
                           )}
                         </td>
                         <td className="small muted col-optional">{c?.firma || '–'}</td>

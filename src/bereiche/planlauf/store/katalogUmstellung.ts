@@ -26,12 +26,17 @@
  * 5. Die Gewerke des Katalogs kommen hinzu – in der Schreibweise, die der
  *    Bestand schon führt; OSE entfällt, wo es niemand mehr nennt.
  * 6. Kein offener Schritt eines laufenden Planlaufs wechselt dabei die
- *    zuständige Person: Meinte er nach der Umstellung eine andere Funktion
- *    (etwa die neue, unbesetzte des Gewerks statt der besetzten
- *    übergreifenden gleicher Bezeichnung), bleibt die bisherige Person am
- *    Schritt stehen – wie von Hand gesetzt. Erledigte Schritte fasst das Netz
- *    nicht an (sie halten fest, wer sie bearbeitet hat); wird einer später
- *    wieder geöffnet, folgt er der Funktion, die dann für ihn gilt.
+ *    zuständige Person: Bekäme er nach der Umstellung eine andere (zwei
+ *    frühere Bezeichnungen sind jetzt dieselbe – die übergreifende
+ *    „Bauunternehmen“ und „Bau AN KIB“ heißen beide „Auftragnehmer“, und für
+ *    einen Eintrag in KIB gilt die besetzte Funktion des Gewerks), bleibt die
+ *    bisherige Person am Schritt stehen – wie von Hand gesetzt. Erledigte
+ *    Schritte fasst das Netz nicht an (sie halten fest, wer sie bearbeitet
+ *    hat); wird einer später wieder geöffnet, folgt er der Besetzung, die
+ *    dann für ihn gilt. Eine unbesetzte Funktion, die mit dem Katalog neu in
+ *    ein Gewerk kommt, nimmt niemandem einen Schritt: Dort bearbeitet ihn
+ *    weiter die Person der übergreifenden Funktion gleicher Bezeichnung
+ *    (`kontaktFuerRolleUndGewerk`).
  *
  * Das Projektregister und die Projektsteuerung stellen ihre Bestände mit
  * derselben Tabelle um – sonst holte der Abgleich die alten Bezeichnungen
@@ -48,7 +53,7 @@ import {
   umbenannterVerweis,
 } from '../../../gemeinsam/funktionskatalog';
 import { funktionsSchluessel } from '../../../gemeinsam/register';
-import { kontaktFuerRolleUndGewerk, rolleFuerSchritt } from '../domain/engine';
+import { kontaktFuerRolleUndGewerk, zustaendigeRolle } from '../domain/engine';
 import { STANDARD_ROLLEN } from '../domain/seed';
 import type {
   Antwort,
@@ -431,21 +436,25 @@ export function funktionenAufKatalogUmstellen(
     return steps === t.steps ? t : { ...t, steps };
   });
 
-  // Planläufe kennen ihr Gewerk (das des Eintrags): Ein Schritt folgt der Funktion, die für ihn galt.
-  // Behält sie ihre Bezeichnung (die übergreifende „Bauüberwachung“; eine besetzte Funktion, deren
-  // neue Bezeichnung schon vergeben ist), behält sie auch der Schritt – er bleibt bei derselben Person.
+  // Planläufe kennen ihr Gewerk (das des Eintrags): Ein Schritt folgt der Funktion, deren Besetzung
+  // für ihn galt (`zustaendigeRolle`). Behält sie ihre Bezeichnung (die übergreifende „Bauüberwachung“,
+  // auch wo sie für eine unbesetzte „Bauüberwachung TK“ einspringt; eine besetzte Funktion, deren neue
+  // Bezeichnung schon vergeben ist), behält sie auch der Schritt – er bleibt bei derselben Person.
   const gewerkVon = new Map((daten.documents ?? []).map((d) => [d.id, d.gewerk ?? '']));
+  const kontakteIn = new Map<ID, AppData['contacts']>();
+  for (const c of daten.contacts ?? []) kontakteIn.set(c.projectId, [...(kontakteIn.get(c.projectId) ?? []), c]);
   const runs = (daten.runs ?? []).map((run) => {
     const mitGewerk = mitGewerkIn(run.projectId);
     const gewerk = gewerkVon.get(run.documentId) ?? '';
+    const kontakte = kontakteIn.get(run.projectId) ?? [];
     const merk = new Map<string, string>();
     const verweis = (name: string): string => {
       const bekannt = merk.get(name);
       if (bekannt !== undefined) return bekannt;
       let neu = umbenannterVerweis(name, mitGewerk);
       if (neu !== name) {
-        const galt = rolleFuerSchritt(vorherIn(run.projectId), name, gewerk);
-        const giltWeiter = rolleFuerSchritt(nachherIn(run.projectId), name, gewerk);
+        const galt = zustaendigeRolle(kontakte, vorherIn(run.projectId), name, gewerk);
+        const giltWeiter = zustaendigeRolle(kontakte, nachherIn(run.projectId), name, gewerk);
         if (galt && giltWeiter && galt.id === giltWeiter.id) neu = name;
       }
       merk.set(name, neu);
@@ -549,14 +558,12 @@ export function funktionenAufKatalogUmstellen(
     .sort((a, b) => a.localeCompare(b, 'de'));
 
   /* 6. Netz: Kein offener Schritt eines laufenden Planlaufs wechselt durch die Umstellung die Person.
-        Die Funktion des Gewerks gilt vor der übergreifenden gleicher Bezeichnung (`rolleFuerSchritt`) –
-        auch die unbesetzte, die eben aus dem Katalog kam, und auch dort, wo zwei frühere Bezeichnungen
-        jetzt dieselbe sind („Bauunternehmen“ und „Bau AN KIB“ heißen beide „Auftragnehmer“). Meint ein
-        Schritt deshalb eine andere Funktion als vorher, bleibt die bisherige Person an ihm stehen, wie
-        von Hand gesetzt. Hatte er niemanden, gilt die neue Besetzung. */
+        Die besetzte Funktion des Gewerks gilt vor der übergreifenden gleicher Bezeichnung
+        (`kontaktFuerRolleUndGewerk`) – auch dort, wo zwei frühere Bezeichnungen jetzt dieselbe sind
+        („Bauunternehmen“ und „Bau AN KIB“ heißen beide „Auftragnehmer“). Bekäme ein Schritt deshalb
+        eine andere Person als vorher, bleibt die bisherige an ihm stehen, wie von Hand gesetzt.
+        Hatte er niemanden, gilt die neue Besetzung. */
   const endgueltigIn = jeProjekt(roles);
-  const kontakteIn = new Map<ID, AppData['contacts']>();
-  for (const c of daten.contacts ?? []) kontakteIn.set(c.projectId, [...(kontakteIn.get(c.projectId) ?? []), c]);
   const laeufe = runs.map((run, i) => {
     if (run.status !== 'laufend') return run;
     const kontakte = kontakteIn.get(run.projectId) ?? [];
