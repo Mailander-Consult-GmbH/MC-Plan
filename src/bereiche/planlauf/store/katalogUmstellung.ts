@@ -53,7 +53,7 @@ import {
   umbenannterVerweis,
 } from '../../../gemeinsam/funktionskatalog';
 import { funktionsSchluessel } from '../../../gemeinsam/register';
-import { kontaktFuerRolleUndGewerk, zustaendigeRolle } from '../domain/engine';
+import { kontaktFuerRolleUndGewerk, rolleFuerSchritt, zustaendigeRolle } from '../domain/engine';
 import { STANDARD_ROLLEN } from '../domain/seed';
 import type {
   Antwort,
@@ -562,7 +562,10 @@ export function funktionenAufKatalogUmstellen(
         (`kontaktFuerRolleUndGewerk`) – auch dort, wo zwei frühere Bezeichnungen jetzt dieselbe sind
         („Bauunternehmen“ und „Bau AN KIB“ heißen beide „Auftragnehmer“). Bekäme ein Schritt deshalb
         eine andere Person als vorher, bleibt die bisherige an ihm stehen, wie von Hand gesetzt.
-        Hatte er niemanden, gilt die neue Besetzung. */
+        Hatte er niemanden, gilt die neue Besetzung. „Vorher“ ist, wer nach der Regel der bisherigen
+        Fassung am Schritt stand: die Person der Funktion, die er meinte (`rolleFuerSchritt` – eine
+        unbesetzte Funktion des Gewerks ließ ihn ohne Person, auch neben einer besetzten
+        übergreifenden). Nur diese Person kann die Umstellung jemandem nehmen. */
   const endgueltigIn = jeProjekt(roles);
   const laeufe = runs.map((run, i) => {
     if (run.status !== 'laufend') return run;
@@ -573,7 +576,8 @@ export function funktionenAufKatalogUmstellen(
     let geaendert = false;
     const steps = run.steps.map((s, j) => {
       if (s.status === 'erledigt' || (s.contactManuell && s.contactId !== null)) return s;
-      const vorher = kontaktFuerRolleUndGewerk(kontakte, vorherIn(run.projectId), frueherSchritte[j].roleName ?? '', gewerk);
+      const gemeint = rolleFuerSchritt(vorherIn(run.projectId), frueherSchritte[j].roleName ?? '', gewerk);
+      const vorher = gemeint ? (kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === gemeint.id))?.id ?? null) : null;
       if (vorher === null) return s;
       const nachher = kontaktFuerRolleUndGewerk(kontakte, endgueltigIn(run.projectId), s.roleName ?? '', gewerk);
       if (vorher === nachher) return s;
