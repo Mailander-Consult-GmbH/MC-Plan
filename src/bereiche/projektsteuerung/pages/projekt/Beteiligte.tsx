@@ -216,14 +216,12 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
   return (
     <div className="stack">
       {reiterZeigen ? (
-        <div className="ps-artreiter">
-          <ArtReiter
-            arten={arten}
-            wahl={art}
-            onWahl={setArtWahl}
-            anzahl={(a) => alle.filter((b) => !!funktion(b) && passt(b, a)).length}
-          />
-        </div>
+        <ArtReiter
+          arten={arten}
+          wahl={art}
+          onWahl={setArtWahl}
+          anzahl={(a) => alle.filter((b) => !!funktion(b) && passt(b, a)).length}
+        />
       ) : null}
 
       <div className="row-between wrap">

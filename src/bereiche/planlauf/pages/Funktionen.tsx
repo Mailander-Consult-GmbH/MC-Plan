@@ -32,7 +32,7 @@ import {
   gewerkPasst,
   gewerkWahlGueltig,
 } from '../../../gemeinsam/FunktionsArten';
-import { artInfo, funktionenVergleich, nachArt } from '../../../gemeinsam/funktionskatalog';
+import { artInfo, funktionenVergleich, kuerzelFuerGewerk, nachArt } from '../../../gemeinsam/funktionskatalog';
 import { funktionsSchluessel } from '../../../gemeinsam/register';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
@@ -40,7 +40,7 @@ import { Card, CardHeader, ConfirmDialog, EmptyState, Modal, Search, alsKlickZei
 import { Icon } from '../../../shared/icons';
 import { GewerkLoeschenDialog } from '../components/GewerkDialog';
 import { FunktionsMaske, useFunktionsFormular } from '../components/FunktionsFelder';
-import { FunktionsZelle, anzahlText, kuerzelFuerGewerk } from '../components/FunktionsListe';
+import { FunktionsZelle, anzahlText, inSchrittenGenannt } from '../components/FunktionsListe';
 import '../components/funktionen.css';
 
 /** Spalten der Tabelle – die Gruppenzeile je Art geht über alle. */
@@ -61,6 +61,8 @@ export function Funktionen() {
 
   // Die eigene Funktion füllt immer die angemeldete Person aus – sie wird hier nicht geführt
   const alle = data.standardRollen.filter((r) => !istEigeneFunktion(r));
+  // „Seite offen“ steht nur an Funktionen, die ein projektübergreifender Workflow nennt
+  const genannt = inSchrittenGenannt(data.templates.filter((t) => t.projectId === null));
 
   // Alle vorkommenden Gewerke – gepflegte Stammdaten und die der Funktionen
   const gewerke = [
@@ -117,14 +119,12 @@ export function Funktionen() {
 
   return (
     <div className="stack">
-      <div className="pl-artreiter">
-        <ArtReiter
-          arten={alle.map((f) => f.art)}
-          wahl={art}
-          onWahl={setArtWahl}
-          anzahl={(a) => alle.filter((f) => artInfo(f.art).id === a && gewerkPasst(f.gewerk, gewerkFilter)).length}
-        />
-      </div>
+      <ArtReiter
+        arten={alle.map((f) => f.art)}
+        wahl={art}
+        onWahl={setArtWahl}
+        anzahl={(a) => alle.filter((f) => artInfo(f.art).id === a && gewerkPasst(f.gewerk, gewerkFilter)).length}
+      />
 
       <div className="pl-werkzeug">
         <div className="pl-werkzeug-filter">
@@ -192,7 +192,7 @@ export function Funktionen() {
                       // Tab-Halt: „Funktion bearbeiten“ ist sonst nur mit der Maus erreichbar
                       <tr key={f.id} className="clickable" {...alsKlickZeile(() => setDialog({ funktion: f }))}>
                         <td>
-                          <FunktionsZelle funktion={f} />
+                          <FunktionsZelle funktion={f} seiteNoetig={genannt.has(f.name.trim().toLowerCase())} />
                         </td>
                         <td className="num">{f.kuerzel || '–'}</td>
                         <td className="small muted col-optional">{f.beschreibung || '–'}</td>
@@ -263,7 +263,11 @@ export function Funktionen() {
                     const { id: _id, ...werte } = f;
                     // Die Kopie übernimmt die Art des Originals; das Kürzel nennt das neue Gewerk
                     const gleichnamige = alle.filter((x) => gleich(x.name, f.name));
-                    addStandardRolle({ ...werte, gewerk, kuerzel: kuerzelFuerGewerk(f, gewerk, gleichnamige) });
+                    addStandardRolle({
+                      ...werte,
+                      gewerk,
+                      kuerzel: kuerzelFuerGewerk(f, gewerk, gleichnamige) || kuerzelAus(f.name),
+                    });
                     toast(`„${f.name} ${gewerk}“ angelegt.`);
                   }}
                 >

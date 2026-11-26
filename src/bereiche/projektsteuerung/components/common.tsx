@@ -1,11 +1,12 @@
 /** Fachliche Anzeige-Bausteine, die in mehreren Ansichten gebraucht werden. */
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import type { TextareaHTMLAttributes } from 'react';
+import { GewerkAbzeichen } from '../../../gemeinsam/FunktionsArten';
 import { useToast } from '../../../shared/toast';
 import { Badge } from '../../../shared/ui';
 import { DRUCK_STIL, liveDokument } from '../domain/druck';
 import { AMPEL_LABEL, type Ampel } from '../domain/punkte';
-import { UEBERGREIFEND, type Funktion } from '../domain/types';
+import type { Funktion } from '../domain/types';
 
 const AMPEL_TON: Record<Ampel, '' | 'green' | 'orange' | 'red' | 'blue'> = {
   erledigt: 'green',
@@ -21,11 +22,6 @@ export function AmpelBadge({ ampel }: { ampel: Ampel }) {
 
 export function AmpelPunkt({ ampel }: { ampel: Ampel }) {
   return <span className={`dot ${AMPEL_TON[ampel]}`} title={AMPEL_LABEL[ampel]} />;
-}
-
-/** Abzeichen des Gewerks einer Funktion: blau „Übergreifend“, sonst das Gewerk. */
-export function GewerkAbzeichen({ gewerk }: { gewerk: string | null }) {
-  return gewerk === null ? <Badge ton="blue">{UEBERGREIFEND}</Badge> : <Badge>{gewerk}</Badge>;
 }
 
 /**

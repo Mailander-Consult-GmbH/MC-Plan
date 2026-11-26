@@ -7,14 +7,6 @@
  * (components/FunktionsFelder.tsx). Klassen mit Präfix pl-, nur Design-Tokens.
  */
 
-/* Reiter der Arten (ArtReiter aus src/gemeinsam): Es sind bis zu dreizehn und „Alle“ – auf dem Telefon
-   brechen sie um, statt wie die Seitenauswahl (.tabs) in einer Zeile zu rollen, in der die meisten
-   Arten außer Sicht wären. Enger gesetzt, damit vier bis fünf Kurzzeichen in eine Zeile passen. */
-@media (max-width: 860px) {
-  .pl-artreiter .tabs { flex-wrap: wrap; overflow-x: visible; gap: 4px; }
-  .pl-artreiter .tabs button:not(.tab-plus) { padding: 6px 12px; }
-}
-
 /* Werkzeugzeile über der Liste: links Suche und Filter, rechts die Knöpfe. Beide Gruppen brechen um. */
 .pl-werkzeug { display: flex; align-items: center; justify-content: space-between; gap: 10px 12px; flex-wrap: wrap; }
 .pl-werkzeug-filter { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; min-width: 0; }

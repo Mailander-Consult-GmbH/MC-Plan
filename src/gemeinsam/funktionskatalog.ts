@@ -271,6 +271,63 @@ export function kuerzelDerBezeichnung(
 /* Umbenennungen                                                       */
 /* ------------------------------------------------------------------ */
 
+/** Gewerk, wie es in einem Kürzel stehen kann: ohne Leerzeichen, groß („50 Hz“ → „50HZ“). */
+const gewerkKurz = (gewerk: string) => gewerk.replace(/\s+/g, '').toUpperCase();
+
+/**
+ * Kürzel für die Übernahme einer Funktion in ein anderes Gewerk („Vorhandene
+ * Funktion“ in den Funktionslisten beider Bereiche): Kennt der Katalog die
+ * Funktion dort, gilt seines. Sonst wird das Gewerk im Kürzel getauscht
+ * („PSV KIB“ wird „PSV LST“, „BÜW-LST“ wird „BÜW-OLA“, „BÜ-50HZ“ im Gewerk
+ * „50 Hz“ wird „BÜ-LST“; ist das Kürzel das Gewerk selbst, das neue Gewerk).
+ * Nennt das Kürzel kein Gewerk, bleibt es – wie im Katalog, der „AN“ oder
+ * „PING“ in jedem Gewerk gleich führt. Leer, wenn die Funktion kein Kürzel hat.
+ *
+ * `gleichnamige`: dieselbe Bezeichnung in anderen Gewerken. Trägt das Kürzel
+ * von `f` sein Gewerk nicht erkennbar (der Katalog führt etwa „FS ITK“ im
+ * Gewerk TK neben „FS EEA“), gibt eine von ihnen die Form vor, deren Kürzel es
+ * tut – sonst hieße der Fachspezialist in KIB „FS ITK“.
+ */
+export function kuerzelFuerGewerk(
+  f: { name: string; gewerk: string | null; kuerzel: string },
+  gewerk: string,
+  gleichnamige: readonly { gewerk: string | null; kuerzel: string }[] = [],
+): string {
+  const katalog = katalogEintrag(f.name, gewerk);
+  if (katalog) return katalog.kuerzel;
+  for (const x of [f, ...gleichnamige]) {
+    const kuerzel = x.kuerzel.trim();
+    if (!kuerzel || !x.gewerk) continue;
+    // Das Gewerk steht im Kürzel, wie es heißt, oder in seiner Kurzform – das neue folgt derselben Form
+    const formen: [alt: string, neu: string][] = [
+      [x.gewerk, gewerk],
+      [gewerkKurz(x.gewerk), gewerkKurz(gewerk)],
+    ];
+    for (const [alt, neuesGewerk] of formen) {
+      if (norm(kuerzel) === norm(alt)) return neuesGewerk;
+      const ohne = kuerzelOhneGewerk(kuerzel, alt);
+      if (ohne === kuerzel) continue;
+      // Der Trenner des Originals bleibt: Leerzeichen oder Bindestrich
+      const trenner = kuerzel.slice(ohne.length).trimStart().startsWith('-') ? '-' : ' ';
+      return `${ohne}${trenner}${neuesGewerk}`;
+    }
+  }
+  return f.kuerzel.trim();
+}
+
+/**
+ * Art der Funktion aus dem Text einer Zelle (Spalte „Art“ der Excel-Importe):
+ * ihr Kurzzeichen („PSV“), ihr Name („Prüfer“), beides, wie die Auswahl es
+ * zeigt („PSV – Prüfer“), oder ihre Kennung – ohne Groß-/Kleinschreibung und
+ * Leerzeichen. `null`, wenn der Text leer ist oder keine Art nennt.
+ */
+export function artAusText(wert: string): string | null {
+  const ohneLeer = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+  const gesucht = ohneLeer(wert);
+  if (!gesucht) return null;
+  return FUNKTIONS_ARTEN.find((a) => [a.kuerzel, a.name, artText(a.id), a.id].some((x) => ohneLeer(x) === gesucht))?.id ?? null;
+}
+
 /**
  * Frühere Bezeichnung einer Funktion und ihre heutige. `nurMitGewerk`: gilt
  * nur für die Funktion in einem Gewerk – die übergreifende behält ihren Namen.

@@ -90,11 +90,18 @@
 /*
  * Gliederung der Funktionen nach ihrer Art (FunktionsArten.tsx): Filter nach
  * Gewerk neben der Suche – so breit wie sein Inhalt, nicht über die Zeile –,
- * und die Gruppenzeile je Art in der Tabelle unter „Alle“.
+ * die Gruppenzeile je Art in der Tabelle unter „Alle“ und die Reiter der Arten.
  */
 .select.gem-gewerkfilter { width: auto; min-width: 150px; flex: none; }
 .table tr.gem-artzeile td strong { font-weight: 600; }
 @media (max-width: 640px) {
   .select.gem-gewerkfilter { flex: 1 1 140px; }
+}
+/* Reiter der Arten (ArtReiter): Es sind bis zu dreizehn und „Alle“ – schmal brechen sie um, statt wie die
+   Seitenauswahl (.tabs) in einer Zeile zu rollen, in der die meisten Arten außer Sicht wären. Enger gesetzt,
+   damit vier bis fünf Kurzzeichen in eine Zeile passen. */
+@media (max-width: 860px) {
+  .tabs.gem-artreiter { flex-wrap: wrap; overflow-x: visible; gap: 4px; }
+  .tabs.gem-artreiter button:not(.tab-plus) { padding: 6px 12px; }
 }
 }

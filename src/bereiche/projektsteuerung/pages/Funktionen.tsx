@@ -24,13 +24,7 @@ import {
   gewerkPasst,
   gewerkWahlGueltig,
 } from '../../../gemeinsam/FunktionsArten';
-import {
-  artInfo,
-  funktionenVergleich,
-  katalogEintrag,
-  kuerzelOhneGewerk,
-  nachArt,
-} from '../../../gemeinsam/funktionskatalog';
+import { artInfo, funktionenVergleich, kuerzelFuerGewerk, nachArt } from '../../../gemeinsam/funktionskatalog';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Card, CardHeader, ConfirmDialog, EmptyState, Modal, Search } from '../../../shared/ui';
@@ -45,37 +39,6 @@ const SPALTEN = 5;
 
 const gleich = (a: string | null, b: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
 const anzahlText = (n: number) => `${n} ${n === 1 ? 'Funktion' : 'Funktionen'}`;
-
-/** Gewerk, wie es in einem Kürzel steht: ohne Leerzeichen, groß („50 Hz“ → „50HZ“). */
-const kurz = (gewerk: string) => gewerk.replace(/\s+/g, '').toUpperCase();
-
-/** Kürzel einer Funktion ohne das angehängte Gewerk – auch in dessen Kurzform („BÜ-50HZ“ im Gewerk „50 Hz“). */
-function kuerzelOhne(f: Funktion): string {
-  const kuerzel = f.kuerzel.trim();
-  if (!f.gewerk) return kuerzel;
-  const ohne = kuerzelOhneGewerk(kuerzel, f.gewerk);
-  return ohne !== kuerzel ? ohne : kuerzelOhneGewerk(kuerzel, kurz(f.gewerk));
-}
-
-/**
- * Kürzel für die Übernahme in ein anderes Gewerk: Kennt der Funktionskatalog
- * die Funktion dort, gilt seines. Sonst wird das Gewerk im Kürzel getauscht
- * („PSV KIB“ wird „PSV LST“, „BÜW-LST“ wird „BÜW-OLA“; ist das Kürzel das
- * Gewerk selbst, das neue Gewerk). Nennt das Kürzel kein Gewerk, bleibt es –
- * wie im Katalog, der „AN“ oder „PING“ in jedem Gewerk gleich führt.
- */
-function kuerzelFuer(f: Funktion, gewerk: string): string {
-  const katalog = katalogEintrag(f.name, gewerk);
-  if (katalog) return katalog.kuerzel;
-  const kuerzel = f.kuerzel.trim();
-  if (!kuerzel) return kuerzelAus(f.name);
-  if (f.gewerk && kurz(kuerzel) === kurz(f.gewerk)) return kurz(gewerk);
-  const ohne = kuerzelOhne(f);
-  if (ohne === kuerzel) return kuerzel;
-  // Der Trenner des Originals bleibt: Leerzeichen oder Bindestrich
-  const trenner = kuerzel.slice(ohne.length).trimStart().startsWith('-') ? '-' : ' ';
-  return `${ohne}${trenner}${kurz(gewerk)}`;
-}
 
 export function Funktionen() {
   const { data, addFunktion, deleteFunktion } = useStore();
@@ -112,19 +75,16 @@ export function Funktionen() {
     .sort(funktionenVergleich(data.gewerke));
   const gruppen = nachArt(funktionen);
 
-  // Funktionen anderer Gewerke, die es im gewählten Gewerk noch nicht gibt – je Bezeichnung einmal.
-  // Führen mehrere Gewerke die Bezeichnung, dient die als Vorlage, deren Kürzel ihr Gewerk nennt
-  // (es lässt sich dann tauschen: „FS EEA“ wird „FS LST“), sonst die erste.
+  // Funktionen anderer Gewerke, die es im gewählten Gewerk noch nicht gibt – je Bezeichnung einmal
+  // (die erste dient als Vorlage; ihr Kürzel stellt `kuerzelFuerGewerk` auf das neue Gewerk um).
   const imGewerk = gewerk ? data.funktionen.filter((f) => gleich(f.gewerk, gewerk)) : [];
   const vorlagen = new Map<string, Funktion>();
   if (gewerk) {
-    const nenntGewerk = (f: Funktion) => kuerzelOhne(f) !== f.kuerzel.trim();
     for (const f of data.funktionen) {
       if (f.gewerk === null || gleich(f.gewerk, gewerk) || !inArt(f)) continue;
       if (imGewerk.some((x) => gleich(x.name, f.name))) continue;
       const schluessel = f.name.trim().toLowerCase();
-      const bisher = vorlagen.get(schluessel);
-      if (!bisher || (!nenntGewerk(bisher) && nenntGewerk(f))) vorlagen.set(schluessel, f);
+      if (!vorlagen.has(schluessel)) vorlagen.set(schluessel, f);
     }
   }
   const ergaenzbar = [...vorlagen.values()].sort(funktionenVergleich(data.gewerke));
@@ -146,16 +106,14 @@ export function Funktionen() {
 
   return (
     <div className="stack">
-      <div className="ps-artreiter">
-        <ArtReiter
-          arten={data.funktionen.map((f) => f.art)}
-          wahl={art}
-          onWahl={setArtWahl}
-          anzahl={(a) =>
-            data.funktionen.filter((f) => artInfo(f.art).id === a && gewerkPasst(f.gewerk, gewerkFilter)).length
-          }
-        />
-      </div>
+      <ArtReiter
+        arten={data.funktionen.map((f) => f.art)}
+        wahl={art}
+        onWahl={setArtWahl}
+        anzahl={(a) =>
+          data.funktionen.filter((f) => artInfo(f.art).id === a && gewerkPasst(f.gewerk, gewerkFilter)).length
+        }
+      />
 
       <div className="row-between wrap">
         <div className="row wrap">
@@ -326,9 +284,11 @@ export function Funktionen() {
                   title={artInfo(f.art).name}
                   style={{ '--chip-farbe': f.farbe, cursor: 'pointer', padding: '4px 11px' } as CSSProperties}
                   onClick={() => {
+                    // Das Kürzel nennt das neue Gewerk; gleichnamige Funktionen geben notfalls die Form vor
+                    const gleichnamige = data.funktionen.filter((x) => gleich(x.name, f.name));
                     addFunktion({
                       name: f.name,
-                      kuerzel: kuerzelFuer(f, gewerk),
+                      kuerzel: kuerzelFuerGewerk(f, gewerk, gleichnamige) || kuerzelAus(f.name),
                       farbe: f.farbe,
                       beschreibung: '',
                       gewerk,

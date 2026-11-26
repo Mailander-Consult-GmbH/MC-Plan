@@ -45,7 +45,7 @@ import { artInfo, artText, funktionenVergleich, nachArt } from '../../../../geme
 import { funktionsSchluessel } from '../../../../gemeinsam/register';
 import { GewerkLoeschenDialog } from '../../components/GewerkDialog';
 import { FunktionsMaske, useFunktionsFormular } from '../../components/FunktionsFelder';
-import { FunktionsZelle, anzahlText } from '../../components/FunktionsListe';
+import { FunktionsZelle, anzahlText, inSchrittenGenannt } from '../../components/FunktionsListe';
 import { RollenImport } from './RollenImport';
 import {
   Avatar,
@@ -87,6 +87,11 @@ export function RollenFunktionen({ project }: { project: Project }) {
   // weder angezeigt noch zur Auswahl angeboten.
   const rollen = data.roles.filter((r) => r.projectId === project.id && !istEigeneFunktion(r));
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
+  // „Seite offen“ steht nur an Funktionen, die ein Workflow oder ein Planlauf des Projekts nennt
+  const genannt = inSchrittenGenannt([
+    ...data.templates.filter((t) => t.projectId === null || t.projectId === project.id),
+    ...data.runs.filter((r) => r.projectId === project.id),
+  ]);
 
   /** Gewerke aus den Stammdaten, ergänzt um die im Projekt vorkommenden. */
   const gewerke = gewerkeFuerProjekt(data, project.id);
@@ -150,19 +155,17 @@ export function RollenFunktionen({ project }: { project: Project }) {
 
   return (
     <div className="stack">
-      <div className="pl-artreiter">
-        <ArtReiter
-          arten={rollen.map((r) => r.art)}
-          wahl={art}
-          onWahl={setArtWahl}
-          anzahl={(a) =>
-            rollen.filter(
-              (r) =>
-                artInfo(r.art).id === a && gewerkPasst(r.gewerk, gewerkFilter) && (!nurBesetzte || besetztVon(r)),
-            ).length
-          }
-        />
-      </div>
+      <ArtReiter
+        arten={rollen.map((r) => r.art)}
+        wahl={art}
+        onWahl={setArtWahl}
+        anzahl={(a) =>
+          rollen.filter(
+            (r) =>
+              artInfo(r.art).id === a && gewerkPasst(r.gewerk, gewerkFilter) && (!nurBesetzte || besetztVon(r)),
+          ).length
+        }
+      />
 
       {/* Beide Gruppen brechen um: Bei schmaler Breite ragte „Neue Funktion“ sonst über den Rand */}
       <div className="pl-werkzeug">
@@ -259,7 +262,12 @@ export function RollenFunktionen({ project }: { project: Project }) {
                       return (
                         <tr key={rolle.id} className="clickable" {...alsKlickZeile(() => setBesetzen(rolle))}>
                           <td>
-                            <FunktionsZelle funktion={rolle} kuerzel beschreibung />
+                            <FunktionsZelle
+                              funktion={rolle}
+                              kuerzel
+                              beschreibung
+                              seiteNoetig={genannt.has(rolle.name.trim().toLowerCase())}
+                            />
                           </td>
                           <td>
                             {c ? (

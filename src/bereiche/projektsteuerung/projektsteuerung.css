@@ -43,13 +43,6 @@
   .ps-funktionsliste :is(th, td).actions { padding-left: 0; }
 }
 
-/* Reiter der Arten (ArtReiter aus src/gemeinsam): Es sind bis zu dreizehn und „Alle“ – auf dem Telefon
-   brechen sie um, statt wie die Seitenauswahl (.tabs) in einer Zeile zu rollen, in der die meisten
-   Arten außer Sicht wären. Enger gesetzt, damit drei bis vier Kurzzeichen in eine Zeile passen. */
-@media (max-width: 860px) {
-  .ps-artreiter .tabs { flex-wrap: wrap; overflow-x: visible; gap: 4px; }
-  .ps-artreiter .tabs button:not(.tab-plus) { padding: 6px 12px; }
-}
 /* Einleitung unter der Werkzeugzeile der Funktionsliste */
 .ps-einleitung { max-width: 860px; }
 

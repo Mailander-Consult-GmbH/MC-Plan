@@ -11,12 +11,7 @@
  * Funktion ändert die Spalte nichts. Personen gleichen Namens im Projekt
  * werden aktualisiert statt doppelt angelegt.
  */
-import {
-  FUNKTIONS_ARTEN,
-  artText,
-  artVon,
-  katalogEintrag,
-} from '../../../gemeinsam/funktionskatalog';
+import { artAusText, artVon, katalogEintrag } from '../../../gemeinsam/funktionskatalog';
 import { spaltenZuordnen } from '../../../shared/xlsxLesen';
 import {
   UEBERGREIFEND,
@@ -82,17 +77,6 @@ export interface ImportZeile {
 
 const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-/**
- * Art der Funktion aus dem Text der Spalte „Art“: ihr Kurzzeichen („PSV“),
- * ihr Name („Prüfer“) oder beides, wie die Auswahl es zeigt („PSV – Prüfer“) –
- * ohne Groß-/Kleinschreibung und Leerzeichen. null, wenn der Text keine Art nennt.
- */
-export function artAusText(wert: string): string | null {
-  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '');
-  const gesucht = norm(wert);
-  if (!gesucht) return null;
-  return FUNKTIONS_ARTEN.find((a) => [a.kuerzel, a.name, artText(a.id), a.id].some((x) => norm(x) === gesucht))?.id ?? null;
-}
 
 /** „Berger, Anna“ oder „Dr. Anna Berger“ in Vor- und Nachname. */
 function nameTeilen(name: string): { vorname: string; nachname: string } {

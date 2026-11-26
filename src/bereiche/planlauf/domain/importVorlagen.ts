@@ -7,7 +7,6 @@
  * greifen darauf zu, damit heruntergeladene Vorlage und eingelesene Datei
  * immer zusammenpassen.
  */
-import { FUNKTIONS_ARTEN } from '../../../gemeinsam/funktionskatalog';
 import { dateiLaden, xlsxErzeugen } from '../../../shared/xlsx';
 
 /* ------------------------------------------------------------------ */
@@ -124,16 +123,6 @@ export const ROLLEN_SPALTEN: Record<string, string[]> = {
   sharepointAusgang: ['SharePoint Ausgang', 'SharePoint-Link Ausgang', 'Link Ausgang'],
 };
 
-/**
- * Art der Funktion aus dem Text einer Zelle: das Kurzzeichen („PSV“), der Name
- * („Prüfer“) oder die Kennung einer Art, ohne Groß-/Kleinschreibung.
- * `undefined`: leer oder unbekannt.
- */
-export function artAusText(text: string): string | undefined {
-  const t = text.trim().toLowerCase();
-  if (!t) return undefined;
-  return FUNKTIONS_ARTEN.find((a) => a.kuerzel.toLowerCase() === t || a.name.toLowerCase() === t || a.id === t)?.id;
-}
 
 export const ROLLEN_BEISPIELE: string[][] = [
   ['AP', 'KIB', 'Fachplaner', 'FP', 'Frau', 'Katrin', 'Berger', 'Ingenieurbüro Berger', '', '+49 40 998877-12', '+49 171 2233445', 'k.berger@example.de', 'Billstraße', '88', '20539', 'Hamburg', 'Fachplanung Ingenieurbau', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Eingang', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Ausgang'],

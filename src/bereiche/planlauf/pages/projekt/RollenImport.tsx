@@ -27,16 +27,15 @@ import { spaltenZuordnen, tabelleLesen } from '../../../../shared/xlsxLesen';
 import {
   ROLLEN_KOPFZEILE as KOPFZEILE,
   ROLLEN_SPALTEN,
-  artAusText,
   rollenVorlageLaden,
 } from '../../domain/importVorlagen';
-import { artInfo, artVon } from '../../../../gemeinsam/funktionskatalog';
+import { GewerkAbzeichen } from '../../../../gemeinsam/FunktionsArten';
+import { artAusText, artInfo, artVon } from '../../../../gemeinsam/funktionskatalog';
 import { seiteAusText } from '../../components/SeiteAuswahl';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
 import { Callout, Modal, alsKnopf } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
-import { GewerkAbzeichen } from '../../components/FunktionsListe';
 
 /**
  * Spalten des Imports (darunter optional die Art der Funktion) – dazu optional
@@ -262,7 +261,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
 
         // Art der Funktion: optional, zählt nur für Funktionen, die der Import anlegt
         const artRoh = wert(zeile, 'art');
-        const art = funktion && artRoh ? artAusText(artRoh) : undefined;
+        const art = funktion && artRoh ? (artAusText(artRoh) ?? undefined) : undefined;
         if (funktion && artRoh && art === undefined) {
           const folge = findeRolle(funktion, gewerk) ? 'bleibt unverändert' : 'laut Funktionskatalog vorbelegt';
           hinweise.push(`Art „${artRoh}“ unbekannt – ${folge}`);

@@ -9,10 +9,13 @@
  * * `ArtGruppenZeile` – Gruppenzeile je Art in der Tabelle unter „Alle“,
  * * `ArtFeld` – Auswahl der Art im Dialog einer Funktion,
  * * `GewerkFilter` mit `gewerkPasst` – zweite Ebene: Auswahl „Alle Gewerke“,
- *   „Übergreifend“ oder ein Gewerk.
+ *   „Übergreifend“ oder ein Gewerk,
+ * * `GewerkAbzeichen` – das Gewerk einer Funktion als Abzeichen hinter ihrer
+ *   Bezeichnung; so bleibt es in jeder Zeile zu sehen, auch auf dem Telefon.
  *
  * Arten, Reihenfolge und Namen kommen aus `funktionskatalog.ts`.
  */
+import { Badge } from '../shared/ui';
 import { FUNKTIONS_ARTEN, artInfo, artRang, artText } from './funktionskatalog';
 import './gemeinsam.css';
 
@@ -28,6 +31,8 @@ export function artWahlGueltig(wahl: string, arten: readonly string[]): string {
  * Reiter der ersten Ebene. `arten`: die Arten, die es in der Liste gibt
  * (Kennungen, beliebige Reihenfolge, auch mehrfach) – gezeigt werden sie in
  * der Reihenfolge des Katalogs. `anzahl` nennt je Art die Zahl im Tooltip.
+ * Schmal brechen die Reiter um (`.gem-artreiter`), statt in einer Zeile zu
+ * rollen – es sind bis zu dreizehn und „Alle“.
  */
 export function ArtReiter({
   arten,
@@ -43,7 +48,7 @@ export function ArtReiter({
   const vorhanden = [...new Set(arten.map((a) => artInfo(a).id))].sort((a, b) => artRang(a) - artRang(b));
   const aktiv = artWahlGueltig(wahl, vorhanden);
   return (
-    <div className="tabs" role="group" aria-label="Art der Funktion">
+    <div className="tabs gem-artreiter" role="group" aria-label="Art der Funktion">
       <button
         type="button"
         className={aktiv === ALLE_ARTEN ? 'active' : ''}
@@ -115,6 +120,9 @@ export function ArtFeld({ value, onChange }: { value: string; onChange: (art: st
   );
 }
 
+/** Text der Auswahl und des Abzeichens für Funktionen ohne Gewerk. */
+const UEBERGREIFEND = 'Übergreifend';
+
 /** Wahl „Alle Gewerke“ in `GewerkFilter`. */
 export const ALLE_GEWERKE = '*';
 /** Wahl „Übergreifend“ in `GewerkFilter` (Funktionen ohne Gewerk). */
@@ -148,7 +156,7 @@ export function GewerkFilter({
       onChange={(e) => onWahl(e.target.value)}
     >
       <option value={ALLE_GEWERKE}>Alle Gewerke</option>
-      <option value={OHNE_GEWERK}>Übergreifend</option>
+      <option value={OHNE_GEWERK}>{UEBERGREIFEND}</option>
       {gewerke.map((g) => (
         <option key={g} value={g}>
           {g}
@@ -156,4 +164,9 @@ export function GewerkFilter({
       ))}
     </select>
   );
+}
+
+/** Abzeichen des Gewerks einer Funktion: blau „Übergreifend“, sonst das Gewerk. */
+export function GewerkAbzeichen({ gewerk }: { gewerk: string | null }) {
+  return gewerk === null ? <Badge ton="blue">{UEBERGREIFEND}</Badge> : <Badge>{gewerk}</Badge>;
 }
