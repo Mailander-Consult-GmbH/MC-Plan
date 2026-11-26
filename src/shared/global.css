@@ -1347,16 +1347,7 @@
 /* Seitenauswahl als Pillen: die gewählte blau (in der Vorlage ist der gewählte Tag dunkel).
    Umbricht bei Platzmangel, statt zu scrollen */
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-/* „+“ am Ende der Reiter, z.B. für ein weiteres Gewerk */
-.tab-plus {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; padding: 0;
-  border: 1px dashed var(--separator-strong); background: none; border-radius: 50%;
-  color: var(--text-tertiary); cursor: pointer;
-}
-.tab-plus svg { flex: none; }
-.tab-plus:hover { background: var(--bg-hover); color: var(--marke-text); border-color: var(--marke); }
-.tabs button:not(.tab-plus) {
+.tabs button {
   border: none; background: none;
   padding: 7px 15px;
   border-radius: 999px;
@@ -1366,8 +1357,8 @@
   white-space: nowrap;
   transition: color 0.15s ease, background 0.15s ease;
 }
-.tabs button:not(.tab-plus):hover { color: var(--text); background: var(--bg-hover); }
-.tabs button.active:not(.tab-plus), .tabs button.active:not(.tab-plus):hover { color: var(--auf-accent); background: var(--accent-verlauf); }
+.tabs button:hover { color: var(--text); background: var(--bg-hover); }
+.tabs button.active, .tabs button.active:hover { color: var(--auf-accent); background: var(--accent-verlauf); }
 
 .drop-zone {
   border: 1.5px dashed var(--separator-strong);

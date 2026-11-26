@@ -2,8 +2,11 @@
  * Datenmodell des Bereichs „Projektsteuerung“. Flache Listen, Verweise über
  * IDs – wie im Planlaufmanagement, aber vollständig davon getrennt.
  *
- * Funktionen gelten projektübergreifend. Ein Projekt führt seine
- * Projektbeteiligten (je Person eine Funktion) und seine Protokolle.
+ * Funktionen gelten projektübergreifend und sind in erster Ebene nach ihrer
+ * Art gegliedert (`Funktion.art`, Arten und mitgelieferte Funktionen aus
+ * `src/gemeinsam/funktionskatalog.ts`); das Gewerk ist ein Merkmal darunter.
+ * Ein Projekt führt seine Projektbeteiligten (je Person eine Funktion) und
+ * seine Protokolle.
  */
 export type ID = string;
 /** Datum als JJJJ-MM-TT; leer = ohne Datum. */
@@ -20,8 +23,14 @@ export type ISODate = string;
  * Fassung 6: Logos je Protokollreihe (`reihenLogos`).
  * Fassung 7: eigene To-Do-Liste (`todos`).
  * Fassung 8: wichtige Aufgaben und Herkunft aus einem Protokoll (`Todo.wichtig`, `Todo.herkunft`).
+ * Fassung 9: Art der Funktion (`Funktion.art`) und die Funktionen des
+ * Funktionskatalogs (`src/gemeinsam/funktionskatalog.ts`): Frühere
+ * Bezeichnungen bekommen die des Katalogs (etwa „Bauunternehmen“ →
+ * „Auftragnehmer“, „Fachplanung LST“ → „Fachplaner LST“), fehlende
+ * Katalogfunktionen und -gewerke kommen hinzu; entfernt wird nichts
+ * (`ausFassung8` in store/storage.ts).
  */
-export const DATEN_VERSION = 8;
+export const DATEN_VERSION = 9;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
@@ -66,7 +75,10 @@ export interface Projekt {
   logos: Logo[] | null;
 }
 
-/** Projektübergreifende Funktion, etwa „Bauüberwachung“. */
+/**
+ * Projektübergreifende Funktion, etwa „Bauüberwachung“. Als dieselbe gilt sie
+ * über Bezeichnung und Gewerk; die Art gehört nicht dazu.
+ */
 export interface Funktion {
   id: ID;
   name: string;
@@ -74,16 +86,22 @@ export interface Funktion {
   farbe: string;
   beschreibung: string;
   /**
-   * Gewerk, zu dem die Funktion gehört: „Fachplanung“ im Gewerk LST ist eine
-   * andere Funktion als „Fachplanung“ im Gewerk OLA. `null` = übergreifend.
+   * Gewerk, zu dem die Funktion gehört: „Fachplaner“ im Gewerk LST ist eine
+   * andere Funktion als „Fachplaner“ im Gewerk OLA. `null` = übergreifend.
    */
   gewerk: string | null;
+  /**
+   * Art der Funktion – die erste Ebene der Gliederung: Kennung aus
+   * `FUNKTIONS_ARTEN` (src/gemeinsam/funktionskatalog.ts), etwa `ag`, `psv`
+   * oder `sonstige`.
+   */
+  art: string;
 }
 
-/** Seite der Funktionen ohne Gewerkbezug. */
+/** Bezeichnung für „ohne Gewerk“ (`Funktion.gewerk` = null). */
 export const UEBERGREIFEND = 'Übergreifend';
 
-/** Vollständige Bezeichnung einer Funktion samt Gewerk, etwa „Fachplanung LST“. */
+/** Vollständige Bezeichnung einer Funktion samt Gewerk, etwa „Fachplaner LST“. */
 export function funktionsName(f: { name: string; gewerk: string | null }): string {
   return f.gewerk ? `${f.name} ${f.gewerk}` : f.name;
 }
@@ -311,7 +329,7 @@ export interface Todo {
 export interface ProjektsteuerungDaten {
   version: number;
   einstellungen: Einstellungen;
-  /** Gewerke, nach denen die Funktionen gegliedert sind. */
+  /** Gewerke, die eine Funktion tragen kann – die zweite Ebene unter der Art der Funktion. */
   gewerke: string[];
   funktionen: Funktion[];
   projekte: Projekt[];

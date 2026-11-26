@@ -384,10 +384,6 @@ export function eigeneTodos(data: AppData, projectIds?: ID[]): FristEintrag[] {
 }
 
 /**
- * Ermittelt die Person, die eine Rolle für ein bestimmtes Gewerk ausfüllt.
- * Rollen ohne Gewerkbezug sind einmal für alle Gewerke besetzt.
- */
-/**
  * Funktionen, die für einen Eintrag eines Gewerks in Frage kommen: die des
  * Gewerks und die übergreifenden – je Bezeichnung einmal. Ein Schritt merkt sich
  * nur die Bezeichnung; welche Funktion und damit welche Person gemeint ist,
@@ -402,8 +398,10 @@ export function funktionenFuerGewerk(rollen: Role[], gewerk: string): string[] {
 /**
  * Die Funktion, die ein Schritt mit dieser Bezeichnung bei einem Eintrag des
  * Gewerks meint: die Funktion des Gewerks, ersatzweise die übergreifende
- * gleichen Namens. Danach richten sich Zuständigkeit und – beim Umbenennen
- * einer Funktion – welche Schritte ihre Bezeichnung mitziehen.
+ * gleichen Namens – ohne Blick auf die Besetzung. Danach richtet sich die
+ * Seite im Terminnachweis. Wessen Besetzung für den Schritt gilt, sagt
+ * `zustaendigeRolle`: Dort springt die besetzte übergreifende Funktion ein,
+ * wenn die des Gewerks niemand ausfüllt.
  */
 export function rolleFuerSchritt(rollen: Role[], roleName: string, gewerk: string): Role | undefined {
   const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -411,13 +409,41 @@ export function rolleFuerSchritt(rollen: Role[], roleName: string, gewerk: strin
   return passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
 }
 
+/**
+ * Die Funktion, deren Besetzung für einen Schritt mit dieser Bezeichnung bei
+ * einem Eintrag des Gewerks gilt: die Funktion des Gewerks, wenn jemand sie
+ * ausfüllt – sonst die besetzte übergreifende gleichen Namens. Eine unbesetzte
+ * Funktion des Gewerks verdrängt die besetzte übergreifende also nicht: Der
+ * Katalog liefert viele Bezeichnungen je Gewerk mit, besetzt ist oft nur die
+ * übergreifende. Füllt keine von beiden jemand aus, ist es die Funktion, die
+ * der Schritt meint (`rolleFuerSchritt`).
+ *
+ * Die einzige Stelle, die diese Regel kennt: Zuständigkeit, neue Planläufe,
+ * E-Mail-Regeln „an Funktion“ und die Vorbelegung im Schrittdialog fragen
+ * `kontaktFuerRolleUndGewerk`; beim Umbenennen einer Funktion (und bei der
+ * Umstellung auf den Funktionskatalog) ziehen die Schritte mit, für die sie
+ * hiernach galt.
+ */
+export function zustaendigeRolle(kontakte: Contact[], rollen: Role[], roleName: string, gewerk: string): Role | undefined {
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const passende = rollen.filter((r) => gleich(r.name, roleName));
+  const besetzt = (rolle: Role | undefined): rolle is Role =>
+    !!rolle && kontakte.some((c) => c.zuordnungen.some((z) => z.roleId === rolle.id));
+  const desGewerks = passende.find((r) => r.gewerk === gewerk);
+  const uebergreifend = passende.find((r) => r.gewerk === null);
+  if (besetzt(desGewerks)) return desGewerks;
+  if (besetzt(uebergreifend)) return uebergreifend;
+  return desGewerks ?? uebergreifend;
+}
+
+/** Die Person, die einen Schritt mit dieser Funktion bei einem Eintrag des Gewerks bearbeitet (siehe `zustaendigeRolle`). */
 export function kontaktFuerRolleUndGewerk(
   kontakte: Contact[],
   rollen: Role[],
   roleName: string,
   gewerk: string,
 ): ID | null {
-  const rolle = rolleFuerSchritt(rollen, roleName, gewerk);
+  const rolle = zustaendigeRolle(kontakte, rollen, roleName, gewerk);
   if (!rolle) return null;
   return kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === rolle.id))?.id ?? null;
 }

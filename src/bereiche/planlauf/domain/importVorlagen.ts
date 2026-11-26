@@ -73,7 +73,14 @@ export function planVorlageLaden(): void {
 /* Funktion samt Besetzung (Reiter „Funktion“)                        */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Spalten der Vorlage. „Art“ ist die Art der Funktion (Kurzzeichen oder Name
+ * einer Art des Funktionskatalogs, etwa „PSV“ oder „Prüfer“) – optional: Ohne
+ * Angabe bekommt eine neue Funktion die Art, die der Katalog für ihre
+ * Bezeichnung nennt, sonst „Sonstige“.
+ */
 export const ROLLEN_KOPFZEILE = [
+  'Art',
   'Gewerk',
   'Funktion',
   'Kürzel',
@@ -95,6 +102,7 @@ export const ROLLEN_KOPFZEILE = [
 ];
 
 export const ROLLEN_SPALTEN: Record<string, string[]> = {
+  art: ['Art', 'Art der Funktion', 'Kategorie'],
   gewerk: ['Gewerk'],
   funktion: ['Funktion', 'Rolle'],
   kuerzel: ['Kürzel', 'Kuerzel', 'Abkürzung'],
@@ -115,11 +123,12 @@ export const ROLLEN_SPALTEN: Record<string, string[]> = {
   sharepointAusgang: ['SharePoint Ausgang', 'SharePoint-Link Ausgang', 'Link Ausgang'],
 };
 
+
 export const ROLLEN_BEISPIELE: string[][] = [
-  ['KIB', 'Fachplaner', 'FP', 'Frau', 'Katrin', 'Berger', 'Ingenieurbüro Berger', '', '+49 40 998877-12', '+49 171 2233445', 'k.berger@example.de', 'Billstraße', '88', '20539', 'Hamburg', 'Fachplanung Ingenieurbau', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Eingang', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Ausgang'],
-  ['LST', 'Fachtechnischer Prüfer', 'PSV', 'Herr', 'Dietmar', 'Krause', 'Prüfstelle Krause', '', '+49 4131 309-0', '', 'd.krause@example.de', 'Am Ochsenmarkt', '1', '21335', 'Lüneburg', '', '', ''],
-  ['Übergreifend', 'Projektleitung', 'PL', 'Frau', 'Sabine', 'Ortmann', 'Projektleitung', 'I.IV-N-2', '+49 40 123456-01', '', 's.ortmann@example.de', 'Hafenstraße', '12', '20359', 'Hamburg', '', '', ''],
-  ['BÜ', 'Fachplaner', 'FP', 'Herr', 'Jens', 'Harms', 'Harms Planung', '', '+49 40 556677-3', '', 'j.harms@example.de', 'Deichweg', '4', '21079', 'Hamburg', 'Gewerk und Funktion werden beim Import angelegt', '', ''],
+  ['AP', 'KIB', 'Fachplaner', 'FP', 'Frau', 'Katrin', 'Berger', 'Ingenieurbüro Berger', '', '+49 40 998877-12', '+49 171 2233445', 'k.berger@example.de', 'Billstraße', '88', '20539', 'Hamburg', 'Fachplanung Ingenieurbau', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Eingang', 'https://example.sharepoint.com/sites/Nordkreuz-KIB/Ausgang'],
+  ['PSV', 'LST', 'Planprüfer', 'PSV LST', 'Herr', 'Dietmar', 'Krause', 'Prüfstelle Krause', '', '+49 4131 309-0', '', 'd.krause@example.de', 'Am Ochsenmarkt', '1', '21335', 'Lüneburg', '', '', ''],
+  ['AG', 'Übergreifend', 'Projektleitung', 'PL', 'Frau', 'Sabine', 'Ortmann', 'Projektleitung', 'I.IV-N-2', '+49 40 123456-01', '', 's.ortmann@example.de', 'Hafenstraße', '12', '20359', 'Hamburg', '', '', ''],
+  ['', 'BÜ', 'Fachplaner', 'FP', 'Herr', 'Jens', 'Harms', 'Harms Planung', '', '+49 40 556677-3', '', 'j.harms@example.de', 'Deichweg', '4', '21079', 'Hamburg', 'Gewerk und Funktion werden beim Import angelegt; ohne Art gilt die des Funktionskatalogs', '', ''],
 ];
 
 export function rollenVorlageLaden(): void {

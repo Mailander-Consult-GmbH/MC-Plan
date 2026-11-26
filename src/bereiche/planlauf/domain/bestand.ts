@@ -14,6 +14,7 @@ import {
   planlaufName,
   recalcRun,
   rolleFuerSchritt,
+  zustaendigeRolle,
   zustaendigkeitenNachziehen,
   type AbschlussKontext,
 } from './engine';
@@ -279,9 +280,9 @@ function funktionInSchrittenUmbenennen<T extends { roleName: string; mails: Mail
  *   Gewerk zöge beim Abgleich mit einer Sicherung ein Gewerk mit, das die
  *   Funktion nicht mehr führt.
  * * Wird sie umbenannt, ziehen die Schritte der Planläufe des Projekts mit, für
- *   die bisher genau diese Funktion galt (die des Gewerks ihres Eintrags,
- *   ersatzweise die übergreifende – siehe rolleFuerSchritt), samt ihren
- *   E-Mail-Regeln „an Funktion“: Schritte nennen die Funktion nur beim Namen
+ *   die bisher genau diese Funktion galt (die besetzte des Gewerks ihres
+ *   Eintrags, sonst die besetzte übergreifende – siehe zustaendigeRolle), samt
+ *   ihren E-Mail-Regeln „an Funktion“: Schritte nennen die Funktion nur beim Namen
  *   und stünden sonst ohne zuständige Person da. Führt das Projekt die neue
  *   Bezeichnung im Gewerk eines Laufs schon, gilt dort danach die Funktion des
  *   Gewerks – die Schritte ziehen trotzdem mit und gehen an deren Person, wie
@@ -316,14 +317,16 @@ export function funktionAendern(daten: AppData, id: ID, patch: Partial<Role>): A
     const vorher = daten.roles.filter((r) => r.projectId === alt.projectId);
     const nachher = d.roles.filter((r) => r.projectId === alt.projectId);
     const gewerkVon = new Map(daten.documents.map((x) => [x.id, x.gewerk]));
+    // Die Besetzung ändert sich hier nicht – ein Gewerkwechsel zieht oben nur das Gewerk an den Zuordnungen mit
+    const kontakte = daten.contacts.filter((c) => c.projectId === alt.projectId);
     const runs = d.runs.map((r) => {
       if (r.projectId !== alt.projectId) return r;
       const gewerk = gewerkVon.get(r.documentId) ?? '';
       // Nur wo die Funktion galt und unter dem neuen Namen weiter eine gilt: sie selbst oder – führt das
       // Projekt die Bezeichnung im Gewerk des Laufs schon – die des Gewerks. Wechselt sie zugleich das
       // Gewerk, verlässt sie diese Läufe.
-      const danach = rolleFuerSchritt(nachher, neu.name, gewerk);
-      if (rolleFuerSchritt(vorher, alt.name, gewerk)?.id !== id || !danach || (danach.id !== id && gewerkGewechselt)) return r;
+      const danach = zustaendigeRolle(kontakte, nachher, neu.name, gewerk);
+      if (zustaendigeRolle(kontakte, vorher, alt.name, gewerk)?.id !== id || !danach || (danach.id !== id && gewerkGewechselt)) return r;
       const steps = funktionInSchrittenUmbenennen(r.steps, alt.name, neu.name.trim());
       return steps === r.steps ? r : { ...r, steps };
     });

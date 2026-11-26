@@ -12,11 +12,24 @@
  * `<Schlüssel>.vor-einspielen-<Zeitpunkt>`.
  * Speichern meldet, ob es gelungen ist (`SpeicherZustand`); ist der Speicher
  * des Browsers voll, zeigt der Bereich einen dauerhaften Hinweis.
+ *
+ * Mit Fassung 9 folgen die Funktionen dem gemeinsamen Funktionskatalog
+ * (`src/gemeinsam/funktionskatalog.ts`): `ausFassung8` stellt ältere Bestände
+ * und Sicherungen darauf um – frühere Bezeichnungen, Art der Funktion,
+ * fehlende Katalogfunktionen und -gewerke.
  */
+import {
+  KATALOG_GEWERKE,
+  artAus,
+  artVon,
+  fehlendeKatalogFunktionen,
+  umbenannt,
+} from '../../../gemeinsam/funktionskatalog';
+import { funktionsSchluessel } from '../../../gemeinsam/register';
 import { today } from '../../../shared/dates';
 import { nachRaeumenSpeichern, rohkopieVorEinspielen as rohkopieAnlegen, speicherVoll, type RohkopieErgebnis } from '../../../shared/speicher';
-import { zeilenAusAltform } from '../domain/protokoll';
-import { STANDARD_GEWERKE, seedDaten } from '../domain/seed';
+import { teilnehmerNachziehen, zeilenAusAltform } from '../domain/protokoll';
+import { STANDARD_FUNKTIONEN, STANDARD_GEWERKE, seedDaten } from '../domain/seed';
 import {
   DATEN_VERSION,
   STANDARD_BEARBEITER,
@@ -26,6 +39,7 @@ import {
   type Eintrag,
   type EintragTyp,
   type Funktion,
+  type ID,
   type Logo,
   type Projekt,
   type ProjektsteuerungDaten,
@@ -61,7 +75,7 @@ const erledigung = (w: unknown) => (w === 'erledigt' ? 'erledigt' : 'offen') as 
 
 const typVon = (w: unknown): EintragTyp => (w === 'F' || w === 'A' ? w : 'I');
 /** Eigene Art einer Zeile; fehlt sie (Fassung 4), läuft die Zeile unter dem Ursprung mit. */
-const artVon = (w: unknown): EintragTyp | null => (w === 'I' || w === 'F' || w === 'A' ? w : null);
+const zeilenArt = (w: unknown): EintragTyp | null => (w === 'I' || w === 'F' || w === 'A' ? w : null);
 const objekt = (w: unknown): Roh | null => (w && typeof w === 'object' ? (w as Roh) : null);
 
 function logosAufbereiten(w: unknown): Logo[] {
@@ -72,7 +86,7 @@ function logosAufbereiten(w: unknown): Logo[] {
 
 function zeileAufbereiten(z: Roh): Zeile {
   const vor = objekt(z.vor);
-  const typ = artVon(z.typ);
+  const typ = zeilenArt(z.typ);
   return {
     id: text(z.id) || zufallsId('z'),
     text: text(z.text),
@@ -85,7 +99,7 @@ function zeileAufbereiten(z: Roh): Zeile {
     vor: vor
       ? {
           text: text(vor.text),
-          typ: artVon(vor.typ),
+          typ: zeilenArt(vor.typ),
           wer: text(vor.wer),
           termin: datum(vor.termin),
           status: erledigung(vor.status),
@@ -175,16 +189,20 @@ function protokollAufbereiten(p: Roh): Protokoll {
 /** Ergänzt fehlende Felder, damit ältere oder von Hand bearbeitete Stände laden. */
 function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   const e = (roh.einstellungen ?? {}) as Partial<ProjektsteuerungDaten['einstellungen']>;
-  const funktionen = liste(roh.funktionen).map(
-    (f): Funktion => ({
+  const funktionen = liste(roh.funktionen).map((f): Funktion => {
+    const name = text(f.name) || 'Funktion';
+    const gewerk = text(f.gewerk).trim() || null;
+    return {
       id: text(f.id) || zufallsId('fn'),
-      name: text(f.name) || 'Funktion',
+      name,
       kuerzel: text(f.kuerzel),
       farbe: text(f.farbe) || '#24456e',
       beschreibung: text(f.beschreibung),
-      gewerk: text(f.gewerk).trim() || null,
-    }),
-  );
+      gewerk,
+      // Eine gültige gespeicherte Art bleibt; fehlt sie oder ist sie unbekannt, gilt die des Funktionskatalogs
+      art: artAus(f.art, name, gewerk),
+    };
+  });
   // Gewerke: gepflegte Liste, ergänzt um die der Funktionen
   const gewerke = [
     ...new Set([
@@ -291,12 +309,104 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
  * setzt `reihenLogos` leer – es gelten die Logos des Projekts. Fassung 6
  * kannte keine eigene To-Do-Liste; `aufbereiten` beginnt sie leer. Fassung 7
  * kannte weder wichtige Aufgaben noch ihre Herkunft aus einem Protokoll;
- * `aufbereiten` setzt `wichtig` auf false und `herkunft` auf null.
+ * `aufbereiten` setzt `wichtig` auf false und `herkunft` auf null. Bis
+ * Fassung 8 waren die Funktionen allein nach Gewerk gegliedert und hießen
+ * teils anders; `ausFassung8` stellt sie auf den Funktionskatalog um.
  */
 function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   let stand = roh;
   if ((roh.version ?? 1) < 2) stand = { ...stand, gewerke: [...STANDARD_GEWERKE] };
-  return aufbereiten(stand);
+  const daten = aufbereiten(stand);
+  return (roh.version ?? 1) < 9 ? ausFassung8(daten) : daten;
+}
+
+/**
+ * Umstellung eines Bestands der Fassung 8 (oder älter, bereits durch
+ * `aufbereiten` gelaufen) auf den Funktionskatalog
+ * (`src/gemeinsam/funktionskatalog.ts`). Reine Funktion; ein zweiter Aufruf
+ * auf ihrem Ergebnis ändert nichts mehr.
+ *
+ * 1. **Umbenennen:** Frühere Bezeichnungen bekommen die des Katalogs
+ *    (`umbenannt`: „Bauunternehmen“ → „Auftragnehmer“, „Fachplanung LST“ →
+ *    „Fachplaner LST“, „Bauüberwachung LST“ → „Bauüberwacher LST“; die
+ *    übergreifende „Bauüberwachung“ behält ihren Namen). Kennung, Kürzel,
+ *    Farbe und Beschreibung bleiben – die Protokolle nennen die Kürzel. Gibt es
+ *    unter der neuen Bezeichnung im selben Gewerk schon eine Funktion, bleibt
+ *    diese: Die Personen der umbenannten gehen an sie, die umbenannte entfällt
+ *    (sonst stünde dieselbe Funktion zweimal in der Auswahl).
+ * 2. **Art:** Jede Funktion erhält die Art des Katalogs (`artVon`: Bezeichnung
+ *    + Gewerk, sonst die Bezeichnung allein, bekannte ältere Namen wie
+ *    „Objektplanung“, sonst „Sonstige“).
+ * 3. **Katalog ergänzen:** Funktionen des Katalogs, die es unter Bezeichnung +
+ *    Gewerk noch nicht gibt, kommen hinzu – wie in `STANDARD_FUNKTIONEN`, mit
+ *    deren fester Kennung (ist sie schon vergeben: mit angehängter Zahl).
+ *    **Entfernt wird nichts:** Funktionen sind projektübergreifend, frühere
+ *    und selbst angelegte bleiben stehen.
+ * 4. **Gewerke:** die des Katalogs kommen hinzu, alphabetisch wie bisher.
+ * 5. **Protokolle:** `teilnehmerNachziehen` trägt die neuen Bezeichnungen
+ *    sofort in die Textkopien der Teilnehmenden („Funktion“) und hält
+ *    „Verantwortlich“ stimmig. Sonst geschähe das erst mit der nächsten
+ *    Änderung im Store – bis dahin zeigten die Protokolle die alten Namen.
+ *
+ * Das Projektregister stellt seine Funktionen mit derselben Tabelle um
+ * (`aufbereiten` in src/gemeinsam/register.ts, Fassung 5) – sonst holte der
+ * erste Abgleich nach dem Laden die alten Bezeichnungen zurück.
+ */
+export function ausFassung8(d: ProjektsteuerungDaten): ProjektsteuerungDaten {
+  // 1. Umbenennen. Vorhanden ist, was die Bezeichnung schon trägt – gleich, wo es in der Liste steht.
+  const neueNamen = d.funktionen.map((f) => umbenannt(f.name, f.gewerk));
+  const vergeben = new Map<string, ID>();
+  d.funktionen.forEach((f, i) => {
+    const s = funktionsSchluessel(f);
+    if (neueNamen[i] === f.name && !vergeben.has(s)) vergeben.set(s, f.id);
+  });
+  const umgehaengt = new Map<ID, ID>();
+  const funktionen: Funktion[] = [];
+  for (const [i, f] of d.funktionen.entries()) {
+    const name = neueNamen[i];
+    if (name !== f.name) {
+      const s = funktionsSchluessel({ name, gewerk: f.gewerk });
+      const ziel = vergeben.get(s);
+      if (ziel) {
+        umgehaengt.set(f.id, ziel);
+        continue;
+      }
+      // Zwei frühere Bezeichnungen mit demselben neuen Namen: Die zweite fällt auf die erste
+      vergeben.set(s, f.id);
+    }
+    // 2. Art laut Katalog – nach der Umbenennung, `artVon` kennt nur die neuen Namen
+    funktionen.push({ ...f, name, art: artVon(name, f.gewerk) });
+  }
+  const beteiligte =
+    umgehaengt.size === 0
+      ? d.beteiligte
+      : d.beteiligte.map((b) =>
+          b.funktionId && umgehaengt.has(b.funktionId) ? { ...b, funktionId: umgehaengt.get(b.funktionId)! } : b,
+        );
+
+  // 3. Fehlende Funktionen des Katalogs, mit ihrer festen Kennung
+  const vorlagen = new Map(STANDARD_FUNKTIONEN.map((f) => [funktionsSchluessel(f), f]));
+  const kennungen = new Set(funktionen.map((f) => f.id));
+  const freieKennung = (wunsch: ID): ID => {
+    let id = wunsch;
+    for (let n = 2; kennungen.has(id); n++) id = `${wunsch}-${n}`;
+    kennungen.add(id);
+    return id;
+  };
+  for (const k of fehlendeKatalogFunktionen(funktionen)) {
+    const vorlage = vorlagen.get(funktionsSchluessel(k));
+    if (vorlage) funktionen.push({ ...vorlage, id: freieKennung(vorlage.id) });
+  }
+
+  // 4. Gewerke des Katalogs
+  const gewerke = [...d.gewerke];
+  for (const g of KATALOG_GEWERKE) {
+    if (!gewerke.some((x) => x.toLowerCase() === g.toLowerCase())) gewerke.push(g);
+  }
+  gewerke.sort((a, b) => a.localeCompare(b, 'de'));
+
+  // 5. Textkopien in den Protokollen
+  return teilnehmerNachziehen({ ...d, version: DATEN_VERSION, gewerke, funktionen, beteiligte });
 }
 
 /**

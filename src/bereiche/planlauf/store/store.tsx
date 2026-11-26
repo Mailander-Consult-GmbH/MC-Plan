@@ -153,6 +153,12 @@ interface StoreValue {
   /* Projektfunktionen */
   addRole: (r: Omit<Role, 'id'>) => ID;
   /**
+   * Legt mehrere Projektfunktionen in einem Schritt an (ein `mutate`, einmal
+   * durchgerechnet) – etwa alle projektübergreifenden beim Anlegen eines
+   * Projekts. Liefert die Kennungen in der Reihenfolge von `rollen`.
+   */
+  addRoles: (rollen: Omit<Role, 'id'>[]) => ID[];
+  /**
    * Ändert eine Projektfunktion. Liefert die Zahl der Workflows, die nach einer Umbenennung weiter
    * die alte Bezeichnung nennen, ohne dass das Projekt dafür noch eine Funktion hat (siehe
    * `workflowsMitAlterBezeichnung`) – neue Planläufe daraus hätten für diese Schritte keine Person.
@@ -567,6 +573,12 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
       const id = newId('rol');
       mutate((d) => ({ ...d, roles: [...d.roles, { ...r, id }] }));
       return id;
+    },
+    addRoles: (rollen) => {
+      // Kennungen vor `mutate` – im StrictMode läuft die Änderungsfunktion doppelt
+      const neu: Role[] = rollen.map((r) => ({ ...r, id: newId('rol') }));
+      if (neu.length > 0) mutate((d) => ({ ...d, roles: [...d.roles, ...neu] }));
+      return neu.map((r) => r.id);
     },
     updateRole: (id, patch) =>
       mitErgebnis((d) => {

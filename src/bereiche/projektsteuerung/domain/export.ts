@@ -4,12 +4,13 @@
  */
 import { formatDate, today } from '../../../shared/dates';
 import { dateiLaden, xlsxErzeugen, type Zelle } from '../../../shared/xlsx';
+import { artInfo } from '../../../gemeinsam/funktionskatalog';
 import { BETEILIGTE_KOPF } from './beteiligteImport';
 import { kuerzelVon, type Beteiligter, type Funktion, type Projekt } from './types';
 
 const KOPF_STIL = { fett: true, fuellung: 'E8EDF3', rahmen: true };
 /** Spaltenbreiten der Beteiligtenliste in der Reihenfolge von `BETEILIGTE_KOPF`. */
-const SPALTENBREITEN = [24, 10, 9, 8, 14, 16, 28, 30, 18, 18, 30, 30];
+const SPALTENBREITEN = [10, 30, 10, 10, 8, 14, 16, 28, 30, 18, 18, 30, 30];
 const kopf = (spalten: string[]): Zelle[] => spalten.map((wert) => ({ wert, stil: KOPF_STIL }));
 const titelZeile = (text: string): Zelle[] => [{ wert: text, stil: { fett: true, groesse: 13 } }];
 
@@ -28,23 +29,29 @@ const projektTitel = (p: Projekt) => [p.nummer, p.name].filter(Boolean).join(' '
 /**
  * Projektbeteiligtenliste als Excel-Datei. Die Spalten entsprechen der
  * Importvorlage (`BETEILIGTE_KOPF`) – die Datei lässt sich in ein anderes
- * Projekt wieder einlesen.
+ * Projekt wieder einlesen. Die Art der Funktion steht mit ihrem Kurzzeichen
+ * in der ersten Spalte („AG“, „PSV“); die Zeilen folgen der Reihenfolge von
+ * `beteiligte`.
  */
 export function beteiligteExportieren(projekt: Projekt, beteiligte: Beteiligter[], funktionen: Funktion[]): void {
-  const zeilen: Zelle[][] = beteiligte.map((b) => [
-    funktionen.find((f) => f.id === b.funktionId)?.name ?? '',
-    funktionen.find((f) => f.id === b.funktionId)?.gewerk ?? '',
-    kuerzelVon(b, funktionen),
-    b.anrede,
-    b.vorname,
-    b.nachname,
-    b.firma,
-    b.email,
-    b.telefon,
-    b.mobil,
-    b.anschrift,
-    b.notiz,
-  ]);
+  const zeilen: Zelle[][] = beteiligte.map((b) => {
+    const f = funktionen.find((x) => x.id === b.funktionId);
+    return [
+      f ? artInfo(f.art).kuerzel : '',
+      f?.name ?? '',
+      f?.gewerk ?? '',
+      kuerzelVon(b, funktionen),
+      b.anrede,
+      b.vorname,
+      b.nachname,
+      b.firma,
+      b.email,
+      b.telefon,
+      b.mobil,
+      b.anschrift,
+      b.notiz,
+    ];
+  });
   const blob = xlsxErzeugen([
     {
       name: 'Projektbeteiligte',
@@ -64,9 +71,12 @@ export function beteiligteExportieren(projekt: Projekt, beteiligte: Beteiligter[
   dateiLaden(blob, `Projektbeteiligte_${dateiname(projekt.name)}_${today()}.xlsx`);
 }
 
-/** Leere Vorlage für den Import der Projektbeteiligten – mit einer Beispielzeile. */
+/**
+ * Leere Vorlage für den Import der Projektbeteiligten – mit einer
+ * Beispielzeile aus dem Funktionskatalog (Art „AP“, „Fachplaner“ im Gewerk LST).
+ */
 export function beteiligteVorlageLaden(): void {
-  const beispiel = ['Fachplanung', 'LST', '', 'Frau', 'Erika', 'Beispiel', 'Planungsbüro Beispiel GmbH', 'erika.beispiel@example.org', '', '', '', 'Beispielzeile – bitte ersetzen'];
+  const beispiel = ['AP', 'Fachplaner', 'LST', '', 'Frau', 'Erika', 'Beispiel', 'Planungsbüro Beispiel GmbH', 'erika.beispiel@example.org', '', '', '', 'Beispielzeile – bitte ersetzen'];
   const blob = xlsxErzeugen([
     {
       name: 'Projektbeteiligte',

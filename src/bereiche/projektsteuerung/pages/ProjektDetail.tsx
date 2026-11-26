@@ -78,7 +78,7 @@ export function ProjektDetail({
         ))}
       </div>
 
-      {tab === 'beteiligte' ? <Beteiligte projekt={projekt} /> : null}
+      {tab === 'beteiligte' ? <Beteiligte key={projekt.id} projekt={projekt} /> : null}
       {tab === 'protokolle' ? <Protokolle projekt={projekt} navigate={navigate} /> : null}
       {tab === 'todos' ? <TodoListe key={projekt.id} projekt={projekt} navigate={navigate} /> : null}
 

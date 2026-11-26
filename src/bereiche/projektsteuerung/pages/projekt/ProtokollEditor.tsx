@@ -53,6 +53,7 @@ import {
   type Beteiligter,
   type Eintrag,
   type EintragTyp,
+  type Funktion,
   type ID,
   type Projekt,
   type Protokoll,
@@ -77,6 +78,22 @@ interface Loeschen {
   schonGestrichen: boolean;
   streichen: () => void;
   sofort: () => void;
+}
+
+/**
+ * Funktion zum getippten Funktionstext eines Gastes, der in die
+ * Projektbeteiligtenliste kommt: über die volle Bezeichnung samt Gewerk
+ * („Fachplaner LST“), sonst über eine Bezeichnung, die es nur einmal gibt.
+ * Führen mehrere Gewerke die Bezeichnung („Fachplaner“), bleibt die Funktion
+ * im Dialog zu wählen – ein geratenes Gewerk fiele dort nicht auf.
+ */
+function funktionZuText(funktionen: Funktion[], text: string): Funktion | undefined {
+  const gesucht = text.trim().toLowerCase();
+  if (!gesucht) return undefined;
+  const voll = funktionen.find((f) => funktionsName(f).toLowerCase() === gesucht);
+  if (voll) return voll;
+  const gleiche = funktionen.filter((f) => f.name.toLowerCase() === gesucht);
+  return gleiche.length === 1 ? gleiche[0] : undefined;
 }
 
 /** „am 23.10.2026 um 14:05 Uhr“ in Ortszeit. */
@@ -124,9 +141,11 @@ export function ProtokollEditor({
     setFokus(null);
   }, [fokus]);
 
+  // Projektbeteiligte wie in ihrer Liste: nach Art der Funktion, Bezeichnung, Gewerk, Name
   const beteiligte = nachFunktion(
     data.beteiligte.filter((b) => b.projektId === projekt.id),
     data.funktionen,
+    data.gewerke,
   );
   const inhalt = protokollHtml(p, projekt, logosFuer(projekt, p.reiheId, data.reihenLogos));
   const titel = `${bezeichnung(p)} – ${projekt.name}`;
@@ -955,9 +974,7 @@ export function ProtokollEditor({
           projektId={projekt.id}
           vorbelegung={(() => {
             const teile = person.teilnehmer.name.trim().split(/\s+/);
-            const funktion = data.funktionen.find(
-              (f) => f.name.toLowerCase() === person.teilnehmer!.funktion.trim().toLowerCase(),
-            );
+            const funktion = funktionZuText(data.funktionen, person.teilnehmer.funktion);
             return {
               vorname: teile.length > 1 ? teile.slice(0, -1).join(' ') : '',
               nachname: teile[teile.length - 1] ?? '',

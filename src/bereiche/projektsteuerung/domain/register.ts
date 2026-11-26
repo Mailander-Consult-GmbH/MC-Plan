@@ -10,11 +10,17 @@
  *   Funktion im `mutate()` des Stores. Eine Person führt hier genau eine
  *   Funktion: Bleibt die bisherige im Register, bleibt sie; sonst gilt die erste
  *   bekannte Funktion des Registers. Fehlt sie unter den projektübergreifenden
- *   Funktionen, wird sie angelegt (Funktionen anderer Bereiche heißen teils
- *   anders, etwa „Fachplaner“ statt „Fachplanung“).
+ *   Funktionen, wird sie angelegt – mit der Art, die das Register nennt, und in
+ *   deren Vorgabefarbe (ein anderer Bereich kann Funktionen führen, die es hier
+ *   nicht gibt, etwa selbst angelegte).
+ *
+ * Als dieselbe gilt eine Funktion über Bezeichnung und Gewerk
+ * (`registerSchluessel` – eine frühere Bezeichnung zählt gegenüber dem Register
+ * als die heutige); Kürzel und Art gehen als Beigaben mit ins Register.
  */
 import type { Plan, Sicht } from '../../../gemeinsam/abgleich';
-import { funktionsSchluessel, type FunktionsBezug, type RegisterPerson } from '../../../gemeinsam/register';
+import { artAus, artInfo, katalogEintrag, umbenannt } from '../../../gemeinsam/funktionskatalog';
+import { registerSchluessel, type FunktionsBezug, type RegisterPerson } from '../../../gemeinsam/register';
 import { kuerzelAus, newId, type Beteiligter, type Funktion, type ID, type ProjektsteuerungDaten } from './types';
 
 export function sichtFuerRegister(d: ProjektsteuerungDaten): Sicht {
@@ -36,7 +42,9 @@ export function sichtFuerRegister(d: ProjektsteuerungDaten): Sicht {
         mobil: b.mobil,
         anschrift: b.anschrift,
         notiz: b.notiz,
-        funktionen: f ? [{ name: f.name, gewerk: f.gewerk, kuerzel: f.kuerzel }] : [],
+        // Dem Register gegenüber unter der heutigen Bezeichnung (wie das Planlaufmanagement) – es führt
+        // so nie eine frühere, auch wenn hier jemand eine Funktion von Hand unter altem Namen anlegt
+        funktionen: f ? [{ name: umbenannt(f.name, f.gewerk), gewerk: f.gewerk, kuerzel: f.kuerzel, art: f.art }] : [],
       };
     }),
     // Je Person eine Funktion: Sie muss zu denen des Registers gehören.
@@ -44,7 +52,7 @@ export function sichtFuerRegister(d: ProjektsteuerungDaten): Sicht {
       register.length === 0
         ? person.funktionen.length === 0
         : person.funktionen.length === 1 &&
-          register.some((f) => funktionsSchluessel(f) === funktionsSchluessel(person.funktionen[0])),
+          register.some((f) => registerSchluessel(f) === registerSchluessel(person.funktionen[0])),
   };
 }
 
@@ -70,21 +78,27 @@ export function registerPlanAnwenden(daten: ProjektsteuerungDaten, plan: Plan): 
   /** Funktion für eine Person: die bisherige, solange das Register sie nennt, sonst die erste bekannte bzw. eine neue. */
   const funktionFuer = (liste: FunktionsBezug[], bisher: ID | null): ID | null => {
     if (liste.length === 0) return null;
-    const schluessel = new Set(liste.map(funktionsSchluessel));
+    const schluessel = new Set(liste.map(registerSchluessel));
     const aktuell = funktionen.find((f) => f.id === bisher);
-    if (aktuell && schluessel.has(funktionsSchluessel(aktuell))) return aktuell.id;
+    if (aktuell && schluessel.has(registerSchluessel(aktuell))) return aktuell.id;
     for (const f of liste) {
-      const vorhanden = funktionen.find((x) => funktionsSchluessel(x) === funktionsSchluessel(f));
+      const vorhanden = funktionen.find((x) => registerSchluessel(x) === registerSchluessel(f));
       if (vorhanden) return vorhanden.id;
     }
+    // Neu anlegen: Art aus dem Register (ungültig oder leer: laut Katalog), Farbe der Art; nennt das
+    // Register kein Kürzel, gilt das des Katalogs, sonst eines aus der Bezeichnung.
+    // Nennt das Register noch eine frühere Bezeichnung, entsteht die Funktion unter der heutigen.
     const erste = liste[0];
+    const name = umbenannt(erste.name, erste.gewerk);
+    const art = artAus(erste.art, name, erste.gewerk);
     const neu: Funktion = {
       id: newId('fn'),
-      name: erste.name,
-      kuerzel: erste.kuerzel || kuerzelAus(erste.name),
-      farbe: '#8e8e93',
+      name,
+      kuerzel: erste.kuerzel || katalogEintrag(name, erste.gewerk)?.kuerzel || kuerzelAus(name),
+      farbe: artInfo(art).farbe,
       beschreibung: '',
       gewerk: erste.gewerk,
+      art,
     };
     funktionen = [...funktionen, neu];
     if (neu.gewerk && !gewerke.some((g) => g.toLowerCase() === neu.gewerk!.toLowerCase())) {

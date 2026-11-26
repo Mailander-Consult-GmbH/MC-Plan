@@ -50,6 +50,46 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 > * **Übernehmen in …:** In der Baubetriebsplanung öffnet der Knopf die Maske „Neues Projekt“,
 >   vorausgefüllt mit dem Bekannten; in den beiden anderen Bereichen legt er das Projekt weiter
 >   sofort an.
+>
+> **Nachtrag 26.11.2026 – Funktionen nach ihrer Art.** Planlaufmanagement und Projektsteuerung
+> gliedern ihre Funktionen jetzt in erster Ebene nach der Art der Funktion (Reiter je Art, das
+> Gewerk als Filter und als Abzeichen an der Funktion) und liefern dieselben Funktionen mit – aus
+> dem gemeinsamen Funktionskatalog `src/gemeinsam/funktionskatalog.ts`. Berührt sind:
+>
+> * **M-2** (Seite „Funktionen“, Funktionsdialog und Gewerk-Dialog gibt es zweimal): Gemeinsam sind
+>   jetzt der Katalog (Arten, mitgelieferte Funktionen, Umbenennungen, Kürzel beim Übernehmen in ein
+>   anderes Gewerk, Art aus einer Excel-Spalte) und die Bausteine der Gliederung (`ArtReiter`,
+>   `ArtGruppenZeile`, `ArtFeld`, `GewerkFilter`, `GewerkAbzeichen` in
+>   `src/gemeinsam/FunktionsArten.tsx`). Der kleine Zwischenschritt ist umgesetzt: Die Suche gibt
+>   es auch im Planlaufmanagement, und dessen zwei Funktionsdialoge teilen sich eine Maske
+>   (`FunktionsMaske` in `src/bereiche/planlauf/components/FunktionsFelder.tsx`). Seite,
+>   Funktionsdialog und Gewerk-Dialog stehen weiter je Bereich; die Listen der Funktionen und
+>   Gewerke pflegt weiter jeder Bereich für sich – die Frage „geteilte Stammdaten?“ bleibt offen.
+> * **M-10** (Personen eines Projekts): Den Reiter „Alle“ gibt es jetzt in beiden Bereichen, das
+>   „+“ für ein neues Gewerk an den Reitern in keinem mehr (der Knopf „Gewerk“ steht im Dialog der
+>   Funktion). Die Unterschiede der Masken bleiben.
+> * **Wo unten von Gewerk-Reitern, von „Übergreifend“ als eigener Seite oder von den früheren
+>   Bezeichnungen** („Fachtechnischer Prüfer“, „Bau AN“, „Bauunternehmen“, „Fachplanung LST“) die
+>   Rede ist, gilt das für den Stand der Durchsicht.
+> * **P-1** (alle Umstellungsschritte laufen bei jeder Fassung erneut): Die Umstellung auf den
+>   Katalog ist so gebaut, dass sie auf einem umgestellten Bestand nichts mehr ändert
+>   (`funktionenAufKatalogUmstellen`, `ausFassung8`); die Wurzel besteht weiter.
+>
+> Die Gegenprüfung des Umbaus hat dazu Folgendes ergeben – behoben, aber als Muster festgehalten:
+>
+> * **Dieselbe Regel an mehreren Stellen:** Frühere Bezeichnungen setzte zunächst nur das
+>   Planlaufmanagement gegenüber dem Register gleich; Abgleich und Projektsteuerung verglichen
+>   wörtlich. Jetzt gilt überall `registerSchluessel` (`src/gemeinsam/register.ts`). Ebenso
+>   kannten die beiden Excel-Importe die Umbenennungen nicht – jeder Weg, auf dem eine Bezeichnung
+>   in den Bestand kommt (Umstellung, Register, Import), muss durch `umbenannt`.
+> * **Zufallskennungen in einer Umstellung** machen Bestand, Sicherung und zweites Gerät
+>   unvergleichbar; die aus dem Katalog ergänzten Funktionen tragen deshalb feste Kennungen.
+> * **Entschieden (26.11.2026):** Füllt die Funktion eines Gewerks niemand aus, springt die
+>   besetzte übergreifende Funktion gleicher Bezeichnung ein (`zustaendigeRolle` in
+>   `src/bereiche/planlauf/domain/engine.ts`). Vorher verdrängte auch die unbesetzte Funktion des
+>   Gewerks die besetzte übergreifende – seit der Katalog viele Bezeichnungen je Gewerk
+>   mitliefert, blieben Schritte so ohne Person. Ergänzt ist außerdem „Planprüfer EEA“, der in der
+>   Liste fehlte.
 
 Diese Liste beantwortet die Frage: **Wo lösen Planlaufmanagement, Baubetriebsplanung und
 Projektsteuerung dasselbe unterschiedlich – in der Funktion, im Wortlaut, in der Optik oder im

@@ -1,0 +1,64 @@
+/* Ebene „components“ wie global.css: Tailwind-Utilities gewinnen, die Reihenfolge der Bausteinregeln bleibt. */
+@layer components {
+/*
+ * Funktionslisten, gegliedert nach der Art der Funktion: Einstellungen →
+ * Funktionen (pages/Funktionen.tsx) und Projekt → Reiter „Funktion“
+ * (pages/projekt/RollenFunktionen.tsx) mit ihren Dialogen
+ * (components/FunktionsFelder.tsx). Klassen mit Präfix pl-, nur Design-Tokens.
+ */
+
+/* Werkzeugzeile über der Liste: links Suche und Filter, rechts die Knöpfe. Beide Gruppen brechen um. */
+.pl-werkzeug { display: flex; align-items: center; justify-content: space-between; gap: 10px 12px; flex-wrap: wrap; }
+.pl-werkzeug-filter { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; min-width: 0; }
+.pl-werkzeug-knoepfe { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pl-werkzeug .checkbox { white-space: nowrap; }
+@media (max-width: 640px) {
+  /* Die Suche nimmt die ganze Zeile (.search in global.css), der Gewerkfilter die nächste – neben einem Kästchen */
+  .pl-werkzeug-filter { flex: 1 1 100%; }
+  /* Die Knöpfe teilen sich die Zeilen, statt links zu kleben */
+  .pl-werkzeug-knoepfe { flex: 1 1 100%; }
+  .pl-werkzeug-knoepfe .btn { flex: 1 1 auto; justify-content: center; }
+}
+
+/* Einleitung unter der Werkzeugzeile */
+.pl-einleitung { max-width: 860px; }
+
+/* Funktion in einer Tabellenzelle (FunktionsZelle in components/FunktionsListe.tsx): Farbpunkt, Bezeichnung
+   und dahinter das Gewerk als Abzeichen – es bleibt so in jeder Zeile zu sehen, auch auf dem Telefon, wo
+   Spalten entfallen –, dann Kürzel und Seite. Wird die Spalte schmal, rücken sie unter die Bezeichnung. */
+.pl-funktion { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+/* Der Punkt steht auf der Höhe der ersten Zeile, auch wenn die Zelle umbricht */
+.pl-funktion > .dot { margin-top: 7px; }
+.pl-funktion-inhalt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.pl-funktion-text { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; min-width: 0; }
+/* Die Seite für den Verzug steht am rechten Rand der Zelle – abgesetzt vom Gewerk, das zur Bezeichnung gehört */
+.pl-funktion-seite { display: inline-flex; margin-left: auto; }
+.pl-funktion-beschreibung { font-size: 12px; color: var(--text-tertiary); }
+/* „– nicht besetzt –“ bleibt in einer Zeile, auch wenn die Spalte schmal wird */
+.pl-unbesetzt { white-space: nowrap; }
+@media (max-width: 640px) {
+  /* Schmal bricht die Zelle um – die Seite folgt dann einfach auf Gewerk und Kürzel */
+  .pl-funktion-seite { margin-left: 0; }
+}
+
+/* Die Funktionstabellen kommen auf dem Telefon ohne Querrollen aus: Die Zelle der Funktion bricht um, und es
+   bleiben nur zwei bis drei Spalten – die Mindestbreite der Tabellen (global.css) schöbe „Besetzt durch“ und
+   die Knöpfe sonst aus dem Bild. Dafür entfällt dort das Namenszeichen vor der Person, und die Knöpfe einer
+   Zeile stehen untereinander. Bei etwa 400 px passt das; darunter rollt die Tabelle wie jede andere quer. */
+@media (max-width: 640px) {
+  .table-scroll .table.pl-funktionstabelle { min-width: 0; }
+  .table.pl-funktionstabelle .avatar { display: none; }
+  .table.pl-funktionstabelle td.actions { white-space: normal; }
+  /* Lange Bezeichnungen („Inbetriebnahmeverantwortlicher“) dürfen im Wort umbrechen, statt die Tabelle zu weiten */
+  .table.pl-funktionstabelle .pl-funktion-text strong { overflow-wrap: anywhere; hyphens: auto; }
+}
+
+/* Feld „Gewerk“ im Dialog einer Funktion: Auswahl und daneben der Knopf für ein neues Gewerk */
+.pl-gewerkfeld { display: flex; align-items: center; gap: 8px; }
+.pl-gewerkfeld .select { flex: 1 1 auto; min-width: 0; }
+.pl-gewerkfeld .btn { flex: none; }
+
+/* SharePoint-Links einer Person */
+.pl-sharepoint { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 2px; }
+.pl-sharepoint a { white-space: nowrap; }
+}

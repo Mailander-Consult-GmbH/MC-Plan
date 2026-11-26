@@ -1,21 +1,22 @@
 /**
  * Projektbeteiligte aus Excel (.xlsx) oder CSV einlesen. Je Zeile eine Person
- * mit Funktion und wahlweise Gewerk; die Vorschau zeigt, was angelegt,
- * aktualisiert oder neu als Funktion bzw. Gewerk entsteht. Auch die
- * Excel-Ausgabe der Beteiligtenliste eines anderen Projekts lässt sich so
- * übernehmen.
+ * mit Funktion und wahlweise Gewerk und Art der Funktion; die Vorschau zeigt,
+ * was angelegt, aktualisiert oder neu als Funktion bzw. Gewerk entsteht – und
+ * in welcher Art die Funktion steht (bei einer neuen: aus der Spalte „Art“,
+ * sonst laut Funktionskatalog). Auch die Excel-Ausgabe der Beteiligtenliste
+ * eines anderen Projekts lässt sich so übernehmen.
  */
 import { useRef, useState } from 'react';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { Callout, Modal, alsKnopf } from '../../../shared/ui';
 import { tabelleLesen } from '../../../shared/xlsxLesen';
-import { BETEILIGTE_KOPF, beteiligteLesen, funktionsSchluessel, neueFunktion, type ImportZeile } from '../domain/beteiligteImport';
+import { artInfo, artVon } from '../../../gemeinsam/funktionskatalog';
+import { funktionsSchluessel } from '../../../gemeinsam/register';
+import { BETEILIGTE_KOPF, beteiligteLesen, neueFunktion, type ImportZeile } from '../domain/beteiligteImport';
 import { beteiligteVorlageLaden } from '../domain/export';
 import { UEBERGREIFEND, funktionsName, personName, type ID, type Projekt } from '../domain/types';
 import { useStore } from '../store/store';
-
-const FARBEN = ['#24456e', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
 
 export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClose: () => void }) {
   const { data, addFunktion, addBeteiligter, updateBeteiligter } = useStore();
@@ -61,14 +62,14 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
   };
 
   const uebernehmen = () => {
-    // Fehlende Funktionen je Bezeichnung und Gewerk einmal anlegen
+    // Fehlende Funktionen je Bezeichnung und Gewerk einmal anlegen – in ihrer Art, mit deren Vorgabefarbe
     const neu = new Map<string, ID>();
-    let farbe = data.funktionen.length;
     for (const z of vorschau) {
       if (z.funktion.id || !z.funktion.name) continue;
       const schluessel = funktionsSchluessel(z.funktion);
       if (neu.has(schluessel)) continue;
-      neu.set(schluessel, addFunktion(neueFunktion(z.funktion.name, z.funktion.gewerk, FARBEN[farbe++ % FARBEN.length])));
+      const art = z.funktion.art ?? artVon(z.funktion.name, z.funktion.gewerk);
+      neu.set(schluessel, addFunktion(neueFunktion(z.funktion.name, z.funktion.gewerk, artInfo(art).farbe, art)));
     }
     let angelegt = 0;
     let aktualisiert = 0;
@@ -169,8 +170,10 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
           <Callout icon="i">
             Erwartete Spalten: <strong>{BETEILIGTE_KOPF.join(' · ')}</strong>. Zwingend ist nur <strong>Nachname</strong>{' '}
             (oder <strong>Name</strong> mit Vor- und Nachnamen). Funktionen und Gewerke, die es noch nicht gibt, werden
-            angelegt; Personen gleichen Namens im Projekt werden aktualisiert. Über <em>Vorlage</em> erhalten Sie eine
-            Datei mit genau diesen Spalten – die Excel-Ausgabe der Beteiligtenliste passt ebenso.
+            angelegt – eine neue Funktion in der Art aus der Spalte <strong>Art</strong> (Kurzzeichen wie „PSV“ oder
+            Name wie „Prüfer“), ohne Angabe laut Funktionskatalog; Personen gleichen Namens im Projekt werden
+            aktualisiert. Über <em>Vorlage</em> erhalten Sie eine Datei mit genau diesen Spalten – die Excel-Ausgabe
+            der Beteiligtenliste passt ebenso.
           </Callout>
         ) : null}
 
@@ -186,6 +189,7 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
               <table className="table">
                 <thead>
                   <tr>
+                    <th>Art</th>
                     <th>Funktion</th>
                     <th>Person</th>
                     <th>Kontakt</th>
@@ -195,6 +199,10 @@ export function BeteiligteImport({ projekt, onClose }: { projekt: Projekt; onClo
                 <tbody>
                   {vorschau.map((z, i) => (
                     <tr key={i}>
+                      {/* Kurzzeichen der Art – wie auf den Reitern; der Name steht im Tooltip */}
+                      <td className="num" title={z.funktion.art ? artInfo(z.funktion.art).name : undefined}>
+                        {z.funktion.art ? artInfo(z.funktion.art).kuerzel : '–'}
+                      </td>
                       <td>
                         <strong>{z.funktion.name ? funktionsName(z.funktion) : '–'}</strong>
                         {z.funktion.name ? (

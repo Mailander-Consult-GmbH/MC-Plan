@@ -20,6 +20,32 @@
 .ps-projektkopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .ps-projektkopf .ps-projektinfo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
 
+/* Funktion in einer Tabellenzelle (FunktionsZelle in components/common.tsx): Farbpunkt, Bezeichnung und
+   dahinter das Gewerk als Abzeichen, in der Projektbeteiligtenliste noch das Kürzel. Wird die Spalte
+   schmal, rücken Abzeichen und Kürzel unter die Bezeichnung, statt sie abzuschneiden. */
+.ps-funktion { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ps-funktion-text { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; min-width: 0; }
+
+/* Funktions- und Projektbeteiligtenliste auf dem Telefon: Tabellen sind dort sonst mindestens 520 px breit –
+   mit dem Abzeichen des Gewerks in der ersten Spalte stünden Kürzel bzw. Person erst nach Querscrollen im
+   Bild. Diese beiden passen sich stattdessen der Karte an: Abzeichen und Kürzel brechen unter die
+   Bezeichnung um, sehr lange Bezeichnungen („Inbetriebnahmeverantwortlicher“) werden getrennt, und in der
+   Projektbeteiligtenliste entfällt das Zeichen mit den Initialen vor dem Namen. */
+@media (max-width: 640px) {
+  .table-scroll .table.ps-funktionsliste { min-width: 0; }
+  .ps-funktionsliste .ps-funktion { align-items: flex-start; }
+  .ps-funktionsliste .ps-funktion > .dot { margin-top: 6px; }
+  .ps-funktionsliste .ps-funktion-text > strong { overflow-wrap: anywhere; hyphens: auto; }
+  .ps-funktionsliste.ps-beteiligte .avatar { display: none; }
+  /* Neben der Person ist die Spalte schmal: Abzeichen und Kürzel stehen dort stets gemeinsam unter der Bezeichnung */
+  .ps-funktionsliste.ps-beteiligte .ps-funktion-text > strong { flex-basis: 100%; }
+  /* Die Knöpfe rücken an die Spalte davor – die gewonnene Breite reicht oft für Bezeichnung und Abzeichen in einer Zeile */
+  .ps-funktionsliste :is(th, td).actions { padding-left: 0; }
+}
+
+/* Einleitung unter der Werkzeugzeile der Funktionsliste */
+.ps-einleitung { max-width: 860px; }
+
 /* Mitwachsende Textfelder */
 .textarea.ps-textfeld { min-height: 36px; resize: none; overflow: hidden; line-height: 1.45; padding: 7px 10px; }
 .ps-kompakt.input, .ps-kompakt.select { padding: 6px 9px; font-size: 13px; }

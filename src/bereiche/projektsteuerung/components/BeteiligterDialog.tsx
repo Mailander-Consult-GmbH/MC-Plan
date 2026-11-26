@@ -1,13 +1,16 @@
 /**
  * Person in der Projektbeteiligtenliste erfassen oder pflegen. Die Funktion
- * wird aus den projektübergreifenden Funktionen gewählt; fehlt sie, lässt sie
- * sich hier gleich anlegen. Auch aus dem Protokoll heraus aufrufbar.
+ * wird aus den projektübergreifenden Funktionen gewählt – die Auswahl ist nach
+ * der Art der Funktion gegliedert, darin nach Bezeichnung und Gewerk; fehlt
+ * die Funktion, lässt sie sich hier gleich anlegen. Auch aus dem Protokoll
+ * heraus aufrufbar.
  */
 import { useState } from 'react';
+import { artText, funktionenVergleich, nachArt } from '../../../gemeinsam/funktionskatalog';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
 import { ConfirmDialog, Field, Modal, Select, TextArea, TextInput } from '../../../shared/ui';
-import { UEBERGREIFEND, funktionsName, personName, type Beteiligter, type ID } from '../domain/types';
+import { funktionsName, personName, type Beteiligter, type ID } from '../domain/types';
 import { useStore } from '../store/store';
 import { FunktionDialog } from './FunktionDialog';
 
@@ -41,8 +44,8 @@ export function BeteiligterDialog({
   beteiligter?: Beteiligter;
   vorbelegung?: Partial<Werte>;
   onClose: () => void;
-  /** Meldet die Kennung der gespeicherten Person. */
-  onGespeichert?: (id: ID) => void;
+  /** Meldet die Kennung der gespeicherten Person und die ihrer Funktion. */
+  onGespeichert?: (id: ID, funktionId: ID | null) => void;
 }) {
   const { data, addBeteiligter, updateBeteiligter, deleteBeteiligter } = useStore();
   const toast = useToast();
@@ -56,15 +59,8 @@ export function BeteiligterDialog({
 
   const set = <K extends keyof Werte>(k: K, v: Werte[K]) => setForm((f) => ({ ...f, [k]: v }));
 
-  // Auswahl nach Gewerk gegliedert: zuerst die übergreifenden Funktionen
-  const gruppen = [null, ...data.gewerke]
-    .map((gewerk) => ({
-      gewerk,
-      funktionen: data.funktionen
-        .filter((f) => f.gewerk === gewerk)
-        .sort((a, b) => a.name.localeCompare(b.name, 'de')),
-    }))
-    .filter((g) => g.funktionen.length > 0);
+  // Auswahl nach der Art der Funktion gegliedert (Reihenfolge des Funktionskatalogs), darin nach Bezeichnung und Gewerk
+  const gruppen = nachArt([...data.funktionen].sort(funktionenVergleich(data.gewerke)));
   const gewaehlt = data.funktionen.find((f) => f.id === form.funktionId);
   // Wer diese Funktion im Projekt schon ausfüllt – nur als Hinweis.
   const schonBesetzt = gewaehlt
@@ -84,11 +80,11 @@ export function BeteiligterDialog({
     if (beteiligter) {
       updateBeteiligter(beteiligter.id, werte);
       toast('Person gespeichert.');
-      onGespeichert?.(beteiligter.id);
+      onGespeichert?.(beteiligter.id, werte.funktionId);
     } else {
       const id = addBeteiligter({ ...werte, projektId });
       toast(`${personName(werte)} in die Projektbeteiligtenliste aufgenommen.`);
-      onGespeichert?.(id);
+      onGespeichert?.(id, werte.funktionId);
     }
     onClose();
   };
@@ -135,8 +131,8 @@ export function BeteiligterDialog({
             >
               <option value="">– Funktion wählen –</option>
               {gruppen.map((g) => (
-                <optgroup key={g.gewerk ?? ''} label={g.gewerk ?? UEBERGREIFEND}>
-                  {g.funktionen.map((f) => (
+                <optgroup key={g.art.id} label={artText(g.art.id)}>
+                  {g.eintraege.map((f) => (
                     <option key={f.id} value={f.id}>
                       {funktionsName(f)}
                       {f.kuerzel ? ` (${f.kuerzel})` : ''}

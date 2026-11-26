@@ -1,10 +1,19 @@
 /**
- * Einlesen von Rollen und ihrer Besetzung aus einer Excel-Datei (.xlsx) oder
- * Textliste (.csv).
+ * Einlesen von Funktionen und ihrer Besetzung aus einer Excel-Datei (.xlsx)
+ * oder Textliste (.csv).
  *
- * Je Zeile stehen Gewerk, Funktion und die Person mit ihren Adressdaten.
+ * Je Zeile stehen Art, Gewerk, Funktion und die Person mit ihren Adressdaten.
  * Gewerke und Funktionen, die es noch nicht gibt, werden angelegt; die Person
- * besetzt anschließend die Funktion.
+ * besetzt anschließend die Funktion. Eine neue Funktion bekommt die Art aus
+ * der Spalte „Art“ (optional), sonst die des Funktionskatalogs; eine
+ * vorhandene behält ihre. Die Vorschau nennt je Zeile die Art, unter der die
+ * Funktion danach in der Liste steht, und das Gewerk als Abzeichen.
+ *
+ * Eine frühere Bezeichnung (`FUNKTIONS_UMBENENNUNGEN`: Listen nach der Vorlage
+ * vor dem Funktionskatalog nennen „Fachtechnischer Prüfer“ oder „Bau AN“)
+ * meint die Funktion, die heute anders heißt – die Zeile besetzt „Planprüfer“
+ * bzw. „Auftragnehmer“, sonst blieben die Schritte der Workflows ohne Person.
+ * Führt das Projekt die frühere Bezeichnung selbst noch, gilt sie wörtlich.
  */
 import { useRef, useState } from 'react';
 import {
@@ -13,7 +22,7 @@ import {
   UEBERGREIFEND,
   istEigeneFunktion,
   kuerzelAus,
-  seiteAusFunktion,
+  seiteAusArt,
   type Contact,
   type ID,
   type Project,
@@ -26,6 +35,8 @@ import {
   ROLLEN_SPALTEN,
   rollenVorlageLaden,
 } from '../../domain/importVorlagen';
+import { GewerkAbzeichen } from '../../../../gemeinsam/FunktionsArten';
+import { artAusText, artInfo, artVon, umbenannt } from '../../../../gemeinsam/funktionskatalog';
 import { seiteAusText } from '../../components/SeiteAuswahl';
 import { useStore } from '../../store/store';
 import { useToast } from '../../../../shared/toast';
@@ -33,8 +44,9 @@ import { Callout, Modal, alsKnopf } from '../../../../shared/ui';
 import { Icon } from '../../../../shared/icons';
 
 /**
- * Spalten des Imports – dazu optional die Seite der Funktion für den Verzug
- * (Planer, Prüfer, Auftraggeber, PLM oder „nicht festgelegt“).
+ * Spalten des Imports (darunter optional die Art der Funktion) – dazu optional
+ * die Seite der Funktion für den Verzug (Planer, Prüfer, Auftraggeber, PLM
+ * oder „nicht festgelegt“).
  */
 const SPALTEN: Record<string, string[]> = {
   ...ROLLEN_SPALTEN,
@@ -42,8 +54,6 @@ const SPALTEN: Record<string, string[]> = {
 };
 
 const seiteText = (seite: Seite | null) => (seite ? SEITE_LABEL[seite] : 'nicht festgelegt');
-
-const FARBEN = ['#24456e', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
 
 /** Setzt die Anschrift aus Straße, Hausnummer, PLZ und Ort zusammen. */
 function anschriftBauen(strasse: string, nr: string, plz: string, ort: string): string {
@@ -53,6 +63,18 @@ function anschriftBauen(strasse: string, nr: string, plz: string, ort: string): 
 }
 
 const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Schlüssel einer Funktion der Datei: Bezeichnung (ohne Groß/Klein) und genaues Gewerk. */
+const funktionSchluessel = (z: { funktion: string; gewerk: string | null }) => `${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`;
+
+/** Art je Funktion der Datei: die erste Angabe in der Spalte „Art“ (Zeilen ohne oder mit unbekannter Angabe zählen nicht). */
+function genannteArten(zeilen: readonly { funktion: string; gewerk: string | null; art: string | undefined }[]): Map<string, string> {
+  const arten = new Map<string, string>();
+  for (const z of zeilen) {
+    if (z.funktion && z.art !== undefined && !arten.has(funktionSchluessel(z))) arten.set(funktionSchluessel(z), z.art);
+  }
+  return arten;
+}
 
 /** SharePoint-Links nur, wenn die Zelle gefüllt ist – leere Zellen lassen vorhandene stehen. */
 type Person = Omit<Contact, 'id' | 'projectId' | 'zuordnungen' | 'eigen' | 'sharepointEingang' | 'sharepointAusgang'> &
@@ -120,7 +142,9 @@ interface Zeile {
   gewerk: string | null;
   funktion: string;
   kuerzel: string;
-  /** Seite aus der Spalte „Seite“; undefined = leer bzw. unbekannt (neue Funktionen: aus der Bezeichnung). */
+  /** Art aus der Spalte „Art“; undefined = leer bzw. unbekannt (neue Funktionen: laut Funktionskatalog). */
+  art: string | undefined;
+  /** Seite aus der Spalte „Seite“; undefined = leer bzw. unbekannt (neue Funktionen: aus Art und Bezeichnung). */
   seite: Seite | null | undefined;
   person: Person;
   /**
@@ -134,6 +158,13 @@ interface Zeile {
   personKennung: string;
   neuesGewerk: boolean;
   neueFunktion: boolean;
+  /**
+   * Angabe in der Spalte „Art“, die keine Art ist – an einer Funktion, die der
+   * Import anlegt. Welche Art stattdessen gilt (die einer anderen Zeile oder
+   * die des Funktionskatalogs), sagt der Hinweis erst, wenn alle Zeilen gelesen
+   * sind.
+   */
+  artUnbekannt?: string;
   /**
    * Die Funktion steht weiter unten in der Datei noch einmal mit einer anderen
    * Person. Eine Funktion hat genau eine Person – es gilt die letzte Zeile;
@@ -213,10 +244,14 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         // Person der Zeile wird deshalb ohne diese Funktion übernommen.
         const funktionRoh = wert(zeile, 'funktion');
         const eigeneFunktion = Boolean(funktionRoh) && istEigeneFunktion({ name: funktionRoh, gewerk });
-        const funktion = eigeneFunktion ? '' : funktionRoh;
+        // Eine frühere Bezeichnung meint die heutige Funktion – außer das Projekt führt sie selbst noch
+        const heutige = umbenannt(funktionRoh, gewerk);
+        const frueher = !eigeneFunktion && heutige !== funktionRoh && !findeRolle(funktionRoh, gewerk);
+        const funktion = eigeneFunktion ? '' : frueher ? heutige : funktionRoh;
         if (eigeneFunktion) {
           hinweise.push(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person – die Person wird ohne Funktion hinterlegt`);
         }
+        if (frueher) hinweise.push(`„${funktionRoh}“ heißt jetzt „${heutige}“`);
 
         let neuesGewerk = false;
         if (gewerk && !data.gewerke.some((g) => gleich(g, gewerk))) {
@@ -241,11 +276,29 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           hinweise.push('ohne Funktion – die Person wird nur im Projekt hinterlegt');
         }
 
+        // Art der Funktion: optional, zählt nur für Funktionen, die der Import anlegt
+        const artRoh = wert(zeile, 'art');
+        const art = funktion && artRoh ? (artAusText(artRoh) ?? undefined) : undefined;
+        // Unbekannte Angabe: An einer vorhandenen Funktion ändert sie nichts; für eine neue sagt der
+        // Hinweis erst nach dem Lesen aller Zeilen, welche Art gilt (siehe Zeile.artUnbekannt)
+        let artUnbekannt: string | undefined;
+        if (funktion && artRoh && art === undefined) {
+          if (findeRolle(funktion, gewerk)) hinweise.push(`Art „${artRoh}“ unbekannt – bleibt unverändert`);
+          else artUnbekannt = artRoh;
+        }
+        // Eine vorhandene Funktion behält ihre Art – nennt die Datei eine andere, sagt es der Hinweis
+        const vorhandeneArt = funktion ? findeRolle(funktion, gewerk)?.art : undefined;
+        if (art !== undefined && vorhandeneArt !== undefined && artInfo(vorhandeneArt).id !== art) {
+          hinweise.push(
+            `Art bleibt „${artInfo(vorhandeneArt).name}“ – die Angabe „${artInfo(art).name}“ gilt nur für neue Funktionen`,
+          );
+        }
+
         // Seite für den Verzug: optional; vorhandene Funktionen behalten ihre, wenn die Zelle leer ist
         const seiteRoh = wert(zeile, 'seite');
         let seite = seiteRoh ? seiteAusText(seiteRoh) : undefined;
         if (funktion && seiteRoh && seite === undefined) {
-          const folge = findeRolle(funktion, gewerk) ? 'bleibt unverändert' : 'aus der Bezeichnung vorbelegt';
+          const folge = findeRolle(funktion, gewerk) ? 'bleibt unverändert' : 'aus Art und Bezeichnung vorbelegt';
           hinweise.push(`Seite „${seiteRoh}“ unbekannt – ${folge}`);
         }
         if (funktion && seite !== undefined) {
@@ -299,12 +352,14 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
           gewerk,
           funktion,
           kuerzel: wert(zeile, 'kuerzel'),
+          art,
           seite,
           person,
           anschriftVoll,
           personKennung: zuordnung.kennung,
           neuesGewerk,
           neueFunktion,
+          artUnbekannt,
           ueberholt: false,
           hinweis: hinweise.join('; '),
         };
@@ -317,10 +372,20 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
       for (const z of ergebnis) {
         if (z.funktion) letztePerson.set(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`, z.personKennung);
       }
+      // Art je neuer Funktion: die erste gültige Angabe der Datei (wie beim Übernehmen)
+      const artGenannt = genannteArten(ergebnis);
       setVorschau(
         ergebnis.map((z) => {
           if (!z.funktion) return z;
           const hinweise = z.hinweis ? [z.hinweis] : [];
+          if (z.artUnbekannt !== undefined) {
+            const andere = artGenannt.get(funktionSchluessel(z));
+            hinweise.push(
+              `Art „${z.artUnbekannt}“ unbekannt – ${
+                andere !== undefined ? `es gilt „${artInfo(andere).name}“ aus einer anderen Zeile` : 'laut Funktionskatalog vorbelegt'
+              }`,
+            );
+          }
           if (letztePerson.get(`${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`) !== z.personKennung) {
             hinweise.push('Funktion steht weiter unten mit einer anderen Person – es gilt die letzte Zeile');
             return { ...z, ueberholt: true, hinweis: hinweise.join('; ') };
@@ -349,8 +414,9 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
     const rolleIds = new Map<string, ID>();
     let neueRollen = 0;
     let seitenGeaendert = 0;
-    // Seite je Funktion: die erste Angabe der Datei (siehe Vorschau)
+    // Seite und Art je Funktion: die erste Angabe der Datei (siehe Vorschau)
     const seiteVon = new Map<string, Seite | null>();
+    const artGenannt = genannteArten(vorschau);
     for (const z of vorschau) {
       const schluessel = `${z.funktion.toLowerCase()}|${z.gewerk ?? ''}`;
       if (z.funktion && z.seite !== undefined && !seiteVon.has(schluessel)) seiteVon.set(schluessel, z.seite);
@@ -369,14 +435,17 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
         }
         continue;
       }
+      // Art: die in der Datei genannte, sonst die des Funktionskatalogs; die Farbe ist die der Art
+      const art = artGenannt.get(schluessel) ?? artVon(z.funktion, z.gewerk);
       const id = addRole({
         projectId: project.id,
         name: z.funktion,
         kuerzel: z.kuerzel || kuerzelAus(z.funktion),
-        farbe: FARBEN[(rollen.length + neueRollen) % FARBEN.length],
+        farbe: artInfo(art).farbe,
         beschreibung: '',
+        art,
         gewerk: z.gewerk,
-        seite: seite !== undefined ? seite : seiteAusFunktion(z.funktion),
+        seite: seite !== undefined ? seite : seiteAusArt(art, z.funktion),
       });
       rolleIds.set(schluessel, id);
       neueRollen += 1;
@@ -464,6 +533,11 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
   };
 
   const mitHinweis = vorschau.filter((v) => v.hinweis).length;
+  // Art, unter der die Funktion einer Zeile nach dem Import steht – wie `uebernehmen` sie vergibt:
+  // die der vorhandenen Funktion, sonst die erste Angabe der Datei, sonst die des Funktionskatalogs
+  const artGenannt = genannteArten(vorschau);
+  const artDerZeile = (z: Zeile) =>
+    artInfo(findeRolle(z.funktion, z.gewerk)?.art ?? artGenannt.get(funktionSchluessel(z)) ?? artVon(z.funktion, z.gewerk));
 
   return (
     <Modal
@@ -539,9 +613,11 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
 
         {vorschau.length === 0 && !fehler ? (
           <Callout icon="i">
-            Erwartete Spalten: <strong>{KOPFZEILE.join(' · ')}</strong>. Zwingend ist nur <strong>Name</strong>.
+            Erwartete Spalten: <strong>{KOPFZEILE.join(' · ')}</strong>. Zwingend ist nur <strong>Name</strong>.{' '}
+            <strong>Art</strong> ist die Art der Funktion (Kurzzeichen oder Name, etwa „PSV“ oder „Prüfer“); ohne
+            Angabe bekommt eine neue Funktion die Art des Funktionskatalogs.
             Optional ist <strong>Seite</strong> – die Seite der Funktion für den Verzug (Planer, Prüfer, Auftraggeber,
-            PLM oder „nicht festgelegt“); ohne Angabe wird sie bei neuen Funktionen aus der Bezeichnung vorbelegt.
+            PLM oder „nicht festgelegt“); ohne Angabe wird sie bei neuen Funktionen aus Art und Bezeichnung vorbelegt.
             Gewerke und Funktionen, die es noch nicht gibt, werden beim Import angelegt; „Übergreifend“ steht für
             Funktionen ohne Gewerkbezug. Personen, die es im Projekt schon gibt, werden aktualisiert; leere Zellen
             lassen ihre vorhandenen Angaben stehen, und eine vorhandene Anschrift wird nur ersetzt, wenn die Zeile
@@ -563,7 +639,7 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Gewerk</th>
+                    <th>Art</th>
                     <th>Funktion</th>
                     <th>Person</th>
                     <th>Kontakt</th>
@@ -573,9 +649,19 @@ export function RollenImport({ project, onClose }: { project: Project; onClose: 
                 <tbody>
                   {vorschau.map((z, i) => (
                     <tr key={i}>
-                      <td className="small muted">{z.gewerk ?? UEBERGREIFEND}</td>
+                      {/* Kurzzeichen der Art, der Name im Tooltip – wie auf den Reitern der Liste */}
+                      <td className="small muted" title={z.funktion ? artDerZeile(z).name : undefined}>
+                        {z.funktion ? artDerZeile(z).kuerzel : '–'}
+                      </td>
                       <td>
-                        <strong>{z.funktion || '–'}</strong>
+                        {z.funktion ? (
+                          <span className="pl-funktion-text">
+                            <strong>{z.funktion}</strong>
+                            <GewerkAbzeichen gewerk={z.gewerk} />
+                          </span>
+                        ) : (
+                          <strong>–</strong>
+                        )}
                         {z.funktion && z.seite !== undefined ? (
                           <div className="tertiary small">Seite: {seiteText(z.seite)}</div>
                         ) : null}

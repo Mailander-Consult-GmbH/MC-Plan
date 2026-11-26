@@ -1,12 +1,15 @@
 /**
  * Stammdaten und Demodatenbestand.
  *
- * Funktionen, Gewerke und die drei Workflows (VVBau) entsprechen der
- * vorgegebenen Aufstellung. Die Fristen sind dort nicht hinterlegt und daher
- * als Erfahrungswerte vorbelegt – sie lassen sich je Kette und je Planlauf
- * anpassen.
+ * Die mitgelieferten Funktionen kommen aus dem Funktionskatalog
+ * (src/gemeinsam/funktionskatalog.ts – Liste der Anwender, gegliedert nach der
+ * Art der Funktion; die Projektsteuerung führt dieselben). Die drei Workflows
+ * (VVBau) entsprechen der vorgegebenen Aufstellung. Die Fristen sind dort
+ * nicht hinterlegt und daher als Erfahrungswerte vorbelegt – sie lassen sich
+ * je Kette und je Planlauf anpassen.
  */
 import { addDays, istArbeitstag, today } from '../../../shared/dates';
+import { FUNKTIONS_KATALOG, artInfo } from '../../../gemeinsam/funktionskatalog';
 import { aktuelleSchritte, kontaktFuerRolleUndGewerk, kontaktName, planlaufName, recalcRun, stepsAusTemplate } from './engine';
 import { aenderungenAufLauf, braucheNachweis, schrittStatusSetzen } from './abschluss';
 import { basisplanFestlegen } from './simulation';
@@ -18,6 +21,7 @@ import {
   STAMMDATEN_VERSION,
   versandAnliegenNachName,
   STANDARD_BEARBEITER,
+  seiteAusArt,
   type AppData,
   type Antwort,
   type Contact,
@@ -34,7 +38,6 @@ import {
   type Project,
   GEWERKE,
   type Role,
-  type Seite,
   type StandardRolle,
   type StepType,
 } from './types';
@@ -43,53 +46,70 @@ import {
 /* Funktionen                                                      */
 /* ------------------------------------------------------------------ */
 
-/** Rolle „Planer“ in den Workflows – je Gewerk besetzt. */
+/**
+ * Funktionen, die die Standard-Workflows und die Vorlagen des Pflichtenhefts
+ * beim Namen nennen – in der Schreibweise des Funktionskatalogs. „Fachplaner“
+ * steht nicht in der Liste der Anwender, bleibt aber je Gewerk, bis die
+ * Workflows überarbeitet sind.
+ */
 export const ROLLE_PLANER = 'Fachplaner';
-export const ROLLE_BVB = 'Bauvorlageberechtiger';
+export const ROLLE_BVB = 'Bauvorlageberechtigter';
 export const ROLLE_PL = 'Projektleitung';
-export const ROLLE_PSV = 'Fachtechnischer Prüfer';
+export const ROLLE_PSV = 'Planprüfer';
 export const ROLLE_PRST = 'Prüfstatiker';
 
-/**
- * Vorlage einer Funktion. `jeGewerk` bedeutet: die Funktion wird für jedes
- * Gewerk einzeln geführt und besetzt – „Fachplaner OLA“ ist damit eine andere
- * Funktion als „Fachplaner KIB“. Sonst gilt die Funktion übergreifend.
- * `seite` ordnet die Funktion im Terminnachweis einer Seite zu.
- */
-interface RollenVorlage {
-  id: string;
-  name: string;
-  kuerzel: string;
-  farbe: string;
-  beschreibung: string;
-  jeGewerk: boolean;
-  seite: Seite | null;
+/** Teil einer Kennung aus einer Bezeichnung: klein, Umlaute umschrieben, sonst nur Buchstaben und Ziffern. */
+function kennungsTeil(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
-const ROLLEN_VORLAGEN: RollenVorlage[] = [
-  { id: 'srol-plm', name: EIGENE_ROLLE, kuerzel: 'PLM', farbe: '#24456e', beschreibung: 'Eigene Bearbeitung', jeGewerk: false, seite: 'plm' },
-  { id: 'srol-pl', name: ROLLE_PL, kuerzel: 'PL', farbe: '#5856d6', beschreibung: '', jeGewerk: false, seite: 'auftraggeber' },
-  { id: 'srol-fp', name: ROLLE_PLANER, kuerzel: 'FP', farbe: '#ff9500', beschreibung: 'Fachplanung des Gewerks', jeGewerk: true, seite: 'planer' },
-  { id: 'srol-fs', name: 'Fachspezialist', kuerzel: 'FS', farbe: '#c77700', beschreibung: '', jeGewerk: true, seite: 'planer' },
-  { id: 'srol-bvb', name: ROLLE_BVB, kuerzel: 'BVB', farbe: '#ff3b30', beschreibung: 'Freigabeberechtigt', jeGewerk: true, seite: 'auftraggeber' },
-  { id: 'srol-an', name: 'Bau AN', kuerzel: 'AN', farbe: '#af52de', beschreibung: '', jeGewerk: true, seite: null },
-  { id: 'srol-buew', name: 'Bauüberwachung', kuerzel: 'BÜW', farbe: '#00a0a0', beschreibung: '', jeGewerk: true, seite: 'auftraggeber' },
-  { id: 'srol-psv', name: ROLLE_PSV, kuerzel: 'PSV', farbe: '#34c759', beschreibung: 'Planprüfer des Gewerks', jeGewerk: true, seite: 'pruefer' },
-  { id: 'srol-prst', name: ROLLE_PRST, kuerzel: 'PrSt', farbe: '#248a3d', beschreibung: '', jeGewerk: true, seite: 'pruefer' },
-  { id: 'srol-vep', name: 'Vermessungsprüfer', kuerzel: 'VeP', farbe: '#2a9d8f', beschreibung: '', jeGewerk: true, seite: 'pruefer' },
-  { id: 'srol-erp', name: 'Erdungsprüfer', kuerzel: 'ErP', farbe: '#457b9d', beschreibung: '', jeGewerk: true, seite: 'pruefer' },
-  { id: 'srol-stp', name: 'Schweißtechnischer Prüfer', kuerzel: 'StP', farbe: '#6d597a', beschreibung: '', jeGewerk: true, seite: 'pruefer' },
-  { id: 'srol-kop', name: 'Korrosionsschutzprüfer', kuerzel: 'KoP', farbe: '#b56576', beschreibung: '', jeGewerk: true, seite: 'pruefer' },
-  { id: 'srol-ggp', name: 'Gleisgeometrie Prüfer', kuerzel: 'GgP', farbe: '#e07a5f', beschreibung: '', jeGewerk: true, seite: 'pruefer' },
-  { id: 'srol-gtp', name: 'Geotechnischer Prüfer', kuerzel: 'GtP', farbe: '#8a5a44', beschreibung: '', jeGewerk: true, seite: 'pruefer' },
-];
+/**
+ * Feste Kennungen, die es schon vor dem Funktionskatalog gab: das
+ * Planlaufmanagement und die Projektleitung behalten sie.
+ */
+const FESTE_KENNUNGEN = new Map<string, ID>([
+  [EIGENE_ROLLE, 'srol-plm'],
+  [ROLLE_PL, 'srol-pl'],
+]);
 
-/** Funktionen je Gewerk: aus jeder Vorlage entsteht eine Funktion pro Gewerk. */
-export const STANDARD_ROLLEN: StandardRolle[] = ROLLEN_VORLAGEN.flatMap((v) => {
-  const { jeGewerk, id, ...rest } = v;
-  return jeGewerk
-    ? GEWERKE.map((g) => ({ ...rest, id: `${id}-${g.toLowerCase()}`, gewerk: g as string | null }))
-    : [{ ...rest, id, gewerk: null }];
+/**
+ * Kennung einer mitgelieferten Funktion: `srol-<Bezeichnung>[-<Gewerk>]`,
+ * sprechend und fest – so trägt dieselbe Funktion auf jedem Gerät dieselbe
+ * Kennung, und der Abgleich mit einer Sicherung erkennt sie daran. Über alle
+ * Einträge des Katalogs eindeutig (Bezeichnung + Gewerk ist es dort auch).
+ */
+function standardRollenKennung(name: string, gewerk: string | null): ID {
+  const fest = gewerk === null ? FESTE_KENNUNGEN.get(name) : undefined;
+  return fest ?? ['srol', kennungsTeil(name), ...(gewerk ? [kennungsTeil(gewerk)] : [])].join('-');
+}
+
+/**
+ * Die mitgelieferten Funktionen – je Eintrag des Funktionskatalogs eine, mit
+ * dessen Kürzel und Art. Farbe ist die der Art, die Seite im Terminnachweis
+ * folgt aus ihr (`seiteAusArt`). Die eigene Funktion (Planlaufmanagement)
+ * behält ihre Farbe und Beschreibung. Welche Gewerke eine Bezeichnung führt,
+ * sagt der Katalog (etwa Prüfstatiker nur KIB und OLA, die Sonderprüfer
+ * übergreifend).
+ */
+export const STANDARD_ROLLEN: StandardRolle[] = FUNKTIONS_KATALOG.map((f) => {
+  const eigen = f.gewerk === null && f.name === EIGENE_ROLLE;
+  return {
+    id: standardRollenKennung(f.name, f.gewerk),
+    name: f.name,
+    kuerzel: f.kuerzel,
+    farbe: eigen ? '#24456e' : artInfo(f.art).farbe,
+    beschreibung: eigen ? 'Eigene Bearbeitung' : '',
+    art: f.art,
+    gewerk: f.gewerk,
+    seite: seiteAusArt(f.art, f.name),
+  };
 });
 
 /* ------------------------------------------------------------------ */
@@ -540,6 +560,7 @@ function projektRollen(projectId: string): Role[] {
     kuerzel: r.kuerzel,
     farbe: r.farbe,
     beschreibung: r.beschreibung,
+    art: r.art,
     gewerk: r.gewerk,
     seite: r.seite,
   }));
@@ -566,9 +587,12 @@ export function seedData(): AppData {
   const at = (d: ISODate, n: number) => addDays(d, n, true);
   const projectId = zufallsId('prj');
   const rollen = projektRollen(projectId);
-  /** Funktion eines Gewerks (bzw. die übergreifende Funktion) im Projekt. */
-  const rolle = (kuerzel: string, gewerk: string | null = null) =>
-    rollen.find((r) => r.kuerzel === kuerzel && r.gewerk === gewerk)!.id;
+  /**
+   * Funktion eines Gewerks (bzw. die übergreifende Funktion) im Projekt – über
+   * Bezeichnung und Gewerk; Kürzel sind im Katalog nicht eindeutig.
+   */
+  const rolle = (name: string, gewerk: string | null = null) =>
+    rollen.find((r) => r.name === name && r.gewerk === gewerk)!.id;
 
   // Starttermine der Planläufe – so gewählt, dass die Läufe heute an der gewünschten Stelle stehen
   // (gezählt ab dem letzten Arbeitstag, damit die Überfälligkeit auch am Wochenende stimmt)
@@ -624,21 +648,23 @@ export function seedData(): AppData {
     sharepointAusgang: '',
     ...c,
   });
-  const jeGewerk = (kuerzel: string) => ['KIB', 'LST', 'OLA', 'VA'].map((g) => ({ roleId: rolle(kuerzel, g), gewerk: g }));
+  /** Besetzung einer Funktion in mehreren Gewerken durch dieselbe Person. */
+  const inGewerken = (name: string, gewerke: string[]) => gewerke.map((g) => ({ roleId: rolle(name, g), gewerk: g }));
+  // Besetzt sind nur Funktionen des Katalogs – so sieht ein frisch angelegtes Projekt aus
   const contacts: Contact[] = [
     // Eigener Eintrag: die angemeldete Person führt das Planlaufmanagement
-    kontakt({ anrede: '', vorname: 'Max', nachname: 'Mustermann', firma: EIGENE_ROLLE, email: '', telefon: '', anschrift: '', zuordnungen: [{ roleId: rolle('PLM'), gewerk: null }], eigen: true }),
-    kontakt({ anrede: 'Frau', vorname: 'Sabine', nachname: 'Ortmann', firma: 'Projektleitung', email: 's.ortmann@example.de', telefon: '+49 40 123456-01', mobil: '+49 160 1234567', oe: 'I.IV-N-2', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle('PL'), gewerk: null }], sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Ausgang' }),
-    kontakt({ anrede: 'Frau', vorname: 'Katrin', nachname: 'Berger', firma: 'Ingenieurbüro Berger', email: 'k.berger@example.de', telefon: '+49 40 998877-12', anschrift: 'Billstraße 88\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachplanung Ingenieurbau' }),
-    kontakt({ anrede: 'Herr', vorname: 'Ali', nachname: 'Sarikaya', firma: 'LST Nord Ingenieure', email: 'sarikaya@example.de', telefon: '+49 40 998877-30', anschrift: 'Billstraße 90\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'LST'), gewerk: 'LST' }], notiz: 'Fachplanung Leit- und Sicherungstechnik' }),
-    kontakt({ anrede: 'Herr', vorname: 'Piet', nachname: 'Osterkamp', firma: 'Osterkamp Fahrleitungsbau', email: 'p.osterkamp@example.de', telefon: '+49 4101 7788-0', anschrift: 'Industriering 9\n25436 Tornesch', zuordnungen: [{ roleId: rolle('FP', 'OLA'), gewerk: 'OLA' }], notiz: 'Fachplanung Oberleitung' }),
-    kontakt({ anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', mobil: '+49 172 9988776', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'KIB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Ausgang' }),
-    kontakt({ anrede: 'Frau', vorname: 'Marlene', nachname: 'Hoffstedt', firma: 'Bauvorlageberechtigung Nord', email: 'm.hoffstedt@example.de', telefon: '+49 40 224466-4', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'LST'), gewerk: 'LST' }, { roleId: rolle('BVB', 'OLA'), gewerk: 'OLA' }], sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Ausgang' }),
-    kontakt({ anrede: 'Herr', vorname: 'Dietmar', nachname: 'Krause', firma: 'Prüfstelle Krause', email: 'd.krause@example.de', telefon: '+49 4131 309-0', anschrift: 'Am Ochsenmarkt 1\n21335 Lüneburg', zuordnungen: [{ roleId: rolle('PSV', 'LST'), gewerk: 'LST' }], notiz: 'Fachtechnische Prüfung LST', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Ausgang' }),
-    kontakt({ anrede: 'Frau', vorname: 'Yuki', nachname: 'Tanaka', firma: 'Prüfstelle Tanaka', email: 'y.tanaka@example.de', telefon: '+49 40 556677-1', anschrift: 'Alsterdorfer Damm 4\n22297 Hamburg', zuordnungen: [{ roleId: rolle('PSV', 'KIB'), gewerk: 'KIB' }, { roleId: rolle('PrSt', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachtechnische Prüfung und Prüfstatik KIB', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Ausgang' }),
-    kontakt({ anrede: 'Herr', vorname: 'Tobias', nachname: 'Reinhold', firma: 'Prüfstelle Erdung', email: 't.reinhold@example.de', telefon: '+49 40 445566-8', anschrift: 'Wandsbeker Chaussee 3\n22089 Hamburg', zuordnungen: [{ roleId: rolle('ErP', 'OLA'), gewerk: 'OLA' }], notiz: 'Erdungsprüfung' }),
-    kontakt({ anrede: 'Herr', vorname: 'Sven', nachname: 'Dallmann', firma: 'Dallmann Bau GmbH', email: 's.dallmann@example.de', telefon: '+49 4101 5566-0', anschrift: 'Gewerbepark 4\n25469 Halstenbek', zuordnungen: jeGewerk('AN') }),
-    kontakt({ anrede: 'Frau', vorname: 'Heike', nachname: 'Petersen', firma: 'Bauüberwachung Nord', email: 'h.petersen@example.de', telefon: '+49 40 334455-2', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: jeGewerk('BÜW') }),
+    kontakt({ anrede: '', vorname: 'Max', nachname: 'Mustermann', firma: EIGENE_ROLLE, email: '', telefon: '', anschrift: '', zuordnungen: [{ roleId: rolle(EIGENE_ROLLE), gewerk: null }], eigen: true }),
+    kontakt({ anrede: 'Frau', vorname: 'Sabine', nachname: 'Ortmann', firma: 'Projektleitung', email: 's.ortmann@example.de', telefon: '+49 40 123456-01', mobil: '+49 160 1234567', oe: 'I.IV-N-2', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle(ROLLE_PL), gewerk: null }], sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Projektleitung/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Frau', vorname: 'Katrin', nachname: 'Berger', firma: 'Ingenieurbüro Berger', email: 'k.berger@example.de', telefon: '+49 40 998877-12', anschrift: 'Billstraße 88\n20539 Hamburg', zuordnungen: [{ roleId: rolle(ROLLE_PLANER, 'KIB'), gewerk: 'KIB' }], notiz: 'Fachplanung Ingenieurbau' }),
+    kontakt({ anrede: 'Herr', vorname: 'Ali', nachname: 'Sarikaya', firma: 'LST Nord Ingenieure', email: 'sarikaya@example.de', telefon: '+49 40 998877-30', anschrift: 'Billstraße 90\n20539 Hamburg', zuordnungen: [{ roleId: rolle(ROLLE_PLANER, 'LST'), gewerk: 'LST' }], notiz: 'Fachplanung Leit- und Sicherungstechnik' }),
+    kontakt({ anrede: 'Herr', vorname: 'Piet', nachname: 'Osterkamp', firma: 'Osterkamp Fahrleitungsbau', email: 'p.osterkamp@example.de', telefon: '+49 4101 7788-0', anschrift: 'Industriering 9\n25436 Tornesch', zuordnungen: [{ roleId: rolle(ROLLE_PLANER, 'OLA'), gewerk: 'OLA' }], notiz: 'Fachplanung Oberleitung' }),
+    kontakt({ anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', mobil: '+49 172 9988776', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle(ROLLE_BVB, 'KIB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Frau', vorname: 'Marlene', nachname: 'Hoffstedt', firma: 'Bauvorlageberechtigung Nord', email: 'm.hoffstedt@example.de', telefon: '+49 40 224466-4', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle(ROLLE_BVB, 'LST'), gewerk: 'LST' }, { roleId: rolle(ROLLE_BVB, 'OLA'), gewerk: 'OLA' }], sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-BVB/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Herr', vorname: 'Dietmar', nachname: 'Krause', firma: 'Prüfstelle Krause', email: 'd.krause@example.de', telefon: '+49 4131 309-0', anschrift: 'Am Ochsenmarkt 1\n21335 Lüneburg', zuordnungen: [{ roleId: rolle(ROLLE_PSV, 'LST'), gewerk: 'LST' }], notiz: 'Planprüfung LST', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Frau', vorname: 'Yuki', nachname: 'Tanaka', firma: 'Prüfstelle Tanaka', email: 'y.tanaka@example.de', telefon: '+49 40 556677-1', anschrift: 'Alsterdorfer Damm 4\n22297 Hamburg', zuordnungen: [{ roleId: rolle(ROLLE_PSV, 'KIB'), gewerk: 'KIB' }, { roleId: rolle(ROLLE_PRST, 'KIB'), gewerk: 'KIB' }], notiz: 'Planprüfung und Prüfstatik KIB', sharepointEingang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Eingang', sharepointAusgang: 'https://example.sharepoint.com/sites/Nordkreuz-Pruefung/Freigegebene%20Dokumente/Ausgang' }),
+    kontakt({ anrede: 'Herr', vorname: 'Tobias', nachname: 'Reinhold', firma: 'Prüfstelle Erdung', email: 't.reinhold@example.de', telefon: '+49 40 445566-8', anschrift: 'Wandsbeker Chaussee 3\n22089 Hamburg', zuordnungen: [{ roleId: rolle('Erdungsprüfer'), gewerk: null }], notiz: 'Erdungsprüfung' }),
+    kontakt({ anrede: 'Herr', vorname: 'Sven', nachname: 'Dallmann', firma: 'Dallmann Bau GmbH', email: 's.dallmann@example.de', telefon: '+49 4101 5566-0', anschrift: 'Gewerbepark 4\n25469 Halstenbek', zuordnungen: inGewerken('Auftragnehmer', ['KIB', 'LST', 'OLA', 'VA']) }),
+    kontakt({ anrede: 'Frau', vorname: 'Heike', nachname: 'Petersen', firma: 'Bauüberwachung Nord', email: 'h.petersen@example.de', telefon: '+49 40 334455-2', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: inGewerken('Bauüberwacher', ['KIB', 'LST', 'OLA']) }),
   ];
 
   const eintrag = (d: Omit<PlanDocument, 'id' | 'projectId'>): PlanDocument => ({ id: zufallsId('doc'), projectId, ...d });

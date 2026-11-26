@@ -5,22 +5,38 @@
  * relationale Tabellen abgebildet werden kann (jede Entität hat eine
  * eigene ID, Referenzen laufen ausschließlich über IDs).
  */
+import { KATALOG_GEWERKE } from '../../../gemeinsam/funktionskatalog';
 
 export type ID = string;
 
 /** ISO-Datum ohne Zeitanteil, z.B. "2026-03-14". */
 export type ISODate = string;
 
-/** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 17;
+/**
+ * Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden
+ * (`migriere` in store/storage.ts; dort stehen die früheren Fassungen).
+ * Fassung 18: Art der Funktion (`StandardRolle.art`, `Role.art`) – ältere
+ * Stände erhalten sie laut Funktionskatalog (src/gemeinsam/funktionskatalog.ts).
+ */
+export const DATEN_VERSION = 18;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
  * ketten). Wird sie erhöht, übernimmt ein vorhandener Bestand beim nächsten
  * Laden die neuen Stammdaten – eigene Rollen, Varianten und laufende Planläufe
- * bleiben dabei unangetastet.
+ * bleiben dabei unangetastet (`stammdatenAktualisieren` in store/storage.ts).
+ * Fassung 5: Standard-Workflows mit parallelen Blöcken und Nachreichung.
+ * Fassung 6: Anliegen der Versandmail an den Versandschritten.
+ * Fassung 7: Die mitgelieferten Funktionen kommen aus dem Funktionskatalog
+ * (Liste der Anwender, gegliedert nach Art der Funktion). Vorhandene Bestände
+ * stellt `funktionenAufKatalogUmstellen` (store/katalogUmstellung.ts) um:
+ * frühere Bezeichnungen bekommen die des Katalogs („Fachtechnischer Prüfer“ →
+ * „Planprüfer“ …) – in Funktionen, Workflows, Planläufen und Pflichtenheften –,
+ * nicht mehr gelistete unbesetzte Funktionen entfallen, die des Katalogs
+ * kommen hinzu, ebenso die Gewerke OB, PT1 und PT2; OSE entfällt, wo es
+ * niemand mehr führt. Die Standard-Workflows werden dabei nicht ersetzt.
  */
-export const STAMMDATEN_VERSION = 6;
+export const STAMMDATEN_VERSION = 7;
 
 /* ------------------------------------------------------------------ */
 /* Bearbeiter                                                          */
@@ -349,19 +365,51 @@ export const SEITE_LABEL: Record<Seite, string> = {
  * Planlaufmanagement ist PLM, Planer und Fachspezialisten sind Planer,
  * prüfende Funktionen Prüfer, Bauvorlageberechtigte, Projektleitung und
  * Bauüberwachung der Auftraggeber. Alles andere bleibt offen (`null`).
+ * Ist die Art der Funktion bekannt, gilt `seiteAusArt`.
  */
 export function seiteAusFunktion(name: string): Seite | null {
   const n = name.trim();
   if (n.toLowerCase() === EIGENE_ROLLE.toLowerCase() || n.toLowerCase() === 'plm') return 'plm';
   if (/planer|fachspezialist/i.test(n)) return 'planer';
   if (istPrueferRolle(n)) return 'pruefer';
-  if (/bauvorlage|projektleitung|bauüberwachung|bauueberwachung|auftraggeber/i.test(n)) return 'auftraggeber';
+  if (/bauvorlage|projektleitung|bauüberwach|bauueberwach|auftraggeber/i.test(n)) return 'auftraggeber';
   return null;
 }
 
 /**
+ * Vorbelegung der Seite aus der Art einer Funktion (Kennung aus
+ * `FUNKTIONS_ARTEN`, src/gemeinsam/funktionskatalog.ts): Auftraggeber,
+ * Bauvorlageberechtigte und Bauüberwachung stehen auf der Seite des
+ * Auftraggebers, Ausführungs- und Entwurfsplanung auf der der Planer, Prüfer
+ * auf der der Prüfer – der Fachspezialist bleibt wie bisher Planer. In der Art
+ * „Projektsteuerung und Planlaufmanagement“ ist das Planlaufmanagement PLM,
+ * die Projektsteuerung Auftraggeber. Für alle übrigen Arten (Auftragnehmer,
+ * Anlagen- und Inbetriebnahmeverantwortliche, Betrieb, Abnahme, Sonstige)
+ * entscheidet wie bisher die Bezeichnung (`seiteAusFunktion`, meist `null`).
+ */
+export function seiteAusArt(art: string, name: string): Seite | null {
+  const n = name.trim().toLowerCase();
+  switch (art) {
+    case 'ag':
+    case 'bvb':
+    case 'buew':
+      return 'auftraggeber';
+    case 'ps-plm':
+      return n === EIGENE_ROLLE.toLowerCase() || n === 'plm' ? 'plm' : 'auftraggeber';
+    case 'ap':
+    case 'ep':
+      return 'planer';
+    case 'psv':
+      return /fachspezialist/i.test(n) ? 'planer' : 'pruefer';
+    default:
+      return seiteAusFunktion(name);
+  }
+}
+
+/**
  * Projektübergreifend gepflegte Rolle. Beim Anlegen eines Projekts werden
- * diese Rollen als Projektfunktionen übernommen.
+ * diese Rollen als Projektfunktionen übernommen. Mitgeliefert werden die
+ * Funktionen des Funktionskatalogs (`STANDARD_ROLLEN` in seed.ts).
  */
 export interface StandardRolle {
   id: ID;
@@ -370,12 +418,18 @@ export interface StandardRolle {
   farbe: string;
   beschreibung: string;
   /**
+   * Art der Funktion (Kennung aus `FUNKTIONS_ARTEN`,
+   * src/gemeinsam/funktionskatalog.ts) – die erste Ebene der Gliederung. Sie
+   * ist ein Merkmal: Erkannt wird eine Funktion weiter an Bezeichnung + Gewerk.
+   */
+  art: string;
+  /**
    * Gewerk, zu dem die Funktion gehört. Jedes Gewerk hat eigene Funktionen:
    * „Fachplaner OLA“ und „Fachplaner KIB“ sind zwei verschiedene Funktionen.
    * `null` steht für übergreifende Funktionen, die einmal besetzt werden.
    */
   gewerk: string | null;
-  /** Seite im Terminnachweis; null = nicht festgelegt (siehe seiteAusFunktion). */
+  /** Seite im Terminnachweis; null = nicht festgelegt (Vorbelegung: seiteAusArt, seiteAusFunktion). */
   seite: Seite | null;
 }
 
@@ -410,6 +464,8 @@ export interface Role {
   kuerzel: string;
   farbe: string;
   beschreibung: string;
+  /** Art der Funktion (Kennung aus `FUNKTIONS_ARTEN`, siehe StandardRolle). */
+  art: string;
   /** Gewerk der Funktion; null = übergreifend (siehe StandardRolle). */
   gewerk: string | null;
   /** Seite im Terminnachweis; null = nicht festgelegt (siehe StandardRolle). */
@@ -485,10 +541,11 @@ export const INDEX_LABEL: Record<DocumentKind, string> = {
 };
 
 /**
- * Mitgelieferte Gewerke. Der gepflegte Bestand steht in `AppData.gewerke`;
- * dort lassen sich weitere Gewerke ergänzen.
+ * Mitgelieferte Gewerke – die des Funktionskatalogs
+ * (src/gemeinsam/funktionskatalog.ts). Der gepflegte Bestand steht in
+ * `AppData.gewerke`; dort lassen sich weitere Gewerke ergänzen.
  */
-export const GEWERKE = ['EEA', 'KIB', 'LST', 'OLA', 'OSE', 'TK', 'VA'] as const;
+export const GEWERKE: readonly string[] = [...KATALOG_GEWERKE];
 
 /** Planungsphasen zur Auswahl; freie Eingabe bleibt zusätzlich möglich. */
 export const PLANUNGSPHASEN = ['Entwurfsplanung', 'Genehmigungsplanung', 'Ausführungsplanung'] as const;

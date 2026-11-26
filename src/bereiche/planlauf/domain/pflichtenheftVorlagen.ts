@@ -250,12 +250,15 @@ Hinweis: Der dargestellte Zeitbedarf berücksichtigt nicht die Planungszeiten de
 
 Die Weitergabe der digitalen Unterlagen erfolgt per E-Mail oder über die Datenaustauschplattform der Mailänder Consult GmbH.`;
 
-/** Bezeichnungen der mitgelieferten Gewerke in den Ansprechpartnern. */
+/** Bezeichnungen der mitgelieferten Gewerke (die des Funktionskatalogs) in den Ansprechpartnern. */
 const VORLAGE_GEWERKNAMEN: Record<string, string> = {
   EEA: 'EEA 50 Hz',
   KIB: 'Konstruktiver Ingenieurbau',
   LST: 'Leit- und Sicherungstechnik',
+  OB: 'Oberbau',
   OLA: 'Oberleitungsanlagen',
+  PT1: 'Leit- und Sicherungstechnik PT1',
+  PT2: 'Leit- und Sicherungstechnik PT2',
   TK: 'Telekommunikation',
   VA: 'Verkehrsanlagen',
 };

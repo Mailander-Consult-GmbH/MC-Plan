@@ -212,6 +212,13 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Bereichswechsel; Sicherungsknöpfe und Texte entfallen.
 * `.tabs` sind Pillen, die gewählte blau; `.badge` mit Ton (`green`, `orange`, `red`, `blue`,
   `purple`, `gelb`); Ampelpunkt `.dot`; Stern der Projektmarkierung `Icon name="stern"` in `.stern`.
+* **Funktionslisten** (Einstellungen → Funktionen und die Listen in den Projekten, in
+  Planlaufmanagement und Projektsteuerung gleich): erste Ebene die Art der Funktion über
+  `ArtReiter`, unter „Alle“ `ArtGruppenZeile` (`.gruppe-zeile`), zweite Ebene `GewerkFilter` neben
+  der Suche und `GewerkAbzeichen` hinter der Bezeichnung (blau „Übergreifend“, sonst neutral) –
+  alles aus `src/gemeinsam/FunktionsArten.tsx`, nicht nachbauen. Eine Karte mit einer Tabelle;
+  ihr Titel ist „Alle Funktionen“ bzw. der Name der Art. Die Tabellen kommen bei 400 px ohne
+  Querrollen aus (`.pl-funktionstabelle`, `.ps-funktionsliste`: die Zelle der Funktion bricht um).
 * **Logo:** `KaPlanLogo` und `KaPlanZeichen` (`src/shared/logos.tsx`) **zeichnen** das Logo
   „Planebenen“ als SVG – drei Polygone (oben Planlaufmanagement, Mitte Baubetriebsplanung, unten
   Projektsteuerung) und der Schriftzug als Text in Outfit – **ohne Kachel oder andere Fläche
@@ -287,14 +294,20 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   (Schlüssel `kaplan-projektregister.v1`): Projekte (Nummer, Bezeichnung, Beschreibung), ihre
   Zugehörigkeit je Bereich mit lokaler Kennung und Archivstand (`Mitgliedschaft`, `offen` =
   Übernahme steht aus) und die Projektbeteiligten mit Kontaktdaten und Funktionen (über
-  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). Archiviert ist ein Projekt nur je Bereich
+  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`; gegenüber dem Register vergleichen Abgleich
+  und Bereiche mit `registerSchluessel` – eine frühere Bezeichnung zählt dort als die heutige, und
+  `sichtFuerRegister` beider Bereiche meldet Funktionen unter der heutigen Bezeichnung
+  (`umbenannt`) –, eine geänderte Art zieht `uebertragen` am Registereintrag nach). Archiviert ist ein Projekt nur je Bereich
   (`istArchiviert`); die ★-Markierung der Bereiche steht nicht im Register. Die anderen Bereiche
   einer Projektansicht liefert `andereBereicheVon(bereich)`.
-  `register.ts` Modell, Laden/Speichern (`REGISTER_VERSION` 3: `aufbereiten()` stellt ältere
-  Stände um – Mitgliedschaften und Kennungen der Leistungsnachweise, ★-Spiegel und `herkunft`
-  entfallen, das frühere Archiv für alle Bereiche wird Archivstand je Bereich, Projekte, die kein
-  Bereich mehr führt, entfallen samt Personen; vorher entsteht die Rohkopie
-  `kaplan-projektregister.v1.vor-fassung-<n>`),
+  `register.ts` Modell, Laden/Speichern (`REGISTER_VERSION` 5: `aufbereiten()` stellt ältere
+  Stände um – seit Fassung 3 entfallen Mitgliedschaften und Kennungen der Leistungsnachweise,
+  ★-Spiegel und `herkunft`, das frühere Archiv für alle Bereiche wird Archivstand je Bereich,
+  Projekte, die kein Bereich mehr führt, entfallen samt Personen; seit Fassung 5 trägt jede
+  Funktion einer Person ihre Art (`FunktionsBezug.art`), und frühere Bezeichnungen bekommen die
+  des Funktionskatalogs; vorher entsteht die Rohkopie
+  `kaplan-projektregister.v1.vor-fassung-<n>` – geschrieben wird der umgestellte Stand erst mit
+  der nächsten Änderung des Registers),
   `registerAendern`/`useRegister` (ob das letzte Speichern gelang: `useRegisterSpeicherZustand`;
   ein ungespeicherter Stand wird bei jedem weiteren `registerAendern` erneut geschrieben,
   `registerErneutSpeichern`; speichert ein anderes Fenster, trägt der `storage`-Hörer ihn auf
@@ -345,7 +358,42 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Fassung von KaPlan.“ (mit „Seite neu laden“) und „Projektregister nicht gespeichert.“ mit
   „Erneut speichern“ (gelingt es wieder: „Projektregister gespeichert.“, ein verlorener Fokus geht
   an die Stelle des Hinweises, `.gem-registeranker`; ist der Stand eines anderen Fensters
-  unlesbar, meldet er das Verwerfen). Dazu **„Angemeldet als“ für alle Bereiche**:
+  unlesbar, meldet er das Verwerfen). Dazu der **Funktionskatalog** für Planlaufmanagement
+  und Projektsteuerung: `funktionskatalog.ts` führt die Arten der Funktionen (`FUNKTIONS_ARTEN`,
+  zwölf aus der Liste „Projektbeteiligte“ der Anwender und „Sonstige“; Kennung, Kurzzeichen, Name,
+  Farbe), die mitgelieferten Funktionen (`FUNKTIONS_KATALOG`: Art, Bezeichnung **ohne** Gewerk,
+  Gewerk oder `null`, Kürzel; `KATALOG_GEWERKE`) und die Umbenennungen früherer Bezeichnungen
+  (`FUNKTIONS_UMBENENNUNGEN` mit `umbenannt` für eine Funktion und `umbenannterVerweis` für eine
+  Stelle, die nur den Namen nennt). Die **Art ist ein Merkmal** jeder Funktion (`art`) und die
+  erste Ebene der Gliederung in den Listen – **nicht Teil des Schlüssels**: Erkannt wird eine
+  Funktion überall an Bezeichnung + Gewerk (`funktionsSchluessel`), jede Bezeichnung steht im
+  Katalog in genau einer Art. `artVon`/`artAus` liefern die Art zu einer Bezeichnung (Katalog,
+  sonst bekannte ältere Namen – eine umbenannte steht in der Art ihrer heutigen –, sonst
+  „Sonstige“), `funktionenVergleich` und `nachArt` die
+  Reihenfolge (Art, Bezeichnung, Gewerk), `kuerzelFuerGewerk` das Kürzel beim Übernehmen in ein
+  anderes Gewerk, `kuerzelDerBezeichnung` eines für eine bloße Bezeichnung, `artAusText` die Art
+  aus einer Excel-Zelle. Die Farben der Arten sind Daten wie die Funktionsfarben der Nutzer (nur
+  über `.dot`, `Avatar`, `--chip-farbe`), keine Farben der Oberfläche. **Ein neuer Stand der
+  Liste:** Einträge im Katalog nachtragen (Regeln im Kopf der Datei), Umbenennungen in die
+  Tabelle, dann die Fassungen erhöhen, mit denen die Bestände umstellen – `STAMMDATEN_VERSION`
+  und `DATEN_VERSION` des Planlaufmanagements, `DATEN_VERSION` der Projektsteuerung,
+  `REGISTER_VERSION`; **alle drei Speicher stellen mit derselben Tabelle um**, sonst holt der
+  Abgleich die alten Bezeichnungen aus dem Register zurück und legt Funktionen doppelt an.
+  `FunktionsArten.tsx` hält die Bausteine der Gliederung, in beiden Bereichen dieselben:
+  `ArtReiter` („Alle“ und je vorkommender Art ein Reiter mit ihrem Kurzzeichen; schmal brechen sie
+  um, `.gem-artreiter`), `ArtGruppenZeile` (Gruppenzeile je Art unter „Alle“), `ArtFeld` (Auswahl
+  im Dialog einer Funktion), `GewerkFilter` mit `gewerkPasst` (zweite Ebene, ohne
+  Groß-/Kleinschreibung) und `GewerkAbzeichen`
+  (das Gewerk hinter der Bezeichnung – es muss auch bei 400 px in jeder Zeile zu sehen sein).
+  Reiter und Filter sind Zustand der Ansicht, nicht der Adresse; `useWahlNachziehen` hält ihn auf
+  der gültigen Wahl (sonst spränge die Liste in einen Reiter zurück, den es zwischendurch nicht
+  gab). Die Zeilen einer Liste stehen als **eine flache, geschlüsselte Liste** im `tbody`
+  (`gruppen.flatMap`, Gruppenzeile mit eigenem Schlüssel) – nicht je Art in einem Fragment:
+  Wechselt eine Zeile die Art, hängt React sie um, und der Dialog gibt den Fokus an seinen Öffner
+  zurück; nach dem Speichern folgt die Ansicht der Zeile in ihre neue Art (`zeigen` über
+  `onGespeichert`, in allen vier Listen). Die Excel-Importe beider Bereiche schicken eine Bezeichnung durch `umbenannt`, bevor
+  sie eine Funktion suchen oder anlegen – eine Liste aus einer früheren Fassung legte sonst die
+  alten Namen wieder an. Dazu **„Angemeldet als“ für alle Bereiche**:
   `benutzer.ts` (Name und Farbschema, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
   `benutzerAendern`, `istDunkel`), `AngemeldetAls.tsx` (Knopf und Dialog in jeder Seitenleiste; eine eigene
   Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`.
@@ -399,7 +447,12 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     gesetztes Soll bleibt auch außerhalb des Verlaufs stehen, `sollManuell` gibt es nur mit Datum),
     Rücksprung mit Historie, Ampel, Verzug, gewichteter Fortschritt, To-Dos, Zuständigkeiten
     (`rolleFuerSchritt`: welche Funktion ein Schritt meint – die des Gewerks, ersatzweise die
-    übergreifende; `zustaendigkeitenNachziehen`: „von Hand“ gilt nur mit Person),
+    übergreifende, ohne Blick auf die Besetzung; danach richtet sich die Seite im Terminnachweis.
+    `zustaendigeRolle`: wessen Besetzung gilt – die besetzte Funktion des Gewerks, sonst **die
+    besetzte übergreifende gleichen Namens**, sonst die gemeinte; `kontaktFuerRolleUndGewerk`
+    liefert danach die Person und ist die einzige Stelle, die Zuständigkeit, neue Planläufe,
+    E-Mail-Regeln und Vorbelegungen fragen. `zustaendigkeitenNachziehen`: „von Hand“ gilt nur mit
+    Person),
   * `domain/abschluss.ts` Statuswechsel (`schrittStatusSetzen`), Wieder öffnen, Einfügen,
   * `domain/simulation.ts` Prognose, Basisplan und Rückwärtsrechnung – erledigt die Schritte mit
     `schrittStatusSetzen` und rechnet mit `recalcSollDaten`, also ohne eigene Regeln,
@@ -412,7 +465,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     (`kontaktLoeschen` nimmt an offenen Schritten Person und „von Hand“ zurück), Sammelaktionen als
     reine Funktionen; `funktionAendern` (hinter `updateRole`): Ein Gewerkwechsel zieht
     `zuordnungen[].gewerk` der Personen mit, eine Umbenennung `roleName` und `MailRegel.roleName` in
-    den Planläufen des Projekts, für die genau diese Funktion gilt (`rolleFuerSchritt`; führt das
+    den Planläufen des Projekts, für die die Besetzung genau dieser Funktion gilt (`zustaendigeRolle`; führt das
     Gewerk eines Laufs die neue Bezeichnung schon, gehen seine Schritte an dessen Funktion), und – trägt
     im Projekt keine Funktion mehr den alten Namen – in den Projekt-Workflows, nicht in den
     übergreifenden (`workflowsMitAlterBezeichnung` nennt die Workflows, aus denen ein neuer
@@ -454,9 +507,34 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     schreibt sie mit `eintraegeSchreiben` verlustfrei zurück). Die G-Nummer (`Project.gNummer`) teilt das
     Register mit der Baubetriebsplanung (`RegisterProjekt.gNummer`, `null` = noch unbekannt),
     Mobil und OE der Kontakte ebenso (`PERSON_FELDER`),
-  * `domain/seed.ts` mitgelieferte Funktionen, Standard-Workflows, E-Mail-Vorlagen, Demodaten
-    (Läufe über die Engine, zufällige IDs),
-  * `store/store.tsx` alle Schreibzugriffe, `store/storage.ts` Laden, Speichern, Migration,
+  * `domain/seed.ts` mitgelieferte Funktionen (`STANDARD_ROLLEN` – aus dem Funktionskatalog, mit
+    festen Kennungen `srol-…`; Farbe aus der Art, Seite aus `seiteAusArt` in `domain/types.ts`),
+    Standard-Workflows (nennen Funktionen über die Konstanten `ROLLE_…`), E-Mail-Vorlagen,
+    Demodaten (Läufe über die Engine, zufällige IDs; Funktionen über Bezeichnung + Gewerk gesucht),
+  * `store/store.tsx` alle Schreibzugriffe (ein neues Projekt legt seine Funktionen mit **einem**
+    `addRoles` an, nicht je Funktion ein `mutate`), `store/storage.ts` Laden, Speichern, Migration,
+    `store/katalogUmstellung.ts` die Umstellung eines Bestands auf den Funktionskatalog
+    (`funktionenAufKatalogUmstellen`, aus `stammdatenAktualisieren`): benennt Funktionen und alle
+    Stellen um, die eine Funktion nur beim Namen nennen (Schritte, E-Mail-Regeln und
+    Momentaufnahmen der Workflows und Planläufe, Pflichtenhefte und ihre Vorlagen – **eine neue
+    Stelle, die einen Funktionsnamen speichert, dort nachtragen**), setzt die Art, ersetzt die
+    Vorlagen durch Katalog + selbst Angelegtes und ergänzt in jedem Projekt die fehlenden
+    Funktionen des Katalogs; nur beim Umstieg von einem Stand vor Stammdaten 7 entfallen dabei
+    bisher mitgelieferte Funktionen, die der Katalog nicht mehr führt und die niemand ausfüllt
+    (`BISHER_MITGELIEFERT`), und das Gewerk OSE. Kennungen und Besetzung bleiben; fällt eine
+    umbenannte Funktion auf eine vorhandene, entscheidet die Besetzung (die unbesetzte entfällt –
+    die bleibende übernimmt deren Seite, wenn sie keine hat; sind beide besetzt, behält die alte
+    ihren früheren Namen – `registerSchluessel` lässt sie gegenüber dem Register trotzdem als die
+    heutige gelten). Ergänzte Funktionen tragen **feste Kennungen** (`rol-<Projekt>-<Katalogeintrag>`,
+    nicht `neueId`): Bestand, Sicherung und zweites Gerät vergeben dieselbe, sonst hielte der
+    Abgleich Gelöschtes für neu. Ein Gewerk des Katalogs in anderer Schreibweise des Bestands
+    bleibt ein Gewerk (`gewerkWieImBestand`). Zuletzt das **Netz**: Bekäme ein offener Schritt
+    eines laufenden Planlaufs nach der Umstellung eine andere Person (zwei frühere Bezeichnungen
+    sind jetzt dieselbe, und die besetzte Funktion des Gewerks gilt vor der übergreifenden), bleibt
+    die bisherige an ihm stehen (`contactManuell`; erledigte Schritte fasst das Netz nicht an) – wer die Umstellung
+    ändert, prüft je offenem Schritt, wer bisher an ihm stand (Person der gemeinten Funktion,
+    `rolleFuerSchritt`), gegen `kontaktFuerRolleUndGewerk` danach – hatte er niemanden, gilt die
+    neue Besetzung,
   * `lib/router.ts` Hash-Router, `pages/` Ansichten, `components/` fachliche Bausteine.
 * `src/bereiche/baubetrieb/` – gleich aufgebaut: `domain/workflow.ts` Standard-Workflows je Phase
   und Nachschlagen von Status (Anmeldungen verweisen per `statusId` auf einen Status; die
@@ -522,8 +600,16 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   (aus `teilnehmerNachziehen` und aus `protokollAendern` im Store; nicht bei getippten Angaben
   eines Gastes). `domain/beteiligteImport.ts` Excel-Import, `domain/punkte.ts` offene
   Aufgaben und Ampel, `domain/druck.ts` Druckfassungen. Eine Liste offener Punkte (LOP) gibt es
-  nicht mehr; ältere Bestände verlieren sie beim Laden. Funktionen tragen ein Gewerk (`null` =
-  übergreifend); angezeigt wird stets `funktionsName`. Ein Eintrag besteht aus `zeilen`; jede
+  nicht mehr; ältere Bestände verlieren sie beim Laden. Funktionen tragen eine Art (`art`, siehe
+  Funktionskatalog) und ein Gewerk (`null` = übergreifend); in Auswahl, Protokoll, Druck und
+  Meldungen steht `funktionsName`, in den beiden Listen (Funktionen, Projektbeteiligte) die
+  Bezeichnung mit dem Gewerk als Abzeichen (`FunktionsZelle` in `components/common.tsx`).
+  `STANDARD_FUNKTIONEN` und `STANDARD_GEWERKE` (`domain/seed.ts`) kommen aus dem Katalog;
+  `ausFassung8` (`store/storage.ts`) stellt ältere Bestände um – umbenennen (gleichnamige
+  Funktionen werden zu einer, ihre Personen gehen mit), Art setzen, Katalog ergänzen; **entfernt
+  wird dort nichts**, Kürzel vorhandener Funktionen bleiben (die Protokolle nennen sie). Die
+  Reihenfolge der Projektbeteiligten liefert allein `nachFunktion` (`pages/projekt/Beteiligte.tsx`:
+  Art, Bezeichnung, Gewerk, Name) – für Liste, Druck, Excel und die Auswahl der Teilnehmenden. Ein Eintrag besteht aus `zeilen`; jede
   Zeile merkt sich ihr Ursprungsprotokoll (`herkunft`, im Druck „aus Prot. 1“). Eine Ergänzung mit
   eigener Art (`Zeile.typ` ≠ `null`) ist ein eigener Punkt unter dem Eintrag mit eigenem `wer`,
   `termin` und `status`; ohne Art läuft sie unter dem Ursprung mit. TOPs, Einträge und Zeilen
@@ -621,11 +707,16 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   also bei jeder neuen Fassung auch über schon Umgestelltes (`rollenAufteilen` teilt deshalb nur
   Funktionen des früheren Modells mit `gewerke`/`gewerkBezug` auf; Funktionen mit Feld `gewerk`
   behalten Kennung und Besetzung).
-* Mitgelieferte Stammdaten geändert (`STANDARD_ROLLEN`, `STANDARD_TEMPLATES` in `seed.ts`)?
+* Mitgelieferte Stammdaten geändert (Funktionskatalog, `STANDARD_TEMPLATES` in `seed.ts`)?
   **`STAMMDATEN_VERSION`** erhöhen, damit vorhandene Bestände sie übernehmen
-  (`stammdatenAktualisieren`). Achtung: Das ersetzt alle Standard-Workflows samt Änderungen der
-  Nutzer, überschreibt Funktionen gleichen Namens und Gewerks und stellt gelöschte mitgelieferte
-  Funktionen (auch in Projekten) wieder her.
+  (`stammdatenAktualisieren`). Achtung: Das überschreibt die projektübergreifenden Funktionen
+  gleichen Namens und Gewerks mit denen des Katalogs und stellt gelöschte mitgelieferte Funktionen
+  (auch in Projekten) wieder her. Die **Standard-Workflows ersetzt es seit Fassung 7 nicht mehr**
+  (nur ein Bestand vor Fassung 6 bekommt sie neu, selbst geänderte bleiben über `FINGERABDRUECKE`
+  als Kopie; aus Fassung 6 werden sie nur umbenannt, damit Änderungen der Nutzer bleiben). Eine
+  Fassung, die geänderte Standard-Workflows ausliefern soll, muss das in
+  `stammdatenAktualisieren` wieder einschalten und braucht dafür einen Fingerabdruck der
+  Fassung, die sie ablöst (samt E-Mail-Regeln).
 * `window.planlaufGestartet` nicht umbenennen – `index.html` und `app/index.html` rufen ihn auf.
 * Ob ein Eintrag einen eigenen Planlauf hat, entscheidet allein `hatEigenenPlanlauf`
   (`domain/types.ts`): Planverzeichnisse laufen gebündelt oder mit Plänen einzeln, Pläne lassen

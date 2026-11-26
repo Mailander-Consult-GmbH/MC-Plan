@@ -27,6 +27,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { nachRaeumenSpeichern, speicherVoll } from '../shared/speicher';
+import { artAus, umbenannt } from './funktionskatalog';
 
 export type ID = string;
 
@@ -60,8 +61,14 @@ export function andereBereicheVon(bereich: ProjektBereich): ProjektBereich[] {
  * (`Mitgliedschaft.markiert`, nur von den Leistungsnachweisen gelesen) entfallen.
  * Fassung 4: G-Nummer am Projekt (`gNummer`, bei älteren Ständen `null` = noch
  * unbekannt) und Organisationseinheit an der Person (`oe`).
+ * Fassung 5: Art der Funktion (`FunktionsBezug.art`, bei älteren Ständen laut
+ * Funktionskatalog) – und die Funktionen älterer Stände tragen die
+ * Bezeichnungen des Katalogs (`FUNKTIONS_UMBENENNUNGEN` in funktionskatalog.ts,
+ * etwa „Bau AN“ → „Auftragnehmer“). Planlaufmanagement und Projektsteuerung
+ * stellen ihre Bestände mit derselben Tabelle um; ohne diesen Schritt holte
+ * der erste Abgleich die alten Bezeichnungen aus dem Register zurück.
  */
-export const REGISTER_VERSION = 4;
+export const REGISTER_VERSION = 5;
 
 const KEY = 'kaplan-projektregister.v1';
 
@@ -95,12 +102,22 @@ export interface RegisterProjekt {
   bereiche: Partial<Record<ProjektBereich, Mitgliedschaft>>;
 }
 
-/** Funktion einer Person im Projekt, bereichsübergreifend über Bezeichnung und Gewerk erkannt. */
+/**
+ * Funktion einer Person im Projekt, bereichsübergreifend über Bezeichnung und
+ * Gewerk erkannt (`registerSchluessel` – eine frühere Bezeichnung zählt als
+ * die heutige). Kürzel und Art sind Beigaben und gehören nicht zum Schlüssel.
+ * Beim Kürzel bleibt der zuerst eingetragene Wert. Eine geänderte Art zieht
+ * der Bereich nach, der sie ändert (`uebertragen`) – eine Funktion, die ein
+ * anderer Bereich danach aus dem Register anlegt, bekommt so die heutige Art;
+ * Funktionen, die er schon führt, behalten ihre.
+ */
 export interface FunktionsBezug {
   name: string;
   /** null = übergreifend. */
   gewerk: string | null;
   kuerzel: string;
+  /** Art der Funktion (Kennung aus `FUNKTIONS_ARTEN`, funktionskatalog.ts). */
+  art: string;
 }
 
 /** Kontaktdaten, die sich die Bereiche teilen. */
@@ -208,6 +225,21 @@ export function funktionsSchluessel(f: Pick<FunktionsBezug, 'name' | 'gewerk'>):
   return `${f.name.trim().toLowerCase()}|${(f.gewerk ?? '').trim().toLowerCase()}`;
 }
 
+/**
+ * Schlüssel einer Funktion gegenüber dem Register: Bezeichnung + Gewerk, eine
+ * frühere Bezeichnung (`FUNKTIONS_UMBENENNUNGEN`) zählt als die heutige. Der
+ * Abgleich mit dem Register vergleicht überall hiermit – beim Übertragen wie
+ * in den Bereichen: Führt ein Bereich eine Funktion unter ihrem früheren Namen
+ * (bei der Umstellung behalten oder später von Hand so angelegt), ist sie
+ * gegenüber dem Register dieselbe wie die heutige. Sonst ließe sich eine
+ * Besetzung im einen Bereich nicht aufheben, solange der andere die Funktion
+ * anders nennt. Wo es um die Funktion selbst geht (Umstellung, Listen der
+ * Bereiche), gilt weiter `funktionsSchluessel`.
+ */
+export function registerSchluessel(f: Pick<FunktionsBezug, 'name' | 'gewerk'>): string {
+  return funktionsSchluessel({ name: umbenannt(f.name, f.gewerk), gewerk: f.gewerk });
+}
+
 export function projektTitel(p: Pick<RegisterProjekt, 'nummer' | 'name'>): string {
   return [p.nummer, p.name].filter((x) => x.trim()).join(' ');
 }
@@ -219,6 +251,29 @@ export function projektTitel(p: Pick<RegisterProjekt, 'nummer' | 'name'>): strin
 export type RegisterZustand = 'ok' | 'ladefehler' | 'neuere_fassung';
 
 type Roh = Record<string, unknown>;
+
+/**
+ * Funktionen einer Person: Einträge ohne Bezeichnung entfallen, die Art kommt
+ * – wo sie fehlt oder unbekannt ist – aus dem Funktionskatalog. `vorKatalog`
+ * (Stand vor Fassung 5): Die Bezeichnungen werden auf die des Katalogs
+ * umgestellt; fallen dabei zwei Funktionen einer Person auf denselben
+ * Schlüssel, bleibt die erste.
+ */
+function funktionenAufbereiten(wert: unknown, vorKatalog: boolean): FunktionsBezug[] {
+  const aus: FunktionsBezug[] = [];
+  const gesehen = new Set<string>();
+  for (const f of liste(wert)) {
+    const gewerk = text(f.gewerk).trim() || null;
+    const alt = text(f.name).trim();
+    if (!alt) continue;
+    const name = vorKatalog ? umbenannt(alt, gewerk) : alt;
+    const schluessel = funktionsSchluessel({ name, gewerk });
+    if (gesehen.has(schluessel)) continue;
+    gesehen.add(schluessel);
+    aus.push({ name, gewerk, kuerzel: text(f.kuerzel), art: artAus(f.art, name, gewerk) });
+  }
+  return aus;
+}
 const liste = (w: unknown): Roh[] => (Array.isArray(w) ? w.filter((x): x is Roh => !!x && typeof x === 'object') : []);
 const text = (w: unknown) => (typeof w === 'string' ? w : '');
 const BEREICH_IDS: ProjektBereich[] = PROJEKT_BEREICHE.map((b) => b.id);
@@ -240,6 +295,8 @@ function idsAufbereiten(w: unknown): Partial<Record<ProjektBereich, ID>> {
  * abgleich.ts beim Lösen der letzten Mitgliedschaft tut.
  */
 export function aufbereiten(roh: Roh): Register {
+  // Stände vor Fassung 5 tragen noch die früheren Bezeichnungen der Funktionen
+  const vorKatalog = typeof roh.version !== 'number' || roh.version < 5;
   const projekte = liste(roh.projekte)
     .filter((p) => text(p.id))
     .map((p): RegisterProjekt => {
@@ -273,9 +330,7 @@ export function aufbereiten(roh: Roh): Register {
         ...felder,
         id: text(p.id),
         projektId: text(p.projektId),
-        funktionen: liste(p.funktionen)
-          .filter((f) => text(f.name).trim())
-          .map((f) => ({ name: text(f.name).trim(), gewerk: text(f.gewerk).trim() || null, kuerzel: text(f.kuerzel) })),
+        funktionen: funktionenAufbereiten(p.funktionen, vorKatalog),
         ids: idsAufbereiten(p.ids),
         geaendertAm: text(p.geaendertAm),
       };

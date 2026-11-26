@@ -273,6 +273,8 @@ const FELDNAMEN: Record<string, string> = {
   settings: 'Einstellungen',
   kuerzel: 'Kürzel',
   farbe: 'Farbe',
+  // Art der Funktion (StandardRolle.art, Role.art) – „Art“ allein meint hier die Art des Eintrags (`kind`)
+  art: 'Art der Funktion',
   gewerk: 'Gewerk',
   seite: 'Seite',
   anrede: 'Anrede',
