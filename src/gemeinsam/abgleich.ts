@@ -25,7 +25,6 @@
 import {
   PERSON_FELDER,
   PROJEKT_BEREICHE,
-  funktionsSchluessel,
   newId,
   personName,
   projektImBereich,
@@ -284,13 +283,13 @@ export function uebertragen(bereich: ProjektBereich, alt: Sicht, neu: Sicht, reg
         }
       }
       // Geänderte Art einer Funktion, die die Person behält: am Eintrag des Registers nachziehen –
-      // sonst legte ein anderer Bereich die Funktion später in der früheren Art an
-      // (dieselbe Funktion heißt hier: dieselbe Bezeichnung – wechselt die Person an eine Funktion, die
-      // nur gegenüber dem Register dieselbe ist, bleibt die Art des Registers)
-      const artVorher = new Map(a.funktionen.map((f) => [funktionsSchluessel(f), f.art]));
+      // sonst legte ein anderer Bereich die Funktion später in der früheren Art an. Die Bereiche
+      // melden ihre Funktionen unter der heutigen Bezeichnung; wechselt die Person an eine Funktion,
+      // die gegenüber dem Register dieselbe ist (früherer Name), gilt deren Art.
+      const artVorher = new Map(a.funktionen.map((f) => [registerSchluessel(f), f.art]));
       const artNeu = new Map<string, string>();
       for (const f of n.funktionen) {
-        const bisher = artVorher.get(funktionsSchluessel(f));
+        const bisher = artVorher.get(registerSchluessel(f));
         if (bisher !== undefined && bisher !== f.art) artNeu.set(registerSchluessel(f), f.art);
       }
       if (artNeu.size > 0 && reg.funktionen.some((f) => (artNeu.get(registerSchluessel(f)) ?? f.art) !== f.art)) {

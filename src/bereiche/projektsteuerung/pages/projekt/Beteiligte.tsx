@@ -41,6 +41,7 @@ import {
   personName,
   type Beteiligter,
   type Funktion,
+  type ID,
   type Projekt,
 } from '../../domain/types';
 import { useStore } from '../../store/store';
@@ -115,6 +116,16 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
     return (zurArt === ALLE_ARTEN || artInfo(f.art).id === zurArt) && gewerkPasst(f.gewerk, gewerkFilter);
   };
   const inAuswahl = alle.filter((b) => passt(b, art));
+  /**
+   * Nach dem Speichern: Die Ansicht folgt der Person in die Art und das Gewerk
+   * ihrer Funktion, statt sie zu verlieren (wie die Funktionslisten) – die
+   * Zeile bleibt sichtbar, und der Dialog gibt den Fokus an ihren Knopf zurück.
+   */
+  const zeigen = (_id: ID, funktionId: ID | null) => {
+    const f = data.funktionen.find((x) => x.id === funktionId);
+    if (!alleArten && (!f || artInfo(f.art).id !== art)) setArtWahl(f ? artInfo(f.art).id : ALLE_ARTEN);
+    if (!f ? gewerkFilter !== ALLE_GEWERKE : !gewerkPasst(f.gewerk, gewerkFilter)) setGewerkWahl(ALLE_GEWERKE);
+  };
   const gesucht = suche.trim().toLowerCase();
   const sichtbar = inAuswahl.filter((b) => {
     if (!gesucht) return true;
@@ -331,7 +342,12 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
       {importOffen ? <BeteiligteImport projekt={projekt} onClose={() => setImportOffen(false)} /> : null}
 
       {dialog ? (
-        <BeteiligterDialog projektId={projekt.id} beteiligter={dialog.beteiligter} onClose={() => setDialog(null)} />
+        <BeteiligterDialog
+          projektId={projekt.id}
+          beteiligter={dialog.beteiligter}
+          onClose={() => setDialog(null)}
+          onGespeichert={zeigen}
+        />
       ) : null}
 
       {loeschen ? (

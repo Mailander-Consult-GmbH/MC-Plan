@@ -42,7 +42,9 @@ export function sichtFuerRegister(d: ProjektsteuerungDaten): Sicht {
         mobil: b.mobil,
         anschrift: b.anschrift,
         notiz: b.notiz,
-        funktionen: f ? [{ name: f.name, gewerk: f.gewerk, kuerzel: f.kuerzel, art: f.art }] : [],
+        // Dem Register gegenüber unter der heutigen Bezeichnung (wie das Planlaufmanagement) – es führt
+        // so nie eine frühere, auch wenn hier jemand eine Funktion von Hand unter altem Namen anlegt
+        funktionen: f ? [{ name: umbenannt(f.name, f.gewerk), gewerk: f.gewerk, kuerzel: f.kuerzel, art: f.art }] : [],
       };
     }),
     // Je Person eine Funktion: Sie muss zu denen des Registers gehören.

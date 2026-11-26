@@ -62,11 +62,18 @@ export function sichtFuerRegister(d: AppData): Sicht {
       inhaber.set(k, [...(inhaber.get(k) ?? []), c.id]);
     }
   }
+  /** Projekt|Schlüssel der Funktionen, von denen eine noch niemand ausfüllt. */
+  const besetzteRollen = new Set(d.contacts.flatMap((c) => c.zuordnungen.map((z) => z.roleId)));
+  const frei = new Set(
+    d.roles.filter((r) => !besetzteRollen.has(r.id)).map((r) => `${r.projectId}|${registerSchluessel(r)}`),
+  );
   return {
     /**
      * Die Funktionen passen, wenn die Person keine führt, die das Register
      * nicht nennt, und jede fehlende bereits eine andere Person ausfüllt –
-     * mehr kann der Abgleich nicht erreichen (siehe zuordnungenFuer).
+     * mehr kann der Abgleich nicht erreichen (siehe zuordnungenFuer). Führt
+     * das Projekt die Funktion unter früherer und heutiger Bezeichnung und ist
+     * eine davon noch frei, passt es nicht: `zuordnungenFuer` vergibt die freie.
      */
     funktionenPassen: (person, register) => {
       const ziel = register.filter((f) => !istEigeneFunktion(f));
@@ -76,7 +83,8 @@ export function sichtFuerRegister(d: AppData): Sicht {
       return ziel.every((f) => {
         const k = registerSchluessel(f);
         if (eigene.has(k)) return true;
-        return (inhaber.get(`${person.projektId}|${k}`) ?? []).some((id) => id !== person.id);
+        const pk = `${person.projektId}|${k}`;
+        return !frei.has(pk) && (inhaber.get(pk) ?? []).some((id) => id !== person.id);
       });
     },
     projekte: d.projects.map((p) => ({ id: p.id, nummer: p.nummer, gNummer: p.gNummer, name: p.name, beschreibung: p.beschreibung })),

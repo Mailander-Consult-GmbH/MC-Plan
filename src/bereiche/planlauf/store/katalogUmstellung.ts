@@ -29,7 +29,9 @@
  *    zuständige Person: Meinte er nach der Umstellung eine andere Funktion
  *    (etwa die neue, unbesetzte des Gewerks statt der besetzten
  *    übergreifenden gleicher Bezeichnung), bleibt die bisherige Person am
- *    Schritt stehen – wie von Hand gesetzt.
+ *    Schritt stehen – wie von Hand gesetzt. Erledigte Schritte fasst das Netz
+ *    nicht an (sie halten fest, wer sie bearbeitet hat); wird einer später
+ *    wieder geöffnet, folgt er der Funktion, die dann für ihn gilt.
  *
  * Das Projektregister und die Projektsteuerung stellen ihre Bestände mit
  * derselben Tabelle um – sonst holte der Abgleich die alten Bezeichnungen

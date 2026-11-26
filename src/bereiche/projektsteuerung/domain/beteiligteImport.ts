@@ -93,31 +93,6 @@ function nameTeilen(name: string): { vorname: string; nachname: string } {
   return { vorname: teile.slice(0, -1).join(' '), nachname: teile[teile.length - 1] ?? '' };
 }
 
-/**
- * Sucht die Funktion über Bezeichnung und Gewerk bzw. über die volle
- * Bezeichnung. `frueher`: Der Text ist eine frühere Bezeichnung
- * („Bauunternehmen“, „Fachplanung LST“) und meint die Funktion, die heute
- * anders heißt (`umbenannt`).
- */
-function ueberBezeichnung(funktionen: Funktion[], text: string, gewerk: string | null, frueher: boolean): Funktion | undefined {
-  const heisst = (f: Funktion, bezeichnung: string, g: string | null) =>
-    gleich(f.name, frueher ? umbenannt(bezeichnung.trim(), g) : bezeichnung);
-  /** Der Text ist die volle Bezeichnung dieser Funktion: „Fachplaner LST“ bzw. die übergreifende beim Namen. */
-  const voll = (f: Funktion): boolean => {
-    if (!frueher) return gleich(funktionsName(f), text);
-    if (!f.gewerk) return heisst(f, text, null);
-    const ende = ` ${f.gewerk}`.toLowerCase();
-    return text.toLowerCase().endsWith(ende) && heisst(f, text.slice(0, -ende.length), f.gewerk);
-  };
-  if (gewerk) {
-    return funktionen.find((f) => heisst(f, text, gewerk) && gleich(f.gewerk ?? '', gewerk)) ?? funktionen.find(voll);
-  }
-  const volle = funktionen.find(voll);
-  if (volle) return volle;
-  const gleicheBezeichnung = funktionen.filter((f) => heisst(f, text, f.gewerk));
-  return gleicheBezeichnung.length === 1 ? gleicheBezeichnung[0] : undefined;
-}
-
 /** Ergebnis der Suche nach der Funktion einer Zeile. */
 interface FunktionsTreffer {
   funktion?: Funktion;
@@ -128,27 +103,60 @@ interface FunktionsTreffer {
 }
 
 /**
- * Funktion zu Bezeichnung und Gewerk. Ohne Gewerk zählt die volle
- * Bezeichnung („Fachplaner LST“ oder eine übergreifende Funktion), dann eine
- * eindeutige Bezeichnung in irgendeinem Gewerk – wörtlich, sonst als frühere
- * Bezeichnung –, zuletzt das Kürzel: Tragen es mehrere Funktionen (der Katalog
- * führt „AN“, „FP“ oder „PING“ je Gewerk), gilt die eine übergreifende
- * darunter, sonst keine.
+ * Funktion zu Bezeichnung und Gewerk – in dieser Reihenfolge, jeweils erst
+ * wörtlich, dann als frühere Bezeichnung (`umbenannt`: „Bauunternehmen“,
+ * „Fachplanung LST“ meinen die Funktion, die heute anders heißt):
+ *
+ * 1. Mit Gewerk: Bezeichnung in genau diesem Gewerk. Die frühere Bezeichnung
+ *    geht hier der vollen Bezeichnung vor – „Bauüberwachung | LST“ meint
+ *    „Bauüberwacher LST“, nicht die übergreifende „Bauüberwachung“, die ein
+ *    umgestellter Bestand weiter führt.
+ * 2. Die volle Bezeichnung („Fachplaner LST“ oder eine übergreifende Funktion
+ *    beim Namen).
+ * 3. Ohne Gewerk: eine eindeutige Bezeichnung in irgendeinem Gewerk.
+ * 4. Ohne Gewerk zuletzt das Kürzel: Tragen es mehrere Funktionen (der Katalog
+ *    führt „AN“, „FP“ oder „PING“ je Gewerk), gilt die eine übergreifende
+ *    darunter, sonst keine.
  */
 function funktionSuchen(funktionen: Funktion[], name: string, gewerk: string | null): FunktionsTreffer {
   const text = name.trim();
-  if (!text) return { frueher: false, kuerzelMehrdeutig: false };
-  const woertlich = ueberBezeichnung(funktionen, text, gewerk, false);
-  if (woertlich) return { funktion: woertlich, frueher: false, kuerzelMehrdeutig: false };
-  const umbenannte = ueberBezeichnung(funktionen, text, gewerk, true);
-  if (umbenannte) return { funktion: umbenannte, frueher: true, kuerzelMehrdeutig: false };
-  if (gewerk) return { frueher: false, kuerzelMehrdeutig: false };
+  const keine: FunktionsTreffer = { frueher: false, kuerzelMehrdeutig: false };
+  if (!text) return keine;
+  /** Erst wörtlich, dann als frühere Bezeichnung. */
+  const beides = (suche: (frueher: boolean) => Funktion | undefined): FunktionsTreffer | undefined => {
+    for (const frueher of [false, true]) {
+      const funktion = suche(frueher);
+      if (funktion) return { funktion, frueher, kuerzelMehrdeutig: false };
+    }
+    return undefined;
+  };
+  const heisst = (f: Funktion, bezeichnung: string, g: string | null, frueher: boolean) =>
+    gleich(f.name, frueher ? umbenannt(bezeichnung.trim(), g) : bezeichnung);
+  /** Der Text ist die volle Bezeichnung dieser Funktion: „Fachplaner LST“ bzw. die übergreifende beim Namen. */
+  const voll = (f: Funktion, frueher: boolean): boolean => {
+    if (!frueher) return gleich(funktionsName(f), text);
+    if (!f.gewerk) return heisst(f, text, null, true);
+    const ende = ` ${f.gewerk}`.toLowerCase();
+    return text.toLowerCase().endsWith(ende) && heisst(f, text.slice(0, -ende.length), f.gewerk, true);
+  };
+
+  const imGewerk = gewerk
+    ? beides((frueher) => funktionen.find((f) => heisst(f, text, gewerk, frueher) && gleich(f.gewerk ?? '', gewerk)))
+    : undefined;
+  const treffer = imGewerk ?? beides((frueher) => funktionen.find((f) => voll(f, frueher)));
+  if (treffer) return treffer;
+  if (gewerk) return keine;
+
+  const eindeutig = beides((frueher) => {
+    const gleicheBezeichnung = funktionen.filter((f) => heisst(f, text, f.gewerk, frueher));
+    return gleicheBezeichnung.length === 1 ? gleicheBezeichnung[0] : undefined;
+  });
+  if (eindeutig) return eindeutig;
+
   const mitKuerzel = funktionen.filter((f) => f.kuerzel && gleich(f.kuerzel, text));
-  if (mitKuerzel.length <= 1) return { funktion: mitKuerzel[0], frueher: false, kuerzelMehrdeutig: false };
+  if (mitKuerzel.length <= 1) return { ...keine, funktion: mitKuerzel[0] };
   const uebergreifend = mitKuerzel.filter((f) => f.gewerk === null);
-  return uebergreifend.length === 1
-    ? { funktion: uebergreifend[0], frueher: false, kuerzelMehrdeutig: false }
-    : { frueher: false, kuerzelMehrdeutig: true };
+  return uebergreifend.length === 1 ? { ...keine, funktion: uebergreifend[0] } : { ...keine, kuerzelMehrdeutig: true };
 }
 
 /** Die Funktion zu Bezeichnung und Gewerk einer Zeile (siehe `funktionSuchen`). */

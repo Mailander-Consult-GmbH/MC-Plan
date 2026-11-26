@@ -44,8 +44,8 @@ export function BeteiligterDialog({
   beteiligter?: Beteiligter;
   vorbelegung?: Partial<Werte>;
   onClose: () => void;
-  /** Meldet die Kennung der gespeicherten Person. */
-  onGespeichert?: (id: ID) => void;
+  /** Meldet die Kennung der gespeicherten Person und die ihrer Funktion. */
+  onGespeichert?: (id: ID, funktionId: ID | null) => void;
 }) {
   const { data, addBeteiligter, updateBeteiligter, deleteBeteiligter } = useStore();
   const toast = useToast();
@@ -80,11 +80,11 @@ export function BeteiligterDialog({
     if (beteiligter) {
       updateBeteiligter(beteiligter.id, werte);
       toast('Person gespeichert.');
-      onGespeichert?.(beteiligter.id);
+      onGespeichert?.(beteiligter.id, werte.funktionId);
     } else {
       const id = addBeteiligter({ ...werte, projektId });
       toast(`${personName(werte)} in die Projektbeteiligtenliste aufgenommen.`);
-      onGespeichert?.(id);
+      onGespeichert?.(id, werte.funktionId);
     }
     onClose();
   };
