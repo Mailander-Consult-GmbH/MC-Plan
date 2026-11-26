@@ -295,8 +295,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Zugehörigkeit je Bereich mit lokaler Kennung und Archivstand (`Mitgliedschaft`, `offen` =
   Übernahme steht aus) und die Projektbeteiligten mit Kontaktdaten und Funktionen (über
   Bezeichnung + Gewerk erkannt, `funktionsSchluessel`; gegenüber dem Register vergleichen Abgleich
-  und Bereiche mit `registerSchluessel` – eine frühere Bezeichnung zählt dort als die heutige –,
-  eine geänderte Art zieht `uebertragen` am Registereintrag nach). Archiviert ist ein Projekt nur je Bereich
+  und Bereiche mit `registerSchluessel` – eine frühere Bezeichnung zählt dort als die heutige, und
+  `sichtFuerRegister` beider Bereiche meldet Funktionen unter der heutigen Bezeichnung
+  (`umbenannt`) –, eine geänderte Art zieht `uebertragen` am Registereintrag nach). Archiviert ist ein Projekt nur je Bereich
   (`istArchiviert`); die ★-Markierung der Bereiche steht nicht im Register. Die anderen Bereiche
   einer Projektansicht liefert `andereBereicheVon(bereich)`.
   `register.ts` Modell, Laden/Speichern (`REGISTER_VERSION` 5: `aufbereiten()` stellt ältere
@@ -389,7 +390,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   gab). Die Zeilen einer Liste stehen als **eine flache, geschlüsselte Liste** im `tbody`
   (`gruppen.flatMap`, Gruppenzeile mit eigenem Schlüssel) – nicht je Art in einem Fragment:
   Wechselt eine Zeile die Art, hängt React sie um, und der Dialog gibt den Fokus an seinen Öffner
-  zurück. Die Excel-Importe beider Bereiche schicken eine Bezeichnung durch `umbenannt`, bevor
+  zurück; nach dem Speichern folgt die Ansicht der Zeile in ihre neue Art (`zeigen` über
+  `onGespeichert`, in allen vier Listen). Die Excel-Importe beider Bereiche schicken eine Bezeichnung durch `umbenannt`, bevor
   sie eine Funktion suchen oder anlegen – eine Liste aus einer früheren Fassung legte sonst die
   alten Namen wieder an. Dazu **„Angemeldet als“ für alle Bereiche**:
   `benutzer.ts` (Name und Farbschema, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
@@ -524,8 +526,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     bleibt ein Gewerk (`gewerkWieImBestand`). Zuletzt das **Netz**: Meint ein offener Schritt
     eines laufenden Planlaufs nach der Umstellung eine andere Funktion (`rolleFuerSchritt` nimmt
     die des Gewerks vor der übergreifenden, auch die unbesetzte), bleibt die bisherige Person an
-    ihm stehen (`contactManuell`) – wer die Umstellung ändert, prüft je offenem Schritt
-    `kontaktFuerRolleUndGewerk` vorher gegen nachher,
+    ihm stehen (`contactManuell`; erledigte Schritte fasst das Netz nicht an) – wer die Umstellung
+    ändert, prüft je offenem Schritt `kontaktFuerRolleUndGewerk` vorher gegen nachher,
   * `lib/router.ts` Hash-Router, `pages/` Ansichten, `components/` fachliche Bausteine.
 * `src/bereiche/baubetrieb/` – gleich aufgebaut: `domain/workflow.ts` Standard-Workflows je Phase
   und Nachschlagen von Status (Anmeldungen verweisen per `statusId` auf einen Status; die

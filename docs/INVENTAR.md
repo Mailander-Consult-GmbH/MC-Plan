@@ -1375,8 +1375,9 @@ Zeilen gesucht, Spalten nach `BETEILIGTE_KOPF` (Art, Funktion, Gewerk, Kürzel,
 Anrede, Vorname, Nachname, Firma / Büro, E-Mail, Telefon, Mobil, Anschrift,
 Notiz) mit weiteren Schreibweisen; die Spalte „Art“ ist optional und gilt für Funktionen,
 die der Import anlegt (`artAusText` in `src/gemeinsam/funktionskatalog.ts`, ohne Angabe `artVon`). Die Funktion
-einer Zeile sucht `funktionSuchen`: über Bezeichnung und Gewerk bzw. die volle Bezeichnung –
-wörtlich, sonst als frühere Bezeichnung (`umbenannt`; Hinweis „heißt jetzt „…““) –, ohne Gewerk
+einer Zeile sucht `funktionSuchen`, jeweils erst wörtlich, dann als frühere Bezeichnung
+(`umbenannt`; Hinweis „heißt jetzt „…““): mit Gewerk die Bezeichnung in genau diesem Gewerk, dann
+die volle Bezeichnung, ohne Gewerk eine eindeutige Bezeichnung in irgendeinem Gewerk und
 zuletzt über das Kürzel, wenn es eindeutig ist (tragen es mehrere Funktionen, gilt die eine
 übergreifende darunter, sonst kommt die Person ohne Funktion: „Kürzel „…“ tragen mehrere
 Funktionen – ohne Funktion“). Ein Gewerk steht in der Schreibweise von `daten.gewerke` bzw. seiner
@@ -1612,8 +1613,9 @@ Das einzige, was sich die Bereiche teilen, liegt in `src/gemeinsam/`:
   `src/gemeinsam/funktionskatalog.ts`). Gegenüber dem Register vergleichen der Abgleich
   (`uebertragen`, `gleicheFunktionen` in `src/gemeinsam/abgleich.ts`) und die Bereiche Funktionen
   mit `registerSchluessel` (`src/gemeinsam/register.ts`): Bezeichnung + Gewerk, eine frühere
-  Bezeichnung zählt als die heutige. `uebertragen` zieht außerdem eine geänderte Art am Eintrag
-  des Registers nach.
+  Bezeichnung zählt als die heutige. `sichtFuerRegister` beider Bereiche meldet Funktionen unter
+  der heutigen Bezeichnung. `uebertragen` zieht außerdem eine geänderte Art am Eintrag des
+  Registers nach.
   Lässt sich der gespeicherte Stand
   nicht lesen oder stammt er aus einer neueren Fassung, bleibt er unberührt
   (`registerZustand`), und die Bereiche gleichen nicht ab. Ist der Speicher

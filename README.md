@@ -734,7 +734,7 @@ gilt vor der übergreifenden gleicher Bezeichnung – auch die unbesetzte, die m
 Projekt kommt. Meint ein Schritt deshalb nach der Umstellung eine andere Funktion als vorher (etwa
 „Bauleiter KIB“ statt einer selbst angelegten, besetzten übergreifenden „Bauleiter“), bleibt die
 bisherige Person an ihm stehen wie von Hand gesetzt; neue Planläufe folgen der Besetzung der
-Funktionen. Funktionen, die der Katalog in die Projekte bringt, tragen eine feste Kennung aus
+Funktionen, ebenso ein damals schon erledigter Schritt, der später wieder geöffnet wird. Funktionen, die der Katalog in die Projekte bringt, tragen eine feste Kennung aus
 Projekt und Katalogeintrag – so erkennt der Abgleich mit einer Sicherung desselben Stands (auch
 der eines zweiten Geräts) sie wieder, samt Gelöschtem und Umbenanntem.
 
@@ -1550,7 +1550,8 @@ Funktionen (der Katalog führt „AN“ oder „FP“ je Gewerk), gilt die eine 
 sonst kommt die Person ohne Funktion, und die Vorschau sagt es. Eine **frühere Bezeichnung** – die
 Excel-Ausgabe einer Fassung vor dem Funktionskatalog nennt „Bauunternehmen“, „Fachplanung | LST“
 oder „Bauüberwachung | KIB“ – trifft die Funktion, die heute anders heißt („Auftragnehmer“,
-„Fachplaner LST“, „Bauüberwacher KIB“); eine Funktion, die der Import anlegt, entsteht unter der
+„Fachplaner LST“, „Bauüberwacher KIB“ – auch wenn der Bestand daneben die übergreifende
+„Bauüberwachung“ führt); eine Funktion, die der Import anlegt, entsteht unter der
 heutigen Bezeichnung. „… Übergreifend“ hinter der Bezeichnung meint die Funktion ohne Gewerk. Ein
 Gewerk steht in der Schreibweise der Gewerkliste („pt1“ ist „PT1“); nennt die Spalte *Gewerk* kein
 Gewerk der Liste, sondern eine Art der Funktion (etwa „BÜW“), entsteht daraus kein Gewerk – die
@@ -1818,7 +1819,8 @@ umstellen; sonst holte der Abgleich die alten Bezeichnungen zurück. Gegenüber 
 eine frühere Bezeichnung überall als die heutige (`registerSchluessel`): Führt ein Bereich eine
 Funktion noch unter ihrem früheren Namen – bei der Umstellung behalten, weil die neue Bezeichnung
 schon vergeben und besetzt war, oder später von Hand so angelegt –, ist sie für den Abgleich
-dieselbe Funktion. Ändert ein Bereich die Art einer Funktion, zieht er sie im Register nach; ein
+dieselbe Funktion, und beide Bereiche melden sie dem Register unter der heutigen Bezeichnung (so
+zeigt sie auch die Baubetriebsplanung). Ändert ein Bereich die Art einer Funktion, zieht er sie im Register nach; ein
 anderer Bereich, der die Funktion danach aus dem Register anlegt, bekommt die heutige Art –
 Funktionen, die er schon führt, behalten ihre.
 
