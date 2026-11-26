@@ -20,14 +20,22 @@
  *    angelegten.
  * 4. In den Projekten entfallen früher mitgelieferte Funktionen, die der
  *    Katalog nicht mehr führt und die niemand ausfüllt; die des Katalogs
- *    kommen hinzu. Besetzte und selbst angelegte Funktionen bleiben immer.
- * 5. Die Gewerke des Katalogs kommen hinzu; OSE entfällt, wo es niemand mehr
- *    nennt.
+ *    kommen hinzu – mit einer festen Kennung aus Projekt und Katalogeintrag,
+ *    damit Bestand, Sicherung und ein zweites Gerät dieselbe vergeben.
+ *    Besetzte und selbst angelegte Funktionen bleiben immer.
+ * 5. Die Gewerke des Katalogs kommen hinzu – in der Schreibweise, die der
+ *    Bestand schon führt; OSE entfällt, wo es niemand mehr nennt.
+ * 6. Kein offener Schritt eines laufenden Planlaufs wechselt dabei die
+ *    zuständige Person: Meinte er nach der Umstellung eine andere Funktion
+ *    (etwa die neue, unbesetzte des Gewerks statt der besetzten
+ *    übergreifenden gleicher Bezeichnung), bleibt die bisherige Person am
+ *    Schritt stehen – wie von Hand gesetzt.
  *
  * Das Projektregister und die Projektsteuerung stellen ihre Bestände mit
  * derselben Tabelle um – sonst holte der Abgleich die alten Bezeichnungen
- * zurück. Die Funktion ist rein (bis auf die Kennungen neuer Funktionen aus
- * `neueId`) und ändert auf einem schon umgestellten Bestand nichts mehr.
+ * zurück. Die Funktion ist rein (`neueId` vergibt nur dort eine Kennung, wo
+ * die feste schon vergeben ist) und ändert auf einem schon umgestellten
+ * Bestand nichts mehr.
  */
 import {
   KATALOG_GEWERKE,
@@ -38,7 +46,7 @@ import {
   umbenannterVerweis,
 } from '../../../gemeinsam/funktionskatalog';
 import { funktionsSchluessel } from '../../../gemeinsam/register';
-import { rolleFuerSchritt } from '../domain/engine';
+import { kontaktFuerRolleUndGewerk, rolleFuerSchritt } from '../domain/engine';
 import { STANDARD_ROLLEN } from '../domain/seed';
 import type {
   Antwort,
@@ -117,7 +125,10 @@ const VORLAGE_NACH_SCHLUESSEL = new Map(STANDARD_ROLLEN.map((r) => [schluesselVo
  * schon (etwa ein selbst angelegter „Planprüfer KIB“ neben „Fachtechnischer
  * Prüfer KIB“), entscheidet die Besetzung:
  *
- * * Die vorhandene ist unbesetzt – sie entfällt, die umbenannte bleibt.
+ * * Die vorhandene ist unbesetzt – sie entfällt, die umbenannte bleibt. Hat
+ *   die umbenannte keine Seite für den Terminnachweis, übernimmt sie die der
+ *   entfallenden (eine aus der Projektsteuerung übernommene „Fachplanung LST“
+ *   ohne Seite wird so nicht zum „Fachplaner LST“, den keine Seite zählt).
  * * Die vorhandene ist besetzt, die umzubenennende nicht – diese entfällt.
  * * Beide sind besetzt – die umzubenennende behält ihre frühere Bezeichnung;
  *   niemand verliert seine Funktion.
@@ -148,7 +159,9 @@ function projektFunktionenUmbenennen(roles: readonly Role[], besetzt: ReadonlySe
         continue;
       }
       if (ziel) stand.delete(ziel[0]);
-      stand.set(alt, { ...aktuell, name });
+      // Ohne eigene Seite gilt die der entfallenden Funktion – sonst zählte der Terminnachweis sie nirgends
+      const seiteVomZiel = aktuell.seite == null ? ziel?.[1].seite : undefined;
+      stand.set(alt, { ...aktuell, name, ...(seiteVomZiel != null ? { seite: seiteVomZiel } : {}) });
     }
     for (const r of liste) neu.set(r, stand.get(r) ?? null);
   }
@@ -369,8 +382,9 @@ function vorlageUmstellen(vorlage: PflichtenheftVorlage, mitGewerk: MitGewerk): 
  * aktuellen Daten-Fassung (nach `migriere`); die Standard-Workflows behandelt
  * der Aufrufer (`stammdatenAktualisieren` in storage.ts) – selbst geänderte
  * erkennt er am Fingerabdruck, und der zählt die früheren Bezeichnungen.
- * `neueId` vergibt die Kennungen der Funktionen, die aus dem Katalog in die
- * Projekte kommen.
+ * Funktionen, die aus dem Katalog in die Projekte kommen, tragen eine feste
+ * Kennung (`rol-<Projekt>-<Katalogeintrag>`); `neueId` vergibt nur dort eine,
+ * wo sie schon vergeben ist.
  *
  * `vorKatalog`: Der Bestand kommt von einem Stand vor Stammdaten-Fassung 7.
  * Nur dann entfällt, was bis Fassung 6 mitgeliefert war und nicht mehr im
@@ -470,7 +484,15 @@ export function funktionenAufKatalogUmstellen(
     vergeben.add(id);
     eigene.push({ ...r, id, name, art: artFuer({ ...r, name }) });
   }
-  const standardRollen: StandardRolle[] = [...STANDARD_ROLLEN.map((r) => ({ ...r })), ...eigene];
+  // Ein Gewerk des Katalogs, das der Bestand in anderer Schreibweise führt („Ob“ statt „OB“), bleibt
+  // ein Gewerk: Vorlagen und ergänzte Funktionen stehen in der Schreibweise des Bestands
+  const schreibweise = new Map<string, string>();
+  for (const g of daten.gewerke ?? []) if (g && g.trim() && !schreibweise.has(norm(g))) schreibweise.set(norm(g), g);
+  const gewerkWieImBestand = (g: string | null): string | null => (g === null ? null : (schreibweise.get(norm(g)) ?? g));
+  const standardRollen: StandardRolle[] = [
+    ...STANDARD_ROLLEN.map((r) => ({ ...r, gewerk: gewerkWieImBestand(r.gewerk) })),
+    ...eigene,
+  ];
 
   /* 4. Projekte: nicht mehr Gelistetes ohne Person entfällt, der Katalog kommt hinzu,
         vorhandene Funktionen des Katalogs erhalten dessen Kürzel – wenn es noch das frühere ist. */
@@ -487,34 +509,70 @@ export function funktionenAufKatalogUmstellen(
   };
   const roles: Role[] = umbenannte.filter(bleibt).map(angepasst);
   const nachProjekt = jeProjekt(roles);
+  const kennungen = new Set(roles.map((r) => r.id));
   for (const p of daten.projects ?? []) {
     for (const f of fehlendeKatalogFunktionen(nachProjekt(p.id))) {
       const vorlage = VORLAGE_NACH_SCHLUESSEL.get(schluesselVon(f))!;
+      // Fest und sprechend statt gewürfelt: Der Bestand, eine Sicherung desselben Stands und ein
+      // zweites Gerät vergeben dieselbe Kennung – der Abgleich erkennt daran Gelöschtes und Umbenanntes
+      const fest = `rol-${p.id}-${vorlage.id.replace(/^srol-/, '')}`;
+      const id = kennungen.has(fest) ? neueId('rol') : fest;
+      kennungen.add(id);
       roles.push({
-        id: neueId('rol'),
+        id,
         projectId: p.id,
         name: vorlage.name,
         kuerzel: vorlage.kuerzel,
         farbe: vorlage.farbe,
         beschreibung: vorlage.beschreibung,
         art: vorlage.art,
-        gewerk: vorlage.gewerk,
+        gewerk: gewerkWieImBestand(vorlage.gewerk),
         seite: vorlage.seite,
       });
     }
   }
 
   /* 5. Gewerke: die des Katalogs kommen hinzu; ein früher mitgeliefertes, das der Katalog nicht führt
-        (OSE), entfällt, wenn es keine Funktion und kein Eintrag mehr nennt. */
-  const genannt = new Set(
-    [...standardRollen.map((r) => r.gewerk), ...roles.map((r) => r.gewerk), ...(daten.documents ?? []).map((d) => d.gewerk)].map(norm),
+        (OSE), entfällt, wenn es keine Funktion und kein Eintrag mehr nennt. Was eine Funktion nennt,
+        steht in der Liste – auch wenn sie es bisher nicht führte (sonst ließe es sich nicht pflegen). */
+  const nennungen = [...standardRollen.map((r) => r.gewerk), ...roles.map((r) => r.gewerk)].filter(
+    (g): g is string => !!g && !!g.trim(),
   );
+  const genannt = new Set([...nennungen, ...(daten.documents ?? []).map((d) => d.gewerk)].map(norm));
   const imKatalog = new Set(KATALOG_GEWERKE.map(norm));
   const frueher = new Set(GEWERKE_BIS_FASSUNG6.map(norm));
   const bisher = (daten.gewerke ?? []).filter((g) => g && g.trim());
-  const gewerke = [...bisher, ...KATALOG_GEWERKE.filter((g) => !bisher.some((x) => norm(x) === norm(g)))]
+  const gewerke = ohneDoppelte([...bisher, ...KATALOG_GEWERKE, ...nennungen])
     .filter((g) => !vorKatalog || imKatalog.has(norm(g)) || !frueher.has(norm(g)) || genannt.has(norm(g)))
     .sort((a, b) => a.localeCompare(b, 'de'));
+
+  /* 6. Netz: Kein offener Schritt eines laufenden Planlaufs wechselt durch die Umstellung die Person.
+        Die Funktion des Gewerks gilt vor der übergreifenden gleicher Bezeichnung (`rolleFuerSchritt`) –
+        auch die unbesetzte, die eben aus dem Katalog kam, und auch dort, wo zwei frühere Bezeichnungen
+        jetzt dieselbe sind („Bauunternehmen“ und „Bau AN KIB“ heißen beide „Auftragnehmer“). Meint ein
+        Schritt deshalb eine andere Funktion als vorher, bleibt die bisherige Person an ihm stehen, wie
+        von Hand gesetzt. Hatte er niemanden, gilt die neue Besetzung. */
+  const endgueltigIn = jeProjekt(roles);
+  const kontakteIn = new Map<ID, AppData['contacts']>();
+  for (const c of daten.contacts ?? []) kontakteIn.set(c.projectId, [...(kontakteIn.get(c.projectId) ?? []), c]);
+  const laeufe = runs.map((run, i) => {
+    if (run.status !== 'laufend') return run;
+    const kontakte = kontakteIn.get(run.projectId) ?? [];
+    if (kontakte.length === 0) return run;
+    const gewerk = gewerkVon.get(run.documentId) ?? '';
+    const frueherSchritte = daten.runs[i].steps;
+    let geaendert = false;
+    const steps = run.steps.map((s, j) => {
+      if (s.status === 'erledigt' || (s.contactManuell && s.contactId !== null)) return s;
+      const vorher = kontaktFuerRolleUndGewerk(kontakte, vorherIn(run.projectId), frueherSchritte[j].roleName ?? '', gewerk);
+      if (vorher === null) return s;
+      const nachher = kontaktFuerRolleUndGewerk(kontakte, endgueltigIn(run.projectId), s.roleName ?? '', gewerk);
+      if (vorher === nachher) return s;
+      geaendert = true;
+      return { ...s, contactId: vorher, contactManuell: true };
+    });
+    return geaendert ? { ...run, steps } : run;
+  });
 
   return {
     ...daten,
@@ -523,7 +581,7 @@ export function funktionenAufKatalogUmstellen(
     projects,
     roles,
     templates,
-    runs,
+    runs: laeufe,
     ...(pflichtenheftVorlagen ? { pflichtenheftVorlagen } : {}),
   };
 }

@@ -372,7 +372,7 @@ export function seiteAusFunktion(name: string): Seite | null {
   if (n.toLowerCase() === EIGENE_ROLLE.toLowerCase() || n.toLowerCase() === 'plm') return 'plm';
   if (/planer|fachspezialist/i.test(n)) return 'planer';
   if (istPrueferRolle(n)) return 'pruefer';
-  if (/bauvorlage|projektleitung|bauüberwachung|bauueberwachung|auftraggeber/i.test(n)) return 'auftraggeber';
+  if (/bauvorlage|projektleitung|bauüberwach|bauueberwach|auftraggeber/i.test(n)) return 'auftraggeber';
   return null;
 }
 
