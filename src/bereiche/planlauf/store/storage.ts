@@ -22,7 +22,6 @@ import {
   type ProcessTemplate,
   type ProcessTemplateStep,
   type ProtokollEintrag,
-  type Role,
   type RunStep,
   type StandardRolle,
   type StepType,
@@ -43,6 +42,8 @@ import { anstehendeSchritte, istErledigt, statusAbgleichen, verfolgen } from '..
 import { basisplanFestlegen } from '../domain/simulation';
 import { gliedern } from '../domain/workflowGraph';
 import { regelAnNaechste, uebergabeRegeln } from '../domain/mailRegeln';
+import { artAus, umbenannt } from '../../../gemeinsam/funktionskatalog';
+import { GEWERKE_BIS_FASSUNG6, UEBERGREIFEND_BIS_FASSUNG6, funktionenAufKatalogUmstellen } from './katalogUmstellung';
 import { formatDate, today } from '../../../shared/dates';
 import { nachRaeumenSpeichern, rohkopieVorEinspielen as rohkopieAnlegen, speicherVoll, type RohkopieErgebnis } from '../../../shared/speicher';
 
@@ -61,16 +62,17 @@ const rollenName = (name: string) => (name === ALTE_EIGENE_ROLLE ? EIGENE_ROLLE 
 /**
  * Frühere Fassungen führten je Funktion eine Liste von Gewerken bzw. nur
  * „individuell“/„übergreifend“. Daraus wird die Liste der Gewerke, aus der
- * anschließend je Gewerk eine eigene Funktion entsteht.
+ * anschließend je Gewerk eine eigene Funktion entsteht. Ohne Angabe gilt, was
+ * damals mitgeliefert war: Planlaufmanagement und Projektleitung übergreifend,
+ * alles andere in den damaligen sieben Gewerken – der Funktionskatalog kam
+ * erst später und stellt solche Bestände anschließend um (katalogUmstellung.ts).
  */
 function gewerkeVon(rolle: { gewerke?: string[]; gewerk?: string | null; gewerkBezug?: string; name: string }): string[] {
   if (rolle.gewerk !== undefined) return rolle.gewerk === null ? [] : [rolle.gewerk];
   if (Array.isArray(rolle.gewerke)) return rolle.gewerke;
   if (rolle.gewerkBezug === 'uebergreifend') return [];
-  if (rolle.gewerkBezug === 'individuell') return [...GEWERKE];
-  const standard = STANDARD_ROLLEN.filter((s) => s.name === rollenName(rolle.name));
-  if (standard.length === 0) return [...GEWERKE];
-  return standard.every((s) => s.gewerk === null) ? [] : standard.map((s) => s.gewerk!).filter(Boolean);
+  if (rolle.gewerkBezug === 'individuell') return [...GEWERKE_BIS_FASSUNG6];
+  return UEBERGREIFEND_BIS_FASSUNG6.includes(rollenName(rolle.name)) ? [] : [...GEWERKE_BIS_FASSUNG6];
 }
 
 /** Kennung der aus einer früheren Funktion je Gewerk entstehenden Funktion. */
@@ -248,6 +250,11 @@ const eigenerKontakt = (daten: AppData): AppData => eigeneKontakteSichern(daten,
 /**
  * Fingerabdrücke der mitgelieferten Standard-Workflows je früherer
  * Stammdaten-Fassung (siehe workflowFingerabdruck); ab Fassung 5 mit Blöcken.
+ * Für Fassung 6 gibt es keinen: Mit Fassung 7 änderten sich an den
+ * Standard-Workflows nur die Bezeichnungen der Funktionen, sie werden deshalb
+ * umbenannt statt ersetzt (siehe stammdatenAktualisieren). Ersetzt eine
+ * spätere Fassung die Standard-Workflows wieder, braucht sie einen
+ * Fingerabdruck des Stands der Fassung 7 (mit den Bezeichnungen des Katalogs).
  */
 const FINGERABDRUECKE: Record<number, { werte: Record<ID, string>; mitBloecken: boolean }> = {
   4: { werte: STANDARD_FASSUNG4_FINGERABDRUCK, mitBloecken: false },
@@ -255,68 +262,63 @@ const FINGERABDRUECKE: Record<number, { werte: Record<ID, string>; mitBloecken: 
 };
 
 /**
- * Übernimmt neue mitgelieferte Stammdaten in einen bestehenden Bestand:
- * Funktionen und Standard-Workflows werden auf den aktuellen Stand
- * gebracht und fehlende Rollen in jedes Projekt ergänzt. Eigene Rollen,
- * eigene Ketten, Projektvarianten und laufende Planläufe bleiben erhalten.
+ * Übernimmt neue mitgelieferte Stammdaten in einen bestehenden Bestand.
+ *
+ * **Standard-Workflows.** Stammt der Bestand aus einer Fassung vor 6, werden
+ * die mitgelieferten Standard-Workflows ersetzt; beim Wechsel von Fassung 4
+ * bzw. 5 bleibt ein selbst geänderter als eigene Kopie „<Name> (eigene
+ * Fassung)“ erhalten – erkannt am Fingerabdruck der damals mitgelieferten
+ * Fassung. Der Vergleich läuft vor jeder Umbenennung: Der Fingerabdruck zählt
+ * die früheren Bezeichnungen der Funktionen. Aus Fassung 6 werden die
+ * Standard-Workflows **nicht** ersetzt – für sie gibt es keinen Fingerabdruck,
+ * und geändert hat sich an ihnen nur, wie die Funktionen heißen: Das trägt die
+ * Umstellung auf den Funktionskatalog nach, Änderungen der Anwender bleiben.
+ *
+ * **Funktionen** (Fassung 7): `funktionenAufKatalogUmstellen` gibt früheren
+ * Bezeichnungen die des Katalogs (Funktionen, Workflows, Planläufe,
+ * Pflichtenhefte), setzt die Art, ersetzt die mitgelieferten Vorlagen durch
+ * die des Katalogs, ergänzt sie in jedem Projekt, entfernt dort nicht mehr
+ * Gelistetes ohne Person und führt die Gewerke nach. Eigene und besetzte
+ * Funktionen, eigene Workflows, Projektvarianten und laufende Planläufe
+ * bleiben erhalten.
+ *
+ * Zuletzt ist jeder mitgelieferte Standard-Workflow vorhanden – ein gelöschter
+ * kommt zurück, wie bisher bei jeder neuen Fassung.
  */
 function stammdatenAktualisieren(daten: AppData): { daten: AppData; kopien: string[] } {
-  if ((daten.stammdatenVersion ?? 0) >= STAMMDATEN_VERSION) return { daten, kopien: [] };
+  const bisher = daten.stammdatenVersion ?? 0;
+  if (bisher >= STAMMDATEN_VERSION) return { daten, kopien: [] };
 
-  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-  /** Funktionen sind gleich, wenn Bezeichnung und Gewerk übereinstimmen. */
-  const gleicheFunktion = (a: { name: string; gewerk: string | null }, b: { name: string; gewerk: string | null }) =>
-    gleich(a.name, b.name) && (a.gewerk ?? '') === (b.gewerk ?? '');
-
-  // Funktionen: mitgelieferte übernehmen, eigene behalten
-  const eigeneStandards = (daten.standardRollen ?? []).filter(
-    (r) => !STANDARD_ROLLEN.some((s) => gleicheFunktion(s, r)),
-  );
-  const standardRollen: StandardRolle[] = [
-    ...STANDARD_ROLLEN.map((r) => ({ ...r })),
-    ...eigeneStandards,
-  ];
-
-  // Standard-Workflows ersetzen, eigene Ketten und Projektvarianten behalten.
-  // Beim Wechsel von Fassung 4 bzw. 5 bleibt ein selbst geänderter
-  // Standard-Workflow als eigene Kopie „<Name> (eigene Fassung)“ erhalten –
-  // erkannt am Fingerabdruck der damals mitgelieferten Fassung.
-  const eigeneKetten = (daten.templates ?? []).filter(
-    (t) => t.projectId !== null || t.herkunft !== 'standard',
-  );
-  const vergleich = FINGERABDRUECKE[daten.stammdatenVersion ?? 0];
-  const kopien: ProcessTemplate[] = vergleich
-    ? (daten.templates ?? [])
-        .filter((t) => t.projectId === null && t.herkunft === 'standard')
-        .filter((t) => {
-          const soll = vergleich.werte[t.id];
-          return soll !== undefined && workflowFingerabdruck(t, vergleich.mitBloecken) !== soll;
-        })
-        .map(eigeneFassung)
-    : [];
-  const templates: ProcessTemplate[] = [...STANDARD_TEMPLATES.map((t) => ({ ...t })), ...kopien, ...eigeneKetten];
-
-  // Fehlende Rollen in jedes Projekt ergänzen
-  const roles: Role[] = [...(daten.roles ?? [])];
-  for (const projekt of daten.projects) {
-    for (const standard of STANDARD_ROLLEN) {
-      const vorhanden = roles.some((r) => r.projectId === projekt.id && gleicheFunktion(r, standard));
-      if (vorhanden) continue;
-      roles.push({
-        id: neueId('rol'),
-        projectId: projekt.id,
-        name: standard.name,
-        kuerzel: standard.kuerzel,
-        farbe: standard.farbe,
-        beschreibung: standard.beschreibung,
-        gewerk: standard.gewerk,
-        seite: standard.seite,
-      });
-    }
+  // 1. Standard-Workflows – vor der Umbenennung der Funktionen (Fingerabdruck)
+  let templates: ProcessTemplate[] = daten.templates ?? [];
+  let kopien: ProcessTemplate[] = [];
+  if (bisher < 6) {
+    const eigeneKetten = templates.filter((t) => t.projectId !== null || t.herkunft !== 'standard');
+    const vergleich = FINGERABDRUECKE[bisher];
+    kopien = vergleich
+      ? templates
+          .filter((t) => t.projectId === null && t.herkunft === 'standard')
+          .filter((t) => {
+            const soll = vergleich.werte[t.id];
+            return soll !== undefined && workflowFingerabdruck(t, vergleich.mitBloecken) !== soll;
+          })
+          .map(eigeneFassung)
+      : [];
+    templates = [...STANDARD_TEMPLATES.map((t) => ({ ...t })), ...kopien, ...eigeneKetten];
   }
 
+  // 2. Funktionen, Namensverweise und Gewerke auf den Funktionskatalog
+  const umgestellt = funktionenAufKatalogUmstellen({ ...daten, templates }, neueId);
+
+  // 3. Fehlt ein mitgelieferter Standard-Workflow, kommt er hinzu
+  const fehlende = STANDARD_TEMPLATES.filter((t) => !umgestellt.templates.some((x) => x.id === t.id)).map((t) => ({ ...t }));
+
   return {
-    daten: { ...daten, stammdatenVersion: STAMMDATEN_VERSION, standardRollen, templates, roles },
+    daten: {
+      ...umgestellt,
+      stammdatenVersion: STAMMDATEN_VERSION,
+      templates: fehlende.length > 0 ? [...fehlende, ...umgestellt.templates] : umgestellt.templates,
+    },
     kopien: kopien.map((t) => t.name),
   };
 }
@@ -405,6 +407,16 @@ function rueckmeldungVerbinden<T extends ProcessTemplateStep | RunStep>(steps: T
 /** Seite einer Funktion; ältere Bestände kennen sie nicht – Vorbelegung aus der Bezeichnung. */
 function mitSeite<T extends { name: string; seite?: StandardRolle['seite'] }>(rolle: T): T & { seite: StandardRolle['seite'] } {
   return { ...rolle, seite: rolle.seite !== undefined ? rolle.seite : seiteAusFunktion(rolle.name) };
+}
+
+/**
+ * Art einer Funktion; Bestände vor Fassung 18 kennen sie nicht – sie kommt aus
+ * dem Funktionskatalog. Der kennt die heutigen Bezeichnungen: Eine frühere
+ * („Fachtechnischer Prüfer“) zählt deshalb mit der, die sie mit der
+ * Stammdaten-Fassung 7 bekommt (`umbenannt`). Eine gültige Art bleibt.
+ */
+function mitArt<T extends { name: string; gewerk: string | null; art?: unknown }>(rolle: T): T & { art: string } {
+  return { ...rolle, art: artAus(rolle.art, umbenannt(rolle.name, rolle.gewerk), rolle.gewerk) };
 }
 
 /**
@@ -534,6 +546,9 @@ function vorlagenJeGeschaeftsbereich(daten: AppData): Pick<AppData, 'pflichtenhe
  * Fassung 16: G-Nummer und Stammdaten an Projekten, Mobil und
  * Organisationseinheit an Kontakten (leer). Ab Fassung 17: Region in den
  * Stammdaten (leer) und die Vorlagen des Pflichtenhefts je Geschäftsbereich.
+ * Ab Fassung 18: Art der Funktion an den projektübergreifenden Funktionen und
+ * denen der Projekte (`mitArt`) – sonst nichts Fachliches; Bezeichnungen und
+ * Bestand der Funktionen stellt `stammdatenAktualisieren` um (Stammdaten-Fassung 7).
  */
 function migriere(daten: AppData): AppData {
   if (daten.version === DATEN_VERSION) return ohneFarbmodus(daten);
@@ -572,7 +587,7 @@ function migriere(daten: AppData): AppData {
     },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0
-        ? rollenAufteilen(daten.standardRollen).map(mitSeite)
+        ? rollenAufteilen(daten.standardRollen).map(mitSeite).map(mitArt)
         : STANDARD_ROLLEN.map((r) => ({ ...r })),
     // E-Mail-Vorlagen werden projektübergreifend gepflegt; frühere
     // Projektvorlagen wandern beim ersten Laden in die gemeinsame Liste.
@@ -603,7 +618,8 @@ function migriere(daten: AppData): AppData {
         settings,
       };
     }),
-    roles: rollenAufteilen(daten.roles ?? []).map(mitSeite),
+    // Fassung 18: Art der Funktion
+    roles: rollenAufteilen(daten.roles ?? []).map(mitSeite).map(mitArt),
     contacts: (daten.contacts ?? []).map((c) => {
       const alt = c as unknown as { roleIds?: string[] };
       const alteRollen = daten.roles ?? [];

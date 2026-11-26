@@ -346,7 +346,7 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
     case 'ketten':
       return { titel: 'Workflows', sub: 'Standard-Workflows und Projektvarianten' };
     case 'rollen':
-      return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Gewerken' };
+      return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Art der Funktion' };
     case 'vorlagen':
       return { titel: 'Vorlagen', sub: 'E-Mail-Texte und Excel-Vorlagen für den Upload' };
     case 'terminrechner':

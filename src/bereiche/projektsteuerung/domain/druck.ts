@@ -11,7 +11,11 @@
  * Gestrichenes – Tagesordnungspunkt, Eintrag oder Zeile – steht
  * durchgestrichen, mit blauer Linie in dem Protokoll, in dem es erledigt bzw.
  * gestrichen wurde; der Text bleibt dabei schwarz.
+ *
+ * Die Projektbeteiligtenliste ist nach der Art der Funktion gegliedert – je
+ * Art eine Zwischenüberschrift über die volle Breite.
  */
+import { nachArt, type FunktionsArt } from '../../../gemeinsam/funktionskatalog';
 import { druckeHtml } from '../../../shared/print';
 import {
   eigeneArt,
@@ -219,6 +223,8 @@ export function protokollHtml(p: Protokoll, projekt: Projekt, logos: Logo[]): st
 /* ------------------------------------------------------------------ */
 
 export interface BeteiligtenZeile {
+  /** Art der Funktion (Kennung aus `FUNKTIONS_ARTEN`); null = Person ohne Funktion. */
+  art: string | null;
   funktion: string;
   name: string;
   firma: string;
@@ -227,8 +233,33 @@ export interface BeteiligtenZeile {
   telefon: string;
 }
 
+/** Spalten der Projektbeteiligtenliste – die Zwischenüberschriften gehen über alle. */
+const BETEILIGTE_SPALTEN = 6;
+
+/** Zwischenüberschrift über die volle Breite: Name der Art, dahinter ihr Kurzzeichen. */
+function artZeileHtml(art: FunktionsArt | null): string {
+  const kurz = art && art.kuerzel !== art.name ? ` <span class="ps-art-kurz">${esc(art.kuerzel)}</span>` : '';
+  return `<tr class="ps-artr"><td colspan="${BETEILIGTE_SPALTEN}">${art ? esc(art.name) : 'Ohne Funktion'}${kurz}</td></tr>`;
+}
+
+/**
+ * Projektbeteiligtenliste, gegliedert nach der Art der Funktion: je Art eine
+ * Zwischenüberschrift, die Arten in der Reihenfolge des Funktionskatalogs,
+ * Personen ohne Funktion zuletzt. Innerhalb einer Art bleibt die Reihenfolge
+ * von `zeilen`, wie der Aufrufer sie liefert – er muss nicht nach Art sortieren.
+ */
 export function beteiligteHtml(projekt: Projekt, zeilen: BeteiligtenZeile[], logos: Logo[], stand: string): string {
   const pt = projektText(projekt);
+  const personHtml = (z: BeteiligtenZeile) =>
+    `<tr><td>${esc(z.funktion) || '–'}</td><td><b>${esc(z.name)}</b></td><td>${esc(z.firma)}</td><td>${esc(
+      z.kuerzel,
+    )}</td><td>${esc(z.email)}</td><td>${esc(z.telefon)}</td></tr>`;
+  const mitFunktion = zeilen.flatMap((z) => (z.art === null ? [] : [{ ...z, art: z.art }]));
+  const ohneFunktion = zeilen.filter((z) => z.art === null);
+  const gruppen: { art: FunktionsArt | null; eintraege: BeteiligtenZeile[] }[] = [
+    ...nachArt(mitFunktion),
+    ...(ohneFunktion.length > 0 ? [{ art: null, eintraege: ohneFunktion }] : []),
+  ];
   return `<article class="ps-doc">
     <div class="ps-kopf">
       <div><h1>Projektbeteiligte</h1>
@@ -243,14 +274,8 @@ export function beteiligteHtml(projekt: Projekt, zeilen: BeteiligtenZeile[], log
     <table class="ps-pt">
       <thead><tr><th>Funktion</th><th>Name</th><th>Firma / Büro</th><th>Kürzel</th><th>E-Mail</th><th>Telefon</th></tr></thead>
       <tbody>${
-        zeilen
-          .map(
-            (z) =>
-              `<tr><td>${esc(z.funktion) || '–'}</td><td><b>${esc(z.name)}</b></td><td>${esc(z.firma)}</td><td>${esc(
-                z.kuerzel,
-              )}</td><td>${esc(z.email)}</td><td>${esc(z.telefon)}</td></tr>`,
-          )
-          .join('') || '<tr><td colspan="6" class="ps-leer">Keine Projektbeteiligten.</td></tr>'
+        gruppen.map((g) => artZeileHtml(g.art) + g.eintraege.map(personHtml).join('')).join('') ||
+        `<tr><td colspan="${BETEILIGTE_SPALTEN}" class="ps-leer">Keine Projektbeteiligten.</td></tr>`
       }</tbody>
     </table>
   </article>`;
@@ -288,6 +313,9 @@ export const DRUCK_STIL = `
 .ps-doc .ps-pt tr { page-break-inside: avoid; break-inside: avoid; }
 .ps-doc .ps-pt tr.ps-teil td { border-bottom: 1px dashed #dfe3e6; }
 .ps-doc .ps-pt .ps-topr td { background: #eef1ee; font-weight: 600; padding-top: 8px; font-size: 13px; }
+.ps-doc .ps-pt .ps-artr { page-break-after: avoid; break-after: avoid; }
+.ps-doc .ps-pt .ps-artr td { background: #eef1ee; font-weight: 600; padding-top: 8px; font-size: 13px; }
+.ps-doc .ps-pt .ps-art-kurz { color: #5b6672; font-weight: 500; font-size: 11px; margin-left: 6px; }
 .ps-doc .ps-pt .ps-no { width: 44px; font-weight: 600; white-space: nowrap; }
 .ps-doc .ps-pt .ps-ty { width: 40px; text-align: center; }
 .ps-doc .ps-pt td.ps-ty { font-weight: 600; }
@@ -310,7 +338,7 @@ export const DRUCK_STIL = `
 @media print {
   .ps-doc { font-size: 10.5pt; }
   .ps-doc .ps-tn td, .ps-doc .ps-pt td { font-size: 9.5pt; }
-  .ps-doc .ps-pt .ps-topr td { font-size: 10pt; }
+  .ps-doc .ps-pt .ps-topr td, .ps-doc .ps-pt .ps-artr td { font-size: 10pt; }
 }
 `;
 

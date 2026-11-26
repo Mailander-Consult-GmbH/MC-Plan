@@ -13,8 +13,8 @@ const OPTIONEN = [
 ];
 
 /**
- * Feld „Seite für den Verzug“. `vorbelegt`: Die Seite folgt noch der
- * Bezeichnung (seiteAusFunktion), bis sie von Hand gewählt wird.
+ * Feld „Seite für den Verzug“. `vorbelegt`: Die Seite folgt noch der Art und
+ * der Bezeichnung der Funktion (seiteAusArt), bis sie von Hand gewählt wird.
  */
 export function SeiteFeld({
   value,
@@ -30,7 +30,7 @@ export function SeiteFeld({
       label="Seite für den Verzug"
       full
       hint={`Wem der Terminnachweis einen Verzug in Schritten dieser Funktion zurechnet.${
-        vorbelegt ? ' Vorbelegt aus der Bezeichnung.' : ''
+        vorbelegt ? ' Vorbelegt aus Art und Bezeichnung.' : ''
       }`}
     >
       <Select value={value ?? ''} onChange={(v) => onChange(v ? (v as Seite) : null)} options={OPTIONEN} />

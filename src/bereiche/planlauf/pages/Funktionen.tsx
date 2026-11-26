@@ -1,172 +1,218 @@
 /**
- * Projektübergreifende Funktionen (vormals Rollen), gegliedert nach Gewerken.
+ * Projektübergreifende Funktionen (vormals Rollen), gegliedert nach der Art
+ * der Funktion: Die Reiter wählen die Art („Alle“ zeigt jede Art unter ihrer
+ * Gruppenzeile), der Filter daneben das Gewerk – es steht als Abzeichen hinter
+ * jeder Bezeichnung. „Übergreifend“ sind die Funktionen, die für alle Gewerke
+ * gelten und im Projekt einmal besetzt werden. Neue Projekte übernehmen diese
+ * Funktionen; besetzt werden sie im Projekt unter „Funktion“. Die eigene
+ * Funktion Planlaufmanagement ist fest vorgegeben und erscheint hier nicht –
+ * sie füllt stets die angemeldete Person aus.
  *
- * Je Gewerk gibt es eine eigene Seite; „Übergreifend“ führt die Funktionen,
- * die für alle Gewerke gelten und nur einmal besetzt werden. Neue Projekte
- * übernehmen diese Funktionen; besetzt werden sie im Projekt unter „Funktion“.
- * Die eigene Funktion Planlaufmanagement ist fest vorgegeben und erscheint
- * hier nicht – sie füllt stets die angemeldete Person aus.
+ * Gewerke haben keine eigenen Reiter mehr: Ein neues entsteht im Dialog einer
+ * Funktion (Knopf „Gewerk“); zeigt der Filter ein Gewerk, stehen dort
+ * „Vorhandene Funktion“ (eine Funktion eines anderen Gewerks hier ergänzen)
+ * und unter der Karte „Gewerk „…“ löschen“.
  */
-import { useState, type CSSProperties } from 'react';
+import { Fragment, useState, type CSSProperties } from 'react';
 import {
   EIGENE_ROLLE,
-  UEBERGREIFEND,
   funktionsName,
   istEigeneFunktion,
   kuerzelAus,
-  seiteAusFunktion,
-  type Seite,
   type StandardRolle,
 } from '../domain/types';
+import {
+  ALLE_ARTEN,
+  ALLE_GEWERKE,
+  ArtGruppenZeile,
+  ArtReiter,
+  GewerkFilter,
+  OHNE_GEWERK,
+  artWahlGueltig,
+  gewerkPasst,
+  gewerkWahlGueltig,
+} from '../../../gemeinsam/FunktionsArten';
+import { artInfo, funktionenVergleich, nachArt } from '../../../gemeinsam/funktionskatalog';
 import { funktionsSchluessel } from '../../../gemeinsam/register';
-import { SeiteBadge, SeiteFeld } from '../components/SeiteAuswahl';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
-import {
-  Badge,
-  Card,
-  CardHeader,
-  ConfirmDialog,
-  EmptyState,
-  Field,
-  Modal,
-  Select,
-  TextArea,
-  TextInput,
-  alsKlickZeile,
-} from '../../../shared/ui';
+import { Card, CardHeader, ConfirmDialog, EmptyState, Modal, Search, alsKlickZeile } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
-import { GewerkDialog, GewerkLoeschenDialog } from '../components/GewerkDialog';
+import { GewerkLoeschenDialog } from '../components/GewerkDialog';
+import { FunktionsMaske, useFunktionsFormular } from '../components/FunktionsFelder';
+import { FunktionsZelle, anzahlText, kuerzelFuerGewerk } from '../components/FunktionsListe';
+import '../components/funktionen.css';
 
-const FARBEN = ['#24456e', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
+/** Spalten der Tabelle – die Gruppenzeile je Art geht über alle. */
+const SPALTEN = 4;
+
+const gleich = (a: string | null, b: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
 
 export function Funktionen() {
   const { data, addStandardRolle, deleteStandardRolle } = useStore();
   const toast = useToast();
-  const [seite, setSeite] = useState<string>(UEBERGREIFEND);
+  const [artWahl, setArtWahl] = useState(ALLE_ARTEN);
+  const [gewerkWahl, setGewerkWahl] = useState(ALLE_GEWERKE);
+  const [suche, setSuche] = useState('');
   const [dialog, setDialog] = useState<{ funktion?: StandardRolle } | null>(null);
   const [ergaenzen, setErgaenzen] = useState(false);
   const [loeschen, setLoeschen] = useState<StandardRolle | null>(null);
-  const [gewerkDialog, setGewerkDialog] = useState(false);
   const [gewerkLoeschen, setGewerkLoeschen] = useState<string | null>(null);
+
+  // Die eigene Funktion füllt immer die angemeldete Person aus – sie wird hier nicht geführt
+  const alle = data.standardRollen.filter((r) => !istEigeneFunktion(r));
 
   // Alle vorkommenden Gewerke – gepflegte Stammdaten und die der Funktionen
   const gewerke = [
-    ...new Set([...data.gewerke, ...data.standardRollen.map((r) => r.gewerk).filter((g): g is string => Boolean(g))]),
+    ...new Set([...data.gewerke, ...alle.map((r) => r.gewerk).filter((g): g is string => Boolean(g))]),
   ].sort((a, b) => a.localeCompare(b, 'de'));
 
-  const uebergreifend = seite === UEBERGREIFEND;
-  const funktionen = data.standardRollen
-    .filter((r) => !istEigeneFunktion(r))
-    .filter((r) => (uebergreifend ? r.gewerk === null : r.gewerk === seite));
+  // Erste Ebene: die Art. Eine Art, die es nicht mehr gibt, fällt auf „Alle“ zurück.
+  const art = artWahlGueltig(
+    artWahl,
+    alle.map((f) => f.art),
+  );
+  const alleArten = art === ALLE_ARTEN;
+  const inArt = (f: StandardRolle) => alleArten || artInfo(f.art).id === art;
+  // Zweite Ebene: das Gewerk. `gewerk` ist das im Filter gewählte – null bei „Alle Gewerke“ und „Übergreifend“.
+  const gewerkFilter = gewerkWahlGueltig(gewerkWahl, gewerke);
+  const gewerk = gewerkFilter === ALLE_GEWERKE || gewerkFilter === OHNE_GEWERK ? null : gewerkFilter;
 
-  // Funktionen, die es in anderen Gewerken schon gibt, hier aber noch nicht
-  const ergaenzbar = uebergreifend
-    ? []
-    : [...new Map(
-        data.standardRollen
-          .filter((r) => r.gewerk !== null && r.gewerk !== seite && !funktionen.some((f) => f.name === r.name))
-          .map((r) => [r.name, r]),
-      ).values()];
+  const inAuswahl = alle.filter((f) => inArt(f) && gewerkPasst(f.gewerk, gewerkFilter));
+  const gesucht = suche.trim().toLowerCase();
+  const funktionen = inAuswahl
+    .filter((f) => [funktionsName(f), f.kuerzel, f.beschreibung].join(' ').toLowerCase().includes(gesucht))
+    .sort(funktionenVergleich(gewerke));
+  const gruppen = nachArt(funktionen);
+
+  // Funktionen anderer Gewerke, die es im gewählten Gewerk noch nicht gibt – je Bezeichnung einmal,
+  // unter einer Art nur die dieser Art
+  const imGewerk = gewerk ? alle.filter((f) => gleich(f.gewerk, gewerk)) : [];
+  const ergaenzbar = gewerk
+    ? [
+        ...new Map(
+          alle
+            .filter((f) => f.gewerk !== null && !gleich(f.gewerk, gewerk) && inArt(f))
+            .filter((f) => !imGewerk.some((x) => gleich(x.name, f.name)))
+            .map((f) => [f.name.trim().toLowerCase(), f]),
+        ).values(),
+      ].sort(funktionenVergleich(gewerke))
+    : [];
+
+  /** Nach dem Speichern: Die Ansicht folgt der Funktion in ihre Art und ihr Gewerk, statt sie zu verlieren. */
+  const zeigen = (f: Pick<StandardRolle, 'art' | 'gewerk'>) => {
+    if (!alleArten && artInfo(f.art).id !== art) setArtWahl(artInfo(f.art).id);
+    if (!gewerkPasst(f.gewerk, gewerkFilter)) setGewerkWahl(ALLE_GEWERKE);
+  };
+
+  const gewerkZusatz =
+    gewerkFilter === ALLE_GEWERKE ? '' : gewerkFilter === OHNE_GEWERK ? ', übergreifend' : ` im Gewerk ${gewerkFilter}`;
+  const keineFunktion =
+    gewerkFilter === OHNE_GEWERK ? 'keine übergreifende Funktion' : `keine Funktion${gewerk ? ` im Gewerk ${gewerk}` : ''}`;
+  const neueFunktionKnopf = (
+    <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
+      <Icon name="plus" size={14} /> Neue Funktion
+    </button>
+  );
 
   return (
     <div className="stack">
-      <div className="tabs">
-        <button type="button" className={uebergreifend ? 'active' : ''} onClick={() => setSeite(UEBERGREIFEND)}>
-          {UEBERGREIFEND}
-        </button>
-        {gewerke.map((g) => (
-          <button key={g} type="button" className={seite === g ? 'active' : ''} onClick={() => setSeite(g)}>
-            {g}
-          </button>
-        ))}
-        <button type="button" className="tab-plus" title="Neues Gewerk anlegen" onClick={() => setGewerkDialog(true)}>
-          <Icon name="plus" size={13} />
-        </button>
+      <div className="pl-artreiter">
+        <ArtReiter
+          arten={alle.map((f) => f.art)}
+          wahl={art}
+          onWahl={setArtWahl}
+          anzahl={(a) => alle.filter((f) => artInfo(f.art).id === a && gewerkPasst(f.gewerk, gewerkFilter)).length}
+        />
       </div>
 
-      <div className="row-between wrap">
-        <p className="muted small" style={{ maxWidth: 640 }}>
-          {uebergreifend
-            ? 'Übergreifende Funktionen gelten für alle Gewerke und werden im Projekt einmal besetzt.'
-            : `Funktionen des Gewerks ${seite}. Jedes Gewerk führt eigene Funktionen: „${
-                funktionen[0]?.name ?? 'Planprüfer'
-              } ${seite}“ ist eine andere Funktion als dieselbe Bezeichnung in einem anderen Gewerk.`}
-        </p>
-        <div className="row">
-          {!uebergreifend && ergaenzbar.length > 0 ? (
+      <div className="pl-werkzeug">
+        <div className="pl-werkzeug-filter">
+          <Search value={suche} onChange={setSuche} placeholder="Funktion, Kürzel …" />
+          <GewerkFilter gewerke={gewerke} wahl={gewerkFilter} onWahl={setGewerkWahl} />
+        </div>
+        <div className="pl-werkzeug-knoepfe">
+          {gewerk && ergaenzbar.length > 0 ? (
             <button type="button" className="btn btn-outline" onClick={() => setErgaenzen(true)}>
               <Icon name="plus" size={14} /> Vorhandene Funktion
             </button>
           ) : null}
-          <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
-            <Icon name="plus" size={14} /> Neue Funktion
-          </button>
+          {neueFunktionKnopf}
         </div>
       </div>
 
+      <p className="muted small pl-einleitung">
+        Erste Ebene ist die Art der Funktion, das Gewerk unterscheidet darunter: „Planprüfer KIB“ ist eine andere
+        Funktion als „Planprüfer LST“. Übergreifende Funktionen gelten für alle Gewerke und werden im Projekt einmal
+        besetzt. Neue Projekte übernehmen alle Funktionen dieser Liste.
+      </p>
+
       <Card>
         <CardHeader
-          titel={uebergreifend ? 'Übergreifende Funktionen' : `Funktionen ${seite}`}
-          sub={`${funktionen.length} Funktionen`}
+          titel={alleArten ? 'Alle Funktionen' : artInfo(art).name}
+          sub={`${
+            funktionen.length === inAuswahl.length
+              ? anzahlText(inAuswahl.length)
+              : `${funktionen.length} von ${anzahlText(inAuswahl.length)}`
+          }${gewerkZusatz}`}
         />
         {funktionen.length === 0 ? (
-          <EmptyState
-            icon="person"
-            titel="Keine Funktionen"
-            text={
-              uebergreifend
-                ? 'Legen Sie Funktionen an, die für alle Gewerke gelten.'
-                : `Legen Sie die Funktionen an, die in ${seite} vorkommen.`
-            }
-            action={
-              <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
-                <Icon name="plus" size={14} /> Neue Funktion
-              </button>
-            }
-          />
+          gesucht ? (
+            // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf
+            <EmptyState icon="person" titel="Keine Funktion gefunden" text="Für diese Suche gibt es keinen Treffer." />
+          ) : (
+            <EmptyState
+              icon="person"
+              titel="Keine Funktionen"
+              text={
+                alle.length === 0
+                  ? 'Legen Sie die Funktionen an, die neue Projekte übernehmen.'
+                  : `${alleArten ? 'Es gibt' : `In der Art „${artInfo(art).name}“ gibt es`} ${keineFunktion}.`
+              }
+              action={neueFunktionKnopf}
+            />
+          )
         ) : (
           <div className="table-scroll">
-            <table className="table">
+            <table className="table pl-funktionstabelle">
               <thead>
                 <tr>
                   <th>Funktion</th>
                   <th>Kürzel</th>
-                  <th className="col-optional">Gewerk</th>
                   <th className="col-optional">Beschreibung</th>
                   <th className="actions" />
                 </tr>
               </thead>
               <tbody>
-                {funktionen.map((f) => (
-                  // Tab-Halt: „Funktion bearbeiten“ ist sonst nur mit der Maus erreichbar
-                  <tr key={f.id} className="clickable" {...alsKlickZeile(() => setDialog({ funktion: f }))}>
-                    <td>
-                      <span className="row wrap" style={{ gap: 8 }}>
-                        <span className="dot" style={{ background: f.farbe }} />
-                        <strong>{f.name}</strong>
-                        <SeiteBadge seite={f.seite} />
-                      </span>
-                    </td>
-                    <td className="num">{f.kuerzel || '–'}</td>
-                    <td className="col-optional">
-                      {f.gewerk === null ? <Badge ton="blue">{UEBERGREIFEND}</Badge> : <Badge>{f.gewerk}</Badge>}
-                    </td>
-                    <td className="small muted col-optional">{f.beschreibung || '–'}</td>
-                    <td className="actions">
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        aria-label="Funktion löschen"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLoeschen(f);
-                        }}
-                      >
-                        <Icon name="loeschen" size={15} />
-                      </button>
-                    </td>
-                  </tr>
+                {gruppen.map((g) => (
+                  <Fragment key={g.art.id}>
+                    {/* Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“ */}
+                    {alleArten ? <ArtGruppenZeile art={g.art.id} spalten={SPALTEN} anzahl={g.eintraege.length} /> : null}
+                    {g.eintraege.map((f) => (
+                      // Tab-Halt: „Funktion bearbeiten“ ist sonst nur mit der Maus erreichbar
+                      <tr key={f.id} className="clickable" {...alsKlickZeile(() => setDialog({ funktion: f }))}>
+                        <td>
+                          <FunktionsZelle funktion={f} />
+                        </td>
+                        <td className="num">{f.kuerzel || '–'}</td>
+                        <td className="small muted col-optional">{f.beschreibung || '–'}</td>
+                        <td className="actions">
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            aria-label="Funktion löschen"
+                            title="Funktion löschen"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLoeschen(f);
+                            }}
+                          >
+                            <Icon name="loeschen" size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -174,23 +220,23 @@ export function Funktionen() {
         )}
       </Card>
 
-      {!uebergreifend ? (
+      {gewerk ? (
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button
             type="button"
             className="btn btn-sm btn-ghost"
-            title={`Gewerk „${seite}“ mit seinen Funktionen löschen`}
-            onClick={() => setGewerkLoeschen(seite)}
+            title={`Gewerk „${gewerk}“ mit seinen Funktionen löschen`}
+            onClick={() => setGewerkLoeschen(gewerk)}
           >
-            <Icon name="loeschen" size={13} /> Gewerk „{seite}“ löschen
+            <Icon name="loeschen" size={13} /> Gewerk „{gewerk}“ löschen
           </button>
         </div>
       ) : null}
 
-      {ergaenzen ? (
+      {ergaenzen && gewerk ? (
         <Modal
-          titel={`Funktion in ${seite} ergänzen`}
-          sub="Aus einem anderen Gewerk übernehmen – als eigene Funktion dieses Gewerks"
+          titel={`Funktion in ${gewerk} ergänzen`}
+          sub="Aus einem anderen Gewerk übernehmen – als eigene Funktion dieses Gewerks, in der Art des Originals"
           onClose={() => setErgaenzen(false)}
           footer={
             <button type="button" className="btn btn-primary" onClick={() => setErgaenzen(false)}>
@@ -198,54 +244,59 @@ export function Funktionen() {
             </button>
           }
         >
-          <div className="row wrap" style={{ gap: 6 }}>
-            {ergaenzbar.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className="role-chip"
-                style={{ '--chip-farbe': f.farbe, cursor: 'pointer', padding: '4px 11px' } as CSSProperties}
-                onClick={() => {
-                  const { id: _id, ...werte } = f;
-                  addStandardRolle({ ...werte, gewerk: seite });
-                  toast(`„${f.name} ${seite}“ angelegt.`);
-                }}
-              >
-                <Icon name="plus" size={12} /> {f.name}
-              </button>
-            ))}
-          </div>
+          {ergaenzbar.length === 0 ? (
+            <p className="muted">
+              {alleArten
+                ? `Jede Funktion der anderen Gewerke gibt es in ${gewerk} bereits.`
+                : `Jede Funktion der Art „${artInfo(art).name}“ aus den anderen Gewerken gibt es in ${gewerk} bereits.`}
+            </p>
+          ) : (
+            <div className="row wrap" style={{ gap: 6 }}>
+              {ergaenzbar.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className="role-chip"
+                  title={artInfo(f.art).name}
+                  style={{ '--chip-farbe': f.farbe, cursor: 'pointer', padding: '4px 11px' } as CSSProperties}
+                  onClick={() => {
+                    const { id: _id, ...werte } = f;
+                    // Die Kopie übernimmt die Art des Originals; das Kürzel nennt das neue Gewerk
+                    const gleichnamige = alle.filter((x) => gleich(x.name, f.name));
+                    addStandardRolle({ ...werte, gewerk, kuerzel: kuerzelFuerGewerk(f, gewerk, gleichnamige) });
+                    toast(`„${f.name} ${gewerk}“ angelegt.`);
+                  }}
+                >
+                  <Icon name="plus" size={12} /> {f.name}
+                </button>
+              ))}
+            </div>
+          )}
         </Modal>
       ) : null}
-
-      {gewerkDialog ? <GewerkDialog onClose={() => setGewerkDialog(false)} onAngelegt={setSeite} /> : null}
 
       {gewerkLoeschen ? (
         <GewerkLoeschenDialog
           gewerk={gewerkLoeschen}
           onClose={() => setGewerkLoeschen(null)}
-          onGeloescht={() => setSeite(UEBERGREIFEND)}
+          onGeloescht={() => setGewerkWahl(ALLE_GEWERKE)}
         />
       ) : null}
 
       {dialog ? (
         <FunktionsDialog
           funktion={dialog.funktion}
-          anzahl={data.standardRollen.length}
           gewerke={gewerke}
-          vorauswahl={uebergreifend ? null : seite}
+          vorgabe={{ art: alleArten ? undefined : art, gewerk }}
           onClose={() => setDialog(null)}
-          onAnlegen={(werte) => {
-            addStandardRolle(werte);
-            toast('Funktion angelegt.');
-          }}
+          onGespeichert={zeigen}
         />
       ) : null}
 
       {loeschen ? (
         <ConfirmDialog
           titel="Funktion löschen?"
-          text={`„${loeschen.name}“ steht neuen Projekten nicht mehr zur Verfügung. Bereits angelegte Projektfunktionen bleiben erhalten.`}
+          text={`„${funktionsName(loeschen)}“ steht neuen Projekten nicht mehr zur Verfügung. Bereits angelegte Projektfunktionen bleiben erhalten.`}
           onConfirm={() => {
             deleteStandardRolle(loeschen.id);
             toast('Funktion gelöscht.');
@@ -257,39 +308,28 @@ export function Funktionen() {
   );
 }
 
+/** Anlage und Pflege einer projektübergreifenden Funktion. */
 function FunktionsDialog({
   funktion,
-  anzahl,
   gewerke,
-  vorauswahl,
+  vorgabe,
   onClose,
-  onAnlegen,
+  onGespeichert,
 }: {
   funktion?: StandardRolle;
-  anzahl: number;
   gewerke: string[];
-  vorauswahl: string | null;
+  /** Für eine neue Funktion: die Art des gewählten Reiters (`undefined` unter „Alle“) und das Gewerk des Filters. */
+  vorgabe: { art?: string; gewerk: string | null };
   onClose: () => void;
-  onAnlegen: (werte: Omit<StandardRolle, 'id'>) => void;
+  /** Nach dem Speichern – die Liste folgt der Funktion in ihre Art und ihr Gewerk. */
+  onGespeichert: (funktion: Pick<StandardRolle, 'art' | 'gewerk'>) => void;
 }) {
-  const { data, updateStandardRolle } = useStore();
+  const { data, addStandardRolle, updateStandardRolle } = useStore();
   const toast = useToast();
-  const [form, setForm] = useState({
-    name: funktion?.name ?? '',
-    kuerzel: funktion?.kuerzel ?? '',
-    farbe: funktion?.farbe ?? FARBEN[anzahl % FARBEN.length],
-    beschreibung: funktion?.beschreibung ?? '',
-    gewerk: funktion?.gewerk ?? vorauswahl,
-    seite: funktion ? funktion.seite : (null as Seite | null),
-  });
-  // Eine neue Funktion übernimmt die Seite aus ihrer Bezeichnung, bis sie von Hand gewählt wird
-  const [seiteVonHand, setSeiteVonHand] = useState(Boolean(funktion));
-
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const nameAendern = (name: string) =>
-    setForm((f) => ({ ...f, name, seite: seiteVonHand ? f.seite : seiteAusFunktion(name) }));
+  const formular = useFunktionsFormular(funktion, vorgabe);
 
   const speichern = () => {
+    const { form } = formular;
     // Ohne Leerzeichen am Rand – die Bezeichnung ist der Schlüssel der Funktion
     // (Schritte nennen sie beim Namen, Löschvermerk und Register ebenso)
     const name = form.name.trim();
@@ -301,10 +341,10 @@ function FunktionsDialog({
       toast(`${EIGENE_ROLLE} übernimmt stets die angemeldete Person.`);
       return;
     }
-    // Je Gewerk gibt es eine Bezeichnung nur einmal: Ein neues Projekt erhielte
-    // sonst beide Funktionen, und die Besetzung der Schritte fände nur die Person
-    // an der ersten. Geprüft wird nur, wenn sich Bezeichnung oder Gewerk ändern –
-    // eine schon doppelt geführte Funktion bleibt bearbeitbar.
+    // Je Gewerk gibt es eine Bezeichnung nur einmal – auch über die Arten hinweg: Ein neues Projekt
+    // erhielte sonst beide Funktionen, und die Besetzung der Schritte fände nur die Person an der
+    // ersten. Geprüft wird nur, wenn sich Bezeichnung oder Gewerk ändern – eine schon doppelt
+    // geführte Funktion bleibt bearbeitbar.
     const schluessel = funktionsSchluessel({ name, gewerk: form.gewerk });
     const doppelt =
       funktion && funktionsSchluessel(funktion) === schluessel
@@ -333,65 +373,21 @@ function FunktionsDialog({
           : 'Funktion gespeichert.',
       );
     } else {
-      onAnlegen(werte);
+      addStandardRolle(werte);
+      toast('Funktion angelegt.');
     }
+    onGespeichert(werte);
     onClose();
   };
 
   return (
-    <Modal
-      titel={funktion ? 'Funktion bearbeiten' : 'Neue Funktion'}
+    <FunktionsMaske
+      neu={!funktion}
       sub="Gilt projektübergreifend"
+      formular={formular}
+      gewerke={gewerke}
       onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onClose}>
-            Abbrechen
-          </button>
-          <button type="button" className="btn btn-primary" onClick={speichern}>
-            Speichern
-          </button>
-        </>
-      }
-    >
-      <div className="form-grid">
-        <Field label="Bezeichnung" full>
-          <TextInput value={form.name} onChange={nameAendern} placeholder="z.B. Erdungsprüfer" />
-        </Field>
-        <Field label="Kürzel" hint="leer = aus der Bezeichnung gebildet">
-          <TextInput value={form.kuerzel} onChange={(v) => set('kuerzel', v)} />
-        </Field>
-        <Field label="Farbe">
-          <input
-            type="color"
-            value={form.farbe}
-            onChange={(e) => set('farbe', e.target.value)}
-            style={{ width: 52, height: 32, border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
-          />
-        </Field>
-        <Field
-          label="Gewerk"
-          full
-          hint="Übergreifend bedeutet: eine Besetzung für alle Gewerke. Sonst gehört die Funktion genau zu diesem Gewerk."
-        >
-          <Select
-            value={form.gewerk ?? UEBERGREIFEND}
-            onChange={(v) => set('gewerk', v === UEBERGREIFEND ? null : v)}
-            options={[UEBERGREIFEND, ...gewerke].map((g) => ({ value: g, label: g }))}
-          />
-        </Field>
-        <SeiteFeld
-          value={form.seite}
-          vorbelegt={!seiteVonHand}
-          onChange={(v) => {
-            setSeiteVonHand(true);
-            set('seite', v);
-          }}
-        />
-        <Field label="Beschreibung" full>
-          <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={2} />
-        </Field>
-      </div>
-    </Modal>
+      onSpeichern={speichern}
+    />
   );
 }

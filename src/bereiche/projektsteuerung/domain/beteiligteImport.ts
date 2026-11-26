@@ -1,14 +1,22 @@
 /**
  * Projektbeteiligte aus einer Excel- oder CSV-Liste. Je Zeile eine Person mit
- * Funktion (und wahlweise Gewerk). Die Kopfzeile wird in den ersten Zeilen
- * gesucht – so lässt sich auch die Excel-Ausgabe der Beteiligtenliste mit
- * ihren Titelzeilen wieder einlesen.
+ * Funktion (und wahlweise Gewerk und Art der Funktion). Die Kopfzeile wird in
+ * den ersten Zeilen gesucht – so lässt sich auch die Excel-Ausgabe der
+ * Beteiligtenliste mit ihren Titelzeilen wieder einlesen.
  *
  * Funktionen werden über Bezeichnung und Gewerk, ersatzweise über die volle
- * Bezeichnung („Fachplanung LST“) oder das Kürzel gefunden; unbekannte werden
- * beim Übernehmen angelegt. Personen gleichen Namens im Projekt werden
- * aktualisiert statt doppelt angelegt.
+ * Bezeichnung („Fachplaner LST“) oder das Kürzel gefunden; unbekannte werden
+ * beim Übernehmen angelegt – in der Art aus der Spalte „Art“ (Kurzzeichen
+ * oder Name), ohne Angabe in der des Funktionskatalogs. An einer vorhandenen
+ * Funktion ändert die Spalte nichts. Personen gleichen Namens im Projekt
+ * werden aktualisiert statt doppelt angelegt.
  */
+import {
+  FUNKTIONS_ARTEN,
+  artText,
+  artVon,
+  katalogEintrag,
+} from '../../../gemeinsam/funktionskatalog';
 import { spaltenZuordnen } from '../../../shared/xlsxLesen';
 import {
   UEBERGREIFEND,
@@ -23,6 +31,7 @@ import {
 
 /** Spalten der Vorlage und der Excel-Ausgabe – in dieser Reihenfolge. */
 export const BETEILIGTE_KOPF = [
+  'Art',
   'Funktion',
   'Gewerk',
   'Kürzel',
@@ -39,6 +48,7 @@ export const BETEILIGTE_KOPF = [
 
 /** Erkannte Schreibweisen der Spaltenüberschriften. */
 const SPALTEN: Record<string, string[]> = {
+  art: ['Art', 'Art der Funktion', 'Kategorie'],
   funktion: ['Funktion', 'Rolle', 'Aufgabe im Projekt'],
   gewerk: ['Gewerk', 'Fachbereich'],
   kuerzel: ['Kürzel', 'Kurzzeichen', 'Kurz'],
@@ -58,14 +68,31 @@ type Personenangaben = Omit<Beteiligter, 'id' | 'projektId' | 'funktionId'>;
 
 export interface ImportZeile {
   person: Personenangaben;
-  /** Gefundene Funktion; sonst Bezeichnung und Gewerk einer neu anzulegenden. */
-  funktion: { id: ID | null; name: string; gewerk: string | null };
+  /**
+   * Gefundene Funktion; sonst Bezeichnung und Gewerk einer neu anzulegenden.
+   * `art`: die Art der gefundenen Funktion bzw. die der neuen – aus der Spalte
+   * „Art“, ohne gültige Angabe laut Funktionskatalog; null in einer Zeile ohne
+   * Funktion.
+   */
+  funktion: { id: ID | null; name: string; gewerk: string | null; art: string | null };
   /** Person gleichen Namens im Projekt, die aktualisiert wird. */
   vorhandenId: ID | null;
   hinweise: string[];
 }
 
 const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * Art der Funktion aus dem Text der Spalte „Art“: ihr Kurzzeichen („PSV“),
+ * ihr Name („Prüfer“) oder beides, wie die Auswahl es zeigt („PSV – Prüfer“) –
+ * ohne Groß-/Kleinschreibung und Leerzeichen. null, wenn der Text keine Art nennt.
+ */
+export function artAusText(wert: string): string | null {
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+  const gesucht = norm(wert);
+  if (!gesucht) return null;
+  return FUNKTIONS_ARTEN.find((a) => [a.kuerzel, a.name, artText(a.id), a.id].some((x) => norm(x) === gesucht))?.id ?? null;
+}
 
 /** „Berger, Anna“ oder „Dr. Anna Berger“ in Vor- und Nachname. */
 function nameTeilen(name: string): { vorname: string; nachname: string } {
@@ -80,7 +107,7 @@ function nameTeilen(name: string): { vorname: string; nachname: string } {
 
 /**
  * Funktion zu Bezeichnung und Gewerk. Ohne Gewerk zählt die volle
- * Bezeichnung („Fachplanung LST“ oder eine übergreifende Funktion), dann eine
+ * Bezeichnung („Fachplaner LST“ oder eine übergreifende Funktion), dann eine
  * eindeutige Bezeichnung in irgendeinem Gewerk, zuletzt das Kürzel.
  */
 export function funktionFinden(funktionen: Funktion[], name: string, gewerk: string | null): Funktion | undefined {
@@ -186,17 +213,21 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
     if (gesehen.has(name)) hinweise.push('doppelt in der Liste');
     gesehen.add(name);
     if (vorhanden) hinweise.push('wird aktualisiert');
+    // Art einer neuen Funktion: aus der Spalte, sonst laut Katalog
+    const artSpalte = wert(z, 'art');
+    const artGenannt = artAusText(artSpalte);
     if (!funktionText) hinweise.push('ohne Funktion');
     else if (!gefunden) {
       hinweise.push(
         gewerk && !daten.gewerke.some((g) => gleich(g, gewerk)) ? 'neue Funktion, neues Gewerk' : 'neue Funktion',
       );
+      if (artSpalte && !artGenannt) hinweise.push('Art unbekannt');
     }
     ergebnis.push({
       person,
       funktion: gefunden
-        ? { id: gefunden.id, name: gefunden.name, gewerk: gefunden.gewerk }
-        : { id: null, name: funktionText, gewerk },
+        ? { id: gefunden.id, name: gefunden.name, gewerk: gefunden.gewerk, art: gefunden.art }
+        : { id: null, name: funktionText, gewerk, art: funktionText ? (artGenannt ?? artVon(funktionText, gewerk)) : null },
       vorhandenId: vorhanden?.id ?? null,
       hinweise,
     });
@@ -204,11 +235,22 @@ export function beteiligteLesen(zeilen: string[][], daten: ProjektsteuerungDaten
   return ergebnis;
 }
 
-/** Schlüssel einer neu anzulegenden Funktion – je Bezeichnung und Gewerk einmal. */
-export const funktionsSchluessel = (f: { name: string; gewerk: string | null }) =>
-  `${f.name.trim().toLowerCase()}|${(f.gewerk ?? '').toLowerCase()}`;
-
-/** Werte einer neu anzulegenden Funktion. */
-export function neueFunktion(name: string, gewerk: string | null, farbe: string): Omit<Funktion, 'id'> {
-  return { name: name.trim(), gewerk, kuerzel: kuerzelAus(name), farbe, beschreibung: '' };
+/**
+ * Werte einer neu anzulegenden Funktion. Ohne `art` gilt die des
+ * Funktionskatalogs (`artVon`; eine Bezeichnung, die er nicht kennt, ist
+ * „Sonstige“). Steht die Funktion im Katalog, erhält sie dessen Kürzel, sonst
+ * eines aus der Bezeichnung. Angelegt wird je Bezeichnung und Gewerk nur
+ * einmal – der Schlüssel dafür ist `funktionsSchluessel` aus
+ * `src/gemeinsam/register.ts`.
+ */
+export function neueFunktion(name: string, gewerk: string | null, farbe: string, art?: string | null): Omit<Funktion, 'id'> {
+  const bezeichnung = name.trim();
+  return {
+    name: bezeichnung,
+    gewerk,
+    kuerzel: katalogEintrag(bezeichnung, gewerk)?.kuerzel ?? kuerzelAus(bezeichnung),
+    farbe,
+    beschreibung: '',
+    art: art ?? artVon(bezeichnung, gewerk),
+  };
 }

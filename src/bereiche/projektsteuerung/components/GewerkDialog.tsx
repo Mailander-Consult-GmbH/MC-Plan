@@ -1,7 +1,10 @@
 /**
- * Gewerke der Funktionen anlegen und löschen – wie im Planlaufmanagement.
- * Ein Gewerk lässt sich nur löschen, solange keine seiner Funktionen
- * Projektbeteiligten zugeordnet ist; seine Funktionen entfallen mit ihm.
+ * Gewerke der Funktionen anlegen und löschen – wie im Planlaufmanagement. Das
+ * Gewerk ist die zweite Ebene unter der Art der Funktion: Angelegt wird es aus
+ * dem Dialog einer Funktion (Knopf „Gewerk“), gelöscht auf der Seite
+ * „Funktionen“, sobald der Gewerkfilter es zeigt. Ein Gewerk lässt sich nur
+ * löschen, solange keine seiner Funktionen Projektbeteiligten zugeordnet ist;
+ * seine Funktionen entfallen mit ihm – in allen Arten.
  */
 import { useState } from 'react';
 import { useToast } from '../../../shared/toast';
@@ -51,7 +54,7 @@ export function GewerkDialog({ onClose, onAngelegt }: { onClose: () => void; onA
           <TextInput
             value={name}
             onChange={setName}
-            placeholder="z. B. Oberbau"
+            placeholder="z. B. Tiefbau"
             autoFocus
             onKeyDown={beiEnter(speichern)}
           />

@@ -1,9 +1,15 @@
 /**
  * Mitgelieferte Stammdaten des Bereichs – Funktionen und Standardlogos – und
  * der Demodatenbestand. Alle Termine liegen relativ zum heutigen Tag.
+ *
+ * Die Funktionen und Gewerke kommen aus dem gemeinsamen Funktionskatalog
+ * (`src/gemeinsam/funktionskatalog.ts`), gegliedert nach der Art der Funktion;
+ * das Planlaufmanagement führt dieselben. Bestände vor Fassung 9 stellt
+ * `ausFassung8` (store/storage.ts) darauf um.
  */
+import { FUNKTIONS_KATALOG, KATALOG_GEWERKE, artInfo } from '../../../gemeinsam/funktionskatalog';
 import { addDays, today } from '../../../shared/dates';
-import { folgeprotokoll, neuerEintrag, neuerTop, neueReihe, neueZeile, teilnehmerAus } from './protokoll';
+import { folgeprotokoll, neuerEintrag, neuerTop, neueReihe, neueZeile, teilnehmerAus, zuordnung } from './protokoll';
 import { neuesTodo } from './todos';
 import {
   DATEN_VERSION,
@@ -22,43 +28,39 @@ import {
   type Todo,
 } from './types';
 
-const F = (
-  id: ID,
-  name: string,
-  kuerzel: string,
-  farbe: string,
-  beschreibung = '',
-  gewerk: string | null = null,
-): Funktion => ({ id, name, kuerzel, farbe, beschreibung, gewerk });
+/** Gewerke eines neuen Bestands – die des Funktionskatalogs. */
+export const STANDARD_GEWERKE: string[] = [...KATALOG_GEWERKE];
 
-/** Gewerke eines neuen Bestands. */
-export const STANDARD_GEWERKE = ['50 Hz', 'KIB', 'LST', 'OLA', 'TK'];
+const UMLAUTE: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss' };
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[äöüß]/g, (z) => UMLAUTE[z])
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
-/** Projektübergreifende Funktionen eines neuen Bestands – übergreifend und je Gewerk. */
-export const STANDARD_FUNKTIONEN: Funktion[] = [
-  F('fn-ag', 'Auftraggeber', 'AG', '#24456e', 'Vorhabenträger bzw. Bauherr, etwa DB InfraGO AG'),
-  F('fn-pl', 'Projektleitung', 'PL', '#24456e', 'Projektleitung des Auftraggebers'),
-  F('fn-tpl', 'Teilprojektleitung', 'TPL', '#5856d6', 'Teilprojektleitung des Auftraggebers'),
-  F('fn-pi', 'Projektingenieur', 'PI', '#5856d6', 'Projektingenieurin bzw. Projektingenieur des Auftraggebers'),
-  F('fn-ps', 'Projektsteuerung', 'PS', '#00a0a0', 'Externe Projektsteuerung'),
-  F('fn-plm', 'Planlaufmanagement', 'PLM', '#00a0a0', 'Steuerung der Planläufe'),
-  F('fn-op', 'Objektplanung', 'OP', '#ff9500', 'Objektplanung Verkehrsanlagen bzw. Ingenieurbauwerke'),
-  F('fn-lst', 'Fachplanung', 'LST', '#ff9500', 'Leit- und Sicherungstechnik', 'LST'),
-  F('fn-ola', 'Fachplanung', 'OLA', '#ff9500', 'Oberleitungsanlagen', 'OLA'),
-  F('fn-kib', 'Fachplanung', 'KIB', '#ff9500', 'Konstruktiver Ingenieurbau', 'KIB'),
-  F('fn-tk', 'Fachplanung', 'TK', '#ff9500', 'Telekommunikation', 'TK'),
-  F('fn-50hz', 'Fachplanung', '50HZ', '#ff9500', 'Elektrische Energieanlagen 50 Hz', '50 Hz'),
-  F('fn-bue-lst', 'Bauüberwachung', 'BÜ-LST', '#34c759', 'Bauüberwachung Leit- und Sicherungstechnik', 'LST'),
-  F('fn-bue-ola', 'Bauüberwachung', 'BÜ-OLA', '#34c759', 'Bauüberwachung Oberleitungsanlagen', 'OLA'),
-  F('fn-bue', 'Bauüberwachung', 'BÜ', '#34c759', 'Bauüberwachung Bahn'),
-  F('fn-an', 'Bauunternehmen', 'AN', '#c77700', 'Ausführendes Bauunternehmen (Auftragnehmer)'),
-  F('fn-psv', 'Prüfsachverständiger', 'PSV', '#af52de', 'Prüfsachverständiger bzw. Prüfingenieur'),
-  F('fn-vm', 'Vermessung', 'VM', '#8e8e93'),
-  F('fn-sigeko', 'SiGeKo', 'SGK', '#ff3b30', 'Sicherheits- und Gesundheitsschutzkoordination'),
-  F('fn-ubue', 'Umweltfachliche Bauüberwachung', 'UBÜ', '#34c759'),
-  F('fn-bbp', 'Baubetriebsplanung', 'BBP', '#5856d6', 'Baubetriebliche Anmeldungen und Betra'),
-  F('fn-eba', 'Eisenbahn-Bundesamt', 'EBA', '#8e8e93', 'Aufsichts- und Genehmigungsbehörde'),
-];
+/**
+ * Feste Kennung einer mitgelieferten Funktion aus Bezeichnung und Gewerk:
+ * `fn-projektleitung`, `fn-fachplaner-lst`. Bezeichnung + Gewerk ist im Katalog
+ * eindeutig, die Kennung damit auch.
+ */
+export function katalogKennung(f: { name: string; gewerk: string | null }): ID {
+  return `fn-${slug(f.name)}${f.gewerk ? `-${slug(f.gewerk)}` : ''}`;
+}
+
+/**
+ * Projektübergreifende Funktionen eines neuen Bestands: die des
+ * Funktionskatalogs mit festen Kennungen, in der Vorgabefarbe ihrer Art.
+ */
+export const STANDARD_FUNKTIONEN: Funktion[] = FUNKTIONS_KATALOG.map((k) => ({
+  id: katalogKennung(k),
+  name: k.name,
+  kuerzel: k.kuerzel,
+  farbe: artInfo(k.art).farbe,
+  beschreibung: '',
+  gewerk: k.gewerk,
+  art: k.art,
+}));
 
 /**
  * Logos im Kopf von Protokoll und Beteiligtenliste, solange ein Projekt keine
@@ -84,9 +86,10 @@ export function logosFuer(projekt: Projekt, reiheId: ID, reihenLogos: Record<ID,
 
 const tag = (n: number) => addDays(today(), n);
 
+/** Demoperson mit einer Funktion des Katalogs (Bezeichnung und Gewerk). */
 function person(
   projektId: ID,
-  funktionId: ID,
+  funktion: [name: string, gewerk?: string],
   vorname: string,
   nachname: string,
   firma: string,
@@ -96,7 +99,7 @@ function person(
   return {
     id: newId('bt'),
     projektId,
-    funktionId,
+    funktionId: katalogKennung({ name: funktion[0], gewerk: funktion[1] ?? null }),
     anrede,
     vorname,
     nachname,
@@ -117,10 +120,10 @@ function eintrag(typ: EintragTyp, text: string, werte: Partial<Eintrag> = {}): E
 function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokoll[] {
   const status: [Beteiligter, Teilnahme][] = [
     [b.pl, 'anwesend'],
-    [b.tpl, 'entschuldigt'],
-    [b.op, 'anwesend'],
-    [b.lst, 'anwesend'],
-    [b.bue, 'anwesend'],
+    [b.ping, 'entschuldigt'],
+    [b.ap, 'anwesend'],
+    [b.fp, 'anwesend'],
+    [b.buew, 'anwesend'],
     [b.an, 'anwesend'],
     [b.psv, 'nur Verteiler'],
   ];
@@ -134,6 +137,13 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
   erstes.ende = '11:00';
   erstes.naechster = tag(0);
   erstes.teilnehmer.push(...status.map(([p, s]) => teilnehmerAus(p, STANDARD_FUNKTIONEN, s)));
+  // „Verantwortlich“ ist nur Text und muss dem Wert gleichen, unter dem die Person im Protokoll geführt
+  // wird (`zuordnung`) – der Startbestand läuft nicht durch `werMitziehen`. Heute sind das die Kürzel
+  // ihrer Funktionen: PS, PING, AP KIB, FP, AN. Das Folgeprotokoll übernimmt die Teilnehmenden unverändert.
+  const wer = (p: Beteiligter): string => {
+    const t = erstes.teilnehmer.find((x) => x.beteiligterId === p.id);
+    return t ? zuordnung(t, erstes.teilnehmer) : '';
+  };
   erstes.tops = [
     {
       ...neuerTop('Allgemeines'),
@@ -142,7 +152,7 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
         eintrag('F', 'Baubesprechungen finden zweiwöchentlich dienstags um 9:00 Uhr im Baucontainer statt.'),
         // Aufgaben der Projektsteuerin Lena Roth – eigene To-Dos der Übersicht, wenn unter „Angemeldet als“ „Lena Roth“ steht
         eintrag('A', 'Terminplan mit den Sperrpausen fortschreiben und an den Auftraggeber übergeben.', {
-          wer: 'PS',
+          wer: wer(b.ps),
           termin: tag(-2),
         }),
       ],
@@ -151,11 +161,11 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
       ...neuerTop('Planung'),
       eintraege: [
         eintrag('A', 'Ausführungsplanung Widerlager Achse 10 zur Prüfung an den PSV übergeben.', {
-          wer: 'OP',
+          wer: wer(b.ap),
           termin: tag(-3),
         }),
         eintrag('A', 'Kabeltrasse der LST im Bereich der Baugrube einmessen und übergeben.', {
-          wer: 'LST',
+          wer: wer(b.fp),
           termin: tag(-7),
           status: 'erledigt',
         }),
@@ -165,9 +175,9 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
       ...neuerTop('Bauablauf'),
       eintraege: [
         eintrag('I', 'Die Baustelleneinrichtung ist abgeschlossen.'),
-        eintrag('A', 'Bauzeitenplan mit den Sperrpausen aktualisieren und verteilen.', { wer: 'AN', termin: tag(5) }),
+        eintrag('A', 'Bauzeitenplan mit den Sperrpausen aktualisieren und verteilen.', { wer: wer(b.an), termin: tag(5) }),
         eintrag('A', 'Mehrkostenanzeige des Auftragnehmers prüfen und Stellungnahme vorbereiten.', {
-          wer: 'PS',
+          wer: wer(b.ps),
           termin: tag(9),
         }),
       ],
@@ -188,7 +198,7 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
       // Ergänzung mit eigener Art: eine Aufgabe unter der Information
       if (text.startsWith('Die Sperrpause')) {
         const betra = neueZeile('Betra für den Einhub des Überbaus beantragen.', newId('z'), 'A');
-        return { ...e, zeilen: [...e.zeilen, { ...betra, wer: 'TPL', termin: tag(6) }] };
+        return { ...e, zeilen: [...e.zeilen, { ...betra, wer: wer(b.ping), termin: tag(6) }] };
       }
       if (text.startsWith('Bauzeitenplan')) return { ...e, status: 'erledigt' as const };
       // Gestrichen: steht im Druck von Nr. 2 blau durchgestrichen und entfällt in Nr. 3
@@ -197,7 +207,7 @@ function demoProtokolle(projektId: ID, b: Record<string, Beteiligter>): Protokol
     }),
   }));
   zweites.tops[2].eintraege.push(
-    eintrag('A', 'Verkehrsrechtliche Anordnung für die Umleitung beantragen.', { wer: 'AN', termin: tag(10) }),
+    eintrag('A', 'Verkehrsrechtliche Anordnung für die Umleitung beantragen.', { wer: wer(b.an), termin: tag(10) }),
   );
   return [vorher, zweites];
 }
@@ -221,20 +231,22 @@ export function seedDaten(): ProjektsteuerungDaten {
     beschreibung: 'Verlängerung des Außenbahnsteigs (Beispielprojekt)',
     logos: null,
   };
+  // Jede Demoperson trägt eine Funktion des Katalogs; im ersten Projekt führt keine zweite dasselbe
+  // Kürzel – sonst stünde in den Protokollen der Name statt des Kürzels (`zuordnung`).
   const b = {
-    pl: person(p1.id, 'fn-pl', 'Anna', 'Berger', 'DB InfraGO AG', 'Frau'),
-    tpl: person(p1.id, 'fn-tpl', 'Markus', 'Weber', 'DB InfraGO AG', 'Herr'),
-    ps: person(p1.id, 'fn-ps', 'Lena', 'Roth', 'Mailänder Consult GmbH', 'Frau'),
-    op: person(p1.id, 'fn-op', 'Thomas', 'Klein', 'Ingenieurbüro Klein & Partner', 'Herr'),
-    lst: person(p1.id, 'fn-lst', 'Sabine', 'Hoffmann', 'SignalPlan GmbH', 'Frau'),
-    bue: person(p1.id, 'fn-bue', 'Jens', 'Fischer', 'Bauüberwachung Süd GmbH', 'Herr'),
-    an: person(p1.id, 'fn-an', 'Peter', 'Wagner', 'Muster Bau GmbH', 'Herr'),
-    psv: person(p1.id, 'fn-psv', 'Karl', 'Schulz', 'Prüfbüro Schulz', 'Herr'),
+    pl: person(p1.id, ['Projektleitung'], 'Anna', 'Berger', 'DB InfraGO AG', 'Frau'),
+    ping: person(p1.id, ['Projektingenieur'], 'Markus', 'Weber', 'DB InfraGO AG', 'Herr'),
+    ps: person(p1.id, ['Projektsteuerung'], 'Lena', 'Roth', 'Mailänder Consult GmbH', 'Frau'),
+    ap: person(p1.id, ['Ausführungsplanung', 'KIB'], 'Thomas', 'Klein', 'Ingenieurbüro Klein & Partner', 'Herr'),
+    fp: person(p1.id, ['Fachplaner', 'LST'], 'Sabine', 'Hoffmann', 'SignalPlan GmbH', 'Frau'),
+    buew: person(p1.id, ['Leitende Bauüberwachung'], 'Jens', 'Fischer', 'Bauüberwachung Süd GmbH', 'Herr'),
+    an: person(p1.id, ['Auftragnehmer'], 'Peter', 'Wagner', 'Muster Bau GmbH', 'Herr'),
+    psv: person(p1.id, ['Planprüfer', 'KIB'], 'Karl', 'Schulz', 'Prüfbüro Schulz', 'Herr'),
   };
   const zweite = [
-    person(p2.id, 'fn-pl', 'Julia', 'Neumann', 'DB InfraGO AG', 'Frau'),
-    person(p2.id, 'fn-ps', 'Lena', 'Roth', 'Mailänder Consult GmbH', 'Frau'),
-    person(p2.id, 'fn-op', 'Stefan', 'Braun', 'Planungsgruppe Nord', 'Herr'),
+    person(p2.id, ['Projektleitung'], 'Julia', 'Neumann', 'DB InfraGO AG', 'Frau'),
+    person(p2.id, ['Projektsteuerung'], 'Lena', 'Roth', 'Mailänder Consult GmbH', 'Frau'),
+    person(p2.id, ['Ausführungsplanung', 'VA'], 'Stefan', 'Braun', 'Planungsgruppe Nord', 'Herr'),
   ];
 
   return {

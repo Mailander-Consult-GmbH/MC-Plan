@@ -10,10 +10,15 @@
  *   Funktion im `mutate()` des Stores. Eine Person führt hier genau eine
  *   Funktion: Bleibt die bisherige im Register, bleibt sie; sonst gilt die erste
  *   bekannte Funktion des Registers. Fehlt sie unter den projektübergreifenden
- *   Funktionen, wird sie angelegt (Funktionen anderer Bereiche heißen teils
- *   anders, etwa „Fachplaner“ statt „Fachplanung“).
+ *   Funktionen, wird sie angelegt – mit der Art, die das Register nennt, und in
+ *   deren Vorgabefarbe (ein anderer Bereich kann Funktionen führen, die es hier
+ *   nicht gibt, etwa selbst angelegte).
+ *
+ * Als dieselbe gilt eine Funktion über Bezeichnung und Gewerk
+ * (`funktionsSchluessel`); Kürzel und Art gehen als Beigaben mit ins Register.
  */
 import type { Plan, Sicht } from '../../../gemeinsam/abgleich';
+import { artAus, artInfo, katalogEintrag } from '../../../gemeinsam/funktionskatalog';
 import { funktionsSchluessel, type FunktionsBezug, type RegisterPerson } from '../../../gemeinsam/register';
 import { kuerzelAus, newId, type Beteiligter, type Funktion, type ID, type ProjektsteuerungDaten } from './types';
 
@@ -36,7 +41,7 @@ export function sichtFuerRegister(d: ProjektsteuerungDaten): Sicht {
         mobil: b.mobil,
         anschrift: b.anschrift,
         notiz: b.notiz,
-        funktionen: f ? [{ name: f.name, gewerk: f.gewerk, kuerzel: f.kuerzel }] : [],
+        funktionen: f ? [{ name: f.name, gewerk: f.gewerk, kuerzel: f.kuerzel, art: f.art }] : [],
       };
     }),
     // Je Person eine Funktion: Sie muss zu denen des Registers gehören.
@@ -77,14 +82,18 @@ export function registerPlanAnwenden(daten: ProjektsteuerungDaten, plan: Plan): 
       const vorhanden = funktionen.find((x) => funktionsSchluessel(x) === funktionsSchluessel(f));
       if (vorhanden) return vorhanden.id;
     }
+    // Neu anlegen: Art aus dem Register (ungültig oder leer: laut Katalog), Farbe der Art; nennt das
+    // Register kein Kürzel, gilt das des Katalogs, sonst eines aus der Bezeichnung.
     const erste = liste[0];
+    const art = artAus(erste.art, erste.name, erste.gewerk);
     const neu: Funktion = {
       id: newId('fn'),
       name: erste.name,
-      kuerzel: erste.kuerzel || kuerzelAus(erste.name),
-      farbe: '#8e8e93',
+      kuerzel: erste.kuerzel || katalogEintrag(erste.name, erste.gewerk)?.kuerzel || kuerzelAus(erste.name),
+      farbe: artInfo(art).farbe,
       beschreibung: '',
       gewerk: erste.gewerk,
+      art,
     };
     funktionen = [...funktionen, neu];
     if (neu.gewerk && !gewerke.some((g) => g.toLowerCase() === neu.gewerk!.toLowerCase())) {

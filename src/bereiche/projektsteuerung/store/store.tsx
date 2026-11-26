@@ -43,6 +43,12 @@ import { SPEICHER_SCHLUESSEL, ladeDaten, speichereDaten, type LadeZustand, type 
 
 export { newId };
 
+/** Gewerkliste samt `gewerk`, wenn es noch fehlt – alphabetisch; sonst dieselbe Liste. */
+function mitGewerk(gewerke: string[], gewerk: string | null | undefined): string[] {
+  if (!gewerk || gewerke.some((g) => g.toLowerCase() === gewerk.toLowerCase())) return gewerke;
+  return [...gewerke, gewerk].sort((a, b) => a.localeCompare(b, 'de'));
+}
+
 /** Lässt Logos von Protokollreihen fallen, die es nicht mehr gibt. */
 function reihenLogosBereinigen(d: ProjektsteuerungDaten): ProjektsteuerungDaten {
   const reihen = new Set(d.protokolle.map((p) => p.reiheId));
@@ -64,7 +70,9 @@ interface StoreValue {
   /** Löscht ein Gewerk samt seiner Funktionen; ob diese noch Personen tragen, prüft die Oberfläche vorher. */
   deleteGewerk: (name: string) => void;
   /* Funktionen (projektübergreifend) */
+  /** Legt eine Funktion an – mit ihrer Art (`Funktion.art`); ein Gewerk, das es noch nicht gibt, kommt mit ihr hinzu. */
   addFunktion: (f: Omit<Funktion, 'id'>) => ID;
+  /** Ändert eine Funktion; wechselt sie in ein Gewerk, das es noch nicht gibt, kommt es wie bei `addFunktion` hinzu. */
   updateFunktion: (id: ID, patch: Partial<Omit<Funktion, 'id'>>) => void;
   /** Löscht eine Funktion; ob sie noch Projektbeteiligten zugeordnet ist, prüft die Oberfläche vorher. */
   deleteFunktion: (id: ID) => void;
@@ -211,19 +219,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       addFunktion: (f) => {
         const id = newId('fn');
-        mutate((d) => {
-          // Ein Gewerk, das es noch nicht gibt, kommt mit der Funktion hinzu.
-          const neuesGewerk = f.gewerk && !d.gewerke.some((g) => g.toLowerCase() === f.gewerk!.toLowerCase());
-          return {
-            ...d,
-            gewerke: neuesGewerk ? [...d.gewerke, f.gewerk!].sort((a, b) => a.localeCompare(b, 'de')) : d.gewerke,
-            funktionen: [...d.funktionen, { ...f, id }],
-          };
-        });
+        // Ein Gewerk, das es noch nicht gibt, kommt mit der Funktion hinzu.
+        mutate((d) => ({ ...d, gewerke: mitGewerk(d.gewerke, f.gewerk), funktionen: [...d.funktionen, { ...f, id }] }));
         return id;
       },
       updateFunktion: (id, patch) =>
-        mutate((d) => ({ ...d, funktionen: d.funktionen.map((f) => (f.id === id ? { ...f, ...patch, id } : f)) })),
+        mutate((d) => {
+          if (!d.funktionen.some((f) => f.id === id)) return d;
+          return {
+            ...d,
+            // Ebenso beim Wechsel in ein Gewerk, das es noch nicht gibt – sonst fehlte es bis zum nächsten Laden in der Auswahl
+            gewerke: mitGewerk(d.gewerke, patch.gewerk),
+            funktionen: d.funktionen.map((f) => (f.id === id ? { ...f, ...patch, id } : f)),
+          };
+        }),
       deleteFunktion: (id) =>
         mutate((d) => ({
           ...d,

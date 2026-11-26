@@ -5,6 +5,7 @@ import { useToast } from '../../../shared/toast';
 import { Badge } from '../../../shared/ui';
 import { DRUCK_STIL, liveDokument } from '../domain/druck';
 import { AMPEL_LABEL, type Ampel } from '../domain/punkte';
+import { UEBERGREIFEND, type Funktion } from '../domain/types';
 
 const AMPEL_TON: Record<Ampel, '' | 'green' | 'orange' | 'red' | 'blue'> = {
   erledigt: 'green',
@@ -20,6 +21,29 @@ export function AmpelBadge({ ampel }: { ampel: Ampel }) {
 
 export function AmpelPunkt({ ampel }: { ampel: Ampel }) {
   return <span className={`dot ${AMPEL_TON[ampel]}`} title={AMPEL_LABEL[ampel]} />;
+}
+
+/** Abzeichen des Gewerks einer Funktion: blau „Übergreifend“, sonst das Gewerk. */
+export function GewerkAbzeichen({ gewerk }: { gewerk: string | null }) {
+  return gewerk === null ? <Badge ton="blue">{UEBERGREIFEND}</Badge> : <Badge>{gewerk}</Badge>;
+}
+
+/**
+ * Funktion in einer Tabellenzelle: Farbpunkt, Bezeichnung und dahinter das
+ * Gewerk als Abzeichen – so bleibt es in jeder Zeile zu sehen, auch auf dem
+ * Telefon, wo Spalten entfallen. `kuerzel` steht, wo es genannt ist, dahinter.
+ */
+export function FunktionsZelle({ funktion, kuerzel }: { funktion: Funktion; kuerzel?: string }) {
+  return (
+    <span className="ps-funktion">
+      <span className="dot" style={{ background: funktion.farbe }} />
+      <span className="ps-funktion-text">
+        <strong>{funktion.name}</strong>
+        <GewerkAbzeichen gewerk={funktion.gewerk} />
+        {kuerzel ? <span className="num tertiary">· {kuerzel}</span> : null}
+      </span>
+    </span>
+  );
 }
 
 /** Mehrzeiliges Feld, das mit seinem Inhalt wächst. */

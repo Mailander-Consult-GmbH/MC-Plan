@@ -87,6 +87,7 @@ import {
   zeitpunktWert,
 } from '../domain/mailRegeln';
 import { newId, useStore } from '../store/store';
+import { kuerzelDerBezeichnung } from '../../../gemeinsam/funktionskatalog';
 import { useToast } from '../../../shared/toast';
 import { ConfirmDialog } from '../../../shared/ui';
 import { Icon } from '../../../shared/icons';
@@ -409,10 +410,22 @@ export function WorkflowEditor({
   /* Darstellung                                                       */
   /* ---------------------------------------------------------------- */
 
+  // Kürzel einer Bezeichnung: Ein Schritt nennt die Funktion ohne Gewerk, die Kürzel der Funktionen
+  // tragen es aber oft („PSV KIB“) – gezeigt wird das der übergreifenden Funktion, sonst das kürzeste
+  // ohne Gewerkzusatz (`kuerzelDerBezeichnung`), über die projektübergreifenden und alle Projektfunktionen.
   const kuerzel = useMemo(() => {
+    const funktionen = [...data.standardRollen, ...data.roles];
     const m = new Map<string, string>([[EIGENE_ROLLE.toLowerCase(), 'PLM']]);
-    for (const r of [...data.standardRollen, ...data.roles]) if (r.kuerzel) m.set(r.name.toLowerCase(), r.kuerzel);
-    return (rolle: string) => m.get(rolle.trim().toLowerCase()) ?? rolle.trim().slice(0, 3).toUpperCase();
+    return (rolle: string) => {
+      const name = rolle.trim();
+      const schluessel = name.toLowerCase();
+      let k = m.get(schluessel);
+      if (k === undefined) {
+        k = kuerzelDerBezeichnung(funktionen, name) || name.slice(0, 3).toUpperCase();
+        m.set(schluessel, k);
+      }
+      return k;
+    };
   }, [data.standardRollen, data.roles]);
 
   const rollenListe = useMemo(

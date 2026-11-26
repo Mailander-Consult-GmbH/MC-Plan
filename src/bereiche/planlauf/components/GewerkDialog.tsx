@@ -1,5 +1,11 @@
-/** Kleiner Dialog zum Anlegen eines weiteren Gewerks. */
+/**
+ * Gewerke anlegen und löschen. Das Gewerk ist die zweite Ebene unter der Art
+ * der Funktion: Angelegt wird es aus dem Dialog einer Funktion (Knopf „Gewerk“
+ * am Feld „Gewerk“, components/FunktionsFelder.tsx), gelöscht unter den
+ * Funktionslisten, sobald der Gewerkfilter es zeigt.
+ */
 import { useState } from 'react';
+import { UEBERGREIFEND } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../../../shared/toast';
 import { Field, Modal, TextInput, beiEnter } from '../../../shared/ui';
@@ -13,6 +19,11 @@ export function GewerkDialog({ onClose, onAngelegt }: { onClose: () => void; onA
     const wert = name.trim();
     if (!wert) {
       toast('Bitte eine Bezeichnung angeben.');
+      return;
+    }
+    // „Übergreifend“ heißen die Funktionen ohne Gewerk – in der Auswahl der Dialoge und im Gewerkfilter
+    if (wert.toLowerCase() === UEBERGREIFEND.toLowerCase()) {
+      toast(`„${UEBERGREIFEND}“ steht für Funktionen ohne Gewerk – bitte eine andere Bezeichnung wählen.`);
       return;
     }
     if (data.gewerke.some((g) => g.toLowerCase() === wert.toLowerCase())) {
@@ -55,8 +66,9 @@ export function GewerkDialog({ onClose, onAngelegt }: { onClose: () => void; onA
 
 /**
  * Löschen eines Gewerks. Der Dialog nennt vorab, was damit entfällt: die
- * Funktionen dieses Gewerks – in den Stammdaten wie in den Projekten – und
- * deren Besetzung. Pläne behalten ihre Angabe, verlieren aber den Bezug.
+ * Funktionen dieses Gewerks – in allen Arten, in den Stammdaten wie in den
+ * Projekten – und deren Besetzung. Pläne behalten ihre Angabe, verlieren aber
+ * den Bezug.
  */
 export function GewerkLoeschenDialog({
   gewerk,

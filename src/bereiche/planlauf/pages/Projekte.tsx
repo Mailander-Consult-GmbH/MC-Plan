@@ -156,7 +156,7 @@ export function ProjektDialog({
   onClose: () => void;
   navigate?: (r: Route) => void;
 }) {
-  const { data, addProject, updateProject, addRole } = useStore();
+  const { data, addProject, updateProject, addRoles } = useStore();
   const toast = useToast();
   const [form, setForm] = useState({
     nummer: project?.nummer ?? '',
@@ -194,17 +194,18 @@ export function ProjektDialog({
         absenderEmail: '',
       },
     });
-    // Funktionen als Projektfunktionen übernehmen
-    data.standardRollen.forEach((r) =>
-      addRole({
+    // Funktionen als Projektfunktionen übernehmen – alle in einem Schritt
+    addRoles(
+      data.standardRollen.map((r) => ({
         projectId: id,
         name: r.name,
         kuerzel: r.kuerzel,
         farbe: r.farbe,
         beschreibung: r.beschreibung,
+        art: r.art,
         gewerk: r.gewerk,
         seite: r.seite ?? null,
-      }),
+      })),
     );
     toast('Projekt angelegt – die Funktionen wurden übernommen.');
     onClose();
