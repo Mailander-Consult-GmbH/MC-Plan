@@ -594,7 +594,8 @@ Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
    (`projektFunktionenUmbenennen`). Zuletzt hält die Umstellung an offenen
    Schritten laufender Planläufe die bisherige Person fest (`contactId`,
    `contactManuell`), wenn nach ihr eine andere Funktion für den Schritt gälte
-   (`kontaktFuerRolleUndGewerk` vorher gegen nachher). Die Standard-Workflows ersetzt `stammdatenAktualisieren` nur bei
+   (vorher: die Person der Funktion, die der Schritt meinte, `rolleFuerSchritt`;
+   nachher: `kontaktFuerRolleUndGewerk`; hatte er niemanden, gilt die neue Besetzung). Die Standard-Workflows ersetzt `stammdatenAktualisieren` nur bei
    einem Bestand vor Stammdatenfassung 6 – aus Fassung 6 bleiben sie stehen und
    werden nur umbenannt; hatte ein Bestand der
    Stammdatenfassung 4 bzw. 5 einen mitgelieferten Workflow selbst geändert

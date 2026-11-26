@@ -532,7 +532,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     eines laufenden Planlaufs nach der Umstellung eine andere Person (zwei frühere Bezeichnungen
     sind jetzt dieselbe, und die besetzte Funktion des Gewerks gilt vor der übergreifenden), bleibt
     die bisherige an ihm stehen (`contactManuell`; erledigte Schritte fasst das Netz nicht an) – wer die Umstellung
-    ändert, prüft je offenem Schritt `kontaktFuerRolleUndGewerk` vorher gegen nachher,
+    ändert, prüft je offenem Schritt, wer bisher an ihm stand (Person der gemeinten Funktion,
+    `rolleFuerSchritt`), gegen `kontaktFuerRolleUndGewerk` danach – hatte er niemanden, gilt die
+    neue Besetzung,
   * `lib/router.ts` Hash-Router, `pages/` Ansichten, `components/` fachliche Bausteine.
 * `src/bereiche/baubetrieb/` – gleich aufgebaut: `domain/workflow.ts` Standard-Workflows je Phase
   und Nachschlagen von Status (Anmeldungen verweisen per `statusId` auf einen Status; die
