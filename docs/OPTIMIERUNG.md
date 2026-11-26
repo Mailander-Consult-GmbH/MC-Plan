@@ -84,11 +84,12 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 >   in den Bestand kommt (Umstellung, Register, Import), muss durch `umbenannt`.
 > * **Zufallskennungen in einer Umstellung** machen Bestand, Sicherung und zweites Gerät
 >   unvergleichbar; die aus dem Katalog ergänzten Funktionen tragen deshalb feste Kennungen.
-> * **Offen, fachlich zu entscheiden:** Die Funktion eines Gewerks gilt für einen Schritt vor der
->   übergreifenden gleicher Bezeichnung – auch wenn nur die übergreifende besetzt ist
->   (`rolleFuerSchritt`). Seit der Katalog viele Bezeichnungen je Gewerk mitliefert, trifft das
->   öfter zu; die Umstellung hält die bisherige Person an offenen Schritten fest, neue Planläufe
->   folgen der Regel.
+> * **Entschieden (26.11.2026):** Füllt die Funktion eines Gewerks niemand aus, springt die
+>   besetzte übergreifende Funktion gleicher Bezeichnung ein (`zustaendigeRolle` in
+>   `src/bereiche/planlauf/domain/engine.ts`). Vorher verdrängte auch die unbesetzte Funktion des
+>   Gewerks die besetzte übergreifende – seit der Katalog viele Bezeichnungen je Gewerk
+>   mitliefert, blieben Schritte so ohne Person. Ergänzt ist außerdem „Planprüfer EEA“, der in der
+>   Liste fehlte.
 
 Diese Liste beantwortet die Frage: **Wo lösen Planlaufmanagement, Baubetriebsplanung und
 Projektsteuerung dasselbe unterschiedlich – in der Funktion, im Wortlaut, in der Optik oder im

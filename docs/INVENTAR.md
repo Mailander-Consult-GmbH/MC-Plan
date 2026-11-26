@@ -457,7 +457,10 @@ Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
    Personen besetzt werden (`kontaktFuerRolleUndGewerk`). Ein Schritt speichert
    nur die Bezeichnung der Funktion; welche Funktion und damit welche Person
    gemeint ist, ergibt sich aus dem Gewerk des Eintrags – ersatzweise gilt die
-   übergreifende Funktion gleichen Namens. Mitgeliefert werden die 140
+   übergreifende Funktion gleichen Namens; füllt die Funktion des Gewerks
+   niemand aus, gilt die Besetzung der übergreifenden (`zustaendigeRolle` in
+   `src/bereiche/planlauf/domain/engine.ts`; die Liste im Projekt nennt es:
+   „es gilt die übergreifende Funktion: …“). Mitgeliefert werden die 141
    Funktionen des Funktionskatalogs (`FUNKTIONS_KATALOG` in
    `src/gemeinsam/funktionskatalog.ts`, daraus `STANDARD_ROLLEN` in
    `src/bereiche/planlauf/domain/seed.ts`) in den Gewerken EEA, KIB, LST, OB,
@@ -1307,7 +1310,7 @@ in `src/bereiche/projektsteuerung/domain/protokoll.ts`).
   Teilnehmenden in den Protokollen nach. Ohne gespeicherten Bestand lädt `seedDaten()`
   (`src/bereiche/projektsteuerung/domain/seed.ts`) die Gewerke (`STANDARD_GEWERKE`: die des
   Funktionskatalogs – EEA, KIB, LST, OB, OLA, PT1, PT2, TK, VA), die Standard-Funktionen
-  (`STANDARD_FUNKTIONEN`: die 140 Funktionen des Katalogs) und zwei
+  (`STANDARD_FUNKTIONEN`: die 141 Funktionen des Katalogs) und zwei
   Projekte mit Projektbeteiligten und zwei Protokollen einer Reihe, darunter
   Aufgaben der Projektsteuerin „Lena Roth“ – als eigene vorgewählt („In die To-Do-Liste
   übernehmen“) sind sie, wenn unter „Angemeldet als“ dieser Name steht (`einstellungen.bearbeiter` aus

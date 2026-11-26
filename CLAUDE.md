@@ -447,7 +447,12 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     gesetztes Soll bleibt auch außerhalb des Verlaufs stehen, `sollManuell` gibt es nur mit Datum),
     Rücksprung mit Historie, Ampel, Verzug, gewichteter Fortschritt, To-Dos, Zuständigkeiten
     (`rolleFuerSchritt`: welche Funktion ein Schritt meint – die des Gewerks, ersatzweise die
-    übergreifende; `zustaendigkeitenNachziehen`: „von Hand“ gilt nur mit Person),
+    übergreifende, ohne Blick auf die Besetzung; danach richtet sich die Seite im Terminnachweis.
+    `zustaendigeRolle`: wessen Besetzung gilt – die besetzte Funktion des Gewerks, sonst **die
+    besetzte übergreifende gleichen Namens**, sonst die gemeinte; `kontaktFuerRolleUndGewerk`
+    liefert danach die Person und ist die einzige Stelle, die Zuständigkeit, neue Planläufe,
+    E-Mail-Regeln und Vorbelegungen fragen. `zustaendigkeitenNachziehen`: „von Hand“ gilt nur mit
+    Person),
   * `domain/abschluss.ts` Statuswechsel (`schrittStatusSetzen`), Wieder öffnen, Einfügen,
   * `domain/simulation.ts` Prognose, Basisplan und Rückwärtsrechnung – erledigt die Schritte mit
     `schrittStatusSetzen` und rechnet mit `recalcSollDaten`, also ohne eigene Regeln,
@@ -460,7 +465,7 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     (`kontaktLoeschen` nimmt an offenen Schritten Person und „von Hand“ zurück), Sammelaktionen als
     reine Funktionen; `funktionAendern` (hinter `updateRole`): Ein Gewerkwechsel zieht
     `zuordnungen[].gewerk` der Personen mit, eine Umbenennung `roleName` und `MailRegel.roleName` in
-    den Planläufen des Projekts, für die genau diese Funktion gilt (`rolleFuerSchritt`; führt das
+    den Planläufen des Projekts, für die die Besetzung genau dieser Funktion gilt (`zustaendigeRolle`; führt das
     Gewerk eines Laufs die neue Bezeichnung schon, gehen seine Schritte an dessen Funktion), und – trägt
     im Projekt keine Funktion mehr den alten Namen – in den Projekt-Workflows, nicht in den
     übergreifenden (`workflowsMitAlterBezeichnung` nennt die Workflows, aus denen ein neuer
@@ -523,10 +528,10 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     heutige gelten). Ergänzte Funktionen tragen **feste Kennungen** (`rol-<Projekt>-<Katalogeintrag>`,
     nicht `neueId`): Bestand, Sicherung und zweites Gerät vergeben dieselbe, sonst hielte der
     Abgleich Gelöschtes für neu. Ein Gewerk des Katalogs in anderer Schreibweise des Bestands
-    bleibt ein Gewerk (`gewerkWieImBestand`). Zuletzt das **Netz**: Meint ein offener Schritt
-    eines laufenden Planlaufs nach der Umstellung eine andere Funktion (`rolleFuerSchritt` nimmt
-    die des Gewerks vor der übergreifenden, auch die unbesetzte), bleibt die bisherige Person an
-    ihm stehen (`contactManuell`; erledigte Schritte fasst das Netz nicht an) – wer die Umstellung
+    bleibt ein Gewerk (`gewerkWieImBestand`). Zuletzt das **Netz**: Bekäme ein offener Schritt
+    eines laufenden Planlaufs nach der Umstellung eine andere Person (zwei frühere Bezeichnungen
+    sind jetzt dieselbe, und die besetzte Funktion des Gewerks gilt vor der übergreifenden), bleibt
+    die bisherige an ihm stehen (`contactManuell`; erledigte Schritte fasst das Netz nicht an) – wer die Umstellung
     ändert, prüft je offenem Schritt `kontaktFuerRolleUndGewerk` vorher gegen nachher,
   * `lib/router.ts` Hash-Router, `pages/` Ansichten, `components/` fachliche Bausteine.
 * `src/bereiche/baubetrieb/` – gleich aufgebaut: `domain/workflow.ts` Standard-Workflows je Phase

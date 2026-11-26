@@ -325,7 +325,8 @@ Funktionen der Liste automatisch.
 Mitgeliefert sind die Funktionen des **Funktionskatalogs** (`src/gemeinsam/funktionskatalog.ts`),
 den Planlaufmanagement und Projektsteuerung gemeinsam führen: die 131 Funktionen der Liste
 „Projektbeteiligte“ der Anwender (Arbeitsstand vom 26.11.2026 – sie wird noch ergänzt), dazu der
-Fachplaner je Gewerk, den die Workflows nennen – zusammen 140, etwa Projektleitung (PL),
+Fachplaner je Gewerk, den die Workflows nennen, und der Planprüfer im Gewerk EEA – zusammen 141,
+etwa Projektleitung (PL),
 Projektingenieur (PING), Planprüfer (PSV KIB, PSV LST …), Bauvorlageberechtigter (BVB KIB …),
 Auftragnehmer (AN), Bauüberwacher (BÜW-LST …) und die übergreifenden Vermessungs-, Erdungs-,
 Schweißtechnischen, Korrosionsschutz-, Gleisgeometrie- und Geotechnischen Prüfer. Jede Funktion
@@ -411,9 +412,10 @@ darunter; ein Klick weist ihnen eine Funktion zu, das Papierkorb-Symbol rechts l
 Projekt. Das Planlaufmanagement erscheint auf dieser Seite nicht – es ist immer die angemeldete Person.
 
 Wird eine Funktion des Projekts **umbenannt**, nehmen die Planläufe des Projekts die neue
-Bezeichnung mit: die Schritte, für die genau diese Funktion gilt (die des Gewerks ihres Eintrags,
-ersatzweise die übergreifende), samt ihren E-Mail-Regeln „an Funktion“ – sie blieben sonst ohne
-zuständige Person. Die Workflows des Projekts ziehen mit, wenn im Projekt keine Funktion mehr die
+Bezeichnung mit: die Schritte, für die die Besetzung genau dieser Funktion gilt (die besetzte des
+Gewerks ihres Eintrags, sonst die besetzte übergreifende – siehe
+[Zuständigkeiten](#zuständigkeiten)), samt ihren E-Mail-Regeln „an Funktion“ – sie blieben sonst
+ohne zuständige Person. Die Workflows des Projekts ziehen mit, wenn im Projekt keine Funktion mehr die
 alte Bezeichnung trägt. Führt das Projekt die neue Bezeichnung im Gewerk eines Laufs schon, gilt
 dort danach die Funktion des Gewerks: Die Schritte ziehen trotzdem mit und gehen an deren Person –
 dieselbe, die ein neuer Planlauf dieses Gewerks bekommt. Wechselt die Funktion zugleich das Gewerk,
@@ -606,7 +608,12 @@ daneben erscheint bei gesetzten Filtern *Filter zurücksetzen*.
 ### Zuständigkeiten
 Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht unter **Funktion** des Projekts (das Planlaufmanagement übernimmt stets die angemeldete Person).
 Gemeint ist stets die Funktion des Gewerks des Plans – ersatzweise die übergreifende gleichen
-Namens. Darum bietet die Auswahl beim Anpassen eines Schritts nur die Funktionen dieses Gewerks und
+Namens. **Füllt die Funktion des Gewerks niemand aus, springt die besetzte übergreifende Funktion
+ein:** Den Schritt bearbeitet dann ihre Person, bis die Funktion des Gewerks selbst besetzt ist
+(die Liste unter *Funktion* sagt es an der unbesetzten Funktion: „es gilt die übergreifende
+Funktion: …“). Das gilt für laufende und neue Planläufe, für E-Mail-Regeln „an Funktion“ und die
+Vorbelegung beim Anpassen eines Schritts; die Seite im Terminnachweis folgt weiter der Funktion
+des Gewerks. Darum bietet die Auswahl beim Anpassen eines Schritts nur die Funktionen dieses Gewerks und
 die übergreifenden an, jede einmal. Die
 Zuordnung wird laufend nachgezogen: Wird eine Person erst nach dem Start eines Planlaufs eingetragen
 oder wechselt sie während des Projekts, gilt die neue Besetzung sofort auch in laufenden Planläufen.
@@ -729,12 +736,14 @@ Gewerke](#funktionen-und-gewerke)) und ersetzt die Workflows **nicht**: In vorha
 nennen die Schritte und E-Mail-Regeln aller Workflows und laufenden Planläufe danach die neuen
 Bezeichnungen („Planprüfer“ statt „Fachtechnischer Prüfer“, „Bauvorlageberechtigter“), alles andere
 bleibt, wie es war – auch die Namen der Schritte, Blöcke und Zweige („Bau AN“). **Kein offener
-Schritt eines laufenden Planlaufs wechselt dabei die zuständige Person:** Die Funktion eines Gewerks
-gilt vor der übergreifenden gleicher Bezeichnung – auch die unbesetzte, die mit dem Katalog neu ins
-Projekt kommt. Meint ein Schritt deshalb nach der Umstellung eine andere Funktion als vorher (etwa
-„Bauleiter KIB“ statt einer selbst angelegten, besetzten übergreifenden „Bauleiter“), bleibt die
-bisherige Person an ihm stehen wie von Hand gesetzt; neue Planläufe folgen der Besetzung der
-Funktionen, ebenso ein damals schon erledigter Schritt, der später wieder geöffnet wird. Funktionen, die der Katalog in die Projekte bringt, tragen eine feste Kennung aus
+Schritt eines laufenden Planlaufs wechselt dabei die zuständige Person:** Eine unbesetzte Funktion,
+die mit dem Katalog neu in ein Gewerk kommt, nimmt niemandem einen Schritt – dort bearbeitet ihn
+weiter die Person der übergreifenden Funktion gleicher Bezeichnung (siehe
+[Zuständigkeiten](#zuständigkeiten)). Bekäme ein Schritt trotzdem eine andere Person – zwei frühere
+Bezeichnungen sind jetzt dieselbe, etwa die übergreifende „Bauunternehmen“ und „Bau AN KIB“, beide
+„Auftragnehmer“ –, bleibt die bisherige an ihm stehen wie von Hand gesetzt; neue Planläufe folgen
+der Besetzung der Funktionen, ebenso ein damals schon erledigter Schritt, der später wieder
+geöffnet wird. Funktionen, die der Katalog in die Projekte bringt, tragen eine feste Kennung aus
 Projekt und Katalogeintrag – so erkennt der Abgleich mit einer Sicherung desselben Stands (auch
 der eines zweiten Geräts) sie wieder, samt Gelöschtem und Umbenanntem.
 
@@ -1511,7 +1520,7 @@ hinter der Bezeichnung. „Fachplaner“ im Gewerk LST ist eine andere Funktion 
 und heißt in Auswahl, Protokoll und Druck „Fachplaner LST“. Ein Gewerk entsteht im Dialog einer
 Funktion über den Knopf *Gewerk*; ist im Filter ein Gewerk gewählt, übernimmt **Vorhandene
 Funktion** eine Funktion aus einem anderen Gewerk (in der Art des Originals), und **Gewerk „…“
-löschen** entfernt das Gewerk samt seinen Funktionen. Mitgeliefert sind die 140 Funktionen des
+löschen** entfernt das Gewerk samt seinen Funktionen. Mitgeliefert sind die 141 Funktionen des
 **Funktionskatalogs**, den auch das Planlaufmanagement führt (Liste „Projektbeteiligte“ der
 Anwender, Arbeitsstand vom 26.11.2026), in den Gewerken EEA, KIB, LST, OB, OLA, PT1, PT2, TK und VA.
 Ein vorhandener Bestand behält seine bisherigen Funktionen und Gewerke samt Kürzeln und bekommt die
@@ -2021,7 +2030,7 @@ src/
                      Einfügestellen
         engine.ts    Fristenrechnung ab dem tatsächlichen Eingang, Rücksprung mit Historie,
                      Ampel, Verzug, gewichteter Fortschritt, To-Dos, Zuständigkeiten
-                     (rolleFuerSchritt)
+                     (zustaendigeRolle, kontaktFuerRolleUndGewerk; rolleFuerSchritt für die Seite)
         simulation.ts  Simulation eines Laufs: Prognose, Basisplan, Rückwärtsrechnung
         nachweis.ts  Terminnachweis – Verzug gegenüber dem Basisplan je Seite
         protokoll.ts Änderungsprotokoll der Planläufe (protokollNachziehen)
