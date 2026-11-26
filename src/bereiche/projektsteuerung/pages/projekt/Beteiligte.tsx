@@ -11,7 +11,7 @@
  * Gewerk steht als Abzeichen hinter der Funktion. Druck und Excel-Ausgabe
  * nehmen immer alle Personen – unabhängig von Reiter, Filter und Suche.
  */
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import {
   ALLE_ARTEN,
   ALLE_GEWERKE,
@@ -22,6 +22,7 @@ import {
   artWahlGueltig,
   gewerkPasst,
   gewerkWahlGueltig,
+  useWahlNachziehen,
 } from '../../../../gemeinsam/FunktionsArten';
 import { artInfo, funktionenVergleich, gewerkRang, nachArt } from '../../../../gemeinsam/funktionskatalog';
 import { today } from '../../../../shared/dates';
@@ -105,6 +106,8 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
     (a, b) => gewerkRang(a, data.gewerke) - gewerkRang(b, data.gewerke) || a.localeCompare(b, 'de'),
   );
   const gewerkFilter = gewerkWahlGueltig(gewerkWahl, gewerke);
+  useWahlNachziehen(artWahl, art, setArtWahl);
+  useWahlNachziehen(gewerkWahl, gewerkFilter, setGewerkWahl);
   const passt = (b: Beteiligter, zurArt: string) => {
     const f = funktion(b);
     // Personen ohne Funktion stehen nur unter „Alle“ ohne Gewerkfilter
@@ -296,24 +299,29 @@ export function Beteiligte({ projekt }: { projekt: Projekt }) {
                 </tr>
               </thead>
               <tbody>
-                {gruppen.map((g) => (
-                  <Fragment key={g.art.id}>
-                    {/* Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“ */}
-                    {alleArten ? <ArtGruppenZeile art={g.art.id} spalten={SPALTEN} anzahl={g.eintraege.length} /> : null}
-                    {g.eintraege.map((e) => zeile(e.person, e.funktion))}
-                  </Fragment>
-                ))}
-                {ohneFunktion.length > 0 ? (
-                  <>
-                    <tr className="gruppe-zeile gem-artzeile">
-                      <td colSpan={SPALTEN}>
-                        <strong>Ohne Funktion</strong>
-                        <span className="small tertiary"> {ohneFunktion.length}</span>
-                      </td>
-                    </tr>
-                    {ohneFunktion.map((b) => zeile(b))}
-                  </>
-                ) : null}
+                {/* Eine flache Liste mit Schlüsseln statt je Art ein Fragment: Wechselt eine Zeile die Art, hängt React
+                    sie um, statt sie neu aufzubauen – der Knopf, der den Dialog geöffnet hat, bekommt den Fokus zurück */}
+                {[
+                  ...gruppen.flatMap((g) => [
+                    // Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“
+                    alleArten ? (
+                      <ArtGruppenZeile key={`art-${g.art.id}`} art={g.art.id} spalten={SPALTEN} anzahl={g.eintraege.length} />
+                    ) : null,
+                    ...g.eintraege.map((e) => zeile(e.person, e.funktion)),
+                  ]),
+                  // Personen ohne Funktion in derselben Liste – auch wer eine Funktion bekommt, wird nur umgehängt
+                  ...(ohneFunktion.length > 0
+                    ? [
+                        <tr key="ohne-funktion" className="gruppe-zeile gem-artzeile">
+                          <td colSpan={SPALTEN}>
+                            <strong>Ohne Funktion</strong>
+                            <span className="small tertiary"> {ohneFunktion.length}</span>
+                          </td>
+                        </tr>,
+                        ...ohneFunktion.map((b) => zeile(b)),
+                      ]
+                    : []),
+                ]}
               </tbody>
             </table>
           </div>

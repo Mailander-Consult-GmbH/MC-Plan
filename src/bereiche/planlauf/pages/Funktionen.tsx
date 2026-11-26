@@ -13,7 +13,7 @@
  * „Vorhandene Funktion“ (eine Funktion eines anderen Gewerks hier ergänzen)
  * und unter der Karte „Gewerk „…“ löschen“.
  */
-import { Fragment, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import {
   EIGENE_ROLLE,
   funktionsName,
@@ -31,6 +31,7 @@ import {
   artWahlGueltig,
   gewerkPasst,
   gewerkWahlGueltig,
+  useWahlNachziehen,
 } from '../../../gemeinsam/FunktionsArten';
 import { artInfo, funktionenVergleich, kuerzelFuerGewerk, nachArt } from '../../../gemeinsam/funktionskatalog';
 import { funktionsSchluessel } from '../../../gemeinsam/register';
@@ -78,6 +79,8 @@ export function Funktionen() {
   const inArt = (f: StandardRolle) => alleArten || artInfo(f.art).id === art;
   // Zweite Ebene: das Gewerk. `gewerk` ist das im Filter gewählte – null bei „Alle Gewerke“ und „Übergreifend“.
   const gewerkFilter = gewerkWahlGueltig(gewerkWahl, gewerke);
+  useWahlNachziehen(artWahl, art, setArtWahl);
+  useWahlNachziehen(gewerkWahl, gewerkFilter, setGewerkWahl);
   const gewerk = gewerkFilter === ALLE_GEWERKE || gewerkFilter === OHNE_GEWERK ? null : gewerkFilter;
 
   const inAuswahl = alle.filter((f) => inArt(f) && gewerkPasst(f.gewerk, gewerkFilter));
@@ -184,36 +187,36 @@ export function Funktionen() {
                 </tr>
               </thead>
               <tbody>
-                {gruppen.map((g) => (
-                  <Fragment key={g.art.id}>
-                    {/* Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“ */}
-                    {alleArten ? <ArtGruppenZeile art={g.art.id} spalten={SPALTEN} anzahl={g.eintraege.length} /> : null}
-                    {g.eintraege.map((f) => (
-                      // Tab-Halt: „Funktion bearbeiten“ ist sonst nur mit der Maus erreichbar
-                      <tr key={f.id} className="clickable" {...alsKlickZeile(() => setDialog({ funktion: f }))}>
-                        <td>
-                          <FunktionsZelle funktion={f} seiteNoetig={genannt.has(f.name.trim().toLowerCase())} />
-                        </td>
-                        <td className="num">{f.kuerzel || '–'}</td>
-                        <td className="small muted col-optional">{f.beschreibung || '–'}</td>
-                        <td className="actions">
-                          <button
-                            type="button"
-                            className="btn-icon"
-                            aria-label="Funktion löschen"
-                            title="Funktion löschen"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLoeschen(f);
-                            }}
-                          >
-                            <Icon name="loeschen" size={15} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </Fragment>
-                ))}
+                {/* Eine flache Liste mit Schlüsseln statt je Art ein Fragment: Wechselt eine Zeile die Art, hängt React
+                    sie um, statt sie neu aufzubauen – der Knopf, der den Dialog geöffnet hat, bekommt den Fokus zurück */}
+                {gruppen.flatMap((g) => [
+                  // Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“
+                  alleArten ? <ArtGruppenZeile key={`art-${g.art.id}`} art={g.art.id} spalten={SPALTEN} anzahl={g.eintraege.length} /> : null,
+                  ...g.eintraege.map((f) => (
+                    // Tab-Halt: „Funktion bearbeiten“ ist sonst nur mit der Maus erreichbar
+                    <tr key={f.id} className="clickable" {...alsKlickZeile(() => setDialog({ funktion: f }))}>
+                      <td>
+                        <FunktionsZelle funktion={f} seiteNoetig={genannt.has(f.name.trim().toLowerCase())} />
+                      </td>
+                      <td className="num">{f.kuerzel || '–'}</td>
+                      <td className="small muted col-optional">{f.beschreibung || '–'}</td>
+                      <td className="actions">
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          aria-label="Funktion löschen"
+                          title="Funktion löschen"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLoeschen(f);
+                          }}
+                        >
+                          <Icon name="loeschen" size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  )),
+                ])}
               </tbody>
             </table>
           </div>

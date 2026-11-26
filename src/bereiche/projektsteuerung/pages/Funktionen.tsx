@@ -12,7 +12,7 @@
  * „Vorhandene Funktion“ (eine Funktion eines anderen Gewerks hier ergänzen)
  * und unter der Karte „Gewerk „…“ löschen“.
  */
-import { Fragment, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import {
   ALLE_ARTEN,
   ALLE_GEWERKE,
@@ -23,6 +23,7 @@ import {
   artWahlGueltig,
   gewerkPasst,
   gewerkWahlGueltig,
+  useWahlNachziehen,
 } from '../../../gemeinsam/FunktionsArten';
 import { artInfo, funktionenVergleich, kuerzelFuerGewerk, nachArt } from '../../../gemeinsam/funktionskatalog';
 import { Icon } from '../../../shared/icons';
@@ -60,6 +61,8 @@ export function Funktionen() {
   const inArt = (f: Funktion) => alleArten || artInfo(f.art).id === art;
   // Zweite Ebene: das Gewerk. `gewerk` ist das im Filter gewählte – null bei „Alle Gewerke“ und „Übergreifend“.
   const gewerkFilter = gewerkWahlGueltig(gewerkWahl, data.gewerke);
+  useWahlNachziehen(artWahl, art, setArtWahl);
+  useWahlNachziehen(gewerkWahl, gewerkFilter, setGewerkWahl);
   const gewerk = gewerkFilter === ALLE_GEWERKE || gewerkFilter === OHNE_GEWERK ? null : gewerkFilter;
 
   const personenJe = new Map<ID, Beteiligter[]>();
@@ -173,65 +176,65 @@ export function Funktionen() {
                 </tr>
               </thead>
               <tbody>
-                {gruppen.map((g) => (
-                  <Fragment key={g.art.id}>
-                    {/* Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“ */}
-                    {alleArten ? <ArtGruppenZeile art={g.art.id} spalten={SPALTEN} anzahl={g.eintraege.length} /> : null}
-                    {g.eintraege.map((f) => {
-                      const wer = personen(f);
-                      const projekte = new Set(wer.map((b) => b.projektId)).size;
-                      return (
-                        <tr key={f.id} className="clickable" onClick={() => setDialog({ funktion: f })}>
-                          <td>
-                            <FunktionsZelle funktion={f} />
-                          </td>
-                          <td className="num">{f.kuerzel || '–'}</td>
-                          <td className="small muted col-optional">{f.beschreibung || '–'}</td>
-                          <td className="small muted col-optional">
-                            {wer.length === 0
-                              ? '–'
-                              : `${wer.length} ${wer.length === 1 ? 'Person' : 'Personen'} in ${projekte} ${
-                                  projekte === 1 ? 'Projekt' : 'Projekten'
-                                }`}
-                          </td>
-                          <td className="actions">
-                            {/* Die Zeile öffnet den Dialog nur per Mausklick – der Knopf ist der Weg mit der Tastatur */}
-                            <button
-                              type="button"
-                              className="btn-icon"
-                              aria-label="Funktion bearbeiten"
-                              title="Funktion bearbeiten"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDialog({ funktion: f });
-                              }}
-                            >
-                              <Icon name="bearbeiten" size={15} />
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-icon"
-                              aria-label="Funktion löschen"
-                              title="Funktion löschen"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (wer.length > 0) {
-                                  toast(
-                                    `„${funktionsName(f)}“ ist noch ${wer.length} Projektbeteiligten zugeordnet und lässt sich deshalb nicht löschen.`,
-                                  );
-                                  return;
-                                }
-                                setLoeschen(f);
-                              }}
-                            >
-                              <Icon name="loeschen" size={15} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                ))}
+                {/* Eine flache Liste mit Schlüsseln statt je Art ein Fragment: Wechselt eine Zeile die Art, hängt React
+                    sie um, statt sie neu aufzubauen – der Knopf, der den Dialog geöffnet hat, bekommt den Fokus zurück */}
+                {gruppen.flatMap((g) => [
+                  // Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“
+                  alleArten ? <ArtGruppenZeile key={`art-${g.art.id}`} art={g.art.id} spalten={SPALTEN} anzahl={g.eintraege.length} /> : null,
+                  ...g.eintraege.map((f) => {
+                    const wer = personen(f);
+                    const projekte = new Set(wer.map((b) => b.projektId)).size;
+                    return (
+                      <tr key={f.id} className="clickable" onClick={() => setDialog({ funktion: f })}>
+                        <td>
+                          <FunktionsZelle funktion={f} />
+                        </td>
+                        <td className="num">{f.kuerzel || '–'}</td>
+                        <td className="small muted col-optional">{f.beschreibung || '–'}</td>
+                        <td className="small muted col-optional">
+                          {wer.length === 0
+                            ? '–'
+                            : `${wer.length} ${wer.length === 1 ? 'Person' : 'Personen'} in ${projekte} ${
+                                projekte === 1 ? 'Projekt' : 'Projekten'
+                              }`}
+                        </td>
+                        <td className="actions">
+                          {/* Die Zeile öffnet den Dialog nur per Mausklick – der Knopf ist der Weg mit der Tastatur */}
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            aria-label="Funktion bearbeiten"
+                            title="Funktion bearbeiten"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDialog({ funktion: f });
+                            }}
+                          >
+                            <Icon name="bearbeiten" size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            aria-label="Funktion löschen"
+                            title="Funktion löschen"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (wer.length > 0) {
+                                toast(
+                                  `„${funktionsName(f)}“ ist noch ${wer.length} Projektbeteiligten zugeordnet und lässt sich deshalb nicht löschen.`,
+                                );
+                                return;
+                              }
+                              setLoeschen(f);
+                            }}
+                          >
+                            <Icon name="loeschen" size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  }),
+                ])}
               </tbody>
             </table>
           </div>

@@ -16,7 +16,7 @@
  * Die eigene Funktion Planlaufmanagement erscheint hier nicht: Sie füllt stets
  * die angemeldete Person mit ihrem Profil aus (siehe istEigeneFunktion).
  */
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import {
   EIGENE_ROLLE,
   funktionsName,
@@ -40,6 +40,7 @@ import {
   artWahlGueltig,
   gewerkPasst,
   gewerkWahlGueltig,
+  useWahlNachziehen,
 } from '../../../../gemeinsam/FunktionsArten';
 import { artInfo, artText, funktionenVergleich, nachArt } from '../../../../gemeinsam/funktionskatalog';
 import { funktionsSchluessel } from '../../../../gemeinsam/register';
@@ -112,6 +113,8 @@ export function RollenFunktionen({ project }: { project: Project }) {
   const alleArten = art === ALLE_ARTEN;
   // Zweite Ebene: das Gewerk. `gewerk` ist das im Filter gewählte – null bei „Alle Gewerke“ und „Übergreifend“.
   const gewerkFilter = gewerkWahlGueltig(gewerkWahl, gewerke);
+  useWahlNachziehen(artWahl, art, setArtWahl);
+  useWahlNachziehen(gewerkWahl, gewerkFilter, setGewerkWahl);
   const gewerk = gewerkFilter === ALLE_GEWERKE || gewerkFilter === OHNE_GEWERK ? null : gewerkFilter;
 
   const inAuswahl = rollen.filter(
@@ -246,86 +249,87 @@ export function RollenFunktionen({ project }: { project: Project }) {
                 </tr>
               </thead>
               <tbody>
-                {gruppen.map((g) => (
-                  <Fragment key={g.art.id}>
-                    {/* Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“ */}
-                    {alleArten ? (
-                      <ArtGruppenZeile
-                        art={g.art.id}
-                        spalten={SPALTEN}
-                        anzahl={g.eintraege.length}
-                        zusatz={`${g.eintraege.filter((r) => besetztVon(r)).length} besetzt`}
-                      />
-                    ) : null}
-                    {g.eintraege.map((rolle) => {
-                      const c = besetztVon(rolle);
-                      return (
-                        <tr key={rolle.id} className="clickable" {...alsKlickZeile(() => setBesetzen(rolle))}>
-                          <td>
-                            <FunktionsZelle
-                              funktion={rolle}
-                              kuerzel
-                              beschreibung
-                              seiteNoetig={genannt.has(rolle.name.trim().toLowerCase())}
-                            />
-                          </td>
-                          <td>
-                            {c ? (
-                              <span className="row" style={{ gap: 8 }}>
-                                <Avatar name={`${c.vorname} ${c.nachname}`} farbe={rolle.farbe} />
-                                <strong>
-                                  {c.vorname} {c.nachname}
-                                </strong>
-                              </span>
-                            ) : (
-                              <span className="tertiary small pl-unbesetzt">– nicht besetzt –</span>
-                            )}
-                          </td>
-                          <td className="small muted col-optional">{c?.firma || '–'}</td>
-                          <td className="small col-optional">
-                            {c?.email ? (
-                              <a href={`mailto:${c.email}`} onClick={(e) => e.stopPropagation()}>
-                                {c.email}
-                              </a>
-                            ) : (
-                              <span className="tertiary">–</span>
-                            )}
-                            {c?.telefon || c?.mobil ? (
-                              <div className="tertiary small">{[c.telefon, c.mobil].filter(Boolean).join(' · ')}</div>
-                            ) : null}
-                            {c ? <SharePointLinks kontakt={c} /> : null}
-                          </td>
-                          <td className="actions">
-                            <button
-                              type="button"
-                              className="btn-icon"
-                              aria-label="Funktion bearbeiten"
-                              title="Funktion bearbeiten"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFunktionDialog({ rolle });
-                              }}
-                            >
-                              <Icon name="bearbeiten" size={15} />
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-icon"
-                              aria-label="Funktion löschen"
-                              title="Funktion löschen"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLoeschen(rolle);
-                              }}
-                            >
-                              <Icon name="loeschen" size={15} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                ))}
+                {/* Eine flache Liste mit Schlüsseln statt je Art ein Fragment: Wechselt eine Zeile die Art, hängt React
+                    sie um, statt sie neu aufzubauen – der Knopf, der den Dialog geöffnet hat, bekommt den Fokus zurück */}
+                {gruppen.flatMap((g) => [
+                  // Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“
+                  alleArten ? (
+                    <ArtGruppenZeile
+                      key={`art-${g.art.id}`}
+                      art={g.art.id}
+                      spalten={SPALTEN}
+                      anzahl={g.eintraege.length}
+                      zusatz={`${g.eintraege.filter((r) => besetztVon(r)).length} besetzt`}
+                    />
+                  ) : null,
+                  ...g.eintraege.map((rolle) => {
+                    const c = besetztVon(rolle);
+                    return (
+                      <tr key={rolle.id} className="clickable" {...alsKlickZeile(() => setBesetzen(rolle))}>
+                        <td>
+                          <FunktionsZelle
+                            funktion={rolle}
+                            kuerzel
+                            beschreibung
+                            seiteNoetig={genannt.has(rolle.name.trim().toLowerCase())}
+                          />
+                        </td>
+                        <td>
+                          {c ? (
+                            <span className="row" style={{ gap: 8 }}>
+                              <Avatar name={`${c.vorname} ${c.nachname}`} farbe={rolle.farbe} />
+                              <strong>
+                                {c.vorname} {c.nachname}
+                              </strong>
+                            </span>
+                          ) : (
+                            <span className="tertiary small pl-unbesetzt">– nicht besetzt –</span>
+                          )}
+                        </td>
+                        <td className="small muted col-optional">{c?.firma || '–'}</td>
+                        <td className="small col-optional">
+                          {c?.email ? (
+                            <a href={`mailto:${c.email}`} onClick={(e) => e.stopPropagation()}>
+                              {c.email}
+                            </a>
+                          ) : (
+                            <span className="tertiary">–</span>
+                          )}
+                          {c?.telefon || c?.mobil ? (
+                            <div className="tertiary small">{[c.telefon, c.mobil].filter(Boolean).join(' · ')}</div>
+                          ) : null}
+                          {c ? <SharePointLinks kontakt={c} /> : null}
+                        </td>
+                        <td className="actions">
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            aria-label="Funktion bearbeiten"
+                            title="Funktion bearbeiten"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFunktionDialog({ rolle });
+                            }}
+                          >
+                            <Icon name="bearbeiten" size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            aria-label="Funktion löschen"
+                            title="Funktion löschen"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLoeschen(rolle);
+                            }}
+                          >
+                            <Icon name="loeschen" size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  }),
+                ])}
               </tbody>
             </table>
           </div>

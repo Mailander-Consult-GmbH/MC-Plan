@@ -102,6 +102,6 @@
    damit vier bis fünf Kurzzeichen in eine Zeile passen. */
 @media (max-width: 860px) {
   .tabs.gem-artreiter { flex-wrap: wrap; overflow-x: visible; gap: 4px; }
-  .tabs.gem-artreiter button:not(.tab-plus) { padding: 6px 12px; }
+  .tabs.gem-artreiter button { padding: 6px 12px; }
 }
 }

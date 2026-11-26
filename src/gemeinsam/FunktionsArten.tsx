@@ -15,6 +15,7 @@
  *
  * Arten, Reihenfolge und Namen kommen aus `funktionskatalog.ts`.
  */
+import { useEffect } from 'react';
 import { Badge } from '../shared/ui';
 import { FUNKTIONS_ARTEN, artInfo, artRang, artText } from './funktionskatalog';
 import './gemeinsam.css';
@@ -137,6 +138,19 @@ export function gewerkPasst(gewerk: string | null, wahl: string): boolean {
   if (wahl === ALLE_GEWERKE) return true;
   if (wahl === OHNE_GEWERK) return gewerk === null;
   return gewerk !== null && gewerk.trim().toLowerCase() === wahl.trim().toLowerCase();
+}
+
+/**
+ * Zieht den Zustand einer Wahl (Reiter der Art, Gewerkfilter) auf den Wert
+ * nach, der gilt (`artWahlGueltig`, `gewerkWahlGueltig`). Ohne das bliebe eine
+ * Wahl, die es nicht mehr gibt, im Zustand stehen: Die Liste zeigte „Alle“,
+ * spränge aber unvermittelt in den alten Reiter zurück, sobald wieder eine
+ * Funktion dieser Art entsteht.
+ */
+export function useWahlNachziehen(wahl: string, gueltig: string, setWahl: (wahl: string) => void): void {
+  useEffect(() => {
+    if (wahl !== gueltig) setWahl(gueltig);
+  }, [wahl, gueltig, setWahl]);
 }
 
 /** Eine Wahl, die es unter `gewerke` nicht (mehr) gibt, fällt auf „Alle Gewerke“ zurück. */
