@@ -231,7 +231,7 @@ export function ProjektDialog({
         <Field label="Projektnummer">
           <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="K1234" />
         </Field>
-        <Field label="G-Nummer (Projektnummer der DB)">
+        <Field label="G-Nummer">
           <TextInput value={form.gNummer} onChange={(v) => set('gNummer', v)} placeholder="G.011606148" />
         </Field>
         <Field label="Status">
