@@ -294,7 +294,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   (Schlüssel `kaplan-projektregister.v1`): Projekte (Nummer, Bezeichnung, Beschreibung), ihre
   Zugehörigkeit je Bereich mit lokaler Kennung und Archivstand (`Mitgliedschaft`, `offen` =
   Übernahme steht aus) und die Projektbeteiligten mit Kontaktdaten und Funktionen (über
-  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`). Archiviert ist ein Projekt nur je Bereich
+  Bezeichnung + Gewerk erkannt, `funktionsSchluessel`; gegenüber dem Register vergleichen Abgleich
+  und Bereiche mit `registerSchluessel` – eine frühere Bezeichnung zählt dort als die heutige –,
+  eine geänderte Art zieht `uebertragen` am Registereintrag nach). Archiviert ist ein Projekt nur je Bereich
   (`istArchiviert`); die ★-Markierung der Bereiche steht nicht im Register. Die anderen Bereiche
   einer Projektansicht liefert `andereBereicheVon(bereich)`.
   `register.ts` Modell, Laden/Speichern (`REGISTER_VERSION` 5: `aufbereiten()` stellt ältere
@@ -365,8 +367,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   erste Ebene der Gliederung in den Listen – **nicht Teil des Schlüssels**: Erkannt wird eine
   Funktion überall an Bezeichnung + Gewerk (`funktionsSchluessel`), jede Bezeichnung steht im
   Katalog in genau einer Art. `artVon`/`artAus` liefern die Art zu einer Bezeichnung (Katalog,
-  sonst bekannte ältere Namen, sonst „Sonstige“; `artVon` kennt nur die heutigen Namen – eine
-  frühere Bezeichnung erst durch `umbenannt` schicken), `funktionenVergleich` und `nachArt` die
+  sonst bekannte ältere Namen – eine umbenannte steht in der Art ihrer heutigen –, sonst
+  „Sonstige“), `funktionenVergleich` und `nachArt` die
   Reihenfolge (Art, Bezeichnung, Gewerk), `kuerzelFuerGewerk` das Kürzel beim Übernehmen in ein
   anderes Gewerk, `kuerzelDerBezeichnung` eines für eine bloße Bezeichnung, `artAusText` die Art
   aus einer Excel-Zelle. Die Farben der Arten sind Daten wie die Funktionsfarben der Nutzer (nur
@@ -379,9 +381,17 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   `FunktionsArten.tsx` hält die Bausteine der Gliederung, in beiden Bereichen dieselben:
   `ArtReiter` („Alle“ und je vorkommender Art ein Reiter mit ihrem Kurzzeichen; schmal brechen sie
   um, `.gem-artreiter`), `ArtGruppenZeile` (Gruppenzeile je Art unter „Alle“), `ArtFeld` (Auswahl
-  im Dialog einer Funktion), `GewerkFilter` mit `gewerkPasst` (zweite Ebene) und `GewerkAbzeichen`
+  im Dialog einer Funktion), `GewerkFilter` mit `gewerkPasst` (zweite Ebene, ohne
+  Groß-/Kleinschreibung) und `GewerkAbzeichen`
   (das Gewerk hinter der Bezeichnung – es muss auch bei 400 px in jeder Zeile zu sehen sein).
-  Reiter und Filter sind Zustand der Ansicht, nicht der Adresse. Dazu **„Angemeldet als“ für alle Bereiche**:
+  Reiter und Filter sind Zustand der Ansicht, nicht der Adresse; `useWahlNachziehen` hält ihn auf
+  der gültigen Wahl (sonst spränge die Liste in einen Reiter zurück, den es zwischendurch nicht
+  gab). Die Zeilen einer Liste stehen als **eine flache, geschlüsselte Liste** im `tbody`
+  (`gruppen.flatMap`, Gruppenzeile mit eigenem Schlüssel) – nicht je Art in einem Fragment:
+  Wechselt eine Zeile die Art, hängt React sie um, und der Dialog gibt den Fokus an seinen Öffner
+  zurück. Die Excel-Importe beider Bereiche schicken eine Bezeichnung durch `umbenannt`, bevor
+  sie eine Funktion suchen oder anlegen – eine Liste aus einer früheren Fassung legte sonst die
+  alten Namen wieder an. Dazu **„Angemeldet als“ für alle Bereiche**:
   `benutzer.ts` (Name und Farbschema, Schlüssel `kaplan-benutzer.v1`, `useBenutzer`,
   `benutzerAendern`, `istDunkel`), `AngemeldetAls.tsx` (Knopf und Dialog in jeder Seitenleiste; eine eigene
   Einstellung eines Bereichs kommt als `zusatz` hinein) und `useBenutzerAbgleich.ts`.
@@ -505,9 +515,17 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     Funktionen des Katalogs; nur beim Umstieg von einem Stand vor Stammdaten 7 entfallen dabei
     bisher mitgelieferte Funktionen, die der Katalog nicht mehr führt und die niemand ausfüllt
     (`BISHER_MITGELIEFERT`), und das Gewerk OSE. Kennungen und Besetzung bleiben; fällt eine
-    umbenannte Funktion auf eine vorhandene, entscheidet die Besetzung (sind beide besetzt, behält
-    die alte ihren früheren Namen – `registerSchluessel` in `domain/register.ts` lässt sie
-    gegenüber dem Register trotzdem als die heutige gelten),
+    umbenannte Funktion auf eine vorhandene, entscheidet die Besetzung (die unbesetzte entfällt –
+    die bleibende übernimmt deren Seite, wenn sie keine hat; sind beide besetzt, behält die alte
+    ihren früheren Namen – `registerSchluessel` lässt sie gegenüber dem Register trotzdem als die
+    heutige gelten). Ergänzte Funktionen tragen **feste Kennungen** (`rol-<Projekt>-<Katalogeintrag>`,
+    nicht `neueId`): Bestand, Sicherung und zweites Gerät vergeben dieselbe, sonst hielte der
+    Abgleich Gelöschtes für neu. Ein Gewerk des Katalogs in anderer Schreibweise des Bestands
+    bleibt ein Gewerk (`gewerkWieImBestand`). Zuletzt das **Netz**: Meint ein offener Schritt
+    eines laufenden Planlaufs nach der Umstellung eine andere Funktion (`rolleFuerSchritt` nimmt
+    die des Gewerks vor der übergreifenden, auch die unbesetzte), bleibt die bisherige Person an
+    ihm stehen (`contactManuell`) – wer die Umstellung ändert, prüft je offenem Schritt
+    `kontaktFuerRolleUndGewerk` vorher gegen nachher,
   * `lib/router.ts` Hash-Router, `pages/` Ansichten, `components/` fachliche Bausteine.
 * `src/bereiche/baubetrieb/` – gleich aufgebaut: `domain/workflow.ts` Standard-Workflows je Phase
   und Nachschlagen von Status (Anmeldungen verweisen per `statusId` auf einen Status; die

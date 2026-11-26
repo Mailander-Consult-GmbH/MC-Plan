@@ -74,6 +74,21 @@ Stand: 12.11.2026, nach dem Entfernen der Bereiche Leistungsnachweise und Contro
 > * **P-1** (alle Umstellungsschritte laufen bei jeder Fassung erneut): Die Umstellung auf den
 >   Katalog ist so gebaut, dass sie auf einem umgestellten Bestand nichts mehr ändert
 >   (`funktionenAufKatalogUmstellen`, `ausFassung8`); die Wurzel besteht weiter.
+>
+> Die Gegenprüfung des Umbaus hat dazu Folgendes ergeben – behoben, aber als Muster festgehalten:
+>
+> * **Dieselbe Regel an mehreren Stellen:** Frühere Bezeichnungen setzte zunächst nur das
+>   Planlaufmanagement gegenüber dem Register gleich; Abgleich und Projektsteuerung verglichen
+>   wörtlich. Jetzt gilt überall `registerSchluessel` (`src/gemeinsam/register.ts`). Ebenso
+>   kannten die beiden Excel-Importe die Umbenennungen nicht – jeder Weg, auf dem eine Bezeichnung
+>   in den Bestand kommt (Umstellung, Register, Import), muss durch `umbenannt`.
+> * **Zufallskennungen in einer Umstellung** machen Bestand, Sicherung und zweites Gerät
+>   unvergleichbar; die aus dem Katalog ergänzten Funktionen tragen deshalb feste Kennungen.
+> * **Offen, fachlich zu entscheiden:** Die Funktion eines Gewerks gilt für einen Schritt vor der
+>   übergreifenden gleicher Bezeichnung – auch wenn nur die übergreifende besetzt ist
+>   (`rolleFuerSchritt`). Seit der Katalog viele Bezeichnungen je Gewerk mitliefert, trifft das
+>   öfter zu; die Umstellung hält die bisherige Person an offenen Schritten fest, neue Planläufe
+>   folgen der Regel.
 
 Diese Liste beantwortet die Frage: **Wo lösen Planlaufmanagement, Baubetriebsplanung und
 Projektsteuerung dasselbe unterschiedlich – in der Funktion, im Wortlaut, in der Optik oder im

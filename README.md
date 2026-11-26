@@ -429,7 +429,12 @@ neuen Planlauf von Hand eintragen.
 Telefon · Mobil · Email · Straße · Nr. · PLZ · Ort · Notiz · SharePoint Eingang · SharePoint Ausgang*. Die
 Spalte *Art* ist optional (Kurzzeichen oder Name einer Art, etwa „PSV“ oder „Prüfer“): Eine Funktion,
 die der Import anlegt, bekommt sie, ohne Angabe die des Funktionskatalogs; eine vorhandene Funktion
-behält ihre Art, und die Vorschau sagt es, wenn die Datei eine andere nennt. Personen, die
+behält ihre Art, und die Vorschau sagt es, wenn die Datei eine andere nennt. Eine **frühere
+Bezeichnung** – Listen nach der Vorlage vor dem Funktionskatalog nennen „Fachtechnischer Prüfer“,
+„Bauvorlageberechtiger“ oder „Bau AN“, in einem Gewerk auch „Bauüberwachung“ – meint die Funktion,
+die heute anders heißt: Die Zeile besetzt „Planprüfer“, „Bauvorlageberechtigter“, „Auftragnehmer“
+bzw. „Bauüberwacher“, und die Vorschau sagt, wie die Funktion jetzt heißt. Führt das Projekt die
+frühere Bezeichnung selbst noch, gilt sie wörtlich. Personen, die
 es im Projekt schon gibt, werden aktualisiert; eine leere Zelle oder fehlende Spalte heißt „keine
 Angabe“ und lässt stehen, was bei der Person schon eingetragen ist (Telefon, Firma, Anschrift,
 SharePoint-Links …), mehrere Zeilen derselben Person ergänzen einander. Erkannt wird eine Person
@@ -723,7 +728,15 @@ Stammdatenfassung 7 bringt den Funktionskatalog (siehe [Funktionen und
 Gewerke](#funktionen-und-gewerke)) und ersetzt die Workflows **nicht**: In vorhandenen Beständen
 nennen die Schritte und E-Mail-Regeln aller Workflows und laufenden Planläufe danach die neuen
 Bezeichnungen („Planprüfer“ statt „Fachtechnischer Prüfer“, „Bauvorlageberechtigter“), alles andere
-bleibt, wie es war – auch die Namen der Schritte, Blöcke und Zweige („Bau AN“).
+bleibt, wie es war – auch die Namen der Schritte, Blöcke und Zweige („Bau AN“). **Kein offener
+Schritt eines laufenden Planlaufs wechselt dabei die zuständige Person:** Die Funktion eines Gewerks
+gilt vor der übergreifenden gleicher Bezeichnung – auch die unbesetzte, die mit dem Katalog neu ins
+Projekt kommt. Meint ein Schritt deshalb nach der Umstellung eine andere Funktion als vorher (etwa
+„Bauleiter KIB“ statt einer selbst angelegten, besetzten übergreifenden „Bauleiter“), bleibt die
+bisherige Person an ihm stehen wie von Hand gesetzt; neue Planläufe folgen der Besetzung der
+Funktionen. Funktionen, die der Katalog in die Projekte bringt, tragen eine feste Kennung aus
+Projekt und Katalogeintrag – so erkennt der Abgleich mit einer Sicherung desselben Stands (auch
+der eines zweiten Geräts) sie wieder, samt Gelöschtem und Umbenanntem.
 
 Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen; Projektvarianten erscheinen nur im Reiter *Workflows* ihres Projekts. Die eigene Rolle im
 Projekt ist **Planlaufmanagement (PLM)**.
@@ -1530,7 +1543,18 @@ Vorname, gilt „Name“ als Nachname und wird nicht zerlegt – enthält „Nam
 bleibt als Nachname, was auf ihn folgt; ohne Vornamen in der Zeile wird „Name“ zerlegt wie in
 einer Liste ohne Spalte „Vorname“ – außer das Projekt führt die Person unter diesem vollen Namen
 schon, dann behält sie ihre Aufteilung in Vor- und Nachname). Gelesen wird das erste Blatt mit
-Kopfzeile und Personen – ein vorangestelltes Hinweis- oder Deckblatt wird übersprungen. Die Vorschau nennt je Zeile, ob die
+Kopfzeile und Personen – ein vorangestelltes Hinweis- oder Deckblatt wird übersprungen. Die
+**Funktion** einer Zeile findet der Import über Bezeichnung und Gewerk, über die volle Bezeichnung
+(„Fachplaner LST“) oder über ihr Kürzel – das Kürzel nur, wenn es eindeutig ist: Tragen es mehrere
+Funktionen (der Katalog führt „AN“ oder „FP“ je Gewerk), gilt die eine übergreifende darunter,
+sonst kommt die Person ohne Funktion, und die Vorschau sagt es. Eine **frühere Bezeichnung** – die
+Excel-Ausgabe einer Fassung vor dem Funktionskatalog nennt „Bauunternehmen“, „Fachplanung | LST“
+oder „Bauüberwachung | KIB“ – trifft die Funktion, die heute anders heißt („Auftragnehmer“,
+„Fachplaner LST“, „Bauüberwacher KIB“); eine Funktion, die der Import anlegt, entsteht unter der
+heutigen Bezeichnung. „… Übergreifend“ hinter der Bezeichnung meint die Funktion ohne Gewerk. Ein
+Gewerk steht in der Schreibweise der Gewerkliste („pt1“ ist „PT1“); nennt die Spalte *Gewerk* kein
+Gewerk der Liste, sondern eine Art der Funktion (etwa „BÜW“), entsteht daraus kein Gewerk – die
+Angabe zählt als Art einer neuen Funktion. Die Vorschau nennt je Zeile, ob die
 Person neu ist oder aktualisiert wird (gleicher Name im Projekt) und ob Funktion oder Gewerk neu
 angelegt werden. **Vorlage** lädt eine leere Datei mit diesen Spalten; die Excel-Ausgabe der
 Beteiligtenliste hat dieselben Spalten und lässt sich so in ein anderes Projekt übernehmen.
@@ -1790,7 +1814,13 @@ eines älteren Stands stellt `aufbereiten()` (`src/gemeinsam/register.ts`) um:
 Bezeichnung + Gewerk. Ein älterer Stand bekommt beim Laden die neuen Bezeichnungen des Katalogs
 („Planprüfer“, „Bauvorlageberechtigter“, „Auftragnehmer“, „Bauüberwacher“ und „Fachplaner“ eines
 Gewerks) – mit derselben Tabelle, mit der Planlaufmanagement und Projektsteuerung ihre Bestände
-umstellen; sonst holte der Abgleich die alten Bezeichnungen zurück.
+umstellen; sonst holte der Abgleich die alten Bezeichnungen zurück. Gegenüber dem Register zählt
+eine frühere Bezeichnung überall als die heutige (`registerSchluessel`): Führt ein Bereich eine
+Funktion noch unter ihrem früheren Namen – bei der Umstellung behalten, weil die neue Bezeichnung
+schon vergeben und besetzt war, oder später von Hand so angelegt –, ist sie für den Abgleich
+dieselbe Funktion. Ändert ein Bereich die Art einer Funktion, zieht er sie im Register nach; ein
+anderer Bereich, der die Funktion danach aus dem Register anlegt, bekommt die heutige Art –
+Funktionen, die er schon führt, behalten ihre.
 
 Vor der Umstellung legt das Laden den gespeicherten Text als Rohkopie ab
 (`kaplan-projektregister.v1.vor-fassung-<n>` mit der gespeicherten Fassung, hier also
