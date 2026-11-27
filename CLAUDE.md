@@ -259,11 +259,13 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   einem `motion.tr`/`motion.div` in `AnimatePresence initial={false}` – nur die Lage gleitet
   (`position`), beim Gehen keine Verschiebung zur Seite (schmal scrollen Tabellen quer). Ein Haken
   oder Stern **springt** beim Umschalten kurz auf (`Aufspringen`, nicht beim ersten Zeichnen).
-* Einträge, die man selbst ordnet, **zieht** man am Griff: `SortierListe` mit `SortierEintrag`
-  (framer-motion `Reorder`, gezogen wird nur am Griff mit `touch-action: none`, die übrigen
-  gleiten beiseite; ein- und ausgeblendet nur über die Deckkraft). Die Reihenfolge während des
-  Ziehens hält die Ansicht, gespeichert wird beim Loslassen (`onFertig`) – nicht bei jedem
-  `onSortiert`; dazu die Pfeiltasten am Griff für die Tastatur.
+* Einträge, die man selbst ordnet, **zieht** man: `SortierListe` mit `SortierEintrag`
+  (framer-motion `Reorder`, gezogen wird nur an der Stelle, die `onPointerDown` des Eintrags
+  bekommt – in der To-Do-Liste der ganze Kartenkopf außer seinen Knöpfen, mit
+  `touch-action: none`; die übrigen gleiten beiseite; ein- und ausgeblendet nur über die
+  Deckkraft). Die Reihenfolge während des Ziehens hält die Ansicht, gespeichert wird beim
+  Loslassen (`onFertig`) – nicht bei jedem `onSortiert`; dazu die Pfeiltasten an der fokussierten
+  Ziehstelle für die Tastatur.
 * Kurve der Vorlage: `--ease-koralle` bzw. `KURVE`; Bedienelemente 0,15–0,35 s, Zähler und Balken
   0,8–0,9 s. Der Dialog blendet per CSS ein (`pop`) – die Fokusregeln von `Modal` rechnen damit.
 
@@ -637,7 +639,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Projekt lässt seine Aufgaben ohne Projekt stehen. Sie zeigt je Projekt eine schlanke Karte
   (`TodoGruppe`: Kopf ohne Zahlen, die Eingabezeile unter den vorhandenen Aufgaben erst nach
   „Neues To-Do“ – auf Wunsch ein blauer Knopf je Karte, bewusst abweichend von „ein Hauptknopf je
-  Ansicht“; Karten am Griff umordnen und über das Augen-Symbol ausblenden, gespeichert in
+  Ansicht“; Karten am Kopf umordnen, eine leere Karte über „Leere Karte entfernen“ entfernen –
+  ein Ausblenden von Karten mit Aufgaben gibt es auf Wunsch nicht mehr; gespeichert in
   `todoKarten` – Reihenfolge allein über `kartenOrdnen`/`kartenEinreihen` in `domain/todos.ts`);
   die Reihenfolge der Aufgaben ist die von `todos`
   (`todosTauschen`), nicht sortiert. Aus dem Protokoll übernimmt `todosAusProtokoll`
