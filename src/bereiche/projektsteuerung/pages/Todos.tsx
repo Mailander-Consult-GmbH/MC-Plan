@@ -3,9 +3,10 @@
  * Projekt und Termin, als wichtig markiert (Stern) und in eigener Reihenfolge.
  * `TodoListe` steht als Seite „To-Do-Liste“ in der Seitenleiste – je Projekt
  * eine Karte, wie die Phasen in der Baubetriebsplanung, dazu „Ohne Projekt“ –
- * und als Reiter „To-Dos“ im Projekt (nur dessen Karte). Neue Aufgaben werden
- * unter den vorhandenen eingetragen, als schriebe man die Liste fort; ein
- * Klick auf eine Zeile öffnet sie zum Bearbeiten. Erledigt wird mit dem
+ * und als Reiter „To-Dos“ im Projekt (nur dessen Karte). Die Karten sind schlank:
+ * Kopf nur mit dem Projekt und „Neues To-Do“, das die Eingabezeile unter den
+ * vorhandenen Aufgaben öffnet – man schreibt die Liste fort; ein Klick auf
+ * eine Zeile öffnet sie zum Bearbeiten. Erledigt wird mit dem
  * kleinen Haken des Planlaufmanagements (`ErledigtHaken`), daneben löscht der
  * Papierkorb eine erledigte Aufgabe sofort, „Erledigte löschen“ im Filter
  * „Erledigt“ alle der Ansicht nach Rückfrage; eine Zeile, die
@@ -157,13 +158,13 @@ export function TodoListe({
   } else {
     const ids = new Set([
       ...sichtbar.map((t) => projektVon(t)?.id).filter((id): id is ID => !!id),
-      ...weitere.filter((id) => !projektFilter || projektFilter === id),
+      ...(filter === 'erledigt' ? [] : weitere.filter((id) => !projektFilter || projektFilter === id)),
     ]);
     for (const p of data.projekte.filter((x) => ids.has(x.id)).sort(nachProjekt)) {
       gruppen.push({ schluessel: p.id, projekt: p, todos: sichtbar.filter((t) => projektVon(t)?.id === p.id) });
     }
     const ohne = sichtbar.filter((t) => !projektVon(t));
-    if ((!projektFilter || projektFilter === OHNE) && (ohne.length > 0 || !begriff)) {
+    if ((!projektFilter || projektFilter === OHNE) && (ohne.length > 0 || (!begriff && filter !== 'erledigt'))) {
       gruppen.push({ schluessel: OHNE, projekt: null, todos: ohne });
     }
   }
@@ -248,7 +249,6 @@ export function TodoListe({
                 projekt={g.projekt}
                 imProjekt={!!projekt}
                 todos={g.todos}
-                alle={data.todos.filter((t) => (projektVon(t)?.id ?? null) === (g.projekt?.id ?? null))}
                 filter={filter}
                 leer={data.todos.length === 0}
                 fokus={fokusGruppe === g.schluessel}
@@ -309,14 +309,14 @@ export function TodoListe({
 }
 
 /**
- * Karte einer Gruppe: die Aufgaben in der Reihenfolge der Liste, darunter die
- * Zeile für eine neue Aufgabe dieser Gruppe.
+ * Karte einer Gruppe: im Kopf das Projekt und „Neues To-Do“, darunter die
+ * Aufgaben in der Reihenfolge der Liste und – erst nach „Neues To-Do“ – die
+ * Zeile für die nächste Aufgabe dieser Gruppe.
  */
 function TodoGruppe({
   projekt,
   imProjekt,
   todos,
-  alle,
   filter,
   leer,
   fokus,
@@ -331,11 +331,10 @@ function TodoGruppe({
   imProjekt: boolean;
   /** Sichtbare Aufgaben der Gruppe – Reihenfolge der Liste. */
   todos: Todo[];
-  /** Alle Aufgaben der Gruppe, für die Zahlen im Kopf. */
-  alle: Todo[];
   filter: Filter;
   /** Die Liste hat noch gar keine Aufgabe. */
   leer: boolean;
+  /** Über „Aufgabe zu weiterem Projekt“ geöffnet: Eingabezeile gleich offen. */
   fokus: boolean;
   heute: string;
   navigate?: (r: Route) => void;
@@ -348,18 +347,21 @@ function TodoGruppe({
   const { data, addTodo, todosTauschen } = useStore();
   const toast = useToast();
   const [neu, setNeu] = useState({ text: '', termin: '' });
+  // Die Eingabezeile erscheint erst nach „Neues To-Do“ (oder geöffnet über „Aufgabe zu weiterem Projekt“)
+  const [eingabe, setEingabe] = useState(fokus);
   const feld = useRef<HTMLInputElement>(null);
+  const knopf = useRef<HTMLButtonElement>(null);
+  const eintragbar = filter !== 'erledigt';
 
-  const offen = alle.filter((t) => !fertig(t));
-  const faellig = offen.filter((t) => zeitkritisch(t, heute)).length;
-  const wichtig = offen.filter((t) => t.wichtig).length;
-  const sub = [
-    `${offen.length} offen`,
-    faellig ? `${faellig} fällig` : '',
-    wichtig ? `${wichtig} wichtig` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const oeffnen = () => {
+    if (eingabe) feld.current?.focus();
+    else setEingabe(true);
+  };
+  const schliessen = () => {
+    setEingabe(false);
+    setNeu({ text: '', termin: '' });
+    knopf.current?.focus();
+  };
 
   const hinzufuegen = () => {
     const text = neu.text.trim();
@@ -371,7 +373,7 @@ function TodoGruppe({
   };
 
   return (
-    <Card>
+    <Card className="ps-todo-karte">
       <CardHeader
         titel={
           imProjekt ? (
@@ -385,12 +387,18 @@ function TodoGruppe({
             'Ohne Projekt'
           )
         }
-        sub={sub}
+        actions={
+          eintragbar ? (
+            <button ref={knopf} type="button" className="btn btn-primary btn-sm" onClick={oeffnen}>
+              <Icon name="plus" size={13} /> Neues To-Do
+            </button>
+          ) : null
+        }
       />
       {todos.length === 0 ? (
-        <p className="card-pad small tertiary pt-0 pb-0">
-          {leer ? 'Noch keine Aufgaben – tragen Sie unten ein, was zu tun ist.' : 'Nichts für diese Auswahl.'}
-        </p>
+        leer && !eingabe ? (
+          <p className="card-pad small tertiary pt-0">Noch keine Aufgaben – „Neues To-Do“ legt die erste an.</p>
+        ) : null
       ) : (
         <div className="table-scroll">
           <table className="table table-stack ps-todos">
@@ -400,8 +408,8 @@ function TodoGruppe({
                   Wichtig
                 </th>
                 <th>Aufgabe</th>
-                <th style={{ width: 140 }}>Fällig</th>
-                <th style={{ width: 150 }}>Status</th>
+                <th style={{ width: 200 }}>Fällig</th>
+                <th style={{ width: 170 }}>Status</th>
                 <th className="actions" style={{ width: 164 }}>
                   <span className="sr-only">Reihenfolge, erledigt und löschen</span>
                 </th>
@@ -459,26 +467,27 @@ function TodoGruppe({
                           </div>
                         ) : null}
                       </td>
-                      <td className="small">
+                      {/* Termin in einer Zeile, ohne Termin ein Strich – den Zustand nennt der Status */}
+                      <td className="small whitespace-nowrap">
                         {t.termin ? (
                           <>
                             {formatDate(t.termin)}
-                            {fertig(t) ? null : <div className="tertiary small">{relativeLabel(t.termin)}</div>}
+                            {fertig(t) ? null : <span className="tertiary ps-relativ"> · {relativeLabel(t.termin)}</span>}
                           </>
                         ) : (
-                          <span className="tertiary">ohne Termin</span>
+                          <span className="tertiary">–</span>
                         )}
                       </td>
-                      <td>
+                      <td className="whitespace-nowrap">
                         <AmpelBadge ampel={todoAmpel(t, heute)} />
                         {fertig(t) && t.erledigtAm ? (
-                          <div className="tertiary small">am {formatDate(t.erledigtAm)}</div>
+                          <span className="tertiary small"> am {formatDate(t.erledigtAm)}</span>
                         ) : null}
                       </td>
                       <td className="actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          className="btn-icon"
+                          className="btn-icon ps-reihenfolge"
                           disabled={i === 0}
                           title="Nach oben"
                           aria-label={`„${t.text}“ nach oben`}
@@ -488,7 +497,7 @@ function TodoGruppe({
                         </button>
                         <button
                           type="button"
-                          className="btn-icon"
+                          className="btn-icon ps-reihenfolge"
                           disabled={i === todos.length - 1}
                           title="Nach unten"
                           aria-label={`„${t.text}“ nach unten`}
@@ -517,13 +526,20 @@ function TodoGruppe({
           </table>
         </div>
       )}
-      {filter === 'erledigt' ? null : (
-        // Ein Formular unter den Aufgaben: Die Eingabetaste nimmt die neue Aufgabe aus jedem Feld heraus auf
+      {eintragbar && eingabe ? (
+        // Ein Formular unter den Aufgaben: Die Eingabetaste nimmt die neue Aufgabe aus jedem Feld heraus
+        // auf und lässt die Zeile für die nächste offen; Escape oder „Schließen“ blendet sie wieder aus
         <form
-          className="card-pad flex flex-wrap items-center gap-2.5 pt-3"
+          className={`card-pad flex flex-wrap items-center gap-2.5 ${todos.length > 0 ? 'pt-3' : ''}`}
           onSubmit={(e) => {
             e.preventDefault();
             hinzufuegen();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              schliessen();
+            }
           }}
         >
           <input
@@ -533,7 +549,7 @@ function TodoGruppe({
             onChange={(e) => setNeu((n) => ({ ...n, text: e.target.value }))}
             placeholder="Neue Aufgabe …"
             aria-label={projekt ? `Neue Aufgabe zu ${projektText(projekt)}` : 'Neue Aufgabe ohne Projekt'}
-            autoFocus={fokus}
+            autoFocus
           />
           <input
             type="date"
@@ -546,8 +562,11 @@ function TodoGruppe({
           <button type="submit" className="btn btn-sm btn-outline" disabled={!neu.text.trim()}>
             <Icon name="plus" size={13} /> Hinzufügen
           </button>
+          <button type="button" className="btn-icon" title="Schließen" aria-label="Eingabe schließen" onClick={schliessen}>
+            <Icon name="schliessen" size={14} />
+          </button>
         </form>
-      )}
+      ) : null}
     </Card>
   );
 }

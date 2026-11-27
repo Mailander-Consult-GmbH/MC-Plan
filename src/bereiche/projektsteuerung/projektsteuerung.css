@@ -217,6 +217,19 @@
 .ps-todo-loeschen { margin-left: 2px; }
 .ps-todo-loeschen:hover { background: var(--red-soft); color: var(--rot-text); }
 
+/* To-Do-Liste (pages/Todos.tsx): schlanke Karten – flacher Kopf, engere Zeilen; die Pfeile der
+   Reihenfolge erscheinen mit der Maus über der Zeile (oder dem Tastaturfokus darin) */
+.ps-todo-karte > .card-header { padding-top: 14px; padding-bottom: 10px; }
+.ps-todos th { padding-top: 6px; padding-bottom: 6px; }
+.ps-todos td { padding-top: 8px; padding-bottom: 8px; }
+@media (hover: hover) {
+  .ps-todos .ps-reihenfolge { opacity: 0; transition: opacity 0.15s var(--ease-koralle); }
+  .ps-todos tr:hover .ps-reihenfolge,
+  .ps-todos tr:focus-within .ps-reihenfolge { opacity: 1; }
+  .ps-todos tr:hover .ps-reihenfolge:disabled,
+  .ps-todos tr:focus-within .ps-reihenfolge:disabled { opacity: 0.4; }
+}
+
 /* To-Do-Liste (pages/Todos.tsx): schmal je Aufgabe Stern und Text oben, darunter in einer
    Zeile Termin, Status, die Pfeile und der Haken – statt jeder Spalte in eigener Zeile */
 @media (max-width: 640px) {
@@ -234,5 +247,10 @@
   .table-stack.ps-todos td:nth-child(4) { grid-area: status; }
   .table-stack.ps-todos td.actions { grid-area: aktionen; padding-top: 0; flex-wrap: nowrap; align-items: center; gap: 2px; }
   .table-stack.ps-todos td.actions .btn-haken { min-width: 0; margin-left: 4px; }
+  /* „in 12 Tagen“ entfällt schmal – den Zustand nennt der Status daneben */
+  .ps-todos .ps-relativ { display: none; }
+  /* „Neues To-Do“ bleibt rechts oben, auch wenn der Projektname umbricht */
+  .ps-todo-karte > .card-header { flex-wrap: nowrap; align-items: flex-start; }
+  .ps-todo-karte > .card-header .btn { flex: none; }
 }
 }
