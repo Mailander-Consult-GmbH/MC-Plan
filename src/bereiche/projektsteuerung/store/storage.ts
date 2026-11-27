@@ -281,6 +281,13 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
         angelegt: datum(t.angelegt) || today(),
       };
     });
+  // Anordnung der Karten der To-Do-Liste – nur Projekte, die es gibt, und „Ohne Projekt“
+  const karten = objekt(roh.todoKarten);
+  const kartenListe = (w: unknown) =>
+    Array.isArray(w)
+      ? [...new Set(w.filter((k): k is string => typeof k === 'string' && (k === 'ohne' || projektIds.has(k))))]
+      : [];
+  const todoKarten = { reihenfolge: kartenListe(karten?.reihenfolge), ausgeblendet: kartenListe(karten?.ausgeblendet) };
   return {
     version: DATEN_VERSION,
     einstellungen: {
@@ -293,6 +300,7 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
     protokolle,
     reihenLogos,
     todos,
+    todoKarten,
   };
 }
 
@@ -311,7 +319,9 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
  * kannte weder wichtige Aufgaben noch ihre Herkunft aus einem Protokoll;
  * `aufbereiten` setzt `wichtig` auf false und `herkunft` auf null. Bis
  * Fassung 8 waren die Funktionen allein nach Gewerk gegliedert und hießen
- * teils anders; `ausFassung8` stellt sie auf den Funktionskatalog um.
+ * teils anders; `ausFassung8` stellt sie auf den Funktionskatalog um. Fassung 9
+ * kannte keine Anordnung der Karten der To-Do-Liste; `aufbereiten` beginnt
+ * sie leer (Vorgabe-Reihenfolge, nichts ausgeblendet).
  */
 function migriere(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten {
   let stand = roh;

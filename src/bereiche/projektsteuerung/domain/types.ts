@@ -29,8 +29,9 @@ export type ISODate = string;
  * „Auftragnehmer“, „Fachplanung LST“ → „Fachplaner LST“), fehlende
  * Katalogfunktionen und -gewerke kommen hinzu; entfernt wird nichts
  * (`ausFassung8` in store/storage.ts).
+ * Fassung 10: Reihenfolge und ausgeblendete Karten der To-Do-Liste (`todoKarten`).
  */
-export const DATEN_VERSION = 9;
+export const DATEN_VERSION = 10;
 
 /** Vorgabe für „Angemeldet als“. */
 export const STANDARD_BEARBEITER = 'Projektsteuerung MIC';
@@ -342,6 +343,19 @@ export interface ProjektsteuerungDaten {
   reihenLogos: Record<ID, Logo[]>;
   /** Eigene To-Do-Liste. */
   todos: Todo[];
+  /** Anordnung der Projektkarten in der To-Do-Liste. */
+  todoKarten: TodoKarten;
+}
+
+/**
+ * Anordnung der Karten der To-Do-Liste. Schlüssel sind Projektkennungen oder
+ * `'ohne'` („Ohne Projekt“, `KARTE_OHNE` in domain/todos.ts). Was nicht in
+ * `reihenfolge` steht, folgt in der Vorgabe (Projektnummer, „Ohne Projekt“
+ * zuletzt); `ausgeblendet` sind Karten, die man in der Liste nicht sehen will.
+ */
+export interface TodoKarten {
+  reihenfolge: string[];
+  ausgeblendet: string[];
 }
 
 /* ------------------------------------------------------------------ */
