@@ -1684,6 +1684,15 @@ Karte, öffnet **Aufgabe zu weiterem Projekt …** unter den Karten eine, gleich
 Eingabezeile. Im Filter **Erledigt** gibt es kein *Neues To-Do* und keine leere Karte *Ohne
 Projekt*.
 
+Die **Reihenfolge der Karten** bestimmt man selbst: Am Griff vor dem Projektnamen zieht man eine
+Karte an ihren neuen Platz, die übrigen gleiten beiseite; mit der Tastatur verschieben die
+Pfeiltasten am Griff sie um einen Platz. Über das **Augen-Symbol** im Kopf lässt sich jede Karte
+**ausblenden** – auch mit Aufgaben. Unter den Karten steht dann **Ausgeblendet:** mit dem Projekt
+und der Zahl seiner offenen Aufgaben; ein Klick blendet die Karte wieder ein. Wer ein Projekt
+auswählt oder sucht, sieht auch ausgeblendete Karten; *Aufgabe zu weiterem Projekt …* blendet eine
+gewählte wieder ein. Reihenfolge und ausgeblendete Karten bleiben gespeichert (auch in der
+Sicherung). Im Projekt-Reiter gibt es beides nicht – dort steht nur die eine Karte.
+
 Je Aufgabe: **Stern** für wichtig (Spalte **Wichtig**), Aufgabe (mit Notiz und – aus einem Protokoll übernommen – der
 Fundstelle, die ins Protokoll führt), Fällig (Datum und „in … Tagen“ in einer Zeile, ohne Termin
 ein Strich) und Status (Ampel wie bei den Protokollaufgaben), die Pfeile **Nach oben**/**Nach
@@ -1728,7 +1737,9 @@ To-Do-Liste – sie beginnt leer; bis Fassung 7 kannte sie weder wichtige Aufgab
 aus einem Protokoll – vorhandene Aufgaben gelten als nicht wichtig und ohne Herkunft. Bis Fassung 8
 kannten die Funktionen keine Art: Beim Laden bekommen sie die des Funktionskatalogs, frühere
 Bezeichnungen ihre neuen Namen, und die Funktionen und Gewerke des Katalogs kommen hinzu (siehe
-[Funktionen](#funktionen)). Der Name unter „Angemeldet als“ gilt in allen Bereichen.
+[Funktionen](#funktionen)). Bis Fassung 9 gab es keine eigene Reihenfolge und keine ausgeblendeten
+Karten in der To-Do-Liste – sie beginnt mit der Vorgabe. Der Name unter „Angemeldet als“ gilt in
+allen Bereichen.
 
 Gespeichert wird – wie im Planlaufmanagement – nur, wenn der Bestand
 einwandfrei geladen wurde (`ladeZustand === 'ok'`); vor jeder Umstellung auf eine neue Fassung
@@ -1990,7 +2001,8 @@ src/
     icons.tsx    Symbole (Lucide) unter den fachlichen Namen der Anwendung (Icon); iconSvg mit
                  eigenen Strichzeichnungen für die Druckfassungen
     bewegung.tsx Bewegungen (framer-motion): hoverLift, Zaehler, NavAktiv, BalkenFuellung,
-                 Einblenden, listenEintrag (Listen: kommen, gehen, gleiten), Aufspringen
+                 Einblenden, listenEintrag (Listen: kommen, gehen, gleiten), Aufspringen,
+                 SortierListe/SortierEintrag (Umordnen per Ziehen am Griff)
     logos.tsx    Logo KaPlan („Planebenen“, als SVG gezeichnet, vier Zustände) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
     bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
@@ -2174,7 +2186,8 @@ Menüleiste, die selbst eine Karte ist:
   heben sich beim Überfahren an, Kennzahlen zählen hoch, Fortschrittsbalken wachsen, die Fläche des
   aktiven Menüpunkts und des gewählten Segments gleitet zur neuen Wahl, Ansichten blenden ein.
   Einträge einer Liste blenden ein und aus und gleiten an ihren neuen Platz, ein Haken oder Stern
-  springt beim Umschalten kurz auf (bisher in den To-Do-Listen der Projektsteuerung). Wer
+  springt beim Umschalten kurz auf, und Karten lassen sich am Griff per Ziehen umordnen (bisher in
+  den To-Do-Listen der Projektsteuerung). Wer
   im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Endzustände ohne Verschiebung.
 * **Hell und dunkel:** Die Vorgabe „Automatisch“ folgt wie in der Vorlage der Einstellung des
   Geräts; unter „Angemeldet als“ lässt sich das **Farbschema** fest auf „Hell“ oder „Dunkel“
