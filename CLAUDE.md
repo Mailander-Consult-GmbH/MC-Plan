@@ -519,8 +519,10 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Protokollen: `TodoListe` (`pages/Todos.tsx`) steht als Hauptpunkt „To-Do-Liste“ (Route `todos`)
   und als Reiter „To-Dos“ im Projekt (Filter über die Adresse vorwählbar, `TodoFilter` in
   `lib/router.ts` – so öffnen die Kacheln der Übersicht sie); ein gelöschtes
-  Projekt lässt seine Aufgaben ohne Projekt stehen. Sie zeigt je Projekt eine Karte
-  (`TodoGruppe`, neue Aufgaben unter den vorhandenen); die Reihenfolge ist die von `todos`
+  Projekt lässt seine Aufgaben ohne Projekt stehen. Sie zeigt je Projekt eine schlanke Karte
+  (`TodoGruppe`: Kopf ohne Zahlen, die Eingabezeile unter den vorhandenen Aufgaben erst nach
+  „Neues To-Do“ – auf Wunsch ein blauer Knopf je Karte, bewusst abweichend von „ein Hauptknopf je
+  Ansicht“); die Reihenfolge ist die von `todos`
   (`todosTauschen`), nicht sortiert. Aus dem Protokoll übernimmt `todosAusProtokoll`
   (`todoAusAufgabe` mit `herkunft`); ob eine Aufgabe schon dort ist, sagt allein `inTodoListe` –
   den Status gleicht nichts ab. Erledigt wird in der To-Do-Liste mit
