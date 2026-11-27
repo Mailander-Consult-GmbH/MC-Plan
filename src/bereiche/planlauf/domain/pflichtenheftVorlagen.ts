@@ -21,7 +21,7 @@ const PERSONENBAHNHOEFE: AbschnittRoh[] = [
     titel: 'Einleitung',
     text: `Dieses Pflichtenheft gilt für das Projekt
 
-**{{gNummer}} {{station}} – {{projektname}}**
+**{{gNummer}} {{projektname}}**
 
 der {{auftraggeber}} – Geschäftsbereich {{geschaeftsbereich}}.
 
@@ -265,11 +265,13 @@ const VORLAGE_GEWERKNAMEN: Record<string, string> = {
 };
 
 
-/** Text unter dem Titel des Deckblatts je Geschäftsbereich. */
+/**
+ * Text unter dem Titel des Deckblatts je Geschäftsbereich. Die Station steht
+ * dort nicht eigens – sie ist in der Regel Teil des Projektnamens.
+ */
 const DECKBLATT: Record<GeschaeftsbereichId, string> = {
   personenbahnhoefe: `Projekt {{gNummer}}
 
-**{{station}}**
 **{{projektname}}**`,
   fahrweg: `Projektnummer {{gNummer}}
 
