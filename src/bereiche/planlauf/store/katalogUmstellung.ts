@@ -14,7 +14,7 @@
  *    – an den Funktionen der Projekte und an allen Stellen, die eine Funktion
  *    nur beim Namen nennen: Schritte und E-Mail-Regeln der Workflows und
  *    Planläufe (samt den Momentaufnahmen erledigter Schritte) und die
- *    Ansprechpartner der Pflichtenhefte und ihrer Vorlagen.
+ *    Ansprechpartner der Pflichtenhefte.
  * 2. Jede Funktion erhält ihre Art.
  * 3. Die projektübergreifenden Funktionen sind die des Katalogs und die selbst
  *    angelegten.

@@ -505,12 +505,13 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     Regel wird keine E-Mail vorgeschlagen,
   * `domain/pflichtenheft.ts` Pflichtenheft eines Projekts (`Project.pflichtenheft`, Reiter
     `pflichtenheft`, `pages/projekt/pflichtenheft/` – erstellt über den Assistenten
-    `Assistent.tsx`): Vorlage je Geschäftsbereich (`domain/pflichtenheftVorlagen.ts`,
-    `vorlageFuer`; gespeichert als `AppData.pflichtenheftVorlagen`), Platzhalter aus Projekt- und
+    `Assistent.tsx`, einmal je Projekt): mitgelieferte Vorlage je Geschäftsbereich
+    (`domain/pflichtenheftVorlagen.ts`, `standardVorlage` – eigene Vorlagen gibt es nicht), Platzhalter aus Projekt- und
     Stammdaten (`platzhalterWerte`), Ansprechpartner allein aus den Funktionen des Projekts
     (`ansprechpartnerZeilen` – keine Personen im Pflichtenheft speichern), Ausgaben
     (`pflichtenheftStand` je Stelle, `aenderungenErmitteln`, Store `pflichtenheftAusgeben` –
-    „Zuletzt geändert“ und Änderungsindex entstehen allein daraus, nicht von Hand), Druckfassung
+    „Zuletzt geändert“ und Änderungsindex entstehen allein daraus, nicht von Hand; ein Vorabzug
+    druckt nur, gekennzeichnet, und vermerkt nichts), Druckfassung
     (`pflichtenheftHtml`, eigene helle Gestaltung). Welche Stammdaten gelten, sagt
     `GESCHAEFTSBEREICHE` (`domain/types.ts`) – ein neuer Geschäftsbereich braucht dort einen
     Eintrag und eine Vorlage. Dazu `domain/ablaufDiagramm.ts` (Ablaufdiagramm
