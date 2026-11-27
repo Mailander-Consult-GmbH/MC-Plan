@@ -9,24 +9,29 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  PFLICHTENHEFT_LOGO,
   PFLICHTENHEFT_STIL,
   aenderungenErmitteln,
+  pflichtenheftDateiname,
   pflichtenheftHtml,
   pflichtenheftStand,
-  platzhalterWerte,
-  textEinsetzen,
 } from '../../../domain/pflichtenheft';
 import type { AppData, Pflichtenheft, Project } from '../../../domain/types';
 import { useStore } from '../../../store/store';
-import { druckeHtml } from '../../../../../shared/print';
+import { bildAlsDatenUrl, druckeHtml } from '../../../../../shared/print';
 import { formatDate, today } from '../../../../../shared/dates';
 import { useToast } from '../../../../../shared/toast';
 import { Modal, TextInput } from '../../../../../shared/ui';
 
-function drucken(data: AppData, project: Project, ph: Pflichtenheft, vorabzug = false): void {
-  const titel = textEinsetzen(ph.titel, platzhalterWerte(data, project, ph)) || 'Pflichtenheft';
-  const name = `${vorabzug ? 'Vorabzug ' : ''}${titel} ${project.gNummer || project.nummer}`.trim();
-  druckeHtml(name, pflichtenheftHtml(data, project, ph, vorabzug ? { vorabzug: today() } : {}), PFLICHTENHEFT_STIL);
+/** Druckt mit dem Logo (geladen, sobald die Seite des Pflichtenhefts offen ist) und schlägt „Pflichtenheft_<Projektname>“ als Dateinamen vor. */
+async function drucken(data: AppData, project: Project, ph: Pflichtenheft, vorabzug = false): Promise<void> {
+  const logo = await bildAlsDatenUrl(PFLICHTENHEFT_LOGO);
+  druckeHtml(
+    pflichtenheftDateiname(project, vorabzug),
+    pflichtenheftHtml(data, project, ph, { logo, ...(vorabzug ? { vorabzug: today() } : {}) }),
+    PFLICHTENHEFT_STIL,
+    { titelAlsDateiname: true },
+  );
 }
 
 export function AusgabeDialog({ project, ph, onClose }: { project: Project; ph: Pflichtenheft; onClose: () => void }) {
@@ -47,12 +52,12 @@ export function AusgabeDialog({ project, ph, onClose }: { project: Project; ph: 
     if (erledigt.current) return;
     if (sofort) {
       erledigt.current = true;
-      drucken(data, project, ph);
+      void drucken(data, project, ph);
       onClose();
     } else if (!erst && ph.stand === null) {
       erledigt.current = true;
       pflichtenheftAusgeben(project.id, []);
-      drucken(data, project, ph);
+      void drucken(data, project, ph);
       onClose();
     }
   }, [sofort, erst, ph, data, project, onClose, pflichtenheftAusgeben]);
@@ -69,7 +74,7 @@ export function AusgabeDialog({ project, ph, onClose }: { project: Project; ph: 
             ausgaben: [...ph.ausgaben, { id: 'neu', datum: today(), von: data.bearbeiter.name, aenderungen: erst ? [] : gewaehlt.map((x, i) => ({ id: `neu-${i}`, ...x })) }],
           }
         : ph;
-    drucken(data, project, neu);
+    void drucken(data, project, neu);
     toast(erst ? 'Erste Ausgabe vermerkt.' : gewaehlt.length > 0 ? `Ausgabe mit ${gewaehlt.length} ${gewaehlt.length === 1 ? 'Änderung' : 'Änderungen'} vermerkt.` : 'Ausgegeben – ohne Eintrag im Änderungsindex.');
     onClose();
   };
@@ -90,7 +95,7 @@ export function AusgabeDialog({ project, ph, onClose }: { project: Project; ph: 
             type="button"
             className="btn btn-outline"
             onClick={() => {
-              drucken(data, project, ph, true);
+              void drucken(data, project, ph, true);
               toast('Vorabzug – nichts vermerkt.');
               onClose();
             }}

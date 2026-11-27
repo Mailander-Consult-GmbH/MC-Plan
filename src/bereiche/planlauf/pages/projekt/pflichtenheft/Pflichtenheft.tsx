@@ -12,9 +12,10 @@
  * Längere Eingaben speichert die Seite verzögert (`useEntwurf`), damit nicht
  * jeder Tastendruck den ganzen Bestand schreibt.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  PFLICHTENHEFT_LOGO,
   PFLICHTENHEFT_STIL,
   aenderungenErmitteln,
   ansprechpartnerZeilen,
@@ -43,7 +44,7 @@ import {
 } from '../../../domain/types';
 import type { ProjektTab } from '../../../lib/router';
 import { newId, useStore } from '../../../store/store';
-import { htmlDokument, querformatImDruck } from '../../../../../shared/print';
+import { bildAlsDatenUrl, htmlDokument, querformatImDruck } from '../../../../../shared/print';
 import { Icon } from '../../../../../shared/icons';
 import { listenEintrag } from '../../../../../shared/bewegung';
 import { formatDate } from '../../../../../shared/dates';
@@ -62,6 +63,15 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
   const [ansicht, setAnsicht] = useState<Ansicht>('bearbeiten');
   const [assistent, setAssistent] = useState(false);
   const [ausgabe, setAusgabe] = useState(false);
+  // Logo der Seiten – für die Vorschau; so liegt es auch beim Druck schon bereit
+  const [logo, setLogo] = useState('');
+  useEffect(() => {
+    let aktiv = true;
+    void bildAlsDatenUrl(PFLICHTENHEFT_LOGO).then((url) => aktiv && setLogo(url));
+    return () => {
+      aktiv = false;
+    };
+  }, []);
   const ph = useMemo(() => (project.pflichtenheft ? pflichtenheftAufbereiten(project.pflichtenheft) : null), [project.pflichtenheft]);
   const aendern = (fn: (p: Pflichtenheft) => Pflichtenheft) => pflichtenheftAendern(project.id, fn);
 
@@ -137,7 +147,7 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
           <iframe
             className="phe-vorschau"
             title="Vorschau des Pflichtenhefts"
-            srcDoc={htmlDokument('Pflichtenheft', pflichtenheftHtml(data, project, ph), PFLICHTENHEFT_STIL)}
+            srcDoc={htmlDokument('Pflichtenheft', pflichtenheftHtml(data, project, ph, { logo }), PFLICHTENHEFT_STIL)}
           />
         </Card>
       ) : (

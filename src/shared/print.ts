@@ -3,8 +3,12 @@
  * Druckdialog des Browsers. Dort lässt sich „Als PDF sichern“ wählen – so
  * entsteht die PDF-Fassung ohne zusätzliche Programmbibliothek. Eigene
  * Stilangaben ergänzen die Grundgestaltung.
+ *
+ * Mit `titelAlsDateiname` schlägt der Dialog den Titel als Dateinamen vor:
+ * Chrome und Edge nehmen dafür den Titel des Fensters, nicht den des
+ * Druckrahmens – er steht deshalb bis zum Ende des Drucks auch dort.
  */
-export function druckeHtml(titel: string, inhalt: string, zusatzStil = ''): void {
+export function druckeHtml(titel: string, inhalt: string, zusatzStil = '', { titelAlsDateiname = false } = {}): void {
   const rahmen = document.createElement('iframe');
   rahmen.setAttribute('aria-hidden', 'true');
   rahmen.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
@@ -20,16 +24,37 @@ export function druckeHtml(titel: string, inhalt: string, zusatzStil = ''): void
   dokument.write(htmlDokument(titel, inhalt, zusatzStil));
   dokument.close();
 
+  const fensterTitel = document.title;
+  let titelZurueck = () => {};
+  if (titelAlsDateiname && dokument.title) {
+    document.title = dokument.title;
+    titelZurueck = () => {
+      titelZurueck = () => {};
+      // Nur zurückstellen, was der Druck gesetzt hat
+      if (document.title === dokument.title) document.title = fensterTitel;
+    };
+    rahmen.contentWindow?.addEventListener('afterprint', () => titelZurueck());
+  }
+
   const drucken = () => {
     rahmen.contentWindow?.focus();
     rahmen.contentWindow?.print();
     // Der Rahmen muss bis zum Ende des Druckdialogs bestehen bleiben.
-    setTimeout(() => rahmen.remove(), 60_000);
+    setTimeout(() => {
+      titelZurueck();
+      rahmen.remove();
+    }, 60_000);
   };
 
   if (rahmen.contentWindow?.document.readyState === 'complete') drucken();
   else rahmen.onload = drucken;
 }
+
+/**
+ * Schrift der Druckfassungen. Kopf- und Fußzeilen im Seitenrand (`@page`,
+ * `@bottom-right` usw.) erben sie nicht vom Dokument – dort eigens angeben.
+ */
+export const DRUCK_SCHRIFT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
 /**
  * Das vollständige HTML-Dokument der Druckausgabe – auch für eine Vorschau in
@@ -40,7 +65,7 @@ export function htmlDokument(titel: string, inhalt: string, zusatzStil = ''): st
 <html lang="de"><head><meta charset="utf-8"><title>${titel}</title>
 <style>
   @page { size: A4 landscape; margin: 14mm 12mm; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  body { font-family: ${DRUCK_SCHRIFT};
          font-size: 9.5pt; color: #1d1d1f; margin: 0; }
   h1 { font-size: 15pt; margin: 0 0 2mm; }
   h2 { font-size: 11pt; margin: 6mm 0 2mm; page-break-after: avoid; }
@@ -67,6 +92,37 @@ ${zusatzStil}
  */
 export function querformatImDruck(): boolean {
   return typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('page', 'quer');
+}
+
+const datenUrls = new Map<string, Promise<string>>();
+
+/**
+ * Eine Datei unter `public/` als `data:`-Adresse – für Bilder im Seitenrand
+ * eines Drucks (`@page`), die der Browser sonst womöglich erst nach dem Öffnen
+ * des Druckdialogs lädt. Leer, wenn sie sich nicht laden lässt; je Pfad nur
+ * einmal geladen.
+ */
+export function bildAlsDatenUrl(pfad: string): Promise<string> {
+  let ergebnis = datenUrls.get(pfad);
+  if (!ergebnis) {
+    ergebnis = fetch(`${import.meta.env.BASE_URL}${pfad}`)
+      .then((antwort) => (antwort.ok ? antwort.blob() : Promise.reject(new Error(String(antwort.status)))))
+      .then(
+        (blob) =>
+          new Promise<string>((fertig, fehler) => {
+            const leser = new FileReader();
+            leser.onload = () => fertig(String(leser.result));
+            leser.onerror = () => fehler(leser.error);
+            leser.readAsDataURL(blob);
+          }),
+      )
+      .catch(() => {
+        datenUrls.delete(pfad); // später erneut versuchen
+        return '';
+      });
+    datenUrls.set(pfad, ergebnis);
+  }
+  return ergebnis;
 }
 
 /** Maskiert Text für die Ausgabe in HTML. */
