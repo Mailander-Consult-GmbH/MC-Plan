@@ -11,12 +11,12 @@
  * Gruppenzeile), der Filter daneben das Gewerk – es steht als Abzeichen hinter
  * jeder Bezeichnung.
  *
- * Zum Pflegen der Liste selbst (unbesetzte Funktionen umbenennen oder löschen,
- * eine Funktion ohne Person anlegen, ein Gewerk löschen) schaltet „Alle
- * Funktionen des Projekts verwalten“ unter der Liste auf alle Funktionen um –
- * dort steht an einer unbesetzten Funktion eines Gewerks auch, wer über die
- * übergreifende Funktion einspringt. Ein neues Gewerk entsteht im Dialog einer
- * Funktion (Knopf „Gewerk“).
+ * Unbesetzte Funktionen erscheinen im Projekt nur in dieser Auswahl – dort
+ * steht an der unbesetzten Funktion eines Gewerks auch, wer über die
+ * übergreifende Funktion einspringt. Eine besetzte Funktion lässt sich
+ * bearbeiten (Stift) und dort auch löschen; eine neue entsteht in der Auswahl
+ * („+ Neue Funktion anlegen …“), ein neues Gewerk im Dialog einer Funktion
+ * (Knopf „Gewerk“). Gelöscht wird ein Gewerk unter Einstellungen → Funktionen.
  *
  * Die eigene Funktion Planlaufmanagement erscheint hier nicht: Sie füllt stets
  * die angemeldete Person mit ihrem Profil aus (siehe istEigeneFunktion).
@@ -49,7 +49,6 @@ import {
 } from '../../../../gemeinsam/FunktionsArten';
 import { artInfo, artText, funktionenVergleich, nachArt } from '../../../../gemeinsam/funktionskatalog';
 import { funktionsSchluessel } from '../../../../gemeinsam/register';
-import { GewerkLoeschenDialog } from '../../components/GewerkDialog';
 import { FunktionsMaske, useFunktionsFormular } from '../../components/FunktionsFelder';
 import { FunktionsZelle, anzahlText, inSchrittenGenannt } from '../../components/FunktionsListe';
 import { RollenImport } from './RollenImport';
@@ -78,12 +77,9 @@ export function RollenFunktionen({ project }: { project: Project }) {
   const toast = useToast();
   const [artWahl, setArtWahl] = useState(ALLE_ARTEN);
   const [gewerkWahl, setGewerkWahl] = useState(ALLE_GEWERKE);
-  // Alle Funktionen des Projekts statt nur der besetzten – zum Pflegen der Liste
-  const [alleZeigen, setAlleZeigen] = useState(false);
   const [suche, setSuche] = useState('');
   const [besetzen, setBesetzen] = useState<Role | null>(null);
-  const [funktionDialog, setFunktionDialog] = useState<{ rolle?: Role } | null>(null);
-  const [gewerkLoeschen, setGewerkLoeschen] = useState<string | null>(null);
+  const [funktionDialog, setFunktionDialog] = useState<Role | null>(null);
   const [importOffen, setImportOffen] = useState(false);
   const [loeschen, setLoeschen] = useState<Role | null>(null);
   const [personLoeschen, setPersonLoeschen] = useState<Contact | null>(null);
@@ -110,38 +106,24 @@ export function RollenFunktionen({ project }: { project: Project }) {
   }
   /** Person, die eine Funktion ausfüllt. */
   const besetztVon = (rolle: Role) => inhaber.get(rolle.id);
-  /**
-   * Für eine unbesetzte Funktion eines Gewerks: die Person an der übergreifenden
-   * Funktion gleichen Namens – sie bearbeitet die Schritte dieses Gewerks, bis die
-   * Funktion selbst besetzt ist (`kontaktFuerRolleUndGewerk`).
-   */
-  const vertretenVon = (rolle: Role): Contact | undefined => {
-    if (rolle.gewerk === null || inhaber.has(rolle.id)) return undefined;
-    const name = rolle.name.trim().toLowerCase();
-    const uebergreifend = rollen.find((r) => r.gewerk === null && r.name.trim().toLowerCase() === name);
-    return uebergreifend ? inhaber.get(uebergreifend.id) : undefined;
-  };
 
-  // Was die Liste führt: die besetzten Funktionen – beim Pflegen alle
-  const gefuehrt = alleZeigen ? rollen : rollen.filter((r) => inhaber.has(r.id));
+  // Was die Liste führt: die besetzten Funktionen – alle übrigen stehen nur zur Auswahl
+  const gefuehrt = rollen.filter((r) => inhaber.has(r.id));
   // Erste Ebene: die Art – nur Arten, die die Liste führt. Eine Art, die es nicht mehr gibt, fällt auf „Alle“ zurück.
   const art = artWahlGueltig(
     artWahl,
     gefuehrt.map((r) => r.art),
   );
   const alleArten = art === ALLE_ARTEN;
-  // Zweite Ebene: das Gewerk – die Gewerke, die in der Liste vorkommen. `gewerk` ist das im Filter
-  // gewählte – null bei „Alle Gewerke“ und „Übergreifend“.
-  const filterGewerke = alleZeigen ? gewerke : gewerke.filter((g) => gefuehrt.some((r) => r.gewerk === g));
+  // Zweite Ebene: das Gewerk – die Gewerke, die in der Liste vorkommen
+  const filterGewerke = gewerke.filter((g) => gefuehrt.some((r) => r.gewerk === g));
   const gewerkFilter = gewerkWahlGueltig(gewerkWahl, filterGewerke);
   useWahlNachziehen(artWahl, art, setArtWahl);
   useWahlNachziehen(gewerkWahl, gewerkFilter, setGewerkWahl);
-  const gewerk = gewerkFilter === ALLE_GEWERKE || gewerkFilter === OHNE_GEWERK ? null : gewerkFilter;
 
   const inAuswahl = gefuehrt.filter(
     (r) => (alleArten || artInfo(r.art).id === art) && gewerkPasst(r.gewerk, gewerkFilter),
   );
-  const besetzt = inAuswahl.filter((r) => besetztVon(r)).length;
   const gesucht = suche.trim().toLowerCase();
   const sichtbar = inAuswahl
     .filter((r) => {
@@ -162,17 +144,13 @@ export function RollenFunktionen({ project }: { project: Project }) {
   );
 
   /** Nach dem Speichern: Die Ansicht folgt der Funktion in ihre Art und ihr Gewerk, statt sie zu verlieren. */
-  const zeigen = (f: Pick<Role, 'art' | 'gewerk'>, neu: boolean) => {
+  const zeigen = (f: Pick<Role, 'art' | 'gewerk'>) => {
     if (!alleArten && artInfo(f.art).id !== art) setArtWahl(artInfo(f.art).id);
     if (!gewerkPasst(f.gewerk, gewerkFilter)) setGewerkWahl(ALLE_GEWERKE);
-    // Eine neue Funktion ist noch unbesetzt – sie steht nur unter allen Funktionen
-    if (neu) setAlleZeigen(true);
   };
 
   const gewerkZusatz =
     gewerkFilter === ALLE_GEWERKE ? '' : gewerkFilter === OHNE_GEWERK ? ', übergreifend' : ` im Gewerk ${gewerkFilter}`;
-  const keineFunktion =
-    gewerkFilter === OHNE_GEWERK ? 'keine übergreifende Funktion' : `keine Funktion${gewerk ? ` im Gewerk ${gewerk}` : ''}`;
   // Die Art „Projektsteuerung und Planlaufmanagement“ zeigt eine Funktion weniger, als der Katalog nennt
   const eigeneFehlt = (alleArten || art === 'ps-plm') && gewerkPasst(null, gewerkFilter);
 
@@ -195,30 +173,20 @@ export function RollenFunktionen({ project }: { project: Project }) {
           <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
             <Icon name="importieren" size={14} /> Excel-Import
           </button>
-          {/* Ein Hauptknopf: gewöhnlich „Person hinzufügen“, beim Pflegen der Liste „Neue Funktion“ */}
-          <button
-            type="button"
-            className={alleZeigen ? 'btn btn-outline' : 'btn btn-primary'}
-            onClick={() => setNeuePerson(true)}
-          >
-            <Icon name={alleZeigen ? 'person' : 'plus'} size={14} /> Person hinzufügen
+          <button type="button" className="btn btn-primary" onClick={() => setNeuePerson(true)}>
+            <Icon name="plus" size={14} /> Person hinzufügen
           </button>
-          {alleZeigen ? (
-            <button type="button" className="btn btn-primary" onClick={() => setFunktionDialog({})}>
-              <Icon name="plus" size={14} /> Neue Funktion
-            </button>
-          ) : null}
         </div>
       </div>
 
       <Card>
         <CardHeader
-          titel={alleArten ? (alleZeigen ? 'Alle Funktionen' : 'Besetzte Funktionen') : artInfo(art).name}
+          titel={alleArten ? 'Besetzte Funktionen' : artInfo(art).name}
           sub={`${
             sichtbar.length === inAuswahl.length
               ? anzahlText(inAuswahl.length)
               : `${sichtbar.length} von ${anzahlText(inAuswahl.length)}`
-          }${gewerkZusatz}${alleZeigen ? ` · ${besetzt} besetzt` : ''} · je Funktion genau eine Person${
+          }${gewerkZusatz} · je Funktion genau eine Person${
             eigeneFehlt ? '; das Planlaufmanagement übernimmt stets die angemeldete Person' : ''
           }`}
         />
@@ -226,43 +194,26 @@ export function RollenFunktionen({ project }: { project: Project }) {
           gesucht ? (
             // Suche ohne Treffer ist kein leerer Bestand – kein Anlegen-Knopf
             <EmptyState icon="person" titel="Keine Funktion gefunden" text="Für diese Suche gibt es keinen Treffer." />
-          ) : !alleZeigen ? (
-            gefuehrt.length === 0 ? (
-              // Noch niemand im Projekt: Die Funktionen stehen zur Auswahl bereit
-              <EmptyState
-                icon="person"
-                titel="Noch keine Funktion besetzt"
-                text={`Fügen Sie die Personen des Projekts hinzu und weisen Sie ihnen ihre Funktion zu – zur Auswahl ${
-                  rollen.length === 1 ? 'steht 1 Funktion' : `stehen ${rollen.length} Funktionen`
-                }.`}
-                action={
-                  <button type="button" className="btn btn-primary" onClick={() => setNeuePerson(true)}>
-                    <Icon name="plus" size={14} /> Person hinzufügen
-                  </button>
-                }
-              />
-            ) : (
-              // Art und Gewerk zusammen treffen keine besetzte Funktion – kein leerer Bestand
-              <EmptyState
-                icon="person"
-                titel="Keine Funktion besetzt"
-                text="In dieser Auswahl füllt noch keine Person eine Funktion aus."
-              />
-            )
-          ) : (
+          ) : gefuehrt.length === 0 ? (
+            // Noch niemand im Projekt: Die Funktionen stehen zur Auswahl bereit
             <EmptyState
               icon="person"
-              titel="Keine Funktion"
-              text={
-                rollen.length === 0
-                  ? 'Legen Sie die Funktionen an, die in diesem Projekt besetzt werden.'
-                  : `${alleArten ? 'Das Projekt führt' : `In der Art „${artInfo(art).name}“ führt das Projekt`} ${keineFunktion}.`
-              }
+              titel="Noch keine Funktion besetzt"
+              text={`Fügen Sie die Personen des Projekts hinzu und weisen Sie ihnen ihre Funktion zu – zur Auswahl ${
+                rollen.length === 1 ? 'steht 1 Funktion' : `stehen ${rollen.length} Funktionen`
+              }.`}
               action={
-                <button type="button" className="btn btn-primary" onClick={() => setFunktionDialog({})}>
-                  <Icon name="plus" size={14} /> Neue Funktion
+                <button type="button" className="btn btn-primary" onClick={() => setNeuePerson(true)}>
+                  <Icon name="plus" size={14} /> Person hinzufügen
                 </button>
               }
+            />
+          ) : (
+            // Art und Gewerk zusammen treffen keine besetzte Funktion – kein leerer Bestand
+            <EmptyState
+              icon="person"
+              titel="Keine Funktion besetzt"
+              text="In dieser Auswahl füllt noch keine Person eine Funktion aus."
             />
           )
         ) : (
@@ -283,17 +234,10 @@ export function RollenFunktionen({ project }: { project: Project }) {
                 {gruppen.flatMap((g) => [
                   // Unter einer Art nennt sie der Kartentitel – die Gruppenzeile steht nur unter „Alle“
                   alleArten ? (
-                    <ArtGruppenZeile
-                      key={`art-${g.art.id}`}
-                      art={g.art.id}
-                      spalten={SPALTEN}
-                      anzahl={g.eintraege.length}
-                      zusatz={alleZeigen ? `${g.eintraege.filter((r) => besetztVon(r)).length} besetzt` : undefined}
-                    />
+                    <ArtGruppenZeile key={`art-${g.art.id}`} art={g.art.id} spalten={SPALTEN} anzahl={g.eintraege.length} />
                   ) : null,
                   ...g.eintraege.map((rolle) => {
                     const c = besetztVon(rolle);
-                    const vertretung = c ? undefined : vertretenVon(rolle);
                     return (
                       <tr key={rolle.id} className="clickable" {...alsKlickZeile(() => setBesetzen(rolle))}>
                         <td>
@@ -313,15 +257,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
                               </strong>
                             </span>
                           ) : (
-                            <>
-                              <span className="tertiary small pl-unbesetzt">– nicht besetzt –</span>
-                              {/* Die Schritte des Gewerks gehen solange an die Person der übergreifenden Funktion */}
-                              {vertretung ? (
-                                <div className="tertiary small">
-                                  es gilt die übergreifende Funktion: {vertretung.vorname} {vertretung.nachname}
-                                </div>
-                              ) : null}
-                            </>
+                            <span className="tertiary small pl-unbesetzt">– nicht besetzt –</span>
                           )}
                         </td>
                         <td className="small muted col-optional">{c?.firma || '–'}</td>
@@ -346,27 +282,14 @@ export function RollenFunktionen({ project }: { project: Project }) {
                             title="Funktion bearbeiten"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setFunktionDialog({ rolle });
+                              setFunktionDialog(rolle);
                             }}
                           >
                             <Icon name="bearbeiten" size={15} />
                           </button>
-                          {/* Löschen nähme die Funktion auch aus der Auswahl – nur beim Pflegen der Liste;
-                              wer eine Person aus der Funktion nehmen will, hebt im Dialog die Besetzung auf */}
-                          {alleZeigen ? (
-                            <button
-                              type="button"
-                              className="btn-icon"
-                              aria-label="Funktion löschen"
-                              title="Funktion löschen"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLoeschen(rolle);
-                              }}
-                            >
-                              <Icon name="loeschen" size={15} />
-                            </button>
-                          ) : null}
+                          {/* Kein Papierkorb in der Zeile: Löschen nähme die Funktion auch aus der Auswahl – es steht
+                              im Dialog „Funktion bearbeiten“; wer eine Person aus der Funktion nehmen will, hebt in
+                              der Besetzung (Klick auf die Zeile) die Besetzung auf */}
                         </td>
                       </tr>
                     );
@@ -432,34 +355,6 @@ export function RollenFunktionen({ project }: { project: Project }) {
         </Card>
       ) : null}
 
-      {/* Die große Liste steht im Hintergrund; hier lässt sie sich zum Pflegen hervorholen */}
-      <div className="row wrap" style={{ justifyContent: 'flex-end' }}>
-        {alleZeigen && gewerk ? (
-          <button
-            type="button"
-            className="btn btn-sm btn-ghost"
-            title={`Gewerk „${gewerk}“ mit seinen Funktionen löschen`}
-            onClick={() => setGewerkLoeschen(gewerk)}
-          >
-            <Icon name="loeschen" size={13} /> Gewerk „{gewerk}“ löschen
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="btn btn-sm btn-ghost"
-          aria-pressed={alleZeigen}
-          title={
-            alleZeigen
-              ? 'Nur die Funktionen zeigen, die eine Person ausfüllt'
-              : 'Auch unbesetzte Funktionen zeigen – zum Umbenennen, Löschen und Anlegen'
-          }
-          onClick={() => setAlleZeigen(!alleZeigen)}
-        >
-          <Icon name="einstellungen" size={13} />{' '}
-          {alleZeigen ? 'Nur besetzte Funktionen zeigen' : `Alle Funktionen des Projekts verwalten (${rollen.length})`}
-        </button>
-      </div>
-
       {besetzen ? (
         <BesetzungsDialog
           project={project}
@@ -468,7 +363,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
           gewerke={gewerke}
           kontakte={kontakte}
           onClose={() => setBesetzen(null)}
-          onBesetzt={(r) => zeigen(r, false)}
+          onBesetzt={zeigen}
         />
       ) : null}
 
@@ -481,7 +376,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
           kontakt={person}
           kontakte={kontakte}
           onClose={() => setPerson(null)}
-          onBesetzt={(r) => zeigen(r, false)}
+          onBesetzt={zeigen}
         />
       ) : null}
 
@@ -493,26 +388,23 @@ export function RollenFunktionen({ project }: { project: Project }) {
           gewerke={gewerke}
           kontakte={kontakte}
           onClose={() => setNeuePerson(false)}
-          onBesetzt={(r) => zeigen(r, false)}
+          onBesetzt={zeigen}
         />
       ) : null}
 
       {funktionDialog ? (
         <FunktionsDialog
           project={project}
-          rolle={funktionDialog.rolle}
+          rolle={funktionDialog}
           gewerke={gewerke}
-          vorgabe={{ art: alleArten ? undefined : art, gewerk }}
+          vorgabe={{ gewerk: null }}
           onClose={() => setFunktionDialog(null)}
           onGespeichert={zeigen}
-        />
-      ) : null}
-
-      {gewerkLoeschen ? (
-        <GewerkLoeschenDialog
-          gewerk={gewerkLoeschen}
-          onClose={() => setGewerkLoeschen(null)}
-          onGeloescht={() => setGewerkWahl(ALLE_GEWERKE)}
+          onLoeschen={() => {
+            // Erst den Dialog schließen (der Fokus geht an den Stift zurück), dann rückfragen
+            setLoeschen(funktionDialog);
+            setFunktionDialog(null);
+          }}
         />
       ) : null}
 
@@ -629,6 +521,12 @@ function BesetzungsDialog({
 
   // Funktionen zur Auswahl: gegliedert nach ihrer Art, darin nach Bezeichnung und Gewerk
   const auswahlGruppen = nachArt([...rollen].sort(funktionenVergleich(gewerke)));
+  /** Wer eine Funktion ausfüllt. */
+  const inhaberVon = (r: Role | undefined) =>
+    r ? kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === r.id)) : undefined;
+  /** Die übergreifende Funktion gleichen Namens. */
+  const uebergreifende = (r: Role) =>
+    rollen.find((x) => x.gewerk === null && x.name.trim().toLowerCase() === r.name.trim().toLowerCase());
   const gewaehlteRolle = rollen.find((r) => r.id === rolleId);
   const vorherigerInhaber = gewaehlteRolle
     ? kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === gewaehlteRolle.id))
@@ -732,11 +630,18 @@ function BesetzungsDialog({
                 {auswahlGruppen.map((g) => (
                   <optgroup key={g.art.id} label={artText(g.art.id)}>
                     {g.eintraege.map((r) => {
-                      const inhaber = kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === r.id));
+                      const inhaber = inhaberVon(r);
+                      // Unbesetzte Funktion eines Gewerks: Ihre Schritte bearbeitet solange die Person der
+                      // übergreifenden Funktion gleichen Namens (`kontaktFuerRolleUndGewerk`)
+                      const vertretung = inhaber || r.gewerk === null ? undefined : inhaberVon(uebergreifende(r));
                       return (
                         <option key={r.id} value={r.id}>
                           {funktionsName(r)}
-                          {inhaber ? ` (besetzt: ${inhaber.vorname} ${inhaber.nachname})` : ''}
+                          {inhaber
+                            ? ` (besetzt: ${inhaber.vorname} ${inhaber.nachname})`
+                            : vertretung
+                              ? ` (es gilt die übergreifende Funktion: ${vertretung.vorname} ${vertretung.nachname})`
+                              : ''}
                         </option>
                       );
                     })}
@@ -861,17 +766,20 @@ function FunktionsDialog({
   onClose,
   onGespeichert,
   onAngelegt,
+  onLoeschen,
 }: {
   project: Project;
   rolle?: Role;
   gewerke: string[];
-  /** Für eine neue Funktion: die Art des gewählten Reiters (`undefined` unter „Alle“) und das Gewerk des Filters. */
+  /** Für eine neue Funktion: Art und Gewerk, mit denen die Maske vorbelegt ist. */
   vorgabe: { art?: string; gewerk: string | null };
   onClose: () => void;
   /** Nach dem Speichern – die Liste folgt der Funktion in ihre Art und ihr Gewerk. */
   onGespeichert: (funktion: Pick<Role, 'art' | 'gewerk'>, neu: boolean) => void;
   /** Kennung einer neu angelegten Funktion – die Funktionsauswahl im Besetzungsdialog wählt sie gleich. */
   onAngelegt?: (id: ID) => void;
+  /** „Funktion löschen“ im Dialog einer vorhandenen Funktion – die Rückfrage stellt die Liste. */
+  onLoeschen?: () => void;
 }) {
   const { data, addRole, updateRole } = useStore();
   const toast = useToast();
@@ -934,6 +842,7 @@ function FunktionsDialog({
       gewerke={gewerke}
       onClose={onClose}
       onSpeichern={speichern}
+      onLoeschen={rolle ? onLoeschen : undefined}
     />
   );
 }

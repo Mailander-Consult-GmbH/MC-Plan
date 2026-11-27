@@ -121,6 +121,7 @@ export function FunktionsMaske({
   gewerke,
   onClose,
   onSpeichern,
+  onLoeschen,
 }: {
   /** Neue Funktion (sonst wird eine vorhandene bearbeitet). */
   neu: boolean;
@@ -131,6 +132,8 @@ export function FunktionsMaske({
   gewerke: readonly string[];
   onClose: () => void;
   onSpeichern: () => void;
+  /** Zeigt links „Funktion löschen“ (der Auslöser – die Rückfrage stellt der Aufrufer). */
+  onLoeschen?: () => void;
 }) {
   const { form, vonHand, setzen } = formular;
   const [gewerkDialog, setGewerkDialog] = useState(false);
@@ -145,6 +148,14 @@ export function FunktionsMaske({
         onClose={onClose}
         footer={
           <>
+            {onLoeschen ? (
+              <>
+                <button type="button" className="btn btn-danger" onClick={onLoeschen}>
+                  <Icon name="loeschen" size={14} /> Funktion löschen
+                </button>
+                <span className="spacer" />
+              </>
+            ) : null}
             <button type="button" className="btn" onClick={onClose}>
               Abbrechen
             </button>
