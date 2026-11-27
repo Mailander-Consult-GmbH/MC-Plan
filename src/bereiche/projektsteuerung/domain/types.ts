@@ -29,7 +29,7 @@ export type ISODate = string;
  * „Auftragnehmer“, „Fachplanung LST“ → „Fachplaner LST“), fehlende
  * Katalogfunktionen und -gewerke kommen hinzu; entfernt wird nichts
  * (`ausFassung8` in store/storage.ts).
- * Fassung 10: Reihenfolge und ausgeblendete Karten der To-Do-Liste (`todoKarten`).
+ * Fassung 10: Reihenfolge und entfernte leere Karten der To-Do-Liste (`todoKarten`).
  */
 export const DATEN_VERSION = 10;
 
@@ -351,7 +351,8 @@ export interface ProjektsteuerungDaten {
  * Anordnung der Karten der To-Do-Liste. Schlüssel sind Projektkennungen oder
  * `'ohne'` („Ohne Projekt“, `KARTE_OHNE` in domain/todos.ts). Was nicht in
  * `reihenfolge` steht, folgt in der Vorgabe (Projektnummer, „Ohne Projekt“
- * zuletzt); `ausgeblendet` sind Karten, die man in der Liste nicht sehen will.
+ * zuletzt); `ausgeblendet` sind leer entfernte Karten („Leere Karte entfernen“) –
+ * sie fehlen nur, solange sie in der Ansicht keine Aufgabe zeigen.
  */
 export interface TodoKarten {
   reihenfolge: string[];

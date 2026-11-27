@@ -1684,14 +1684,16 @@ Karte, öffnet **Aufgabe zu weiterem Projekt …** unter den Karten eine, gleich
 Eingabezeile. Im Filter **Erledigt** gibt es kein *Neues To-Do* und keine leere Karte *Ohne
 Projekt*.
 
-Die **Reihenfolge der Karten** bestimmt man selbst: Am Griff vor dem Projektnamen zieht man eine
-Karte an ihren neuen Platz, die übrigen gleiten beiseite; mit der Tastatur verschieben die
-Pfeiltasten am Griff sie um einen Platz. Über das **Augen-Symbol** im Kopf lässt sich jede Karte
-**ausblenden** – auch mit Aufgaben. Unter den Karten steht dann **Ausgeblendet:** mit dem Projekt
-und der Zahl seiner offenen Aufgaben; ein Klick blendet die Karte wieder ein. Wer ein Projekt
-auswählt oder sucht, sieht auch ausgeblendete Karten; *Aufgabe zu weiterem Projekt …* blendet eine
-gewählte wieder ein. Reihenfolge und ausgeblendete Karten bleiben gespeichert (auch in der
-Sicherung). Im Projekt-Reiter gibt es beides nicht – dort steht nur die eine Karte.
+Die **Reihenfolge der Karten** bestimmt man selbst: Am **Kopf** einer Karte – überall außer auf
+seinen Knöpfen – zieht man sie an ihren neuen Platz, die übrigen gleiten beiseite; hat der Kopf den
+Tastaturfokus, verschieben ihn die Pfeiltasten um einen Platz. Eine Karte mit Aufgaben steht immer
+da; eine Projektkarte, deren letzte offene Aufgabe erledigt oder gelöscht ist, verschwindet von
+selbst. **Leer** bleiben kann die Karte *Ohne Projekt* und eine über *Aufgabe zu weiterem Projekt …*
+geöffnete – sie zeigt im Kopf das Kreuz **Leere Karte entfernen** (nicht, solange ihre
+Eingabezeile offen ist). Entfernt bleibt sie weg, bis sie wieder Aufgaben zeigt oder unter
+*Aufgabe zu weiterem Projekt …* gewählt wird (dort steht dann auch *Ohne Projekt*). Reihenfolge und
+entfernte Karten bleiben gespeichert (auch in der Sicherung). Im Projekt-Reiter gibt es beides
+nicht – dort steht nur die eine Karte.
 
 Je Aufgabe: **Stern** für wichtig (Spalte **Wichtig**), Aufgabe (mit Notiz und – aus einem Protokoll übernommen – der
 Fundstelle, die ins Protokoll führt), Fällig (Datum und „in … Tagen“ in einer Zeile, ohne Termin
@@ -1737,7 +1739,7 @@ To-Do-Liste – sie beginnt leer; bis Fassung 7 kannte sie weder wichtige Aufgab
 aus einem Protokoll – vorhandene Aufgaben gelten als nicht wichtig und ohne Herkunft. Bis Fassung 8
 kannten die Funktionen keine Art: Beim Laden bekommen sie die des Funktionskatalogs, frühere
 Bezeichnungen ihre neuen Namen, und die Funktionen und Gewerke des Katalogs kommen hinzu (siehe
-[Funktionen](#funktionen)). Bis Fassung 9 gab es keine eigene Reihenfolge und keine ausgeblendeten
+[Funktionen](#funktionen)). Bis Fassung 9 gab es keine eigene Reihenfolge und keine entfernten
 Karten in der To-Do-Liste – sie beginnt mit der Vorgabe. Der Name unter „Angemeldet als“ gilt in
 allen Bereichen.
 
@@ -2002,7 +2004,7 @@ src/
                  eigenen Strichzeichnungen für die Druckfassungen
     bewegung.tsx Bewegungen (framer-motion): hoverLift, Zaehler, NavAktiv, BalkenFuellung,
                  Einblenden, listenEintrag (Listen: kommen, gehen, gleiten), Aufspringen,
-                 SortierListe/SortierEintrag (Umordnen per Ziehen am Griff)
+                 SortierListe/SortierEintrag (Umordnen per Ziehen, etwa am Kartenkopf)
     logos.tsx    Logo KaPlan („Planebenen“, als SVG gezeichnet, vier Zustände) und Wortmarke Mailänder Consult
     toast.tsx    Kurzmeldungen (role="status", aria-atomic="false")
     bausteine.ts Platzhalter {{schluessel}} zerlegen, zusammensetzen, aus der Ansicht lesen
@@ -2186,7 +2188,7 @@ Menüleiste, die selbst eine Karte ist:
   heben sich beim Überfahren an, Kennzahlen zählen hoch, Fortschrittsbalken wachsen, die Fläche des
   aktiven Menüpunkts und des gewählten Segments gleitet zur neuen Wahl, Ansichten blenden ein.
   Einträge einer Liste blenden ein und aus und gleiten an ihren neuen Platz, ein Haken oder Stern
-  springt beim Umschalten kurz auf, und Karten lassen sich am Griff per Ziehen umordnen (bisher in
+  springt beim Umschalten kurz auf, und Karten lassen sich am Kopf per Ziehen umordnen (bisher in
   den To-Do-Listen der Projektsteuerung). Wer
   im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht die Endzustände ohne Verschiebung.
 * **Hell und dunkel:** Die Vorgabe „Automatisch“ folgt wie in der Vorlage der Einstellung des

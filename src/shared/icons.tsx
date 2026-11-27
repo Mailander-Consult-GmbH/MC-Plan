@@ -27,7 +27,6 @@ import {
   Flag,
   Folder,
   Funnel,
-  GripVertical,
   Info,
   LayoutGrid,
   List,
@@ -53,7 +52,6 @@ import {
   Printer,
   ImagePlus,
   Eye,
-  EyeOff,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -111,9 +109,6 @@ const symbole = {
   drucken: Printer,
   bild: ImagePlus,
   vorschau: Eye,
-  einblenden: Eye,
-  ausblenden: EyeOff,
-  griff: GripVertical,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof symbole;
