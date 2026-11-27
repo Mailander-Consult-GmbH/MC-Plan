@@ -1149,8 +1149,9 @@ und die Plancodierung im Querformat, zuletzt der Änderungsindex (die Einträge 
 der ersten, jüngster zuerst). Oben rechts steht auf jeder Seite, auch auf dem Deckblatt, das
 Logo von Mailänder Consult (dasselbe wie im Kopf der Protokolle der Projektsteuerung). Als
 Dateinamen schlägt der Druckdialog „Pflichtenheft_<Projektname>“ vor (Leerzeichen als „_“, ein
-Vorabzug mit „_Vorabzug“ am Ende). Der Kopf der Anlagen nennt bei Personenbahnhöfen Station und Projekt, bei Fahrweg Projekt
-und Streckenabschnitt. Den Wechsel zwischen Hoch- und Querformat setzen benannte Druckseiten
+Vorabzug mit „_Vorabzug“ am Ende). Der Kopf der Anlagen nennt das Projekt, bei Fahrweg darunter den Streckenabschnitt; die
+Station steht bei Personenbahnhöfen in der Regel schon im Projektnamen (auch im Titel der
+Plancodierung: „Plancodierungsschema für das Projekt …“). Den Wechsel zwischen Hoch- und Querformat setzen benannte Druckseiten
 (CSS `page`) – Microsoft Edge und Google Chrome drucken so; kann ein Browser es nicht
 (`querformatImDruck` in `src/shared/print.ts`), weist der Reiter darauf hin. Die Vorschau zeigt
 dasselbe Dokument mit einem Blatt je Abschnitt, die Anlagen im Querformat als Querblatt; in einem
