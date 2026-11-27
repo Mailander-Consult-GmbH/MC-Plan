@@ -4,14 +4,24 @@
  * Fläche des aktiven Menüpunkts gleitet, Balken wachsen, Seiten blenden ein.
  * Fachfrei – hier stehen nur die Bausteine; wer sich bewegt, entscheiden die
  * Ansichten. Dazu Einträge einer Liste, die kommen, gehen und ihren Platz
- * wechseln (`listenEintrag`), und ein Symbol, das bei einem Wechsel kurz
- * aufspringt (`Aufspringen`). Wer im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht
+ * wechseln (`listenEintrag`), ein Symbol, das bei einem Wechsel kurz
+ * aufspringt (`Aufspringen`), und Listen, die sich an einem Griff per Ziehen
+ * umsortieren lassen (`SortierListe`, `SortierEintrag`). Wer im Betriebssystem „Bewegung reduzieren“ gewählt hat, sieht
  * die Endzustände ohne Bewegung (`MotionConfig reducedMotion="user"` in
  * main.tsx und `useReducedMotion` hier).
  */
-import { useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
-import { animate, motion, useAnimate, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import {
+  Reorder,
+  animate,
+  motion,
+  useAnimate,
+  useDragControls,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from 'framer-motion';
 
 /** Die Kurve der Vorlage: schnell los, weich auslaufend (wie `--ease-koralle`). */
 export const KURVE = [0.2, 0.8, 0.2, 1] as const;
@@ -123,5 +133,70 @@ export function Aufspringen({ wert, children }: { wert: unknown; children: React
     <span ref={bereich} className="inline-flex">
       {children}
     </span>
+  );
+}
+
+/**
+ * Liste, deren Einträge sich per Ziehen umsortieren lassen (framer-motion
+ * `Reorder`): Gezogen wird nur am Griff eines Eintrags (`SortierEintrag`), die
+ * übrigen gleiten beiseite. `onSortiert` meldet die Reihenfolge schon während
+ * des Ziehens – für die Anzeige; speichern sollte erst `onFertig` des
+ * Eintrags beim Loslassen. Die Einträge dürfen in `AnimatePresence` stehen.
+ */
+export function SortierListe<T>({
+  werte,
+  onSortiert,
+  className,
+  children,
+}: {
+  werte: T[];
+  onSortiert: (werte: T[]) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Reorder.Group as="div" axis="y" values={werte} onReorder={onSortiert} className={className}>
+      {children}
+    </Reorder.Group>
+  );
+}
+
+/**
+ * Eintrag einer `SortierListe`. `children` erhält die Eigenschaften für den
+ * Griff (an ein Element mit `touch-action: none` hängen) und ob gerade gezogen
+ * wird. Ein- und ausgeblendet wird nur über die Deckkraft – die Lage gehört
+ * während des Ziehens dem Zeiger.
+ */
+export function SortierEintrag<T>({
+  wert,
+  onFertig,
+  children,
+}: {
+  wert: T;
+  onFertig: () => void;
+  children: (griff: { onPointerDown: (e: ReactPointerEvent) => void }, zieht: boolean) => ReactNode;
+}) {
+  const steuerung = useDragControls();
+  const [zieht, setZieht] = useState(false);
+  return (
+    <Reorder.Item
+      as="div"
+      value={wert}
+      dragListener={false}
+      dragControls={steuerung}
+      layout="position"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.2, ease: KURVE } }}
+      transition={{ duration: 0.3, ease: KURVE, layout: FEDER_STRAFF }}
+      onDragStart={() => setZieht(true)}
+      onDragEnd={() => {
+        setZieht(false);
+        onFertig();
+      }}
+      style={{ position: 'relative', zIndex: zieht ? 5 : undefined }}
+    >
+      {children({ onPointerDown: (e) => steuerung.start(e) }, zieht)}
+    </Reorder.Item>
   );
 }

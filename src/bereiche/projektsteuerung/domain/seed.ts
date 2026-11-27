@@ -262,6 +262,7 @@ export function seedDaten(): ProjektsteuerungDaten {
     protokolle: demoProtokolle(p1.id, b),
     reihenLogos: {},
     todos: demoTodos(p1.id, p2.id),
+    todoKarten: { reihenfolge: [], ausgeblendet: [] },
   };
 }
 

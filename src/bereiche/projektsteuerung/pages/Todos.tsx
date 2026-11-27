@@ -12,13 +12,17 @@
  * „Erledigt“ alle der Ansicht nach Rückfrage; eine Zeile, die
  * damit oder mit dem Stern die Auswahl verlässt, bleibt noch kurz stehen
  * (`useNachlauf`), Zeilen und Karten kommen, gehen und gleiten an ihren Platz
- * (`listenEintrag`). Die Übersicht zählt die offenen, überfälligen und
+ * (`listenEintrag`). Die Karten lassen sich am Griff im Kopf per Ziehen (oder
+ * mit den Pfeiltasten) umordnen (`SortierListe`) und einzeln ausblenden – beides
+ * bleibt gespeichert (`todoKarten`); ausgeblendete stehen unter den Karten zum
+ * Wiedereinblenden. Die Übersicht zählt die offenen, überfälligen und
  * demnächst fälligen Aufgaben; ihre Kacheln öffnen die Liste mit passendem
  * Filter (`startFilter` aus der Adresse).
  */
 import { useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Aufspringen, listenEintrag } from '../../../shared/bewegung';
+import { Aufspringen, SortierEintrag, SortierListe, listenEintrag } from '../../../shared/bewegung';
 import { formatDate, relativeLabel, today } from '../../../shared/dates';
 import { Icon } from '../../../shared/icons';
 import { useToast } from '../../../shared/toast';
@@ -40,14 +44,14 @@ import { useArchivierte } from '../../../gemeinsam/ProjektBereiche';
 import { AmpelBadge } from '../components/common';
 import { ErledigtHaken, useNachlauf } from '../components/erledigen';
 import type { ID, Projekt, Todo } from '../domain/types';
-import { projektDes, todoAmpel, zeitkritisch } from '../domain/todos';
+import { KARTE_OHNE, kartenEinreihen, kartenOrdnen, projektDes, todoAmpel, zeitkritisch } from '../domain/todos';
 import type { Route, TodoFilter } from '../lib/router';
 import { useStore } from '../store/store';
 
 type Filter = TodoFilter;
 
-/** Wert der Projektauswahl für Aufgaben ohne Projekt. */
-const OHNE = 'ohne';
+/** Wert der Projektauswahl für Aufgaben ohne Projekt – zugleich der Schlüssel ihrer Karte. */
+const OHNE = KARTE_OHNE;
 
 const projektText = (p: Projekt) => [p.nummer, p.name].filter(Boolean).join(' ');
 const nachProjekt = (a: Projekt, b: Projekt) => projektText(a).localeCompare(projektText(b), 'de');
@@ -98,7 +102,8 @@ export function TodoListe({
   startFilter?: Filter;
   navigate?: (r: Route) => void;
 }) {
-  const { data, todoErledigen, updateTodo, deleteTodo, todosLoeschen } = useStore();
+  const { data, todoErledigen, updateTodo, deleteTodo, todosLoeschen, todoKartenOrdnen, todoKarteAusblenden } =
+    useStore();
   const toast = useToast();
   const nachlauf = useNachlauf();
   const archiviert = useArchivierte('projektsteuerung');
@@ -110,6 +115,9 @@ export function TodoListe({
   const [fokusGruppe, setFokusGruppe] = useState<string | null>(null);
   const [bearbeiten, setBearbeiten] = useState<ID | null>(null);
   const [aufraeumen, setAufraeumen] = useState(false);
+  // Reihenfolge der Karten während des Ziehens – gespeichert wird beim Loslassen
+  const [ziehOrdnung, setZiehOrdnung] = useState<string[] | null>(null);
+  const ziehRef = useRef<string[] | null>(null);
   const heute = today();
 
   const projektVon = (t: Todo) => projektDes(t, data.projekte);
@@ -149,29 +157,71 @@ export function TodoListe({
     erledigt: gesucht.filter(fertig).length,
   };
 
-  // Karten: im Projekt die eine; sonst je Projekt mit passenden Aufgaben (oder eben geöffnet),
-  // nach Nummer und Name, zuletzt „Ohne Projekt“ – sie bleibt zum Eintragen stehen.
+  // Karten: im Projekt die eine; sonst je Projekt mit passenden Aufgaben (oder eben geöffnet)
+  // und „Ohne Projekt“ – sie bleibt zum Eintragen stehen. Geordnet nach der gespeicherten
+  // Reihenfolge, sonst nach Nummer und Name, „Ohne Projekt“ zuletzt.
   type Gruppe = { schluessel: string; projekt: Projekt | null; todos: Todo[] };
-  const gruppen: Gruppe[] = [];
+  const kandidaten: Gruppe[] = [];
   if (projekt) {
-    gruppen.push({ schluessel: projekt.id, projekt, todos: sichtbar });
+    kandidaten.push({ schluessel: projekt.id, projekt, todos: sichtbar });
   } else {
     const ids = new Set([
       ...sichtbar.map((t) => projektVon(t)?.id).filter((id): id is ID => !!id),
       ...(filter === 'erledigt' ? [] : weitere.filter((id) => !projektFilter || projektFilter === id)),
     ]);
-    for (const p of data.projekte.filter((x) => ids.has(x.id)).sort(nachProjekt)) {
-      gruppen.push({ schluessel: p.id, projekt: p, todos: sichtbar.filter((t) => projektVon(t)?.id === p.id) });
+    for (const p of data.projekte.filter((x) => ids.has(x.id))) {
+      kandidaten.push({ schluessel: p.id, projekt: p, todos: sichtbar.filter((t) => projektVon(t)?.id === p.id) });
     }
     const ohne = sichtbar.filter((t) => !projektVon(t));
     if ((!projektFilter || projektFilter === OHNE) && (ohne.length > 0 || (!begriff && filter !== 'erledigt'))) {
-      gruppen.push({ schluessel: OHNE, projekt: null, todos: ohne });
+      kandidaten.push({ schluessel: OHNE, projekt: null, todos: ohne });
     }
   }
-  // Für „Aufgabe zu weiterem Projekt“: aktive Projekte ohne Karte
+  const alleKarten = kartenOrdnen(
+    [...[...data.projekte].sort(nachProjekt).map((p) => p.id), OHNE],
+    data.todoKarten.reihenfolge,
+  );
+  const rang = (k: string) => alleKarten.indexOf(k);
+  kandidaten.sort((a, b) => rang(a.schluessel) - rang(b.schluessel));
+  // Ausblenden gilt in der ganzen Liste ohne Projektauswahl und Suche – wer ein Projekt wählt
+  // oder sucht, sieht dessen Karte auch, wenn sie ausgeblendet ist
+  const ausblendenGilt = !projekt && !projektFilter && !begriff;
+  const ausgeblendet = new Set(ausblendenGilt ? data.todoKarten.ausgeblendet : []);
+  const gruppenGezeigt = kandidaten.filter((g) => !ausgeblendet.has(g.schluessel));
+  const verborgen = kandidaten.filter((g) => ausgeblendet.has(g.schluessel));
+  const gezeigtSchluessel = gruppenGezeigt.map((g) => g.schluessel);
+  const gleicheKarten =
+    ziehOrdnung !== null &&
+    ziehOrdnung.length === gezeigtSchluessel.length &&
+    ziehOrdnung.every((k) => gezeigtSchluessel.includes(k));
+  const werte = gleicheKarten ? ziehOrdnung : gezeigtSchluessel;
+  const gruppen = werte.map((k) => gruppenGezeigt.find((g) => g.schluessel === k)!);
+  const karteName = (g: Gruppe) => (g.projekt ? projektText(g.projekt) : 'Ohne Projekt');
+  const offenIn = (k: string) =>
+    data.todos.filter((t) => !fertig(t) && (projektVon(t)?.id ?? OHNE) === k).length;
+
+  const ordnungSpeichern = (neu: string[]) => todoKartenOrdnen(kartenEinreihen(alleKarten, neu));
+  const verschieben = (k: string, richtung: -1 | 1) => {
+    const liste = [...gezeigtSchluessel];
+    const i = liste.indexOf(k);
+    const j = i + richtung;
+    if (i < 0 || j < 0 || j >= liste.length) return;
+    [liste[i], liste[j]] = [liste[j], liste[i]];
+    ordnungSpeichern(liste);
+  };
+  const ausblenden = (g: Gruppe) => {
+    todoKarteAusblenden(g.schluessel, true);
+    toast(`„${karteName(g)}“ ausgeblendet.`);
+  };
+  const einblenden = (g: Gruppe) => {
+    todoKarteAusblenden(g.schluessel, false);
+    toast(`„${karteName(g)}“ wieder eingeblendet.`);
+  };
+  // Für „Aufgabe zu weiterem Projekt“: aktive Projekte ohne sichtbare Karte (auch ausgeblendete)
   const ohneKarte = projekt
     ? []
     : data.projekte.filter((p) => !archiviert.has(p.id) && !gruppen.some((g) => g.projekt?.id === p.id)).sort(nachProjekt);
+  const ohneProjektVerborgen = !projekt && verborgen.some((g) => g.schluessel === OHNE);
   const mitAufgaben = data.projekte.filter((p) => data.todos.some((t) => t.projektId === p.id)).sort(nachProjekt);
   const zuBearbeiten = bearbeiten ? data.todos.find((t) => t.id === bearbeiten) : undefined;
 
@@ -241,30 +291,98 @@ export function TodoListe({
         <Card>
           <EmptyState icon="suche" titel="Keine Aufgabe gefunden" text="Für diese Suche gibt es keinen Treffer." />
         </Card>
+      ) : projekt ? (
+        <TodoGruppe
+          projekt={projekt}
+          imProjekt
+          todos={sichtbar}
+          filter={filter}
+          leer={data.todos.length === 0}
+          fokus={false}
+          heute={heute}
+          navigate={navigate}
+          onBearbeiten={setBearbeiten}
+          onErledigen={erledigen}
+          onWichtig={wichtigUmschalten}
+          onLoeschen={loeschen}
+        />
       ) : (
-        <AnimatePresence initial={false}>
-          {gruppen.map((g) => (
-            <motion.div key={g.schluessel} {...listenEintrag}>
-              <TodoGruppe
-                projekt={g.projekt}
-                imProjekt={!!projekt}
-                todos={g.todos}
-                filter={filter}
-                leer={data.todos.length === 0}
-                fokus={fokusGruppe === g.schluessel}
-                heute={heute}
-                navigate={navigate}
-                onBearbeiten={setBearbeiten}
-                onErledigen={erledigen}
-                onWichtig={wichtigUmschalten}
-                onLoeschen={loeschen}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        // Die Karten lassen sich am Griff umordnen; gespeichert wird beim Loslassen
+        <SortierListe
+          werte={werte}
+          onSortiert={(neu) => {
+            ziehRef.current = neu;
+            setZiehOrdnung(neu);
+          }}
+          className="stack"
+        >
+          <AnimatePresence initial={false}>
+            {gruppen.map((g) => (
+              <SortierEintrag
+                key={g.schluessel}
+                wert={g.schluessel}
+                onFertig={() => {
+                  if (ziehRef.current) ordnungSpeichern(ziehRef.current);
+                  ziehRef.current = null;
+                  setZiehOrdnung(null);
+                }}
+              >
+                {(griff, zieht) => (
+                  <TodoGruppe
+                    projekt={g.projekt}
+                    imProjekt={false}
+                    todos={g.todos}
+                    filter={filter}
+                    leer={data.todos.length === 0}
+                    fokus={fokusGruppe === g.schluessel}
+                    heute={heute}
+                    navigate={navigate}
+                    onBearbeiten={setBearbeiten}
+                    onErledigen={erledigen}
+                    onWichtig={wichtigUmschalten}
+                    onLoeschen={loeschen}
+                    griff={
+                      gruppen.length > 1
+                        ? {
+                            ...griff,
+                            onKeyDown: (e) => {
+                              if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                              e.preventDefault();
+                              verschieben(g.schluessel, e.key === 'ArrowUp' ? -1 : 1);
+                            },
+                          }
+                        : undefined
+                    }
+                    zieht={zieht}
+                    onAusblenden={() => ausblenden(g)}
+                  />
+                )}
+              </SortierEintrag>
+            ))}
+          </AnimatePresence>
+        </SortierListe>
       )}
 
-      {ohneKarte.length > 0 && !begriff && filter !== 'erledigt' ? (
+      {/* Ausgeblendete Karten mit Aufgaben der Ansicht – ein Klick blendet sie wieder ein */}
+      {verborgen.length > 0 ? (
+        <div className="row wrap ps-ausgeblendet">
+          <span className="small tertiary">Ausgeblendet:</span>
+          {verborgen.map((g) => (
+            <button
+              key={g.schluessel}
+              type="button"
+              className="btn btn-sm btn-ghost"
+              title="Wieder einblenden"
+              onClick={() => einblenden(g)}
+            >
+              <Icon name="einblenden" size={13} /> {karteName(g)}
+              <span className="tertiary"> · {offenIn(g.schluessel)} offen</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {(ohneKarte.length > 0 || ohneProjektVerborgen) && !begriff && filter !== 'erledigt' ? (
         <div className="row">
           <select
             className="select w-auto"
@@ -272,12 +390,15 @@ export function TodoListe({
             onChange={(e) => {
               const id = e.target.value;
               if (!id) return;
-              setWeitere((w) => [...w, id]);
+              // Eine ausgeblendete Karte kommt dabei wieder zum Vorschein
+              if (data.todoKarten.ausgeblendet.includes(id)) todoKarteAusblenden(id, false);
+              if (id !== OHNE) setWeitere((w) => [...w, id]);
               setFokusGruppe(id);
             }}
             aria-label="Aufgabe zu weiterem Projekt"
           >
             <option value="">Aufgabe zu weiterem Projekt …</option>
+            {ohneProjektVerborgen ? <option value={OHNE}>Ohne Projekt</option> : null}
             {ohneKarte.map((p) => (
               <option key={p.id} value={p.id}>
                 {projektText(p)}
@@ -326,6 +447,9 @@ function TodoGruppe({
   onErledigen,
   onWichtig,
   onLoeschen,
+  griff,
+  zieht = false,
+  onAusblenden,
 }: {
   projekt: Projekt | null;
   imProjekt: boolean;
@@ -343,6 +467,15 @@ function TodoGruppe({
   onWichtig: (t: Todo) => void;
   /** Löscht eine erledigte Aufgabe sofort (Papierkorb neben dem Haken). */
   onLoeschen: (t: Todo) => void;
+  /** Griff zum Umordnen der Karte (Ziehen, Pfeiltasten) – nur in der ganzen Liste mit mehreren Karten. */
+  griff?: {
+    onPointerDown: (e: ReactPointerEvent) => void;
+    onKeyDown: (e: ReactKeyboardEvent) => void;
+  };
+  /** Die Karte wird gerade gezogen. */
+  zieht?: boolean;
+  /** Blendet die Karte aus – nur in der ganzen Liste. */
+  onAusblenden?: () => void;
 }) {
   const { data, addTodo, todosTauschen } = useStore();
   const toast = useToast();
@@ -373,26 +506,52 @@ function TodoGruppe({
   };
 
   return (
-    <Card className="ps-todo-karte">
+    <Card className={`ps-todo-karte${zieht ? ' ps-zieht' : ''}`}>
       <CardHeader
         titel={
-          imProjekt ? (
-            'To-Dos zum Projekt'
-          ) : projekt ? (
-            <>
-              {projekt.nummer ? <span className="num tertiary">{projekt.nummer} </span> : null}
-              {projekt.name}
-            </>
-          ) : (
-            'Ohne Projekt'
-          )
+          <>
+            {griff ? (
+              <button
+                type="button"
+                className="btn-icon ps-griff"
+                title="Ziehen, um die Karte zu verschieben (oder Pfeiltasten)"
+                aria-label={`Karte „${projekt ? projektText(projekt) : 'Ohne Projekt'}“ verschieben`}
+                {...griff}
+              >
+                <Icon name="griff" size={14} />
+              </button>
+            ) : null}
+            {imProjekt ? (
+              'To-Dos zum Projekt'
+            ) : projekt ? (
+              <>
+                {projekt.nummer ? <span className="num tertiary">{projekt.nummer} </span> : null}
+                {projekt.name}
+              </>
+            ) : (
+              'Ohne Projekt'
+            )}
+          </>
         }
         actions={
-          eintragbar ? (
-            <button ref={knopf} type="button" className="btn btn-primary btn-sm" onClick={oeffnen}>
-              <Icon name="plus" size={13} /> Neues To-Do
-            </button>
-          ) : null
+          <>
+            {eintragbar ? (
+              <button ref={knopf} type="button" className="btn btn-primary btn-sm" onClick={oeffnen}>
+                <Icon name="plus" size={13} /> Neues To-Do
+              </button>
+            ) : null}
+            {onAusblenden ? (
+              <button
+                type="button"
+                className="btn-icon ps-karte-aus"
+                title="Karte ausblenden"
+                aria-label={`Karte „${projekt ? projektText(projekt) : 'Ohne Projekt'}“ ausblenden`}
+                onClick={onAusblenden}
+              >
+                <Icon name="ausblenden" size={15} />
+              </button>
+            ) : null}
+          </>
         }
       />
       {todos.length === 0 ? (

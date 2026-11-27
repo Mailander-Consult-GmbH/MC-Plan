@@ -113,6 +113,10 @@ interface StoreValue {
   deleteTodo: (id: ID) => void;
   /** Löscht mehrere Aufgaben auf einmal (etwa alle erledigten der Ansicht). */
   todosLoeschen: (ids: ID[]) => void;
+  /** Reihenfolge der Karten der To-Do-Liste (Projektkennungen und „ohne“), ganz. */
+  todoKartenOrdnen: (reihenfolge: string[]) => void;
+  /** Blendet eine Karte der To-Do-Liste aus bzw. wieder ein. */
+  todoKarteAusblenden: (schluessel: string, aus: boolean) => void;
   /** Tauscht zwei Aufgaben in der Reihenfolge der Liste (nach oben bzw. unten). */
   todosTauschen: (a: ID, b: ID) => void;
   /** Übernimmt Aufgaben aus einem Protokoll in die To-Do-Liste (ans Ende); liefert ihre Zahl. */
@@ -255,6 +259,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             beteiligte: d.beteiligte.filter((b) => b.projektId !== id),
             protokolle: d.protokolle.filter((p) => p.projektId !== id),
             todos: d.todos.map((t) => (t.projektId === id ? { ...t, projektId: null } : t)),
+            todoKarten: {
+              reihenfolge: d.todoKarten.reihenfolge.filter((k) => k !== id),
+              ausgeblendet: d.todoKarten.ausgeblendet.filter((k) => k !== id),
+            },
           }),
         ),
       toggleMarkiert: (id) =>
@@ -317,6 +325,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         mutate((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? todoErledigt(t, erledigt, heute) : t)) }));
       },
       deleteTodo: (id) => mutate((d) => ({ ...d, todos: d.todos.filter((t) => t.id !== id) })),
+      todoKartenOrdnen: (reihenfolge) =>
+        mutate((d) => ({ ...d, todoKarten: { ...d.todoKarten, reihenfolge: [...new Set(reihenfolge)] } })),
+      todoKarteAusblenden: (schluessel, aus) =>
+        mutate((d) => {
+          const ohne = d.todoKarten.ausgeblendet.filter((k) => k !== schluessel);
+          return { ...d, todoKarten: { ...d.todoKarten, ausgeblendet: aus ? [...ohne, schluessel] : ohne } };
+        }),
       todosLoeschen: (ids) => {
         const weg = new Set(ids);
         if (weg.size > 0) mutate((d) => ({ ...d, todos: d.todos.filter((t) => !weg.has(t.id)) }));

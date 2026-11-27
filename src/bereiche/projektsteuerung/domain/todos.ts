@@ -42,6 +42,31 @@ export const zeitkritisch = (t: Todo, heute?: ISODate): boolean => {
   return a === 'ueberfaellig' || a === 'faellig';
 };
 
+/** Schlüssel der Karte „Ohne Projekt“ in `TodoKarten`. */
+export const KARTE_OHNE = 'ohne';
+
+/**
+ * Reihenfolge aller Karten: zuerst die gespeicherte (soweit es die Karten
+ * gibt), dann die übrigen in der Reihenfolge von `vorgabe`.
+ */
+export function kartenOrdnen(vorgabe: string[], reihenfolge: string[]): string[] {
+  const da = new Set(vorgabe);
+  const bekannt = [...new Set(reihenfolge)].filter((k) => da.has(k));
+  const gesetzt = new Set(bekannt);
+  return [...bekannt, ...vorgabe.filter((k) => !gesetzt.has(k))];
+}
+
+/**
+ * Setzt die neue Reihenfolge der sichtbaren Karten in die aller Karten ein:
+ * Sie nehmen nacheinander die Plätze ein, die sichtbare Karten bisher hatten –
+ * ausgeblendete und gerade nicht gezeigte behalten ihre.
+ */
+export function kartenEinreihen(alle: string[], sichtbarNeu: string[]): string[] {
+  const sichtbar = new Set(sichtbarNeu);
+  let i = 0;
+  return alle.map((k) => (sichtbar.has(k) ? sichtbarNeu[i++] : k));
+}
+
 /** Projekt einer Aufgabe; fehlt es (gelöscht), gilt sie als ohne Projekt. */
 export const projektDes = (t: Todo, projekte: Projekt[]): Projekt | undefined =>
   t.projektId ? projekte.find((p) => p.id === t.projektId) : undefined;
