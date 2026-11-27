@@ -1066,11 +1066,9 @@ im Projekt verwendeten – Varianten des Projekts und Workflows seiner Planläuf
 lassen sich oben direkt anwählen. **Pflichtenheft erstellen** schreibt Projektnummer und
 Stammdaten ins Projekt und legt das Pflichtenheft aus der **Vorlage des Geschäftsbereichs** an:
 *Personenbahnhöfe* nach dem Muster Hp Herbolzheim (SharePoint), *Fahrweg* nach dem Muster
-Hochrheinbahn (Planläufe mit Eplass, EG-Prüfung, eigenes Kapitel „Planläufe“). Oben wechselt
-**Bearbeiten** / **Vorschau**; daneben stehen **Neu aus Vorlage** (derselbe Assistent; die
-bisherigen Ausgaben bleiben), **Als Vorlage speichern** (Titel, Deckblatt, Kapitel, Texte,
-Bezeichnungen der Gewerke, Hinweis der Ablaufdiagramme und Plancodierung gelten danach für jedes neu
-erstellte Pflichtenheft desselben Geschäftsbereichs) und **Als PDF ausgeben**. Fehlen Stammdaten,
+Hochrheinbahn (Planläufe mit Eplass, EG-Prüfung, eigenes Kapitel „Planläufe“); eigene Vorlagen gibt
+es nicht, angelegt wird einmal je Projekt. Oben wechselt **Bearbeiten** / **Vorschau**; daneben
+steht **Als PDF ausgeben**. Fehlen Stammdaten,
 nennt ein Hinweis sie mit einem Verweis auf die Einstellungen des Projekts.
 
 * **Deckblatt** – Titel (mit Platzhaltern, Vorgabe „Pflichtenheft Planlauf“ + Planungsphase), der
@@ -1137,8 +1135,10 @@ nennt ein Hinweis sie mit einem Verweis auf die Einstellungen des Projekts.
   Zeile der Ansprechpartner, jeder Workflow, jede Kategorie der Plancodierung; Unterschriften und
   Kapitelnummern zählen nicht – und schlägt im Dialog „Änderungen vermerken“ die Einträge vor, etwa
   „Kap. 5.4 · Prüfstatiker OLA eingetragen“, „Anl. 11.1.2 · Planlauf „…“ geändert“ (änderbar,
-  abwählbar). **Vermerken und ausgeben** hält die Ausgabe fest und druckt, **Ohne Vermerk drucken**
-  druckt nur. Ohne Änderung druckt KaPlan sofort. Die Karte zeigt, was sich seit der letzten
+  abwählbar). **Vermerken und ausgeben** hält die Ausgabe fest und druckt. **Als Vorabzug drucken**
+  (bei der ersten Ausgabe wie bei jeder weiteren) druckt nur: Nichts wird vermerkt, das Deckblatt
+  trägt „Vorabzug vom … – nicht ausgegeben, Änderungen nicht vermerkt“, der Fuß jeder Seite
+  „Vorabzug vom … – nicht ausgegeben“. Ohne Änderung seit der letzten Ausgabe druckt KaPlan sofort. Die Karte zeigt, was sich seit der letzten
   Ausgabe geändert hat, und je Ausgabe Datum, Person und Einträge (Text änderbar, Eintrag
   entfernbar).
 

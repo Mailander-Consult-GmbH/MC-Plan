@@ -14,7 +14,7 @@
  *    – an den Funktionen der Projekte und an allen Stellen, die eine Funktion
  *    nur beim Namen nennen: Schritte und E-Mail-Regeln der Workflows und
  *    Planläufe (samt den Momentaufnahmen erledigter Schritte) und die
- *    Ansprechpartner der Pflichtenhefte und ihrer Vorlagen.
+ *    Ansprechpartner der Pflichtenhefte.
  * 2. Jede Funktion erhält ihre Art.
  * 3. Die projektübergreifenden Funktionen sind die des Katalogs und die selbst
  *    angelegten.
@@ -61,7 +61,6 @@ import type {
   ID,
   MailRegel,
   Pflichtenheft,
-  PflichtenheftVorlage,
   ProcessTemplate,
   Role,
   RunStep,
@@ -366,19 +365,6 @@ function pflichtenheftUmstellen(ph: Pflichtenheft, vorher: readonly Role[], nach
   };
 }
 
-/** Gespeicherte Vorlage eines Pflichtenhefts: Die Ansprechpartner nennen die Funktionen des Katalogs. */
-function vorlageUmstellen(vorlage: PflichtenheftVorlage, mitGewerk: MitGewerk): PflichtenheftVorlage {
-  let geaendert = false;
-  const abschnitte = (vorlage.abschnitte ?? []).map((a) => {
-    if (!Array.isArray(a.funktionen)) return a;
-    const funktionen = ohneDoppelte(a.funktionen.map((n) => umbenannterVerweis(n, mitGewerk)));
-    if (funktionen.length === a.funktionen.length && funktionen.every((n, i) => n === a.funktionen[i])) return a;
-    geaendert = true;
-    return { ...a, funktionen };
-  });
-  return geaendert ? { ...vorlage, abschnitte } : vorlage;
-}
-
 /* ------------------------------------------------------------------ */
 /* Die Umstellung                                                      */
 /* ------------------------------------------------------------------ */
@@ -464,17 +450,12 @@ export function funktionenAufKatalogUmstellen(
     return steps === run.steps ? run : { ...run, steps };
   });
 
-  // Pflichtenhefte der Projekte und die gespeicherten Vorlagen
+  // Pflichtenhefte der Projekte
   const projects = (daten.projects ?? []).map((p) => {
     if (!p.pflichtenheft) return p;
     const pflichtenheft = pflichtenheftUmstellen(p.pflichtenheft, vorherIn(p.id), nachherIn(p.id));
     return pflichtenheft === p.pflichtenheft ? p : { ...p, pflichtenheft };
   });
-  const pflichtenheftVorlagen = daten.pflichtenheftVorlagen
-    ? (Object.fromEntries(
-        Object.entries(daten.pflichtenheftVorlagen).map(([gb, v]) => [gb, v ? vorlageUmstellen(v, uebergreifend) : v]),
-      ) as AppData['pflichtenheftVorlagen'])
-    : undefined;
 
   /* 2. Art der Funktion – die des Katalogs, sonst die gespeicherte bzw. die zur (heutigen) Bezeichnung */
   const artFuer = (r: { art?: unknown; name: string; gewerk: string | null }) =>
@@ -595,6 +576,5 @@ export function funktionenAufKatalogUmstellen(
     roles,
     templates,
     runs: laeufe,
-    ...(pflichtenheftVorlagen ? { pflichtenheftVorlagen } : {}),
   };
 }

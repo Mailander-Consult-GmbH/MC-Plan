@@ -1107,11 +1107,6 @@ export interface AppData {
   documents: PlanDocument[];
   templates: ProcessTemplate[];
   runs: PlanRun[];
-  /**
-   * Vorlagen für neue Pflichtenhefte je Geschäftsbereich („Als Vorlage
-   * speichern“); fehlt eine, gilt die mitgelieferte (domain/pflichtenheftVorlagen.ts).
-   */
-  pflichtenheftVorlagen?: Partial<Record<GeschaeftsbereichId, PflichtenheftVorlage>>;
   /** Vermerke über gelöschte Elemente. */
   geloescht: Loeschvermerk[];
 }

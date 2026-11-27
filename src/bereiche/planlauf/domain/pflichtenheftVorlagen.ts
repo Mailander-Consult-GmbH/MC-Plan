@@ -2,12 +2,13 @@
  * Mitgelieferte Vorlagen des Pflichtenhefts je Geschäftsbereich – Texte aus
  * den Muster-Pflichtenheften (Personenbahnhöfe: Hp Herbolzheim, Fahrweg:
  * Hochrheinbahn). Projektdaten stehen als Platzhalter darin (siehe
- * `PFLICHTENHEFT_PLATZHALTER` in pflichtenheft.ts). Eine mit „Als Vorlage
- * speichern“ gesicherte Vorlage (`AppData.pflichtenheftVorlagen`) geht vor.
+ * `PFLICHTENHEFT_PLATZHALTER` in pflichtenheft.ts). Jedes neue
+ * Pflichtenheft entsteht aus der Vorlage seines Geschäftsbereichs
+ * (`standardVorlage`); eigene Vorlagen gibt es nicht.
  */
 import { standardPlancodierung } from './plancodierung';
 import { ROLLE_BVB, ROLLE_PL, ROLLE_PRST, ROLLE_PSV } from './seed';
-import type { AppData, GeschaeftsbereichId, ID, PflichtenheftAbschnitt, PflichtenheftVorlage } from './types';
+import type { GeschaeftsbereichId, ID, PflichtenheftAbschnitt, PflichtenheftVorlage } from './types';
 
 type AbschnittRoh = Omit<PflichtenheftAbschnitt, 'id' | 'text' | 'funktionen' | 'kontaktIds'> &
   Partial<Pick<PflichtenheftAbschnitt, 'text' | 'funktionen' | 'kontaktIds'>>;
@@ -297,17 +298,4 @@ export function standardVorlage(
     workflowHinweis: VORLAGE_WORKFLOW_HINWEIS,
     plancodierung: standardPlancodierung(neueId, projektKuerzel),
   };
-}
-
-/** Die Vorlage für ein neues Pflichtenheft: die gespeicherte des Geschäftsbereichs, sonst die mitgelieferte. */
-export function vorlageFuer(
-  data: AppData,
-  gb: GeschaeftsbereichId,
-  neueId: (prefix: string) => ID,
-  projektKuerzel = '',
-): PflichtenheftVorlage {
-  const gespeichert = data.pflichtenheftVorlagen?.[gb];
-  if (!gespeichert) return standardVorlage(gb, neueId, projektKuerzel);
-  // Ältere gespeicherte Vorlagen kannten den Text des Deckblatts nicht
-  return { ...gespeichert, deckblatt: gespeichert.deckblatt ?? DECKBLATT[gb] };
 }
