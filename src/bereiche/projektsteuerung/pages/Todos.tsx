@@ -14,7 +14,8 @@
  * (`useNachlauf`), Zeilen und Karten kommen, gehen und gleiten an ihren Platz
  * (`listenEintrag`). Die Karten lassen sich am Kopf per Ziehen (oder mit den
  * Pfeiltasten, wenn der Kopf den Fokus hat) umordnen (`SortierListe`); eine
- * leere Karte lässt sich entfernen – beides bleibt gespeichert (`todoKarten`).
+ * leere Projektkarte lässt sich entfernen – beides bleibt gespeichert
+ * (`todoKarten`). „Ohne Projekt“ steht immer da, zum Eintragen.
  * Die Übersicht zählt die offenen, überfälligen und
  * demnächst fälligen Aufgaben; ihre Kacheln öffnen die Liste mit passendem
  * Filter (`startFilter` aus der Adresse).
@@ -183,11 +184,13 @@ export function TodoListe({
   );
   const rang = (k: string) => alleKarten.indexOf(k);
   kandidaten.sort((a, b) => rang(a.schluessel) - rang(b.schluessel));
-  // Eine leer entfernte Karte („Leere Karte entfernen“) erscheint erst wieder, wenn sie Aufgaben
-  // zeigt oder unter „Aufgabe zu weiterem Projekt …“ gewählt wird
+  // Eine leer entfernte Projektkarte („Leere Karte entfernen“) erscheint erst wieder, wenn sie
+  // Aufgaben zeigt oder unter „Aufgabe zu weiterem Projekt …“ gewählt wird; „Ohne Projekt“ lässt
+  // sich nicht entfernen
   const entfernt = new Set(projekt ? [] : data.todoKarten.ausgeblendet);
-  const gruppenGezeigt = kandidaten.filter((g) => g.todos.length > 0 || !entfernt.has(g.schluessel));
-  const ohneEntfernt = kandidaten.some((g) => g.schluessel === OHNE && g.todos.length === 0 && entfernt.has(OHNE));
+  const gruppenGezeigt = kandidaten.filter(
+    (g) => g.todos.length > 0 || g.schluessel === OHNE || !entfernt.has(g.schluessel),
+  );
   const gezeigtSchluessel = gruppenGezeigt.map((g) => g.schluessel);
   const gleicheKarten =
     ziehOrdnung !== null &&
@@ -347,7 +350,7 @@ export function TodoListe({
                         : undefined
                     }
                     zieht={zieht}
-                    onEntfernen={g.todos.length === 0 ? () => entfernen(g) : undefined}
+                    onEntfernen={g.projekt && g.todos.length === 0 ? () => entfernen(g) : undefined}
                   />
                 )}
               </SortierEintrag>
@@ -356,7 +359,7 @@ export function TodoListe({
         </SortierListe>
       )}
 
-      {(ohneKarte.length > 0 || ohneEntfernt) && !begriff && filter !== 'erledigt' ? (
+      {ohneKarte.length > 0 && !begriff && filter !== 'erledigt' ? (
         <div className="row">
           <select
             className="select w-auto"
@@ -366,13 +369,12 @@ export function TodoListe({
               if (!id) return;
               // Eine entfernte Karte kommt dabei wieder zum Vorschein
               if (data.todoKarten.ausgeblendet.includes(id)) todoKarteEntfernen(id, false);
-              if (id !== OHNE) setWeitere((w) => [...w, id]);
+              setWeitere((w) => [...w, id]);
               setFokusGruppe(id);
             }}
             aria-label="Aufgabe zu weiterem Projekt"
           >
             <option value="">Aufgabe zu weiterem Projekt …</option>
-            {ohneEntfernt ? <option value={OHNE}>Ohne Projekt</option> : null}
             {ohneKarte.map((p) => (
               <option key={p.id} value={p.id}>
                 {projektText(p)}
@@ -448,7 +450,7 @@ function TodoGruppe({
   };
   /** Die Karte wird gerade gezogen. */
   zieht?: boolean;
-  /** Entfernt die leere Karte – nur in der ganzen Liste, nur ohne Aufgabe in der Ansicht. */
+  /** Entfernt die leere Projektkarte – nur in der ganzen Liste, nur ohne Aufgabe in der Ansicht, nicht „Ohne Projekt“. */
   onEntfernen?: () => void;
 }) {
   const { data, addTodo, todosTauschen } = useStore();
