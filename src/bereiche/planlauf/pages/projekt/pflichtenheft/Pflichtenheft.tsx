@@ -9,10 +9,13 @@
  * sie als farbige Platzhalter. „Vorschau“ zeigt das Dokument so, wie es
  * gedruckt wird; „Als PDF ausgeben“ öffnet den Druckdialog (domain/pflichtenheft.ts).
  *
+ * Ganz unten löscht „Pflichtenheft löschen“ (mit Rückfrage) das Pflichtenheft;
+ * danach lässt sich mit dem Assistenten ein neues erstellen.
+ *
  * Längere Eingaben speichert die Seite verzögert (`useEntwurf`), damit nicht
  * jeder Tastendruck den ganzen Bestand schreibt.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   PFLICHTENHEFT_LOGO,
@@ -50,6 +53,7 @@ import { listenEintrag } from '../../../../../shared/bewegung';
 import { formatDate } from '../../../../../shared/dates';
 import type { BausteinVerzeichnis } from '../../../../../shared/bausteinEditor';
 import { Badge, Callout, Card, CardHeader, ConfirmDialog, EmptyState, Field, Segmented } from '../../../../../shared/ui';
+import { useToast } from '../../../../../shared/toast';
 import { PlancodierungKarte } from './PlancodierungKarte';
 import { PflichtenheftAssistent } from './Assistent';
 import { AusgabeDialog } from './AusgabeDialog';
@@ -59,7 +63,12 @@ import './pflichtenheft.css';
 type Ansicht = 'bearbeiten' | 'vorschau';
 
 export function PflichtenheftSeite({ project, gotoTab }: { project: Project; gotoTab: (t: ProjektTab) => void }) {
-  const { data, pflichtenheftAendern } = useStore();
+  const { data, pflichtenheftAendern, pflichtenheftLoeschen } = useStore();
+  const toast = useToast();
+  const [loeschen, setLoeschen] = useState(false);
+  // Nach dem Löschen verschwindet der Knopf – der Fokus geht an „Pflichtenheft erstellen“
+  const [geloescht, setGeloescht] = useState(false);
+  const erstellenKnopf = useRef<HTMLButtonElement>(null);
   const [ansicht, setAnsicht] = useState<Ansicht>('bearbeiten');
   const [assistent, setAssistent] = useState(false);
   const [ausgabe, setAusgabe] = useState(false);
@@ -75,6 +84,13 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
   const ph = useMemo(() => (project.pflichtenheft ? pflichtenheftAufbereiten(project.pflichtenheft) : null), [project.pflichtenheft]);
   const aendern = (fn: (p: Pflichtenheft) => Pflichtenheft) => pflichtenheftAendern(project.id, fn);
 
+  useEffect(() => {
+    if (geloescht && !ph) {
+      erstellenKnopf.current?.focus();
+      setGeloescht(false);
+    }
+  }, [geloescht, ph]);
+
   const werte = useMemo(() => (ph ? platzhalterWerte(data, project, ph) : {}), [data, project, ph]);
   const bausteine = usePlatzhalterBausteine(werte);
   const gb = GESCHAEFTSBEREICHE.find((g) => g.id === geschaeftsbereichVon(project.stammdaten?.geschaeftsbereich ?? ''))!;
@@ -88,7 +104,7 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
             titel="Noch kein Pflichtenheft"
             text="Ein Assistent führt in wenigen Schritten durch das Erstellen – Geschäftsbereich, Stammdaten, Deckblatt, Ansprechpartner und Planläufe, vorausgefüllt aus dem Projekt. Texte und Anlagen lassen sich danach hier anpassen."
             action={
-              <button type="button" className="btn btn-primary" onClick={() => setAssistent(true)}>
+              <button type="button" className="btn btn-primary" ref={erstellenKnopf} onClick={() => setAssistent(true)}>
                 <Icon name="plus" size={14} /> Pflichtenheft erstellen
               </button>
             }
@@ -157,10 +173,33 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
           <AnlagenKarte project={project} ph={ph} aendern={aendern} bausteine={bausteine} />
           <PlancodierungKarte project={project} ph={ph} aendern={aendern} />
           <AusgabenKarte project={project} ph={ph} aendern={aendern} />
+          <Card>
+            <CardHeader
+              titel="Pflichtenheft löschen"
+              sub="Entfernt Texte, Plancodierung, Ausgaben und Änderungsindex – G-Nummer und Stammdaten bleiben am Projekt"
+            />
+            <div className="card-pad">
+              <button type="button" className="btn btn-danger" onClick={() => setLoeschen(true)}>
+                <Icon name="loeschen" size={14} /> Pflichtenheft löschen
+              </button>
+            </div>
+          </Card>
         </>
       )}
 
       {ausgabe ? <AusgabeDialog project={project} ph={ph} onClose={() => setAusgabe(false)} /> : null}
+      {loeschen ? (
+        <ConfirmDialog
+          titel="Pflichtenheft löschen?"
+          text={`Das Pflichtenheft von „${project.name}“ wird mit allen Texten, der Plancodierung, den Ausgaben und dem Änderungsindex gelöscht. G-Nummer und Stammdaten bleiben am Projekt; ein neues Pflichtenheft lässt sich danach wieder erstellen.`}
+          onConfirm={() => {
+            pflichtenheftLoeschen(project.id);
+            setGeloescht(true);
+            toast('Pflichtenheft gelöscht.');
+          }}
+          onClose={() => setLoeschen(false)}
+        />
+      ) : null}
     </div>
   );
 }
