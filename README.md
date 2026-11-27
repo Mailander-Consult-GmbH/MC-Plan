@@ -382,11 +382,15 @@ Kurzmeldung nennt, wo die Funktion jetzt so heißt („Funktion gespeichert – 
 3 Workflows und 2 Projekten „…“.“).
 
 ### Funktion (im Projekt)
-Im Vordergrund steht die **Funktion, nicht die Person**: Die Seite ist – wie der projektübergreifende
-Reiter *Funktionen* – nach der **Art der Funktion** gegliedert (Reiter *Alle* und je Art, die das
-Projekt führt; unter *Alle* mit Gruppenzeilen, die auch nennen, wie viele Funktionen der Art besetzt
-sind), das Gewerk steht als Abzeichen an der Funktion und als Filter neben der Suche. Ein Projekt
-führt alle Funktionen des Katalogs – das Kästchen **Nur besetzte** blendet die unbesetzten aus. Je
+Die Seite zeigt die **besetzten Funktionen** – wer im Projekt welche Funktion ausfüllt, wie die
+Projektbeteiligten der Projektsteuerung. Ein Projekt führt alle Funktionen des Katalogs, die meisten
+unbesetzt; diese große Liste steht **im Hintergrund zur Auswahl**. Gegliedert ist – wie im
+projektübergreifenden Reiter *Funktionen* – nach der **Art der Funktion** (Reiter *Alle* und je
+Art, in der eine Funktion besetzt ist; unter *Alle* mit Gruppenzeilen), das Gewerk steht als
+Abzeichen an der Funktion und als Filter neben der Suche (mit den Gewerken, in denen eine Funktion
+besetzt ist). **Person hinzufügen** öffnet die Besetzung: die Funktion aus allen Funktionen des
+Projekts wählen (nach Art gruppiert, am Ende **+ Neue Funktion anlegen …**) und die Person dazu –
+neu erfasst oder eine, die das Projekt schon führt; sie bekommt die Funktion zusätzlich. Je
 Funktion steht in der Zeile, wer sie ausfüllt; ein Klick öffnet die Besetzung, in der eine im Projekt
 bekannte Person übernommen oder eine neue mit Anrede, Firma, Organisationseinheit (OE), E-Mail,
 Telefon, Mobil und Anschrift erfasst
@@ -395,18 +399,25 @@ bereitliegen) und **SharePoint-Link Ausgang** (Ordner, in den sie ihre Unterlage
 Versandmail; hinterlegte Links stehen als kleine Links unter den Kontaktdaten in der Liste. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann mehrere Funktionen
 haben.
 
+Zum **Pflegen der Liste selbst** schaltet *Alle Funktionen des Projekts verwalten* unter der Liste
+auf alle Funktionen um (zurück mit *Nur besetzte Funktionen zeigen*): Dort stehen auch die
+unbesetzten – an der unbesetzten Funktion eines Gewerks mit dem Hinweis, wer über die übergreifende
+Funktion einspringt –, die Gruppenzeilen nennen, wie viele Funktionen der Art besetzt sind, und
+*Neue Funktion* sowie *Funktion löschen* stehen nur dort (in der gewöhnlichen Ansicht nähme das
+Löschen die Funktion auch aus der Auswahl; wer eine Person aus ihrer Funktion nehmen will, hebt in
+der Besetzung die Besetzung auf).
+
 Ein weiteres Gewerk entsteht im Dialog einer Funktion über den Knopf *Gewerk* neben der Auswahl; ist
-im Filter ein Gewerk gewählt, verschwindet es über *Gewerk „…“ löschen* am Ende der Seite wieder –
+beim Verwalten im Filter ein Gewerk gewählt, verschwindet es über *Gewerk „…“ löschen* am Ende der Seite wieder –
 der Dialog nennt vorher, welche Funktionen und Besetzungen damit entfallen. Gewerke gelten projektübergreifend: angelegt oder gelöscht wird überall, also auch im
 Reiter *Funktionen* im Hauptmenü, und jedes Gewerk des Projekts steht in der **Planliste** für Pläne,
 Planverzeichnisse und Planpakete zur Auswahl – darüber findet ein Planlauf die Verantwortlichen seines Gewerks.
-Über *Neue Funktion* entsteht eine weitere Funktion – vorbelegt mit der Art des gewählten Reiters und
+Über *Neue Funktion* (beim Verwalten) entsteht eine weitere Funktion – vorbelegt mit der Art des gewählten Reiters und
 dem Gewerk des Filters; eine Suche ohne Treffer meldet „Keine Funktion gefunden“ und bietet kein
-Anlegen an, ein leeres Ergebnis von *Nur besetzte* meldet „Keine Funktion besetzt“ mit *Alle
-Funktionen zeigen*. In der Besetzung von der Person aus ist die Auswahl der Funktion nach Art
-gruppiert. Beide Wege führen zum Ziel: **Funktion anlegen und dort die Person
-eintragen** oder mit *Person hinzufügen* die **Person erfassen und die Funktion gleich dabei
-zuweisen** – die Zuweisung kann offen bleiben und später nachgeholt werden. Personen ohne Funktion –
+Anlegen an. Füllt im Projekt noch niemand eine Funktion aus, steht „Noch keine Funktion besetzt“
+mit *Person hinzufügen*; treffen Art und Gewerk zusammen keine besetzte Funktion, „Keine Funktion
+besetzt“. Die Zuweisung einer Funktion kann beim Hinzufügen einer Person offen bleiben und später
+nachgeholt werden. Personen ohne Funktion –
 aus einem Import, nach einem Wechsel oder bewusst ohne Zuordnung – stehen in einer eigenen Liste
 darunter; ein Klick weist ihnen eine Funktion zu, das Papierkorb-Symbol rechts löscht sie aus dem
 Projekt. Das Planlaufmanagement erscheint auf dieser Seite nicht – es ist immer die angemeldete Person.

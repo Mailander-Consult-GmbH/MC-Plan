@@ -217,7 +217,11 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   `ArtReiter`, unter „Alle“ `ArtGruppenZeile` (`.gruppe-zeile`), zweite Ebene `GewerkFilter` neben
   der Suche und `GewerkAbzeichen` hinter der Bezeichnung (blau „Übergreifend“, sonst neutral) –
   alles aus `src/gemeinsam/FunktionsArten.tsx`, nicht nachbauen. Eine Karte mit einer Tabelle;
-  ihr Titel ist „Alle Funktionen“ bzw. der Name der Art. Die Tabellen kommen bei 400 px ohne
+  ihr Titel ist „Alle Funktionen“ bzw. der Name der Art. **In den Projekten stehen nur die
+  besetzten Funktionen** (Projektsteuerung: Projektbeteiligte; Planlaufmanagement: „Besetzte
+  Funktionen“) – die große Liste dient dort der Auswahl im Dialog „Person hinzufügen“; im
+  Planlaufmanagement holt „Alle Funktionen des Projekts verwalten“ unter der Liste sie zum Pflegen
+  hervor (nur dort „Neue Funktion“ und „Funktion löschen“). Die Tabellen kommen bei 400 px ohne
   Querrollen aus (`.pl-funktionstabelle`, `.ps-funktionsliste`: die Zelle der Funktion bricht um).
 * **Logo:** `KaPlanLogo` und `KaPlanZeichen` (`src/shared/logos.tsx`) **zeichnen** das Logo
   „Planebenen“ als SVG – drei Polygone (oben Planlaufmanagement, Mitte Baubetriebsplanung, unten
