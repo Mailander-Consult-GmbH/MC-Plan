@@ -19,7 +19,7 @@ import { formatDate } from '../../../shared/dates';
 import { html } from '../../../shared/print';
 import { ablaufDiagrammSvg } from './ablaufDiagramm';
 import { plancodierungHtml } from './plancodierung';
-import { vorlageFuer } from './pflichtenheftVorlagen';
+import { standardVorlage } from './pflichtenheftVorlagen';
 import { ROLLE_PL } from './seed';
 import {
   EIGENE_ROLLE,
@@ -29,11 +29,11 @@ import {
   type AppData,
   type Contact,
   type ID,
+  type ISODate,
   type Pflichtenheft,
   type PflichtenheftAbschnitt,
   type PflichtenheftAusgabe,
   type PflichtenheftStandEintrag,
-  type PflichtenheftVorlage,
   type ProcessTemplate,
   type Project,
   type Role,
@@ -129,7 +129,7 @@ export function neuesPflichtenheft(data: AppData, project: Project, neueId: Neue
   const gb = geschaeftsbereichVon(s.geschaeftsbereich);
   const mitStation = GESCHAEFTSBEREICHE.find((g) => g.id === gb)?.station ?? true;
   const bezeichnung = (mitStation && s.station.trim()) || project.name;
-  const vorlage = vorlageFuer(data, gb, neueId, kuerzel);
+  const vorlage = standardVorlage(gb, neueId, kuerzel);
   const verwendet = verwendeteWorkflows(data, project);
   const ids = angaben.workflowIds ?? (verwendet.length > 0 ? verwendet : waehlbareWorkflows(data, project)).map((t) => t.id);
   const workflows = waehlbareWorkflows(data, project)
@@ -161,18 +161,6 @@ export function neuesPflichtenheft(data: AppData, project: Project, neueId: Neue
     },
     ausgaben: [],
     stand: null,
-  };
-}
-
-/** Die Vorlage aus einem Pflichtenheft – für „Als Vorlage speichern“. */
-export function alsVorlage(ph: Pflichtenheft): PflichtenheftVorlage {
-  return {
-    titel: ph.titel,
-    deckblatt: ph.deckblatt,
-    abschnitte: ph.abschnitte.map((a) => ({ ...a, kontaktIds: [] })),
-    gewerkNamen: { ...ph.gewerkNamen },
-    workflowHinweis: ph.workflowHinweis,
-    plancodierung: ph.plancodierung,
   };
 }
 
@@ -622,6 +610,8 @@ export const PFLICHTENHEFT_STIL = `
   .ph-projekt { font-size: 13pt; margin: 0 0 6mm; }
   .ph-bild { width: 100%; max-height: 95mm; object-fit: cover; display: block; margin: 0 0 6mm; }
   .ph-deckblatt-text { font-size: 13pt; margin: 0 0 14mm; }
+  .ph-vorabzug { display: inline-block; border: 1.5px solid #c9261c; color: #c9261c; font-weight: 700;
+    padding: 1.5mm 3mm; margin: 0 0 6mm; font-size: 10pt; letter-spacing: 0.02em; }
   .ph-deckblatt-text p { margin: 0 0 3mm; }
   .ph-unterschrift { margin: 0 0 11mm; }
   .ph-u-werte { display: grid; grid-template-columns: 1.1fr 1.3fr 1fr; gap: 4mm; min-height: 5mm; }
@@ -673,7 +663,15 @@ export const PFLICHTENHEFT_STIL = `
 `;
 
 /** Das ganze Pflichtenheft als HTML-Fragment (für `druckeHtml` bzw. die Vorschau mit `htmlDokument`). */
-export function pflichtenheftHtml(data: AppData, project: Project, ph: Pflichtenheft): string {
+export function pflichtenheftHtml(
+  data: AppData,
+  project: Project,
+  ph: Pflichtenheft,
+  optionen: {
+    /** Vorabzug dieses Tags: auf dem Deckblatt und am Fuß jeder Seite gekennzeichnet, keine Ausgabe. */
+    vorabzug?: ISODate;
+  } = {},
+): string {
   const werte = platzhalterWerte(data, project, ph);
   const nummern = kapitelNummern(ph.abschnitte);
   const anlage = anlagenNummer(ph.abschnitte);
@@ -690,8 +688,15 @@ export function pflichtenheftHtml(data: AppData, project: Project, ph: Pflichten
 
   const teile: string[] = [];
 
+  // Vorabzug: Kennzeichen am Fuß jeder Seite (auch der Querformatseiten) und auf dem Deckblatt
+  const vorabzug = optionen.vorabzug ? `Vorabzug vom ${formatDate(optionen.vorabzug)}` : '';
+  if (vorabzug) {
+    teile.push(`<style>@page { @bottom-left { content: "${vorabzug} – nicht ausgegeben"; font-size: 8pt; color: #c9261c; } }</style>`);
+  }
+
   // Deckblatt
   teile.push(`<section class="ph-deckblatt">
+  ${vorabzug ? `<div class="ph-vorabzug">${html(vorabzug)} – nicht ausgegeben, Änderungen nicht vermerkt</div>` : ''}
   <h1 class="ph-titel">${html(titel)}</h1>
   ${ph.titelbild ? `<img class="ph-bild" src="${ph.titelbild.replace(/"/g, '%22')}" alt="">` : ''}
   <div class="ph-deckblatt-text">${textHtml(textEinsetzen(ph.deckblatt, werte))}</div>

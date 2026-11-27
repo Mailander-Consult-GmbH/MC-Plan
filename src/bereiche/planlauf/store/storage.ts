@@ -17,7 +17,6 @@ import {
   type Erinnerung,
   type ID,
   type MailRegel,
-  type PflichtenheftVorlage,
   type PlanRun,
   type ProcessTemplate,
   type ProcessTemplateStep,
@@ -526,13 +525,6 @@ function vorlagenFassung13(vorlagen: EmailTemplate[]): EmailTemplate[] {
   );
 }
 
-/** Vorlagen des Pflichtenhefts je Geschäftsbereich; bis Fassung 16 gab es eine (`pflichtenheftVorlage`). */
-function vorlagenJeGeschaeftsbereich(daten: AppData): Pick<AppData, 'pflichtenheftVorlagen'> {
-  const alt = (daten as AppData & { pflichtenheftVorlage?: PflichtenheftVorlage }).pflichtenheftVorlage;
-  const vorlagen = daten.pflichtenheftVorlagen ?? (alt ? { personenbahnhoefe: alt } : undefined);
-  return vorlagen ? { pflichtenheftVorlagen: vorlagen } : {};
-}
-
 /**
  * Hebt einen älteren Bestand auf die aktuelle Fassung. Fehlende Felder werden
  * nur ergänzt (vorhandene bleiben), damit Eingaben erhalten bleiben. Ab
@@ -738,8 +730,6 @@ function migriere(daten: AppData): AppData {
         };
       })))),
     })),
-    // Fassung 17: Vorlagen des Pflichtenhefts je Geschäftsbereich – die frühere eine gilt für Personenbahnhöfe
-    ...vorlagenJeGeschaeftsbereich(daten),
     geloescht: daten.geloescht ?? [],
   });
 }

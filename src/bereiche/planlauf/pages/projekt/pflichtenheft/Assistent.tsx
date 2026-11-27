@@ -4,8 +4,7 @@
  * Deckblatt, Ansprechpartner, Planläufe und Plancodierung. „Pflichtenheft
  * erstellen“ schreibt Projektnummer der DB und Stammdaten ins Projekt und legt
  * das Pflichtenheft aus der Vorlage des Geschäftsbereichs an – in einem
- * Schritt (`pflichtenheftAnlegen`). Ersetzt er ein vorhandenes, bleiben dessen
- * Ausgaben erhalten.
+ * Schritt (`pflichtenheftAnlegen`).
  */
 import { useMemo, useState } from 'react';
 import {
@@ -41,11 +40,9 @@ const leer = (): Unterschrift => ({ ort: '', datum: null, funktion: '', name: ''
 
 export function PflichtenheftAssistent({
   project,
-  ersetzen = false,
   onClose,
 }: {
   project: Project;
-  ersetzen?: boolean;
   onClose: () => void;
 }) {
   const { data, pflichtenheftAnlegen } = useStore();
@@ -87,14 +84,14 @@ export function PflichtenheftAssistent({
       { workflowIds, kontaktIds, titelbild, aufgestellt, freigegeben, projektKuerzel: kuerzel },
       { gNummer: gNummer.trim(), stammdaten },
     );
-    toast(ersetzen ? 'Pflichtenheft neu erstellt.' : 'Pflichtenheft erstellt.');
+    toast('Pflichtenheft erstellt.');
     onClose();
   };
   const letzter = schritt === SCHRITTE.length - 1;
 
   return (
     <Modal
-      titel={ersetzen ? 'Pflichtenheft neu aus Vorlage' : 'Pflichtenheft erstellen'}
+      titel="Pflichtenheft erstellen"
       sub={`Schritt ${schritt + 1} von ${SCHRITTE.length}: ${SCHRITTE[schritt]}`}
       onClose={onClose}
       wide
@@ -134,12 +131,6 @@ export function PflichtenheftAssistent({
 
       {schritt === 0 ? (
         <div className="stack">
-          {ersetzen ? (
-            <Callout icon="!" ton="warn">
-              Kapitel, Texte und Anlagen werden durch die Vorlage ersetzt; die bisherigen Ausgaben bleiben, die nächste vermerkt die
-              Änderungen.
-            </Callout>
-          ) : null}
           <p className="small muted">
             Die Angaben gelten für das Projekt (Einstellungen › Stammdaten). Der Geschäftsbereich bestimmt die Felder und die Vorlage des
             Pflichtenhefts.

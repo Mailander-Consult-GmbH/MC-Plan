@@ -3,8 +3,9 @@
  * gilt als Aufstellung; danach vergleicht es den Inhalt mit dem Stand der
  * letzten Ausgabe (`pflichtenheftStand`, `aenderungenErmitteln`) und schlägt
  * die Einträge für den Änderungsindex vor – änderbar und abwählbar. Ohne
- * Änderungen druckt es sofort. „Ohne Vermerk drucken“ druckt den aktuellen
- * Stand, ohne eine Ausgabe festzuhalten (etwa zur Abstimmung).
+ * Änderungen druckt es sofort. „Als Vorabzug drucken“ druckt den aktuellen
+ * Stand, als Vorabzug gekennzeichnet (Deckblatt und Fuß jeder Seite), ohne
+ * eine Ausgabe oder Änderungen festzuhalten – etwa zur Abstimmung.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -22,9 +23,10 @@ import { formatDate, today } from '../../../../../shared/dates';
 import { useToast } from '../../../../../shared/toast';
 import { Modal, TextInput } from '../../../../../shared/ui';
 
-function drucken(data: AppData, project: Project, ph: Pflichtenheft): void {
+function drucken(data: AppData, project: Project, ph: Pflichtenheft, vorabzug = false): void {
   const titel = textEinsetzen(ph.titel, platzhalterWerte(data, project, ph)) || 'Pflichtenheft';
-  druckeHtml(`${titel} ${project.gNummer || project.nummer}`.trim(), pflichtenheftHtml(data, project, ph), PFLICHTENHEFT_STIL);
+  const name = `${vorabzug ? 'Vorabzug ' : ''}${titel} ${project.gNummer || project.nummer}`.trim();
+  druckeHtml(name, pflichtenheftHtml(data, project, ph, vorabzug ? { vorabzug: today() } : {}), PFLICHTENHEFT_STIL);
 }
 
 export function AusgabeDialog({ project, ph, onClose }: { project: Project; ph: Pflichtenheft; onClose: () => void }) {
@@ -84,19 +86,18 @@ export function AusgabeDialog({ project, ph, onClose }: { project: Project; ph: 
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
-          {erst ? null : (
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => {
-                drucken(data, project, ph);
-                onClose();
-              }}
-              title="Druckt den aktuellen Stand, ohne eine Ausgabe zu vermerken – etwa zur Abstimmung"
-            >
-              Ohne Vermerk drucken
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => {
+              drucken(data, project, ph, true);
+              toast('Vorabzug – nichts vermerkt.');
+              onClose();
+            }}
+            title="Druckt den aktuellen Stand als Vorabzug (so gekennzeichnet), ohne eine Ausgabe oder Änderungen zu vermerken – etwa zur Abstimmung"
+          >
+            Als Vorabzug drucken
+          </button>
           <button type="button" className="btn btn-primary" onClick={vermerken}>
             {erst ? 'Ausgeben' : 'Vermerken und ausgeben'}
           </button>
@@ -107,6 +108,7 @@ export function AusgabeDialog({ project, ph, onClose }: { project: Project; ph: 
         <p>
           Die erste Ausgabe gilt als Aufstellung: Ihr Datum ({formatDate(today())}) steht auf dem Deckblatt unter „Aufgestellt“, sofern
           dort keines eingetragen ist. Ab jetzt erkennt KaPlan Änderungen und vermerkt sie bei der nächsten Ausgabe im Änderungsindex.
+          „Als Vorabzug drucken“ druckt dagegen nur – als Vorabzug gekennzeichnet, ohne etwas zu vermerken.
         </p>
       ) : (
         <div className="stack" style={{ gap: 10 }}>

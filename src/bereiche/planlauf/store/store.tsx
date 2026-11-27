@@ -53,7 +53,6 @@ import { basisplanFestlegen } from '../domain/simulation';
 import { laeufeMitAnderenRegeln, mailRegelnUebernehmen } from '../domain/mailRegeln';
 import { seedData } from '../domain/seed';
 import {
-  alsVorlage,
   neuesPflichtenheft,
   pflichtenheftAufbereiten,
   pflichtenheftStand,
@@ -65,7 +64,7 @@ import { useFremdeAenderung } from '../../../gemeinsam/useFremdeAenderung';
 import { useBenutzerAbgleich } from '../../../gemeinsam/useBenutzerAbgleich';
 import { SPEICHER_SCHLUESSEL, ladeDaten, speichereDaten, type LadeZustand, type SpeicherZustand } from './storage';
 import { formatDate, today } from '../../../shared/dates';
-import { funktionsName, geschaeftsbereichVon, type GeschaeftsbereichId } from '../domain/types';
+import { funktionsName } from '../domain/types';
 import type {
   AbbruchArt,
   AppData,
@@ -122,7 +121,7 @@ interface StoreValue {
   /* Pflichtenheft */
   /**
    * Legt das Pflichtenheft des Projekts aus der Vorlage seines
-   * Geschäftsbereichs an – ersetzt ein vorhandenes. `projekt` übernimmt
+   * Geschäftsbereichs an (nur, wenn es noch keines gibt). `projekt` übernimmt
    * zugleich G-Nummer und Stammdaten (Assistent).
    */
   pflichtenheftAnlegen: (
@@ -138,10 +137,6 @@ interface StoreValue {
   pflichtenheftAusgeben: (projectId: ID, aenderungen: { stelle: string; text: string }[]) => void;
   /** Ändert das Pflichtenheft auf dem jeweils aktuellen Stand (auch bei verzögertem Speichern). */
   pflichtenheftAendern: (projectId: ID, fn: (ph: Pflichtenheft) => Pflichtenheft) => void;
-  /** Texte, Kapitel und Plancodierung des Pflichtenhefts als Vorlage für neue Pflichtenhefte seines Geschäftsbereichs. */
-  pflichtenheftVorlageSpeichern: (projectId: ID) => void;
-  /** Zurück zur mitgelieferten Vorlage des Geschäftsbereichs. */
-  pflichtenheftVorlageZuruecksetzen: (gb: GeschaeftsbereichId) => void;
   /* Funktionen (projektübergreifend) */
   addStandardRolle: (r: Omit<StandardRolle, 'id'>) => ID;
   /**
@@ -492,12 +487,10 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
       mutate((d) => {
         const alt = d.projects.find((x) => x.id === projectId);
         if (!alt) return d;
+        // Ein vorhandenes Pflichtenheft bleibt – angelegt wird nur einmal je Projekt
+        if (alt.pflichtenheft) return d;
         const p = { ...alt, ...projekt };
-        const neu = neuesPflichtenheft(d, p, newId, angaben);
-        // Ein ersetztes Pflichtenheft behält seine Ausgaben – die nächste vermerkt, was sich geändert hat
-        const bisher = alt.pflichtenheft ? pflichtenheftAufbereiten(alt.pflichtenheft) : null;
-        const pflichtenheft = bisher ? { ...neu, ausgaben: bisher.ausgaben, stand: bisher.stand } : neu;
-        return { ...d, projects: upd(d.projects, projectId, { ...projekt, pflichtenheft }) };
+        return { ...d, projects: upd(d.projects, projectId, { ...projekt, pflichtenheft: neuesPflichtenheft(d, p, newId, angaben) }) };
       }),
     pflichtenheftAusgeben: (projectId, aenderungen) =>
       mutate((d, v) => {
@@ -526,19 +519,6 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
         if (!p?.pflichtenheft) return d;
         const neu = fn(pflichtenheftAufbereiten(p.pflichtenheft));
         return { ...d, projects: upd(d.projects, projectId, { pflichtenheft: neu }) };
-      }),
-    pflichtenheftVorlageSpeichern: (projectId) =>
-      mutate((d) => {
-        const p = d.projects.find((x) => x.id === projectId);
-        if (!p?.pflichtenheft) return d;
-        const gb = geschaeftsbereichVon(p.stammdaten?.geschaeftsbereich ?? '');
-        return { ...d, pflichtenheftVorlagen: { ...d.pflichtenheftVorlagen, [gb]: alsVorlage(pflichtenheftAufbereiten(p.pflichtenheft)) } };
-      }),
-    pflichtenheftVorlageZuruecksetzen: (gb) =>
-      mutate((d) => {
-        if (!d.pflichtenheftVorlagen?.[gb]) return d;
-        const { [gb]: _weg, ...rest } = d.pflichtenheftVorlagen;
-        return { ...d, pflichtenheftVorlagen: rest };
       }),
 
     addStandardRolle: (r) => {

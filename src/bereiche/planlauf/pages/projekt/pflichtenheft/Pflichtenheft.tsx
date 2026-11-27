@@ -44,7 +44,6 @@ import {
 import type { ProjektTab } from '../../../lib/router';
 import { newId, useStore } from '../../../store/store';
 import { htmlDokument, querformatImDruck } from '../../../../../shared/print';
-import { useToast } from '../../../../../shared/toast';
 import { Icon } from '../../../../../shared/icons';
 import { listenEintrag } from '../../../../../shared/bewegung';
 import { formatDate } from '../../../../../shared/dates';
@@ -59,10 +58,9 @@ import './pflichtenheft.css';
 type Ansicht = 'bearbeiten' | 'vorschau';
 
 export function PflichtenheftSeite({ project, gotoTab }: { project: Project; gotoTab: (t: ProjektTab) => void }) {
-  const { data, pflichtenheftAendern, pflichtenheftVorlageSpeichern } = useStore();
-  const toast = useToast();
+  const { data, pflichtenheftAendern } = useStore();
   const [ansicht, setAnsicht] = useState<Ansicht>('bearbeiten');
-  const [assistent, setAssistent] = useState<'neu' | 'ersetzen' | null>(null);
+  const [assistent, setAssistent] = useState(false);
   const [ausgabe, setAusgabe] = useState(false);
   const ph = useMemo(() => (project.pflichtenheft ? pflichtenheftAufbereiten(project.pflichtenheft) : null), [project.pflichtenheft]);
   const aendern = (fn: (p: Pflichtenheft) => Pflichtenheft) => pflichtenheftAendern(project.id, fn);
@@ -80,13 +78,13 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
             titel="Noch kein Pflichtenheft"
             text="Ein Assistent führt in wenigen Schritten durch das Erstellen – Geschäftsbereich, Stammdaten, Deckblatt, Ansprechpartner und Planläufe, vorausgefüllt aus dem Projekt. Texte und Anlagen lassen sich danach hier anpassen."
             action={
-              <button type="button" className="btn btn-primary" onClick={() => setAssistent('neu')}>
+              <button type="button" className="btn btn-primary" onClick={() => setAssistent(true)}>
                 <Icon name="plus" size={14} /> Pflichtenheft erstellen
               </button>
             }
           />
         </Card>
-        {assistent ? <PflichtenheftAssistent project={project} onClose={() => setAssistent(null)} /> : null}
+        {assistent ? <PflichtenheftAssistent project={project} onClose={() => setAssistent(false)} /> : null}
       </>
     );
   }
@@ -112,20 +110,6 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
           ]}
         />
         <div className="row wrap" style={{ gap: 8 }}>
-          <button type="button" className="btn btn-ghost" onClick={() => setAssistent('ersetzen')}>
-            Neu aus Vorlage
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={() => {
-              pflichtenheftVorlageSpeichern(project.id);
-              toast(`Als Vorlage für neue Pflichtenhefte (${gb.label}) gespeichert.`);
-            }}
-            title={`Titel, Deckblatt, Kapitel, Texte, Gewerke, Hinweis der Ablaufdiagramme und Plancodierung gelten danach für jedes neu erstellte Pflichtenheft im Geschäftsbereich ${gb.label}`}
-          >
-            Als Vorlage speichern
-          </button>
           <button type="button" className="btn btn-primary" onClick={() => setAusgabe(true)}>
             <Icon name="drucken" size={14} /> Als PDF ausgeben
           </button>
@@ -166,7 +150,6 @@ export function PflichtenheftSeite({ project, gotoTab }: { project: Project; got
         </>
       )}
 
-      {assistent ? <PflichtenheftAssistent project={project} ersetzen onClose={() => setAssistent(null)} /> : null}
       {ausgabe ? <AusgabeDialog project={project} ph={ph} onClose={() => setAusgabe(false)} /> : null}
     </div>
   );
