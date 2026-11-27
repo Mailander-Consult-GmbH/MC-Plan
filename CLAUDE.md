@@ -512,7 +512,12 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     (`pflichtenheftStand` je Stelle, `aenderungenErmitteln`, Store `pflichtenheftAusgeben` –
     „Zuletzt geändert“ und Änderungsindex entstehen allein daraus, nicht von Hand; ein Vorabzug
     druckt nur, gekennzeichnet, und vermerkt nichts), Druckfassung
-    (`pflichtenheftHtml`, eigene helle Gestaltung). Welche Stammdaten gelten, sagt
+    (`pflichtenheftHtml`, eigene helle Gestaltung; das Logo oben rechts auf jeder Seite steht als
+    `data:`-Adresse aus `bildAlsDatenUrl` im Seitenrand `@top-right` – nur so lässt sich ein Bild
+    dort in der Größe festlegen, und es ist beim Druck schon geladen; die Querformatseiten haben
+    dafür oben 17 mm Rand; Dateiname `pflichtenheftDateiname`, gesetzt über `druckeHtml` mit
+    `titelAlsDateiname` – Chrome und Edge nehmen den Titel des Fensters, nicht den des
+    Druckrahmens; Text im Seitenrand braucht eine eigene Schrift, `DRUCK_SCHRIFT`). Welche Stammdaten gelten, sagt
     `GESCHAEFTSBEREICHE` (`domain/types.ts`) – ein neuer Geschäftsbereich braucht dort einen
     Eintrag und eine Vorlage. Dazu `domain/ablaufDiagramm.ts` (Ablaufdiagramm
     eines Workflows als SVG, allein über `gliedern`) und `domain/plancodierung.ts` (Kataloge,

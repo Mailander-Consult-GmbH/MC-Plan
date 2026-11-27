@@ -16,7 +16,7 @@
  */
 import { funktionsSchluessel } from '../../../gemeinsam/register';
 import { formatDate } from '../../../shared/dates';
-import { html } from '../../../shared/print';
+import { DRUCK_SCHRIFT, html } from '../../../shared/print';
 import { ablaufDiagrammSvg } from './ablaufDiagramm';
 import { plancodierungHtml } from './plancodierung';
 import { standardVorlage } from './pflichtenheftVorlagen';
@@ -594,10 +594,28 @@ function anlagenKopf(nummer: string, titel: string, zeilen: [string, string]): s
 </div>`;
 }
 
+/** Logo oben rechts auf jeder Seite (dasselbe wie im Kopf der Protokolle der Projektsteuerung), Datei unter `public/`. */
+export const PFLICHTENHEFT_LOGO = 'logos/Druck_Mailaender_Consult.png';
+
+/** Vorgeschlagener Dateiname der PDF: „Pflichtenheft_<Projektname>“, Leerraum als „_“. */
+export function pflichtenheftDateiname(project: Project, vorabzug = false): string {
+  const name = project.name
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .trim()
+    .replace(/\s+/g, '_');
+  return `Pflichtenheft${name ? `_${name}` : ''}${vorabzug ? '_Vorabzug' : ''}`;
+}
+
+/*
+ * Seiten: Hochformat mit 20 mm Rand oben, die Anlagen im Querformat (`quer`,
+ * `pc-quer` der Plancodierung) mit 17 mm – dort steht das Logo
+ * (`seitenrandHtml`). Die Höhe der Ablaufdiagramme rechnet damit.
+ */
 export const PFLICHTENHEFT_STIL = `
   @page { size: A4 portrait; margin: 20mm 18mm 18mm 22mm;
-    @bottom-right { content: "Seite " counter(page) " von " counter(pages); font-size: 8pt; color: #6e6e73; } }
-  @page quer { size: A4 landscape; margin: 12mm 12mm 14mm; }
+    @bottom-right { content: "Seite " counter(page) " von " counter(pages);
+      font-family: ${DRUCK_SCHRIFT}; font-size: 8pt; color: #6e6e73; } }
+  @page quer { size: A4 landscape; margin: 17mm 12mm 14mm; }
   @page deckblatt { @bottom-right { content: none; } }
   body { font-size: 10.5pt; line-height: 1.45; }
   p { margin: 0 0 3mm; }
@@ -653,7 +671,7 @@ export const PFLICHTENHEFT_STIL = `
       background: #fff; width: 210mm; box-sizing: border-box; margin: 0 auto 8mm;
       padding: 18mm 18mm 18mm 22mm; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
     }
-    body > section.ph-quer, body > section.ph-pc { width: 297mm; padding: 12mm; }
+    body > section.ph-quer, body > section.ph-pc { width: 297mm; padding: 17mm 12mm 12mm; }
   }
   /* Schmaler Rahmen: Blätter verkleinern, damit ein Querblatt ganz zu sehen ist */
   @media screen and (max-width: 1180px) { body { zoom: 0.85; } }
@@ -670,6 +688,8 @@ export function pflichtenheftHtml(
   optionen: {
     /** Vorabzug dieses Tags: auf dem Deckblatt und am Fuß jeder Seite gekennzeichnet, keine Ausgabe. */
     vorabzug?: ISODate;
+    /** Logo oben rechts auf jeder Seite als `data:`-Adresse (`bildAlsDatenUrl(PFLICHTENHEFT_LOGO)`). */
+    logo?: string;
   } = {},
 ): string {
   const werte = platzhalterWerte(data, project, ph);
@@ -691,7 +711,9 @@ export function pflichtenheftHtml(
   // Vorabzug: Kennzeichen am Fuß jeder Seite (auch der Querformatseiten) und auf dem Deckblatt
   const vorabzug = optionen.vorabzug ? `Vorabzug vom ${formatDate(optionen.vorabzug)}` : '';
   if (vorabzug) {
-    teile.push(`<style>@page { @bottom-left { content: "${vorabzug} – nicht ausgegeben"; font-size: 8pt; color: #c9261c; } }</style>`);
+    teile.push(
+      `<style>@page { @bottom-left { content: "${vorabzug} – nicht ausgegeben"; font-family: ${DRUCK_SCHRIFT}; font-size: 8pt; color: #c9261c; } }</style>`,
+    );
   }
 
   // Deckblatt
@@ -751,8 +773,8 @@ export function pflichtenheftHtml(
   // Anlage Planläufe: je Workflow eine Seite im Querformat
   const hinweis = ph.workflowHinweis.trim() ? `<div class="ph-hinweis">${textHtml(textEinsetzen(ph.workflowHinweis, werte))}</div>` : '';
   workflows.forEach(({ w, t }, i) => {
-    // Kopf (≈ 25 mm) und Hinweis lassen dem Bild auf A4 quer (184 mm) den Rest; die Gesamtdauer steht im Bild
-    const hoeheMm = Math.max(90, 150 - Math.ceil(ph.workflowHinweis.trim().length / 160) * 4.5);
+    // Kopf (≈ 25 mm) und Hinweis lassen dem Bild auf A4 quer (179 mm) den Rest; die Gesamtdauer steht im Bild
+    const hoeheMm = Math.max(90, 145 - Math.ceil(ph.workflowHinweis.trim().length / 160) * 4.5);
     const { svg } = ablaufDiagrammSvg(t.steps, { einheit, hoeheMm });
     teile.push(`<section class="ph-umbruch ph-quer">
   ${anlagenKopf(`${anlage}.1.${i + 1}`, w.titel, kopf)}
@@ -786,5 +808,32 @@ export function pflichtenheftHtml(
   }
 </section>`);
 
+  teile.push(seitenrandHtml(optionen.logo ?? ''));
   return teile.join('\n');
+}
+
+/**
+ * Logo oben rechts auf jeder Seite: im Druck als Hintergrund im Seitenrand
+ * (`@top-right` – ein Bild im Seitenrand lässt sich nur so in der Größe
+ * festlegen), in der Vorschau oben rechts auf jedem Blatt. Steht am Ende des
+ * Dokuments, nach der Gestaltung der Plancodierung, deren Seite `pc-quer`
+ * hier oben mehr Rand bekommt.
+ */
+function seitenrandHtml(logo: string): string {
+  const bild = logo ? `url("${logo.replace(/"/g, '%22')}")` : '';
+  return `<style>
+  @page pc-quer { margin-top: 17mm; }
+  ${
+    bild
+      ? `@page { @top-right { content: ""; width: 60mm; background-image: ${bild}; background-repeat: no-repeat;
+    background-position: right center; background-size: auto 8mm; } }
+  @media screen {
+    body > section { position: relative; }
+    body > section::before { content: ""; position: absolute; top: 6mm; right: 18mm; width: 60mm; height: 8mm;
+      background: ${bild} right center / auto 8mm no-repeat; }
+    body > section.ph-quer::before, body > section.ph-pc::before { top: 4.5mm; right: 12mm; }
+  }`
+      : ''
+  }
+</style>`;
 }

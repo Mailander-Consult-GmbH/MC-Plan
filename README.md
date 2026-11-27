@@ -1143,9 +1143,12 @@ nennt ein Hinweis sie mit einem Verweis auf die Einstellungen des Projekts.
   entfernbar).
 
 Die **Druckfassung** hat eine eigene, helle Gestaltung: Deckblatt, Inhaltsverzeichnis und die
-Kapitel im Hochformat mit „Seite x von y“, die Ablaufdiagramme und die Plancodierung im
-Querformat, zuletzt der Änderungsindex (die Einträge aller Ausgaben nach der ersten, jüngster
-zuerst). Der Kopf der Anlagen nennt bei Personenbahnhöfen Station und Projekt, bei Fahrweg Projekt
+Kapitel im Hochformat mit „Seite x von y“ (in der Schrift des Dokuments), die Ablaufdiagramme
+und die Plancodierung im Querformat, zuletzt der Änderungsindex (die Einträge aller Ausgaben nach
+der ersten, jüngster zuerst). Oben rechts steht auf jeder Seite, auch auf dem Deckblatt, das
+Logo von Mailänder Consult (dasselbe wie im Kopf der Protokolle der Projektsteuerung). Als
+Dateinamen schlägt der Druckdialog „Pflichtenheft_<Projektname>“ vor (Leerzeichen als „_“, ein
+Vorabzug mit „_Vorabzug“ am Ende). Der Kopf der Anlagen nennt bei Personenbahnhöfen Station und Projekt, bei Fahrweg Projekt
 und Streckenabschnitt. Den Wechsel zwischen Hoch- und Querformat setzen benannte Druckseiten
 (CSS `page`) – Microsoft Edge und Google Chrome drucken so; kann ein Browser es nicht
 (`querformatImDruck` in `src/shared/print.ts`), weist der Reiter darauf hin. Die Vorschau zeigt
