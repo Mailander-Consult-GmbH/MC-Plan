@@ -399,21 +399,21 @@ bereitliegen) und **SharePoint-Link Ausgang** (Ordner, in den sie ihre Unterlage
 Versandmail; hinterlegte Links stehen als kleine Links unter den Kontaktdaten in der Liste. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann mehrere Funktionen
 haben.
 
-Zum **Pflegen der Liste selbst** schaltet *Alle Funktionen des Projekts verwalten* unter der Liste
-auf alle Funktionen um (zurück mit *Nur besetzte Funktionen zeigen*): Dort stehen auch die
-unbesetzten – an der unbesetzten Funktion eines Gewerks mit dem Hinweis, wer über die übergreifende
-Funktion einspringt –, die Gruppenzeilen nennen, wie viele Funktionen der Art besetzt sind, und
-*Neue Funktion* sowie *Funktion löschen* stehen nur dort (in der gewöhnlichen Ansicht nähme das
-Löschen die Funktion auch aus der Auswahl; wer eine Person aus ihrer Funktion nehmen will, hebt in
-der Besetzung die Besetzung auf).
+Die unbesetzten Funktionen erscheinen im Projekt nur in dieser Auswahl – an der unbesetzten Funktion
+eines Gewerks steht dort, wer über die übergreifende Funktion einspringt („es gilt die übergreifende
+Funktion: …“). Eine besetzte Funktion lässt sich über den Stift bearbeiten (Bezeichnung, Kürzel,
+Art, Gewerk, Seite) und dort auch **löschen** – mit Rückfrage; das Löschen nimmt sie auch aus der
+Auswahl. Wer nur eine Person aus ihrer Funktion nehmen will, hebt in der Besetzung (Klick auf die
+Zeile) die Besetzung auf.
 
-Ein weiteres Gewerk entsteht im Dialog einer Funktion über den Knopf *Gewerk* neben der Auswahl; ist
-beim Verwalten im Filter ein Gewerk gewählt, verschwindet es über *Gewerk „…“ löschen* am Ende der Seite wieder –
+Ein weiteres Gewerk entsteht im Dialog einer Funktion über den Knopf *Gewerk* neben der Auswahl;
+gelöscht wird ein Gewerk im Reiter *Funktionen* im Hauptmenü (*Gewerk „…“ löschen*, sobald dort im
+Filter ein Gewerk gewählt ist) –
 der Dialog nennt vorher, welche Funktionen und Besetzungen damit entfallen. Gewerke gelten projektübergreifend: angelegt oder gelöscht wird überall, also auch im
 Reiter *Funktionen* im Hauptmenü, und jedes Gewerk des Projekts steht in der **Planliste** für Pläne,
 Planverzeichnisse und Planpakete zur Auswahl – darüber findet ein Planlauf die Verantwortlichen seines Gewerks.
-Über *Neue Funktion* (beim Verwalten) entsteht eine weitere Funktion – vorbelegt mit der Art des gewählten Reiters und
-dem Gewerk des Filters; eine Suche ohne Treffer meldet „Keine Funktion gefunden“ und bietet kein
+Eine weitere Funktion entsteht in der Auswahl über *+ Neue Funktion anlegen …* und ist dort gleich
+gewählt; eine Suche ohne Treffer meldet „Keine Funktion gefunden“ und bietet kein
 Anlegen an. Füllt im Projekt noch niemand eine Funktion aus, steht „Noch keine Funktion besetzt“
 mit *Person hinzufügen*; treffen Art und Gewerk zusammen keine besetzte Funktion, „Keine Funktion
 besetzt“. Die Zuweisung einer Funktion kann beim Hinzufügen einer Person offen bleiben und später
@@ -621,8 +621,8 @@ Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht unter **Funktion**
 Gemeint ist stets die Funktion des Gewerks des Plans – ersatzweise die übergreifende gleichen
 Namens. **Füllt die Funktion des Gewerks niemand aus, springt die besetzte übergreifende Funktion
 ein:** Den Schritt bearbeitet dann ihre Person, bis die Funktion des Gewerks selbst besetzt ist
-(die Liste unter *Funktion* sagt es an der unbesetzten Funktion: „es gilt die übergreifende
-Funktion: …“). Das gilt für laufende und neue Planläufe, für E-Mail-Regeln „an Funktion“ und die
+(die Funktionsauswahl in *Person hinzufügen* sagt es an der unbesetzten Funktion: „es gilt die
+übergreifende Funktion: …“). Das gilt für laufende und neue Planläufe, für E-Mail-Regeln „an Funktion“ und die
 Vorbelegung beim Anpassen eines Schritts; die Seite im Terminnachweis folgt weiter der Funktion
 des Gewerks. Darum bietet die Auswahl beim Anpassen eines Schritts nur die Funktionen dieses Gewerks und
 die übergreifenden an, jede einmal. Die
