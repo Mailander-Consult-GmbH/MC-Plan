@@ -12,10 +12,10 @@
  * „Erledigt“ alle der Ansicht nach Rückfrage; eine Zeile, die
  * damit oder mit dem Stern die Auswahl verlässt, bleibt noch kurz stehen
  * (`useNachlauf`), Zeilen und Karten kommen, gehen und gleiten an ihren Platz
- * (`listenEintrag`). Die Karten lassen sich am Griff im Kopf per Ziehen (oder
- * mit den Pfeiltasten) umordnen (`SortierListe`) und einzeln ausblenden – beides
- * bleibt gespeichert (`todoKarten`); ausgeblendete stehen unter den Karten zum
- * Wiedereinblenden. Die Übersicht zählt die offenen, überfälligen und
+ * (`listenEintrag`). Die Karten lassen sich am Kopf per Ziehen (oder mit den
+ * Pfeiltasten, wenn der Kopf den Fokus hat) umordnen (`SortierListe`); eine
+ * leere Karte lässt sich entfernen – beides bleibt gespeichert (`todoKarten`).
+ * Die Übersicht zählt die offenen, überfälligen und
  * demnächst fälligen Aufgaben; ihre Kacheln öffnen die Liste mit passendem
  * Filter (`startFilter` aus der Adresse).
  */
@@ -102,7 +102,7 @@ export function TodoListe({
   startFilter?: Filter;
   navigate?: (r: Route) => void;
 }) {
-  const { data, todoErledigen, updateTodo, deleteTodo, todosLoeschen, todoKartenOrdnen, todoKarteAusblenden } =
+  const { data, todoErledigen, updateTodo, deleteTodo, todosLoeschen, todoKartenOrdnen, todoKarteEntfernen } =
     useStore();
   const toast = useToast();
   const nachlauf = useNachlauf();
@@ -183,12 +183,11 @@ export function TodoListe({
   );
   const rang = (k: string) => alleKarten.indexOf(k);
   kandidaten.sort((a, b) => rang(a.schluessel) - rang(b.schluessel));
-  // Ausblenden gilt in der ganzen Liste ohne Projektauswahl und Suche – wer ein Projekt wählt
-  // oder sucht, sieht dessen Karte auch, wenn sie ausgeblendet ist
-  const ausblendenGilt = !projekt && !projektFilter && !begriff;
-  const ausgeblendet = new Set(ausblendenGilt ? data.todoKarten.ausgeblendet : []);
-  const gruppenGezeigt = kandidaten.filter((g) => !ausgeblendet.has(g.schluessel));
-  const verborgen = kandidaten.filter((g) => ausgeblendet.has(g.schluessel));
+  // Eine leer entfernte Karte („Leere Karte entfernen“) erscheint erst wieder, wenn sie Aufgaben
+  // zeigt oder unter „Aufgabe zu weiterem Projekt …“ gewählt wird
+  const entfernt = new Set(projekt ? [] : data.todoKarten.ausgeblendet);
+  const gruppenGezeigt = kandidaten.filter((g) => g.todos.length > 0 || !entfernt.has(g.schluessel));
+  const ohneEntfernt = kandidaten.some((g) => g.schluessel === OHNE && g.todos.length === 0 && entfernt.has(OHNE));
   const gezeigtSchluessel = gruppenGezeigt.map((g) => g.schluessel);
   const gleicheKarten =
     ziehOrdnung !== null &&
@@ -197,8 +196,6 @@ export function TodoListe({
   const werte = gleicheKarten ? ziehOrdnung : gezeigtSchluessel;
   const gruppen = werte.map((k) => gruppenGezeigt.find((g) => g.schluessel === k)!);
   const karteName = (g: Gruppe) => (g.projekt ? projektText(g.projekt) : 'Ohne Projekt');
-  const offenIn = (k: string) =>
-    data.todos.filter((t) => !fertig(t) && (projektVon(t)?.id ?? OHNE) === k).length;
 
   const ordnungSpeichern = (neu: string[]) => todoKartenOrdnen(kartenEinreihen(alleKarten, neu));
   const verschieben = (k: string, richtung: -1 | 1) => {
@@ -209,19 +206,15 @@ export function TodoListe({
     [liste[i], liste[j]] = [liste[j], liste[i]];
     ordnungSpeichern(liste);
   };
-  const ausblenden = (g: Gruppe) => {
-    todoKarteAusblenden(g.schluessel, true);
-    toast(`„${karteName(g)}“ ausgeblendet.`);
+  const entfernen = (g: Gruppe) => {
+    todoKarteEntfernen(g.schluessel, true);
+    setWeitere((w) => w.filter((k) => k !== g.schluessel));
+    toast(`Leere Karte „${karteName(g)}“ entfernt.`);
   };
-  const einblenden = (g: Gruppe) => {
-    todoKarteAusblenden(g.schluessel, false);
-    toast(`„${karteName(g)}“ wieder eingeblendet.`);
-  };
-  // Für „Aufgabe zu weiterem Projekt“: aktive Projekte ohne sichtbare Karte (auch ausgeblendete)
+  // Für „Aufgabe zu weiterem Projekt“: aktive Projekte ohne sichtbare Karte
   const ohneKarte = projekt
     ? []
     : data.projekte.filter((p) => !archiviert.has(p.id) && !gruppen.some((g) => g.projekt?.id === p.id)).sort(nachProjekt);
-  const ohneProjektVerborgen = !projekt && verborgen.some((g) => g.schluessel === OHNE);
   const mitAufgaben = data.projekte.filter((p) => data.todos.some((t) => t.projektId === p.id)).sort(nachProjekt);
   const zuBearbeiten = bearbeiten ? data.todos.find((t) => t.id === bearbeiten) : undefined;
 
@@ -341,7 +334,7 @@ export function TodoListe({
                     onErledigen={erledigen}
                     onWichtig={wichtigUmschalten}
                     onLoeschen={loeschen}
-                    griff={
+                    ziehen={
                       gruppen.length > 1
                         ? {
                             ...griff,
@@ -354,7 +347,7 @@ export function TodoListe({
                         : undefined
                     }
                     zieht={zieht}
-                    onAusblenden={() => ausblenden(g)}
+                    onEntfernen={g.todos.length === 0 ? () => entfernen(g) : undefined}
                   />
                 )}
               </SortierEintrag>
@@ -363,26 +356,7 @@ export function TodoListe({
         </SortierListe>
       )}
 
-      {/* Ausgeblendete Karten mit Aufgaben der Ansicht – ein Klick blendet sie wieder ein */}
-      {verborgen.length > 0 ? (
-        <div className="row wrap ps-ausgeblendet">
-          <span className="small tertiary">Ausgeblendet:</span>
-          {verborgen.map((g) => (
-            <button
-              key={g.schluessel}
-              type="button"
-              className="btn btn-sm btn-ghost"
-              title="Wieder einblenden"
-              onClick={() => einblenden(g)}
-            >
-              <Icon name="einblenden" size={13} /> {karteName(g)}
-              <span className="tertiary"> · {offenIn(g.schluessel)} offen</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {(ohneKarte.length > 0 || ohneProjektVerborgen) && !begriff && filter !== 'erledigt' ? (
+      {(ohneKarte.length > 0 || ohneEntfernt) && !begriff && filter !== 'erledigt' ? (
         <div className="row">
           <select
             className="select w-auto"
@@ -390,15 +364,15 @@ export function TodoListe({
             onChange={(e) => {
               const id = e.target.value;
               if (!id) return;
-              // Eine ausgeblendete Karte kommt dabei wieder zum Vorschein
-              if (data.todoKarten.ausgeblendet.includes(id)) todoKarteAusblenden(id, false);
+              // Eine entfernte Karte kommt dabei wieder zum Vorschein
+              if (data.todoKarten.ausgeblendet.includes(id)) todoKarteEntfernen(id, false);
               if (id !== OHNE) setWeitere((w) => [...w, id]);
               setFokusGruppe(id);
             }}
             aria-label="Aufgabe zu weiterem Projekt"
           >
             <option value="">Aufgabe zu weiterem Projekt …</option>
-            {ohneProjektVerborgen ? <option value={OHNE}>Ohne Projekt</option> : null}
+            {ohneEntfernt ? <option value={OHNE}>Ohne Projekt</option> : null}
             {ohneKarte.map((p) => (
               <option key={p.id} value={p.id}>
                 {projektText(p)}
@@ -447,9 +421,9 @@ function TodoGruppe({
   onErledigen,
   onWichtig,
   onLoeschen,
-  griff,
+  ziehen,
   zieht = false,
-  onAusblenden,
+  onEntfernen,
 }: {
   projekt: Projekt | null;
   imProjekt: boolean;
@@ -467,15 +441,15 @@ function TodoGruppe({
   onWichtig: (t: Todo) => void;
   /** Löscht eine erledigte Aufgabe sofort (Papierkorb neben dem Haken). */
   onLoeschen: (t: Todo) => void;
-  /** Griff zum Umordnen der Karte (Ziehen, Pfeiltasten) – nur in der ganzen Liste mit mehreren Karten. */
-  griff?: {
+  /** Umordnen am Kopf (Ziehen, Pfeiltasten) – nur in der ganzen Liste mit mehreren Karten. */
+  ziehen?: {
     onPointerDown: (e: ReactPointerEvent) => void;
     onKeyDown: (e: ReactKeyboardEvent) => void;
   };
   /** Die Karte wird gerade gezogen. */
   zieht?: boolean;
-  /** Blendet die Karte aus – nur in der ganzen Liste. */
-  onAusblenden?: () => void;
+  /** Entfernt die leere Karte – nur in der ganzen Liste, nur ohne Aufgabe in der Ansicht. */
+  onEntfernen?: () => void;
 }) {
   const { data, addTodo, todosTauschen } = useStore();
   const toast = useToast();
@@ -505,23 +479,30 @@ function TodoGruppe({
     feld.current?.focus();
   };
 
+  const name = projekt ? projektText(projekt) : 'Ohne Projekt';
+
   return (
     <Card className={`ps-todo-karte${zieht ? ' ps-zieht' : ''}`}>
-      <CardHeader
-        titel={
-          <>
-            {griff ? (
-              <button
-                type="button"
-                className="btn-icon ps-griff"
-                title="Ziehen, um die Karte zu verschieben (oder Pfeiltasten)"
-                aria-label={`Karte „${projekt ? projektText(projekt) : 'Ohne Projekt'}“ verschieben`}
-                {...griff}
-              >
-                <Icon name="griff" size={14} />
-              </button>
-            ) : null}
-            {imProjekt ? (
+      {/* Am ganzen Kopf lässt sich die Karte ziehen – außer auf seinen Knöpfen; hat der Kopf den
+          Tastaturfokus, verschieben ihn die Pfeiltasten */}
+      <div
+        className={ziehen ? 'ps-karte-kopf' : undefined}
+        role={ziehen ? 'group' : undefined}
+        tabIndex={ziehen ? 0 : undefined}
+        aria-label={ziehen ? `Karte „${name}“ – zum Verschieben ziehen oder Pfeiltasten` : undefined}
+        onPointerDown={
+          ziehen
+            ? (e) => {
+                if (e.button !== 0 || (e.target as HTMLElement).closest('button, a, input, select, textarea')) return;
+                ziehen.onPointerDown(e);
+              }
+            : undefined
+        }
+        onKeyDown={ziehen ? (e) => e.target === e.currentTarget && ziehen.onKeyDown(e) : undefined}
+      >
+        <CardHeader
+          titel={
+            imProjekt ? (
               'To-Dos zum Projekt'
             ) : projekt ? (
               <>
@@ -530,30 +511,31 @@ function TodoGruppe({
               </>
             ) : (
               'Ohne Projekt'
-            )}
-          </>
-        }
-        actions={
-          <>
-            {eintragbar ? (
-              <button ref={knopf} type="button" className="btn btn-primary btn-sm" onClick={oeffnen}>
-                <Icon name="plus" size={13} /> Neues To-Do
-              </button>
-            ) : null}
-            {onAusblenden ? (
-              <button
-                type="button"
-                className="btn-icon ps-karte-aus"
-                title="Karte ausblenden"
-                aria-label={`Karte „${projekt ? projektText(projekt) : 'Ohne Projekt'}“ ausblenden`}
-                onClick={onAusblenden}
-              >
-                <Icon name="ausblenden" size={15} />
-              </button>
-            ) : null}
-          </>
-        }
-      />
+            )
+          }
+          actions={
+            <>
+              {eintragbar ? (
+                <button ref={knopf} type="button" className="btn btn-primary btn-sm" onClick={oeffnen}>
+                  <Icon name="plus" size={13} /> Neues To-Do
+                </button>
+              ) : null}
+              {/* Bei offener Eingabezeile nicht – deren Kreuz schließt nur die Zeile */}
+              {onEntfernen && !eingabe ? (
+                <button
+                  type="button"
+                  className="btn-icon ps-karte-entfernen"
+                  title="Leere Karte entfernen"
+                  aria-label={`Leere Karte „${name}“ entfernen`}
+                  onClick={onEntfernen}
+                >
+                  <Icon name="schliessen" size={15} />
+                </button>
+              ) : null}
+            </>
+          }
+        />
+      </div>
       {todos.length === 0 ? (
         leer && !eingabe ? (
           <p className="card-pad small tertiary pt-0">Noch keine Aufgaben – „Neues To-Do“ legt die erste an.</p>
@@ -689,7 +671,7 @@ function TodoGruppe({
         // Ein Formular unter den Aufgaben: Die Eingabetaste nimmt die neue Aufgabe aus jedem Feld heraus
         // auf und lässt die Zeile für die nächste offen; Escape oder „Schließen“ blendet sie wieder aus
         <form
-          className={`card-pad flex flex-wrap items-center gap-2.5 ${todos.length > 0 ? 'pt-3' : ''}`}
+          className={`card-pad flex flex-wrap items-center gap-2.5 ${todos.length > 0 ? 'pt-3' : 'pt-1.5'}`}
           onSubmit={(e) => {
             e.preventDefault();
             hinzufuegen();

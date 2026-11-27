@@ -115,8 +115,11 @@ interface StoreValue {
   todosLoeschen: (ids: ID[]) => void;
   /** Reihenfolge der Karten der To-Do-Liste (Projektkennungen und „ohne“), ganz. */
   todoKartenOrdnen: (reihenfolge: string[]) => void;
-  /** Blendet eine Karte der To-Do-Liste aus bzw. wieder ein. */
-  todoKarteAusblenden: (schluessel: string, aus: boolean) => void;
+  /**
+   * Entfernt eine leere Karte der To-Do-Liste bzw. holt sie zurück (`todoKarten.ausgeblendet`) –
+   * eine Karte mit Aufgaben in der Ansicht erscheint ohnehin.
+   */
+  todoKarteEntfernen: (schluessel: string, entfernt: boolean) => void;
   /** Tauscht zwei Aufgaben in der Reihenfolge der Liste (nach oben bzw. unten). */
   todosTauschen: (a: ID, b: ID) => void;
   /** Übernimmt Aufgaben aus einem Protokoll in die To-Do-Liste (ans Ende); liefert ihre Zahl. */
@@ -327,10 +330,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteTodo: (id) => mutate((d) => ({ ...d, todos: d.todos.filter((t) => t.id !== id) })),
       todoKartenOrdnen: (reihenfolge) =>
         mutate((d) => ({ ...d, todoKarten: { ...d.todoKarten, reihenfolge: [...new Set(reihenfolge)] } })),
-      todoKarteAusblenden: (schluessel, aus) =>
+      todoKarteEntfernen: (schluessel, entfernt) =>
         mutate((d) => {
           const ohne = d.todoKarten.ausgeblendet.filter((k) => k !== schluessel);
-          return { ...d, todoKarten: { ...d.todoKarten, ausgeblendet: aus ? [...ohne, schluessel] : ohne } };
+          return { ...d, todoKarten: { ...d.todoKarten, ausgeblendet: entfernt ? [...ohne, schluessel] : ohne } };
         }),
       todosLoeschen: (ids) => {
         const weg = new Set(ids);
