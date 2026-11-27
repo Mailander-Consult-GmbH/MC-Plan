@@ -137,6 +137,11 @@ interface StoreValue {
   pflichtenheftAusgeben: (projectId: ID, aenderungen: { stelle: string; text: string }[]) => void;
   /** Ändert das Pflichtenheft auf dem jeweils aktuellen Stand (auch bei verzögertem Speichern). */
   pflichtenheftAendern: (projectId: ID, fn: (ph: Pflichtenheft) => Pflichtenheft) => void;
+  /**
+   * Löscht das Pflichtenheft des Projekts samt Ausgaben und Änderungsindex;
+   * G-Nummer und Stammdaten bleiben am Projekt. Danach lässt sich ein neues erstellen.
+   */
+  pflichtenheftLoeschen: (projectId: ID) => void;
   /* Funktionen (projektübergreifend) */
   addStandardRolle: (r: Omit<StandardRolle, 'id'>) => ID;
   /**
@@ -519,6 +524,18 @@ export function storeAktionen(data: AppData, mutate: Mutate): StoreAktionen {
         if (!p?.pflichtenheft) return d;
         const neu = fn(pflichtenheftAufbereiten(p.pflichtenheft));
         return { ...d, projects: upd(d.projects, projectId, { pflichtenheft: neu }) };
+      }),
+    pflichtenheftLoeschen: (projectId) =>
+      mutate((d) => {
+        if (!d.projects.some((x) => x.id === projectId && x.pflichtenheft)) return d;
+        return {
+          ...d,
+          projects: d.projects.map((x) => {
+            if (x.id !== projectId) return x;
+            const { pflichtenheft: _geloescht, ...rest } = x;
+            return rest;
+          }),
+        };
       }),
 
     addStandardRolle: (r) => {
