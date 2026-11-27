@@ -1675,15 +1675,20 @@ Eine schlichte Liste für sich selbst, unabhängig von den Protokollen – als H
 **To-Do-Liste** in der Seitenleiste über alle Aufgaben und als Reiter **To-Dos** im Projekt mit
 dessen Aufgaben. In der Seitenleisten-Ansicht steht **je Projekt eine Karte** (wie die Phasen der
 Baubetriebsplanung; nach Projektnummer, zuletzt **Ohne Projekt**), im Projekt-Reiter nur die des
-Projekts. Die Liste wird **fortgeschrieben**: Unter den Aufgaben jeder Karte steht die Zeile für
-die nächste (**Neue Aufgabe …**, auf Wunsch mit Fälligkeit, **Hinzufügen** oder Eingabetaste) –
-sie gehört zum Projekt der Karte. Hat ein Projekt noch keine Karte, öffnet **Aufgabe zu weiterem
-Projekt …** unter den Karten eine und setzt den Cursor in ihre Eingabezeile.
+Projekts. Die Karten sind schlank: im Kopf nur das Projekt und der blaue Knopf **Neues To-Do**,
+darunter die Aufgaben in engen Zeilen. Die Liste wird **fortgeschrieben**: **Neues To-Do** öffnet
+unter den Aufgaben der Karte die Zeile für die nächste (**Neue Aufgabe …**, auf Wunsch mit
+Fälligkeit, **Hinzufügen** oder Eingabetaste) – sie gehört zum Projekt der Karte, bleibt nach dem
+Aufnehmen für die nächste offen und schließt mit Escape oder dem Kreuz. Hat ein Projekt noch keine
+Karte, öffnet **Aufgabe zu weiterem Projekt …** unter den Karten eine, gleich mit offener
+Eingabezeile. Im Filter **Erledigt** gibt es kein *Neues To-Do* und keine leere Karte *Ohne
+Projekt*.
 
 Je Aufgabe: **Stern** für wichtig (Spalte **Wichtig**), Aufgabe (mit Notiz und – aus einem Protokoll übernommen – der
-Fundstelle, die ins Protokoll führt), Fällig und Status (Ampel wie bei den Protokollaufgaben), die
-Pfeile **Nach oben**/**Nach unten** – die Reihenfolge bestimmt man selbst, sie gilt über die Filter
-hinweg – und der **Erledigt-Haken**, derselbe kleine Knopf wie im Planlaufmanagement. Filter: **Offen**, **Wichtig**, **Fällig** (überfällig
+Fundstelle, die ins Protokoll führt), Fällig (Datum und „in … Tagen“ in einer Zeile, ohne Termin
+ein Strich) und Status (Ampel wie bei den Protokollaufgaben), die Pfeile **Nach oben**/**Nach
+unten** – sie erscheinen, sobald die Maus über der Zeile steht; die Reihenfolge bestimmt man selbst,
+sie gilt über die Filter hinweg – und der **Erledigt-Haken**, derselbe kleine Knopf wie im Planlaufmanagement. Filter: **Offen**, **Wichtig**, **Fällig** (überfällig
 oder in den nächsten 7 Tagen), **Erledigt**, **Alle**, dazu nach Projekt (auch **Ohne Projekt**)
 und eine Suche; was in der Ansicht **Wichtig** neu eingetragen wird, ist wichtig. Ein Klick auf
 eine Zeile öffnet die Aufgabe zum Bearbeiten (Aufgabe, Projekt – ein anderes Projekt verschiebt
@@ -1694,7 +1699,7 @@ löschen** nach einer Rückfrage alle erledigten der Ansicht (nach Projektauswah
 Projekt-Reiter die des Projekts). Der Zähler am Menüpunkt nennt die fälligen und überfälligen
 Aufgaben – rot wie die Zähler der Projekte im Planlaufmanagement. Wird ein Projekt gelöscht,
 bleiben seine Aufgaben ohne Projekt stehen. Schmal stehen Stern und Text oben, Termin, Status,
-Pfeile, Haken und Papierkorb darunter.
+Pfeile, Haken und Papierkorb darunter; *Neues To-Do* bleibt rechts neben dem Projektnamen.
 
 Die Listen bewegen sich wie die Menüleiste: Erledigt ist der Haken grün gefüllt und springt kurz
 auf, der Text wird durchgestrichen; die Zeile bleibt noch einen Augenblick an ihrem Platz – ein
