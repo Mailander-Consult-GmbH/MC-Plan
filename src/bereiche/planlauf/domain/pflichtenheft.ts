@@ -589,7 +589,7 @@ function unterschriftHtml(u: Unterschrift, art: UnterschriftArt): string {
 function anlagenKopf(nummer: string, titel: string, zeilen: [string, string]): string {
   return `<div class="ph-anlagenkopf">
   <div class="ph-anlage-nr">Anlage ${html(nummer)} zum Pflichtenheft Planlauf</div>
-  <div class="ph-anlage-projekt"><strong>${html(zeilen[0])}</strong><br>${html(zeilen[1])}</div>
+  <div class="ph-anlage-projekt"><strong>${html(zeilen[0])}</strong>${zeilen[1] ? `<br>${html(zeilen[1])}` : ''}</div>
   <h2 class="ph-anlage-titel">${html(titel)}</h2>
 </div>`;
 }
@@ -697,11 +697,10 @@ export function pflichtenheftHtml(
   const anlage = anlagenNummer(ph.abschnitte);
   const titel = textEinsetzen(ph.titel, werte);
   const einheit = project.settings.fristenInArbeitstagen ? 'AT' : 'KT';
-  // Kopf der Anlagen: Personenbahnhöfe Station und Projekt, Fahrweg Projekt und Strecke
+  // Kopf der Anlagen: das Projekt, bei Fahrweg darunter die Strecke – die Station steht
+  // bei Personenbahnhöfen in der Regel schon im Projektnamen
   const mitStation = GESCHAEFTSBEREICHE.find((g) => g.id === geschaeftsbereichVon(werte.geschaeftsbereich))?.station ?? true;
-  const kopf: [string, string] = mitStation
-    ? [werte.station, werte.projektname]
-    : [werte.projektname, werte.streckenabschnitte.split('\n')[0] ?? ''];
+  const kopf: [string, string] = [werte.projektname, mitStation ? '' : (werte.streckenabschnitte.split('\n')[0] ?? '')];
   const workflows = ph.workflows
     .map((w) => ({ w, t: data.templates.find((t) => t.id === w.workflowId) }))
     .filter((x): x is { w: (typeof ph.workflows)[number]; t: NonNullable<typeof x.t> } => !!x.t);
@@ -785,7 +784,7 @@ export function pflichtenheftHtml(
 
   // Anlage Plancodierung – auf der Querformatseite der Plancodierung (pc-quer), deren Spaltenbreiten darauf rechnen
   teile.push(`<section class="ph-umbruch ph-pc">
-  ${anlagenKopf(`${anlage}.2`, `Plancodierungsschema für das Projekt ${(mitStation && werte.station) || project.name}`, kopf)}
+  ${anlagenKopf(`${anlage}.2`, `Plancodierungsschema für das Projekt ${project.name}`, kopf)}
   ${plancodierungHtml(ph.plancodierung, '')}
 </section>`);
 
