@@ -1072,8 +1072,9 @@ steht **Als PDF ausgeben**. Fehlen Stammdaten,
 nennt ein Hinweis sie mit einem Verweis auf die Einstellungen des Projekts.
 
 * **Deckblatt** – Titel (mit Platzhaltern, Vorgabe „Pflichtenheft Planlauf“ + Planungsphase), der
-  **Text unter dem Titel** (Personenbahnhöfe: Projektnummer, Station und Projektname; Fahrweg:
-  Projektnummer, Projektname und Streckenabschnitte), ein Bild (wird auf höchstens 1600 px Breite
+  **Text unter dem Titel** (Personenbahnhöfe: Projektnummer und Projektname – die Station steht
+  in der Regel im Projektnamen, auch in der Einleitung; Fahrweg: Projektnummer, Projektname und
+  Streckenabschnitte), ein Bild (wird auf höchstens 1600 px Breite
   verkleinert) und die Zeilen **Aufgestellt** und **Freigegeben** mit Ort, Datum, Funktion (OE) und
   Name. Leere Felder füllt KaPlan vor (grau im Feld): aufgestellt vom Planlaufmanagement (eigener
   Kontakt, „PLM, Firma“, Datum der ersten Ausgabe), freigegeben von der Projektleitung („OE,

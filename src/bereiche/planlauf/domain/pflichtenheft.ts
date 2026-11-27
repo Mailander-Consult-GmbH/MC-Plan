@@ -185,7 +185,7 @@ export function pflichtenheftAufbereiten(roh: Partial<Pflichtenheft>): Pflichten
   }
   return {
     titel: ph.titel ?? '',
-    deckblatt: ph.deckblatt ?? 'Projekt {{gNummer}}\n\n**{{station}}**\n**{{projektname}}**',
+    deckblatt: ph.deckblatt ?? 'Projekt {{gNummer}}\n\n**{{projektname}}**',
     abschnitte: (ph.abschnitte ?? []).map((a) => ({
       ...a,
       text: a.text ?? '',
