@@ -287,7 +287,11 @@ function aufbereiten(roh: Partial<ProjektsteuerungDaten>): ProjektsteuerungDaten
     Array.isArray(w)
       ? [...new Set(w.filter((k): k is string => typeof k === 'string' && (k === 'ohne' || projektIds.has(k))))]
       : [];
-  const todoKarten = { reihenfolge: kartenListe(karten?.reihenfolge), ausgeblendet: kartenListe(karten?.ausgeblendet) };
+  // „Ohne Projekt“ lässt sich nicht (mehr) entfernen
+  const todoKarten = {
+    reihenfolge: kartenListe(karten?.reihenfolge),
+    ausgeblendet: kartenListe(karten?.ausgeblendet).filter((k) => k !== 'ohne'),
+  };
   return {
     version: DATEN_VERSION,
     einstellungen: {

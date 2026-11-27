@@ -1688,12 +1688,12 @@ Die **Reihenfolge der Karten** bestimmt man selbst: Am **Kopf** einer Karte – 
 seinen Knöpfen – zieht man sie an ihren neuen Platz, die übrigen gleiten beiseite; hat der Kopf den
 Tastaturfokus, verschieben ihn die Pfeiltasten um einen Platz. Eine Karte mit Aufgaben steht immer
 da; eine Projektkarte, deren letzte offene Aufgabe erledigt oder gelöscht ist, verschwindet von
-selbst. **Leer** bleiben kann die Karte *Ohne Projekt* und eine über *Aufgabe zu weiterem Projekt …*
-geöffnete – sie zeigt im Kopf das Kreuz **Leere Karte entfernen** (nicht, solange ihre
-Eingabezeile offen ist). Entfernt bleibt sie weg, bis sie wieder Aufgaben zeigt oder unter
-*Aufgabe zu weiterem Projekt …* gewählt wird (dort steht dann auch *Ohne Projekt*). Reihenfolge und
-entfernte Karten bleiben gespeichert (auch in der Sicherung). Im Projekt-Reiter gibt es beides
-nicht – dort steht nur die eine Karte.
+selbst. Die Karte *Ohne Projekt* steht immer da, auch leer – zum Eintragen. **Leer** bleiben kann
+sonst nur eine über *Aufgabe zu weiterem Projekt …* geöffnete Projektkarte – sie zeigt im Kopf das
+Kreuz **Leere Karte entfernen** (nicht, solange ihre Eingabezeile offen ist). Entfernt bleibt sie
+weg, bis sie wieder Aufgaben zeigt oder unter *Aufgabe zu weiterem Projekt …* gewählt wird.
+Reihenfolge und entfernte Karten bleiben gespeichert (auch in der Sicherung). Im Projekt-Reiter gibt
+es beides nicht – dort steht nur die eine Karte.
 
 Je Aufgabe: **Stern** für wichtig (Spalte **Wichtig**), Aufgabe (mit Notiz und – aus einem Protokoll übernommen – der
 Fundstelle, die ins Protokoll führt), Fällig (Datum und „in … Tagen“ in einer Zeile, ohne Termin

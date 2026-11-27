@@ -351,8 +351,10 @@ export interface ProjektsteuerungDaten {
  * Anordnung der Karten der To-Do-Liste. Schlüssel sind Projektkennungen oder
  * `'ohne'` („Ohne Projekt“, `KARTE_OHNE` in domain/todos.ts). Was nicht in
  * `reihenfolge` steht, folgt in der Vorgabe (Projektnummer, „Ohne Projekt“
- * zuletzt); `ausgeblendet` sind leer entfernte Karten („Leere Karte entfernen“) –
- * sie fehlen nur, solange sie in der Ansicht keine Aufgabe zeigen.
+ * zuletzt); `ausgeblendet` sind leer entfernte Projektkarten („Leere Karte
+ * entfernen“) – sie fehlen nur, solange sie in der Ansicht keine Aufgabe zeigen.
+ * „Ohne Projekt“ lässt sich nicht entfernen (ein früher gespeichertes `'ohne'`
+ * lässt `aufbereiten` fallen).
  */
 export interface TodoKarten {
   reihenfolge: string[];
