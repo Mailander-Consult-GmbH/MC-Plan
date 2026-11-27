@@ -639,8 +639,9 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
   Projekt lässt seine Aufgaben ohne Projekt stehen. Sie zeigt je Projekt eine schlanke Karte
   (`TodoGruppe`: Kopf ohne Zahlen, die Eingabezeile unter den vorhandenen Aufgaben erst nach
   „Neues To-Do“ – auf Wunsch ein blauer Knopf je Karte, bewusst abweichend von „ein Hauptknopf je
-  Ansicht“; Karten am Kopf umordnen, eine leere Karte über „Leere Karte entfernen“ entfernen –
-  ein Ausblenden von Karten mit Aufgaben gibt es auf Wunsch nicht mehr; gespeichert in
+  Ansicht“; Karten am Kopf umordnen, eine leere Projektkarte über „Leere Karte entfernen“
+  entfernen – „Ohne Projekt“ steht immer da und hat das Kreuz auf Wunsch nicht, ein Ausblenden
+  von Karten mit Aufgaben gibt es auf Wunsch nicht mehr; gespeichert in
   `todoKarten` – Reihenfolge allein über `kartenOrdnen`/`kartenEinreihen` in `domain/todos.ts`);
   die Reihenfolge der Aufgaben ist die von `todos`
   (`todosTauschen`), nicht sortiert. Aus dem Protokoll übernimmt `todosAusProtokoll`
