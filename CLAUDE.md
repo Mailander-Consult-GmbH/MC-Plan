@@ -505,7 +505,8 @@ Vorhandene Bausteine verwenden, nicht nachbauen (`src/shared/ui.tsx`, Klassen in
     Regel wird keine E-Mail vorgeschlagen,
   * `domain/pflichtenheft.ts` Pflichtenheft eines Projekts (`Project.pflichtenheft`, Reiter
     `pflichtenheft`, `pages/projekt/pflichtenheft/` – erstellt über den Assistenten
-    `Assistent.tsx`, einmal je Projekt): mitgelieferte Vorlage je Geschäftsbereich
+    `Assistent.tsx`, einmal je Projekt; gelöscht über `pflichtenheftLoeschen`, Karte ganz unten –
+    G-Nummer und Stammdaten bleiben am Projekt): mitgelieferte Vorlage je Geschäftsbereich
     (`domain/pflichtenheftVorlagen.ts`, `standardVorlage` – eigene Vorlagen gibt es nicht), Platzhalter aus Projekt- und
     Stammdaten (`platzhalterWerte`), Ansprechpartner allein aus den Funktionen des Projekts
     (`ansprechpartnerZeilen` – keine Personen im Pflichtenheft speichern), Ausgaben

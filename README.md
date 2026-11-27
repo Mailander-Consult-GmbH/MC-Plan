@@ -1142,6 +1142,10 @@ nennt ein Hinweis sie mit einem Verweis auf die Einstellungen des Projekts.
   „Vorabzug vom … – nicht ausgegeben“. Ohne Änderung seit der letzten Ausgabe druckt KaPlan sofort. Die Karte zeigt, was sich seit der letzten
   Ausgabe geändert hat, und je Ausgabe Datum, Person und Einträge (Text änderbar, Eintrag
   entfernbar).
+* **Pflichtenheft löschen** – ganz unten, mit Rückfrage („Pflichtenheft löschen?“): Entfernt das
+  Pflichtenheft mit Texten, Plancodierung, Ausgaben und Änderungsindex; G-Nummer und Stammdaten
+  bleiben am Projekt. Danach steht wieder „Noch kein Pflichtenheft“ mit **Pflichtenheft
+  erstellen**.
 
 Die **Druckfassung** hat eine eigene, helle Gestaltung: Deckblatt, Inhaltsverzeichnis und die
 Kapitel im Hochformat mit „Seite x von y“ (in der Schrift des Dokuments), die Ablaufdiagramme
